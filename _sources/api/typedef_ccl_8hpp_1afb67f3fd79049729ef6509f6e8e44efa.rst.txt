@@ -1,0 +1,13 @@
+.. _exhale_typedef_ccl_8hpp_1afb67f3fd79049729ef6509f6e8e44efa:
+
+Typedef ccl::communicator_t
+===========================
+
+- Defined in :ref:`file_include_ccl.hpp`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: ccl::communicator_t

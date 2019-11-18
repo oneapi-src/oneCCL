@@ -1,0 +1,13 @@
+.. _exhale_typedef_ccl__types_8h_1a625e9080b37af8c23414ab4c877caf93:
+
+Typedef ccl_reduction_fn_t
+==========================
+
+- Defined in :ref:`file_include_ccl_types.h`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: ccl_reduction_fn_t

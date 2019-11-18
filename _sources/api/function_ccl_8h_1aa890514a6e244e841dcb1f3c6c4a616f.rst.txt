@@ -1,0 +1,13 @@
+.. _exhale_function_ccl_8h_1aa890514a6e244e841dcb1f3c6c4a616f:
+
+Function ccl_alltoall
+=====================
+
+- Defined in :ref:`file_include_ccl.h`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: ccl_alltoall(const void *, void *, size_t, ccl_datatype_t, const ccl_coll_attr_t *, ccl_comm_t, ccl_stream_t, ccl_request_t *)

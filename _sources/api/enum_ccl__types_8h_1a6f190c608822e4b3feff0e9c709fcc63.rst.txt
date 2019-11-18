@@ -1,0 +1,13 @@
+.. _exhale_enum_ccl__types_8h_1a6f190c608822e4b3feff0e9c709fcc63:
+
+Enum ccl_resize_action
+======================
+
+- Defined in :ref:`file_include_ccl_types.h`
+
+
+Enum Documentation
+------------------
+
+
+.. doxygenenum:: ccl_resize_action

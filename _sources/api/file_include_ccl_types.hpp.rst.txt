@@ -1,0 +1,81 @@
+
+.. _file_include_ccl_types.hpp:
+
+File ccl_types.hpp
+==================
+
+|exhale_lsh| :ref:`Parent directory <dir_include>` (``include``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+.. contents:: Contents
+   :local:
+   :backlinks: none
+
+Definition (``include\ccl_types.hpp``)
+--------------------------------------
+
+
+.. toctree::
+   :maxdepth: 1
+
+   program_listing_file_include_ccl_types.hpp.rst
+
+
+
+
+
+Includes
+--------
+
+
+- ``ccl_types.h`` (:ref:`file_include_ccl_types.h`)
+
+- ``stdexcept``
+
+
+
+Included By
+-----------
+
+
+- :ref:`file_include_ccl.hpp`
+
+- :ref:`file_include_ccl_type_traits.hpp`
+
+
+
+
+Namespaces
+----------
+
+
+- :ref:`namespace_ccl`
+
+
+Classes
+-------
+
+
+- :ref:`exhale_class_classccl_1_1ccl__error`
+
+
+Enums
+-----
+
+
+- :ref:`exhale_enum_ccl__types_8hpp_1a9b2e2854ccf9d79a41e4473ce4dc30a6`
+
+- :ref:`exhale_enum_ccl__types_8hpp_1ab82e3278c54a74e2560a3a5d198db300`
+
+- :ref:`exhale_enum_ccl__types_8hpp_1a0cc079933a87903893e2bd84836cdbd6`
+
+
+Typedefs
+--------
+
+
+- :ref:`exhale_typedef_ccl__types_8hpp_1aac061de382f1663be34bfa9cb1a90ede`
+
+- :ref:`exhale_typedef_ccl__types_8hpp_1a692462538360ba9d937a661ac98329c3`
+

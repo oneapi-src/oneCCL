@@ -1,0 +1,108 @@
+
+.. _program_listing_file_include_ccl_type_traits.hpp:
+
+Program Listing for File ccl_type_traits.hpp
+============================================
+
+|exhale_lsh| :ref:`Return to documentation for file <file_include_ccl_type_traits.hpp>` (``include\ccl_type_traits.hpp``)
+
+.. |exhale_lsh| unicode:: U+021B0 .. UPWARDS ARROW WITH TIP LEFTWARDS
+
+.. code-block:: cpp
+
+   #ifndef TRAITS_H_
+   #define TRAITS_H_
+   
+   #include <tuple>
+   #include <type_traits>
+   
+   #ifdef CCL_ENABLE_SYCL
+       #include <CL/sycl.hpp>
+   #endif
+   
+   #include "ccl_types.hpp"
+   
+   namespace ccl
+   {
+   template<ccl_datatype_t ccl_type_id>
+   struct type_info
+   {
+       static constexpr bool is_supported = false;
+       static constexpr bool is_class = false;
+   };
+   
+   template<class type>
+   struct native_type_info
+   {
+       static constexpr bool is_supported = false;
+       static constexpr bool is_class = false;
+   };
+   
+   #define CCL_TYPE_TRAITS(ccl_type_id, dtype, dtype_size)                                         \
+       template<>                                                                                  \
+       struct type_info<ccl_type_id> :                                                             \
+               public ccl_type_info_export<dtype,                                                  \
+                                           dtype_size,                                             \
+                                           ccl_type_id,                                            \
+                                           false,                                                  \
+                                           true>                                                   \
+       {                                                                                           \
+           static constexpr const char* name() { return #dtype; }                                  \
+       };                                                                                          \
+       template<>                                                                                  \
+       struct native_type_info<dtype> : public type_info<ccl_type_id>{};
+   
+   #define CCL_CLASS_TYPE_TRAITS(ccl_type_id, dtype, sizeof_dtype)                                                                 \
+       template<>                                                                                                                  \
+       struct native_type_info<dtype> : public ccl_type_info_export<dtype, sizeof_dtype, ccl_type_id, true, true>                  \
+       {                                                                                                                           \
+           static constexpr const char* name() { return #dtype; }                                                                  \
+       };
+   
+   #define COMMA ,
+   
+   CCL_TYPE_TRAITS(ccl_dtype_char,   char,      sizeof(char))
+   CCL_TYPE_TRAITS(ccl_dtype_int,    int,       sizeof(int))
+   CCL_TYPE_TRAITS(ccl_dtype_int64,  int64_t,   sizeof(int64_t))
+   CCL_TYPE_TRAITS(ccl_dtype_uint64, uint64_t,  sizeof(uint64_t))
+   CCL_TYPE_TRAITS(ccl_dtype_float,  float,     sizeof(float))
+   CCL_TYPE_TRAITS(ccl_dtype_double, double,    sizeof(double))
+   
+   #ifdef CCL_ENABLE_SYCL
+       CCL_CLASS_TYPE_TRAITS(ccl_dtype_char,    cl::sycl::buffer<char COMMA 1>,     sizeof(char))
+       CCL_CLASS_TYPE_TRAITS(ccl_dtype_int,     cl::sycl::buffer<int COMMA 1>,      sizeof(int))
+       CCL_CLASS_TYPE_TRAITS(ccl_dtype_int64,   cl::sycl::buffer<int64_t COMMA 1>,  sizeof(int64_t))
+       CCL_CLASS_TYPE_TRAITS(ccl_dtype_uint64,  cl::sycl::buffer<uint64_t COMMA 1>, sizeof(uint64_t))
+       CCL_CLASS_TYPE_TRAITS(ccl_dtype_float,   cl::sycl::buffer<float COMMA 1>,    sizeof(float))
+       CCL_CLASS_TYPE_TRAITS(ccl_dtype_char,    cl::sycl::buffer<double COMMA 1>,   sizeof(double))
+   #endif //CCL_ENABLE_SYCL
+   
+   template<class type>
+   constexpr bool is_supported()
+   {
+       using clear_type = typename std::remove_pointer<type>::type;
+       static_assert(native_type_info<clear_type>::is_supported, "type is not supported by ccl API");
+       return native_type_info<clear_type>::is_supported;
+   }
+   
+   template<class type>
+   constexpr bool is_class()
+   {
+       using clear_type = typename std::remove_pointer<type>::type;
+       return native_type_info<clear_type>::is_class;
+   }
+   
+   template<class type>
+   constexpr bool is_native_type_supported()
+   {
+       return (not is_class<type>() and is_supported<type>());
+   }
+   
+   template<class type>
+   constexpr bool is_class_supported()
+   {
+       return (is_class<type>() and is_supported<type>());
+   }
+   }
+   #endif //TRAITS_H_
+   

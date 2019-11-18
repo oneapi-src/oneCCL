@@ -1,0 +1,13 @@
+.. _exhale_function_ccl__type__traits_8hpp_1a150aaf3343efbab089e5dea87737f60d:
+
+Template Function ccl::is_native_type_supported
+===============================================
+
+- Defined in :ref:`file_include_ccl_type_traits.hpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: ccl::is_native_type_supported()

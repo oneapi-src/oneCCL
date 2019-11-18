@@ -1,0 +1,16 @@
+*.d
+*.o
+*.a
+*.log
+.lastoptions*
+*~
+_install/
+*.out
+tests/unit/result/
+*.orig
+tests/unit/core.*
+_rpm/
+_staging/
+_deb/
+*.tgz
+*.tar.gz

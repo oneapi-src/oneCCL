@@ -1,0 +1,13 @@
+.. _exhale_enum_ccl__types_8h_1a42085859d35d75cc288367198c003e0d:
+
+Enum ccl_reduction_t
+====================
+
+- Defined in :ref:`file_include_ccl_types.h`
+
+
+Enum Documentation
+------------------
+
+
+.. doxygenenum:: ccl_reduction_t

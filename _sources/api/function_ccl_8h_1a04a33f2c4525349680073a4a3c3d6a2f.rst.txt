@@ -1,0 +1,13 @@
+.. _exhale_function_ccl_8h_1a04a33f2c4525349680073a4a3c3d6a2f:
+
+Function ccl_init
+=================
+
+- Defined in :ref:`file_include_ccl.h`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: ccl_init(void)

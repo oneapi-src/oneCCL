@@ -1,0 +1,13 @@
+.. _exhale_function_ccl_8h_1a9e104eaa3dc77cb6d61030778637ed5a:
+
+Function ccl_allreduce
+======================
+
+- Defined in :ref:`file_include_ccl.h`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: ccl_allreduce(const void *, void *, size_t, ccl_datatype_t, ccl_reduction_t, const ccl_coll_attr_t *, ccl_comm_t, ccl_stream_t, ccl_request_t *)

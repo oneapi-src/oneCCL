@@ -1,0 +1,13 @@
+.. _exhale_typedef_ccl__types_8h_1ae4f1fe2e25f4a0189765458d8a83def5:
+
+Typedef ccl_stream_t
+====================
+
+- Defined in :ref:`file_include_ccl_types.h`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: ccl_stream_t

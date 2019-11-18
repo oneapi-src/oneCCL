@@ -1,0 +1,13 @@
+.. _exhale_function_ccl__type__traits_8hpp_1a433b9255dcb5482e42bbb60e9064a397:
+
+Template Function ccl::is_class
+===============================
+
+- Defined in :ref:`file_include_ccl_type_traits.hpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: ccl::is_class()

@@ -1,0 +1,13 @@
+.. _exhale_function_ccl_8h_1a4a3092281bb0486bd832f9b3a48c1953:
+
+Function ccl_set_resize_fn
+==========================
+
+- Defined in :ref:`file_include_ccl.h`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: ccl_set_resize_fn(ccl_resize_fn_t)

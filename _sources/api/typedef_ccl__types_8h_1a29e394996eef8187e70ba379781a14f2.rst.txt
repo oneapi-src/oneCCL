@@ -1,0 +1,13 @@
+.. _exhale_typedef_ccl__types_8h_1a29e394996eef8187e70ba379781a14f2:
+
+Typedef ccl_epilogue_fn_t
+=========================
+
+- Defined in :ref:`file_include_ccl_types.h`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: ccl_epilogue_fn_t

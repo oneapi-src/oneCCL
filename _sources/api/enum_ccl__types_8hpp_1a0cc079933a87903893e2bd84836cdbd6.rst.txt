@@ -1,0 +1,13 @@
+.. _exhale_enum_ccl__types_8hpp_1a0cc079933a87903893e2bd84836cdbd6:
+
+Enum stream_type
+================
+
+- Defined in :ref:`file_include_ccl_types.hpp`
+
+
+Enum Documentation
+------------------
+
+
+.. doxygenenum:: ccl::stream_type

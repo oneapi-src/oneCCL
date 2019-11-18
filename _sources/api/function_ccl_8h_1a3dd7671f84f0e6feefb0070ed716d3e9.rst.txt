@@ -1,0 +1,13 @@
+.. _exhale_function_ccl_8h_1a3dd7671f84f0e6feefb0070ed716d3e9:
+
+Function ccl_get_version
+========================
+
+- Defined in :ref:`file_include_ccl.h`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: ccl_get_version(ccl_version_t *)

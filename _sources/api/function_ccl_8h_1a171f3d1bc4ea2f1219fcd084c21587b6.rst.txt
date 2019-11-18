@@ -1,0 +1,13 @@
+.. _exhale_function_ccl_8h_1a171f3d1bc4ea2f1219fcd084c21587b6:
+
+Function ccl_wait
+=================
+
+- Defined in :ref:`file_include_ccl.h`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: ccl_wait(ccl_request_t)

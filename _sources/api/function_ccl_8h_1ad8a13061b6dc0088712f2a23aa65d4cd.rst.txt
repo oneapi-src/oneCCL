@@ -1,0 +1,13 @@
+.. _exhale_function_ccl_8h_1ad8a13061b6dc0088712f2a23aa65d4cd:
+
+Function ccl_get_comm_rank
+==========================
+
+- Defined in :ref:`file_include_ccl.h`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: ccl_get_comm_rank(ccl_comm_t, size_t *)

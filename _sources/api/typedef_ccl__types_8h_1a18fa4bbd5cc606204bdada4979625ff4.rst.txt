@@ -1,0 +1,13 @@
+.. _exhale_typedef_ccl__types_8h_1a18fa4bbd5cc606204bdada4979625ff4:
+
+Typedef ccl_resize_fn_t
+=======================
+
+- Defined in :ref:`file_include_ccl_types.h`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: ccl_resize_fn_t

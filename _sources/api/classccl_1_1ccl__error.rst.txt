@@ -1,0 +1,25 @@
+.. _exhale_class_classccl_1_1ccl__error:
+
+Class ccl_error
+===============
+
+- Defined in :ref:`file_include_ccl_types.hpp`
+
+
+Inheritance Relationships
+-------------------------
+
+Base Type
+*********
+
+- ``public runtime_error``
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: ccl::ccl_error
+   :members:
+   :protected-members:
+   :undoc-members:

@@ -1,0 +1,669 @@
+
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Index &mdash; oneCCL Documentation (Beta) 2.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/style.css" type="text/css" />
+    <link rel="index" title="Index" href="#" />
+    <link rel="search" title="Search" href="search.html" />
+    <link href="_static/style.css" rel="stylesheet" type="text/css">
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> oneCCL Documentation (Beta)
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="prerequisites.html">Prerequisites</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#installation-using-cli">Installation using CLI</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="installation.html#custom-installation">Custom Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#installation-using-tar-gz">Installation using tar.gz</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#installation-using-rpm">Installation using RPM</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="sys_requirements.html">System requirements</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sys_requirements.html#operating-systems">Operating Systems</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sys_requirements.html#compilers">Compilers</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="sample.html">Sample application</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sample.html#build-details">Build details</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sample.html#run-the-sample">Run the sample</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Programming Model</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="spec/main_objects.html">oneCCL Concepts</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="spec/main_objects.html#oneccl-environment">oneCCL Environment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spec/main_objects.html#oneccl-stream">oneCCL Stream</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spec/main_objects.html#oneccl-communicator">oneCCL Communicator</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="spec/main_objects.html#oneccl-communicator-attributes">oneCCL Communicator Attributes</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="spec/collective_communication.html">oneCCL Collective Communication</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="spec/communication_primitives.html">Collective Opertations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="spec/communication_primitives.html#allgatherv">Allgatherv</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spec/communication_primitives.html#allreduce">Allreduce</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spec/communication_primitives.html#reduce">Reduce</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spec/communication_primitives.html#alltoall">Alltoall</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spec/communication_primitives.html#barrier">Barrier</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spec/communication_primitives.html#broadcast">Broadcast</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="spec/ccl_datatypes.html">Data Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spec/collective_call_attributes.html">Collective Call Attributes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="spec/completion.html">Track Communication Progress</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="spec/completion.html#request">Request</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spec/completion.html#test">Test</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spec/completion.html#wait">Wait</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="spec/error_handling.html">Error Handling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="spec/generic_workflow.html">Generic Workflow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="spec/gpu_support.html">GPU support</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="spec/gpu_support.html#example">Example</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="spec/cpu_support.html">CPU support</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="spec/cpu_support.html#example">Example</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">General Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="collectives_execution.html">Execution of collective operations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="collectives_execution.html#explicit-setup">Explicit setup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="collectives_execution.html#example">Example</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="collectives_execution.html#automatic-setup">Automatic setup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="collectives_execution.html#id1">Example</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="transport_selection.html">Transport selection</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Advanced Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="collective_algorithms_selection.html">Selection of collective algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="collectives_caching.html">Caching of collective operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="collectives_prioritization.html">Prioritization of collective operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="collectives_fusion.html">Fusion of collective operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sparse_collectives.html">Sparse collective operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="unordered_collectives.html">Unordered collectives support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="elasticity.html">Fault tolerance / elasticity</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="elasticity.html#main-instructions">Main instructions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="elasticity.html#examples">Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="elasticity.html#without-k8s-manager">Without k8s manager</a></li>
+<li class="toctree-l3"><a class="reference internal" href="elasticity.html#using-k8s-manager">Using k8s manager</a></li>
+<li class="toctree-l3"><a class="reference internal" href="elasticity.html#without-mpirun">Without mpirun</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Reference Materials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="env_variables.html">Environment variables</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-atl-transport">CCL_ATL_TRANSPORT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#collective-algorithms-selection">Collective algorithms selection</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="env_variables.html#ccl-coll-name">CCL_&lt;coll_name&gt;</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="env_variables.html#example">Example</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="env_variables.html#available-collectives">Available collectives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="env_variables.html#available-algorithms">Available algorithms</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="env_variables.html#allgatherv-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLGATHERV</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="env_variables.html#allreduce-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLREDUCE</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="env_variables.html#barrier-algorithms"><code class="docutils literal notranslate"><span class="pre">BARRIER</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="env_variables.html#bcast-algorithms"><code class="docutils literal notranslate"><span class="pre">BCAST</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="env_variables.html#reduce-algorithms"><code class="docutils literal notranslate"><span class="pre">REDUCE</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="env_variables.html#sparse-allreduce-algorithms"><code class="docutils literal notranslate"><span class="pre">SPARSE_ALLREDUCE</span></code> algorithms</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-fusion">CCL_FUSION</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="env_variables.html#ccl-fusion-bytes-threshold">CCL_FUSION_BYTES_THRESHOLD</a></li>
+<li class="toctree-l3"><a class="reference internal" href="env_variables.html#ccl-fusion-count-threshold">CCL_FUSION_COUNT_THRESHOLD</a></li>
+<li class="toctree-l3"><a class="reference internal" href="env_variables.html#ccl-fusion-cycle-ms">CCL_FUSION_CYCLE_MS</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-unordered-coll">CCL_UNORDERED_COLL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-priority">CCL_PRIORITY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-worker-count">CCL_WORKER_COUNT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-worker-affinity">CCL_WORKER_AFFINITY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-pm-type">CCL_PM_TYPE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-kvs-ip-exchange">CCL_KVS_IP_EXCHANGE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-k8s-api-addr">CCL_K8S_API_ADDR</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-k8s-manager-type">CCL_K8S_MANAGER_TYPE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-kvs-ip-port">CCL_KVS_IP_PORT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-world-size">CCL_WORLD_SIZE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-job-name">CCL_JOB_NAME</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api/library_root.html">Library API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/library_root.html#class-hierarchy">Class Hierarchy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/library_root.html#file-hierarchy">File Hierarchy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/library_root.html#full-api">Full API</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/library_root.html#namespaces">Namespaces</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/namespace_ccl.html">Namespace ccl</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/library_root.html#classes-and-structs">Classes and Structs</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/structccl__coll__attr__t.html">Struct ccl_coll_attr_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/structccl__comm__attr__t.html">Struct ccl_comm_attr_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/structccl__fn__context__t.html">Struct ccl_fn_context_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/structccl__version__t.html">Struct ccl_version_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/classccl_1_1ccl__error.html">Class ccl_error</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/classccl_1_1communicator.html">Class communicator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/classccl_1_1environment.html">Class environment</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/classccl_1_1request.html">Class request</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/classccl_1_1stream.html">Class stream</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/library_root.html#enums">Enums</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/enum_ccl__types_8hpp_1a9b2e2854ccf9d79a41e4473ce4dc30a6.html">Enum data_type</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/enum_ccl__types_8hpp_1ab82e3278c54a74e2560a3a5d198db300.html">Enum reduction</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/enum_ccl__types_8hpp_1a0cc079933a87903893e2bd84836cdbd6.html">Enum stream_type</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/enum_ccl__types_8h_1af3d8cd4cfec3b312026597a874406e12.html">Enum ccl_datatype_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/enum_ccl__types_8h_1a42085859d35d75cc288367198c003e0d.html">Enum ccl_reduction_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/enum_ccl__types_8h_1a6f190c608822e4b3feff0e9c709fcc63.html">Enum ccl_resize_action</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/enum_ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90.html">Enum ccl_status_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/enum_ccl__types_8h_1a5872dcb7cc3a72fbf94a20d07ce6d63b.html">Enum ccl_stream_type_t</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/library_root.html#functions">Functions</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl__type__traits_8hpp_1a433b9255dcb5482e42bbb60e9064a397.html">Template Function ccl::is_class</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl__type__traits_8hpp_1a00146b9b475d5c7c61eacca34f0edb6c.html">Template Function ccl::is_class_supported</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl__type__traits_8hpp_1a150aaf3343efbab089e5dea87737f60d.html">Template Function ccl::is_native_type_supported</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl__type__traits_8hpp_1a9d8bc3d839013305bbcb51a78d95c049.html">Template Function ccl::is_supported</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1a976c31a7b1a91c33b6a9c09f13cd1796.html">Function ccl_allgatherv</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1a9e104eaa3dc77cb6d61030778637ed5a.html">Function ccl_allreduce</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1aa890514a6e244e841dcb1f3c6c4a616f.html">Function ccl_alltoall</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1ac5618870776b28aac8f1f9e84b178577.html">Function ccl_barrier</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1a1cdf74249061dbabd47ea293832e9296.html">Function ccl_bcast</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1abb843675ca240e8d1aa42d604537ca62.html">Function ccl_comm_create</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1a2f90c583079ea7cc752e0323c1a6da14.html">Function ccl_comm_free</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1a4c39317f260e16a8011a721aabd08169.html">Function ccl_finalize</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1ad8a13061b6dc0088712f2a23aa65d4cd.html">Function ccl_get_comm_rank</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1aad4a37be50f4cdcf9c056dc48b18cf54.html">Function ccl_get_comm_size</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1a3dd7671f84f0e6feefb0070ed716d3e9.html">Function ccl_get_version</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1a04a33f2c4525349680073a4a3c3d6a2f.html">Function ccl_init</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1a89ca04757f4de077905961e506dfe534.html">Function ccl_reduce</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1a4a3092281bb0486bd832f9b3a48c1953.html">Function ccl_set_resize_fn</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1a338cc1918d32ec4079f1777b67fc91fc.html">Function ccl_sparse_allreduce</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1a4b7988205b012b6d5be39b7f865e79ec.html">Function ccl_stream_create</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1afa5037ae8c31a0596d2fcb0c03b867e1.html">Function ccl_stream_free</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1ab87c372553134eb945fcbafd63aca374.html">Function ccl_test</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1a171f3d1bc4ea2f1219fcd084c21587b6.html">Function ccl_wait</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api/library_root.html#typedefs">Typedefs</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/typedef_ccl__types_8hpp_1aac061de382f1663be34bfa9cb1a90ede.html">Typedef ccl::coll_attr</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/typedef_ccl__types_8hpp_1a692462538360ba9d937a661ac98329c3.html">Typedef ccl::comm_attr</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/typedef_ccl_8hpp_1afb67f3fd79049729ef6509f6e8e44efa.html">Typedef ccl::communicator_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/typedef_ccl_8hpp_1afa826e3536369b356fcb6a1a4f737e45.html">Typedef ccl::stream_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/typedef_ccl__types_8h_1ad984e26c3463804b916a8b05b779a34b.html">Typedef ccl_comm_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/typedef_ccl__types_8h_1a29e394996eef8187e70ba379781a14f2.html">Typedef ccl_epilogue_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/typedef_ccl__types_8h_1adad59e98682ba3a78148d8f9d6161ed9.html">Typedef ccl_prologue_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/typedef_ccl__types_8h_1a625e9080b37af8c23414ab4c877caf93.html">Typedef ccl_reduction_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/typedef_ccl__types_8h_1a0df469be505174d5656a3c5cba27ddd1.html">Typedef ccl_request_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/typedef_ccl__types_8h_1aa827bd4240d612fa112cc603dda7172f.html">Typedef ccl_resize_action_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/typedef_ccl__types_8h_1a18fa4bbd5cc606204bdada4979625ff4.html">Typedef ccl_resize_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/typedef_ccl__types_8h_1ae4f1fe2e25f4a0189765458d8a83def5.html">Typedef ccl_stream_t</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Notices and Disclaimers</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="legal.html">Notices and Disclaimers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="optimization_notice.html">Optimization Notice</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">oneCCL Documentation (Beta)</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Index</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+
+<h1 id="index">Index</h1>
+
+<div class="genindex-jumpbox">
+ <a href="#C"><strong>C</strong></a>
+ 
+</div>
+<h2 id="C">C</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/classccl_1_1ccl__error.html#_CPPv4N3ccl9ccl_errorE">ccl::ccl_error (C++ class)</a>
+</li>
+      <li><a href="api/classccl_1_1ccl__error.html#_CPPv4N3ccl9ccl_error9ccl_errorEPKc">ccl::ccl_error::ccl_error (C++ function)</a>, <a href="api/classccl_1_1ccl__error.html#_CPPv4N3ccl9ccl_error9ccl_errorERKNSt6stringE">[1]</a>
+</li>
+      <li><a href="api/typedef_ccl__types_8hpp_1aac061de382f1663be34bfa9cb1a90ede.html#_CPPv4N3ccl9coll_attrE">ccl::coll_attr (C++ type)</a>
+</li>
+      <li><a href="api/typedef_ccl__types_8hpp_1a692462538360ba9d937a661ac98329c3.html#_CPPv4N3ccl9comm_attrE">ccl::comm_attr (C++ type)</a>
+</li>
+      <li><a href="api/classccl_1_1communicator.html#_CPPv4N3ccl12communicatorE">ccl::communicator (C++ class)</a>
+</li>
+      <li><a href="api/classccl_1_1communicator.html#_CPPv4I00EN3ccl12communicator10allgathervE14coll_request_tPK11buffer_type6size_tP11buffer_typePK6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE">ccl::communicator::allgatherv (C++ function)</a>, <a href="api/classccl_1_1communicator.html#_CPPv4I00EN3ccl12communicator10allgathervE14coll_request_tRK21buffer_container_type6size_tR21buffer_container_typePK6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE">[1]</a>, <a href="api/classccl_1_1communicator.html#_CPPv4N3ccl12communicator10allgathervEPKv6size_tPvPK6size_tN3ccl9data_typeEPKN3ccl9coll_attrERKN3ccl8stream_tE">[2]</a>
+</li>
+      <li><a href="api/classccl_1_1communicator.html#_CPPv4I00EN3ccl12communicator9allreduceE14coll_request_tPK11buffer_typeP11buffer_type6size_tN3ccl9reductionEPKN3ccl9coll_attrERKN3ccl8stream_tE">ccl::communicator::allreduce (C++ function)</a>, <a href="api/classccl_1_1communicator.html#_CPPv4I00EN3ccl12communicator9allreduceE14coll_request_tRK21buffer_container_typeR21buffer_container_type6size_tN3ccl9reductionEPKN3ccl9coll_attrERKN3ccl8stream_tE">[1]</a>, <a href="api/classccl_1_1communicator.html#_CPPv4N3ccl12communicator9allreduceEPKvPv6size_tN3ccl9data_typeEN3ccl9reductionEPKN3ccl9coll_attrERKN3ccl8stream_tE">[2]</a>
+</li>
+      <li><a href="api/classccl_1_1communicator.html#_CPPv4I00EN3ccl12communicator8alltoallE14coll_request_tPK11buffer_typeP11buffer_type6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE">ccl::communicator::alltoall (C++ function)</a>, <a href="api/classccl_1_1communicator.html#_CPPv4I00EN3ccl12communicator8alltoallE14coll_request_tRK21buffer_container_typeR21buffer_container_type6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE">[1]</a>, <a href="api/classccl_1_1communicator.html#_CPPv4N3ccl12communicator8alltoallEPKvPv6size_tN3ccl9data_typeEPKN3ccl9coll_attrERKN3ccl8stream_tE">[2]</a>
+</li>
+      <li><a href="api/classccl_1_1communicator.html#_CPPv4N3ccl12communicator7barrierERKN3ccl8stream_tE">ccl::communicator::barrier (C++ function)</a>
+</li>
+      <li><a href="api/classccl_1_1communicator.html#_CPPv4I00EN3ccl12communicator5bcastE14coll_request_tP11buffer_type6size_t6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE">ccl::communicator::bcast (C++ function)</a>, <a href="api/classccl_1_1communicator.html#_CPPv4I00EN3ccl12communicator5bcastE14coll_request_tR21buffer_container_type6size_t6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE">[1]</a>, <a href="api/classccl_1_1communicator.html#_CPPv4N3ccl12communicator5bcastEPv6size_tN3ccl9data_typeE6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE">[2]</a>
+</li>
+      <li><a href="api/classccl_1_1communicator.html#_CPPv4N3ccl12communicator14coll_request_tE">ccl::communicator::coll_request_t (C++ type)</a>
+</li>
+      <li><a href="api/classccl_1_1communicator.html#_CPPv4N3ccl12communicator4rankEv">ccl::communicator::rank (C++ function)</a>
+</li>
+      <li><a href="api/classccl_1_1communicator.html#_CPPv4I00EN3ccl12communicator6reduceE14coll_request_tPK11buffer_typeP11buffer_type6size_tN3ccl9reductionE6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE">ccl::communicator::reduce (C++ function)</a>, <a href="api/classccl_1_1communicator.html#_CPPv4I00EN3ccl12communicator6reduceE14coll_request_tRK21buffer_container_typeR21buffer_container_type6size_tN3ccl9reductionE6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE">[1]</a>, <a href="api/classccl_1_1communicator.html#_CPPv4N3ccl12communicator6reduceEPKvPv6size_tN3ccl9data_typeEN3ccl9reductionE6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE">[2]</a>
+</li>
+      <li><a href="api/classccl_1_1communicator.html#_CPPv4N3ccl12communicator4sizeEv">ccl::communicator::size (C++ function)</a>
+</li>
+      <li><a href="api/classccl_1_1communicator.html#_CPPv4I000EN3ccl12communicator16sparse_allreduceE14coll_request_tPK17index_buffer_type6size_tPK17value_buffer_type6size_tPP17index_buffer_typeP6size_tPP17value_buffer_typeP6size_tN3ccl9reductionEPKN3ccl9coll_attrERKN3ccl8stream_tE">ccl::communicator::sparse_allreduce (C++ function)</a>, <a href="api/classccl_1_1communicator.html#_CPPv4I000EN3ccl12communicator16sparse_allreduceE14coll_request_tRK27index_buffer_container_type6size_tRK27value_buffer_container_type6size_tPP27index_buffer_container_typeP6size_tPP27value_buffer_container_typeP6size_tN3ccl9reductionEPKN3ccl9coll_attrERKN3ccl8stream_tE">[1]</a>, <a href="api/classccl_1_1communicator.html#_CPPv4N3ccl12communicator16sparse_allreduceEPKv6size_tPKv6size_tPPvP6size_tPPvP6size_tN3ccl9data_typeEN3ccl9data_typeEN3ccl9reductionEPKN3ccl9coll_attrERKN3ccl8stream_tE">[2]</a>
+</li>
+      <li><a href="api/typedef_ccl_8hpp_1afb67f3fd79049729ef6509f6e8e44efa.html#_CPPv4N3ccl14communicator_tE">ccl::communicator_t (C++ type)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8hpp_1a0cc079933a87903893e2bd84836cdbd6.html#_CPPv4N3ccl3cpuE">ccl::cpu (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8hpp_1ab82e3278c54a74e2560a3a5d198db300.html#_CPPv4N3ccl6customE">ccl::custom (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8hpp_1a9b2e2854ccf9d79a41e4473ce4dc30a6.html#_CPPv4N3ccl9data_typeE">ccl::data_type (C++ enum)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8hpp_1a9b2e2854ccf9d79a41e4473ce4dc30a6.html#_CPPv4N3ccl8dt_bfp16E">ccl::dt_bfp16 (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8hpp_1a9b2e2854ccf9d79a41e4473ce4dc30a6.html#_CPPv4N3ccl7dt_charE">ccl::dt_char (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8hpp_1a9b2e2854ccf9d79a41e4473ce4dc30a6.html#_CPPv4N3ccl9dt_doubleE">ccl::dt_double (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8hpp_1a9b2e2854ccf9d79a41e4473ce4dc30a6.html#_CPPv4N3ccl8dt_floatE">ccl::dt_float (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8hpp_1a9b2e2854ccf9d79a41e4473ce4dc30a6.html#_CPPv4N3ccl6dt_intE">ccl::dt_int (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8hpp_1a9b2e2854ccf9d79a41e4473ce4dc30a6.html#_CPPv4N3ccl8dt_int64E">ccl::dt_int64 (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8hpp_1a9b2e2854ccf9d79a41e4473ce4dc30a6.html#_CPPv4N3ccl13dt_last_valueE">ccl::dt_last_value (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8hpp_1a9b2e2854ccf9d79a41e4473ce4dc30a6.html#_CPPv4N3ccl9dt_uint64E">ccl::dt_uint64 (C++ enumerator)</a>
+</li>
+      <li><a href="api/classccl_1_1environment.html#_CPPv4N3ccl11environmentE">ccl::environment (C++ class)</a>
+</li>
+      <li><a href="api/classccl_1_1environment.html#_CPPv4NK3ccl11environment19create_communicatorEPKN3ccl9comm_attrE">ccl::environment::create_communicator (C++ function)</a>
+</li>
+      <li><a href="api/classccl_1_1environment.html#_CPPv4NK3ccl11environment13create_streamEN3ccl11stream_typeEPv">ccl::environment::create_stream (C++ function)</a>
+</li>
+      <li><a href="api/classccl_1_1environment.html#_CPPv4NK3ccl11environment11get_versionEv">ccl::environment::get_version (C++ function)</a>
+</li>
+      <li><a href="api/classccl_1_1environment.html#_CPPv4N3ccl11environment8instanceEv">ccl::environment::instance (C++ function)</a>
+</li>
+      <li><a href="api/classccl_1_1environment.html#_CPPv4N3ccl11environment13set_resize_fnE15ccl_resize_fn_t">ccl::environment::set_resize_fn (C++ function)</a>
+</li>
+      <li><a href="api/classccl_1_1environment.html#_CPPv4N3ccl11environmentD0Ev">ccl::environment::~environment (C++ function)</a>
+</li>
+      <li><a href="api/function_ccl__type__traits_8hpp_1a433b9255dcb5482e42bbb60e9064a397.html#_CPPv4I0EN3ccl8is_classEbv">ccl::is_class (C++ function)</a>
+</li>
+      <li><a href="api/function_ccl__type__traits_8hpp_1a00146b9b475d5c7c61eacca34f0edb6c.html#_CPPv4I0EN3ccl18is_class_supportedEbv">ccl::is_class_supported (C++ function)</a>
+</li>
+      <li><a href="api/function_ccl__type__traits_8hpp_1a150aaf3343efbab089e5dea87737f60d.html#_CPPv4I0EN3ccl24is_native_type_supportedEbv">ccl::is_native_type_supported (C++ function)</a>
+</li>
+      <li><a href="api/function_ccl__type__traits_8hpp_1a9d8bc3d839013305bbcb51a78d95c049.html#_CPPv4I0EN3ccl12is_supportedEbv">ccl::is_supported (C++ function)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8hpp_1a0cc079933a87903893e2bd84836cdbd6.html#_CPPv4N3ccl10last_valueE">ccl::last_value (C++ enumerator)</a>, <a href="api/enum_ccl__types_8hpp_1ab82e3278c54a74e2560a3a5d198db300.html#_CPPv4N3ccl10last_valueE">[1]</a>
+</li>
+      <li><a href="api/enum_ccl__types_8hpp_1ab82e3278c54a74e2560a3a5d198db300.html#_CPPv4N3ccl3maxE">ccl::max (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8hpp_1ab82e3278c54a74e2560a3a5d198db300.html#_CPPv4N3ccl3minE">ccl::min (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8hpp_1ab82e3278c54a74e2560a3a5d198db300.html#_CPPv4N3ccl4prodE">ccl::prod (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8hpp_1ab82e3278c54a74e2560a3a5d198db300.html#_CPPv4N3ccl9reductionE">ccl::reduction (C++ enum)</a>
+</li>
+      <li><a href="api/classccl_1_1request.html#_CPPv4N3ccl7requestE">ccl::request (C++ class)</a>
+</li>
+      <li><a href="api/classccl_1_1request.html#_CPPv4N3ccl7request4testEv">ccl::request::test (C++ function)</a>
+</li>
+      <li><a href="api/classccl_1_1request.html#_CPPv4N3ccl7request4waitEv">ccl::request::wait (C++ function)</a>
+</li>
+      <li><a href="api/classccl_1_1request.html#_CPPv4N3ccl7requestD0Ev">ccl::request::~request (C++ function)</a>
+</li>
+      <li><a href="api/classccl_1_1stream.html#_CPPv4N3ccl6streamE">ccl::stream (C++ class)</a>
+</li>
+      <li><a href="api/classccl_1_1stream.html#_CPPv4N3ccl6streamaSERK6stream">ccl::stream::operator= (C++ function)</a>, <a href="api/classccl_1_1stream.html#_CPPv4N3ccl6streamaSERR6stream">[1]</a>
+</li>
+      <li><a href="api/classccl_1_1stream.html#_CPPv4N3ccl6stream6streamERK6stream">ccl::stream::stream (C++ function)</a>, <a href="api/classccl_1_1stream.html#_CPPv4N3ccl6stream6streamERR6stream">[1]</a>
+</li>
+      <li><a href="api/typedef_ccl_8hpp_1afa826e3536369b356fcb6a1a4f737e45.html#_CPPv4N3ccl8stream_tE">ccl::stream_t (C++ type)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8hpp_1a0cc079933a87903893e2bd84836cdbd6.html#_CPPv4N3ccl11stream_typeE">ccl::stream_type (C++ enum)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8hpp_1ab82e3278c54a74e2560a3a5d198db300.html#_CPPv4N3ccl3sumE">ccl::sum (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8hpp_1a0cc079933a87903893e2bd84836cdbd6.html#_CPPv4N3ccl4syclE">ccl::sycl (C++ enumerator)</a>
+</li>
+      <li><a href="api/structccl__coll__attr__t.html#_CPPv415ccl_coll_attr_t">ccl_coll_attr_t (C++ class)</a>
+</li>
+      <li><a href="api/structccl__coll__attr__t.html#_CPPv4N15ccl_coll_attr_t11epilogue_fnE">ccl_coll_attr_t::epilogue_fn (C++ member)</a>
+</li>
+      <li><a href="api/structccl__coll__attr__t.html#_CPPv4N15ccl_coll_attr_t8match_idE">ccl_coll_attr_t::match_id (C++ member)</a>
+</li>
+      <li><a href="api/structccl__coll__attr__t.html#_CPPv4N15ccl_coll_attr_t8priorityE">ccl_coll_attr_t::priority (C++ member)</a>
+</li>
+      <li><a href="api/structccl__coll__attr__t.html#_CPPv4N15ccl_coll_attr_t11prologue_fnE">ccl_coll_attr_t::prologue_fn (C++ member)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/structccl__coll__attr__t.html#_CPPv4N15ccl_coll_attr_t12reduction_fnE">ccl_coll_attr_t::reduction_fn (C++ member)</a>
+</li>
+      <li><a href="api/structccl__coll__attr__t.html#_CPPv4N15ccl_coll_attr_t11synchronousE">ccl_coll_attr_t::synchronous (C++ member)</a>
+</li>
+      <li><a href="api/structccl__coll__attr__t.html#_CPPv4N15ccl_coll_attr_t8to_cacheE">ccl_coll_attr_t::to_cache (C++ member)</a>
+</li>
+      <li><a href="api/structccl__comm__attr__t.html#_CPPv415ccl_comm_attr_t">ccl_comm_attr_t (C++ class)</a>
+</li>
+      <li><a href="api/structccl__comm__attr__t.html#_CPPv4N15ccl_comm_attr_t5colorE">ccl_comm_attr_t::color (C++ member)</a>
+</li>
+      <li><a href="api/structccl__comm__attr__t.html#_CPPv4N15ccl_comm_attr_t8dev_listE">ccl_comm_attr_t::dev_list (C++ member)</a>
+</li>
+      <li><a href="api/structccl__comm__attr__t.html#_CPPv4N15ccl_comm_attr_t5localE">ccl_comm_attr_t::local (C++ member)</a>
+</li>
+      <li><a href="api/structccl__comm__attr__t.html#_CPPv4N15ccl_comm_attr_t5ranksE">ccl_comm_attr_t::ranks (C++ member)</a>
+</li>
+      <li><a href="api/structccl__comm__attr__t.html#_CPPv4N15ccl_comm_attr_t4sizeE">ccl_comm_attr_t::size (C++ member)</a>
+</li>
+      <li><a href="api/typedef_ccl__types_8h_1ad984e26c3463804b916a8b05b779a34b.html#_CPPv410ccl_comm_t">ccl_comm_t (C++ type)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1af3d8cd4cfec3b312026597a874406e12.html#_CPPv414ccl_datatype_t">ccl_datatype_t (C++ enum)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1af3d8cd4cfec3b312026597a874406e12.html#_CPPv415ccl_dtype_bfp16">ccl_dtype_bfp16 (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1af3d8cd4cfec3b312026597a874406e12.html#_CPPv414ccl_dtype_char">ccl_dtype_char (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1af3d8cd4cfec3b312026597a874406e12.html#_CPPv416ccl_dtype_custom">ccl_dtype_custom (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1af3d8cd4cfec3b312026597a874406e12.html#_CPPv416ccl_dtype_double">ccl_dtype_double (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1af3d8cd4cfec3b312026597a874406e12.html#_CPPv415ccl_dtype_float">ccl_dtype_float (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1af3d8cd4cfec3b312026597a874406e12.html#_CPPv413ccl_dtype_int">ccl_dtype_int (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1af3d8cd4cfec3b312026597a874406e12.html#_CPPv415ccl_dtype_int64">ccl_dtype_int64 (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1af3d8cd4cfec3b312026597a874406e12.html#_CPPv420ccl_dtype_last_value">ccl_dtype_last_value (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1af3d8cd4cfec3b312026597a874406e12.html#_CPPv416ccl_dtype_uint64">ccl_dtype_uint64 (C++ enumerator)</a>
+</li>
+      <li><a href="api/typedef_ccl__types_8h_1a29e394996eef8187e70ba379781a14f2.html#_CPPv417ccl_epilogue_fn_t">ccl_epilogue_fn_t (C++ type)</a>
+</li>
+      <li><a href="api/structccl__fn__context__t.html#_CPPv416ccl_fn_context_t">ccl_fn_context_t (C++ class)</a>
+</li>
+      <li><a href="api/structccl__fn__context__t.html#_CPPv4N16ccl_fn_context_t8match_idE">ccl_fn_context_t::match_id (C++ member)</a>
+</li>
+      <li><a href="api/structccl__fn__context__t.html#_CPPv4N16ccl_fn_context_t6offsetE">ccl_fn_context_t::offset (C++ member)</a>
+</li>
+      <li><a href="api/typedef_ccl__types_8h_1adad59e98682ba3a78148d8f9d6161ed9.html#_CPPv417ccl_prologue_fn_t">ccl_prologue_fn_t (C++ type)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1a6f190c608822e4b3feff0e9c709fcc63.html#_CPPv415ccl_ra_finalize">ccl_ra_finalize (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1a6f190c608822e4b3feff0e9c709fcc63.html#_CPPv410ccl_ra_run">ccl_ra_run (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1a6f190c608822e4b3feff0e9c709fcc63.html#_CPPv411ccl_ra_wait">ccl_ra_wait (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1a42085859d35d75cc288367198c003e0d.html#_CPPv420ccl_reduction_custom">ccl_reduction_custom (C++ enumerator)</a>
+</li>
+      <li><a href="api/typedef_ccl__types_8h_1a625e9080b37af8c23414ab4c877caf93.html#_CPPv418ccl_reduction_fn_t">ccl_reduction_fn_t (C++ type)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1a42085859d35d75cc288367198c003e0d.html#_CPPv424ccl_reduction_last_value">ccl_reduction_last_value (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1a42085859d35d75cc288367198c003e0d.html#_CPPv417ccl_reduction_max">ccl_reduction_max (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1a42085859d35d75cc288367198c003e0d.html#_CPPv417ccl_reduction_min">ccl_reduction_min (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1a42085859d35d75cc288367198c003e0d.html#_CPPv418ccl_reduction_prod">ccl_reduction_prod (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1a42085859d35d75cc288367198c003e0d.html#_CPPv417ccl_reduction_sum">ccl_reduction_sum (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1a42085859d35d75cc288367198c003e0d.html#_CPPv415ccl_reduction_t">ccl_reduction_t (C++ enum)</a>
+</li>
+      <li><a href="api/typedef_ccl__types_8h_1a0df469be505174d5656a3c5cba27ddd1.html#_CPPv413ccl_request_t">ccl_request_t (C++ type)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1a6f190c608822e4b3feff0e9c709fcc63.html#_CPPv417ccl_resize_action">ccl_resize_action (C++ enum)</a>
+</li>
+      <li><a href="api/typedef_ccl__types_8h_1aa827bd4240d612fa112cc603dda7172f.html#_CPPv419ccl_resize_action_t">ccl_resize_action_t (C++ type)</a>
+</li>
+      <li><a href="api/typedef_ccl__types_8h_1a18fa4bbd5cc606204bdada4979625ff4.html#_CPPv415ccl_resize_fn_t">ccl_resize_fn_t (C++ type)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90.html#_CPPv432ccl_status_blocked_due_to_resize">ccl_status_blocked_due_to_resize (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90.html#_CPPv428ccl_status_invalid_arguments">ccl_status_invalid_arguments (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90.html#_CPPv421ccl_status_last_value">ccl_status_last_value (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90.html#_CPPv426ccl_status_out_of_resource">ccl_status_out_of_resource (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90.html#_CPPv424ccl_status_runtime_error">ccl_status_runtime_error (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90.html#_CPPv418ccl_status_success">ccl_status_success (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90.html#_CPPv412ccl_status_t">ccl_status_t (C++ enum)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90.html#_CPPv424ccl_status_unimplemented">ccl_status_unimplemented (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1a5872dcb7cc3a72fbf94a20d07ce6d63b.html#_CPPv414ccl_stream_cpu">ccl_stream_cpu (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1a5872dcb7cc3a72fbf94a20d07ce6d63b.html#_CPPv421ccl_stream_last_value">ccl_stream_last_value (C++ enumerator)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1a5872dcb7cc3a72fbf94a20d07ce6d63b.html#_CPPv415ccl_stream_sycl">ccl_stream_sycl (C++ enumerator)</a>
+</li>
+      <li><a href="api/typedef_ccl__types_8h_1ae4f1fe2e25f4a0189765458d8a83def5.html#_CPPv412ccl_stream_t">ccl_stream_t (C++ type)</a>
+</li>
+      <li><a href="api/enum_ccl__types_8h_1a5872dcb7cc3a72fbf94a20d07ce6d63b.html#_CPPv417ccl_stream_type_t">ccl_stream_type_t (C++ enum)</a>
+</li>
+      <li><a href="api/structccl__version__t.html#_CPPv413ccl_version_t">ccl_version_t (C++ class)</a>
+</li>
+      <li><a href="api/structccl__version__t.html#_CPPv4N13ccl_version_t10build_dateE">ccl_version_t::build_date (C++ member)</a>
+</li>
+      <li><a href="api/structccl__version__t.html#_CPPv4N13ccl_version_t4fullE">ccl_version_t::full (C++ member)</a>
+</li>
+      <li><a href="api/structccl__version__t.html#_CPPv4N13ccl_version_t5majorE">ccl_version_t::major (C++ member)</a>
+</li>
+      <li><a href="api/structccl__version__t.html#_CPPv4N13ccl_version_t5minorE">ccl_version_t::minor (C++ member)</a>
+</li>
+      <li><a href="api/structccl__version__t.html#_CPPv4N13ccl_version_t14product_statusE">ccl_version_t::product_status (C++ member)</a>
+</li>
+      <li><a href="api/structccl__version__t.html#_CPPv4N13ccl_version_t6updateE">ccl_version_t::update (C++ member)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+<br>
+<div>
+  <p>
+      For more complete information about compiler optimizations, see our <a href="optimization_notice.html">Optimization Notice</a>.
+  </p>  
+</div>
+
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
