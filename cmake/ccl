@@ -1,0 +1,13 @@
+#%Module1.0#####################################################################
+##
+## Intel(R) oneAPI Collective Communications Library modulefile
+##
+
+module-whatis	"Sets up the Intel(R) oneAPI Collective Communications Library environment"
+
+set                topdir                               %INSTALL_PATH%
+
+setenv             CCL_ROOT                             $topdir
+setenv             CCL_ATL_TRANSPORT_PATH               $topdir/lib
+
+prepend-path       LD_LIBRARY_PATH                      $topdir/lib

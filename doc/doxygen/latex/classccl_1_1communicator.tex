@@ -1,0 +1,273 @@
+\hypertarget{classiccl_1_1communicator}{\section{iccl\-:\-:communicator Class Reference}
+\label{classiccl_1_1communicator}\index{iccl\-::communicator@{iccl\-::communicator}}
+}
+
+
+{\ttfamily \#include $<$iccl.\-hpp$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classiccl_1_1communicator_a735f10802f59fd63c962dfe9c2848a3a}{communicator} ()
+\item 
+\hyperlink{classiccl_1_1communicator_a16b3ccac7a5de0bbadb28b77a0f8581b}{communicator} (iccl\-\_\-comm\-\_\-attr\-\_\-t $\ast$comm\-\_\-attr)
+\item 
+size\-\_\-t \hyperlink{classiccl_1_1communicator_a3d001d3757344683dcd86ef60048d34c}{rank} ()
+\item 
+size\-\_\-t \hyperlink{classiccl_1_1communicator_a568b4d294bebbb04bb3203cd1bc209c0}{size} ()
+\item 
+std\-::shared\-\_\-ptr$<$ \hyperlink{classiccl_1_1request}{iccl\-::request} $>$ \hyperlink{classiccl_1_1communicator_a79de571c5a4d83637c49fb9a442e5cfb}{bcast} (void $\ast$buf, size\-\_\-t count, iccl\-::data\-\_\-type dtype, size\-\_\-t root, const iccl\-\_\-coll\-\_\-attr\-\_\-t $\ast$attributes=nullptr)
+\item 
+std\-::shared\-\_\-ptr$<$ \hyperlink{classiccl_1_1request}{iccl\-::request} $>$ \hyperlink{classiccl_1_1communicator_aec180748e4a2872d3490dac77a427025}{reduce} (const void $\ast$send\-\_\-buf, void $\ast$recv\-\_\-buf, size\-\_\-t count, iccl\-::data\-\_\-type dtype, iccl\-::reduction reduction, size\-\_\-t root, const iccl\-\_\-coll\-\_\-attr\-\_\-t $\ast$attributes=nullptr)
+\item 
+std\-::shared\-\_\-ptr$<$ \hyperlink{classiccl_1_1request}{iccl\-::request} $>$ \hyperlink{classiccl_1_1communicator_a7fe99e9d8579b4dc58db179b5d8c44fe}{allreduce} (const void $\ast$send\-\_\-buf, void $\ast$recv\-\_\-buf, size\-\_\-t count, iccl\-::data\-\_\-type dtype, iccl\-::reduction reduction, const iccl\-\_\-coll\-\_\-attr\-\_\-t $\ast$attributes=nullptr)
+\item 
+std\-::shared\-\_\-ptr$<$ \hyperlink{classiccl_1_1request}{iccl\-::request} $>$ \hyperlink{classiccl_1_1communicator_a49762be4f90635fc78dcf9a6649e9d31}{allgatherv} (const void $\ast$send\-\_\-buf, size\-\_\-t send\-\_\-count, void $\ast$recv\-\_\-buf, size\-\_\-t $\ast$recv\-\_\-counts, iccl\-::data\-\_\-type dtype, const iccl\-\_\-coll\-\_\-attr\-\_\-t $\ast$attributes=nullptr)
+\item 
+void \hyperlink{classiccl_1_1communicator_ac5b29b589751640bff11460110c09db4}{barrier} ()
+\item 
+std\-::shared\-\_\-ptr$<$ \hyperlink{classiccl_1_1request}{iccl\-::request} $>$ \hyperlink{classiccl_1_1communicator_a5d352eb424afeb470d0f5a5a001420ab}{sparse\-\_\-allreduce} (const void $\ast$send\-\_\-ind\-\_\-buf, size\-\_\-t send\-\_\-ind\-\_\-count, const void $\ast$send\-\_\-val\-\_\-buf, size\-\_\-t send\-\_\-val\-\_\-count, void $\ast$$\ast$recv\-\_\-ind\-\_\-buf, size\-\_\-t $\ast$recv\-\_\-ind\-\_\-count, void $\ast$$\ast$recv\-\_\-val\-\_\-buf, size\-\_\-t $\ast$recv\-\_\-val\-\_\-count, iccl\-::data\-\_\-type index\-\_\-dtype, iccl\-::data\-\_\-type value\-\_\-dtype, iccl\-::reduction reduction, const iccl\-\_\-coll\-\_\-attr\-\_\-t $\ast$attributes=nullptr)
+\end{DoxyCompactItemize}
+\subsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+static std\-::pair$<$ size\-\_\-t, size\-\_\-t $>$ \hyperlink{classiccl_1_1communicator_ad631243cbec6015231b2472bd09d5f5c}{priority\-\_\-range} ()
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+A communicator that permits collective operations 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classiccl_1_1communicator_a735f10802f59fd63c962dfe9c2848a3a}{\index{iccl\-::communicator@{iccl\-::communicator}!communicator@{communicator}}
+\index{communicator@{communicator}!iccl::communicator@{iccl\-::communicator}}
+\subsubsection[{communicator}]{\setlength{\rightskip}{0pt plus 5cm}iccl\-::communicator\-::communicator (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}}\label{classiccl_1_1communicator_a735f10802f59fd63c962dfe9c2848a3a}
+Creates iccl communicator as a copy of global communicator \hypertarget{classiccl_1_1communicator_a16b3ccac7a5de0bbadb28b77a0f8581b}{\index{iccl\-::communicator@{iccl\-::communicator}!communicator@{communicator}}
+\index{communicator@{communicator}!iccl::communicator@{iccl\-::communicator}}
+\subsubsection[{communicator}]{\setlength{\rightskip}{0pt plus 5cm}iccl\-::communicator\-::communicator (
+\begin{DoxyParamCaption}
+\item[{iccl\-\_\-comm\-\_\-attr\-\_\-t $\ast$}]{comm\-\_\-attr}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [explicit]}}}\label{classiccl_1_1communicator_a16b3ccac7a5de0bbadb28b77a0f8581b}
+Creates a new communicator according to {\ttfamily comm\-\_\-attr} parametersiccl\-\_\-t 
+\begin{DoxyParams}{Parameters}
+{\em comm\-\_\-attr} & \\
+\hline
+\end{DoxyParams}
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classiccl_1_1communicator_a49762be4f90635fc78dcf9a6649e9d31}{\index{iccl\-::communicator@{iccl\-::communicator}!allgatherv@{allgatherv}}
+\index{allgatherv@{allgatherv}!iccl::communicator@{iccl\-::communicator}}
+\subsubsection[{allgatherv}]{\setlength{\rightskip}{0pt plus 5cm}std\-::shared\-\_\-ptr$<${\bf iccl\-::request}$>$ iccl\-::communicator\-::allgatherv (
+\begin{DoxyParamCaption}
+\item[{const void $\ast$}]{send\-\_\-buf, }
+\item[{size\-\_\-t}]{send\-\_\-count, }
+\item[{void $\ast$}]{recv\-\_\-buf, }
+\item[{size\-\_\-t $\ast$}]{recv\-\_\-counts, }
+\item[{iccl\-::data\-\_\-type}]{dtype, }
+\item[{const iccl\-\_\-coll\-\_\-attr\-\_\-t $\ast$}]{attributes = {\ttfamily nullptr}}
+\end{DoxyParamCaption}
+)}}\label{classiccl_1_1communicator_a49762be4f90635fc78dcf9a6649e9d31}
+Gathers {\ttfamily buf} on all process in the communicator and stores result in {\ttfamily recv\-\_\-buf} on each process 
+\begin{DoxyParams}{Parameters}
+{\em send\-\_\-buf} & the buffer with {\ttfamily count} elements of {\ttfamily dtype} that stores local data to be gathered \\
+\hline
+{\em send\-\_\-count} & number of elements of type {\ttfamily dtype} in {\ttfamily send\-\_\-buf} \\
+\hline
+{\em recv\-\_\-buf} & \mbox{[}out\mbox{]} the buffer to store gathered result on the {\ttfamily each} process, must have the same dimension as {\ttfamily buf}. Used by the {\ttfamily root} process only, ignored by other processes \\
+\hline
+{\em recv\-\_\-counts} & array with number of elements received by each process \\
+\hline
+{\em dtype} & data type of elements in the buffer {\ttfamily buf} and {\ttfamily recv\-\_\-buf} \\
+\hline
+{\em attributes} & optional attributes that customize operation \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\hyperlink{classiccl_1_1request}{iccl\-::request} object that can be used to track the progress of the operation 
+\end{DoxyReturn}
+\hypertarget{classiccl_1_1communicator_a7fe99e9d8579b4dc58db179b5d8c44fe}{\index{iccl\-::communicator@{iccl\-::communicator}!allreduce@{allreduce}}
+\index{allreduce@{allreduce}!iccl::communicator@{iccl\-::communicator}}
+\subsubsection[{allreduce}]{\setlength{\rightskip}{0pt plus 5cm}std\-::shared\-\_\-ptr$<${\bf iccl\-::request}$>$ iccl\-::communicator\-::allreduce (
+\begin{DoxyParamCaption}
+\item[{const void $\ast$}]{send\-\_\-buf, }
+\item[{void $\ast$}]{recv\-\_\-buf, }
+\item[{size\-\_\-t}]{count, }
+\item[{iccl\-::data\-\_\-type}]{dtype, }
+\item[{iccl\-::reduction}]{reduction, }
+\item[{const iccl\-\_\-coll\-\_\-attr\-\_\-t $\ast$}]{attributes = {\ttfamily nullptr}}
+\end{DoxyParamCaption}
+)}}\label{classiccl_1_1communicator_a7fe99e9d8579b4dc58db179b5d8c44fe}
+Reduces {\ttfamily buf} on all process in the communicator and stores result in {\ttfamily recv\-\_\-buf} on each process 
+\begin{DoxyParams}{Parameters}
+{\em send\-\_\-buf} & the buffer with {\ttfamily count} elements of {\ttfamily dtype} that stores local data to be reduced \\
+\hline
+{\em recv\-\_\-buf} & \mbox{[}out\mbox{]} -\/ the buffer to store reduced result , must have the same dimension as {\ttfamily buf}. \\
+\hline
+{\em count} & number of elements of type {\ttfamily dtype} in {\ttfamily buf} \\
+\hline
+{\em dtype} & data type of elements in the buffer {\ttfamily buf} and {\ttfamily recv\-\_\-buf} \\
+\hline
+{\em reduction} & type of reduction operation to be applied \\
+\hline
+{\em attributes} & optional attributes that customize operation \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\hyperlink{classiccl_1_1request}{iccl\-::request} object that can be used to track the progress of the operation 
+\end{DoxyReturn}
+\hypertarget{classiccl_1_1communicator_ac5b29b589751640bff11460110c09db4}{\index{iccl\-::communicator@{iccl\-::communicator}!barrier@{barrier}}
+\index{barrier@{barrier}!iccl::communicator@{iccl\-::communicator}}
+\subsubsection[{barrier}]{\setlength{\rightskip}{0pt plus 5cm}void iccl\-::communicator\-::barrier (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}}\label{classiccl_1_1communicator_ac5b29b589751640bff11460110c09db4}
+Collective operation that blocks each process until every process have reached it \hypertarget{classiccl_1_1communicator_a79de571c5a4d83637c49fb9a442e5cfb}{\index{iccl\-::communicator@{iccl\-::communicator}!bcast@{bcast}}
+\index{bcast@{bcast}!iccl::communicator@{iccl\-::communicator}}
+\subsubsection[{bcast}]{\setlength{\rightskip}{0pt plus 5cm}std\-::shared\-\_\-ptr$<${\bf iccl\-::request}$>$ iccl\-::communicator\-::bcast (
+\begin{DoxyParamCaption}
+\item[{void $\ast$}]{buf, }
+\item[{size\-\_\-t}]{count, }
+\item[{iccl\-::data\-\_\-type}]{dtype, }
+\item[{size\-\_\-t}]{root, }
+\item[{const iccl\-\_\-coll\-\_\-attr\-\_\-t $\ast$}]{attributes = {\ttfamily nullptr}}
+\end{DoxyParamCaption}
+)}}\label{classiccl_1_1communicator_a79de571c5a4d83637c49fb9a442e5cfb}
+Broadcasts {\ttfamily buf} from the {\ttfamily root} process to other processes in a communicator 
+\begin{DoxyParams}{Parameters}
+{\em buf} & \mbox{[}in,out\mbox{]} the buffer with {\ttfamily count} elements of {\ttfamily dtype} to be transmitted if the rank of the communicator is equal to {\ttfamily root} or to be received by other ranks \\
+\hline
+{\em count} & number of elements of type {\ttfamily dtype} in {\ttfamily buf} \\
+\hline
+{\em dtype} & data type of elements in the buffer {\ttfamily buf} \\
+\hline
+{\em root} & the rank of the process that will transmit {\ttfamily buf} \\
+\hline
+{\em attributes} & optional attributes that customize operation \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\hyperlink{classiccl_1_1request}{iccl\-::request} object that can be used to track the progress of the operation 
+\end{DoxyReturn}
+\hypertarget{classiccl_1_1communicator_ad631243cbec6015231b2472bd09d5f5c}{\index{iccl\-::communicator@{iccl\-::communicator}!priority\-\_\-range@{priority\-\_\-range}}
+\index{priority\-\_\-range@{priority\-\_\-range}!iccl::communicator@{iccl\-::communicator}}
+\subsubsection[{priority\-\_\-range}]{\setlength{\rightskip}{0pt plus 5cm}static std\-::pair$<$size\-\_\-t, size\-\_\-t$>$ iccl\-::communicator\-::priority\-\_\-range (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [static]}}}\label{classiccl_1_1communicator_ad631243cbec6015231b2472bd09d5f5c}
+Retrieves minimum and maximum priorities to be used for collective operation parametrization \begin{DoxyReturn}{Returns}
+a pair where {\ttfamily pair.\-first} is minimum priority and {\ttfamily pair.\-second} is maximum priority 
+\end{DoxyReturn}
+\hypertarget{classiccl_1_1communicator_a3d001d3757344683dcd86ef60048d34c}{\index{iccl\-::communicator@{iccl\-::communicator}!rank@{rank}}
+\index{rank@{rank}!iccl::communicator@{iccl\-::communicator}}
+\subsubsection[{rank}]{\setlength{\rightskip}{0pt plus 5cm}size\-\_\-t iccl\-::communicator\-::rank (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}}\label{classiccl_1_1communicator_a3d001d3757344683dcd86ef60048d34c}
+Retrieves the rank of the current process in a communicator \begin{DoxyReturn}{Returns}
+rank of the current process 
+\end{DoxyReturn}
+\hypertarget{classiccl_1_1communicator_aec180748e4a2872d3490dac77a427025}{\index{iccl\-::communicator@{iccl\-::communicator}!reduce@{reduce}}
+\index{reduce@{reduce}!iccl::communicator@{iccl\-::communicator}}
+\subsubsection[{reduce}]{\setlength{\rightskip}{0pt plus 5cm}std\-::shared\-\_\-ptr$<${\bf iccl\-::request}$>$ iccl\-::communicator\-::reduce (
+\begin{DoxyParamCaption}
+\item[{const void $\ast$}]{send\-\_\-buf, }
+\item[{void $\ast$}]{recv\-\_\-buf, }
+\item[{size\-\_\-t}]{count, }
+\item[{iccl\-::data\-\_\-type}]{dtype, }
+\item[{iccl\-::reduction}]{reduction, }
+\item[{size\-\_\-t}]{root, }
+\item[{const iccl\-\_\-coll\-\_\-attr\-\_\-t $\ast$}]{attributes = {\ttfamily nullptr}}
+\end{DoxyParamCaption}
+)}}\label{classiccl_1_1communicator_aec180748e4a2872d3490dac77a427025}
+Reduces {\ttfamily buf} on all process in the communicator and stores result in {\ttfamily recv\-\_\-buf} on the {\ttfamily root} process 
+\begin{DoxyParams}{Parameters}
+{\em send\-\_\-buf} & the buffer with {\ttfamily count} elements of {\ttfamily dtype} that stores local data to be reduced \\
+\hline
+{\em recv\-\_\-buf} & \mbox{[}out\mbox{]} the buffer to store reduced result on the {\ttfamily root} process, must have the same dimension as {\ttfamily buf}. Used by the {\ttfamily root} process only, ignored by other processes \\
+\hline
+{\em count} & number of elements of type {\ttfamily dtype} in {\ttfamily buf} \\
+\hline
+{\em dtype} & data type of elements in the buffer {\ttfamily buf} and {\ttfamily recv\-\_\-buf} \\
+\hline
+{\em reduction} & type of reduction operation to be applied \\
+\hline
+{\em root} & the rank of the process that will held result of reduction \\
+\hline
+{\em attributes} & optional attributes that customize operation \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\hyperlink{classiccl_1_1request}{iccl\-::request} object that can be used to track the progress of the operation 
+\end{DoxyReturn}
+\hypertarget{classiccl_1_1communicator_a568b4d294bebbb04bb3203cd1bc209c0}{\index{iccl\-::communicator@{iccl\-::communicator}!size@{size}}
+\index{size@{size}!iccl::communicator@{iccl\-::communicator}}
+\subsubsection[{size}]{\setlength{\rightskip}{0pt plus 5cm}size\-\_\-t iccl\-::communicator\-::size (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}}\label{classiccl_1_1communicator_a568b4d294bebbb04bb3203cd1bc209c0}
+Retrieves the number of processes in a communicator \begin{DoxyReturn}{Returns}
+number of the processes 
+\end{DoxyReturn}
+\hypertarget{classiccl_1_1communicator_a5d352eb424afeb470d0f5a5a001420ab}{\index{iccl\-::communicator@{iccl\-::communicator}!sparse\-\_\-allreduce@{sparse\-\_\-allreduce}}
+\index{sparse\-\_\-allreduce@{sparse\-\_\-allreduce}!iccl::communicator@{iccl\-::communicator}}
+\subsubsection[{sparse\-\_\-allreduce}]{\setlength{\rightskip}{0pt plus 5cm}std\-::shared\-\_\-ptr$<${\bf iccl\-::request}$>$ iccl\-::communicator\-::sparse\-\_\-allreduce (
+\begin{DoxyParamCaption}
+\item[{const void $\ast$}]{send\-\_\-ind\-\_\-buf, }
+\item[{size\-\_\-t}]{send\-\_\-ind\-\_\-count, }
+\item[{const void $\ast$}]{send\-\_\-val\-\_\-buf, }
+\item[{size\-\_\-t}]{send\-\_\-val\-\_\-count, }
+\item[{void $\ast$$\ast$}]{recv\-\_\-ind\-\_\-buf, }
+\item[{size\-\_\-t $\ast$}]{recv\-\_\-ind\-\_\-count, }
+\item[{void $\ast$$\ast$}]{recv\-\_\-val\-\_\-buf, }
+\item[{size\-\_\-t $\ast$}]{recv\-\_\-val\-\_\-count, }
+\item[{iccl\-::data\-\_\-type}]{index\-\_\-dtype, }
+\item[{iccl\-::data\-\_\-type}]{value\-\_\-dtype, }
+\item[{iccl\-::reduction}]{reduction, }
+\item[{const iccl\-\_\-coll\-\_\-attr\-\_\-t $\ast$}]{attributes = {\ttfamily nullptr}}
+\end{DoxyParamCaption}
+)}}\label{classiccl_1_1communicator_a5d352eb424afeb470d0f5a5a001420ab}
+Reduces sparse {\ttfamily buf} on all process in the communicator and stores result in {\ttfamily recv\-\_\-buf} on each process 
+\begin{DoxyParams}{Parameters}
+{\em send\-\_\-ind\-\_\-buf} & the buffer of indices with {\ttfamily send\-\_\-ind\-\_\-count} elements of {\ttfamily index\-\_\-dtype} \\
+\hline
+{\em send\-\_\-int\-\_\-count} & number of elements of type {\ttfamily index\-\_\-type} {\ttfamily send\-\_\-ind\-\_\-buf} \\
+\hline
+{\em send\-\_\-val\-\_\-buf} & the buffer of values with {\ttfamily send\-\_\-val\-\_\-count} elements of {\ttfamily value\-\_\-dtype} \\
+\hline
+{\em send\-\_\-val\-\_\-count} & number of elements of type {\ttfamily value\-\_\-type} {\ttfamily send\-\_\-val\-\_\-buf} \\
+\hline
+{\em recv\-\_\-ind\-\_\-buf} & \mbox{[}out\mbox{]} the buffer to store reduced indices, must have the same dimension as {\ttfamily send\-\_\-ind\-\_\-buf} \\
+\hline
+{\em recv\-\_\-ind\-\_\-count} & \mbox{[}out\mbox{]} the amount of reduced indices \\
+\hline
+{\em recv\-\_\-val\-\_\-buf} & \mbox{[}out\mbox{]} the buffer to store reduced values, must have the same dimension as {\ttfamily send\-\_\-val\-\_\-buf} \\
+\hline
+{\em recv\-\_\-val\-\_\-count} & \mbox{[}out\mbox{]} the amount of reduced values \\
+\hline
+{\em index\-\_\-dtype} & index type of elements in the buffer {\ttfamily send\-\_\-ind\-\_\-buf} and {\ttfamily recv\-\_\-ind\-\_\-buf} \\
+\hline
+{\em value\-\_\-dtype} & data type of elements in the buffer {\ttfamily send\-\_\-val\-\_\-buf} and {\ttfamily recv\-\_\-val\-\_\-buf} \\
+\hline
+{\em reduction} & type of reduction operation to be applied \\
+\hline
+{\em attributes} & optional attributes that customize operation \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\hyperlink{classiccl_1_1request}{iccl\-::request} object that can be used to track the progress of the operation 
+\end{DoxyReturn}
+
+
+The documentation for this class was generated from the following file\-:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{iccl_8hpp}{iccl.\-hpp}\end{DoxyCompactItemize}

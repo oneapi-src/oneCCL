@@ -1,0 +1,58 @@
+\hypertarget{classiccl_1_1request}{\section{iccl\-:\-:request Class Reference}
+\label{classiccl_1_1request}\index{iccl\-::request@{iccl\-::request}}
+}
+
+
+{\ttfamily \#include $<$iccl.\-hpp$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+virtual void \hyperlink{classiccl_1_1request_afa68902bbda8b7b6497a572ca8bdab71}{wait} ()=0
+\item 
+virtual bool \hyperlink{classiccl_1_1request_aed74be372fcbb18e903e916722482ef2}{test} ()=0
+\item 
+virtual \hyperlink{classiccl_1_1request_af38946def903939b8d43337eff073841}{$\sim$request} ()=default
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+A request object that allows the user to track collective operation progress 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classiccl_1_1request_af38946def903939b8d43337eff073841}{\index{iccl\-::request@{iccl\-::request}!$\sim$request@{$\sim$request}}
+\index{$\sim$request@{$\sim$request}!iccl::request@{iccl\-::request}}
+\subsubsection[{$\sim$request}]{\setlength{\rightskip}{0pt plus 5cm}virtual iccl\-::request\-::$\sim$request (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [virtual]}, {\ttfamily [default]}}}\label{classiccl_1_1request_af38946def903939b8d43337eff073841}
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classiccl_1_1request_aed74be372fcbb18e903e916722482ef2}{\index{iccl\-::request@{iccl\-::request}!test@{test}}
+\index{test@{test}!iccl::request@{iccl\-::request}}
+\subsubsection[{test}]{\setlength{\rightskip}{0pt plus 5cm}virtual bool iccl\-::request\-::test (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [pure virtual]}}}\label{classiccl_1_1request_aed74be372fcbb18e903e916722482ef2}
+Non-\/blocking check for collective operation completion 
+\begin{DoxyRetVals}{Return values}
+{\em true} & if the operations has been completed \\
+\hline
+{\em false} & if the operations has not been completed \\
+\hline
+\end{DoxyRetVals}
+\hypertarget{classiccl_1_1request_afa68902bbda8b7b6497a572ca8bdab71}{\index{iccl\-::request@{iccl\-::request}!wait@{wait}}
+\index{wait@{wait}!iccl::request@{iccl\-::request}}
+\subsubsection[{wait}]{\setlength{\rightskip}{0pt plus 5cm}virtual void iccl\-::request\-::wait (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [pure virtual]}}}\label{classiccl_1_1request_afa68902bbda8b7b6497a572ca8bdab71}
+Blocking wait for collective operation completion 
+
+The documentation for this class was generated from the following file\-:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{iccl_8hpp}{iccl.\-hpp}\end{DoxyCompactItemize}
