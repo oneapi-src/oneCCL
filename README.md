@@ -61,13 +61,13 @@ Make sure that libasan.so exists.
 
 ## Usage
 
-###Launching Example Application
+### Launching Example Application
 Use the command:
-
+```
 $ source <install_dir>/env/setvars.sh
 $ cd <install_dir>/examples
 $ mpirun -n 2 ./common/benchmark
-
+```
 ### Setting workers affinity
 There are two ways to set workers threads affinity - explicit and automatic
 
