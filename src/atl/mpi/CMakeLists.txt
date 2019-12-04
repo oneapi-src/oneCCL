@@ -4,7 +4,7 @@ set(MPI_SRC
 
 set(COMMON_MPI_INC_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}/../
-    ${PROJECT_SOURCE_DIR}/mpi_rt/include/)
+    ${PROJECT_SOURCE_DIR}/mpi/include/)
 
 # special library that holds objects only
 add_library(ccl_atl_mpi-objects OBJECT ${MPI_SRC})
@@ -12,7 +12,7 @@ set_target_properties(ccl_atl_mpi-objects PROPERTIES POSITION_INDEPENDENT_CODE 1
 target_include_directories(ccl_atl_mpi-objects PRIVATE ${COMMON_MPI_INC_DIRS})
 
 # add library search directory
-link_directories(${PROJECT_SOURCE_DIR}/mpi_rt/lib)
+link_directories(${PROJECT_SOURCE_DIR}/mpi/lib)
 
 # shared
 add_library(ccl_atl_mpi SHARED $<TARGET_OBJECTS:ccl_atl_mpi-objects>)

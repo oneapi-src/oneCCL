@@ -16,7 +16,7 @@ set(COMMON_OFI_INC_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}/util/pm/codec
     ${CMAKE_CURRENT_SOURCE_DIR}/util/pm/pmi_rt
     ${CMAKE_CURRENT_SOURCE_DIR}/util/pm/pmi_resizable_rt
-    ${PROJECT_SOURCE_DIR}/ofi_rt/include)
+    ${PROJECT_SOURCE_DIR}/ofi/include)
 
 #special library that holds objects only
 add_library(ccl_atl_ofi-objects OBJECT ${OFI_SRC})
@@ -26,7 +26,7 @@ target_include_directories(ccl_atl_ofi-objects PRIVATE $<TARGET_PROPERTY:pmi,INT
 target_include_directories(ccl_atl_ofi-objects PRIVATE $<TARGET_PROPERTY:resizable_pmi,INTERFACE_INCLUDE_DIRECTORIES>)
 
 #add library search directory
-link_directories(${PROJECT_SOURCE_DIR}/ofi_rt/lib)
+link_directories(${PROJECT_SOURCE_DIR}/ofi/lib)
 
 #shared
 add_library(ccl_atl_ofi SHARED $<TARGET_OBJECTS:ccl_atl_ofi-objects>)

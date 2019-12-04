@@ -91,18 +91,21 @@ install(TARGETS ccl-static ARCHIVE DESTINATION ${CCL_INSTALL_LIB})
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
         DESTINATION ${CCL_INSTALL_INCLUDE} FILES_MATCHING REGEX ".*\\.(h|hpp)$")
 
-#mpi & ofi rt
-file(GLOB mpi_bins "${PROJECT_SOURCE_DIR}/mpi_rt/bin/*")
+#mpi & ofi
+file(GLOB mpi_bins "${PROJECT_SOURCE_DIR}/mpi/bin/*")
 install(PROGRAMS ${mpi_bins} DESTINATION ${CCL_INSTALL_BIN})
 
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/ofi_rt/lib/
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/ofi/lib/
         DESTINATION ${CCL_INSTALL_LIB})
 
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/mpi_rt/lib/
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/mpi/lib/
         DESTINATION ${CCL_INSTALL_LIB})
 
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/mpi_rt/etc/
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/mpi/include/
+        DESTINATION ${CCL_INSTALL_INCLUDE})
+
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/mpi/etc/
         DESTINATION ${CCL_INSTALL_ETC})
 
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/mpi_rt/licensing/
-        DESTINATION ${CCL_INSTALL_LICENSE}/mpi/)
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/mpi/licensing/
+        DESTINATION ${CCL_INSTALL_LICENSE}/mpi)
