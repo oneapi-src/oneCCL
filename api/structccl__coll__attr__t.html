@@ -96,11 +96,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../installation.html#installation-using-rpm">Installation using RPM</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="../sys_requirements.html">System requirements</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../sys_requirements.html#operating-systems">Operating Systems</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../sys_requirements.html#compilers">Compilers</a></li>
-</ul>
-</li>
 <li class="toctree-l1"><a class="reference internal" href="../sample.html">Sample application</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="../sample.html#build-details">Build details</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../sample.html#run-the-sample">Run the sample</a></li>
@@ -196,10 +191,13 @@
 <li class="toctree-l3"><a class="reference internal" href="../env_variables.html#available-algorithms">Available algorithms</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#allgatherv-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLGATHERV</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#allreduce-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLREDUCE</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../env_variables.html#alltoall-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLTOALL</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#barrier-algorithms"><code class="docutils literal notranslate"><span class="pre">BARRIER</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#bcast-algorithms"><code class="docutils literal notranslate"><span class="pre">BCAST</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#reduce-algorithms"><code class="docutils literal notranslate"><span class="pre">REDUCE</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#sparse-allreduce-algorithms"><code class="docutils literal notranslate"><span class="pre">SPARSE_ALLREDUCE</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../env_variables.html#ccl-rs-chunk-count">CCL_RS_CHUNK_COUNT</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../env_variables.html#ccl-rs-min-chunk-size">CCL_RS_MIN_CHUNK_SIZE</a></li>
 </ul>
 </li>
 </ul>
@@ -380,12 +378,14 @@
 <dl class="class">
 <dt id="_CPPv415ccl_coll_attr_t">
 <span id="_CPPv315ccl_coll_attr_t"></span><span id="_CPPv215ccl_coll_attr_t"></span><span id="ccl_coll_attr_t"></span><span class="target" id="structccl__coll__attr__t"></span><em class="property">struct </em><code class="sig-name descname">ccl_coll_attr_t</code><a class="headerlink" href="#_CPPv415ccl_coll_attr_t" title="Permalink to this definition">¶</a><br /></dt>
-<dd><div class="breathe-sectiondef docutils container">
+<dd><p>Extendable list of collective attributes. </p>
+<div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Members</p>
 <dl class="member">
 <dt id="_CPPv4N15ccl_coll_attr_t11prologue_fnE">
 <span id="_CPPv3N15ccl_coll_attr_t11prologue_fnE"></span><span id="_CPPv2N15ccl_coll_attr_t11prologue_fnE"></span><span id="ccl_coll_attr_t::prologue_fn__ccl_prologue_fn_t"></span><span class="target" id="structccl__coll__attr__t_1aee81f80103ab7d9bb17d4d0d481c11db"></span><a class="reference internal" href="typedef_ccl__types_8h_1adad59e98682ba3a78148d8f9d6161ed9.html#_CPPv417ccl_prologue_fn_t" title="ccl_prologue_fn_t">ccl_prologue_fn_t</a> <code class="sig-name descname">prologue_fn</code><a class="headerlink" href="#_CPPv4N15ccl_coll_attr_t11prologue_fnE" title="Permalink to this definition">¶</a><br /></dt>
-<dd></dd></dl>
+<dd><p>Callbacks into application code for pre-/post-processing data and custom reduction operation </p>
+</dd></dl>
 
 <dl class="member">
 <dt id="_CPPv4N15ccl_coll_attr_t11epilogue_fnE">
@@ -410,6 +410,11 @@
 <dl class="member">
 <dt id="_CPPv4N15ccl_coll_attr_t8to_cacheE">
 <span id="_CPPv3N15ccl_coll_attr_t8to_cacheE"></span><span id="_CPPv2N15ccl_coll_attr_t8to_cacheE"></span><span id="ccl_coll_attr_t::to_cache__i"></span><span class="target" id="structccl__coll__attr__t_1a239457e98e34c4ca9d325089b95d52a5"></span>int <code class="sig-name descname">to_cache</code><a class="headerlink" href="#_CPPv4N15ccl_coll_attr_t8to_cacheE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv4N15ccl_coll_attr_t10vector_bufE">
+<span id="_CPPv3N15ccl_coll_attr_t10vector_bufE"></span><span id="_CPPv2N15ccl_coll_attr_t10vector_bufE"></span><span id="ccl_coll_attr_t::vector_buf__i"></span><span class="target" id="structccl__coll__attr__t_1a5a240c8cea6b435673795ed1e35147de"></span>int <code class="sig-name descname">vector_buf</code><a class="headerlink" href="#_CPPv4N15ccl_coll_attr_t10vector_bufE" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
 <dl class="member">
@@ -444,7 +449,7 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019
+        &copy; Copyright 2020
 
     </p>
   </div>

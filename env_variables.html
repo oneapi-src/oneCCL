@@ -96,11 +96,6 @@
 <li class="toctree-l2"><a class="reference internal" href="installation.html#installation-using-rpm">Installation using RPM</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="sys_requirements.html">System requirements</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="sys_requirements.html#operating-systems">Operating Systems</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sys_requirements.html#compilers">Compilers</a></li>
-</ul>
-</li>
 <li class="toctree-l1"><a class="reference internal" href="sample.html">Sample application</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="sample.html#build-details">Build details</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sample.html#run-the-sample">Run the sample</a></li>
@@ -196,10 +191,13 @@
 <li class="toctree-l3"><a class="reference internal" href="#available-algorithms">Available algorithms</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#allgatherv-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLGATHERV</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#allreduce-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLREDUCE</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#alltoall-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLTOALL</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#barrier-algorithms"><code class="docutils literal notranslate"><span class="pre">BARRIER</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#bcast-algorithms"><code class="docutils literal notranslate"><span class="pre">BCAST</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#reduce-algorithms"><code class="docutils literal notranslate"><span class="pre">REDUCE</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#sparse-allreduce-algorithms"><code class="docutils literal notranslate"><span class="pre">SPARSE_ALLREDUCE</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ccl-rs-chunk-count">CCL_RS_CHUNK_COUNT</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ccl-rs-min-chunk-size">CCL_RS_MIN_CHUNK_SIZE</a></li>
 </ul>
 </li>
 </ul>
@@ -434,6 +432,7 @@ To see the actual table values set <code class="docutils literal notranslate"><s
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">ALLGATHER</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">ALLREDUCE</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ALLTOALL</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">BARRIER</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">BCAST</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">REDUCE</span></code></p></li>
@@ -484,7 +483,9 @@ To see the actual table values set <code class="docutils literal notranslate"><s
 <td><p>May be beneficial for imbalanced workloads</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ring</span></code></p></td>
-<td><p>reduce_scatter+allgather ring</p></td>
+<td><p>reduce_scatter+allgather ring.
+Use <code class="docutils literal notranslate"><span class="pre">CCL_RS_CHUNK_COUNT</span></code> and <code class="docutils literal notranslate"><span class="pre">CCL_RS_MIN_CHUNK_SIZE</span></code>
+to control pipelining on reduce_scatter phase.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ring_rma</span></code></p></td>
 <td><p>reduce_scatter+allgather ring using RMA communications</p></td>
@@ -494,6 +495,26 @@ To see the actual table values set <code class="docutils literal notranslate"><s
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">recursive_doubling</span></code></p></td>
 <td><p>Recursive doubling algorithm</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">2d</span></code></p></td>
+<td><p>2-dimensional allgorithm (reduce_scatter+allreduce+allgather)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="alltoall-algorithms">
+<h4><code class="docutils literal notranslate"><span class="pre">ALLTOALL</span></code> algorithms<a class="headerlink" href="#alltoall-algorithms" title="Permalink to this headline">¶</a></h4>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">direct</span></code></p></td>
+<td><p>Based on <code class="docutils literal notranslate"><span class="pre">MPI_Ialltoall</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">scatter</span></code></p></td>
+<td><p>Send to all, receive from all</p></td>
 </tr>
 </tbody>
 </table>
@@ -577,6 +598,58 @@ To see the actual table values set <code class="docutils literal notranslate"><s
 </tr>
 </tbody>
 </table>
+</div>
+<div class="section" id="ccl-rs-chunk-count">
+<h4>CCL_RS_CHUNK_COUNT<a class="headerlink" href="#ccl-rs-chunk-count" title="Permalink to this headline">¶</a></h4>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_RS_CHUNK_COUNT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">COUNT</span></code></p></td>
+<td><p>Maximum number of chunks.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify maximum number of chunks for reduce_scatter phase in ring allreduce.</p>
+</div>
+<div class="section" id="ccl-rs-min-chunk-size">
+<h4>CCL_RS_MIN_CHUNK_SIZE<a class="headerlink" href="#ccl-rs-min-chunk-size" title="Permalink to this headline">¶</a></h4>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_RS_MIN_CHUNK_SIZE</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SIZE</span></code></p></td>
+<td><p>Minimum number of bytes in chunk.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify minimum number of bytes in chunk for reduce_scatter phase in ring allreduce. Affects actual value of <code class="docutils literal notranslate"><span class="pre">CCL_RS_CHUNK_COUNT</span></code>.</p>
 </div>
 </div>
 </div>
@@ -1024,7 +1097,7 @@ It requires for a user to additionally specify <code class="docutils literal not
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019
+        &copy; Copyright 2020
 
     </p>
   </div>
