@@ -1,6 +1,5 @@
-
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -14,11 +13,9 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #include <map>
+#include <vector>
 
-using namespace ccl;
-using namespace std;
 
 #define POST_AND_PRE_INCREMENTS(EnumName, LAST_ELEM)                                                                     \
     EnumName& operator++(EnumName& orig) { if (orig != LAST_ELEM) orig = static_cast<EnumName>(orig + 1); return orig; } \
@@ -40,9 +37,9 @@ typedef enum {
 } ccl_place_type;
 ccl_place_type first_ccl_place_type = PT_OOP;
 ccl_place_type last_ccl_place_type = PT_LAST;
-map <int, const char *> ccl_place_type_str = {{PT_OOP, "PT_OOP"},
-                                              {PT_IN, "PT_IN"}
-                                             };
+std::map <int, const char *> ccl_place_type_str = {{PT_OOP, "PT_OOP"},
+                                                   {PT_IN, "PT_IN"}
+                                                  };
 
 typedef enum {
     ST_SMALL = 0,
@@ -52,15 +49,15 @@ typedef enum {
 } ccl_size_type;
 ccl_size_type first_ccl_size_type = ST_SMALL;
 ccl_size_type last_ccl_size_type = ST_LAST;
-map < int, const char *> ccl_size_type_str = {{ST_SMALL, "ST_SMALL"},
-                                              {ST_MEDIUM, "ST_MEDIUM"},
-                                              {ST_LARGE, "ST_LARGE"}
-                                             };
+std::map < int, const char *> ccl_size_type_str = {{ST_SMALL, "ST_SMALL"},
+                                                   {ST_MEDIUM, "ST_MEDIUM"},
+                                                   {ST_LARGE, "ST_LARGE"}
+                                                  };
 
-map < int, size_t > ccl_size_type_values = {{ST_SMALL, 16},
-                                             {ST_MEDIUM, 32769},
-                                             {ST_LARGE, 524288}
-                                           };
+std::map < int, size_t > ccl_size_type_values = {{ST_SMALL, 16},
+                                                 {ST_MEDIUM, 32769},
+                                                 {ST_LARGE, 524288}
+                                                };
 
 typedef enum {
     BC_SMALL = 0,
@@ -70,15 +67,15 @@ typedef enum {
 } ccl_buffer_count;
 ccl_buffer_count first_ccl_buffer_count = BC_SMALL;
 ccl_buffer_count last_ccl_buffer_count = BC_LAST;
-map < int, const char *> ccl_buffer_count_str = {{BC_SMALL, "BC_SMALL"},
-                                                 {BC_MEDIUM, "BC_MEDIUM"},
+std::map < int, const char *> ccl_buffer_count_str = {{BC_SMALL, "BC_SMALL"},
+                                                      {BC_MEDIUM, "BC_MEDIUM"},
                                                  {BC_LARGE, "BC_LARGE"}
                                                 };
 
-map < int, size_t > ccl_buffer_count_values = { {BC_SMALL, 1},
-                                                {BC_MEDIUM, 2},
-                                                {BC_LARGE, 4}
-                                              };
+std::map < int, size_t > ccl_buffer_count_values = { {BC_SMALL, 1},
+                                                     {BC_MEDIUM, 2},
+                                                     {BC_LARGE, 4}
+                                                   };
 
 typedef enum {
     CMPT_WAIT = 0,
@@ -87,41 +84,41 @@ typedef enum {
 } ccl_completion_type;
 ccl_completion_type first_ccl_completion_type = CMPT_WAIT;
 ccl_completion_type last_ccl_completion_type = CMPT_LAST;
-map < int, const char *> ccl_completion_type_str = {{CMPT_WAIT, "CMPT_WAIT"},
-                                                    {CMPT_TEST, "CMPT_TEST"}
-                                                   };
+std::map < int, const char *> ccl_completion_type_str = {{CMPT_WAIT, "CMPT_WAIT"},
+                                                         {CMPT_TEST, "CMPT_TEST"}
+                                                        };
 
 typedef enum {
+    PTYPE_NULL = 0,
 #ifdef TEST_CCL_CUSTOM_PROLOG
-    PTYPE_T_TO_2X = 0,
-    PTYPE_T_TO_CHAR = 1,
+    PTYPE_T_TO_2X = 1,
+    PTYPE_T_TO_CHAR = 2,
 #endif
-    PTYPE_NULL = 2,
     PTYPE_LAST
 } ccl_prolog_type;
 ccl_prolog_type first_ccl_prolog_type = PTYPE_NULL;
 ccl_prolog_type last_ccl_prolog_type = PTYPE_LAST;
-map < int, const char *> ccl_prolog_type_str = {{PTYPE_NULL, "PTYPE_NULL"},
+std::map < int, const char *> ccl_prolog_type_str = {{PTYPE_NULL, "PTYPE_NULL"},
 #ifdef TEST_CCL_CUSTOM_PROLOG
-                                                {PTYPE_T_TO_2X, "PTYPE_T_TO_2X"},
-                                                {PTYPE_T_TO_CHAR, "PTYPE_T_TO_CHAR"}
+                                                     {PTYPE_T_TO_2X, "PTYPE_T_TO_2X"},
+                                                     {PTYPE_T_TO_CHAR, "PTYPE_T_TO_CHAR"}
 #endif
                                                };
 
 typedef enum {
+    ETYPE_NULL = 0,
 #ifdef TEST_CCL_CUSTOM_EPILOG
-    ETYPE_T_TO_2X = 0,
-    ETYPE_CHAR_TO_T = 1,
+    ETYPE_T_TO_2X = 1,
+    ETYPE_CHAR_TO_T = 2,
 #endif
-    ETYPE_NULL = 2,
     ETYPE_LAST
 } ccl_epilog_type;
 ccl_epilog_type first_ccl_epilog_type = ETYPE_NULL;
 ccl_epilog_type last_ccl_epilog_type = ETYPE_LAST;
-map < int, const char *> ccl_epilog_type_str = {{ETYPE_NULL, "ETYPE_NULL"},
+std::map < int, const char *> ccl_epilog_type_str = {{ETYPE_NULL, "ETYPE_NULL"},
 #ifdef TEST_CCL_CUSTOM_EPILOG
-                                                {ETYPE_T_TO_2X, "ETYPE_T_TO_2X"},
-                                                {ETYPE_CHAR_TO_T, "ETYPE_CHAR_TO_T"}
+                                                     {ETYPE_T_TO_2X, "ETYPE_T_TO_2X"},
+                                                     {ETYPE_CHAR_TO_T, "ETYPE_CHAR_TO_T"}
 #endif
                                                };
 
@@ -137,11 +134,11 @@ typedef enum {
 } ccl_data_type;
 ccl_data_type first_ccl_data_type = DT_CHAR;
 ccl_data_type last_ccl_data_type = DT_LAST;
-map < int, const char *> ccl_data_type_str = {{DT_CHAR, "DT_CHAR"},
-                                              {DT_INT, "DT_INT"},
-                                              {DT_BFP16, "DT_BFP16"},
-                                              {DT_FLOAT, "DT_FLOAT"},
-                                              {DT_DOUBLE, "DT_DOUBLE"}
+std::map < int, const char *> ccl_data_type_str = {{DT_CHAR, "DT_CHAR"},
+                                                   {DT_INT, "DT_INT"},
+                                                   {DT_BFP16, "DT_BFP16"},
+                                                   {DT_FLOAT, "DT_FLOAT"},
+                                                   {DT_DOUBLE, "DT_DOUBLE"}
                                               // {DT_INT64, "INT64"},
                                               // {DT_UINT64, "UINT64"}
                                              };
@@ -161,25 +158,25 @@ typedef enum {
 } ccl_reduction_type;
 ccl_reduction_type first_ccl_reduction_type = RT_SUM;
 ccl_reduction_type last_ccl_reduction_type = RT_LAST;
-map < int, const char *>ccl_reduction_type_str = {{RT_SUM, "RT_SUM"},
+std::map < int, const char *>ccl_reduction_type_str = {{RT_SUM, "RT_SUM"},
 #ifdef TEST_CCL_REDUCE
-                                                  {RT_PROD, "RT_PROD"},
-                                                  {RT_MIN, "RT_MIN"},
-                                                  {RT_MAX, "RT_MAX"},
+                                                       {RT_PROD, "RT_PROD"},
+                                                       {RT_MIN, "RT_MIN"},
+                                                       {RT_MAX, "RT_MAX"},
 #ifdef TEST_CCL_CUSTOM_REDUCE
-                                                  {RT_CUSTOM, "RT_CUSTOM"},
-                                                  {RT_CUSTOM_NULL, "RT_CUSTOM_NULL"}
+                                                       {RT_CUSTOM, "RT_CUSTOM"},
+                                                       {RT_CUSTOM_NULL, "RT_CUSTOM_NULL"}
 #endif
 #endif
                                                  };
-map < int, ccl_reduction_t > ccl_reduction_type_values = {{RT_SUM, ccl_reduction_sum},
+std::map < int, ccl_reduction_t > ccl_reduction_type_values = {{RT_SUM, ccl_reduction_sum},
 #ifdef TEST_CCL_REDUCE
-                                                          {RT_PROD, ccl_reduction_prod},
-                                                          {RT_MIN, ccl_reduction_min},
-                                                          {RT_MAX, ccl_reduction_max},
+                                                               {RT_PROD, ccl_reduction_prod},
+                                                               {RT_MIN, ccl_reduction_min},
+                                                               {RT_MAX, ccl_reduction_max},
 #ifdef TEST_CCL_CUSTOM_REDUCE
-                                                          {RT_CUSTOM, ccl_reduction_custom},
-                                                          {RT_CUSTOM_NULL, ccl_reduction_custom}
+                                                               {RT_CUSTOM, ccl_reduction_custom},
+                                                               {RT_CUSTOM_NULL, ccl_reduction_custom}
 #endif
 #endif
                                                          };
@@ -191,12 +188,12 @@ typedef enum {
 } ccl_cache_type;
 ccl_cache_type first_ccl_cache_type = CT_CACHE_0;
 ccl_cache_type last_ccl_cache_type = CT_LAST;
-map < int, const char * >ccl_cache_type_str = {{CT_CACHE_0, "CT_CACHE_0"},
-                                               {CT_CACHE_1, "CT_CACHE_1"}
+std::map < int, const char * >ccl_cache_type_str = {{CT_CACHE_0, "CT_CACHE_0"},
+                                                    {CT_CACHE_1, "CT_CACHE_1"}
                                               };
 
-map < int, int > ccl_cache_type_values = {{CT_CACHE_0, 0},
-                                          {CT_CACHE_1, 1}
+std::map < int, int > ccl_cache_type_values = {{CT_CACHE_0, 0},
+                                               {CT_CACHE_1, 1}
                                          };
 
 typedef enum {
@@ -206,12 +203,12 @@ typedef enum {
 } ccl_sync_type;
 ccl_sync_type first_ccl_sync_type = SNCT_SYNC_0;
 ccl_sync_type last_ccl_sync_type = SNCT_LAST;
-map < int, const char * >ccl_sync_type_str = {{SNCT_SYNC_0, "SNCT_SYNC_0"},
-                                              {SNCT_SYNC_1, "SNCT_SYNC_1"}
+std::map < int, const char * >ccl_sync_type_str = {{SNCT_SYNC_0, "SNCT_SYNC_0"},
+                                                   {SNCT_SYNC_1, "SNCT_SYNC_1"}
                                              };
 
-map < int, int > ccl_sync_type_values = {{SNCT_SYNC_0, 0},
-                                         {SNCT_SYNC_1, 1}
+std::map < int, int > ccl_sync_type_values = {{SNCT_SYNC_0, 0},
+                                              {SNCT_SYNC_1, 1}
                                         };
 
 
@@ -224,16 +221,16 @@ typedef enum {
 } ccl_order_type;
 ccl_order_type first_ccl_order_type = ORDER_DISABLE;
 ccl_order_type last_ccl_order_type = ORDER_LAST;
-map < int, const char * >ccl_order_type_str = {{ORDER_DISABLE, "ORDER_DISABLE"},
-                                               {ORDER_DIRECT, "ORDER_DIRECT"},
-                                               {ORDER_INDIRECT, "ORDER_INDIRECT"},
-                                               {ORDER_RANDOM, "ORDER_RANDOM"}
+std::map < int, const char * >ccl_order_type_str = {{ORDER_DISABLE, "ORDER_DISABLE"},
+                                                    {ORDER_DIRECT, "ORDER_DIRECT"},
+                                                    {ORDER_INDIRECT, "ORDER_INDIRECT"},
+                                                    {ORDER_RANDOM, "ORDER_RANDOM"}
                                               };
 
-map < int, int > ccl_order_type_values = {{ORDER_DISABLE, 0},
-                                          {ORDER_DIRECT, 1},
-                                          {ORDER_INDIRECT, 2},
-                                          {ORDER_RANDOM, 3}
+std::map < int, int > ccl_order_type_values = {{ORDER_DISABLE, 0},
+                                               {ORDER_DIRECT, 1},
+                                               {ORDER_INDIRECT, 2},
+                                               {ORDER_RANDOM, 3}
                                          };
 
 POST_AND_PRE_INCREMENTS(ccl_place_type, PT_LAST);
@@ -367,6 +364,9 @@ void init_test_params()
     {
         for (ccl_epilog_type epilog_type = first_ccl_epilog_type; epilog_type < last_ccl_epilog_type; epilog_type++)
         {
+        // if ((epilog_type != ETYPE_CHAR_TO_T && prolog_type == PTYPE_T_TO_CHAR)||(epilog_type == ETYPE_CHAR_TO_T && prolog_type != PTYPE_T_TO_CHAR))
+        //      // TODO: remove skipped data type
+        //      continue;
             for (ccl_reduction_type reduction_type = first_ccl_reduction_type; reduction_type < last_ccl_reduction_type; reduction_type++)
             {
                 for (ccl_sync_type sync_type = first_ccl_sync_type; sync_type < last_ccl_sync_type; sync_type++)

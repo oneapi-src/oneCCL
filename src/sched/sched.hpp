@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #pragma once
 #include "sched/sched_base.hpp"
 
@@ -57,7 +56,7 @@ public:
     ccl_sched(const ccl_sched& other) = delete;
     ccl_sched& operator= (const ccl_sched& other) = delete;
 
-    ~ccl_sched();
+    virtual ~ccl_sched();
 
     bool is_strict_order_satisfied();
 
@@ -73,6 +72,22 @@ public:
     size_t get_start_idx() const
     {
         return start_idx;
+    }
+
+    /* communicators on build and execution stages can differ */
+    ccl_comm_id_t get_comm_id()
+    {
+        return coll_param.comm->id();
+    }
+
+    void set_op_id(ccl_op_id_t id)
+    {
+        op_id = id;
+    }
+
+    ccl_op_id_t get_op_id()
+    {
+        return op_id;
     }
 
     void set_in_bin_status(ccl_sched_in_bin_status status)
@@ -116,6 +131,12 @@ public:
     ccl_sched_bin* bin = nullptr; /* valid only during execution */
     ccl_sched_queue* queue = nullptr; /* cached pointer to queue, valid even after execution */
     size_t start_idx = 0;  /* index to start */
+
+    /* 
+      used for unique ATL tag creation in algorithms with multiple parallel sub-schedules
+      set once and then used for all entries
+    */
+    ccl_op_id_t op_id = 0;
 
     /* to track status of schedule wrt execution bin, not atomic as updated by single thread in time */
     ccl_sched_in_bin_status in_bin_status = ccl_sched_in_bin_none;

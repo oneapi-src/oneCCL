@@ -23,8 +23,7 @@ Contents:
 
    prerequisites.rst
    installation.rst
-   sys_requirements.rst
-   sample.rst   
+   sample.rst
 
 .. toctree::
    :maxdepth: 1

@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -15,10 +15,10 @@
 */
 
 /*
- *
- *  (C) 2001 by Argonne National Laboratory.
- *      See COPYRIGHT in top-level directory.
- */
+*
+*  (C) 2001 by Argonne National Laboratory.
+*      See COPYRIGHT in top-level directory.
+*/
 
 #include "coll/algorithms/algorithms.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
@@ -26,23 +26,24 @@
 #define MIN(a,b) std::min(a,b)
 
 ccl_status_t ccl_coll_build_direct_bcast(ccl_sched *sched, ccl_buffer buf, size_t count,
-                                         ccl_datatype_internal_t dtype, size_t root)
+                                         ccl_datatype_internal_t dtype, size_t root, ccl_comm* comm)
 {
     LOG_DEBUG("build direct bcast");
 
-    entry_factory::make_entry<bcast_entry>(sched, buf, count, dtype, root);
+    entry_factory::make_entry<bcast_entry>(sched, buf, count,
+                                           dtype, root, comm);
     return ccl_status_success;
 }
 
 ccl_status_t ccl_coll_build_naive_bcast(ccl_sched *sched, ccl_buffer buf, size_t count,
-                                        ccl_datatype_internal_t dtype, size_t root)
+                                        ccl_datatype_internal_t dtype, size_t root, ccl_comm* comm)
 {
     LOG_DEBUG("build naive bcast");
 
     ccl_status_t status = ccl_status_success;
 
-    size_t rank = sched->coll_param.comm->rank();
-    size_t comm_size = sched->coll_param.comm->size();
+    size_t rank = comm->rank();
+    size_t comm_size = comm->size();
     size_t idx;
 
     if (comm_size == 1)
@@ -54,13 +55,13 @@ ccl_status_t ccl_coll_build_naive_bcast(ccl_sched *sched, ccl_buffer buf, size_t
         {
             if (idx != rank)
             {
-                entry_factory::make_entry<send_entry>(sched, buf, count, dtype, idx);
+                entry_factory::make_entry<send_entry>(sched, buf, count, dtype, idx, comm);
             }
         }
     }
     else
     {
-        entry_factory::make_entry<recv_entry>(sched, buf, count, dtype, root);
+        entry_factory::make_entry<recv_entry>(sched, buf, count, dtype, root, comm);
     }
 
   fn_exit:
@@ -70,7 +71,8 @@ ccl_status_t ccl_coll_build_naive_bcast(ccl_sched *sched, ccl_buffer buf, size_t
 ccl_status_t ccl_coll_build_scatter_for_bcast(ccl_sched *sched,
                                               ccl_buffer tmp_buf,
                                               size_t root,
-                                              size_t nbytes)
+                                              size_t nbytes,
+                                              ccl_comm* comm)
 {
     LOG_DEBUG("build scatter_for_bcast");
 
@@ -79,8 +81,8 @@ ccl_status_t ccl_coll_build_scatter_for_bcast(ccl_sched *sched,
     int relative_rank, mask;
     int scatter_size, curr_size, recv_size, send_size;
 
-    comm_size = sched->coll_param.comm->size();
-    rank = sched->coll_param.comm->rank();
+    comm_size = comm->size();
+    rank = comm->rank();
     local_root = static_cast<int>(root);
     relative_rank = (rank >= local_root) ? rank - local_root : rank - local_root + comm_size;
 
@@ -115,7 +117,7 @@ ccl_status_t ccl_coll_build_scatter_for_bcast(ccl_sched *sched,
 
             if (recv_size > 0) {
                 entry_factory::make_entry<recv_entry>(sched, tmp_buf + relative_rank * scatter_size,
-                                                      recv_size, ccl_dtype_internal_char, src);
+                                                      recv_size, ccl_dtype_internal_char, src, comm);
                 sched->add_barrier();
             }
             break;
@@ -141,7 +143,7 @@ ccl_status_t ccl_coll_build_scatter_for_bcast(ccl_sched *sched,
                     dst -= comm_size;
 
                 entry_factory::make_entry<send_entry>(sched, tmp_buf + scatter_size * (relative_rank + mask),
-                                                      send_size, ccl_dtype_internal_char, dst);
+                                                      send_size, ccl_dtype_internal_char, dst, comm);
                 sched->add_barrier();
                 curr_size -= send_size;
             }
@@ -154,7 +156,10 @@ ccl_status_t ccl_coll_build_scatter_for_bcast(ccl_sched *sched,
 
 ccl_status_t ccl_coll_build_scatter_ring_allgather_bcast(ccl_sched *sched,
                                                          ccl_buffer buf,
-                                                         size_t count, ccl_datatype_internal_t dtype, size_t root)
+                                                         size_t count,
+                                                         ccl_datatype_internal_t dtype,
+                                                         size_t root,
+                                                         ccl_comm* comm)
 {
     LOG_DEBUG("build scatter_ring_allgather bcast");
 
@@ -165,8 +170,9 @@ ccl_status_t ccl_coll_build_scatter_ring_allgather_bcast(ccl_sched *sched,
     int i, j, jnext, left, right;
     size_t dtype_size = ccl_datatype_get_size(dtype);
 
-    comm_size = sched->coll_param.comm->size();
-    rank = sched->coll_param.comm->rank();
+    comm_size = comm->size();
+    rank = comm->rank();
+
     ccl_buffer tmp_buf(buf);
 
     /* If there is only one process, return */
@@ -175,7 +181,7 @@ ccl_status_t ccl_coll_build_scatter_ring_allgather_bcast(ccl_sched *sched,
 
     nbytes = dtype_size * count;
 
-    CCL_CALL(ccl_coll_build_scatter_for_bcast(sched, tmp_buf, root, nbytes));
+    CCL_CALL(ccl_coll_build_scatter_for_bcast(sched, tmp_buf, root, nbytes, comm));
 
     /* this is the block size used for the scatter operation */
     scatter_size = (nbytes + comm_size - 1) / comm_size;        /* ceiling division */
@@ -193,7 +199,8 @@ ccl_status_t ccl_coll_build_scatter_ring_allgather_bcast(ccl_sched *sched,
 
     j = rank;
     jnext = left;
-    for (i = 1; i < comm_size; i++) {
+    for (i = 1; i < comm_size; i++)
+    {
         int left_count, right_count, left_disp, right_disp, rel_j, rel_jnext;
 
         rel_j = (j - root + comm_size) % comm_size;
@@ -207,10 +214,10 @@ ccl_status_t ccl_coll_build_scatter_ring_allgather_bcast(ccl_sched *sched,
             right_count = 0;
         right_disp = rel_j * scatter_size;
         entry_factory::make_entry<send_entry>(sched, tmp_buf + right_disp,
-                                              right_count, ccl_dtype_internal_char, right);
+                                              right_count, ccl_dtype_internal_char, right, comm);
         /* sendrecv, no barrier here */
         entry_factory::make_entry<recv_entry>(sched, tmp_buf + left_disp,
-                                              left_count, ccl_dtype_internal_char, left);
+                                              left_count, ccl_dtype_internal_char, left, comm);
         sched->add_barrier();
 
         j = jnext;

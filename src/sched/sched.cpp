@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #include "common/global/global.hpp"
 #include "common/utils/sync_object.hpp"
 #include "parallelizer/parallelizer.hpp"
@@ -152,11 +151,17 @@ void ccl_sched::add_barrier()
 
 ccl_request* ccl_sched::start_subsched(ccl_extra_sched* subsched)
 {
-    subsched->set_counter(1);
+    CCL_THROW_IF_NOT(subsched);
+
+    subsched->sched_id = sched_id;
     subsched->coll_attr.priority = coll_attr.priority;
+
     subsched->renew();
+    subsched->set_counter(1);
+
     queue->add(subsched);
     subsched->dump(std::cout);
+
     return subsched->req;
 }
 

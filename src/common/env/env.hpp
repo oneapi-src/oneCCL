@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #pragma once
 
 #include "coll/coll.hpp"
@@ -46,7 +45,6 @@ constexpr const char* CCL_BCAST = "CCL_BCAST";
 constexpr const char* CCL_REDUCE = "CCL_REDUCE";
 constexpr const char* CCL_SPARSE_ALLREDUCE = "CCL_SPARSE_ALLREDUCE";
 constexpr const char* CCL_UNORDERED_COLL = "CCL_UNORDERED_COLL";
-constexpr const char* CCL_ALLGATHERV_IOV = "CCL_ALLGATHERV_IOV";
 
 constexpr const char* CCL_FUSION = "CCL_FUSION";
 constexpr const char* CCL_FUSION_BYTES_THRESHOLD = "CCL_FUSION_BYTES_THRESHOLD";
@@ -60,6 +58,13 @@ constexpr const char* CCL_SPIN_COUNT = "CCL_SPIN_COUNT";
 constexpr const char* CCL_YIELD = "CCL_YIELD";
 constexpr const char* CCL_MAX_SHORT_SIZE = "CCL_MAX_SHORT_SIZE";
 constexpr const char* CCL_CACHE_KEY = "CCL_CACHE_KEY";
+
+constexpr const char* CCL_CHUNK_COUNT = "CCL_CHUNK_COUNT";
+constexpr const char* CCL_MIN_CHUNK_SIZE = "CCL_MIN_CHUNK_SIZE";
+constexpr const char* CCL_RS_CHUNK_COUNT = "CCL_RS_CHUNK_COUNT";
+constexpr const char* CCL_RS_MIN_CHUNK_SIZE = "CCL_RS_MIN_CHUNK_SIZE";
+constexpr const char* CCL_AR2D_CHUNK_COUNT = "CCL_AR2D_CHUNK_COUNT";
+constexpr const char* CCL_AR2D_MIN_CHUNK_SIZE = "CCL_AR2D_MIN_CHUNK_SIZE";
 
 enum ccl_priority_mode
 {
@@ -100,9 +105,9 @@ struct alignas(CACHELINE_SIZE) ccl_env_data
     std::string barrier_algo_raw;
     std::string bcast_algo_raw;
     std::string reduce_algo_raw;
+    std::string reduce_scatter_algo_raw;
     std::string sparse_allreduce_algo_raw;
     int enable_unordered_coll;
-    int enable_allgatherv_iov;
 
     int enable_fusion;
     int fusion_bytes_threshold;
@@ -116,6 +121,13 @@ struct alignas(CACHELINE_SIZE) ccl_env_data
     ccl_yield_type yield_type;
     size_t max_short_size;
     ccl_cache_key_type cache_key_type;
+
+    size_t chunk_count;
+    size_t min_chunk_size;
+    size_t rs_chunk_count;
+    size_t rs_min_chunk_size;
+    size_t ar2d_chunk_count;
+    size_t ar2d_min_chunk_size;
 };
 
 extern ccl_env_data env_data;

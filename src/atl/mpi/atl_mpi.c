@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -40,6 +39,7 @@
 #define OPTIMIZED_MPI_VERSION_PREFIX "Intel(R) MPI Library"
 
 int optimized_impi_versions[] = { 2019, 2020, 2021 };
+int is_external_init = 0;
 
 #define ATL_MPI_PRINT(s, ...)                             \
     do {                                                  \
@@ -131,22 +131,34 @@ atl2mpi_op(atl_reduction_t rtype)
 
 static atl_status_t atl_mpi_finalize(atl_desc_t *atl_desc, atl_comm_t **atl_comms)
 {
-    int ret;
-    int i;
+    int ret = MPI_SUCCESS;
+
     atl_mpi_context_t *atl_mpi_context =
         container_of(atl_desc, atl_mpi_context_t, atl_desc);
 
-    for (i = 0; i < atl_mpi_context->comm_ref_count; i++)
+    int is_mpi_finalized = 0;
+    MPI_Finalized(&is_mpi_finalized);
+
+    if (!is_mpi_finalized)
     {
-        atl_mpi_comm_context_t *comm_context =
-            container_of(atl_comms[i], atl_mpi_comm_context_t, atl_comm);
-        MPI_Comm_free(&comm_context->mpi_comm);
+        for (int i = 0; i < atl_mpi_context->comm_ref_count; i++)
+        {
+            atl_mpi_comm_context_t *comm_context =
+                container_of(atl_comms[i], atl_mpi_comm_context_t, atl_comm);
+            MPI_Comm_free(&comm_context->mpi_comm);
+        }
+
+        if (!is_external_init)
+            ret = MPI_Finalize();
+        else
+            ATL_MPI_DEBUG_PRINT("MPI_Init has been called externally, skip MPI_Finalize");
     }
+    else
+        ATL_MPI_DEBUG_PRINT("MPI_Finalize has been already called");
+        
 
     free(atl_comms);
     free(atl_mpi_context);
-
-    ret = MPI_Finalize();
 
     return RET2ATL(ret);
 }
@@ -569,7 +581,7 @@ atl_status_t atl_mpi_init(int *argc, char ***argv, atl_proc_coord_t *proc_coord,
 {
     assert(sizeof(atl_mpi_req_t) <= sizeof(atl_req_t) - offsetof(atl_req_t, internal));
 
-    int ret;
+    int ret = MPI_SUCCESS;
     size_t i;
     int comm_attr_flag;
     atl_mpi_context_t *atl_mpi_context;
@@ -583,10 +595,21 @@ atl_status_t atl_mpi_init(int *argc, char ***argv, atl_proc_coord_t *proc_coord,
     {
         atl_mpi_set_optimized_mpi_environment(attr);
     }
-
-    ret = MPI_Init_thread(argc, argv, required_thread_level, &provided_thread_level);
-    if (provided_thread_level < required_thread_level)
+    
+    int is_mpi_inited = 0;
+    MPI_Initialized(&is_mpi_inited);
+    
+    if (!is_mpi_inited)
+    {
+        ret = MPI_Init_thread(argc, argv, required_thread_level, &provided_thread_level);
+        if (provided_thread_level < required_thread_level)
             goto err_init;
+    }
+    else
+    {
+        is_external_init = 1;
+        ATL_MPI_DEBUG_PRINT("MPI was initialized externaly");
+    }  
 
     if (ret)
         goto err_init;
@@ -639,7 +662,8 @@ err_comm_dup:
     }
     free(*atl_comms);
 err_comm:
-    MPI_Finalize();
+    if (!is_external_init)
+        MPI_Finalize();
 err_init:
     free(atl_mpi_context);
     return atl_status_failure;

@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #pragma once
 
 #if defined(__INTEL_COMPILER) || defined(__ICC)
@@ -155,10 +154,12 @@ static inline size_t ccl_aligned_sz(size_t size,
            size : ((size / alignment) + 1) * alignment;
 }
 
-static inline timespec from_time_point(const std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> point)
+static inline timespec ccl_from_time_point(const std::chrono::time_point<std::chrono::system_clock,
+                                           std::chrono::nanoseconds> point)
 {
     auto sec = std::chrono::time_point_cast<std::chrono::seconds>(point);
-    auto ns = std::chrono::time_point_cast<std::chrono::nanoseconds>(point) - std::chrono::time_point_cast<std::chrono::nanoseconds>(sec);
+    auto ns = std::chrono::time_point_cast<std::chrono::nanoseconds>(point) -
+        std::chrono::time_point_cast<std::chrono::nanoseconds>(sec);
 
     return timespec { .tv_sec = sec.time_since_epoch().count(), .tv_nsec = ns.count() };
 }

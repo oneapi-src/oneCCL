@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #include "common/global/global.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
 #include "unordered_coll/unordered_coll.hpp"
@@ -202,8 +201,7 @@ void ccl_unordered_coll_manager::start_coordination(const std::string& match_id)
 
     ccl_coll_entry_param match_id_size_param{};
     match_id_size_param.ctype = ccl_coll_bcast;
-    match_id_size_param.send_buf = ccl_buffer();
-    match_id_size_param.recv_buf = ccl_buffer(&ctx->match_id_size, sizeof(size_t));
+    match_id_size_param.buf = ccl_buffer(&ctx->match_id_size, sizeof(size_t));
     match_id_size_param.count = sizeof(size_t);
     match_id_size_param.dtype = ccl_dtype_internal_char;
     match_id_size_param.root = CCL_UNORDERED_COLL_COORDINATOR;
@@ -215,8 +213,7 @@ void ccl_unordered_coll_manager::start_coordination(const std::string& match_id)
     /* 2. broadcast match_id_value */
     ccl_coll_entry_param match_id_val_param{};
     match_id_val_param.ctype = ccl_coll_bcast;
-    match_id_val_param.send_buf = ccl_buffer();
-    match_id_val_param.recv_buf = ccl_buffer();
+    match_id_val_param.buf = ccl_buffer();
     match_id_val_param.count = 0;
     match_id_val_param.dtype = ccl_dtype_internal_char;
     match_id_val_param.root = CCL_UNORDERED_COLL_COORDINATOR;
@@ -249,9 +246,8 @@ void ccl_unordered_coll_manager::start_coordination(const std::string& match_id)
     /* 3. broadcast reserved comm_id */
     ccl_coll_entry_param reserved_comm_id_param{};
     reserved_comm_id_param.ctype = ccl_coll_bcast;
-    reserved_comm_id_param.send_buf = ccl_buffer();
-    reserved_comm_id_param.recv_buf = ccl_buffer(&ctx->reserved_comm_id,
-                                               sizeof(ccl_comm_id_t));
+    reserved_comm_id_param.buf = ccl_buffer(&ctx->reserved_comm_id,
+                                            sizeof(ccl_comm_id_t));
     reserved_comm_id_param.count = sizeof(ccl_comm_id_t);
     reserved_comm_id_param.dtype = ccl_dtype_internal_char;
     reserved_comm_id_param.root = CCL_UNORDERED_COLL_COORDINATOR;

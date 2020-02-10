@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,12 +13,11 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #pragma once
 
-#include <tuple>
 #include <map>
 #include <set>
+#include <tuple>
 
 #include "ccl_types.h"
 #include "common/log/log.hpp"
@@ -56,11 +55,10 @@ public:
     template<class Entry>
     void operator()(Entry entry)
     {
-        if (!updated || !update_once)
-        {
-            fn(ctx, reinterpret_cast<void*>(&(entry->get_field_ref(entry_field_id))));
-            updated = true;
-        }
+        CCL_ASSERT(fn);
+        fn(ctx, reinterpret_cast<void*>(&(entry->get_field_ref(entry_field_id))));
+        if (update_once)
+            fn = nullptr;
     }
 
     bool empty() const noexcept
@@ -71,7 +69,6 @@ public:
     ccl_sched_entry_field_function_t fn = nullptr;
     const void* ctx = nullptr;
     bool update_once;
-    bool updated = false;
     static constexpr field_id_t<id> entry_field_id{};
 };
 
@@ -81,16 +78,18 @@ struct postponed_fields
     template<class Arg>
     struct field_functor
     {
-        field_functor(Arg arg) : arg_value(arg) {}
+        field_functor(Arg arg, bool& updated) : arg(arg), updated(updated) {}
         template<typename T>
-        void operator () (T& t)
+        void operator()(T& t)
         {
             if (!t.empty())
             {
-                t(arg_value);
+                t(arg);
+                updated = true;
             }
         }
-        Arg arg_value;
+        Arg arg;
+        bool& updated;
     };
 
     using registered_postponed_fields = std::tuple<postponed_field<ids>...>;
@@ -100,7 +99,7 @@ struct postponed_fields
                       const void* ctx,
                       bool update_once = true)
     {
-        auto &field = ccl_tuple_get<postponed_field<new_id>>(fields);
+        auto& field = ccl_tuple_get<postponed_field<new_id>>(fields);
         CCL_ASSERT(field.empty(),
                    "duplicated field_id ", new_id);
         field.fn = fn;
@@ -110,13 +109,19 @@ struct postponed_fields
         empty_fields = false;
     }
 
-    void update_fields()
+    bool update_fields()
     {
+        bool updated = false;
         if (!empty_fields)
         {
-            ccl_tuple_for_each(fields, field_functor<Entry* >(static_cast<Entry*>(this)));
+            ccl_tuple_for_each(fields, field_functor<Entry*>(static_cast<Entry*>(this), updated));
         }
+        empty_fields = !updated;
+        return updated;
     }
+
+protected:
+    ~postponed_fields() = default;
 
 private:
     registered_postponed_fields fields;

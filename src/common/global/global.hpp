@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #pragma once
 
 #include "ccl.h"
@@ -49,9 +48,10 @@ class ccl_sched_cache;
 class ccl_parallelizer;
 class ccl_fusion_manager;
 class ccl_unordered_coll_manager;
+class ccl_allreduce_2d_builder;
 
 template<ccl_coll_type... registered_types_id>
-struct ccl_algorithm_selector_wrapper;
+class ccl_algorithm_selector_wrapper;
 
 struct alignas(CACHELINE_SIZE) ccl_global_data
 {
@@ -65,6 +65,7 @@ struct alignas(CACHELINE_SIZE) ccl_global_data
     std::unique_ptr<ccl_fusion_manager> fusion_manager;
     std::unique_ptr<ccl_unordered_coll_manager> unordered_coll_manager;
     std::unique_ptr<ccl_algorithm_selector_wrapper<CCL_COLL_LIST>> algorithm_selector;
+    std::unique_ptr<ccl_allreduce_2d_builder> allreduce_2d_builder;
     static thread_local bool is_worker_thread;
     bool is_ft_enabled;
 };
@@ -82,6 +83,6 @@ extern ccl_global_data global_data;
     } while (0);                                       \
   }
 
-void reset_for_size_update(ccl_global_data* gl_data);
+void ccl_reset_for_size_update(ccl_global_data* gl_data);
 
 void ccl_init_global_objects(ccl_global_data& gl_data);

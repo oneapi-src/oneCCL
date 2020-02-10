@@ -1,22 +1,59 @@
 cmake_minimum_required (VERSION 2.8)
 file(GLOB sources "*.c" "*.cpp")
 
+set(CCL_INSTALL_TESTS "$ENV{PWD}")
 enable_testing()
 ADD_SUBDIRECTORY (googletest-release-1.8.1/googletest/)
 include_directories(${PROJECT_SOURCE_DIR}/tests/googletest-release-1.8.1/googletest/include ${PROJECT_SOURCE_DIR}/tests/googletest-release-1.8.1/googletest/src)
-include_directories($ENV{CCL_ROOT}/include)
-link_directories($ENV{CCL_ROOT}/lib)
+include_directories($ENV{CCL_ROOT}/include/cpu_icc)
+link_directories($ENV{CCL_ROOT}/lib/cpu_icc)
+
+# Check SYCL support
+if (NOT CMAKE_DISABLE_SYCL)
+    set(CMAKE_DISABLE_SYCL 0)
+endif()
+
+
+if (${CMAKE_VERSION} VERSION_LESS 3.1)
+#cmake version below 3.1 does not support CMAKE_C[XX}_STANDARD flags
+#set manually
+    set(CXX_COMPILER_FLAGS "-std=gnu++11")
+    set(C_COMPILER_FLAGS "-std=gnu99")
+endif()
+#common release/debug compilation settings
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_COMPILER_FLAGS} -Wall -Werror -D_GNU_SOURCE -fvisibility=internal")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${C_COMPILER_FLAGS} -O0 -g -DENABLE_DEBUG")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${C_COMPILER_FLAGS} -O3")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} ${C_COMPILER_FLAGS} -O2 -g")
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_COMPILER_FLAGS} -Wall -Werror -D_GNU_SOURCE -fvisibility=internal")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${CXX_COMPILER_FLAGS} -O0 -g -DENABLE_DEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_COMPILER_FLAGS} -O3")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${CXX_COMPILER_FLAGS} -O2 -g")
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if( ${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
+    if (${CMAKE_DISABLE_SYCL} EQUAL 0)
+        set(CMAKE_CLANG_FLAGS "-fsycl")
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -lsycl")
+    endif()
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CLANG_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CLANG_FLAGS}")
+endif()
+
 
 foreach(src ${sources})
     get_filename_component(executable ${src} NAME_WE)
     add_executable(${executable} ${src})
-    add_dependencies(${executable} gtest)
-    add_dependencies(${executable} ccl)
-    target_link_libraries(${executable}  PUBLIC gtest_main)
-    target_link_libraries(${executable} PUBLIC gtest )
+    target_link_libraries(${executable} PUBLIC gtest_main)
+    target_link_libraries(${executable} PUBLIC gtest)
+    target_link_libraries(${executable} PRIVATE ccl)
     target_link_libraries(${executable} PUBLIC rt)
     target_link_libraries(${executable} PUBLIC m)
-    target_link_libraries(${executable} PRIVATE ccl)
+    target_link_libraries(${executable} PUBLIC dl)
     install(TARGETS ${executable} RUNTIME DESTINATION ${CCL_INSTALL_TESTS})
     # FIXME: enable allreduce_custom for non-direct case only
     if(NOT ${executable} STREQUAL "allreduce_custom_test")

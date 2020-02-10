@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -46,13 +46,17 @@ int main(int argc, char **argv)
     for (size_t idx = 0; idx < size; idx++)
         recv_counts[idx] = COUNT;
 
-    /* open sendbuf and initialize it on the CPU side */
+     /* open buffers and initialize them on the CPU side */
     auto host_acc_sbuf = sendbuf.get_access<mode::write>();
+    auto host_acc_rbuf = recvbuf.get_access<mode::write>();
+    auto expected_acc_buf = expected_buf.get_access<mode::write>();
+
     for (i = 0; i < COUNT; i++) {
         host_acc_sbuf[i] = rank;
     }
-
-    auto expected_acc_buf = expected_buf.get_access<mode::write>();
+    for (i = 0; i < COUNT * size; i++) {
+        host_acc_rbuf[i] = -1;
+    }
     for (i = 0; i < size; i++) {
         for (j = 0; j < COUNT; j++) {
             expected_acc_buf[i * COUNT + j] = i + 1;

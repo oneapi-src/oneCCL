@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #include "common/env/env.hpp"
 #include "common/utils/spinlock.hpp"
 #include "common/utils/yield.hpp"
@@ -36,7 +35,10 @@ void ccl_spinlock::lock()
         }
     }
 }
-
+bool ccl_spinlock::try_lock()
+{
+    return !flag.test_and_set(std::memory_order_acquire);
+}
 void ccl_spinlock::unlock()
 {
     flag.clear(std::memory_order_release);

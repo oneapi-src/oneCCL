@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #include "ccl.h"
 #include "common/comm/comm.hpp"
 #include "sched/sched.hpp"
@@ -22,15 +21,16 @@ std::atomic_size_t ccl_comm::comm_count{};
 
 ccl_comm::ccl_comm(size_t rank,
                    size_t size,
-                   ccl_comm_id_storage::comm_id &&id) : ccl_comm(rank, size, std::move(id), rank_to_global_rank_map{})
+                   ccl_comm_id_storage::comm_id&& id) :
+    ccl_comm(rank, size, std::move(id), ccl_rank2rank_map{})
 {}
 
 ccl_comm::ccl_comm(size_t rank,
                    size_t size,
-                   ccl_comm_id_storage::comm_id &&id,
-                   rank_to_global_rank_map&& ranks) :
+                   ccl_comm_id_storage::comm_id&& id,
+                   ccl_rank2rank_map&& rank_map) :
     m_id(std::move(id)),
-    m_ranks_map(std::move(ranks)),
+    m_local2global_map(std::move(rank_map)),
     m_dtree(size, rank)
 {
     reset(rank, size);
@@ -63,72 +63,81 @@ ccl_comm* ccl_comm::create_with_color(int color,
                                       const ccl_comm* global_comm)
 {
     ccl_status_t status = ccl_status_success;
-    std::vector<int> all_colors(global_comm->size());
-    all_colors[global_comm->rank()] = color;
 
-    status = ccl_comm_exchange_colors(all_colors);
+    std::vector<int> colors(global_comm->size());
+    colors[global_comm->rank()] = color;
+    status = ccl_comm_exchange_colors(colors);
     if (status != ccl_status_success)
     {
         throw ccl::ccl_error("failed to exchange colors during comm creation");
     }
 
-    size_t colors_match = 0;
-    size_t new_rank = 0;
+    return create_with_colors(colors, comm_ids, global_comm);
+}
 
-    rank_to_global_rank_map ranks_map;
+ccl_comm* ccl_comm::create_with_colors(const std::vector<int>& colors,
+                                       ccl_comm_id_storage* comm_ids,
+                                       const ccl_comm* global_comm)
+{
+    ccl_rank2rank_map rank_map;
+    size_t new_comm_size = 0;
+    size_t new_comm_rank = 0;
+    int color = colors[global_comm->rank()];
+
     for (size_t i = 0; i < global_comm->size(); ++i)
     {
-        if (all_colors[i] == color)
+        if (colors[i] == color)
         {
-            LOG_DEBUG("map local rank ", colors_match, " to global ", i);
-            ranks_map[colors_match] = i;
-            ++colors_match;
+            LOG_DEBUG("map local rank ", new_comm_size, " to global ", i);
+            rank_map.emplace_back(i);
+            ++new_comm_size;
             if (i < global_comm->rank())
             {
-                ++new_rank;
+                ++new_comm_rank;
             }
         }
     }
-    if (colors_match == 0)
+
+    if (new_comm_size == 0)
     {
         throw ccl::ccl_error(
             std::string("no colors matched to ") + std::to_string(color) + " seems to be exchange issue");
     }
 
-    if (colors_match == global_comm->size())
+    if (new_comm_size == global_comm->size())
     {
-        //Exact copy of the global communicator, use empty map
-        ranks_map.clear();
+        // exact copy of the global communicator, use empty map
+        rank_map.clear();
     }
 
-    ccl_comm* comm = new ccl_comm(new_rank, colors_match, comm_ids->acquire(),
-                                  std::move(ranks_map));
-    LOG_DEBUG("new comm: color ", color, ", rank ", comm->rank(), ", size ", comm->size(), ", comm_id ", comm->id());
+    ccl_comm* comm = new ccl_comm(new_comm_rank, new_comm_size, comm_ids->acquire(),
+                                  std::move(rank_map));
+
+    LOG_DEBUG("new comm: color ", color,
+              ", rank ", comm->rank(),
+              ", size ", comm->size(),
+              ", comm_id ", comm->id());
 
     return comm;
 }
 
-std::shared_ptr<ccl_comm> ccl_comm::clone_with_new_id(ccl_comm_id_storage::comm_id &&id)
+std::shared_ptr<ccl_comm> ccl_comm::clone_with_new_id(ccl_comm_id_storage::comm_id&& id)
 {
-    rank_to_global_rank_map ranks_copy{m_ranks_map};
-    return std::make_shared<ccl_comm>(m_rank, m_size, std::move(id), std::move(ranks_copy));
+    ccl_rank2rank_map rank_map{m_local2global_map};
+    return std::make_shared<ccl_comm>(m_rank, m_size, std::move(id), std::move(rank_map));
 }
 
 size_t ccl_comm::get_global_rank(size_t rank) const
 {
-    if (m_ranks_map.empty())
+    if (m_local2global_map.empty())
     {
-        //global comm and its copies do not have entries in the map
-        LOG_DEBUG("direct mapping of rank ", rank);
+        // global comm and its copies do not have entries in the map
         return rank;
     }
 
-    auto result = m_ranks_map.find(rank);
-    if (result == m_ranks_map.end())
-    {
-        CCL_THROW("no rank ", rank, " was found in comm ", this, ", id ", m_id.value());
-    }
-
-    LOG_DEBUG("comm , ", this, " id ", m_id.value(), ", map rank ", rank, " to global ", result->second);
-    return result->second;
+    CCL_THROW_IF_NOT(m_local2global_map.size() > rank,
+                     "no rank ", rank, " was found in comm ", this, ", id ", m_id.value());
+    size_t global_rank = m_local2global_map[rank];
+    LOG_DEBUG("comm , ", this, " id ", m_id.value(), ", map rank ", rank, " to global ", global_rank);
+    return global_rank;
 }

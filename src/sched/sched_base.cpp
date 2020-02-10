@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #include "sched/sched_base.hpp"
 #include "common/global/global.hpp"
 #include "common/env/env.hpp"
@@ -23,7 +22,8 @@ void ccl_sched_base::set_coll_attr(const ccl_coll_attr& attr)
     coll_attr = attr;
 }
 
-void ccl_sched_base::update_coll_param(const ccl_coll_param& param)
+void ccl_sched_base::update_coll_param_and_attr(const ccl_coll_param& param,
+                                                const ccl_coll_attr& attr)
 {
 #ifdef CCL_ENABLE_SYCL
     if (param.stream && (param.stream->get_type() == ccl_stream_sycl))
@@ -42,7 +42,20 @@ void ccl_sched_base::update_coll_param(const ccl_coll_param& param)
     }
 #endif /* CCL_ENABLE_SYCL */
 
-    coll_param.recv_counts = param.recv_counts;
+    if (coll_param.ctype == ccl_coll_allgatherv)
+    {
+        coll_param.recv_counts = param.recv_counts;
+        CCL_THROW_IF_NOT(coll_param_copy.ag_recv_counts.size() == coll_param.comm->size());
+        coll_param_copy.ag_recv_counts.assign((size_t*)param.recv_counts,
+                                              (size_t*)param.recv_counts + coll_param.comm->size());
+
+        if (coll_attr.vector_buf)
+        {
+            CCL_THROW_IF_NOT(coll_param_copy.ag_recv_bufs.size() == coll_param.comm->size());
+            coll_param_copy.ag_recv_bufs.assign((void**)param.recv_buf,
+                                                (void**)param.recv_buf + coll_param.comm->size());
+        }
+    }
 
     if (coll_param.ctype == ccl_coll_sparse_allreduce)
     {
@@ -52,15 +65,6 @@ void ccl_sched_base::update_coll_param(const ccl_coll_param& param)
         coll_param.sparse_param.recv_val_buf = param.sparse_param.recv_val_buf;
     }
 
-    if (coll_param.ctype == ccl_coll_allgatherv && env_data.enable_allgatherv_iov)
-    {
-        CCL_THROW_IF_NOT(coll_param.ag_recv_bufs.size() == coll_param.comm->size());
-        coll_param.ag_recv_bufs.assign((void**)param.recv_buf, (void**)param.recv_buf + coll_param.comm->size());
-    }
-}
-
-void ccl_sched_base::update_coll_attr(const ccl_coll_attr& attr)
-{
     if (env_data.priority_mode == ccl_priority_direct)
     {
         coll_attr.priority = attr.priority;
@@ -96,8 +100,9 @@ ccl_buffer ccl_sched_base::alloc_buffer(size_t bytes)
     CCL_THROW_IF_NOT(bytes > 0, "incorrect buffer size: ", bytes);
 
     ccl_buffer buffer = ccl_buffer(CCL_CALLOC(bytes, "sched_buffer"),
-                                     bytes, 0, ccl_buffer_type::DIRECT);
+                                   bytes, 0, ccl_buffer_type::DIRECT);
     memory.buf_list.emplace_back(buffer, bytes);
+    CCL_THROW_IF_NOT(buffer.get_ptr(), "null ptr");
     return buffer;
 }
 
@@ -127,7 +132,6 @@ ccl_buffer ccl_sched_base::update_buffer(ccl_buffer buffer, size_t new_size)
     return new_buf;
 }
 
-
 void ccl_sched_base::free_buffers()
 {
     std::list<ccl_sched_buffer_handler>::iterator it;
@@ -137,6 +141,12 @@ void ccl_sched_base::free_buffers()
         CCL_FREE(it->buffer.get_ptr());
     }
     memory.buf_list.clear();
+}
+
+void ccl_sched_base::add_memory_region(atl_mr_t* mr)
+{
+    CCL_THROW_IF_NOT(mr);
+    memory.mr_list.emplace_back(mr);
 }
 
 void ccl_sched_base::alloc_buffers_for_sycl_copy()

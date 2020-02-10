@@ -13,7 +13,7 @@ set(KVS_SRC
 set(COMMON_KVS_INC_DIRS
     ${PROJECT_SOURCE_DIR}/src/atl/util/pm/pmi_resizable_rt/pmi_resizable
     ${PROJECT_SOURCE_DIR}/src/atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs
-    ${PROJECT_SOURCE_DIR}/ofi_rt/include)
+    ${PROJECT_SOURCE_DIR}/ofi/include)
 
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pthread")
 

@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #pragma once
 
 #include "common/global/global.hpp"
@@ -37,8 +36,10 @@ public:
                size_t cnt,
                ccl_datatype_internal_t dtype,
                size_t src,
-               ccl_op_id_t op_id = 0) :
-        sched_entry(sched), buf(buf), cnt(cnt), dtype(dtype), src(src), op_id(op_id)
+               ccl_comm* comm) :
+        sched_entry(sched), buf(buf),
+        cnt(cnt), dtype(dtype),
+        src(src), comm(comm)
     {
     }
 
@@ -56,12 +57,16 @@ public:
     {
         update_fields();
 
-        atl_tag = global_data.atl_tag->create(sched->coll_param.comm->id(), src, sched->sched_id, op_id);
+        size_t global_src = comm->get_global_rank(src);
+        atl_tag = global_data.atl_tag->create(sched->get_comm_id(), global_src,
+                                              sched->sched_id, sched->get_op_id());
         size_t bytes = cnt * ccl_datatype_get_size(dtype);
-        LOG_DEBUG("RECV entry src ", src, ", tag ", atl_tag, ", req ", &req, ", bytes ", bytes);
+
+        LOG_DEBUG("RECV entry src ", global_src, ", tag ", atl_tag, ", req ", &req, ", bytes ", bytes);
 
         atl_status_t atl_status = atl_comm_recv(sched->bin->get_comm_ctx(), buf.get_ptr(bytes),
-                                                bytes, src, atl_tag, &req);
+                                                bytes, global_src, atl_tag, &req);
+
         update_status(atl_status);
     }
 
@@ -106,7 +111,7 @@ protected:
                            ", buf ", buf,
                            ", src ", src,
                            ", atl_tag ", atl_tag,
-                           ", comm_id ", sched->coll_param.comm->id(),
+                           ", comm_id ", sched->get_comm_id(),
                            ", req ", &req,
                            "\n");
     }
@@ -116,7 +121,7 @@ private:
     size_t cnt;
     ccl_datatype_internal_t dtype;
     size_t src;
-    ccl_op_id_t op_id = 0;
+    ccl_comm* comm;
     uint64_t atl_tag = 0;
     atl_req_t req{};
 };

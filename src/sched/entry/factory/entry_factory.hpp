@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #pragma once
 
 #include "sched/entry/factory/entry_factory.h"
@@ -32,15 +31,14 @@
 #include "sched/entry/probe_entry.hpp"
 #include "sched/entry/register_entry.hpp"
 #include "sched/entry/deregister_entry.hpp"
-#include "sched/entry/chain_call_entry.hpp"
-#include "sched/entry/nop_entry.hpp"
+#include "sched/entry/subsched_entry.hpp"
 #include "sched/entry/coll/coll_entry.hpp"
-#include "sched/entry/coll/allgatherv_entry.hpp"
-#include "sched/entry/coll/allreduce_entry.hpp"
-#include "sched/entry/coll/alltoall_entry.hpp"
-#include "sched/entry/coll/barrier_entry.hpp"
-#include "sched/entry/coll/bcast_entry.hpp"
-#include "sched/entry/coll/reduce_entry.hpp"
+#include "sched/entry/coll/direct/allgatherv_entry.hpp"
+#include "sched/entry/coll/direct/allreduce_entry.hpp"
+#include "sched/entry/coll/direct/alltoall_entry.hpp"
+#include "sched/entry/coll/direct/barrier_entry.hpp"
+#include "sched/entry/coll/direct/bcast_entry.hpp"
+#include "sched/entry/coll/direct/reduce_entry.hpp"
 
 #ifdef CCL_ENABLE_SYCL
 #include "sched/entry/sycl_copy_device_to_host_entry.hpp"
@@ -51,14 +49,13 @@
 
 namespace entry_factory
 {
-    // generic interface for entry creation
+    /* generic interface for entry creation */
     template<class EntryType, class ...Arguments>
     EntryType* make_entry(ccl_sched* sched, Arguments &&...args)
     {
         LOG_DEBUG("creating ", EntryType::class_name(), " entry");
         return detail::entry_creator<EntryType>::create(sched, std::forward<Arguments>(args)...);
     }
-
 
     /* Example for non-standard entry 'my_non_standard_entry' creation
     namespace detail

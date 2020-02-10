@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #include "exec/exec.hpp"
 #include "exec/thread/listener.hpp"
 
@@ -37,7 +36,7 @@ void* ccl_update_comm_world_info(void* args)
         gl_data->executor->is_locked = true;
         ccl_executor::worker_guard guard = gl_data->executor->get_worker_lock();
 
-        reset_for_size_update(gl_data);
+        ccl_reset_for_size_update(gl_data);
 
         atl_update(gl_data->executor->get_proc_coord(),
                    gl_data->executor->atl_desc,

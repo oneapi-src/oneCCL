@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #pragma once
 
 #include "atl/atl.h"
@@ -67,7 +66,6 @@ public:
 
     worker_guard get_worker_lock() { return worker_guard(this); }
 
-
     void start(ccl_extra_sched* extra_sched);
     void start(ccl_master_sched* sched);
     void wait(const ccl_request* req);
@@ -103,8 +101,8 @@ public:
 private:
     size_t get_atl_comm_count(size_t worker_count);
     std::unique_ptr<ccl_sched_queue> create_sched_queue(size_t idx, size_t comm_per_worker);
-
     void do_work(); 
+
     atl_comm_t** atl_comms = nullptr;
     atl_proc_coord_t atl_proc_coord;
     std::vector<std::unique_ptr<ccl_worker>> workers;

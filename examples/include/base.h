@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #ifndef BASE_H
 #define BASE_H
 
@@ -96,6 +95,7 @@ void test_init()
     coll_attr.synchronous = 0;
     coll_attr.match_id = "tensor_name";
     coll_attr.to_cache = 0;
+    coll_attr.vector_buf = 0;
 }
 
 void test_finalize()

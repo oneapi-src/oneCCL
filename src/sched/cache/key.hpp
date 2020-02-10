@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #pragma once
 
 #include "comp/comp.hpp"
@@ -58,41 +57,47 @@ public:
 
     bool has_hasher_result = false;
 
-    void* buf = nullptr; /* non-data buffer which can be used for caching */
-    ccl_coll_type ctype = ccl_coll_internal;
-    ccl_datatype_t dtype = ccl_dtype_char;
-    ccl_datatype_t itype = ccl_dtype_char; /* used in sparse collective to store index type */
-    ccl_reduction_t reduction = ccl_reduction_sum;
-    size_t count1 = 0;
-    size_t count2 = 0;
-    size_t* count3 = nullptr; /* used in sparse collective to store recv index count */
-    size_t* count4 = nullptr; /* used in sparse collective to store recv value count */
-    size_t root = 0;
-    const ccl_comm* comm = nullptr;
-    ccl_prologue_fn_t prologue_fn = nullptr;
-    ccl_epilogue_fn_t epilogue_fn = nullptr;
-    ccl_reduction_fn_t reduction_fn = nullptr;
+    struct ccl_sched_key_inner_fields
+    {
+        ccl_coll_type ctype = ccl_coll_internal;
+        void* buf = nullptr; /* non-data buffer which can be used for caching */
+        ccl_datatype_t dtype = ccl_dtype_char;
+        ccl_datatype_t itype = ccl_dtype_char; /* used in sparse collective to store index type */
+        ccl_reduction_t reduction = ccl_reduction_sum;
+        size_t count1 = 0;
+        size_t count2 = 0;
+        size_t* count3 = nullptr; /* used in sparse collective to store recv index count */
+        size_t* count4 = nullptr; /* used in sparse collective to store recv value count */
+        size_t root = 0;
+        const ccl_comm* comm = nullptr;
+        ccl_prologue_fn_t prologue_fn = nullptr;
+        ccl_epilogue_fn_t epilogue_fn = nullptr;
+        ccl_reduction_fn_t reduction_fn = nullptr;
+    };
 
-    std::string match_id{}; /* should always be last field */
+    /* inner structure for bit comparison */
+    ccl_sched_key_inner_fields f;
+
+    std::string match_id{};
 
     bool operator== (const ccl_sched_key& k) const;
 
     void print() const
     {
-        LOG_DEBUG( "ctype ", ccl_coll_type_to_str(ctype),
-                   ", dtype ", ccl_datatype_get(dtype)->name,
-                   ", itype ", ccl_datatype_get(itype)->name,
-                   ", reduction ", ccl_reduction_to_str(reduction),
-                   ", buf ", buf,
-                   ", count1 ", count1,
-                   ", count2 ", count2,
-                   ", count3 ", count3,
-                   ", count4 ", count4,
-                   ", root ", root,
-                   ", comm ", comm,
-                   ", prologue_fn ", (void*)prologue_fn,
-                   ", epilogue_fn ", (void*)epilogue_fn,
-                   ", reduction_fn ", (void*)reduction_fn,
+        LOG_DEBUG( "ctype ", ccl_coll_type_to_str(f.ctype),
+                   ", dtype ", ccl_datatype_get(f.dtype)->name,
+                   ", itype ", ccl_datatype_get(f.itype)->name,
+                   ", reduction ", ccl_reduction_to_str(f.reduction),
+                   ", buf ", f.buf,
+                   ", count1 ", f.count1,
+                   ", count2 ", f.count2,
+                   ", count3 ", f.count3,
+                   ", count4 ", f.count4,
+                   ", root ", f.root,
+                   ", comm ", f.comm,
+                   ", prologue_fn ", (void*)f.prologue_fn,
+                   ", epilogue_fn ", (void*)f.epilogue_fn,
+                   ", reduction_fn ", (void*)f.reduction_fn,
                    ", match_id ", match_id);
     }
 };

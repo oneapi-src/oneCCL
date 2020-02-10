@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #include "base.h"
 
 #define RUN_COLLECTIVE(start_cmd, name)                                    \
@@ -57,8 +56,6 @@ int main()
     float **recv_bufs;
     size_t *recv_counts;
 
-    setenv("CCL_ALLGATHERV_IOV", "1", 1);
-
     test_init();
 
     recv_bufs = static_cast<float**>(malloc(size * sizeof(float*)));
@@ -68,6 +65,8 @@ int main()
     recv_counts = static_cast<size_t*>(malloc(size * sizeof(size_t)));
     for (idx = 0; idx < size; idx++)
         recv_counts[idx] = COUNT;
+
+    coll_attr.vector_buf = 1;
 
     coll_attr.to_cache = 0;
     RUN_COLLECTIVE(ccl_allgatherv(send_buf, COUNT, recv_bufs, recv_counts, ccl_dtype_float, &coll_attr, NULL, NULL, &request),

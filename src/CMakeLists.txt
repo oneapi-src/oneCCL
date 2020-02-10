@@ -7,21 +7,24 @@ set(CCL_SRC
     ccl_cpp_api.cpp
     atl/atl.cpp
     coll/algorithms/allgatherv.cpp
-    coll/algorithms/allreduce.cpp
-    coll/algorithms/allreduce_rma.cpp
+    coll/algorithms/allreduce/allreduce.cpp
+    coll/algorithms/allreduce/allreduce_2d.cpp
+    coll/algorithms/allreduce/allreduce_rma.cpp
     coll/algorithms/alltoall.cpp
     coll/algorithms/barrier.cpp
     coll/algorithms/bcast.cpp
     coll/algorithms/double_tree_ops.cpp
     coll/algorithms/reduce.cpp
+    coll/algorithms/reduce_scatter.cpp
     coll/coll.cpp
-    coll/selection/coll/allgatherv.cpp
-    coll/selection/coll/allreduce.cpp
-    coll/selection/coll/alltoall.cpp
-    coll/selection/coll/barrier.cpp
-    coll/selection/coll/bcast.cpp
-    coll/selection/coll/reduce.cpp
-    coll/selection/coll/sparse_allreduce.cpp
+    coll/selection/selector_allgatherv.cpp
+    coll/selection/selector_allreduce.cpp
+    coll/selection/selector_alltoall.cpp
+    coll/selection/selector_barrier.cpp
+    coll/selection/selector_bcast.cpp
+    coll/selection/selector_reduce.cpp
+    coll/selection/selector_reduce_scatter.cpp
+    coll/selection/selector_sparse_allreduce.cpp
     comp/comp.cpp
     sched/sched.cpp
     sched/master_sched.cpp
@@ -30,7 +33,10 @@ set(CCL_SRC
     sched/cache/key.cpp
     sched/queue/strict_queue.cpp
     sched/queue/queue.cpp
+    sched/entry/coll/coll_entry.cpp
+    sched/entry/coll/coll_entry_helper.cpp
     sched/entry/entry.cpp
+    sched/entry/factory/chunked_entry_factory.cpp
     exec/exec.cpp
     exec/thread/base_thread.cpp
     exec/thread/listener.cpp
@@ -91,7 +97,7 @@ install(TARGETS ccl-static ARCHIVE DESTINATION ${CCL_INSTALL_LIB})
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
         DESTINATION ${CCL_INSTALL_INCLUDE} FILES_MATCHING REGEX ".*\\.(h|hpp)$")
 
-#mpi & ofi
+#mpi & ofi rt
 file(GLOB mpi_bins "${PROJECT_SOURCE_DIR}/mpi/bin/*")
 install(PROGRAMS ${mpi_bins} DESTINATION ${CCL_INSTALL_BIN})
 
@@ -101,11 +107,8 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/ofi/lib/
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/mpi/lib/
         DESTINATION ${CCL_INSTALL_LIB})
 
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/mpi/include/
-        DESTINATION ${CCL_INSTALL_INCLUDE})
-
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/mpi/etc/
         DESTINATION ${CCL_INSTALL_ETC})
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/mpi/licensing/
-        DESTINATION ${CCL_INSTALL_LICENSE}/mpi)
+        DESTINATION ${CCL_INSTALL_LICENSE}/mpi/)

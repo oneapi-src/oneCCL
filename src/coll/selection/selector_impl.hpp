@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #pragma once
 
 #include "common/env/env.hpp"
@@ -42,7 +41,8 @@ void ccl_selection_unpack_elem(size_t& size, algo_group_type& algo,
         size = it->first;
         algo = it->second.first;
         border = it->second.second;
-        LOG_DEBUG("size ", size,
+        LOG_DEBUG("size ", (size == CCL_SELECTION_MAX_COLL_SIZE) ?
+                            CCL_SELECTION_MAX_COLL_SIZE_STR : std::to_string(size),
                   ", algo ", ccl_coll_algorithm_to_str(algo),
                   ", border ", border);
     }
@@ -51,6 +51,11 @@ void ccl_selection_unpack_elem(size_t& size, algo_group_type& algo,
 template<typename algo_group_type>
 void ccl_algorithm_selector_base<algo_group_type>::init()
 {
+    const std::string& str_to_parse = ccl_algorithm_selector_helper<algo_group_type>::get_str_to_parse();
+
+    if (!str_to_parse.length())
+        return;
+
     size_t elem_size;
     algo_group_type elem_algo;
     ccl_selection_border_type elem_border;
@@ -61,11 +66,6 @@ void ccl_algorithm_selector_base<algo_group_type>::init()
     std::stringstream full_stream;
     std::stringstream block_stream;
     size_t left_size, right_size;
-
-    const std::string& str_to_parse = ccl_algorithm_selector_helper<algo_group_type>::get_str_to_parse();
-
-    if (!str_to_parse.length())
-        return;
 
     /* format: <algo>:<size1-size2>;<algo>:<size1-size2>; ... */
 
@@ -79,7 +79,7 @@ void ccl_algorithm_selector_base<algo_group_type>::init()
             if (!std::getline(block_stream, algo_name_str, CCL_SELECTION_ALGO_DELIMETER))
                 CCL_THROW("can't parse algorithm name from string: ", str_to_parse, ", block: ", block);
         }
-        catch (std::istream::failure e)
+        catch (const std::istream::failure& e)
         {
             LOG_ERROR("exception happened: ", e.what(),
                       "\nerror bits are:\nfailbit: ", block_stream.fail(),
@@ -236,7 +236,13 @@ void ccl_algorithm_selector_base<algo_group_type>::print() const
 }
 
 template<typename algo_group_type>
-algo_group_type ccl_algorithm_selector_base<algo_group_type>::get(const ccl_coll_param& param) const
+bool ccl_algorithm_selector_base<algo_group_type>::is_direct(const ccl_selector_param& param) const
+{
+    return ccl_algorithm_selector_helper<algo_group_type>::is_direct(get(param));
+}
+
+template<typename algo_group_type>
+algo_group_type ccl_algorithm_selector_base<algo_group_type>::get(const ccl_selector_param& param) const
 {
     size_t elem_size;
     algo_group_type elem_algo;
@@ -248,7 +254,7 @@ algo_group_type ccl_algorithm_selector_base<algo_group_type>::get(const ccl_coll
     ccl_selection_unpack_elem(elem_size, elem_algo, elem_border, lower_bound, main_table);
 
     if (lower_bound == main_table.end() ||
-    	!ccl_algorithm_selector_helper<algo_group_type>::can_use(elem_algo, param, main_table))
+        !ccl_algorithm_selector_helper<algo_group_type>::can_use(elem_algo, param, main_table))
     {
         lower_bound = fallback_table.lower_bound(size);
         ccl_selection_unpack_elem(elem_size, elem_algo, elem_border, lower_bound, fallback_table);
@@ -269,7 +275,13 @@ template<typename algo_group_type>
 void ccl_algorithm_selector_base<algo_group_type>::insert(ccl_selection_table_t<algo_group_type>& table,
                                                           size_t left, size_t right, algo_group_type algo)
 {
-    LOG_DEBUG("left ", left, ", right ", right, ", algo ", ccl_coll_algorithm_to_str(algo));
+    LOG_DEBUG("left ",
+              (left == CCL_SELECTION_MAX_COLL_SIZE) ?
+              CCL_SELECTION_MAX_COLL_SIZE_STR : std::to_string(left),
+              ", right ",
+              (right == CCL_SELECTION_MAX_COLL_SIZE) ?
+              CCL_SELECTION_MAX_COLL_SIZE_STR : std::to_string(right),
+              ", algo ", ccl_coll_algorithm_to_str(algo));
 
     std::stringstream str;
     size_t elem_size, next_elem_size, prev_elem_size;

@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #include "exec/exec.hpp"
 #include "fusion/fusion.hpp"
 #include "sched/cache/cache.hpp"
@@ -224,12 +223,12 @@ ccl_master_sched* ccl_fusion_manager::build_sched()
         ccl_sched_key key{};
         if (use_cache)
         {
-            key.ctype = ccl_coll_allreduce;
-            key.count1 = sum_count;
-            key.count2 = exec_queue.size();
-            key.dtype = dtype->type;
-            key.reduction = reduction;
-            key.comm = comm;
+            key.f.ctype = ccl_coll_allreduce;
+            key.f.count1 = sum_count;
+            key.f.count2 = exec_queue.size();
+            key.f.dtype = dtype->type;
+            key.f.reduction = reduction;
+            key.f.comm = comm;
             key.match_id = first_sched->coll_attr.match_id + last_sched->coll_attr.match_id;
             LOG_DEBUG("key.match_id ", key.match_id);
             sched = global_data.sched_cache->find(key);
@@ -268,6 +267,9 @@ ccl_master_sched* ccl_fusion_manager::build_sched()
             }
         }
     }
+
+    CCL_THROW_IF_NOT(sched);
+
     sched->coll_attr.priority = max_priority;
     sched->commit(global_data.parallelizer.get());
 

@@ -1,6 +1,5 @@
-
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -14,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #ifndef BASE_HPP
 #define BASE_HPP
 
@@ -55,6 +53,7 @@ struct typed_test_param
         process_idx = comm->rank();
         buf_indexes.resize(buffer_count);
     }
+
     void prepare_coll_attr(size_t idx);
     std::string create_match_id(size_t buf_idx);
     bool complete_request(std::shared_ptr < ccl::request > reqs);

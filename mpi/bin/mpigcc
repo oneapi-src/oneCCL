@@ -557,7 +557,7 @@ final_cppflags=" "
 final_ldflags="  -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl"
 final_libs="-lpthread -lrt "
 if test "no" = "no" -o "${interlib_deps}" = "no" ; then
-    final_ldflags="${final_ldflags}  -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl -L/p/pdsd/scratch/jenkins/artefacts_impi_2019/hcoll/lib"
+    final_ldflags="${final_ldflags}  -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl"
     final_libs="${final_libs}   -lpthread  -lfabric -lrt "
 fi
 

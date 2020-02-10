@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #pragma once
 
 #include "stdlib.h"
@@ -86,11 +85,11 @@ typedef enum
 /** Resize action types. */
 typedef enum ccl_resize_action
 {
-    // Wait additional changes for number of ranks
+    /* Wait additional changes for number of ranks */
     ccl_ra_wait     = 0,
-    // Run with current number of ranks
+    /* Run with current number of ranks */
     ccl_ra_run      = 1,
-    // Finalize work
+    /* Finalize work */
     ccl_ra_finalize = 2,
 } ccl_resize_action_t;
 
@@ -112,15 +111,30 @@ typedef ccl_status_t(*ccl_epilogue_fn_t) (const void*, size_t, ccl_datatype_t, v
 /* in_buf, in_count, inout_buf, out_count, context, datatype */
 typedef ccl_status_t(*ccl_reduction_fn_t) (const void*, size_t, void*, size_t*, const ccl_fn_context_t*, ccl_datatype_t);
 
-/* Extendable list of collective attributes */
+/** Extendable list of collective attributes. */
 typedef struct
 {
+    /**
+     * Callbacks into application code
+     * for pre-/post-processing data
+     * and custom reduction operation
+     */
     ccl_prologue_fn_t prologue_fn;
     ccl_epilogue_fn_t epilogue_fn;
     ccl_reduction_fn_t reduction_fn;
+
+    /* Priority for collective operation */
     size_t priority;
+
+    /* Blocking/non-blocking */
     int synchronous;
+
+    /* Persistent/non-persistent */
     int to_cache;
+
+    /* Treat buffer as vector/regular - applicable for allgatherv only */
+    int vector_buf;
+
     /**
      * Id of the operation. If specified, new communicator will be created and collective
      * operations with the same @b match_id will be executed in the same order.
@@ -128,6 +142,7 @@ typedef struct
     const char* match_id;
 } ccl_coll_attr_t;
 
+/** List of communicator attributes. */
 typedef struct
 {
     /**

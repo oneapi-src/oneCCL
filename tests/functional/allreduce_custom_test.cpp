@@ -1,6 +1,5 @@
-
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -14,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #define TEST_CCL_REDUCE
 #define TEST_CCL_CUSTOM_PROLOG
 #define TEST_CCL_CUSTOM_EPILOG
@@ -141,8 +139,10 @@ ccl_status_t do_epilogue_char_to_T(const void* in_buf, size_t in_count, ccl_data
                                    ccl_datatype_t out_dtype)
 {
     size_t buf_idx;
-    if (out_count)* out_count = in_count;
+    if (out_count)
+        *out_count = in_count;
     //TODO: this assert works only for single epilogue.
+    ASSERT(in_dtype == ccl_dtype_char, "unexpected dtype %d", in_dtype);
     ASSERT(ctx->offset == 0, "wrong offset for epilogue func, should be 0");
     {
         std::lock_guard<std::mutex> guard(inc_mutex);
@@ -178,11 +178,38 @@ ccl_status_t do_reduction_null(const void* in_buf, size_t in_count, void* inout_
         ASSERT(match != glob_match_id.end(), "wrong match_id");
         match->second++;
     }
-    if (out_count)* out_count = in_count;
+    if (out_count)
+        *out_count = in_count;
+    switch(dtype)
+    {
+        case ccl_dtype_char:
             for (buf_idx = 0; buf_idx < in_count; buf_idx++)
             {
-                ((T*)inout_buf)[buf_idx] = (T)0;
+                ((char*)inout_buf)[buf_idx] = (char)0;
             }
+            break;
+        case ccl_dtype_float:
+            for (buf_idx = 0; buf_idx < in_count; buf_idx++)
+            {
+                ((float*)inout_buf)[buf_idx] = (float)0;
+            }
+            break;
+        case ccl_dtype_double:
+            for (buf_idx = 0; buf_idx < in_count; buf_idx++)
+            {
+                ((double*)inout_buf)[buf_idx] = (double)0;
+            }
+            break;
+        case ccl_dtype_int:
+            for (buf_idx = 0; buf_idx < in_count; buf_idx++)
+            {
+                ((int*)inout_buf)[buf_idx] = (int)0;
+            }
+            break;
+        default:
+            ASSERT(0, "unexpected dtype %d", dtype);
+            break;
+    }
     return ccl_status_success;
 }
 template <typename T>
@@ -200,11 +227,38 @@ ccl_status_t do_reduction_custom(const void* in_buf, size_t in_count, void* inou
         ASSERT(match != glob_match_id.end(), "wrong match_id");
         match->second++;
     }
-    if (out_count)* out_count = in_count;
+    if (out_count)
+        *out_count = in_count;
+    switch (dtype)
+    {
+        case ccl_dtype_char:
             for (buf_idx = 0; buf_idx < in_count; buf_idx++)
             {
-                ((T*)inout_buf)[buf_idx] += ((T*)in_buf)[buf_idx];
+                ((char*)inout_buf)[buf_idx] += ((char*)in_buf)[buf_idx];
             }
+            break;
+        case ccl_dtype_float:
+            for (buf_idx = 0; buf_idx < in_count; buf_idx++)
+            {
+                ((float*)inout_buf)[buf_idx] += ((float*)in_buf)[buf_idx];
+            }
+            break;
+        case ccl_dtype_double:
+            for (buf_idx = 0; buf_idx < in_count; buf_idx++)
+            {
+                ((double*)inout_buf)[buf_idx] += ((double*)in_buf)[buf_idx];
+            }
+            break;
+        case ccl_dtype_int:
+            for (buf_idx = 0; buf_idx < in_count; buf_idx++)
+            {
+                ((int*)inout_buf)[buf_idx] += ((int*)in_buf)[buf_idx];
+            }
+            break;
+        default:
+            ASSERT(0, "unexpected dtype %d", dtype);
+            break;
+    }
     return ccl_status_success;
 }
 template <typename T>
@@ -244,7 +298,6 @@ public:
             epilog_coeff = 2;
             epilog_coeff_prod = epilog_coeff;
         }
-        T expected_tmp;
         for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++)
         {
             for (size_t elem_idx = 0; elem_idx < param.elem_count; elem_idx++)
@@ -254,26 +307,19 @@ public:
                     T expected =
                         ((param.process_count * (param.process_count - 1) / 2) +
                         ((elem_idx + buf_idx)  * param.process_count));
-                    if (param.test_conf.epilog_type == ETYPE_CHAR_TO_T && param.test_conf.prolog_type == PTYPE_T_TO_CHAR){
+                    if (param.test_conf.prolog_type == PTYPE_T_TO_CHAR && param.test_conf.epilog_type == ETYPE_CHAR_TO_T)
+                    {
                         expected_fin = ((char)(expected * prolog_coeff * epilog_coeff));
-                        expected_tmp = param.recv_buf[buf_idx][elem_idx];
                     }
-                    else if (param.test_conf.epilog_type == ETYPE_T_TO_2X && param.test_conf.prolog_type == PTYPE_T_TO_CHAR){
-                        expected_fin = ((char)(expected * prolog_coeff * epilog_coeff));
-                        expected_tmp = ((char*)param.recv_buf[buf_idx].data())[elem_idx];
+                    else
+                    {
+                        expected_fin = expected * prolog_coeff * epilog_coeff;
                     }
-                    else if (param.test_conf.epilog_type == ETYPE_CHAR_TO_T || param.test_conf.prolog_type == PTYPE_T_TO_CHAR){
-                        expected_fin = ((char)(expected * prolog_coeff * epilog_coeff));
-                        expected_tmp = ((char*)param.recv_buf[buf_idx].data())[elem_idx];
-                    }
-                    else {
-                        expected_fin = expected *  prolog_coeff * epilog_coeff;
-                        expected_tmp = param.recv_buf[buf_idx][elem_idx];
-                    }
-                    if (expected_tmp != expected_fin) {
-                        snprintf(allreduce_custom_test::get_err_message(), ERR_MESSAGE_MAX_LEN, "[%zu] sent send_buf[%zu][%zu] = %f, got recv_buf[%zu][%zu] = %f, but expected = %f, expected_tmp = %f\n",
+                    if (param.recv_buf[buf_idx][elem_idx] != expected_fin)
+                    {
+                        snprintf(allreduce_custom_test::get_err_message(), ERR_MESSAGE_MAX_LEN, "[%zu] sent send_buf[%zu][%zu] = %f, got recv_buf[%zu][%zu] = %f, but expected = %f\n",
                                  param.process_idx, buf_idx, elem_idx, (double) param.send_buf[buf_idx][elem_idx], buf_idx,
-                                 elem_idx, (double) param.recv_buf[buf_idx][elem_idx], (double) expected_fin, (double) expected_tmp);
+                                 elem_idx, (double) param.recv_buf[buf_idx][elem_idx], (double) expected_fin);
                         return TEST_FAILURE;
                     }
                 }
@@ -281,16 +327,16 @@ public:
                 else if (param.test_conf.reduction_type == RT_MAX)
                 {
                     T expected = 0;
-                    if (param.test_conf.prolog_type == PTYPE_T_TO_CHAR)
+                    if (param.test_conf.prolog_type == PTYPE_T_TO_CHAR && param.test_conf.epilog_type == ETYPE_CHAR_TO_T)
                     {
                         expected = get_expected_max<char>(elem_idx, buf_idx, param.process_count, prolog_coeff);
-                        expected_fin = (char)(expected * epilog_coeff);
+                        expected_fin = ((char)(expected * epilog_coeff));
                     }
                     else
                     {
                         expected = get_expected_max<T>(elem_idx, buf_idx, param.process_count, prolog_coeff);
+                        expected_fin = expected * epilog_coeff;
                     }
-                    expected_fin = expected * epilog_coeff;
                     if (param.recv_buf[buf_idx][elem_idx] != expected_fin)
                     {
                         snprintf(allreduce_custom_test::get_err_message(), ERR_MESSAGE_MAX_LEN, "[%zu] sent send_buf[%zu][%zu] = %f, got recv_buf[%zu][%zu] = %f, but expected = %f\n",
@@ -302,10 +348,10 @@ public:
                 else if (param.test_conf.reduction_type == RT_MIN)
                 {
                     T expected = 0;
-                    if (param.test_conf.prolog_type == PTYPE_T_TO_CHAR)
+                    if (param.test_conf.prolog_type == PTYPE_T_TO_CHAR && param.test_conf.epilog_type == ETYPE_CHAR_TO_T)
                     {
                         expected = get_expected_min<char>(elem_idx, buf_idx, param.process_count, prolog_coeff);
-                        expected_fin = (char)(expected * epilog_coeff);
+                        expected_fin = ((char)(expected * epilog_coeff));
                     }
                     else
                     {
@@ -325,9 +371,14 @@ public:
                     T expected = 1;
                     for (size_t proc_idx = 0; proc_idx < param.process_count; proc_idx++)
                     {
-                        expected *= (elem_idx + buf_idx + proc_idx);
+                        if (param.test_conf.prolog_type == PTYPE_T_TO_CHAR && param.test_conf.epilog_type == ETYPE_CHAR_TO_T)
+                        {
+                            expected *= ((char)elem_idx + (char)buf_idx + (char)proc_idx);
+                        }
+                        else
+                            expected *= (elem_idx + buf_idx + proc_idx);
                     }
-                    if (param.test_conf.prolog_type == PTYPE_T_TO_CHAR)
+                    if (param.test_conf.prolog_type == PTYPE_T_TO_CHAR && param.test_conf.epilog_type == ETYPE_CHAR_TO_T)
                     {
                         expected_fin = ((char)(expected * prolog_coeff_prod * epilog_coeff_prod));
                     }
@@ -348,7 +399,14 @@ public:
                     T expected =
                         ((param.process_count * (param.process_count - 1) / 2) +
                         ((elem_idx + buf_idx) * param.process_count));
-                    expected_fin = expected * prolog_coeff * epilog_coeff;
+                    if (param.test_conf.prolog_type == PTYPE_T_TO_CHAR && param.test_conf.epilog_type == ETYPE_CHAR_TO_T)
+                    {
+                        expected_fin = ((char)(expected * prolog_coeff * epilog_coeff));
+                    }
+                    else
+                    {
+                        expected_fin = expected * prolog_coeff * epilog_coeff;
+                    }
                     if (param.recv_buf[buf_idx][elem_idx] != expected_fin)
                     {
                         snprintf(allreduce_custom_test::get_err_message(), ERR_MESSAGE_MAX_LEN, "[%zu] sent send_buf[%zu][%zu] = %f, got recv_buf[%zu][%zu] = %f, but expected = %f\n",
@@ -360,7 +418,14 @@ public:
                 else if (param.test_conf.reduction_type == RT_CUSTOM_NULL)
                 {
                     T expected = 0;
-                    expected_fin = expected * prolog_coeff * epilog_coeff;
+                    if (param.test_conf.prolog_type == PTYPE_T_TO_CHAR && param.test_conf.epilog_type == ETYPE_CHAR_TO_T)
+                    {
+                        expected_fin = ((char)(expected * prolog_coeff * epilog_coeff));
+                    }
+                    else
+                    {
+                        expected_fin = expected * prolog_coeff * epilog_coeff;
+                    }
                     if (param.recv_buf[buf_idx][elem_idx] != expected_fin)
                     {
                         snprintf(allreduce_custom_test::get_err_message(), ERR_MESSAGE_MAX_LEN, "[%zu] sent send_buf[%zu][%zu] = %f, got recv_buf[%zu][%zu] = %f, but expected = %f\n",
@@ -398,31 +463,22 @@ public:
             {
                 param.coll_attr.epilogue_fn = do_epilogue_T_2x<T>;
             }
-            else if (param.test_conf.epilog_type == ETYPE_CHAR_TO_T && param.test_conf.prolog_type == PTYPE_T_TO_CHAR)
+            if (param.test_conf.prolog_type == PTYPE_T_TO_CHAR && param.test_conf.epilog_type == ETYPE_CHAR_TO_T)
             {
                 param.coll_attr.prologue_fn = do_prologue_T_to_char<T>;
                 param.coll_attr.epilogue_fn = do_epilogue_char_to_T<T>;
             }
-            else if (param.test_conf.epilog_type == ETYPE_CHAR_TO_T &&
-                    (param.test_conf.prolog_type == PTYPE_T_TO_2X || param.test_conf.prolog_type == PTYPE_NULL))
+            else if (param.test_conf.prolog_type != PTYPE_T_TO_CHAR && param.test_conf.epilog_type == ETYPE_CHAR_TO_T)
             {
-                                param.coll_attr.epilogue_fn = do_epilogue_T_2x<T>;
-                param.coll_attr.prologue_fn = do_prologue_T_to_char<T>;
+                param.coll_attr.epilogue_fn = NULL;
             }
-            if (param.test_conf.prolog_type == PTYPE_T_TO_CHAR && param.test_conf.epilog_type == ETYPE_T_TO_2X)
+            else if (param.test_conf.prolog_type == PTYPE_T_TO_CHAR && param.test_conf.epilog_type != ETYPE_CHAR_TO_T)
             {
-                param.coll_attr.epilogue_fn = do_epilogue_T_2x<T>;
-                param.coll_attr.prologue_fn = do_prologue_T_to_char<T>;
-            }
-            if (param.test_conf.prolog_type == PTYPE_T_TO_CHAR)
-            {
-                param.coll_attr.prologue_fn = do_prologue_T_to_char<T>;
+                param.coll_attr.prologue_fn =  NULL;
             }
             if (reduction == ccl::reduction::custom)
             {
-                if (set_custom_reduction<T>(param))
-                    param.coll_attr.epilogue_fn = do_epilogue_T_2x<T>;
-                param.coll_attr.prologue_fn = do_prologue_T_to_char<T>;
+                set_custom_reduction<T>(param);
             }
             COUNT = param.elem_count;
             param.reqs[buf_idx] =
@@ -447,9 +503,10 @@ public:
                 this->run_derived(param);
                 param.complete();
                 result += check(param);
-                if ( get_ccl_lib_reduction_type(test_conf) == ccl_reduction_custom ||
+                // this->free_buffers(param);
+                if (((get_ccl_lib_reduction_type(test_conf) == ccl_reduction_custom ||
                     param.test_conf.prolog_type != PTYPE_NULL ||
-                    param.test_conf.epilog_type != ETYPE_NULL )
+                    param.test_conf.epilog_type != ETYPE_NULL) && (param.coll_attr.prologue_fn != NULL || param.coll_attr.epilogue_fn != NULL)))
                     {
                         for (auto it : glob_match_id)
                         {

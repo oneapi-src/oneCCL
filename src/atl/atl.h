@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #pragma once
 
 #include <stddef.h>
@@ -258,12 +257,12 @@ static inline size_t is_ft_enabled(atl_desc_t *desc)
 
 static inline void atl_global_proc_idx(atl_desc_t *desc, size_t *global_proc_idx)
 {
-    return desc->ops->global_proc_idx(desc, global_proc_idx);
+    desc->ops->global_proc_idx(desc, global_proc_idx);
 }
 
 static inline void atl_global_proc_count(atl_desc_t *desc, size_t *global_proc_count)
 {
-    return desc->ops->global_proc_count(desc, global_proc_count);
+    desc->ops->global_proc_count(desc, global_proc_count);
 }
 
 static inline atl_status_t atl_update(atl_proc_coord_t *proc_coord,

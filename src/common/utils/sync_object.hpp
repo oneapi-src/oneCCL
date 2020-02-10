@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #pragma once
 
 #include "common/log/log.hpp"
@@ -30,8 +29,8 @@ public:
 
     void visit()
     {
-        auto value = sync.fetch_sub(1, std::memory_order_release);
-        CCL_ASSERT(value >= 0 && value <= initial_cnt, "invalid count ", value);
+        auto cnt = sync.fetch_sub(1, std::memory_order_release);
+        CCL_ASSERT(cnt >= 0 && cnt <= initial_cnt, "invalid count ", cnt);
     }
 
     void reset()
