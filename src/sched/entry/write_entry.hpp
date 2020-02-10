@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #pragma once
 
 #include "sched/entry/entry.hpp"
@@ -38,10 +37,11 @@ public:
                 ccl_datatype_internal_t dtype,
                 size_t dst,
                 atl_mr_t* dst_mr,
-                size_t dst_buf_off) :
+                size_t dst_buf_off,
+                ccl_comm* comm) :
         sched_entry(sched), src_buf(src_buf), src_mr(src_mr),
         cnt(cnt), dtype(dtype), dst(dst), dst_mr(dst_mr),
-        dst_buf_off(dst_buf_off)
+        dst_buf_off(dst_buf_off), comm(comm)
     {
     }
 
@@ -68,11 +68,14 @@ public:
             return;
         }
 
+        size_t global_dst = comm->get_global_rank(dst);
+
         size_t bytes = cnt * ccl_datatype_get_size(dtype);
-        atl_status_t atl_status = atl_comm_write(sched->bin->get_comm_ctx(), src_buf.get_ptr(bytes),
+        atl_status_t atl_status = atl_comm_write(sched->bin->get_comm_ctx(),
+                                                 src_buf.get_ptr(bytes),
                                                  bytes, src_mr,
                                                  (uint64_t)dst_mr->buf + dst_buf_off,
-                                                 dst_mr->r_key, dst, &req);
+                                                 dst_mr->r_key, global_dst, &req);
         update_status(atl_status);
     }
 
@@ -119,7 +122,7 @@ protected:
                            ", dst ", dst,
                            ", dst_mr ", dst_mr,
                            ", dst_off ", dst_buf_off,
-                           ", comm_id ", sched->coll_param.comm->id(),
+                           ", comm_id ", sched->get_comm_id(),
                            ", req %p", &req,
                            "\n");
     }
@@ -132,5 +135,6 @@ private:
     size_t dst;
     atl_mr_t* dst_mr;
     size_t dst_buf_off;
+    ccl_comm* comm;
     atl_req_t req{};
 };

@@ -20,5 +20,8 @@
 #cmakedefine CCL_PRODUCT_BUILD_DATE         "@CCL_PRODUCT_BUILD_DATE@"
 #cmakedefine CCL_PRODUCT_FULL               "@CCL_PRODUCT_FULL@"
 
-/* Configuration settings for SYCL support */
+/* Auto-generated configuration settings for SYCL support */
 #cmakedefine CCL_ENABLE_SYCL
+#ifdef CCL_ENABLE_SYCL
+@CCL_ENABLCE_SYCL_CHECK_CONTRACT@
+#endif

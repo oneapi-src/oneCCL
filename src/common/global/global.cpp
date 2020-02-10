@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
+#include "coll/algorithms/allreduce/allreduce_2d.hpp"
 #include "coll/selection/selection.hpp"
 #include "common/comm/atl_tag.hpp"
 #include "common/comm/comm_id_storage.hpp"

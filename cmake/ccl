@@ -5,9 +5,9 @@
 
 module-whatis	"Sets up the Intel(R) oneAPI Collective Communications Library environment"
 
-set                topdir                               %INSTALL_PATH%
+set                topdir                               [ file dirname [ file dirname ${ModulesCurrentModulefile}]]
 
 setenv             CCL_ROOT                             $topdir
-setenv             CCL_ATL_TRANSPORT_PATH               $topdir/lib
+setenv             CCL_ATL_TRANSPORT_PATH               $topdir/lib/cpu_gpu_dpcpp
 
-prepend-path       LD_LIBRARY_PATH                      $topdir/lib
+prepend-path       LD_LIBRARY_PATH                      $topdir/lib/cpu_gpu_dpcpp

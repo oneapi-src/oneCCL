@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
+#include "coll/algorithms/allreduce/allreduce_2d.hpp"
 #include "coll/selection/selection.hpp"
 #include "common/comm/atl_tag.hpp"
 #include "common/global/global.hpp"
@@ -41,7 +41,7 @@ void ccl_init_global_objects(ccl_global_data& gl_data)
     }
 
     gl_data.default_coll_attr.reset(new ccl_coll_attr_t{});
-    gl_data.default_coll_attr->to_cache = 0;
+    memset(gl_data.default_coll_attr.get(), 0, sizeof(ccl_coll_attr_t));
 }
 
 ccl_status_t ccl_init()
@@ -82,12 +82,15 @@ ccl_status_t ccl_init()
         if (global_data.executor->get_global_proc_idx() == 0)
             global_data.algorithm_selector->print();
 
+        global_data.allreduce_2d_builder =
+            std::unique_ptr<ccl_allreduce_2d_builder>(new ccl_allreduce_2d_builder());
+
         return ccl_status_success;
     }
     COMMON_CATCH_BLOCK();
 }
 
-CCL_API ccl_status_t ccl_get_version(ccl_version_t* version)
+ccl_status_t CCL_API ccl_get_version(ccl_version_t* version)
 {
     if (!version)
     {
@@ -102,8 +105,9 @@ CCL_API ccl_status_t ccl_get_version(ccl_version_t* version)
     return ccl_status_success;
 }
 
-void reset_for_size_update(ccl_global_data* gl_data)
+void ccl_reset_for_size_update(ccl_global_data* gl_data)
 {
+    gl_data->allreduce_2d_builder.reset();
     gl_data->unordered_coll_manager.reset();
     gl_data->sched_cache.reset();
     gl_data->comm.reset();
@@ -124,7 +128,7 @@ ccl_status_t ccl_finalize()
     try
     {
         /* keep reverse order of initialization */
-        reset_for_size_update(&global_data);
+        ccl_reset_for_size_update(&global_data);
         global_data.comm_ids.reset();
         global_data.atl_tag.reset();
         global_data.executor.reset();

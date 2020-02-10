@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #include "exec/exec.hpp"
 #include "exec/thread/service_worker.hpp"
 #include "exec/thread/worker.hpp"
@@ -108,12 +107,15 @@ void ccl_executor::start_workers()
         if (env_data.worker_offload)
         {
             size_t affinity = env_data.worker_affinity[get_local_proc_idx() * worker_count + idx];
-            workers.back()->start();
-            workers.back()->pin(affinity);
-            LOG_INFO("started worker: global_proc_idx ", get_global_proc_idx(),
-                     ", local_proc_idx ", get_local_proc_idx(),
-                     ", worker_idx ", idx,
-                     ", affinity ", affinity);
+            CCL_THROW_IF_NOT(workers.back()->start() == ccl_status_success,
+                             "failed to start worker # ", idx);
+            CCL_THROW_IF_NOT(workers.back()->pin(affinity) == ccl_status_success,
+                             "failed to pin worker # ", idx, " on processor ", affinity);
+
+            LOG_DEBUG("started worker: global_proc_idx ", get_global_proc_idx(),
+                      ", local_proc_idx ", get_local_proc_idx(),
+                      ", worker_idx ", idx,
+                      ", affinity ", affinity);
         }
     }
 }
@@ -128,13 +130,20 @@ ccl_executor::~ccl_executor()
         lock_workers();
         unlock_workers();
     }
+    listener.reset();
 
     for (size_t idx = 0; idx < workers.size(); idx++)
     {
         if (env_data.worker_offload)
         {
-            workers[idx]->stop();
-            LOG_DEBUG("stopped worker # ", idx);
+            if (workers[idx]->stop() != ccl_status_success)
+            {
+                LOG_ERROR("failed to stop worker # ", idx);
+            }
+            else
+                LOG_DEBUG("stopped worker # ", idx);
+
+            workers[idx].reset();
         }
     }
 
@@ -208,7 +217,7 @@ ccl_status_t ccl_executor::create_listener(ccl_resize_fn_t resize_func)
 {
     if (listener)
     {
-        LOG_ERROR("attempt to twice create listener");
+        LOG_ERROR("attempt to create listener twice");
         return ccl_status_runtime_error;
     }
 

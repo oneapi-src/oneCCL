@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #include "common/env/env.hpp"
 #include "common/log/log.hpp"
 
@@ -37,9 +36,9 @@ ccl_env_data env_data =
     .barrier_algo_raw = std::string(),
     .bcast_algo_raw = std::string(),
     .reduce_algo_raw = std::string(),
+    .reduce_scatter_algo_raw = std::string(),
     .sparse_allreduce_algo_raw = std::string(),
     .enable_unordered_coll = 0,
-    .enable_allgatherv_iov = 0,
 
     .enable_fusion = 0,
     .fusion_bytes_threshold = 16384,
@@ -52,7 +51,14 @@ ccl_env_data env_data =
     .spin_count = 100,
     .yield_type = ccl_yield_pause,
     .max_short_size = 4096,
-    .cache_key_type = ccl_cache_key_match_id
+    .cache_key_type = ccl_cache_key_match_id,
+
+    .chunk_count = 1,
+    .min_chunk_size = 65536,
+    .rs_chunk_count = 1,
+    .rs_min_chunk_size = 65536,
+    .ar2d_chunk_count = 1,
+    .ar2d_min_chunk_size = 65536,
 };
 
 int ccl_env_2_int(const char* env_name, int& val)
@@ -141,7 +147,6 @@ void ccl_env_parse()
     ccl_env_2_string(CCL_REDUCE, env_data.reduce_algo_raw);
     ccl_env_2_string(CCL_SPARSE_ALLREDUCE, env_data.sparse_allreduce_algo_raw);
     ccl_env_2_int(CCL_UNORDERED_COLL, env_data.enable_unordered_coll);
-    ccl_env_2_int(CCL_ALLGATHERV_IOV, env_data.enable_allgatherv_iov);
 
     ccl_env_2_int(CCL_FUSION, env_data.enable_fusion);
     ccl_env_2_int(CCL_FUSION_BYTES_THRESHOLD, env_data.fusion_bytes_threshold);
@@ -162,6 +167,13 @@ void ccl_env_parse()
     ccl_env_parse_yield_type();
     ccl_env_2_size_t(CCL_MAX_SHORT_SIZE, env_data.max_short_size);
     ccl_env_parse_cache_key();
+
+    ccl_env_2_size_t(CCL_CHUNK_COUNT, env_data.chunk_count);
+    ccl_env_2_size_t(CCL_MIN_CHUNK_SIZE, env_data.min_chunk_size);
+    ccl_env_2_size_t(CCL_RS_CHUNK_COUNT, env_data.rs_chunk_count);
+    ccl_env_2_size_t(CCL_RS_MIN_CHUNK_SIZE, env_data.rs_min_chunk_size);
+    ccl_env_2_size_t(CCL_AR2D_CHUNK_COUNT, env_data.ar2d_chunk_count);
+    ccl_env_2_size_t(CCL_AR2D_MIN_CHUNK_SIZE, env_data.ar2d_min_chunk_size);
 
     if (env_data.enable_unordered_coll && env_data.atl_transport != ccl_atl_ofi)
     {
@@ -214,7 +226,6 @@ void ccl_env_print()
     LOG_INFO(CCL_SPARSE_ALLREDUCE, ": ", (env_data.sparse_allreduce_algo_raw.length()) ?
         env_data.sparse_allreduce_algo_raw : CCL_ENV_NOT_SPECIFIED);
     LOG_INFO(CCL_UNORDERED_COLL, ": ", env_data.enable_unordered_coll);
-    LOG_INFO(CCL_ALLGATHERV_IOV, ": ", env_data.enable_allgatherv_iov);
 
     LOG_INFO(CCL_FUSION, ": ", env_data.enable_fusion);
     LOG_INFO(CCL_FUSION_BYTES_THRESHOLD, ": ", env_data.fusion_bytes_threshold);
@@ -228,6 +239,13 @@ void ccl_env_print()
     LOG_INFO(CCL_YIELD, ": ", ccl_yield_type_to_str(env_data.yield_type));
     LOG_INFO(CCL_MAX_SHORT_SIZE, ": ", env_data.max_short_size);
     LOG_INFO(CCL_CACHE_KEY, ": ", ccl_cache_key_type_to_str(env_data.cache_key_type));
+
+    LOG_INFO(CCL_CHUNK_COUNT, ": ", env_data.chunk_count);
+    LOG_INFO(CCL_MIN_CHUNK_SIZE, ": ", env_data.min_chunk_size);
+    LOG_INFO(CCL_RS_CHUNK_COUNT, ": ", env_data.rs_chunk_count);
+    LOG_INFO(CCL_RS_MIN_CHUNK_SIZE, ": ", env_data.rs_min_chunk_size);
+    LOG_INFO(CCL_AR2D_CHUNK_COUNT, ": ", env_data.ar2d_chunk_count);
+    LOG_INFO(CCL_AR2D_MIN_CHUNK_SIZE, ": ", env_data.ar2d_min_chunk_size);
 }
 
 constexpr const char* AVAILABLE_CORES_ENV = "I_MPI_PIN_INFO";
@@ -296,9 +314,9 @@ int ccl_env_parse_worker_affinity(size_t local_proc_idx, size_t local_proc_count
         return read_env;
     }
 
-    /* create copy of original buffer cause it will be modified in strsep */
+    /* create copy of original buffer because it will be modified in strsep */
     size_t affinity_len = strlen(affinity_to_parse);
-    affinity_copy = static_cast<char*>(CCL_MALLOC(affinity_len, "affinity_copy"));
+    affinity_copy = static_cast<char*>(CCL_CALLOC(affinity_len + 1, "affinity_copy"));
     CCL_MEMCPY(affinity_copy, affinity_to_parse, affinity_len);
     tmp = affinity_copy;
 
@@ -427,6 +445,7 @@ const char* ccl_atl_transport_to_str(ccl_atl_transport transport)
         default:
             CCL_FATAL("unknown transport ", transport);
     }
+    return "unknown";
 }
 
 const char* ccl_priority_mode_to_str(ccl_priority_mode mode)
@@ -442,4 +461,5 @@ const char* ccl_priority_mode_to_str(ccl_priority_mode mode)
         default:
             CCL_FATAL("unknown priority_mode ", mode);
     }
+    return "unknown";
 }

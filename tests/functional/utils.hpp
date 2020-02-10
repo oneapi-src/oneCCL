@@ -1,6 +1,5 @@
-
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -38,6 +37,10 @@
 #define TIMEOUT 30
 
 #define GETTID() syscall(SYS_gettid)
+#define UNUSED_ATTR __attribute__((unused))
+
+#define TEST_SUCCESS 0
+#define TEST_FAILURE 1
 
 #if 0
 
@@ -81,8 +84,8 @@
             {                                                                             \
                 if (strstr(argv[idx], OUTPUT_NAME_ARG))                                   \
                 {                                                                         \
-                    string patchedArg;                                                    \
-                    string originArg = string(argv[idx]);                                 \
+                    std::string patchedArg;                                               \
+                    std::string originArg = std::string(argv[idx]);                       \
                     size_t extPos = originArg.find(".xml");                               \
                     size_t argLen = strlen(OUTPUT_NAME_ARG);                              \
                     patchedArg = originArg.substr(argLen, extPos - argLen) + "_"          \
@@ -171,21 +174,20 @@ do                                                         \
             }                                                                        \
         } while (0)
 
-#define MAIN_FUNCTION()                           \
-    int main(int argc, char **argv, char* envs[]) \
-    {                                             \
-        init_test_params();                       \
-        ccl::environment::instance();             \
-        PATCH_OUTPUT_NAME_ARG(argc, argv);        \
-        testing::InitGoogleTest(&argc, argv);     \
-        int res = RUN_ALL_TESTS();                \
-        return res;                               \
+#define MAIN_FUNCTION()                                                             \
+    int main(int argc, char **argv, char* envs[])                                   \
+    {                                                                               \
+        init_test_params();                                                         \
+        ccl::environment::instance();                                               \
+        PATCH_OUTPUT_NAME_ARG(argc, argv);                                          \
+        testing::InitGoogleTest(&argc, argv);                                       \
+        ::testing::TestEventListeners& listeners =                                  \
+        ::testing::UnitTest::GetInstance()->listeners();                            \
+        delete listeners.Release(listeners.default_result_printer());               \
+        listeners.Append(new CustomPrinter);                                        \
+        int res = RUN_ALL_TESTS();                                                  \
+        return res;                                                                 \
     }
-
-#define UNUSED_ATTR __attribute__((unused))
-
-#define TEST_SUCCESS 0
-#define TEST_FAILURE 1
 
 #define TEST_CASES_DEFINITION(FuncName)                               \
     TEST_P(MainTest, FuncName) {                                      \
@@ -206,6 +208,7 @@ void init_coll_attr(ccl::coll_attr* coll_attr)
     coll_attr->synchronous = 0;
     coll_attr->match_id = NULL;
     coll_attr->to_cache = 0;
+    coll_attr->vector_buf = 0;
 }
 
 void print_err_message(char* err_message, std::ostream& output)
@@ -251,17 +254,17 @@ void print_err_message(char* err_message, std::ostream& output)
 std::ostream& operator<<(std::ostream& stream, ccl_test_conf const& test_conf)
 {
     return stream <<
-                    "data_type = "    << ccl_data_type_str[test_conf.data_type] <<
-                    "\nplace_type = " << ccl_place_type_str[test_conf.place_type] <<
-                    "\ncache_type = "   << ccl_cache_type_str[test_conf.cache_type] <<
-                    "\nsize_type = "     << ccl_size_type_str[test_conf.size_type] <<
-                    "\ncompletion_type = " << ccl_completion_type_str[test_conf.completion_type] <<
-                    "\nreduction_type = " << ccl_reduction_type_str[test_conf.reduction_type] <<
-                    "\ncomplete_order_type = " << ccl_order_type_str[test_conf.complete_order_type] <<
-                    "\nstart_order_type = "    << ccl_order_type_str[test_conf.start_order_type] <<
-                    "\nbuffer_count = "        << ccl_buffer_count_str[test_conf.buffer_count] <<
-                    "\nprolog_type = " << ccl_prolog_type_str[test_conf.prolog_type] <<
-                    "\nepilog_type = " << ccl_epilog_type_str[test_conf.epilog_type] << std::endl;
+                    "\n" << ccl_data_type_str[test_conf.data_type] <<
+                    "\n" << ccl_place_type_str[test_conf.place_type] <<
+                    "\n" << ccl_cache_type_str[test_conf.cache_type] <<
+                    "\n" << ccl_size_type_str[test_conf.size_type] <<
+                    "\n" << ccl_completion_type_str[test_conf.completion_type] <<
+                    "\n" << ccl_reduction_type_str[test_conf.reduction_type] <<
+                    "\n" << ccl_order_type_str[test_conf.complete_order_type] <<
+                    "\n" << ccl_order_type_str[test_conf.start_order_type] <<
+                    "\n" << ccl_buffer_count_str[test_conf.buffer_count] <<
+                    "\n" << ccl_prolog_type_str[test_conf.prolog_type] <<
+                    "\n" << ccl_epilog_type_str[test_conf.epilog_type] << std::endl;
 }
 template <typename T>
 T get_expected_min(size_t i, size_t buf_idx, size_t process_count, size_t coeff = 1)
@@ -277,3 +280,34 @@ T get_expected_max(size_t i, size_t buf_idx, size_t process_count, size_t coeff 
         return (T)(coeff * (i + buf_idx + process_count - 1));
     return (T)(coeff * (i + buf_idx));
 }
+class CustomPrinter : public ::testing::EmptyTestEventListener {
+
+    virtual void OnTestCaseStart(const ::testing::TestCase& test_case) {
+    printf("Overall %d tests from %s\n", test_case.test_to_run_count(), test_case.name());
+    fflush(stdout);
+    }
+    virtual void OnTestCaseEnd(const ::testing::TestCase& test_case) {
+    if (!::testing::GTEST_FLAG(print_time)) return;
+
+    printf("Overall %d tests from %s (%s ms total)\n\n",
+            test_case.test_to_run_count(), test_case.name(),
+            ::testing::internal::StreamableToString(test_case.elapsed_time()).c_str());
+    fflush(stdout);
+    }
+    virtual void OnTestPartResult(const ::testing::TestPartResult& test_part_result) {
+        if (test_part_result.failed())
+            {
+                printf("%s in %s:%d\n%s\n",
+                        "*** Failure",
+                        test_part_result.file_name(),
+                        test_part_result.line_number(),
+                        test_part_result.summary());
+            }
+            else
+                printf("*** Success");
+    }
+    virtual void OnTestEnd(const ::testing::TestInfo& test_info) {
+    }
+    protected:
+        testing::TestEventListener* listener;
+  };

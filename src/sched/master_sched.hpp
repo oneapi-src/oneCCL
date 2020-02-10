@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #pragma once
 #include "sched/sched_base.hpp"
 
@@ -42,7 +41,8 @@ public:
     }
 
     ccl_master_sched(const ccl_master_sched &src) = delete;
-    ~ccl_master_sched();
+
+    ~ccl_master_sched() override;
 
 
     void add_partial_sched(ccl_coll_param& param);

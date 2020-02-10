@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -27,11 +27,13 @@ ccl_status_t ccl_coll_build_direct_alltoall(ccl_sched* sched,
                                             ccl_buffer send_buf,
                                             ccl_buffer recv_buf,
                                             size_t count,
-                                            ccl_datatype_internal_t dtype)
+                                            ccl_datatype_internal_t dtype,
+                                            ccl_comm* comm)
 {
     LOG_DEBUG("build direct alltoall");
 
-    entry_factory::make_entry<alltoall_entry>(sched, send_buf, recv_buf, count, dtype);
+    entry_factory::make_entry<alltoall_entry>(sched, send_buf, recv_buf,
+                                              count, dtype, comm);
     return ccl_status_success;
 }
 
@@ -41,12 +43,13 @@ ccl_status_t ccl_coll_build_scatter_alltoall(ccl_sched* sched,
                                              ccl_buffer send_buf,
                                              ccl_buffer recv_buf,
                                              size_t count,
-                                             ccl_datatype_internal_t dtype)
+                                             ccl_datatype_internal_t dtype,
+                                             ccl_comm* comm)
 {
     LOG_DEBUG("build scatter alltoall");
 
-    size_t comm_size     = sched->coll_param.comm->size();
-    size_t this_rank     = sched->coll_param.comm->rank();
+    size_t comm_size     = comm->size();
+    size_t this_rank     = comm->rank();
     size_t dtype_size    = ccl_datatype_get_size(dtype);
     size_t* offsets      = static_cast<size_t*>(CCL_MALLOC(comm_size * sizeof(size_t), "offsets"));
     ccl_status_t status = ccl_status_success;

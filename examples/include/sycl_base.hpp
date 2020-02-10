@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #include <iostream>
 #include <stdio.h>
 #include <CL/sycl.hpp>
@@ -38,6 +37,18 @@ inline bool has_gpu()
     }
     return false;
 }
+inline bool has_accelerator()
+{
+    std::vector<cl::sycl::device> devices = cl::sycl::device::get_devices();
+    for (const auto& device : devices)
+    {
+        if (device.is_accelerator())
+        {
+            return true;
+        }
+    }
+    return false;
+}
 inline int create_sycl_queue(int argc, char **argv, cl::sycl::queue &queue)
 {
     std::unique_ptr<cl::sycl::device_selector> selector;
@@ -49,8 +60,14 @@ inline int create_sycl_queue(int argc, char **argv, cl::sycl::queue &queue)
         }
         else if (strcmp(argv[1], "gpu") == 0)
         {
-            if (has_gpu()) {
+            if (has_gpu()) 
+            {
                 selector.reset(new cl::sycl::gpu_selector());
+            }
+            else if (has_accelerator()) 
+            {
+                selector.reset(new cl::sycl::host_selector());
+                std::cout << "Accelerator is the first in device list, but unavailable for multiprocessing, host_selector has been created instead of default_selector." << std::endl;
             }
             else
             {
@@ -64,7 +81,15 @@ inline int create_sycl_queue(int argc, char **argv, cl::sycl::queue &queue)
         }
         else if (strcmp(argv[1], "default") == 0)
         {
-            selector.reset(new cl::sycl::default_selector());
+            if (!has_accelerator())
+            {
+                selector.reset(new cl::sycl::default_selector());
+            }
+            else
+            {
+                selector.reset(new cl::sycl::host_selector());
+                std::cout << "Accelerator is the first in device list, but unavailable for multiprocessing, host_selector has been created instead of default_selector." << std::endl;
+            }
         }
         else
         {

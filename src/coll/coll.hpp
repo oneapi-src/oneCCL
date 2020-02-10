@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #pragma once
 
 #include "common/comm/comm.hpp"
@@ -54,35 +53,14 @@ struct ccl_coll_attr
     ccl_coll_attr(ccl_coll_attr&&) = delete;
     ccl_coll_attr& operator= (ccl_coll_attr&&) = delete;
 
-    ccl_prologue_fn_t prologue_fn;
-    ccl_epilogue_fn_t epilogue_fn;
-    ccl_reduction_fn_t reduction_fn;
-    size_t priority;
-    int synchronous;
-    int to_cache;
-    std::string match_id;
-};
-
-struct ccl_coll_entry_param
-{
-    ccl_coll_type ctype;
-    ccl_buffer buf;
-    ccl_buffer send_buf;
-    ccl_buffer recv_buf;
-    size_t count;
-    size_t send_count;
-    ccl_buffer recv_counts;
-    ccl_datatype_internal_t dtype;
-    ccl_reduction_t reduction;
-    size_t root;
-    const ccl_stream* stream;
-    ccl_comm* comm;
-
-#ifdef CCL_ENABLE_SYCL
-    ccl_sycl_buffer_t* sycl_send_buf;
-    ccl_sycl_buffer_t* sycl_recv_buf;
-    ccl_sycl_buffer_t* sycl_buf;
-#endif /* CCL_ENABLE_SYCL */
+    ccl_prologue_fn_t prologue_fn = nullptr;
+    ccl_epilogue_fn_t epilogue_fn = nullptr;
+    ccl_reduction_fn_t reduction_fn = nullptr;
+    size_t priority = 0;
+    int synchronous = 0;
+    int to_cache = 0;
+    int vector_buf = 0;
+    std::string match_id{};
 };
 
 struct ccl_coll_sparse_param
@@ -113,17 +91,25 @@ struct ccl_coll_param
     const ccl_stream* stream;
     ccl_comm* comm;
     ccl_coll_sparse_param sparse_param;
-    std::vector<void*> ag_recv_bufs;
 
 #ifdef CCL_ENABLE_SYCL
     ccl_sycl_buffer_t* sycl_send_buf;
     ccl_sycl_buffer_t* sycl_recv_buf;
     ccl_sycl_buffer_t* sycl_buf;
 #endif /* CCL_ENABLE_SYCL */
-
 };
 
-//ccl_coll_param create_coll_param_from_entry_param(ccl_coll_entry_param& prm);
+/*
+    explicitly split coll_param and coll_param_copy
+    to separate coll_param structure which is used for interaction between different modules
+    and coll_param_copy which is used as storage for user options
+*/
+struct ccl_coll_param_copy
+{
+    /* keep copy of user options which can be invalidated after collective call */
+    std::vector<void*> ag_recv_bufs;
+    std::vector<size_t> ag_recv_counts;
+};
 
 const char* ccl_coll_type_to_str(ccl_coll_type type);
 
@@ -132,28 +118,32 @@ ccl_status_t ccl_coll_build_allgatherv(ccl_sched* sched,
                                        size_t send_count,
                                        ccl_buffer recv_buf,
                                        const size_t* recv_counts,
-                                       ccl_datatype_internal_t dtype);
+                                       ccl_datatype_internal_t dtype,
+                                       ccl_comm* comm);
 
 ccl_status_t ccl_coll_build_allreduce(ccl_sched* sched,
                                       ccl_buffer send_buf,
                                       ccl_buffer recv_buf,
                                       size_t count,
                                       ccl_datatype_internal_t dtype,
-                                      ccl_reduction_t reduction);
+                                      ccl_reduction_t reduction,
+                                      ccl_comm* comm);
 
 ccl_status_t ccl_coll_build_alltoall(ccl_sched* sched,
                                      ccl_buffer send_buf,
                                      ccl_buffer recv_buf,
                                      size_t count,
-                                     ccl_datatype_internal_t dtype);
+                                     ccl_datatype_internal_t dtype,
+                                     ccl_comm* comm);
 
-ccl_status_t ccl_coll_build_barrier(ccl_sched* sched);
+ccl_status_t ccl_coll_build_barrier(ccl_sched* sched, ccl_comm* comm);
 
 ccl_status_t ccl_coll_build_bcast(ccl_sched* sched,
                                   ccl_buffer buf,
                                   size_t count,
                                   ccl_datatype_internal_t dtype,
-                                  size_t root);
+                                  size_t root,
+                                  ccl_comm* comm);
 
 ccl_status_t ccl_coll_build_reduce(ccl_sched* sched,
                                    ccl_buffer send_buf,
@@ -161,7 +151,17 @@ ccl_status_t ccl_coll_build_reduce(ccl_sched* sched,
                                    size_t count,
                                    ccl_datatype_internal_t dtype,
                                    ccl_reduction_t reduction,
-                                   size_t root);
+                                   size_t root,
+                                   ccl_comm* comm);
+
+
+ccl_status_t ccl_coll_build_reduce_scatter(ccl_sched* sched,
+                                           ccl_buffer send_buf,
+                                           ccl_buffer recv_buf,
+                                           size_t send_count,
+                                           ccl_datatype_internal_t dtype,
+                                           ccl_reduction_t reduction,
+                                           ccl_comm* comm);
 
 ccl_status_t ccl_coll_build_sparse_allreduce(ccl_sched* sched,
                                              ccl_buffer send_ind_buf, size_t send_ind_count,
@@ -170,7 +170,8 @@ ccl_status_t ccl_coll_build_sparse_allreduce(ccl_sched* sched,
                                              ccl_buffer recv_val_buf, size_t* recv_val_count,
                                              ccl_datatype_internal_t index_dtype,
                                              ccl_datatype_internal_t value_dtype,
-                                             ccl_reduction_t reduction);
+                                             ccl_reduction_t reduction,
+                                             ccl_comm* comm);
 
 ccl_request* ccl_allgatherv_impl(const void* send_buf,
                                  size_t send_count,

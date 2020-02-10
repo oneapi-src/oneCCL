@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,10 +13,10 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #pragma once
 
 #include <atomic>
+#include <functional>
 #include "common/global/global.hpp"
 #include "common/log/log.hpp"
 
@@ -24,14 +24,14 @@ class alignas(CACHELINE_SIZE) ccl_request
 {
 public:
     using dump_func = std::function<void(std::ostream &)>;
-#ifdef ENABLE_DEBUG    
+#ifdef ENABLE_DEBUG
     void set_dump_callback(dump_func &&callback)
     {
         dump_callback = std::move(callback);
     }
 #endif
 
-    ~ccl_request()
+    virtual ~ccl_request()
     {
         auto counter = completion_counter.load(std::memory_order_acquire);
         LOG_DEBUG("delete req ", this, " with counter ", counter);

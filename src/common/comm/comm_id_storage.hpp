@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #pragma once
 
 #include "ccl_types.h"
@@ -142,7 +141,7 @@ private:
             if (free_ids[id])
             {
                 free_ids[id] = false;
-                LOG_DEBUG("Found free comm id ", id);
+                LOG_DEBUG("found free comm id ", id);
                 return id;
             }
         }
@@ -154,7 +153,7 @@ private:
             if (free_ids[id])
             {
                 free_ids[id] = false;
-                LOG_DEBUG("Found free comm id ", id);
+                LOG_DEBUG("found free comm id ", id);
                 return id;
             }
         }

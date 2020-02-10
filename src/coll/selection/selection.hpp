@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #pragma once
 
 #include "coll/selection/selector.hpp"
@@ -55,10 +54,17 @@ public:
     }
 
     template<ccl_coll_type coll_id>
-    typename ccl_algorithm_selector<coll_id>::type get(const ccl_coll_param& param) const
+    typename ccl_algorithm_selector<coll_id>::type get(const ccl_selector_param& param) const
     {
         CCL_THROW_IF_NOT(coll_id == param.ctype);
         return std::get<coll_id>(selectors).get(param);
+    }
+
+    template<ccl_coll_type coll_id>
+    bool is_direct(const ccl_selector_param& param) const
+    {
+        CCL_THROW_IF_NOT(coll_id == param.ctype);
+        return std::get<coll_id>(selectors).is_direct(param);
     }
 
 private:

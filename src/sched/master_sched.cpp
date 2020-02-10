@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #include "common/global/global.hpp"
 #include "common/utils/sync_object.hpp"
 #include "parallelizer/parallelizer.hpp"
@@ -158,6 +157,9 @@ ccl_master_sched::ccl_master_sched_ptr ccl_master_sched::create(const ccl_coll_p
     CCL_THROW_IF_NOT(env_data.atl_transport == ccl_atl_ofi || !(attr.reduction_fn),
                      "for now only OFI transport supports custom_reduction functionality");
 
+    CCL_THROW_IF_NOT(param.ctype == ccl_coll_allgatherv || !(attr.vector_buf),
+                     "for now only allgatherv supports vector buffer functionality");
+
     ccl_sched_key key;
     ccl_master_sched_ptr sched = nullptr;
 
@@ -169,8 +171,7 @@ ccl_master_sched::ccl_master_sched_ptr ccl_master_sched::create(const ccl_coll_p
         {
             /* update some parameters and attributes in existing schedule
                as they could be changed since previous call */
-            sched->update_coll_param(param);
-            sched->update_coll_attr(attr);
+            sched->update_coll_param_and_attr(param, attr);
 
             LOG_DEBUG("found sched, reuse ", sched, ", type ",
                       ccl_coll_type_to_str(sched->coll_param.ctype));
@@ -189,7 +190,7 @@ ccl_master_sched::ccl_master_sched_ptr ccl_master_sched::create(const ccl_coll_p
         if (attr.to_cache && !postpone_caching)
         {
             global_data.sched_cache->add(std::move(key), new_sched.get());
-            // no use 'key' anymore, because it's moved
+            // don't use 'key' anymore, because it was moved
         }
 
         sched = new_sched.release();

@@ -1,6 +1,5 @@
-
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -14,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #include "base.hpp"
 
 template <typename T>
@@ -22,6 +20,7 @@ void typed_test_param<T>::prepare_coll_attr(size_t idx)
 {
     coll_attr.priority = generate_priority_value(idx);
     coll_attr.to_cache = test_conf.cache_type;
+    coll_attr.vector_buf = 0;
     char* test_unordered_coll = getenv("CCL_UNORDERED_COLL");
     if (test_unordered_coll && atoi(test_unordered_coll) == 1)
     {
@@ -102,7 +101,6 @@ void typed_test_param<T>::define_start_order()
                 buf_indexes[idx-1] = buf_indexes[buf_idx];
                 buf_indexes[buf_idx] = tmp_idx;
             }
-                    
         }
         else {
             std::iota(buf_indexes.begin(), buf_indexes.end(), 0);
@@ -224,6 +222,7 @@ void base_test<T>::fill_buffers(typed_test_param<T>& param)
         }
     }
 }
+
 template <typename T>
 int base_test<T>::run(typed_test_param<T>& param)
 {

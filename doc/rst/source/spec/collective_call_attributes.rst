@@ -6,7 +6,7 @@ Collective Call Attributes
     /* Extendable list of collective attributes */
     typedef struct
     {
-        /** 
+        /**
         * Callbacks into application code
         * for pre-/post-processing data
         * and custom reduction operation
@@ -20,6 +20,8 @@ Collective Call Attributes
         int synchronous;
         /* Persistent/non-persistent */
         int to_cache;
+        /* Treat buffer as vector/regular - applicable for allgatherv only */
+        int vector_buf;
         /**
         * Id of the operation. If specified, new communicator will be created and collective
         * operations with the same @b match_id will be executed in the same order.

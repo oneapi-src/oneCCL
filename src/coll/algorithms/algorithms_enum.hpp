@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,18 +13,18 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #pragma once
 
 #define CCL_COLL_LIST \
   ccl_coll_allgatherv, ccl_coll_allreduce, ccl_coll_alltoall, \
   ccl_coll_barrier, ccl_coll_bcast, ccl_coll_reduce, \
-  ccl_coll_sparse_allreduce
+  ccl_coll_reduce_scatter, ccl_coll_sparse_allreduce
 
 enum ccl_coll_allgatherv_algo
 {
     ccl_coll_allgatherv_direct,
     ccl_coll_allgatherv_naive,
+    ccl_coll_allgatherv_ring,
     ccl_coll_allgatherv_flat,
     ccl_coll_allgatherv_multi_bcast,
 
@@ -40,6 +40,7 @@ enum ccl_coll_allreduce_algo
     ccl_coll_allreduce_ring_rma,
     ccl_coll_allreduce_double_tree,
     ccl_coll_allreduce_recursive_doubling,
+    ccl_coll_allreduce_2d,
 
     ccl_coll_allreduce_last_value
 };
@@ -52,6 +53,7 @@ enum ccl_coll_alltoall_algo
 
     ccl_coll_alltoall_last_value
 };
+
 enum ccl_coll_barrier_algo
 {
     ccl_coll_barrier_direct,
@@ -80,6 +82,13 @@ enum ccl_coll_reduce_algo
     ccl_coll_reduce_last_value
 };
 
+enum ccl_coll_reduce_scatter_algo
+{
+    ccl_coll_reduce_scatter_ring,
+
+   ccl_coll_reduce_scatter_last_value
+};
+
 enum ccl_coll_sparse_allreduce_algo
 {
     ccl_coll_sparse_allreduce_basic,
@@ -98,6 +107,7 @@ enum ccl_coll_type
     ccl_coll_barrier,
     ccl_coll_bcast,
     ccl_coll_reduce,
+    ccl_coll_reduce_scatter,
     ccl_coll_sparse_allreduce,
     ccl_coll_internal,
 

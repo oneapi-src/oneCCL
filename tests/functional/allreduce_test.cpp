@@ -1,6 +1,5 @@
-
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -14,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #define TEST_CCL_REDUCE
 #define Collective_Name "CCL_ALLREDUCE"
 
@@ -40,7 +38,8 @@ public:
                         ((elem_idx + buf_idx) * param.process_count));
                     if (param.recv_buf[buf_idx][elem_idx] != expected)
                     {
-                        snprintf(allreduce_test::get_err_message(), ERR_MESSAGE_MAX_LEN, "[%zu] sent send_buf[%zu][%zu] = %f, got recv_buf[%zu][%zu] = %f, but expected = %f\n",
+                        snprintf(allreduce_test::get_err_message(), ERR_MESSAGE_MAX_LEN,
+                                 "[%zu] sent send_buf[%zu][%zu] = %f, got recv_buf[%zu][%zu] = %f, but expected = %f\n",
                                  param.process_idx, buf_idx, elem_idx, (double) param.send_buf[buf_idx][elem_idx], buf_idx,
                                  elem_idx, (double) param.recv_buf[buf_idx][elem_idx], (double) expected);
                         return TEST_FAILURE;
@@ -52,7 +51,8 @@ public:
                     T expected = get_expected_max<T>(elem_idx, buf_idx, param.process_count);
                     if (param.recv_buf[buf_idx][elem_idx] != expected)
                     {
-                        snprintf(allreduce_test::get_err_message(), ERR_MESSAGE_MAX_LEN, "[%zu] sent send_buf[%zu][%zu] = %f, got recv_buf[%zu][%zu] = %f, but expected = %f\n",
+                        snprintf(allreduce_test::get_err_message(), ERR_MESSAGE_MAX_LEN,
+                                 "[%zu] sent send_buf[%zu][%zu] = %f, got recv_buf[%zu][%zu] = %f, but expected = %f\n",
                                  param.process_idx, buf_idx, elem_idx, (double) param.send_buf[buf_idx][elem_idx], buf_idx,
                                  elem_idx, (double) param.recv_buf[buf_idx][elem_idx], (double) expected);
                         return TEST_FAILURE;
@@ -63,7 +63,8 @@ public:
                     T expected = get_expected_min<T>(elem_idx, buf_idx, param.process_count);
                     if (param.recv_buf[buf_idx][elem_idx] != expected)
                     {
-                        snprintf(allreduce_test::get_err_message(), ERR_MESSAGE_MAX_LEN, "[%zu] sent send_buf[%zu][%zu] = %f, got recv_buf[%zu][%zu] = %f, but expected = %f\n",
+                        snprintf(allreduce_test::get_err_message(), ERR_MESSAGE_MAX_LEN,
+                                 "[%zu] sent send_buf[%zu][%zu] = %f, got recv_buf[%zu][%zu] = %f, but expected = %f\n",
                                  param.process_idx, buf_idx, elem_idx, (double) param.send_buf[buf_idx][elem_idx], buf_idx,
                                  elem_idx, (double) param.recv_buf[buf_idx][elem_idx], (double) expected);
                         return TEST_FAILURE;
@@ -78,7 +79,8 @@ public:
                     }
                     if (param.recv_buf[buf_idx][elem_idx] != expected)
                     {
-                        snprintf(allreduce_test::get_err_message(), ERR_MESSAGE_MAX_LEN, "[%zu] sent send_buf[%zu][%zu] = %f, got recv_buf[%zu][%zu] = %f, but expected = %f\n",
+                        snprintf(allreduce_test::get_err_message(), ERR_MESSAGE_MAX_LEN,
+                                 "[%zu] sent send_buf[%zu][%zu] = %f, got recv_buf[%zu][%zu] = %f, but expected = %f\n",
                                  param.process_idx, buf_idx, elem_idx, (double) param.send_buf[buf_idx][elem_idx], buf_idx,
                                  elem_idx, (double) param.recv_buf[buf_idx][elem_idx], (double) expected);
                         return TEST_FAILURE;

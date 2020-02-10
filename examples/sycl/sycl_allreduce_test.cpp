@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #include "ccl.h"
 #include "sycl_base.hpp"
 
@@ -40,11 +39,12 @@ int main(int argc, char **argv)
     /* create SYCL stream */
     ccl_stream_create(ccl_stream_sycl, &q, &stream);
 
-    /* open sendbuf and initialize it on the CPU side */
+    /* open buffers and initialize them on the CPU side */
     auto host_acc_sbuf = sendbuf.get_access<mode::write>();
-
+    auto host_acc_rbuf = recvbuf.get_access<mode::write>();
     for (i = 0; i < COUNT; i++) {
         host_acc_sbuf[i] = rank;
+        host_acc_rbuf[i] = -1;
     }
 
     /* open sendbuf and modify it on the target device side */

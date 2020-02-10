@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright 2003-2019 Intel Corporation.
+# Copyright 2003-2020 Intel Corporation.
 # 
 # This software and the related documents are Intel copyrighted materials, and
 # your use of them is governed by the express license under which they were
@@ -259,7 +259,7 @@ for arg in "$@" ; do
     -v)
     # Pass this argument to the compiler as well.
     echo "$(basename $0) for the Intel(R) MPI Library $MPIVERSION for Linux*"
-    echo "Copyright 2003-2019, Intel Corporation."
+    echo "Copyright 2003-2020, Intel Corporation."
     # if there is only 1 argument, it must be -v.
     if [ "$#" -eq "1" ] ; then
         linking=no

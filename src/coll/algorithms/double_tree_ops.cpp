@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #include "common/utils/tree.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
 #include "sched/sched.hpp"
@@ -23,23 +22,29 @@ static void bcast_tree(const ccl_bin_tree& tree,
                        ccl_buffer buffer,
                        size_t count,
                        ccl_datatype_internal_t dtype,
-                       ccl_op_id_t op_id)
+                       ccl_comm* comm)
 {
     if (tree.parent() != -1)
     {
         LOG_DEBUG("recv from parent ", tree.parent());
-        entry_factory::make_entry<recv_entry>(sched, buffer, count, dtype, static_cast<size_t>(tree.parent()), op_id);
+        entry_factory::make_entry<recv_entry>(sched, buffer, count, dtype,
+                                              static_cast<size_t>(tree.parent()),
+                                              comm);
         sched->add_barrier();
     }
     if (tree.left() != -1)
     {
         LOG_DEBUG("send to left ", tree.left());
-        entry_factory::make_entry<send_entry>(sched, buffer, count, dtype, static_cast<size_t>(tree.left()), op_id);
+        entry_factory::make_entry<send_entry>(sched, buffer, count, dtype,
+                                              static_cast<size_t>(tree.left()),
+                                              comm);
     }
     if (tree.right() != -1)
     {
         LOG_DEBUG("send to right ", tree.right());
-        entry_factory::make_entry<send_entry>(sched, buffer, count, dtype, static_cast<size_t>(tree.right()), op_id);
+        entry_factory::make_entry<send_entry>(sched, buffer, count, dtype,
+                                              static_cast<size_t>(tree.right()),
+                                              comm);
     }
 }
 
@@ -49,19 +54,21 @@ static void reduce_tree(const ccl_bin_tree& tree,
                         size_t count,
                         ccl_datatype_internal_t dtype,
                         ccl_reduction_t reduction,
-                        ccl_op_id_t op_id)
+                        ccl_comm* comm)
 {
     if (tree.left() != -1)
     {
         LOG_DEBUG("recv_reduce left ", tree.left());
         entry_factory::make_entry<recv_reduce_entry>(sched, buffer, count, nullptr, dtype, reduction,
-                                                     static_cast<size_t>(tree.left()), ccl_buffer(), op_id);
+                                                     static_cast<size_t>(tree.left()),
+                                                     ccl_buffer(), comm);
     }
     if (tree.right() != -1)
     {
         LOG_DEBUG("recv_reduce right ", tree.right());
         entry_factory::make_entry<recv_reduce_entry>(sched, buffer, count, nullptr, dtype, reduction,
-                                                     static_cast<size_t>(tree.right()), ccl_buffer(), op_id);
+                                                     static_cast<size_t>(tree.right()),
+                                                     ccl_buffer(), comm);
     }
     if (tree.parent() != -1)
     {
@@ -70,7 +77,9 @@ static void reduce_tree(const ccl_bin_tree& tree,
             sched->add_barrier();
         }
         LOG_DEBUG("send to parent ", tree.parent());
-        entry_factory::make_entry<send_entry>(sched, buffer, count, dtype, static_cast<size_t>(tree.parent()), op_id);
+        entry_factory::make_entry<send_entry>(sched, buffer, count, dtype,
+                                              static_cast<size_t>(tree.parent()),
+                                              comm);
     }
 }
 
@@ -80,19 +89,20 @@ static void reduce_bcast_tree(const ccl_bin_tree& tree,
                               size_t count,
                               ccl_datatype_internal_t dtype,
                               ccl_reduction_t reduction,
-                              ccl_op_id_t op_id)
+                              ccl_comm* comm)
 {
     if (tree.left() != -1)
     {
         LOG_DEBUG("recv_reduce left ", tree.left());
         entry_factory::make_entry<recv_reduce_entry>(sched, buffer, count, nullptr, dtype, reduction,
-                                                     static_cast<size_t>(tree.left()), ccl_buffer(), op_id);
+                                                     static_cast<size_t>(tree.left()), ccl_buffer(), comm);
     }
     if (tree.right() != -1)
     {
         LOG_DEBUG("recv_reduce right ", tree.right());
         entry_factory::make_entry<recv_reduce_entry>(sched, buffer, count, nullptr, dtype, reduction,
-                                                     static_cast<size_t>(tree.right()), ccl_buffer(), op_id);
+                                                     static_cast<size_t>(tree.right()),
+                                                     ccl_buffer(), comm);
     }
     if (tree.parent() != -1)
     {
@@ -102,10 +112,14 @@ static void reduce_bcast_tree(const ccl_bin_tree& tree,
         }
 
         LOG_DEBUG("send to parent ", tree.parent());
-        entry_factory::make_entry<send_entry>(sched, buffer, count, dtype, static_cast<size_t>(tree.parent()), op_id);
+        entry_factory::make_entry<send_entry>(sched, buffer, count, dtype,
+                                              static_cast<size_t>(tree.parent()),
+                                              comm);
 
         LOG_DEBUG("recv from parent ", tree.parent());
-        entry_factory::make_entry<recv_entry>(sched, buffer, count, dtype, static_cast<size_t>(tree.parent()), op_id);
+        entry_factory::make_entry<recv_entry>(sched, buffer, count, dtype,
+                                              static_cast<size_t>(tree.parent()),
+                                              comm);
     }
 
     if (tree.left() != -1 || tree.right() != -1)
@@ -116,12 +130,16 @@ static void reduce_bcast_tree(const ccl_bin_tree& tree,
     if (tree.left() != -1)
     {
         LOG_DEBUG("send to left ", tree.left());
-        entry_factory::make_entry<send_entry>(sched, buffer, count, dtype, static_cast<size_t>(tree.left()), op_id);
+        entry_factory::make_entry<send_entry>(sched, buffer, count, dtype,
+                                              static_cast<size_t>(tree.left()),
+                                              comm);
     }
     if (tree.right() != -1)
     {
         LOG_DEBUG("send to right ", tree.right());
-        entry_factory::make_entry<send_entry>(sched, buffer, count, dtype, static_cast<size_t>(tree.right()), op_id);
+        entry_factory::make_entry<send_entry>(sched, buffer, count, dtype,
+                                              static_cast<size_t>(tree.right()),
+                                              comm);
     }
 }
 
@@ -132,7 +150,8 @@ ccl_status_t ccl_coll_build_double_tree_op(ccl_sched* sched,
                                            size_t count,
                                            ccl_datatype_internal_t dtype,
                                            ccl_reduction_t op,
-                                           const ccl_double_tree& dtree)
+                                           const ccl_double_tree& dtree,
+                                           ccl_comm* comm)
 {
     ccl_status_t status = ccl_status_success;
 
@@ -204,48 +223,48 @@ ccl_status_t ccl_coll_build_double_tree_op(ccl_sched* sched,
         switch (coll_type)
         {
             case ccl_coll_bcast:
-                entry_factory::make_entry<chain_call_entry>(sched,
-                    [t1_work_buf, t1_work_count, dtype, t1_op_id, t1](ccl_sched* s)
+                entry_factory::make_entry<subsched_entry>(sched, t1_op_id,
+                    [t1_work_buf, t1_work_count, dtype, t1, comm](ccl_sched* s)
                     {
-                        bcast_tree(t1, s, t1_work_buf, t1_work_count, dtype, t1_op_id);
+                        bcast_tree(t1, s, t1_work_buf, t1_work_count, dtype, comm);
                     }, "bcast_t1");
 
-                entry_factory::make_entry<chain_call_entry>(sched,
-                    [t2_work_buf, t2_work_count, dtype, t2_op_id, t2](ccl_sched* s)
+                entry_factory::make_entry<subsched_entry>(sched, t2_op_id,
+                    [t2_work_buf, t2_work_count, dtype, t2, comm](ccl_sched* s)
                     {
-                        bcast_tree(t2, s, t2_work_buf, t2_work_count, dtype, t2_op_id);
+                        bcast_tree(t2, s, t2_work_buf, t2_work_count, dtype, comm);
                     }, "bcast_t2");
 
                 break;
             case ccl_coll_reduce:
             {
-                if(sched->coll_param.comm->rank() % 2 == 0)
+                if (comm->rank() % 2 == 0)
                 {
                     //even ranks are leaves in T2, start schedule with T2
-                    entry_factory::make_entry<chain_call_entry>(sched,
-                        [t2_work_buf, t2_work_count, dtype, t2_op_id, op, t2](ccl_sched* s)
+                    entry_factory::make_entry<subsched_entry>(sched, t2_op_id,
+                        [t2_work_buf, t2_work_count, dtype, op, t2, comm](ccl_sched* s)
                         {
-                            reduce_tree(t2, s, t2_work_buf, t2_work_count, dtype, op, t2_op_id);
+                            reduce_tree(t2, s, t2_work_buf, t2_work_count, dtype, op, comm);
                         },"reduce_t2");
 
-                    entry_factory::make_entry<chain_call_entry>(sched,
-                        [t1_work_buf, t1_work_count, dtype, t1_op_id, op, t1](ccl_sched* s)
+                    entry_factory::make_entry<subsched_entry>(sched, t1_op_id,
+                        [t1_work_buf, t1_work_count, dtype, op, t1, comm](ccl_sched* s)
                         {
-                            reduce_tree(t1, s, t1_work_buf, t1_work_count, dtype, op, t1_op_id);
+                            reduce_tree(t1, s, t1_work_buf, t1_work_count, dtype, op, comm);
                         },"reduce_t1");
                 }
                 else
                 {
-                    entry_factory::make_entry<chain_call_entry>(sched,
-                        [t2_work_buf, t2_work_count, dtype, t2_op_id, op, t2](ccl_sched* s)
+                    entry_factory::make_entry<subsched_entry>(sched, t2_op_id,
+                        [t2_work_buf, t2_work_count, dtype, op, t2, comm](ccl_sched* s)
                         {
-                            reduce_tree(t2, s, t2_work_buf, t2_work_count, dtype, op, t2_op_id);
+                            reduce_tree(t2, s, t2_work_buf, t2_work_count, dtype, op, comm);
                         },"reduce_t2");
 
-                    entry_factory::make_entry<chain_call_entry>(sched,
-                        [t1_work_buf, t1_work_count, dtype, t1_op_id, op, t1](ccl_sched* s)
+                    entry_factory::make_entry<subsched_entry>(sched, t1_op_id,
+                        [t1_work_buf, t1_work_count, dtype, op, t1, comm](ccl_sched* s)
                         {
-                            reduce_tree(t1, s, t1_work_buf, t1_work_count, dtype, op, t1_op_id);
+                            reduce_tree(t1, s, t1_work_buf, t1_work_count, dtype, op, comm);
                         },"reduce_t1");
                 }
 
@@ -253,35 +272,35 @@ ccl_status_t ccl_coll_build_double_tree_op(ccl_sched* sched,
             }
             case ccl_coll_allreduce:
             {
-                if(sched->coll_param.comm->rank() % 2 == 0)
+                if (comm->rank() % 2 == 0)
                 {
                     //even ranks are leaves in T2, start schedule with T2
-                    entry_factory::make_entry<chain_call_entry>(sched,
-                        [t2_work_buf, t2_work_count, dtype, t2_op_id, op, t2](ccl_sched* s)
+                    entry_factory::make_entry<subsched_entry>(sched, t2_op_id,
+                        [t2_work_buf, t2_work_count, dtype, op, t2, comm](ccl_sched* s)
                         {
-                            reduce_bcast_tree(t2, s, t2_work_buf, t2_work_count, dtype, op, t2_op_id);
+                            reduce_bcast_tree(t2, s, t2_work_buf, t2_work_count, dtype, op, comm);
                         }, "reduce_bcast_t2");
 
-                    entry_factory::make_entry<chain_call_entry>(sched,
-                        [t1_work_buf, t1_work_count, dtype, t1_op_id, op, t1](ccl_sched* s)
+                    entry_factory::make_entry<subsched_entry>(sched, t1_op_id,
+                        [t1_work_buf, t1_work_count, dtype, op, t1, comm](ccl_sched* s)
                         {
-                            reduce_bcast_tree(t1, s, t1_work_buf, t1_work_count, dtype, op, t1_op_id);
+                            reduce_bcast_tree(t1, s, t1_work_buf, t1_work_count, dtype, op, comm);
                         },
                         "reduce_bcast_t1");
                 }
                 else
                 {
-                    entry_factory::make_entry<chain_call_entry>(sched,
-                        [t1_work_buf, t1_work_count, dtype, t1_op_id, op, t1](ccl_sched* s)
+                    entry_factory::make_entry<subsched_entry>(sched, t1_op_id,
+                        [t1_work_buf, t1_work_count, dtype, op, t1, comm](ccl_sched* s)
                         {
-                            reduce_bcast_tree(t1, s, t1_work_buf, t1_work_count, dtype, op, t1_op_id);
+                            reduce_bcast_tree(t1, s, t1_work_buf, t1_work_count, dtype, op, comm);
                         },
                         "reduce_bcast_t1");
 
-                    entry_factory::make_entry<chain_call_entry>(sched,
-                        [t2_work_buf, t2_work_count, dtype, t2_op_id, op, t2](ccl_sched* s)
+                    entry_factory::make_entry<subsched_entry>(sched, t2_op_id,
+                        [t2_work_buf, t2_work_count, dtype, op, t2, comm](ccl_sched* s)
                         {
-                            reduce_bcast_tree(t2, s, t2_work_buf, t2_work_count, dtype, op, t2_op_id);
+                            reduce_bcast_tree(t2, s, t2_work_buf, t2_work_count, dtype, op, comm);
                         }, "reduce_bcast_t2");
                 }
                 break;

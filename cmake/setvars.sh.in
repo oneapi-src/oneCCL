@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2016-2019 Intel Corporation
+# Copyright 2016-2020 Intel Corporation
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,14 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 WORK_DIR="$(cd "$( dirname "${BASH_SOURCE[0]}" )" > /dev/null && pwd)"
 export CCL_ROOT="$(cd ${WORK_DIR}/../; pwd -P)"
 if [ -z "${I_MPI_ROOT}" ]
 then
     export I_MPI_ROOT="${CCL_ROOT}"
 fi
-source ${CCL_ROOT}/env/vars.sh
+
+source ${CCL_ROOT}/env/vars.sh $1
 
 if [ -z "${PATH}" ]
 then

@@ -1,5 +1,5 @@
 /*
- Copyright 2016-2019 Intel Corporation
+ Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-
 #pragma once
 
 #include <iterator>
@@ -24,11 +23,13 @@
 template<typename algo_group_type>
 struct ccl_algorithm_selector_helper
 {
-    static bool can_use(algo_group_type algo, const ccl_coll_param& param,
+    static bool can_use(algo_group_type algo,
+                        const ccl_selector_param& param,
                         const ccl_selection_table_t<algo_group_type>& table);
+    static bool is_direct(algo_group_type algo);
     static const std::string& get_str_to_parse();
     static ccl_coll_type get_coll_id();
-    static size_t get_count(const ccl_coll_param& param);
+    static size_t get_count(const ccl_selector_param& param);
     static algo_group_type algo_from_str(const std::string& str);
     static const std::string& algo_to_str(algo_group_type algo);
 
@@ -54,7 +55,8 @@ const std::string& ccl_coll_algorithm_to_str(algo_group_type algo)
         return coll_id;                                                                           \
     }                                                                                             \
     template<>                                                                                    \
-    size_t ccl_algorithm_selector_helper<algo_group_type>::get_count(const ccl_coll_param& param) \
+    size_t ccl_algorithm_selector_helper<algo_group_type>::get_count(                             \
+        const ccl_selector_param& param)                                                          \
     {                                                                                             \
         return count_expr;                                                                        \
     }                                                                                             \
@@ -104,6 +106,10 @@ std::map<ccl_coll_bcast_algo,
 template<>
 std::map<ccl_coll_reduce_algo,
          std::string> ccl_algorithm_selector_helper<ccl_coll_reduce_algo>::algo_names;
+
+template<>
+std::map<ccl_coll_reduce_scatter_algo,
+         std::string> ccl_algorithm_selector_helper<ccl_coll_reduce_scatter_algo>::algo_names;
 
 template<>
 std::map<ccl_coll_sparse_allreduce_algo,
