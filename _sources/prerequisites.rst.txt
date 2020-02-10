@@ -10,7 +10,7 @@ With oneCCL being installed into ``<installdir>``, there are two ways to set up 
 
     .. prompt:: bash
 
-        source <installdir>/bin/cclvars.sh
+        source <installdir>/setvars.sh
 
 
 - Using |product_short| from |base_tk|:

@@ -70,6 +70,7 @@ Available collective operations (``<coll_name>``):
 
 -   ``ALLGATHER``
 -   ``ALLREDUCE``
+-   ``ALLTOALL``
 -   ``BARRIER``
 -   ``BCAST``
 -   ``REDUCE``
@@ -112,13 +113,30 @@ Available algirithms for each collective operation (``<algo_name>``):
    * - ``starlike``
      - May be beneficial for imbalanced workloads
    * - ``ring`` 
-     - reduce_scatter+allgather ring
+     - reduce_scatter+allgather ring.
+       Use ``CCL_RS_CHUNK_COUNT`` and ``CCL_RS_MIN_CHUNK_SIZE``
+       to control pipelining on reduce_scatter phase.
    * - ``ring_rma``
      - reduce_scatter+allgather ring using RMA communications
    * - ``double_tree``
      - Double-tree algorithm
    * - ``recursive_doubling``
      - Recursive doubling algorithm
+   * - ``2d``
+     - 2-dimensional allgorithm (reduce_scatter+allreduce+allgather)
+
+
+``ALLTOALL`` algorithms
+++++++++++++++++++++++++
+
+.. list-table:: 
+   :widths: 25 50
+   :align: left
+
+   * - ``direct``
+     - Based on ``MPI_Ialltoall``
+   * - ``scatter``
+     - Send to all, receive from all
 
 
 ``BARRIER`` algorithms
@@ -179,6 +197,56 @@ Available algirithms for each collective operation (``<algo_name>``):
      - Basic allgorithm
    * - ``mask``
      - Mask-based allgorithm
+
+
+CCL_RS_CHUNK_COUNT
+++++++++++++++++++
+**Syntax**
+
+:: 
+
+  CCL_RS_CHUNK_COUNT=<value>
+
+**Arguments**
+
+.. list-table:: 
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+   
+   * - <value> 
+     - Description
+   * - ``COUNT``
+     - Maximum number of chunks.
+
+**Description**
+
+Set this environment variable to specify maximum number of chunks for reduce_scatter phase in ring allreduce.
+
+
+CCL_RS_MIN_CHUNK_SIZE
++++++++++++++++++++++
+**Syntax**
+
+:: 
+
+  CCL_RS_MIN_CHUNK_SIZE=<value>
+
+**Arguments**
+
+.. list-table:: 
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+   
+   * - <value> 
+     - Description
+   * - ``SIZE``
+     - Minimum number of bytes in chunk.
+
+**Description**
+
+Set this environment variable to specify minimum number of bytes in chunk for reduce_scatter phase in ring allreduce. Affects actual value of ``CCL_RS_CHUNK_COUNT``.
 
 
 CCL_FUSION

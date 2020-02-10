@@ -94,11 +94,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../installation.html#installation-using-rpm">Installation using RPM</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="../sys_requirements.html">System requirements</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../sys_requirements.html#operating-systems">Operating Systems</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../sys_requirements.html#compilers">Compilers</a></li>
-</ul>
-</li>
 <li class="toctree-l1"><a class="reference internal" href="../sample.html">Sample application</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="../sample.html#build-details">Build details</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../sample.html#run-the-sample">Run the sample</a></li>
@@ -194,10 +189,13 @@
 <li class="toctree-l3"><a class="reference internal" href="../env_variables.html#available-algorithms">Available algorithms</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#allgatherv-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLGATHERV</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#allreduce-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLREDUCE</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../env_variables.html#alltoall-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLTOALL</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#barrier-algorithms"><code class="docutils literal notranslate"><span class="pre">BARRIER</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#bcast-algorithms"><code class="docutils literal notranslate"><span class="pre">BCAST</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#reduce-algorithms"><code class="docutils literal notranslate"><span class="pre">REDUCE</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#sparse-allreduce-algorithms"><code class="docutils literal notranslate"><span class="pre">SPARSE_ALLREDUCE</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../env_variables.html#ccl-rs-chunk-count">CCL_RS_CHUNK_COUNT</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../env_variables.html#ccl-rs-min-chunk-size">CCL_RS_MIN_CHUNK_SIZE</a></li>
 </ul>
 </li>
 </ul>
@@ -435,11 +433,11 @@
 
 <span class="k">typedef</span> <span class="k">enum</span> <span class="n">ccl_resize_action</span>
 <span class="p">{</span>
-    <span class="c1">// Wait additional changes for number of ranks</span>
+    <span class="cm">/* Wait additional changes for number of ranks */</span>
     <span class="n">ccl_ra_wait</span>     <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-    <span class="c1">// Run with current number of ranks</span>
+    <span class="cm">/* Run with current number of ranks */</span>
     <span class="n">ccl_ra_run</span>      <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="c1">// Finalize work</span>
+    <span class="cm">/* Finalize work */</span>
     <span class="n">ccl_ra_finalize</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
 <span class="p">}</span> <span class="n">ccl_resize_action_t</span><span class="p">;</span>
 
@@ -461,15 +459,24 @@
 <span class="cm">/* in_buf, in_count, inout_buf, out_count, context, datatype */</span>
 <span class="k">typedef</span> <span class="nf">ccl_status_t</span><span class="p">(</span><span class="o">*</span><span class="n">ccl_reduction_fn_t</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="kt">void</span><span class="o">*</span><span class="p">,</span> <span class="kt">size_t</span><span class="p">,</span> <span class="kt">void</span><span class="o">*</span><span class="p">,</span> <span class="kt">size_t</span><span class="o">*</span><span class="p">,</span> <span class="k">const</span> <span class="n">ccl_fn_context_t</span><span class="o">*</span><span class="p">,</span> <span class="n">ccl_datatype_t</span><span class="p">);</span>
 
-<span class="cm">/* Extendable list of collective attributes */</span>
 <span class="k">typedef</span> <span class="k">struct</span>
 <span class="p">{</span>
     <span class="n">ccl_prologue_fn_t</span> <span class="n">prologue_fn</span><span class="p">;</span>
     <span class="n">ccl_epilogue_fn_t</span> <span class="n">epilogue_fn</span><span class="p">;</span>
     <span class="n">ccl_reduction_fn_t</span> <span class="n">reduction_fn</span><span class="p">;</span>
+
+    <span class="cm">/* Priority for collective operation */</span>
     <span class="kt">size_t</span> <span class="n">priority</span><span class="p">;</span>
+
+    <span class="cm">/* Blocking/non-blocking */</span>
     <span class="kt">int</span> <span class="n">synchronous</span><span class="p">;</span>
+
+    <span class="cm">/* Persistent/non-persistent */</span>
     <span class="kt">int</span> <span class="n">to_cache</span><span class="p">;</span>
+
+    <span class="cm">/* Treat buffer as vector/regular - applicable for allgatherv only */</span>
+    <span class="kt">int</span> <span class="n">vector_buf</span><span class="p">;</span>
+
     <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">match_id</span><span class="p">;</span>
 <span class="p">}</span> <span class="n">ccl_coll_attr_t</span><span class="p">;</span>
 
@@ -510,7 +517,7 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019
+        &copy; Copyright 2020
 
     </p>
   </div>
