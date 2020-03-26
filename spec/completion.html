@@ -25,6 +25,8 @@
         <script type="text/javascript" src="../_static/underscore.js"></script>
         <script type="text/javascript" src="../_static/doctools.js"></script>
         <script type="text/javascript" src="../_static/language_data.js"></script>
+        <script type="text/javascript" src="../_static/sphinx_tabs/semantic-ui-2.4.1/tab.min.js"></script>
+        <script type="text/javascript" src="../_static/sphinx_tabs/tabs.js"></script>
         <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <script type="text/javascript" src="../_static/js/theme.js"></script>
@@ -34,7 +36,10 @@
   
   <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/sphinx_tabs/semantic-ui-2.4.1/segment.min.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/sphinx_tabs/semantic-ui-2.4.1/menu.min.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/sphinx_tabs/semantic-ui-2.4.1/tab.min.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/sphinx_tabs/tabs.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Error Handling" href="error_handling.html" />
@@ -88,7 +93,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../prerequisites.html">Prerequisites</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../installation.html#installation-using-cli">Installation using CLI</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../installation.html#installation-using-command-line-interface">Installation using Command Line Interface</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../installation.html#custom-installation">Custom Installation</a></li>
 </ul>
 </li>
@@ -117,10 +122,11 @@
 <li class="toctree-l2"><a class="reference internal" href="communication_primitives.html">Collective Opertations</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="communication_primitives.html#allgatherv">Allgatherv</a></li>
 <li class="toctree-l3"><a class="reference internal" href="communication_primitives.html#allreduce">Allreduce</a></li>
-<li class="toctree-l3"><a class="reference internal" href="communication_primitives.html#reduce">Reduce</a></li>
 <li class="toctree-l3"><a class="reference internal" href="communication_primitives.html#alltoall">Alltoall</a></li>
+<li class="toctree-l3"><a class="reference internal" href="communication_primitives.html#alltoallv">Alltoallv</a></li>
 <li class="toctree-l3"><a class="reference internal" href="communication_primitives.html#barrier">Barrier</a></li>
 <li class="toctree-l3"><a class="reference internal" href="communication_primitives.html#broadcast">Broadcast</a></li>
+<li class="toctree-l3"><a class="reference internal" href="communication_primitives.html#reduce">Reduce</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="ccl_datatypes.html">Data Types</a></li>
@@ -181,7 +187,6 @@
 <p class="caption"><span class="caption-text">Reference Materials</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../env_variables.html">Environment variables</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-atl-transport">CCL_ATL_TRANSPORT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../env_variables.html#collective-algorithms-selection">Collective algorithms selection</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-coll-name">CCL_&lt;coll_name&gt;</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#example">Example</a></li>
@@ -192,6 +197,7 @@
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#allgatherv-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLGATHERV</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#allreduce-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLREDUCE</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#alltoall-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLTOALL</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../env_variables.html#alltoallv-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLTOALLV</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#barrier-algorithms"><code class="docutils literal notranslate"><span class="pre">BARRIER</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#bcast-algorithms"><code class="docutils literal notranslate"><span class="pre">BCAST</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#reduce-algorithms"><code class="docutils literal notranslate"><span class="pre">REDUCE</span></code> algorithms</a></li>
@@ -202,23 +208,28 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-fusion">CCL_FUSION</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#fusion">Fusion</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-fusion">CCL_FUSION</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-fusion-bytes-threshold">CCL_FUSION_BYTES_THRESHOLD</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-fusion-count-threshold">CCL_FUSION_COUNT_THRESHOLD</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-fusion-cycle-ms">CCL_FUSION_CYCLE_MS</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#pmi">PMI</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-pm-type">CCL_PM_TYPE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-kvs-ip-exchange">CCL_KVS_IP_EXCHANGE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-k8s-api-addr">CCL_K8S_API_ADDR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-k8s-manager-type">CCL_K8S_MANAGER_TYPE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-kvs-ip-port">CCL_KVS_IP_PORT</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-world-size">CCL_WORLD_SIZE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-job-name">CCL_JOB_NAME</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-atl-transport">CCL_ATL_TRANSPORT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-unordered-coll">CCL_UNORDERED_COLL</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-priority">CCL_PRIORITY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-worker-count">CCL_WORKER_COUNT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-worker-affinity">CCL_WORKER_AFFINITY</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-pm-type">CCL_PM_TYPE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-kvs-ip-exchange">CCL_KVS_IP_EXCHANGE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-k8s-api-addr">CCL_K8S_API_ADDR</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-k8s-manager-type">CCL_K8S_MANAGER_TYPE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-kvs-ip-port">CCL_KVS_IP_PORT</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-world-size">CCL_WORLD_SIZE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-job-name">CCL_JOB_NAME</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../api/library_root.html">Library API</a><ul>
@@ -260,6 +271,7 @@
 <li class="toctree-l4"><a class="reference internal" href="../api/function_ccl_8h_1a976c31a7b1a91c33b6a9c09f13cd1796.html">Function ccl_allgatherv</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/function_ccl_8h_1a9e104eaa3dc77cb6d61030778637ed5a.html">Function ccl_allreduce</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/function_ccl_8h_1aa890514a6e244e841dcb1f3c6c4a616f.html">Function ccl_alltoall</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/function_ccl_8h_1ac1791fd81f923eb9af19b8bf07a5ecf5.html">Function ccl_alltoallv</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/function_ccl_8h_1ac5618870776b28aac8f1f9e84b178577.html">Function ccl_barrier</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/function_ccl_8h_1a1cdf74249061dbabd47ea293832e9296.html">Function ccl_bcast</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/function_ccl_8h_1abb843675ca240e8d1aa42d604537ca62.html">Function ccl_comm_create</a></li>
@@ -370,17 +382,31 @@
             
   <div class="section" id="track-communication-progress">
 <h1>Track Communication Progress<a class="headerlink" href="#track-communication-progress" title="Permalink to this headline">¶</a></h1>
-<p>The progress for any of the collective operations provided by oneCCL can be tracked using <a class="reference internal" href="#test">Test</a> or <a class="reference internal" href="#wait">Wait</a> function for <a class="reference internal" href="#request">Request</a> object.</p>
+<p>You can track the progress for any of the collective operations provided by oneCCL using the <a class="reference internal" href="#test">Test</a> or <a class="reference internal" href="#wait">Wait</a> function for the <a class="reference internal" href="#request">Request</a> object.</p>
 <div class="section" id="request">
 <h2>Request<a class="headerlink" href="#request" title="Permalink to this headline">¶</a></h2>
 <p>Each collective communication operation of oneCCL returns a request that can be used
 to query completion of this operation or to block the execution while the operation is in progress.
 oneCCL request is an opaque handle that is managed by corresponding APIs.</p>
-<p><strong>C version of oneCCL API:</strong></p>
+<div class="sphinx-tabs docutils container">
+<div class="ui top attached tabular menu sphinx-menu docutils container">
+<div class="active item sphinx-data-tab-fGNfYXBpfA== docutils container">
+<div class="docutils container">
+<p>C API</p>
+</div>
+</div>
+<div class="item sphinx-data-tab-fGNwcF9hcGl8 docutils container">
+<div class="docutils container">
+<p>C++ API</p>
+</div>
+</div>
+</div>
+<div class="ui bottom attached sphinx-tab tab segment sphinx-data-tab-fGNfYXBpfA== active docutils container">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span> <span class="kt">void</span><span class="o">*</span> <span class="n">ccl_request_t</span><span class="p">;</span>
 </pre></div>
 </div>
-<p><strong>C++ version of oneCCL API:</strong></p>
+</div>
+<div class="ui bottom attached sphinx-tab tab segment sphinx-data-tab-fGNwcF9hcGl8 docutils container">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cm">/**</span>
 <span class="cm">* A request interface that allows the user to track collective operation progress</span>
 <span class="cm">*/</span>
@@ -404,39 +430,68 @@ oneCCL request is an opaque handle that is managed by corresponding APIs.</p>
 </pre></div>
 </div>
 </div>
+</div>
+</div>
 <div class="section" id="test">
 <h2>Test<a class="headerlink" href="#test" title="Permalink to this headline">¶</a></h2>
 <p>Non-blocking operation that returns the completion status.</p>
-<p><strong>C version of oneCCL API:</strong></p>
+<div class="sphinx-tabs docutils container">
+<div class="ui top attached tabular menu sphinx-menu docutils container">
+<div class="active item sphinx-data-tab-fGNfYXBpfA== docutils container">
+<div class="docutils container">
+<p>C API</p>
+</div>
+</div>
+<div class="item sphinx-data-tab-fGNwcF9hcGl8 docutils container">
+<div class="docutils container">
+<p>C++ API</p>
+</div>
+</div>
+</div>
+<div class="ui bottom attached sphinx-tab tab segment sphinx-data-tab-fGNfYXBpfA== active docutils container">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">ccl_status_t</span> <span class="nf">ccl_test</span><span class="p">(</span><span class="n">ccl_request_t</span> <span class="n">req</span><span class="p">,</span> <span class="kt">int</span><span class="o">*</span> <span class="n">is_completed</span><span class="p">);</span>
 </pre></div>
 </div>
-<dl>
+<dl class="simple">
 <dt>req</dt><dd><p>requests the handle for communication operation being tracked</p>
 </dd>
 <dt>is_completed</dt><dd><p>indicates the status:</p>
-<blockquote>
-<div><ul class="simple">
+<ul class="simple">
 <li><p>0 - operation is in progress</p></li>
 <li><p>otherwise, the operation is completed</p></li>
 </ul>
-</div></blockquote>
 </dd>
 </dl>
-<p><strong>C++ version of oneCCL API:</strong></p>
+</div>
+<div class="ui bottom attached sphinx-tab tab segment sphinx-data-tab-fGNwcF9hcGl8 docutils container">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">bool</span> <span class="n">request</span><span class="o">::</span><span class="n">test</span><span class="p">();</span>
 </pre></div>
 </div>
 <p>Returnes the value that indicates the status:</p>
 <ul class="simple">
 <li><p>0 - operation is in progress</p></li>
-<li><p>otherwise, the operation is completed.</p></li>
+<li><p>otherwise, the operation is completed</p></li>
 </ul>
+</div>
+</div>
 </div>
 <div class="section" id="wait">
 <h2>Wait<a class="headerlink" href="#wait" title="Permalink to this headline">¶</a></h2>
 <p>Operation that blocks the execution until communication operation is completed.</p>
-<p><strong>C version of oneCCL API:</strong></p>
+<div class="sphinx-tabs docutils container">
+<div class="ui top attached tabular menu sphinx-menu docutils container">
+<div class="active item sphinx-data-tab-fGNfYXBpfA== docutils container">
+<div class="docutils container">
+<p>C API</p>
+</div>
+</div>
+<div class="item sphinx-data-tab-fGNwcF9hcGl8 docutils container">
+<div class="docutils container">
+<p>C++ API</p>
+</div>
+</div>
+</div>
+<div class="ui bottom attached sphinx-tab tab segment sphinx-data-tab-fGNfYXBpfA== active docutils container">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">ccl_status_t</span> <span class="nf">ccl_wait</span><span class="p">(</span><span class="n">ccl_request_t</span> <span class="n">req</span><span class="p">);</span>
 </pre></div>
 </div>
@@ -444,9 +499,12 @@ oneCCL request is an opaque handle that is managed by corresponding APIs.</p>
 <dt>req</dt><dd><p>requests the handle for communication operation being tracked</p>
 </dd>
 </dl>
-<p><strong>C++ version of oneCCL API:</strong></p>
+</div>
+<div class="ui bottom attached sphinx-tab tab segment sphinx-data-tab-fGNwcF9hcGl8 docutils container">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span> <span class="n">request</span><span class="o">::</span><span class="n">wait</span><span class="p">();</span>
 </pre></div>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -471,7 +529,7 @@ oneCCL request is an opaque handle that is managed by corresponding APIs.</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2020
+        &copy; Copyright 2019–2020
 
     </p>
   </div>

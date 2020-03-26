@@ -34,7 +34,6 @@
   
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/style.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Library API" href="api/library_root.html" />
@@ -88,7 +87,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="prerequisites.html">Prerequisites</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#installation-using-cli">Installation using CLI</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#installation-using-command-line-interface">Installation using Command Line Interface</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="installation.html#custom-installation">Custom Installation</a></li>
 </ul>
 </li>
@@ -117,10 +116,11 @@
 <li class="toctree-l2"><a class="reference internal" href="spec/communication_primitives.html">Collective Opertations</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="spec/communication_primitives.html#allgatherv">Allgatherv</a></li>
 <li class="toctree-l3"><a class="reference internal" href="spec/communication_primitives.html#allreduce">Allreduce</a></li>
-<li class="toctree-l3"><a class="reference internal" href="spec/communication_primitives.html#reduce">Reduce</a></li>
 <li class="toctree-l3"><a class="reference internal" href="spec/communication_primitives.html#alltoall">Alltoall</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spec/communication_primitives.html#alltoallv">Alltoallv</a></li>
 <li class="toctree-l3"><a class="reference internal" href="spec/communication_primitives.html#barrier">Barrier</a></li>
 <li class="toctree-l3"><a class="reference internal" href="spec/communication_primitives.html#broadcast">Broadcast</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spec/communication_primitives.html#reduce">Reduce</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="spec/ccl_datatypes.html">Data Types</a></li>
@@ -181,7 +181,6 @@
 <p class="caption"><span class="caption-text">Reference Materials</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Environment variables</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#ccl-atl-transport">CCL_ATL_TRANSPORT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#collective-algorithms-selection">Collective algorithms selection</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#ccl-coll-name">CCL_&lt;coll_name&gt;</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#example">Example</a></li>
@@ -192,6 +191,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#allgatherv-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLGATHERV</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#allreduce-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLREDUCE</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#alltoall-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLTOALL</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#alltoallv-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLTOALLV</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#barrier-algorithms"><code class="docutils literal notranslate"><span class="pre">BARRIER</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#bcast-algorithms"><code class="docutils literal notranslate"><span class="pre">BCAST</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#reduce-algorithms"><code class="docutils literal notranslate"><span class="pre">REDUCE</span></code> algorithms</a></li>
@@ -202,23 +202,28 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#ccl-fusion">CCL_FUSION</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#fusion">Fusion</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#ccl-fusion">CCL_FUSION</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#ccl-fusion-bytes-threshold">CCL_FUSION_BYTES_THRESHOLD</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#ccl-fusion-count-threshold">CCL_FUSION_COUNT_THRESHOLD</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#ccl-fusion-cycle-ms">CCL_FUSION_CYCLE_MS</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="#pmi">PMI</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#ccl-pm-type">CCL_PM_TYPE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ccl-kvs-ip-exchange">CCL_KVS_IP_EXCHANGE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ccl-k8s-api-addr">CCL_K8S_API_ADDR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ccl-k8s-manager-type">CCL_K8S_MANAGER_TYPE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ccl-kvs-ip-port">CCL_KVS_IP_PORT</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ccl-world-size">CCL_WORLD_SIZE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ccl-job-name">CCL_JOB_NAME</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#ccl-atl-transport">CCL_ATL_TRANSPORT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#ccl-unordered-coll">CCL_UNORDERED_COLL</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#ccl-priority">CCL_PRIORITY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#ccl-worker-count">CCL_WORKER_COUNT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#ccl-worker-affinity">CCL_WORKER_AFFINITY</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#ccl-pm-type">CCL_PM_TYPE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#ccl-kvs-ip-exchange">CCL_KVS_IP_EXCHANGE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#ccl-k8s-api-addr">CCL_K8S_API_ADDR</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#ccl-k8s-manager-type">CCL_K8S_MANAGER_TYPE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#ccl-kvs-ip-port">CCL_KVS_IP_PORT</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#ccl-world-size">CCL_WORLD_SIZE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#ccl-job-name">CCL_JOB_NAME</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="api/library_root.html">Library API</a><ul>
@@ -260,6 +265,7 @@
 <li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1a976c31a7b1a91c33b6a9c09f13cd1796.html">Function ccl_allgatherv</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1a9e104eaa3dc77cb6d61030778637ed5a.html">Function ccl_allreduce</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1aa890514a6e244e841dcb1f3c6c4a616f.html">Function ccl_alltoall</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1ac1791fd81f923eb9af19b8bf07a5ecf5.html">Function ccl_alltoallv</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1ac5618870776b28aac8f1f9e84b178577.html">Function ccl_barrier</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1a1cdf74249061dbabd47ea293832e9296.html">Function ccl_bcast</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1abb843675ca240e8d1aa42d604537ca62.html">Function ccl_comm_create</a></li>
@@ -368,35 +374,6 @@
             
   <div class="section" id="environment-variables">
 <h1>Environment variables<a class="headerlink" href="#environment-variables" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="ccl-atl-transport">
-<h2>CCL_ATL_TRANSPORT<a class="headerlink" href="#ccl-atl-transport" title="Permalink to this headline">¶</a></h2>
-<p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_ATL_TRANSPORT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<p><strong>Arguments</strong></p>
-<table class="colwidths-given docutils align-left">
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 67%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">mpi</span></code></p></td>
-<td><p>MPI transport (<strong>default</strong>).</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ofi</span></code></p></td>
-<td><p>OFI (libfaric) transport.</p></td>
-</tr>
-</tbody>
-</table>
-<p><strong>Description</strong></p>
-<p>Set this environment variable to select the transport for inter-node communications.</p>
-</div>
 <div class="section" id="collective-algorithms-selection">
 <h2>Collective algorithms selection<a class="headerlink" href="#collective-algorithms-selection" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="ccl-coll-name">
@@ -407,15 +384,15 @@
 </pre></div>
 </div>
 <p>To set a specific algorithm for a specific message size range:</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_</span><span class="o">&lt;</span><span class="n">coll_name</span><span class="o">&gt;=</span><span class="s">&quot;&lt;algo_name_1&gt;[:&lt;size_range_1&gt;][;&lt;algo_name_2&gt;&lt;size_range_2&gt;][;...]&quot;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_</span><span class="o">&lt;</span><span class="n">coll_name</span><span class="o">&gt;=</span><span class="s">&quot;&lt;algo_name_1&gt;[:&lt;size_range_1&gt;][;&lt;algo_name_2&gt;:&lt;size_range_2&gt;][;...]&quot;</span>
 </pre></div>
 </div>
 <p>Where:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">&lt;coll_name&gt;</span></code> is selected from a list of available collective operations (<a class="reference internal" href="#available-collectives">Available collectives</a>)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;coll_name&gt;</span></code> is selected from a list of available collective operations (<a class="reference internal" href="#available-collectives">Available collectives</a>).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">&lt;algo_name&gt;</span></code> is selected from a list of available algorithms for a specific collective operation (<a class="reference internal" href="#available-algorithms">Available algorithms</a>).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">&lt;size_range&gt;</span></code> is described by the left and the right size borders in a format <code class="docutils literal notranslate"><span class="pre">&lt;left&gt;-&lt;right&gt;</span></code>.
-Size is specified in bytes. Reserved word <code class="docutils literal notranslate"><span class="pre">max</span></code> can be used to specify the maximum message size.</p></li>
+Size is specified in bytes. Use reserved word <code class="docutils literal notranslate"><span class="pre">max</span></code> to specify the maximum message size.</p></li>
 </ul>
 <p>oneCCL internally fills algorithm selection table with sensible defaults. User input complements the selection table.
 To see the actual table values set <code class="docutils literal notranslate"><span class="pre">CCL_LOG_LEVEL=1</span></code>.</p>
@@ -430,9 +407,10 @@ To see the actual table values set <code class="docutils literal notranslate"><s
 <h3>Available collectives<a class="headerlink" href="#available-collectives" title="Permalink to this headline">¶</a></h3>
 <p>Available collective operations (<code class="docutils literal notranslate"><span class="pre">&lt;coll_name&gt;</span></code>):</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">ALLGATHER</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ALLGATHERV</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">ALLREDUCE</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">ALLTOALL</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ALLTOALLV</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">BARRIER</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">BCAST</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">REDUCE</span></code></p></li>
@@ -441,7 +419,7 @@ To see the actual table values set <code class="docutils literal notranslate"><s
 </div>
 <div class="section" id="available-algorithms">
 <h3>Available algorithms<a class="headerlink" href="#available-algorithms" title="Permalink to this headline">¶</a></h3>
-<p>Available algirithms for each collective operation (<code class="docutils literal notranslate"><span class="pre">&lt;algo_name&gt;</span></code>):</p>
+<p>Available algorithms for each collective operation (<code class="docutils literal notranslate"><span class="pre">&lt;algo_name&gt;</span></code>):</p>
 <div class="section" id="allgatherv-algorithms">
 <h4><code class="docutils literal notranslate"><span class="pre">ALLGATHERV</span></code> algorithms<a class="headerlink" href="#allgatherv-algorithms" title="Permalink to this headline">¶</a></h4>
 <table class="colwidths-given docutils align-left">
@@ -457,7 +435,7 @@ To see the actual table values set <code class="docutils literal notranslate"><s
 <td><p>Send to all, receive from all</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">flat</span></code></p></td>
-<td><p>Alltoall-based allgorithm</p></td>
+<td><p>Alltoall-based algorithm</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">multi_bcast</span></code></p></td>
 <td><p>Series of broadcast operations with different root ranks</p></td>
@@ -497,7 +475,7 @@ to control pipelining on reduce_scatter phase.</p></td>
 <td><p>Recursive doubling algorithm</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">2d</span></code></p></td>
-<td><p>2-dimensional allgorithm (reduce_scatter+allreduce+allgather)</p></td>
+<td><p>2-dimensional algorithm (reduce_scatter+allreduce+allgather)</p></td>
 </tr>
 </tbody>
 </table>
@@ -513,7 +491,24 @@ to control pipelining on reduce_scatter phase.</p></td>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">direct</span></code></p></td>
 <td><p>Based on <code class="docutils literal notranslate"><span class="pre">MPI_Ialltoall</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">scatter</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">naive</span></code></p></td>
+<td><p>Send to all, receive from all</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="alltoallv-algorithms">
+<h4><code class="docutils literal notranslate"><span class="pre">ALLTOALLV</span></code> algorithms<a class="headerlink" href="#alltoallv-algorithms" title="Permalink to this headline">¶</a></h4>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">direct</span></code></p></td>
+<td><p>Based on <code class="docutils literal notranslate"><span class="pre">MPI_Ialltoallv</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">naive</span></code></p></td>
 <td><p>Send to all, receive from all</p></td>
 </tr>
 </tbody>
@@ -531,7 +526,7 @@ to control pipelining on reduce_scatter phase.</p></td>
 <td><p>Based on <code class="docutils literal notranslate"><span class="pre">MPI_Ibarrier</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ring</span></code></p></td>
-<td><p>Ring-based allgorithm</p></td>
+<td><p>Ring-based algorithm</p></td>
 </tr>
 </tbody>
 </table>
@@ -590,11 +585,11 @@ to control pipelining on reduce_scatter phase.</p></td>
 <col style="width: 67%" />
 </colgroup>
 <tbody>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">basic</span></code></p></td>
-<td><p>Basic allgorithm</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">mask</span></code></p></td>
+<td><p>Mask matrix based algorithm</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">mask</span></code></p></td>
-<td><p>Mask-based allgorithm</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">allgatherv</span></code></p></td>
+<td><p>3-allgatherv based algorithm</p></td>
 </tr>
 </tbody>
 </table>
@@ -653,8 +648,10 @@ to control pipelining on reduce_scatter phase.</p></td>
 </div>
 </div>
 </div>
+<div class="section" id="fusion">
+<h2>Fusion<a class="headerlink" href="#fusion" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="ccl-fusion">
-<h2>CCL_FUSION<a class="headerlink" href="#ccl-fusion" title="Permalink to this headline">¶</a></h2>
+<h3>CCL_FUSION<a class="headerlink" href="#ccl-fusion" title="Permalink to this headline">¶</a></h3>
 <p><strong>Syntax</strong></p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_FUSION</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
 </pre></div>
@@ -680,7 +677,9 @@ to control pipelining on reduce_scatter phase.</p></td>
 </tbody>
 </table>
 <p><strong>Description</strong></p>
-<p>Set this environment variable to control fusion of collective operations. The real fusion will depend on additional settings described below.</p>
+<p>Set this environment variable to control fusion of collective operations.
+The real fusion depends on additional settings described below.</p>
+</div>
 <div class="section" id="ccl-fusion-bytes-threshold">
 <h3>CCL_FUSION_BYTES_THRESHOLD<a class="headerlink" href="#ccl-fusion-bytes-threshold" title="Permalink to this headline">¶</a></h3>
 <p><strong>Syntax</strong></p>
@@ -700,7 +699,7 @@ to control pipelining on reduce_scatter phase.</p></td>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SIZE</span></code></p></td>
-<td><p>Bytes threshold for a collective operation. If the size of a communication buffer in bytes is less or equal
+<td><p>Bytes threshold for a collective operation. If the size of a communication buffer in bytes is less than or equal
 to <code class="docutils literal notranslate"><span class="pre">SIZE</span></code>, then oneCCL fuses this operation with the other ones.</p></td>
 </tr>
 </tbody>
@@ -767,6 +766,229 @@ oneCCL can fuse together no more than <code class="docutils literal notranslate"
 <p>Set this environment variable to specify the frequency of checking for collectives operations to be fused.</p>
 </div>
 </div>
+<div class="section" id="pmi">
+<h2>PMI<a class="headerlink" href="#pmi" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="ccl-pm-type">
+<h3>CCL_PM_TYPE<a class="headerlink" href="#ccl-pm-type" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_PM_TYPE</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">simple</span></code></p></td>
+<td><p>Use PMI (process manager interface) with <code class="docutils literal notranslate"><span class="pre">mpirun</span></code> (<strong>default</strong>).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">resizable</span></code></p></td>
+<td><p>Use internal KVS (key-value storage) without <code class="docutils literal notranslate"><span class="pre">mpirun</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify the process manager type.</p>
+</div>
+<div class="section" id="ccl-kvs-ip-exchange">
+<h3>CCL_KVS_IP_EXCHANGE<a class="headerlink" href="#ccl-kvs-ip-exchange" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_KVS_IP_EXCHANGE</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">k8s</span></code></p></td>
+<td><p>Use K8S for IP exchange (<strong>default</strong>).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">env</span></code></p></td>
+<td><p>Use a specific environment to get the master IP.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify the way to IP addresses of ran processes are exchanged.</p>
+</div>
+<div class="section" id="ccl-k8s-api-addr">
+<h3>CCL_K8S_API_ADDR<a class="headerlink" href="#ccl-k8s-api-addr" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_K8S_API_ADDR</span> <span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">IP:PORT</span></code></p></td>
+<td><p>Set the address and the port of k8s kvs.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify k8s kvs address.</p>
+</div>
+<div class="section" id="ccl-k8s-manager-type">
+<h3>CCL_K8S_MANAGER_TYPE<a class="headerlink" href="#ccl-k8s-manager-type" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_K8S_MANAGER_TYPE</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">none</span></code></p></td>
+<td><p>Use Pods labels for IP exchange (<strong>default</strong>).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">k8s</span></code></p></td>
+<td><p>Use StatefulsetDeployment labels for IP exchange.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify the way of IP exchange.</p>
+</div>
+<div class="section" id="ccl-kvs-ip-port">
+<h3>CCL_KVS_IP_PORT<a class="headerlink" href="#ccl-kvs-ip-port" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_KVS_IP_PORT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">IP:PORT</span></code></p></td>
+<td><p>Set the address and the port of the master kvs server.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify the master kvs address.</p>
+</div>
+<div class="section" id="ccl-world-size">
+<h3>CCL_WORLD_SIZE<a class="headerlink" href="#ccl-world-size" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_WORLD_SIZE</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">N</span></code></p></td>
+<td><p>The number of processes to start execution.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify the number of oneCCL processes.</p>
+</div>
+<div class="section" id="ccl-job-name">
+<h3>CCL_JOB_NAME<a class="headerlink" href="#ccl-job-name" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_JOB_NAME</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">job_name</span></code></p></td>
+<td><p>The name of the job.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this label on the pods that should be connected with each other.</p>
+</div>
+</div>
+<div class="section" id="ccl-atl-transport">
+<h2>CCL_ATL_TRANSPORT<a class="headerlink" href="#ccl-atl-transport" title="Permalink to this headline">¶</a></h2>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_ATL_TRANSPORT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">mpi</span></code></p></td>
+<td><p>MPI transport (<strong>default</strong>).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ofi</span></code></p></td>
+<td><p>OFI (libfaric) transport.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to select the transport for inter-node communications.</p>
+</div>
 <div class="section" id="ccl-unordered-coll">
 <h2>CCL_UNORDERED_COLL<a class="headerlink" href="#ccl-unordered-coll" title="Permalink to this headline">¶</a></h2>
 <p><strong>Syntax</strong></p>
@@ -787,7 +1009,7 @@ oneCCL can fuse together no more than <code class="docutils literal notranslate"
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
 <td><p>Enable execution of unordered collectives.
-It requires for a user to additionally specify <code class="docutils literal notranslate"><span class="pre">coll_attr.match_id</span></code>.</p></td>
+You have to additionally specify <code class="docutils literal notranslate"><span class="pre">coll_attr.match_id</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
 <td><p>Disable execution of unordered collectives (<strong>default</strong>).</p></td>
@@ -816,10 +1038,10 @@ It requires for a user to additionally specify <code class="docutils literal not
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">direct</span></code></p></td>
-<td><p>Priority is explicitly specified by users using <code class="docutils literal notranslate"><span class="pre">coll_attr.priority</span></code>.</p></td>
+<td><p>You have to explicitly specify priority using <code class="docutils literal notranslate"><span class="pre">coll_attr.priority</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">lifo</span></code></p></td>
-<td><p>Priority is implicitly increased on each collective call. Users do not specify a priority.</p></td>
+<td><p>Priority is implicitly increased on each collective call. You do not have to specify priority.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">none</span></code></p></td>
 <td><p>Disable prioritization (<strong>default</strong>).</p></td>
@@ -884,197 +1106,6 @@ It requires for a user to additionally specify <code class="docutils literal not
 <p><strong>Description</strong></p>
 <p>Set this environment variable to specify cpu affinity for oneCCL worker threads.</p>
 </div>
-<div class="section" id="ccl-pm-type">
-<h2>CCL_PM_TYPE<a class="headerlink" href="#ccl-pm-type" title="Permalink to this headline">¶</a></h2>
-<p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_PM_TYPE</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<p><strong>Arguments</strong></p>
-<table class="colwidths-given docutils align-left">
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 67%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">simple</span></code></p></td>
-<td><p>Use PMI (process manager interface) with <code class="docutils literal notranslate"><span class="pre">mpirun</span></code> (<strong>default</strong>).</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">resizable</span></code></p></td>
-<td><p>Use internal KVS (key-value storage) without <code class="docutils literal notranslate"><span class="pre">mpirun</span></code>.</p></td>
-</tr>
-</tbody>
-</table>
-<p><strong>Description</strong></p>
-<p>Set this environment variable to specify the process manager type.</p>
-</div>
-<div class="section" id="ccl-kvs-ip-exchange">
-<h2>CCL_KVS_IP_EXCHANGE<a class="headerlink" href="#ccl-kvs-ip-exchange" title="Permalink to this headline">¶</a></h2>
-<p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_KVS_IP_EXCHANGE</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<p><strong>Arguments</strong></p>
-<table class="colwidths-given docutils align-left">
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 67%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">k8s</span></code></p></td>
-<td><p>Use K8S for IP exchange (<strong>default</strong>).</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">env</span></code></p></td>
-<td><p>Use a specific environment to get the master IP.</p></td>
-</tr>
-</tbody>
-</table>
-<p><strong>Description</strong></p>
-<p>Set this environment variable to specify the way to IP addresses of ran processes are exchanged.</p>
-</div>
-<div class="section" id="ccl-k8s-api-addr">
-<h2>CCL_K8S_API_ADDR<a class="headerlink" href="#ccl-k8s-api-addr" title="Permalink to this headline">¶</a></h2>
-<p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_K8S_API_ADDR</span> <span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<p><strong>Arguments</strong></p>
-<table class="colwidths-given docutils align-left">
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 67%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">IP:PORT</span></code></p></td>
-<td><p>Set the address and the port of k8s kvs.</p></td>
-</tr>
-</tbody>
-</table>
-<p><strong>Description</strong></p>
-<p>Set this environment variable to specify k8s kvs address.</p>
-</div>
-<div class="section" id="ccl-k8s-manager-type">
-<h2>CCL_K8S_MANAGER_TYPE<a class="headerlink" href="#ccl-k8s-manager-type" title="Permalink to this headline">¶</a></h2>
-<p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_K8S_MANAGER_TYPE</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<p><strong>Arguments</strong></p>
-<table class="colwidths-given docutils align-left">
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 67%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">none</span></code></p></td>
-<td><p>Use Pods labels for IP exchange (<strong>default</strong>).</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">k8s</span></code></p></td>
-<td><p>Use StatefulsetDeployment labels for IP exchange.</p></td>
-</tr>
-</tbody>
-</table>
-<p><strong>Description</strong></p>
-<p>Set this environment variable to specify the way of IP exchange.</p>
-</div>
-<div class="section" id="ccl-kvs-ip-port">
-<h2>CCL_KVS_IP_PORT<a class="headerlink" href="#ccl-kvs-ip-port" title="Permalink to this headline">¶</a></h2>
-<p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_KVS_IP_PORT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<p><strong>Arguments</strong></p>
-<table class="colwidths-given docutils align-left">
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 67%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">IP:PORT</span></code></p></td>
-<td><p>Set the address and the port of the master kvs server.</p></td>
-</tr>
-</tbody>
-</table>
-<p><strong>Description</strong></p>
-<p>Set this environment variable to specify the master kvs address.</p>
-</div>
-<div class="section" id="ccl-world-size">
-<h2>CCL_WORLD_SIZE<a class="headerlink" href="#ccl-world-size" title="Permalink to this headline">¶</a></h2>
-<p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_WORLD_SIZE</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<p><strong>Arguments</strong></p>
-<table class="colwidths-given docutils align-left">
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 67%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">N</span></code></p></td>
-<td><p>The number of processes to start execution.</p></td>
-</tr>
-</tbody>
-</table>
-<p><strong>Description</strong></p>
-<p>Set this environment variable to specify the number of oneCCL processes.</p>
-</div>
-<div class="section" id="ccl-job-name">
-<h2>CCL_JOB_NAME<a class="headerlink" href="#ccl-job-name" title="Permalink to this headline">¶</a></h2>
-<p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_JOB_NAME</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<p><strong>Arguments</strong></p>
-<table class="colwidths-given docutils align-left">
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 67%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">job_name</span></code></p></td>
-<td><p>The name of the job.</p></td>
-</tr>
-</tbody>
-</table>
-<p><strong>Description</strong></p>
-<p>Set this label on the pods that should be connected with each other.</p>
-</div>
 </div>
 
 
@@ -1097,7 +1128,7 @@ It requires for a user to additionally specify <code class="docutils literal not
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2020
+        &copy; Copyright 2019–2020
 
     </p>
   </div>

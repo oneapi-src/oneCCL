@@ -34,7 +34,6 @@
   
   <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="../_static/style.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Class environment" href="classccl_1_1environment.html" />
@@ -88,7 +87,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../prerequisites.html">Prerequisites</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../installation.html#installation-using-cli">Installation using CLI</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../installation.html#installation-using-command-line-interface">Installation using Command Line Interface</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../installation.html#custom-installation">Custom Installation</a></li>
 </ul>
 </li>
@@ -117,10 +116,11 @@
 <li class="toctree-l2"><a class="reference internal" href="../spec/communication_primitives.html">Collective Opertations</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../spec/communication_primitives.html#allgatherv">Allgatherv</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../spec/communication_primitives.html#allreduce">Allreduce</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../spec/communication_primitives.html#reduce">Reduce</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../spec/communication_primitives.html#alltoall">Alltoall</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../spec/communication_primitives.html#alltoallv">Alltoallv</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../spec/communication_primitives.html#barrier">Barrier</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../spec/communication_primitives.html#broadcast">Broadcast</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../spec/communication_primitives.html#reduce">Reduce</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../spec/ccl_datatypes.html">Data Types</a></li>
@@ -181,7 +181,6 @@
 <p class="caption"><span class="caption-text">Reference Materials</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../env_variables.html">Environment variables</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-atl-transport">CCL_ATL_TRANSPORT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../env_variables.html#collective-algorithms-selection">Collective algorithms selection</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-coll-name">CCL_&lt;coll_name&gt;</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#example">Example</a></li>
@@ -192,6 +191,7 @@
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#allgatherv-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLGATHERV</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#allreduce-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLREDUCE</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#alltoall-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLTOALL</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../env_variables.html#alltoallv-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLTOALLV</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#barrier-algorithms"><code class="docutils literal notranslate"><span class="pre">BARRIER</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#bcast-algorithms"><code class="docutils literal notranslate"><span class="pre">BCAST</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#reduce-algorithms"><code class="docutils literal notranslate"><span class="pre">REDUCE</span></code> algorithms</a></li>
@@ -202,23 +202,28 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-fusion">CCL_FUSION</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#fusion">Fusion</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-fusion">CCL_FUSION</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-fusion-bytes-threshold">CCL_FUSION_BYTES_THRESHOLD</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-fusion-count-threshold">CCL_FUSION_COUNT_THRESHOLD</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-fusion-cycle-ms">CCL_FUSION_CYCLE_MS</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#pmi">PMI</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-pm-type">CCL_PM_TYPE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-kvs-ip-exchange">CCL_KVS_IP_EXCHANGE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-k8s-api-addr">CCL_K8S_API_ADDR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-k8s-manager-type">CCL_K8S_MANAGER_TYPE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-kvs-ip-port">CCL_KVS_IP_PORT</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-world-size">CCL_WORLD_SIZE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-job-name">CCL_JOB_NAME</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-atl-transport">CCL_ATL_TRANSPORT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-unordered-coll">CCL_UNORDERED_COLL</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-priority">CCL_PRIORITY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-worker-count">CCL_WORKER_COUNT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-worker-affinity">CCL_WORKER_AFFINITY</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-pm-type">CCL_PM_TYPE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-kvs-ip-exchange">CCL_KVS_IP_EXCHANGE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-k8s-api-addr">CCL_K8S_API_ADDR</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-k8s-manager-type">CCL_K8S_MANAGER_TYPE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-kvs-ip-port">CCL_KVS_IP_PORT</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-world-size">CCL_WORLD_SIZE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-job-name">CCL_JOB_NAME</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="reference internal" href="library_root.html">Library API</a><ul class="current">
@@ -260,6 +265,7 @@
 <li class="toctree-l4"><a class="reference internal" href="function_ccl_8h_1a976c31a7b1a91c33b6a9c09f13cd1796.html">Function ccl_allgatherv</a></li>
 <li class="toctree-l4"><a class="reference internal" href="function_ccl_8h_1a9e104eaa3dc77cb6d61030778637ed5a.html">Function ccl_allreduce</a></li>
 <li class="toctree-l4"><a class="reference internal" href="function_ccl_8h_1aa890514a6e244e841dcb1f3c6c4a616f.html">Function ccl_alltoall</a></li>
+<li class="toctree-l4"><a class="reference internal" href="function_ccl_8h_1ac1791fd81f923eb9af19b8bf07a5ecf5.html">Function ccl_alltoallv</a></li>
 <li class="toctree-l4"><a class="reference internal" href="function_ccl_8h_1ac5618870776b28aac8f1f9e84b178577.html">Function ccl_barrier</a></li>
 <li class="toctree-l4"><a class="reference internal" href="function_ccl_8h_1a1cdf74249061dbabd47ea293832e9296.html">Function ccl_bcast</a></li>
 <li class="toctree-l4"><a class="reference internal" href="function_ccl_8h_1abb843675ca240e8d1aa42d604537ca62.html">Function ccl_comm_create</a></li>
@@ -575,6 +581,61 @@
 </dd></dl>
 
 <dl class="function">
+<dt id="_CPPv4N3ccl12communicator9alltoallvEPKvPK6size_tPvPK6size_tN3ccl9data_typeEPKN3ccl9coll_attrERKN3ccl8stream_tE">
+<span id="_CPPv3N3ccl12communicator9alltoallvEPKvPK6size_tPvPK6size_tN3ccl9data_typeEPKN3ccl9coll_attrERKN3ccl8stream_tE"></span><span id="_CPPv2N3ccl12communicator9alltoallvEPKvPK6size_tPvPK6size_tN3ccl9data_typeEPKN3ccl9coll_attrERKN3ccl8stream_tE"></span><span id="ccl::communicator::alltoallv__voidCP.sCP.voidP.sCP.ccl::data_type.ccl::coll_attrCP.ccl::stream_tCR"></span><span class="target" id="classccl_1_1communicator_1ab1ec90cea66032a4350f40563613b608"></span><a class="reference internal" href="#_CPPv4N3ccl12communicator14coll_request_tE" title="ccl::communicator::coll_request_t">coll_request_t</a> <code class="sig-name descname">alltoallv</code><span class="sig-paren">(</span><em class="property">const</em> void *<em>send_buf</em>, <em class="property">const</em> size_t *<em>send_counts</em>, void *<em>recv_buf</em>, <em class="property">const</em> size_t *<em>recv_counts</em>, ccl::<a class="reference internal" href="enum_ccl__types_8hpp_1a9b2e2854ccf9d79a41e4473ce4dc30a6.html#_CPPv4N3ccl9data_typeE" title="ccl::data_type">data_type</a> <em>dtype</em>, <em class="property">const</em> ccl::<a class="reference internal" href="typedef_ccl__types_8hpp_1aac061de382f1663be34bfa9cb1a90ede.html#_CPPv4N3ccl9coll_attrE" title="ccl::coll_attr">coll_attr</a> *<em>attr</em> = nullptr, <em class="property">const</em> ccl::<a class="reference internal" href="typedef_ccl_8hpp_1afa826e3536369b356fcb6a1a4f737e45.html#_CPPv4N3ccl8stream_tE" title="ccl::stream_t">stream_t</a> &amp;<em>stream</em> = ccl::<a class="reference internal" href="typedef_ccl_8hpp_1afa826e3536369b356fcb6a1a4f737e45.html#_CPPv4N3ccl8stream_tE" title="ccl::stream_t">stream_t</a>()<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3ccl12communicator9alltoallvEPKvPK6size_tPvPK6size_tN3ccl9data_typeEPKN3ccl9coll_attrERKN3ccl8stream_tE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Each process sends distinct data to each of the receivers. The j-th block sent from process i is received by process j and is placed in the i-th block of recvbuf. Block sizes may differ. <dl class="simple">
+<dt><strong>Return</strong></dt><dd><p><a class="reference internal" href="#classccl_1_1communicator_1abf2c2ff09b629a954650732b4a1ceb8a"><span class="std std-ref">ccl::communicator::coll_request_t</span></a> object that can be used to track the progress of the operation </p>
+</dd>
+<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">send_buf</span></code>: the buffer with elements of <code class="docutils literal notranslate"><span class="pre">dtype</span></code> that stores local data </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">send_counts</span></code>: array with number of elements send to each process </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">recv_buf</span></code>: [out] the buffer to store received result from each process </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">recv_counts</span></code>: array with number of elements received from each process </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dtype</span></code>: data type of elements in the buffer <code class="docutils literal notranslate"><span class="pre">send_buf</span></code> and <code class="docutils literal notranslate"><span class="pre">recv_buf</span></code> </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">attr</span></code>: optional attributes that customize operation </p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv4I00EN3ccl12communicator9alltoallvE14coll_request_tPK11buffer_typePK6size_tP11buffer_typePK6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE">
+<span id="_CPPv3I00EN3ccl12communicator9alltoallvEPK11buffer_typePK6size_tP11buffer_typePK6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE"></span><span id="_CPPv2I00EN3ccl12communicator9alltoallvEPK11buffer_typePK6size_tP11buffer_typePK6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE"></span><span class="target" id="classccl_1_1communicator_1a055169203558e0a449a0bc9d1d64ad96"></span>template&lt;class <code class="sig-name descname">buffer_type</code>, class = <em class="property">typename</em> std::enable_if&lt;ccl::<a class="reference internal" href="function_ccl__type__traits_8hpp_1a150aaf3343efbab089e5dea87737f60d.html#_CPPv4I0EN3ccl24is_native_type_supportedEbv" title="ccl::is_native_type_supported">is_native_type_supported</a>&lt;<a class="reference internal" href="#_CPPv4I00EN3ccl12communicator9alltoallvE14coll_request_tPK11buffer_typePK6size_tP11buffer_typePK6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE" title="ccl::communicator::alltoallv::buffer_type">buffer_type</a>&gt;<span class="sig-paren">(</span><span class="sig-paren">)</span>&gt;::type&gt;<br /><a class="reference internal" href="#_CPPv4N3ccl12communicator14coll_request_tE" title="ccl::communicator::coll_request_t">coll_request_t</a> <code class="sig-name descname">alltoallv</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv4I00EN3ccl12communicator9alltoallvE14coll_request_tPK11buffer_typePK6size_tP11buffer_typePK6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE" title="ccl::communicator::alltoallv::buffer_type">buffer_type</a> *<em>send_buf</em>, <em class="property">const</em> size_t *<em>send_counts</em>, <a class="reference internal" href="#_CPPv4I00EN3ccl12communicator9alltoallvE14coll_request_tPK11buffer_typePK6size_tP11buffer_typePK6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE" title="ccl::communicator::alltoallv::buffer_type">buffer_type</a> *<em>recv_buf</em>, <em class="property">const</em> size_t *<em>recv_counts</em>, <em class="property">const</em> ccl::<a class="reference internal" href="typedef_ccl__types_8hpp_1aac061de382f1663be34bfa9cb1a90ede.html#_CPPv4N3ccl9coll_attrE" title="ccl::coll_attr">coll_attr</a> *<em>attr</em> = nullptr, <em class="property">const</em> ccl::<a class="reference internal" href="typedef_ccl_8hpp_1afa826e3536369b356fcb6a1a4f737e45.html#_CPPv4N3ccl8stream_tE" title="ccl::stream_t">stream_t</a> &amp;<em>stream</em> = ccl::<a class="reference internal" href="typedef_ccl_8hpp_1afa826e3536369b356fcb6a1a4f737e45.html#_CPPv4N3ccl8stream_tE" title="ccl::stream_t">stream_t</a>()<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I00EN3ccl12communicator9alltoallvE14coll_request_tPK11buffer_typePK6size_tP11buffer_typePK6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Type safety version: Each process sends distinct data to each of the receivers. The j-th block sent from process i is received by process j and is placed in the i-th block of recvbuf. Block sizes may differ. <dl class="simple">
+<dt><strong>Return</strong></dt><dd><p><a class="reference internal" href="#classccl_1_1communicator_1abf2c2ff09b629a954650732b4a1ceb8a"><span class="std std-ref">ccl::communicator::coll_request_t</span></a> object that can be used to track the progress of the operation </p>
+</dd>
+<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">send_buf</span></code>: the buffer with elements of <code class="docutils literal notranslate"><span class="pre">dtype</span></code> that stores local data </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">send_counts</span></code>: array with number of elements send to each process </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">recv_buf</span></code>: [out] the buffer to store received result from each process </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">recv_counts</span></code>: array with number of elements received from each process </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">attr</span></code>: optional attributes that customize operation </p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv4I00EN3ccl12communicator9alltoallvE14coll_request_tRK21buffer_container_typePK6size_tR21buffer_container_typePK6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE">
+<span id="_CPPv3I00EN3ccl12communicator9alltoallvERK21buffer_container_typePK6size_tR21buffer_container_typePK6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE"></span><span id="_CPPv2I00EN3ccl12communicator9alltoallvERK21buffer_container_typePK6size_tR21buffer_container_typePK6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE"></span><span class="target" id="classccl_1_1communicator_1a38ed4cb173ba96311b2419c6ae47dc66"></span>template&lt;class <code class="sig-name descname">buffer_container_type</code>, class = <em class="property">typename</em> std::enable_if&lt;ccl::<a class="reference internal" href="function_ccl__type__traits_8hpp_1a00146b9b475d5c7c61eacca34f0edb6c.html#_CPPv4I0EN3ccl18is_class_supportedEbv" title="ccl::is_class_supported">is_class_supported</a>&lt;<a class="reference internal" href="#_CPPv4I00EN3ccl12communicator9alltoallvE14coll_request_tRK21buffer_container_typePK6size_tR21buffer_container_typePK6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE" title="ccl::communicator::alltoallv::buffer_container_type">buffer_container_type</a>&gt;<span class="sig-paren">(</span><span class="sig-paren">)</span>&gt;::type&gt;<br /><a class="reference internal" href="#_CPPv4N3ccl12communicator14coll_request_tE" title="ccl::communicator::coll_request_t">coll_request_t</a> <code class="sig-name descname">alltoallv</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv4I00EN3ccl12communicator9alltoallvE14coll_request_tRK21buffer_container_typePK6size_tR21buffer_container_typePK6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE" title="ccl::communicator::alltoallv::buffer_container_type">buffer_container_type</a> &amp;<em>send_buf</em>, <em class="property">const</em> size_t *<em>send_counts</em>, <a class="reference internal" href="#_CPPv4I00EN3ccl12communicator9alltoallvE14coll_request_tRK21buffer_container_typePK6size_tR21buffer_container_typePK6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE" title="ccl::communicator::alltoallv::buffer_container_type">buffer_container_type</a> &amp;<em>recv_buf</em>, <em class="property">const</em> size_t *<em>recv_counts</em>, <em class="property">const</em> ccl::<a class="reference internal" href="typedef_ccl__types_8hpp_1aac061de382f1663be34bfa9cb1a90ede.html#_CPPv4N3ccl9coll_attrE" title="ccl::coll_attr">coll_attr</a> *<em>attr</em> = nullptr, <em class="property">const</em> ccl::<a class="reference internal" href="typedef_ccl_8hpp_1afa826e3536369b356fcb6a1a4f737e45.html#_CPPv4N3ccl8stream_tE" title="ccl::stream_t">stream_t</a> &amp;<em>stream</em> = ccl::<a class="reference internal" href="typedef_ccl_8hpp_1afa826e3536369b356fcb6a1a4f737e45.html#_CPPv4N3ccl8stream_tE" title="ccl::stream_t">stream_t</a>()<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I00EN3ccl12communicator9alltoallvE14coll_request_tRK21buffer_container_typePK6size_tR21buffer_container_typePK6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Type safety version: Each process sends distinct data to each of the receivers. The j-th block sent from process i is received by process j and is placed in the i-th block of recvbuf. Block sizes may differ. <dl class="simple">
+<dt><strong>Return</strong></dt><dd><p><a class="reference internal" href="#classccl_1_1communicator_1abf2c2ff09b629a954650732b4a1ceb8a"><span class="std std-ref">ccl::communicator::coll_request_t</span></a> object that can be used to track the progress of the operation </p>
+</dd>
+<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">send_buf</span></code>: the buffer with elements of <code class="docutils literal notranslate"><span class="pre">dtype</span></code> that stores local data </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">send_counts</span></code>: array with number of elements send to each process </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">recv_buf</span></code>: [out] the buffer to store received result from each process </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">recv_counts</span></code>: array with number of elements received from each process </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">attr</span></code>: optional attributes that customize operation </p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="function">
 <dt id="_CPPv4N3ccl12communicator7barrierERKN3ccl8stream_tE">
 <span id="_CPPv3N3ccl12communicator7barrierERKN3ccl8stream_tE"></span><span id="_CPPv2N3ccl12communicator7barrierERKN3ccl8stream_tE"></span><span id="ccl::communicator::barrier__ccl::stream_tCR"></span><span class="target" id="classccl_1_1communicator_1ae748eb4b66c09f271410c7d64f80c6ac"></span>void <code class="sig-name descname">barrier</code><span class="sig-paren">(</span><em class="property">const</em> ccl::<a class="reference internal" href="typedef_ccl_8hpp_1afa826e3536369b356fcb6a1a4f737e45.html#_CPPv4N3ccl8stream_tE" title="ccl::stream_t">stream_t</a> &amp;<em>stream</em> = ccl::<a class="reference internal" href="typedef_ccl_8hpp_1afa826e3536369b356fcb6a1a4f737e45.html#_CPPv4N3ccl8stream_tE" title="ccl::stream_t">stream_t</a>()<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3ccl12communicator7barrierERKN3ccl8stream_tE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Collective operation that blocks each process until every process have reached it </p>
@@ -787,7 +848,7 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2020
+        &copy; Copyright 2019–2020
 
     </p>
   </div>

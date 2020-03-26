@@ -25,6 +25,8 @@
         <script type="text/javascript" src="../_static/underscore.js"></script>
         <script type="text/javascript" src="../_static/doctools.js"></script>
         <script type="text/javascript" src="../_static/language_data.js"></script>
+        <script type="text/javascript" src="../_static/sphinx_tabs/semantic-ui-2.4.1/tab.min.js"></script>
+        <script type="text/javascript" src="../_static/sphinx_tabs/tabs.js"></script>
         <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <script type="text/javascript" src="../_static/js/theme.js"></script>
@@ -34,7 +36,10 @@
   
   <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="../_static/style.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/sphinx_tabs/semantic-ui-2.4.1/segment.min.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/sphinx_tabs/semantic-ui-2.4.1/menu.min.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/sphinx_tabs/semantic-ui-2.4.1/tab.min.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/sphinx_tabs/tabs.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="oneCCL Collective Communication" href="collective_communication.html" />
@@ -88,7 +93,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../prerequisites.html">Prerequisites</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../installation.html#installation-using-cli">Installation using CLI</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../installation.html#installation-using-command-line-interface">Installation using Command Line Interface</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../installation.html#custom-installation">Custom Installation</a></li>
 </ul>
 </li>
@@ -117,10 +122,11 @@
 <li class="toctree-l2"><a class="reference internal" href="communication_primitives.html">Collective Opertations</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="communication_primitives.html#allgatherv">Allgatherv</a></li>
 <li class="toctree-l3"><a class="reference internal" href="communication_primitives.html#allreduce">Allreduce</a></li>
-<li class="toctree-l3"><a class="reference internal" href="communication_primitives.html#reduce">Reduce</a></li>
 <li class="toctree-l3"><a class="reference internal" href="communication_primitives.html#alltoall">Alltoall</a></li>
+<li class="toctree-l3"><a class="reference internal" href="communication_primitives.html#alltoallv">Alltoallv</a></li>
 <li class="toctree-l3"><a class="reference internal" href="communication_primitives.html#barrier">Barrier</a></li>
 <li class="toctree-l3"><a class="reference internal" href="communication_primitives.html#broadcast">Broadcast</a></li>
+<li class="toctree-l3"><a class="reference internal" href="communication_primitives.html#reduce">Reduce</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="ccl_datatypes.html">Data Types</a></li>
@@ -181,7 +187,6 @@
 <p class="caption"><span class="caption-text">Reference Materials</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../env_variables.html">Environment variables</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-atl-transport">CCL_ATL_TRANSPORT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../env_variables.html#collective-algorithms-selection">Collective algorithms selection</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-coll-name">CCL_&lt;coll_name&gt;</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#example">Example</a></li>
@@ -192,6 +197,7 @@
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#allgatherv-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLGATHERV</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#allreduce-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLREDUCE</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#alltoall-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLTOALL</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../env_variables.html#alltoallv-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLTOALLV</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#barrier-algorithms"><code class="docutils literal notranslate"><span class="pre">BARRIER</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#bcast-algorithms"><code class="docutils literal notranslate"><span class="pre">BCAST</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../env_variables.html#reduce-algorithms"><code class="docutils literal notranslate"><span class="pre">REDUCE</span></code> algorithms</a></li>
@@ -202,23 +208,28 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-fusion">CCL_FUSION</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#fusion">Fusion</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-fusion">CCL_FUSION</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-fusion-bytes-threshold">CCL_FUSION_BYTES_THRESHOLD</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-fusion-count-threshold">CCL_FUSION_COUNT_THRESHOLD</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-fusion-cycle-ms">CCL_FUSION_CYCLE_MS</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#pmi">PMI</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-pm-type">CCL_PM_TYPE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-kvs-ip-exchange">CCL_KVS_IP_EXCHANGE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-k8s-api-addr">CCL_K8S_API_ADDR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-k8s-manager-type">CCL_K8S_MANAGER_TYPE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-kvs-ip-port">CCL_KVS_IP_PORT</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-world-size">CCL_WORLD_SIZE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../env_variables.html#ccl-job-name">CCL_JOB_NAME</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-atl-transport">CCL_ATL_TRANSPORT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-unordered-coll">CCL_UNORDERED_COLL</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-priority">CCL_PRIORITY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-worker-count">CCL_WORKER_COUNT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-worker-affinity">CCL_WORKER_AFFINITY</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-pm-type">CCL_PM_TYPE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-kvs-ip-exchange">CCL_KVS_IP_EXCHANGE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-k8s-api-addr">CCL_K8S_API_ADDR</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-k8s-manager-type">CCL_K8S_MANAGER_TYPE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-kvs-ip-port">CCL_KVS_IP_PORT</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-world-size">CCL_WORLD_SIZE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env_variables.html#ccl-job-name">CCL_JOB_NAME</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../api/library_root.html">Library API</a><ul>
@@ -260,6 +271,7 @@
 <li class="toctree-l4"><a class="reference internal" href="../api/function_ccl_8h_1a976c31a7b1a91c33b6a9c09f13cd1796.html">Function ccl_allgatherv</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/function_ccl_8h_1a9e104eaa3dc77cb6d61030778637ed5a.html">Function ccl_allreduce</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/function_ccl_8h_1aa890514a6e244e841dcb1f3c6c4a616f.html">Function ccl_alltoall</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/function_ccl_8h_1ac1791fd81f923eb9af19b8bf07a5ecf5.html">Function ccl_alltoallv</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/function_ccl_8h_1ac5618870776b28aac8f1f9e84b178577.html">Function ccl_barrier</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/function_ccl_8h_1a1cdf74249061dbabd47ea293832e9296.html">Function ccl_bcast</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/function_ccl_8h_1abb843675ca240e8d1aa42d604537ca62.html">Function ccl_comm_create</a></li>
@@ -376,29 +388,59 @@
 </ul>
 <div class="section" id="oneccl-environment">
 <h2>oneCCL Environment<a class="headerlink" href="#oneccl-environment" title="Permalink to this headline">¶</a></h2>
-<p>oneCCL Enviroment is a singleton object which is used as an entry point into oneCCL library and which is defined only for C++ version of API.
-oneCCL Environment exposes a number of helper methods to manage other CCL objects, such as streams, communicators, etc.</p>
+<p>oneCCL Environment is a singleton object that is used as an entry point into oneCCL. It is defined only for C++ version of API.
+oneCCL Environment exposes a number of helper methods to manage other CCL objects, such as streams or communicators.</p>
 </div>
 <div class="section" id="oneccl-stream">
 <h2>oneCCL Stream<a class="headerlink" href="#oneccl-stream" title="Permalink to this headline">¶</a></h2>
-<p><strong>C version of oneCCL API:</strong></p>
+<div class="sphinx-tabs docutils container">
+<div class="ui top attached tabular menu sphinx-menu docutils container">
+<div class="active item sphinx-data-tab-fGNfYXBpfA== docutils container">
+<div class="docutils container">
+<p>C API</p>
+</div>
+</div>
+<div class="item sphinx-data-tab-fGNwcF9hcGl8 docutils container">
+<div class="docutils container">
+<p>C++ API</p>
+</div>
+</div>
+</div>
+<div class="ui bottom attached sphinx-tab tab segment sphinx-data-tab-fGNfYXBpfA== active docutils container">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span> <span class="kt">void</span><span class="o">*</span> <span class="n">ccl_stream_t</span><span class="p">;</span>
 </pre></div>
 </div>
-<p><strong>C++ version of oneCCL API:</strong></p>
+</div>
+<div class="ui bottom attached sphinx-tab tab segment sphinx-data-tab-fGNwcF9hcGl8 docutils container">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">stream</span><span class="p">;</span>
 <span class="k">using</span> <span class="n">stream_t</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">ccl</span><span class="o">::</span><span class="n">stream</span><span class="o">&gt;</span><span class="p">;</span>
 </pre></div>
 </div>
+</div>
+</div>
 <p>CCL Stream encapsulates execution context for communication primitives declared by oneCCL specification. It is an opaque handle that is managed by oneCCL API:</p>
-<p><strong>C version of oneCCL API:</strong></p>
+<div class="sphinx-tabs docutils container">
+<div class="ui top attached tabular menu sphinx-menu docutils container">
+<div class="active item sphinx-data-tab-fGNfYXBpfA== docutils container">
+<div class="docutils container">
+<p>C API</p>
+</div>
+</div>
+<div class="item sphinx-data-tab-fGNwcF9hcGl8 docutils container">
+<div class="docutils container">
+<p>C++ API</p>
+</div>
+</div>
+</div>
+<div class="ui bottom attached sphinx-tab tab segment sphinx-data-tab-fGNfYXBpfA== active docutils container">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">ccl_status_t</span> <span class="nf">ccl_stream_create</span><span class="p">(</span><span class="n">ccl_stream_type_t</span> <span class="n">type</span><span class="p">,</span>
-                                    <span class="kt">void</span><span class="o">*</span> <span class="n">native_stream</span><span class="p">,</span>
-                                    <span class="n">ccl_stream_t</span><span class="o">*</span> <span class="n">ccl_stream</span><span class="p">);</span>
+                               <span class="kt">void</span><span class="o">*</span> <span class="n">native_stream</span><span class="p">,</span>
+                               <span class="n">ccl_stream_t</span><span class="o">*</span> <span class="n">ccl_stream</span><span class="p">);</span>
 <span class="n">ccl_status_t</span> <span class="nf">ccl_stream_free</span><span class="p">(</span><span class="n">ccl_stream_t</span> <span class="n">stream</span><span class="p">);</span>
 </pre></div>
 </div>
-<p><strong>C++ version of oneCCL API:</strong></p>
+</div>
+<div class="ui bottom attached sphinx-tab tab segment sphinx-data-tab-fGNwcF9hcGl8 docutils container">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">environment</span>
 <span class="p">{</span>
 <span class="k">public</span><span class="o">:</span>
@@ -412,28 +454,60 @@ oneCCL Environment exposes a number of helper methods to manage other CCL object
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>When you create oneCCL stream object using the API described above, you need to specify the stream type and pass the pointer to the underlying command queue object.
+</div>
+</div>
+<p>When you create a oneCCL stream object using the API described above, you need to specify the stream type and pass the pointer to the underlying command queue object.
 For example, for oneAPI device you should pass <code class="docutils literal notranslate"><span class="pre">ccl::stream_type::sycl</span></code> and <code class="docutils literal notranslate"><span class="pre">cl::sycl::queue</span></code> objects.</p>
 </div>
 <div class="section" id="oneccl-communicator">
 <h2>oneCCL Communicator<a class="headerlink" href="#oneccl-communicator" title="Permalink to this headline">¶</a></h2>
-<p><strong>C version of oneCCL API:</strong></p>
+<div class="sphinx-tabs docutils container">
+<div class="ui top attached tabular menu sphinx-menu docutils container">
+<div class="active item sphinx-data-tab-fGNfYXBpfA== docutils container">
+<div class="docutils container">
+<p>C API</p>
+</div>
+</div>
+<div class="item sphinx-data-tab-fGNwcF9hcGl8 docutils container">
+<div class="docutils container">
+<p>C++ API</p>
+</div>
+</div>
+</div>
+<div class="ui bottom attached sphinx-tab tab segment sphinx-data-tab-fGNfYXBpfA== active docutils container">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span> <span class="kt">void</span><span class="o">*</span> <span class="n">ccl_comm_t</span><span class="p">;</span>
 </pre></div>
 </div>
-<p><strong>C++ version of oneCCL API:</strong></p>
+</div>
+<div class="ui bottom attached sphinx-tab tab segment sphinx-data-tab-fGNwcF9hcGl8 docutils container">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">communicator</span><span class="p">;</span>
 <span class="k">using</span> <span class="n">communicator_t</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">ccl</span><span class="o">::</span><span class="n">communicator</span><span class="o">&gt;</span><span class="p">;</span>
 </pre></div>
 </div>
+</div>
+</div>
 <p>oneCCL Communicator defines participants of collective communication operations. It is an opaque handle that is managed by oneCCL API:</p>
-<p><strong>C version of oneCCL API:</strong></p>
+<div class="sphinx-tabs docutils container">
+<div class="ui top attached tabular menu sphinx-menu docutils container">
+<div class="active item sphinx-data-tab-fGNfYXBpfA== docutils container">
+<div class="docutils container">
+<p>C API</p>
+</div>
+</div>
+<div class="item sphinx-data-tab-fGNwcF9hcGl8 docutils container">
+<div class="docutils container">
+<p>C++ API</p>
+</div>
+</div>
+</div>
+<div class="ui bottom attached sphinx-tab tab segment sphinx-data-tab-fGNfYXBpfA== active docutils container">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">ccl_status_t</span> <span class="nf">ccl_comm_create</span><span class="p">(</span><span class="n">ccl_comm_t</span><span class="o">*</span> <span class="n">comm</span><span class="p">,</span>
-                                    <span class="k">const</span> <span class="n">ccl_comm_attr_t</span><span class="o">*</span> <span class="n">attr</span><span class="p">);</span>
+                             <span class="k">const</span> <span class="n">ccl_comm_attr_t</span><span class="o">*</span> <span class="n">attr</span><span class="p">);</span>
 <span class="n">ccl_status_t</span> <span class="nf">ccl_comm_free</span><span class="p">(</span><span class="n">ccl_comm_t</span> <span class="n">comm</span><span class="p">);</span>
 </pre></div>
 </div>
-<p><strong>C++ version of oneCCL API:</strong></p>
+</div>
+<div class="ui bottom attached sphinx-tab tab segment sphinx-data-tab-fGNwcF9hcGl8 docutils container">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">environment</span>
 <span class="p">{</span>
 <span class="k">public</span><span class="o">:</span>
@@ -447,7 +521,9 @@ For example, for oneAPI device you should pass <code class="docutils literal not
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>When you create oneCCL Communicator, you can optionally specify attributes that control the runtime behaviour of oneCCL implementation.</p>
+</div>
+</div>
+<p>When you create a oneCCL Communicator, you can optionally specify attributes that control the runtime behaviour of oneCCL implementation.</p>
 <div class="section" id="oneccl-communicator-attributes">
 <h3>oneCCL Communicator Attributes<a class="headerlink" href="#oneccl-communicator-attributes" title="Permalink to this headline">¶</a></h3>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span> <span class="k">struct</span>
@@ -460,7 +536,7 @@ For example, for oneAPI device you should pass <code class="docutils literal not
 <span class="p">}</span> <span class="n">ccl_comm_attr_t</span><span class="p">;</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">ccl_comm_attr_t</span></code> (<code class="docutils literal notranslate"><span class="pre">ccl::comm_attr</span></code> in C++ version of API) is extendable structure that serves as a modificator of communicator behaviour.</p>
+<p><code class="docutils literal notranslate"><span class="pre">ccl_comm_attr_t</span></code> (<code class="docutils literal notranslate"><span class="pre">ccl::comm_attr</span></code> in C++ version of API) is an extendable structure that serves as a modificator of communicator behaviour.</p>
 </div>
 </div>
 </div>
@@ -485,7 +561,7 @@ For example, for oneAPI device you should pass <code class="docutils literal not
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2020
+        &copy; Copyright 2019–2020
 
     </p>
   </div>

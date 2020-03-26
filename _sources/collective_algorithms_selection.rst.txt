@@ -1,5 +1,5 @@
 Selection of collective algorithms
 **********************************
 
-oneCCL supports manual selection of collective algorithms for different message size ranges. 
-Please refer to the section :ref:`Collective algorithms selection`.
+|product_short| supports manual selection of collective algorithms for different message size ranges. 
+Please refer to the :ref:`Collective algorithms selection` section for details.
