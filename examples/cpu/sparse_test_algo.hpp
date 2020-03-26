@@ -21,9 +21,9 @@
 #include "base.h"
 #include "ccl_type_traits.hpp"
 
-#define COUNT_I 10
-#define VDIM_SIZE 2
-#define RANGE 10
+#define COUNT_I 1024
+#define VDIM_SIZE 15
+#define RANGE 100
 
 #define RUN_COLLECTIVE(start_cmd, name, itype_name, vtype_name)            \
   do {                                                                     \
@@ -152,18 +152,18 @@ void sparse_test_run(const std::string& algo)
     using v_t = typename ccl::type_info<v_type>::native_type;
     i_t* send_ibuf = (i_t*)malloc(sizeof(i_t) * COUNT_I);
     v_t* send_vbuf = (v_t*)malloc(sizeof(v_t) * COUNT_I * VDIM_SIZE);
-    void* recv_ibuf = malloc(COUNT_I * sizeof(i_t) + COUNT_I * VDIM_SIZE * sizeof(v_t));
-    void* recv_vbuf = (char*)recv_ibuf + COUNT_I * sizeof(i_t);
-    size_t recv_icount = 0;
-    size_t recv_vcount = 0;
+    void* recv_ibuf = malloc(COUNT_I * sizeof(i_t));
+    void* recv_vbuf = malloc(COUNT_I * VDIM_SIZE * sizeof(v_t));
+    size_t recv_icount = COUNT_I;
+    size_t recv_vcount = COUNT_I * VDIM_SIZE;
 
     /*generate pseudo-random indices and calculate values*/
     v_t* rcv_val = static_cast<v_t*>(recv_vbuf);
 
     std::random_device seed;
-    std::default_random_engine gen(seed());
-    std::uniform_int_distribution<i_t> dist(0, RANGE - 1);
-    for (int i = 0; i < 10; i++)
+    std::mt19937 gen(seed());
+    std::uniform_int_distribution<> dist(0, RANGE);
+    for (int i = 0; i < COUNT_I; i++)
     {
         send_ibuf[i] = dist(gen);
         for (unsigned int j = 0; j < VDIM_SIZE; j++)
@@ -186,6 +186,7 @@ void sparse_test_run(const std::string& algo)
     free(send_ibuf);
     free(send_vbuf);
     free(recv_ibuf);
+    free(recv_vbuf);
 }
 
 template<typename TupleType, typename FunctionType>

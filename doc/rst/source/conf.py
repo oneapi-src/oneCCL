@@ -18,7 +18,7 @@
 # -- Project information -----------------------------------------------------
 
 project = 'oneCCL Documentation (Beta)'
-copyright = '2019'
+copyright = '2019–2020'
 author = 'Intel'
 
 # The full version, including alpha/beta/rc tags
@@ -27,9 +27,12 @@ release = '2.0'
 rst_prolog = """
 .. |product_full| replace:: Intel\ |reg|\  oneAPI Collective Communications Library
 .. |product_short| replace:: oneCCL
+.. |mpi| replace:: Intel\ |reg|\  MPI Library
 .. |reg| unicode:: U+000AE
 .. |copy| unicode:: U+000A9
 .. |base_tk| replace:: Intel\ |reg|\  oneAPI Base Toolkit 
+.. |c_api| replace:: C API
+.. |cpp_api| replace:: C++ API
 """
 
 # -- General configuration ---------------------------------------------------
@@ -61,11 +64,11 @@ exclude_patterns = []
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
-html_context = {
-    'css_files': [
-        '_static/style.css',  # override wide tables in RTD theme
-        ],
-    }
+# html_context = {
+#    'css_files': [
+#        '_static/style.css',  # override wide tables in RTD theme
+#        ],
+#    }
 
 # html_theme = 'otc_tcs_sphinx_theme'
 # html_theme_path = ['_themes']
@@ -80,7 +83,8 @@ extensions = [
     'sphinx.ext.autosectionlabel',
     'breathe',
     'exhale',
-    'sphinx-prompt'
+    'sphinx-prompt',
+    'sphinx_tabs.tabs'
 ]
 
 breathe_projects = {

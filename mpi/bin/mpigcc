@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# Copyright 2003-2019 Intel Corporation.
+# Copyright 2003-2020 Intel Corporation.
 # 
 # This software and the related documents are Intel copyrighted materials, and
 # your use of them is governed by the express license under which they were
@@ -85,6 +85,7 @@ if [ -n "$I_MPI_ROOT" ] ; then
     prefix=$I_MPI_ROOT;
 fi
 
+exec_prefix=__EXEC_PREFIX_TO_BE_FILLED_AT_INSTALL_TIME__
 sysconfdir=${prefix}/etc
 includedir=${prefix}/include
 libdir=${prefix}/lib
@@ -103,7 +104,7 @@ CFLAGS=""
 CPPFLAGS=""
 LDFLAGS=" -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl"
 LIBS=" -lpthread  -lfabric -lrt "
-MPIVERSION="2021.1-beta03"
+MPIVERSION="2021.1-beta05"
 MPILIBNAME="mpi"                           
 
 
@@ -318,7 +319,7 @@ for arg in "$@" ; do
     -v)
     # Pass this argument to the compiler as well.
     echo "$(basename $0) for the Intel(R) MPI Library $MPIVERSION for Linux*"
-    echo "Copyright 2003-2019, Intel Corporation."
+    echo "Copyright 2003-2020, Intel Corporation."
     # if there is only 1 argument, it must be -v.
     if [ "$#" -eq "1" ] ; then
         linking=no
@@ -398,7 +399,7 @@ for arg in "$@" ; do
     addarg=no
     ;;
     -g)
-    MPILIBDIR="/"
+    MPILIBDIR="/debug"
     ;;
     -static_log)
     static_log=yes
@@ -493,7 +494,7 @@ if [ $# -eq 0 ] ; then
     "$0" -help
     exit 1
 fi
-
+esac
 if [ "$static_mpi" = yes ] ; then
     if [ "x$fortran_binding" = "x" ]; then
         mpilibs="${libdir}/libmpifort.a ${libdir}${MPILIBDIR}/lib${MPILIBNAME}.a"

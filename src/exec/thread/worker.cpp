@@ -180,15 +180,15 @@ ccl_status_t ccl_worker::process_sched_bin(ccl_sched_bin* bin, size_t& completed
     LOG_TRACE("bin ", bin, ", sched_count ", bin_size);
 
     /* ensure communication progress */
-    atl_status_t atl_status = atl_comm_poll(bin->get_comm_ctx());
+    atl_status_t atl_status = atl_ep_poll(bin->get_atl_ep());
     if (global_data.is_ft_enabled)
     {
-        if (atl_status != atl_status_success)
+        if (atl_status != ATL_STATUS_SUCCESS)
             return ccl_status_blocked_due_to_resize;
     }
     else
     {
-        CCL_THROW_IF_NOT(atl_status == atl_status_success, "bad status ", atl_status);
+        CCL_THROW_IF_NOT(atl_status == ATL_STATUS_SUCCESS, "bad status ", atl_status);
     }
 
     // iterate through the scheds stored in the bin

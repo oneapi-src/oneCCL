@@ -67,6 +67,17 @@ ccl_status_t coll_entry_helper::build_schedule(ccl_sched* sched,
                                           param.comm);
             break;
         }
+        case ccl_coll_alltoallv:
+        {
+            res = ccl_coll_build_alltoallv(sched,
+                                           param.send_buf,
+                                           param.send_counts,
+                                           param.recv_buf,
+                                           param.recv_counts,
+                                           param.dtype,
+                                           param.comm);
+            break;
+        }
         case ccl_coll_barrier:
         {
             res = ccl_coll_build_barrier(sched,

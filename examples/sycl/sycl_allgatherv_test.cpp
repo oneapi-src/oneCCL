@@ -48,20 +48,22 @@ int main(int argc, char **argv)
     for (size_t idx = 0; idx < size; idx++)
         recv_counts[idx] = COUNT;
 
-     /* open buffers and initialize them on the CPU side */
-    auto host_acc_sbuf = sendbuf.get_access<mode::write>();
-    auto host_acc_rbuf = recvbuf.get_access<mode::write>();
-    auto expected_acc_buf = expected_buf.get_access<mode::write>();
+    {
+        /* open buffers and initialize them on the CPU side */
+        auto host_acc_sbuf = sendbuf.get_access<mode::write>();
+        auto host_acc_rbuf = recvbuf.get_access<mode::write>();
+        auto expected_acc_buf = expected_buf.get_access<mode::write>();
 
-    for (i = 0; i < COUNT; i++) {
-        host_acc_sbuf[i] = rank;
-    }
-    for (i = 0; i < COUNT * size; i++) {
-        host_acc_rbuf[i] = -1;
-    }
-    for (i = 0; i < size; i++) {
-        for (j = 0; j < COUNT; j++) {
-            expected_acc_buf[i * COUNT + j] = i + 1;
+        for (i = 0; i < COUNT; i++) {
+            host_acc_sbuf[i] = rank;
+        }
+        for (i = 0; i < COUNT * size; i++) {
+            host_acc_rbuf[i] = -1;
+        }
+        for (i = 0; i < size; i++) {
+            for (j = 0; j < COUNT; j++) {
+                expected_acc_buf[i * COUNT + j] = i + 1;
+            }
         }
     }
 
@@ -112,6 +114,8 @@ int main(int argc, char **argv)
     }
 
     ccl_stream_free(stream);
+
+    free(recv_counts);
 
     ccl_finalize();
 

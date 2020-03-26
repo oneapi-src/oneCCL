@@ -34,7 +34,8 @@ public:
                      ccl_datatype_internal_t dtype,
                      ccl_comm* comm) :
         base_coll_entry(sched), send_buf(send_buf), send_cnt(send_cnt),
-        recv_buf(recv_buf), recv_cnts(recv_cnts), dtype(dtype), comm(comm)
+        recv_buf(recv_buf), recv_cnts(recv_cnts), dtype(dtype), comm(comm),
+        recv_bytes(nullptr), offsets(nullptr), sum_recv_bytes(0)
     {
     }
 
@@ -43,27 +44,32 @@ public:
         size_t dt_size = ccl_datatype_get_size(dtype);
         size_t send_bytes = send_cnt * dt_size;
         size_t comm_size = comm->size();
-        size_t i, sum_recv_bytes = 0;
+        size_t i;
 
-        recv_bytes = static_cast<int*>(CCL_MALLOC(comm_size * sizeof(int), "recv_bytes"));
-        offsets = static_cast<int*>(CCL_MALLOC(comm_size * sizeof(int), "offsets"));
+        if (!recv_bytes && !offsets)
+        {
+            recv_bytes = static_cast<int*>(CCL_MALLOC(comm_size * sizeof(int), "recv_bytes"));
+            offsets = static_cast<int*>(CCL_MALLOC(comm_size * sizeof(int), "offsets"));
+        }
 
         recv_bytes[0] = recv_cnts[0] * dt_size;
         offsets[0] = 0;
         sum_recv_bytes = recv_bytes[0];
+
         for (i = 1; i < comm_size; i++)
         {
             recv_bytes[i] = recv_cnts[i] * dt_size;
             offsets[i] = offsets[i - 1] + recv_bytes[i - 1]; // treat buffers as char buffers
             sum_recv_bytes += recv_bytes[i];
         }
-        LOG_DEBUG("ALLGATHERV entry req ", &req, ", send_bytes ", send_bytes);
-        atl_status_t atl_status = atl_comm_allgatherv(sched->bin->get_comm_ctx(),
-                                                      send_buf.get_ptr(send_bytes), send_bytes,
-                                                      recv_buf.get_ptr(sum_recv_bytes), recv_bytes,
-                                                      offsets, &req);
 
-        if (unlikely(atl_status != atl_status_success))
+        LOG_DEBUG("ALLGATHERV entry req ", &req, ", send_bytes ", send_bytes);
+        atl_status_t atl_status = atl_ep_allgatherv(sched->bin->get_atl_ep(),
+                                                    send_buf.get_ptr(send_bytes), send_bytes,
+                                                    recv_buf.get_ptr(sum_recv_bytes), recv_bytes,
+                                                    offsets, &req);
+
+        if (unlikely(atl_status != ATL_STATUS_SUCCESS))
         {
             CCL_THROW("ALLGATHERV entry failed. atl_status: ", atl_status_to_str(atl_status));
         }
@@ -74,9 +80,9 @@ public:
     void update() override
     {
         int req_status;
-        atl_status_t atl_status = atl_comm_check(sched->bin->get_comm_ctx(), &req_status, &req);
+        atl_status_t atl_status = atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
 
-        if (unlikely(atl_status != atl_status_success))
+        if (unlikely(atl_status != ATL_STATUS_SUCCESS))
         {
             CCL_THROW("ALLGATHERV entry failed. atl_status: ", atl_status_to_str(atl_status));
         }
@@ -84,9 +90,13 @@ public:
         if (req_status)
         {
             status = ccl_sched_entry_status_complete;
-            CCL_FREE(recv_bytes);
-            CCL_FREE(offsets);
         }
+    }
+
+    ~allgatherv_entry()
+    {
+        CCL_FREE(recv_bytes);
+        CCL_FREE(offsets);
     }
 
     const char* name() const override
@@ -115,9 +125,11 @@ private:
     size_t send_cnt;
     ccl_buffer recv_buf;
     const size_t* recv_cnts;
-    int* recv_bytes;
-    int* offsets;
     ccl_datatype_internal_t dtype;
     ccl_comm* comm;
     atl_req_t req{};
+
+    int* recv_bytes;
+    int* offsets;
+    size_t sum_recv_bytes;
 };

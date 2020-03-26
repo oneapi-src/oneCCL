@@ -19,58 +19,60 @@
 #include "unordered_coll/unordered_coll.hpp"
 #include "sched/extra_sched.hpp"
 
-size_t ccl_executor::get_atl_comm_count(size_t worker_count)
+size_t ccl_executor::calculate_atl_ep_count(size_t worker_count)
 {
-    size_t comm_count = worker_count;
+    size_t ep_count = worker_count;
 
     if (env_data.priority_mode != ccl_priority_none)
     {
-        comm_count *= CCL_PRIORITY_BUCKET_COUNT;
+        ep_count *= CCL_PRIORITY_BUCKET_COUNT;
     }
 
-    return comm_count;
+    return ep_count;
 }
 
-std::unique_ptr<ccl_sched_queue> ccl_executor::create_sched_queue(size_t idx, size_t comm_per_worker)
+std::unique_ptr<ccl_sched_queue> ccl_executor::create_sched_queue(size_t idx, size_t ep_per_worker)
 {
-    std::vector<atl_comm_t*> comm_vec(atl_comms + idx * comm_per_worker,
-                                      atl_comms + (idx + 1) * comm_per_worker);
-    std::unique_ptr<ccl_sched_queue> sched_queue{new ccl_sched_queue(comm_vec)};
+    std::vector<atl_ep_t*> ep_vec(atl_eps + idx * ep_per_worker,
+                                  atl_eps + (idx + 1) * ep_per_worker);
+    std::unique_ptr<ccl_sched_queue> sched_queue{new ccl_sched_queue(ep_vec)};
     return sched_queue;
 }
 
-ccl_executor::ccl_executor()
+ccl_executor::ccl_executor(const char* main_addr)
 {
     auto worker_count = env_data.worker_count;
     workers.reserve(worker_count);
-    auto comm_count = get_atl_comm_count(worker_count);
+    auto ep_count = calculate_atl_ep_count(worker_count);
 
-    atl_attr.comm_count = comm_count;
+    atl_attr.ep_count = ep_count;
     atl_attr.enable_shm = env_data.enable_shm;
     atl_attr.enable_rma = env_data.enable_rma;
 
-    LOG_INFO("init ATL, requested comm_count ", atl_attr.comm_count);
+    LOG_INFO("init ATL, requested ep_count ", atl_attr.ep_count);
 
     atl_status_t atl_status = atl_init(ccl_atl_transport_to_str(env_data.atl_transport),
-                                       nullptr, nullptr, &atl_proc_coord,
-                                       &atl_attr, &atl_comms, &atl_desc);
-    CCL_THROW_IF_NOT(atl_status == atl_status_success && atl_desc && atl_comms,
-                     "ATL init failed, res ", atl_status, ", desc ", atl_desc, ", comm ",atl_comms);
+                                       nullptr, nullptr,
+                                       &atl_attr, &atl_ctx, main_addr);
 
-    global_data.is_ft_enabled = is_ft_enabled(atl_desc);
+    CCL_THROW_IF_NOT(atl_status == ATL_STATUS_SUCCESS && atl_ctx,
+                     "ATL init failed, res ", atl_status, ", ctx ", atl_ctx);
 
-    LOG_INFO("global_proc_idx ", atl_proc_coord.global_idx,
-             ", global_proc_count ", atl_proc_coord.global_count,
-             ", local_proc_idx ", atl_proc_coord.local_idx,
-             ", local_proc_count ", atl_proc_coord.local_count,
+    atl_eps = atl_get_eps(atl_ctx);
+    atl_proc_coord = atl_get_proc_coord(atl_ctx);
+    global_data.is_ft_enabled = atl_is_resize_enabled(atl_ctx);
+
+    LOG_INFO("global_proc_idx ", atl_proc_coord->global_idx,
+             ", global_proc_count ", atl_proc_coord->global_count,
+             ", local_proc_idx ", atl_proc_coord->local_idx,
+             ", local_proc_count ", atl_proc_coord->local_count,
              ", worker_count ", worker_count);
 
     if (get_global_proc_idx() == 0)
     {
         LOG_INFO("\nATL parameters:",
-                 "\n  comm_count:             ", atl_attr.comm_count,
+                 "\n  ep_count:               ", atl_attr.ep_count,
                  "\n  enable_shm:             ", atl_attr.enable_shm,
-                 "\n  is_tagged_coll_enabled: ", atl_attr.is_tagged_coll_enabled,
                  "\n  tag_bits:               ", atl_attr.tag_bits,
                  "\n  max_tag:                ", atl_attr.max_tag,
                  "\n  enable_rma:             ", atl_attr.enable_rma,
@@ -81,7 +83,7 @@ ccl_executor::ccl_executor()
 void ccl_executor::start_workers()
 {
     auto worker_count = env_data.worker_count;
-    auto comm_count = get_atl_comm_count(worker_count);
+    auto ep_count = calculate_atl_ep_count(worker_count);
 
     if (env_data.worker_offload)
     {
@@ -90,18 +92,18 @@ void ccl_executor::start_workers()
                          ", should be ", get_local_proc_count() * worker_count);
     }
 
-    size_t comm_per_worker = comm_count / worker_count;
+    size_t ep_per_worker = ep_count / worker_count;
     for (size_t idx = 0; idx < worker_count; idx++)
     {
         if (env_data.enable_fusion && idx == 0)
         {
             LOG_DEBUG("create service worker");
-            workers.emplace_back(new ccl_service_worker(this, idx, create_sched_queue(idx, comm_per_worker),
+            workers.emplace_back(new ccl_service_worker(this, idx, create_sched_queue(idx, ep_per_worker),
                                                         *global_data.fusion_manager));
         }
         else
         {
-            workers.emplace_back(new ccl_worker(this, idx, create_sched_queue(idx, comm_per_worker)));
+            workers.emplace_back(new ccl_worker(this, idx, create_sched_queue(idx, ep_per_worker)));
         }
 
         if (env_data.worker_offload)
@@ -150,12 +152,12 @@ ccl_executor::~ccl_executor()
     if (get_global_proc_idx() == 0)
         LOG_INFO("finalizing ATL");
 
-    auto result = atl_finalize(atl_desc, atl_comms);
+    auto result = atl_finalize(atl_ctx);
 
     if (get_global_proc_idx() == 0)
         LOG_INFO("finalized ATL");
 
-    if (result != atl_status_success)
+    if (result != ATL_STATUS_SUCCESS)
     {
         LOG_ERROR("ATL finalize failed, error ", result);
     }
@@ -202,14 +204,14 @@ void ccl_executor::unlock_workers()
 
 void ccl_executor::update_workers()
 {
-    size_t comm_count = get_atl_comm_count(workers.size());
-    size_t comm_per_worker = comm_count / workers.size();
+    size_t ep_count = calculate_atl_ep_count(workers.size());
+    size_t ep_per_worker = ep_count / workers.size();
 
-    LOG_INFO("atl comm count ", comm_count);
+    LOG_INFO("atl ep_count ", ep_count);
 
     for (size_t idx = 0; idx < workers.size(); idx++)
     {
-        workers[idx]->reset_queue(create_sched_queue(idx, comm_per_worker));
+        workers[idx]->reset_queue(create_sched_queue(idx, ep_per_worker));
     }
 }
 
@@ -222,7 +224,7 @@ ccl_status_t ccl_executor::create_listener(ccl_resize_fn_t resize_func)
     }
 
     if (resize_func != NULL)
-        atl_set_resize_function(global_data.executor->atl_desc, (atl_resize_fn_t) resize_func);
+        atl_set_resize_function(global_data.executor->get_atl_ctx(), (atl_resize_fn_t) resize_func);
 
     listener = std::unique_ptr<ccl_listener>(new ccl_listener(&global_data));
     listener->start();

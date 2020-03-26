@@ -42,11 +42,11 @@ public:
     {
         LOG_DEBUG("ALLREDUCE entry req ", &req, ", cnt ", cnt);
         size_t bytes = cnt * ccl_datatype_get_size(dtype);
-        atl_status_t atl_status = atl_comm_allreduce(sched->bin->get_comm_ctx(), send_buf.get_ptr(bytes),
-                                                     recv_buf.get_ptr(bytes), cnt,
-                                                     static_cast<atl_datatype_t>(dtype->type),
-                                                     static_cast<atl_reduction_t>(op), &req);
-        if (unlikely(atl_status != atl_status_success))
+        atl_status_t atl_status = atl_ep_allreduce(sched->bin->get_atl_ep(), send_buf.get_ptr(bytes),
+                                                   recv_buf.get_ptr(bytes), cnt,
+                                                   static_cast<atl_datatype_t>(dtype->type),
+                                                   static_cast<atl_reduction_t>(op), &req);
+        if (unlikely(atl_status != ATL_STATUS_SUCCESS))
         {
             CCL_THROW("ALLREDUCE entry failed. atl_status: ", atl_status_to_str(atl_status));
         }
@@ -57,9 +57,9 @@ public:
     void update() override
     {
         int req_status;
-        atl_status_t atl_status = atl_comm_check(sched->bin->get_comm_ctx(), &req_status, &req);
+        atl_status_t atl_status = atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
 
-        if (unlikely(atl_status != atl_status_success))
+        if (unlikely(atl_status != ATL_STATUS_SUCCESS))
         {
             CCL_THROW("ALLREDUCE entry failed. atl_status: ", atl_status_to_str(atl_status));
         }

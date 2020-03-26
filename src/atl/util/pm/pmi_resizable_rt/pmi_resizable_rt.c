@@ -80,32 +80,32 @@ resizable_pmirt_kvs_put(pm_rt_desc_t *pmrt_desc, char *kvs_key, size_t proc_idx,
         container_of(pmrt_desc, resizable_pm_context_t, pmrt_desc);
 
     if (!ctx->resizablert_main.initialized)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
     if (kvs_val_len > ctx->resizablert_main.max_vallen)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
     ret = snprintf(ctx->resizablert_main.key_storage, ctx->resizablert_main.max_keylen - 1,
                    RESIZABLE_PMI_RT_KEY_FORMAT, kvs_key, proc_idx);
     if (ret < 0)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
     ret = encode(kvs_val, kvs_val_len, ctx->resizablert_main.val_storage,
                  ctx->resizablert_main.max_vallen);
     if (ret)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
     ret = PMIR_KVS_Put(ctx->resizablert_main.kvsname,
                        ctx->resizablert_main.key_storage,
                        ctx->resizablert_main.val_storage);
     if (ret != PMIR_SUCCESS)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
     ret = PMIR_KVS_Commit(ctx->resizablert_main.kvsname);
     if (ret != PMIR_SUCCESS)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
-    return atl_status_success;
+    return ATL_STATUS_SUCCESS;
 }
 
 static atl_status_t
@@ -117,24 +117,24 @@ resizable_pmirt_kvs_get(pm_rt_desc_t *pmrt_desc, char *kvs_key, size_t proc_idx,
         container_of(pmrt_desc, resizable_pm_context_t, pmrt_desc);
 
     if (!ctx->resizablert_main.initialized)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
     ret = snprintf(ctx->resizablert_main.key_storage, ctx->resizablert_main.max_keylen - 1,
                    RESIZABLE_PMI_RT_KEY_FORMAT, kvs_key, proc_idx);
     if (ret < 0)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
     ret = PMIR_KVS_Get(ctx->resizablert_main.kvsname, ctx->resizablert_main.key_storage,
                        ctx->resizablert_main.val_storage,
                        ctx->resizablert_main.max_vallen);
     if (ret != PMIR_SUCCESS)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
     ret = decode(ctx->resizablert_main.val_storage, kvs_val, kvs_val_len);
     if (ret)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
-    return atl_status_success;
+    return ATL_STATUS_SUCCESS;
 }
 
 static atl_status_t
@@ -153,11 +153,11 @@ resizable_pmirt_update(size_t *proc_idx, size_t *proc_count)
     if (ret != PMIR_SUCCESS)
         goto err_resizable;
 
-    return atl_status_success;
+    return ATL_STATUS_SUCCESS;
 
 err_resizable:
     PMIR_Finalize();
-    return atl_status_failure;
+    return ATL_STATUS_FAILURE;
 }
 
 atl_status_t resizable_pmirt_wait_notification()
@@ -167,9 +167,9 @@ atl_status_t resizable_pmirt_wait_notification()
     ret = PMIR_Wait_notification();
 
     if (ret != PMIR_SUCCESS)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
-    return atl_status_success;
+    return ATL_STATUS_SUCCESS;
 }
 
 pm_rt_ops_t resizable_ops = {
@@ -184,7 +184,7 @@ pm_rt_kvs_ops_t resizable_kvs_ops = {
     .get = resizable_pmirt_kvs_get,
 };
 
-atl_status_t resizable_pmirt_init(size_t *proc_idx, size_t *proc_count, pm_rt_desc_t **pmrt_desc)
+atl_status_t resizable_pmirt_init(size_t *proc_idx, size_t *proc_count, pm_rt_desc_t **pmrt_desc, const char* main_addr)
 {
     int ret;
     size_t max_kvsnamelen;
@@ -194,16 +194,16 @@ atl_status_t resizable_pmirt_init(size_t *proc_idx, size_t *proc_count, pm_rt_de
         PMIR_Get_rank(proc_count);
         *pmrt_desc = &resizable_ctx_singleton.pmrt_desc;
         resizable_ctx_singleton.resizablert_main.ref_cnt++;
-        return atl_status_success;
+        return ATL_STATUS_SUCCESS;
     }
 
-    ret = PMIR_Init();
+    ret = PMIR_Init(main_addr);
     if (ret != PMIR_SUCCESS)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
     ret = PMIR_Update();
     if (ret != PMIR_SUCCESS)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
     ret = PMIR_Get_size(proc_count);
     if (ret != PMIR_SUCCESS)
@@ -249,14 +249,24 @@ atl_status_t resizable_pmirt_init(size_t *proc_idx, size_t *proc_count, pm_rt_de
     resizable_ctx_singleton.pmrt_desc.kvs_ops = &resizable_kvs_ops;
     *pmrt_desc = &resizable_ctx_singleton.pmrt_desc;
 
-    return atl_status_success;
+    return ATL_STATUS_SUCCESS;
 err_alloc_val:
     free(resizable_ctx_singleton.resizablert_main.key_storage);
 err_alloc_key:
     free(resizable_ctx_singleton.resizablert_main.kvsname);
 err_resizable:
     PMIR_Finalize();
-    return atl_status_failure;
+    return ATL_STATUS_FAILURE;
+}
+
+atl_status_t resizable_pmirt_main_addr_reserv(char* main_addr)
+{
+    int ret = PMIR_Main_Addr_Reserv(main_addr);
+
+    if (ret)
+        return ATL_STATUS_FAILURE;
+
+    return ATL_STATUS_SUCCESS;
 }
 
 atl_status_t resizable_pmirt_set_resize_function(atl_resize_fn_t resize_fn)
@@ -264,7 +274,7 @@ atl_status_t resizable_pmirt_set_resize_function(atl_resize_fn_t resize_fn)
     int ret = PMIR_set_resize_function((pmir_resize_fn_t) resize_fn);
 
     if (ret)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
-    return atl_status_success;
+    return ATL_STATUS_SUCCESS;
 }

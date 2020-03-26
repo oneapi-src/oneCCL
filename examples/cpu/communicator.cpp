@@ -13,14 +13,13 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include <ccl.hpp>
+#include <algorithm>
+#include <iostream>
+#include <list>
+#include <vector>
 
 #include "base.h"
-
-#include <iostream>
-#include <vector>
-#include <algorithm>
-#include <list>
+#include <ccl.hpp>
 
 using namespace std;
 
@@ -42,14 +41,14 @@ void check_allreduce_on_comm(ccl_comm_t comm)
     coll_attr.to_cache = 0;
 
     CCL_CALL(ccl_allreduce(send_buf.data(),
-                             recv_buf.data(),
-                             COUNT,
-                             ccl_dtype_float,
-                             ccl_reduction_sum,
-                             &coll_attr,
-                             comm,
-                             nullptr,
-                             &request));
+                           recv_buf.data(),
+                           COUNT,
+                           ccl_dtype_float,
+                           ccl_reduction_sum,
+                           &coll_attr,
+                           comm,
+                           nullptr,
+                           &request));
     CCL_CALL(ccl_wait(request));
 
     float expected = (cur_comm_size - 1) * ((float) cur_comm_size / 2);
@@ -99,8 +98,8 @@ void check_max_comm_number()
     } while (status == ccl_status_success);
 
     PRINT_BY_ROOT("created %zu communicators\n", user_comms);
-
     PRINT_BY_ROOT("try to create one more communicator, it should fail");
+
     ccl_comm_t comm;
     status = ccl_comm_create(&comm, nullptr);
     if (status == ccl_status_success)
@@ -139,35 +138,63 @@ void check_comm_create_colored()
     for (size_t split_by = 2; split_by <= size; split_by *= 2)
     {
         ccl_comm_t comm;
+        ccl_comm_t comm_inside;
         ccl_comm_attr_t comm_attr;
+        ccl_comm_attr_t comm_attr_inside;
         comm_attr.color = ::rank % split_by;
+        comm_attr_inside.color = ::rank / split_by;
         size_t comm_size{};
+        size_t comm_size_inside{};
         size_t comm_rank{};
+        size_t comm_rank_inside{};
 
         PRINT_BY_ROOT("splitting global comm into %zu parts", split_by);
         CCL_CALL(ccl_comm_create(&comm, &comm_attr));
+        CCL_CALL(ccl_comm_create(&comm_inside, &comm_attr_inside));
 
         CCL_CALL(ccl_get_comm_size(comm, &comm_size));
-        CCL_CALL(ccl_get_comm_rank(comm, &comm_rank));
+        CCL_CALL(ccl_get_comm_size(comm_inside, &comm_size_inside));
 
+        CCL_CALL(ccl_get_comm_rank(comm, &comm_rank));
+        CCL_CALL(ccl_get_comm_rank(comm_inside, &comm_rank_inside));
         size_t expected_ranks_count = size / split_by;
+        size_t expected_ranks_count_inside = split_by;
+
         if (comm_size != expected_ranks_count)
         {
             if (comm != nullptr)
                 CCL_CALL(ccl_comm_free(comm));
 
+            if (comm_inside != nullptr)
+                CCL_CALL(ccl_comm_free(comm_inside));
+
             printf("FAILED\n");
+
             throw runtime_error("mismatch in size, expected " +
                                 to_string(expected_ranks_count) +
                                 " received " + to_string(comm_size));
         }
 
-        PRINT_BY_ROOT("global comm: idx=%zu, count=%zu; new comm: rank=%zu, size=%zu", ::rank,
-                      size, comm_rank, comm_size);
+        if (comm_size_inside != expected_ranks_count_inside)
+        {
+            if (comm_inside != nullptr)
+                CCL_CALL(ccl_comm_free(comm_inside));
+
+            printf("FAILED\n");
+
+            throw runtime_error("mismatch in size, expected " +
+                                to_string(expected_ranks_count_inside) +
+                                " received " + to_string(comm_size_inside));
+        }
+
+        PRINT_BY_ROOT("global comm: idx=%zu, count=%zu; new comms: rank=%zu, size=%zu; rank_inside=%zu, size_inside=%zu\n", ::rank,
+                      size, comm_rank, comm_size, comm_rank_inside, comm_size_inside);
 
         check_allreduce_on_comm(comm);
+        check_allreduce_on_comm(comm_inside);
 
         CCL_CALL(ccl_comm_free(comm));
+        CCL_CALL(ccl_comm_free(comm_inside));
     }
 }
 

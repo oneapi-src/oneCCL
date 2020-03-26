@@ -17,49 +17,62 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <sys/uio.h>
 
-// TODO: remove:
-#define HAVE_OFI    1
-#define HAVE_OFI_DL 1
-#define HAVE_MPI    0
-#define HAVE_MPI_DL 0
-
-/* TODO move to utility code */
 #ifndef container_of
 #define container_of(ptr, type, field) \
-	((type *) ((char *)ptr - offsetof(type, field)))
+    ((type *) ((char* )ptr - offsetof(type, field)))
 #endif
+
+#ifndef gettid
+#define gettid() syscall(SYS_gettid)
+#endif
+
+#define SIZEOFARR(arr) (sizeof(arr) / sizeof(arr[0]))
 
 #define ATL_CACHELINE_LEN 64
 #define ATL_REQ_SIZE      8
 
-typedef enum atl_resize_action
+/*
+ * Dynamically loaded transports must export the following entry point.
+ * This is invoked by the ATL framework when the transport library is loaded.
+ */
+#define ATL_EXT_INI \
+__attribute__((visibility ("default"))) \
+atl_status_t atl_ini(atl_transport_t *atl_transport)
+
+#define ATL_OFI_INI ATL_EXT_INI
+#define ATL_MPI_INI ATL_EXT_INI
+
+typedef struct atl_ctx atl_ctx_t;
+typedef struct atl_ep atl_ep_t;
+
+typedef enum
 {
-    ATL_RA_WAIT     = 0,
-    ATL_RA_RUN      = 1,
-    ATL_RA_FINALIZE = 2,
+    ATL_RA_WAIT,
+    ATL_RA_RUN,
+    ATL_RA_FINALIZE
 } atl_resize_action_t;
 
-typedef atl_resize_action_t (*atl_resize_fn_t)(size_t comm_size);
+typedef atl_resize_action_t (*atl_resize_fn_t)(size_t size);
 
-typedef enum {
-    atl_status_success,
-    atl_status_failure,
-    atl_status_again,
-
-    atl_status_unsupported,
+typedef enum
+{
+    ATL_STATUS_SUCCESS,
+    ATL_STATUS_FAILURE,
+    ATL_STATUS_AGAIN,
+    ATL_STATUS_UNSUPPORTED
 } atl_status_t;
 
-inline const char* atl_status_to_str(atl_status_t status)
+inline const char*
+atl_status_to_str(atl_status_t status)
 {
     switch (status)
     {
-        case atl_status_success:
+        case ATL_STATUS_SUCCESS:
             return "SUCCESS";
-        case atl_status_failure:
+        case ATL_STATUS_FAILURE:
             return "FAILURE";
-        case atl_status_unsupported:
+        case ATL_STATUS_UNSUPPORTED:
             return "UNSUPPORTED";
         default:
             return "UNKNOWN";
@@ -68,338 +81,334 @@ inline const char* atl_status_to_str(atl_status_t status)
 
 typedef enum
 {
-    atl_dtype_char   = 0,
-    atl_dtype_int    = 1,
-    atl_dtype_bfp16  = 2,
-    atl_dtype_float  = 3,
-    atl_dtype_double = 4,
-    atl_dtype_int64  = 5,
-    atl_dtype_uint64 = 6,
-    atl_dtype_custom = 7
+    ATL_DTYPE_CHAR,
+    ATL_DTYPE_INT,
+    ATL_DTYPE_BFP16,
+    ATL_DTYPE_FLOAT,
+    ATL_DTYPE_DOUBLE,
+    ATL_DTYPE_INT64,
+    ATL_DTYPE_UINT64,
+    ATL_DTYPE_CUSTOM
 } atl_datatype_t;
 
 typedef enum
 {
-    atl_reduction_sum    = 0,
-    atl_reduction_prod   = 1,
-    atl_reduction_min    = 2,
-    atl_reduction_max    = 3,
-    atl_reduction_custom = 4
+    ATL_REDUCTION_SUM,
+    ATL_REDUCTION_PROD,
+    ATL_REDUCTION_MIN,
+    ATL_REDUCTION_MAX,
+    ATL_REDUCTION_CUSTOM
 } atl_reduction_t;
 
-typedef struct atl_desc atl_desc_t;
-typedef struct atl_comm atl_comm_t;
-
-typedef struct atl_comm_attr {
-} atl_comm_attr_t;
-
-typedef struct atl_attr {
-    size_t comm_count;
+typedef struct
+{
+    size_t ep_count;
     int enable_shm;
-    int is_tagged_coll_enabled;
     size_t tag_bits;
     uint64_t max_tag;
     int enable_rma;
     size_t max_order_waw_size;
-    atl_comm_attr_t comm_attr;
 } atl_attr_t;
 
-typedef struct atl_mr {
-    void *buf;
+typedef struct
+{
+    void* buf;
     size_t len;
-    uintptr_t l_key;
-    uintptr_t r_key;
+    uintptr_t local_key;
+    uintptr_t remote_key;
 } atl_mr_t;
 
-typedef struct atl_proc_coord {
+typedef struct
+{
     size_t global_idx;
     size_t global_count;
     size_t local_idx;
     size_t local_count;
 } atl_proc_coord_t;
 
-typedef struct atl_ops {
-    void (*global_proc_idx)(atl_desc_t *desc, size_t *global_proc_idx);
-    void (*global_proc_count)(atl_desc_t *desc, size_t *global_proc_count);
-    atl_status_t (*finalize)(atl_desc_t *desc, atl_comm_t **comms);
-    atl_status_t (*update)(atl_proc_coord_t *proc_coord,
-                           atl_desc_t *desc, atl_comm_t** atl_comms);
-    atl_status_t (*wait_notification)(atl_desc_t *desc);
-    atl_status_t (*set_resize_function)(atl_resize_fn_t user_checker);
-    size_t is_resize_enabled;
-} atl_ops_t;
-
-typedef struct atl_mr_ops {
-    atl_status_t (*mr_reg)(atl_desc_t *atl_desc, const void *buf, size_t len,
-                           atl_mr_t **atl_mr);
-    atl_status_t (*mr_dereg)(atl_desc_t *atl_desc, atl_mr_t *atl_mr);
-} atl_mr_ops_t;
-
-struct atl_desc {
-    atl_ops_t *ops;
-    atl_mr_ops_t *mr_ops;
-};
-
-typedef struct atl_transport {
-    const char *name;
-    atl_status_t (*init)(int *argc, char ***argv, atl_proc_coord_t *proc_coord,
-                         atl_attr_t *attr, atl_comm_t ***atl_comms, atl_desc_t **atl_desc);
-} atl_transport_t;
-
-typedef struct atl_req {
+typedef struct
+{
     uint64_t tag;
     size_t remote_proc_idx;
-
-    void *internal[ATL_REQ_SIZE];
+    void* internal[ATL_REQ_SIZE];
 } atl_req_t __attribute__ ((aligned (ATL_CACHELINE_LEN)));
 
+typedef struct
+{
+    const char* name;
+    atl_status_t (*init)(int* argc, char*** argv, atl_attr_t* attr, atl_ctx_t** ctx, const char * main_addr);
+    atl_status_t (*main_addr_reserv)(char * main_addr);
+} atl_transport_t;
 
-/* len - for bytes */
-/* count - for iov and for dtype-arrays like in reduce/allreduce */
+typedef struct
+{
+    atl_status_t (*finalize)(atl_ctx_t* ctx);
+    atl_status_t (*update)(atl_ctx_t* ctx);
+    atl_status_t (*wait_notification)(atl_ctx_t* ctx);
+    atl_status_t (*set_resize_function)(atl_resize_fn_t fn);
+} atl_ops_t;
 
-typedef struct atl_coll_ops {
-    atl_status_t (*allgatherv)(atl_comm_t *comm, const void *send_buf, size_t send_len,
-                               void *recv_buf, const int recv_lens[], int  displs[], atl_req_t *req);
-    atl_status_t (*allreduce)(atl_comm_t *comm, const void *send_buf, void *recv_buf, size_t count,
-                              atl_datatype_t dtype, atl_reduction_t op, atl_req_t *req);
-    atl_status_t (*alltoall)(atl_comm_t *comm, const void *send_buf, void *recv_buf, size_t len,
-                             atl_req_t *req);
-    atl_status_t (*barrier)(atl_comm_t *comm, atl_req_t *req);
-    atl_status_t (*bcast)(atl_comm_t *comm, void *buf, size_t len, size_t root,
-                          atl_req_t *req);
-    atl_status_t (*reduce)(atl_comm_t *comm, const void *send_buf, void *recv_buf, size_t count, size_t root,
-                           atl_datatype_t dtype, atl_reduction_t op, atl_req_t *req);
-} atl_coll_ops_t;
+typedef struct
+{
+    atl_status_t (*mr_reg)(atl_ctx_t* ctx, const void* buf, size_t len, atl_mr_t** mr);
+    atl_status_t (*mr_dereg)(atl_ctx_t* ctx, atl_mr_t* mr);
+} atl_mr_ops_t;
 
-typedef struct atl_pt2pt_ops {
-    /* Non-blocking I/O vector pt2pt ops */
-    atl_status_t (*sendv)(atl_comm_t *comm, const struct iovec *iov, size_t count,
-                          size_t dest_proc_idx, uint64_t tag, atl_req_t *req);
-    atl_status_t (*recvv)(atl_comm_t *comm, struct iovec *iov, size_t count,
-                          size_t src_proc_idx, uint64_t tag, atl_req_t *req);
-    /* Non-blocking pt2pt ops */
-    atl_status_t (*send)(atl_comm_t *comm, const void *buf, size_t len,
-                         size_t dest_proc_idx, uint64_t tag, atl_req_t *req);
-    atl_status_t (*recv)(atl_comm_t *comm, void *buf, size_t len,
-                         size_t src_proc_idx, uint64_t tag, atl_req_t *req);
-    atl_status_t (*probe)(atl_comm_t *comm, size_t src_proc_idx, uint64_t tag,
-                          int *found, size_t *recv_len);
-} atl_pt2pt_ops_t;
+struct atl_ctx
+{
+    atl_ops_t* ops;
+    atl_mr_ops_t* mr_ops;
+    atl_proc_coord_t coord;
 
-typedef struct atl_rma_ops {
-    atl_status_t (*read)(atl_comm_t *comm, void *buf, size_t len, atl_mr_t *atl_mr,
-                         uint64_t addr, uintptr_t r_key, size_t dest_proc_idx, atl_req_t *req);
-    atl_status_t (*write)(atl_comm_t *comm, const void *buf, size_t len, atl_mr_t *atl_mr,
-       uint64_t addr, uintptr_t r_key, size_t dest_proc_idx, atl_req_t *req);
-} atl_rma_ops_t;
+    size_t ep_count;
+    atl_ep_t** eps;
 
-typedef struct atl_comp_ops {
-    atl_status_t (*wait)(atl_comm_t *comm, atl_req_t *req);
-    atl_status_t (*wait_all)(atl_comm_t *comm, atl_req_t *reqs, size_t count);
-    atl_status_t (*cancel)(atl_comm_t *comm, atl_req_t *req);
-    atl_status_t (*poll)(atl_comm_t *comm);
-    atl_status_t (*check)(atl_comm_t *comm, int *status, atl_req_t *req);
-} atl_comp_ops_t;
-
-struct atl_comm {
-    atl_desc_t *atl_desc;
-    atl_coll_ops_t *coll_ops;
-    atl_pt2pt_ops_t *pt2pt_ops;
-    atl_rma_ops_t *rma_ops;
-    atl_comp_ops_t *comp_ops;
+    int is_resize_enabled;
 };
 
 /*
- * Dynamically loaded transports must export the following entry point.
- * This is invoked by the ATL framework when the transport library
- * is loaded.
- */
-#define ATL_EXT_INI                                        \
-__attribute__((visibility ("default"))) \
-atl_status_t atl_ini(atl_transport_t *atl_transport)
+   name convention
+   len - for bytes
+   count - for iov and for dtype-arrays like in reduce/allreduce
+*/
 
-/* Transport initialization function signature that built-in transportss
- * must specify. */
-#define INI_SIG(name)                            \
-atl_status_t name(atl_transport_t *atl_transport)
-
-/* for each transport defines for three scenarios:
- * dl: externally visible ctor with known name
- * built-in: ctor function def, don't export symbols
- * not built: no-op call for ctor
- */
-
-#if (HAVE_OFI) && (HAVE_OFI_DL)
-#  define ATL_OFI_INI ATL_EXT_INI
-#  define ATL_MPI_INI ATL_EXT_INI
-#  define ATL_OFI_INIT atl_noop_init
-#elif (HAVE_OFI)
-#  define ATL_OFI_INI INI_SIG(atl_ofi_ini)
-#  define ATL_OFI_INIT atl_ofi_init
-ATL_OFI_INI ;
-#else
-#  define ATL_OFI_INIT atl_noop_init
-#endif
-
-static inline INI_SIG(atl_noop_init)
+typedef struct
 {
-    return atl_status_success;
-}
+    atl_status_t (*send)(atl_ep_t* ep, const void* buf, size_t len,
+                         size_t dst_proc_idx, uint64_t tag, atl_req_t* req);
+    atl_status_t (*recv)(atl_ep_t* ep, void* buf, size_t len,
+                         size_t src_proc_idx, uint64_t tag, atl_req_t* req);
+    atl_status_t (*probe)(atl_ep_t* ep, size_t src_proc_idx, uint64_t tag,
+                          int* found, size_t* recv_len);
+} atl_p2p_ops_t;
 
-/* FIXME: use ccl_atl_transport enum instead of char* after better integration of CCL core and ATL codes */
-atl_status_t atl_init(const char *transport_name, int *argc, char ***argv, atl_proc_coord_t *proc_coord,
-                      atl_attr_t *attr, atl_comm_t ***atl_comms, atl_desc_t **atl_desc);
-
-static inline size_t is_ft_enabled(atl_desc_t *desc)
+typedef struct
 {
-    return desc->ops->is_resize_enabled;
-}
+    /* order convention - keep alphabetical order */
+    atl_status_t (*allgatherv)(atl_ep_t* ep, const void* send_buf, size_t send_len,
+                               void* recv_buf, const int* recv_lens, const int* offsets, atl_req_t* req);
+    atl_status_t (*allreduce)(atl_ep_t* ep, const void* send_buf, void* recv_buf, size_t count,
+                              atl_datatype_t dtype, atl_reduction_t op, atl_req_t* req);
+    atl_status_t (*alltoall)(atl_ep_t* ep, const void* send_buf, void* recv_buf, size_t len, atl_req_t* req);
+    atl_status_t (*alltoallv)(atl_ep_t* ep, const void* send_buf, const int* send_lens, const int* send_offsets,
+                              void* recv_buf, const int* recv_lens, const int* recv_offsets, atl_req_t* req);
+    atl_status_t (*barrier)(atl_ep_t* ep, atl_req_t* req);
+    atl_status_t (*bcast)(atl_ep_t* ep, void* buf, size_t len, size_t root, atl_req_t* req);
+    atl_status_t (*reduce)(atl_ep_t* ep, const void* send_buf, void* recv_buf, size_t count, size_t root,
+                           atl_datatype_t dtype, atl_reduction_t op, atl_req_t* req);
+} atl_coll_ops_t;
 
-static inline void atl_global_proc_idx(atl_desc_t *desc, size_t *global_proc_idx)
+typedef struct
 {
-    desc->ops->global_proc_idx(desc, global_proc_idx);
-}
+    atl_status_t (*read)(atl_ep_t* ep, void* buf, size_t len, atl_mr_t* mr,
+                         uint64_t addr, uintptr_t remote_key,
+                         size_t dst_proc_idx, atl_req_t* req);
+    atl_status_t (*write)(atl_ep_t* ep, const void* buf, size_t len, atl_mr_t* mr,
+                          uint64_t addr, uintptr_t remote_key,
+                          size_t dst_proc_idx, atl_req_t* req);
+} atl_rma_ops_t;
 
-static inline void atl_global_proc_count(atl_desc_t *desc, size_t *global_proc_count)
+typedef struct
 {
-    desc->ops->global_proc_count(desc, global_proc_count);
-}
+    atl_status_t (*wait)(atl_ep_t* ep, atl_req_t* req);
+    atl_status_t (*wait_all)(atl_ep_t* ep, atl_req_t* reqs, size_t count);
+    atl_status_t (*cancel)(atl_ep_t* ep, atl_req_t* req);
+    atl_status_t (*poll)(atl_ep_t* ep);
+    atl_status_t (*check)(atl_ep_t* ep, int* status, atl_req_t* req);
+} atl_comp_ops_t;
 
-static inline atl_status_t atl_update(atl_proc_coord_t *proc_coord,
-                                      atl_desc_t *desc, atl_comm_t** atl_comms)
+struct atl_ep
 {
-    return desc->ops->update(proc_coord, desc, atl_comms);
-}
+    size_t idx;
+    atl_ctx_t* ctx;
+    atl_p2p_ops_t* p2p_ops;
+    atl_coll_ops_t* coll_ops;
+    atl_rma_ops_t* rma_ops;
+    atl_comp_ops_t* comp_ops;
+};
 
-static inline atl_status_t atl_wait_notification(atl_desc_t *desc)
-{
-    return desc->ops->wait_notification(desc);
-}
+atl_status_t
+atl_init(const char* transport_name,
+         int* argc, char*** argv,
+         atl_attr_t* att,
+         atl_ctx_t** ctx,
+         const char* main_addr);
 
-static inline atl_status_t atl_finalize(atl_desc_t *desc, atl_comm_t **comms)
-{
-    return desc->ops->finalize(desc, comms);
-}
+void atl_main_addr_reserv(char* main_addr);
 
-static inline atl_status_t atl_set_resize_function(atl_desc_t *desc, atl_resize_fn_t user_checker)
+static inline atl_status_t
+atl_finalize(atl_ctx_t* ctx)
 {
-    return desc->ops->set_resize_function(user_checker);
-}
-
-static inline atl_status_t atl_comm_send(atl_comm_t *comm, const void *buf, size_t len,
-                                         size_t dest_proc_idx, uint64_t tag, atl_req_t *req)
-{
-    return comm->pt2pt_ops->send(comm, buf, len, dest_proc_idx, tag, req);
-}
-
-static inline atl_status_t atl_comm_recv(atl_comm_t *comm, void *buf, size_t len,
-                                         size_t src_proc_idx, uint64_t tag, atl_req_t *req)
-{
-    return comm->pt2pt_ops->recv(comm, buf, len, src_proc_idx, tag, req);
-}
-
-static inline atl_status_t atl_comm_sendv(atl_comm_t *comm, const struct iovec *iov, size_t count,
-                                          size_t dest_proc_idx, uint64_t tag, atl_req_t *req)
-{
-    return comm->pt2pt_ops->sendv(comm, iov, count, dest_proc_idx, tag, req);
-}
-
-static inline atl_status_t atl_comm_recvv(atl_comm_t *comm, struct iovec *iov, size_t count,
-                                          size_t src_proc_idx, uint64_t tag, atl_req_t *req)
-{
-    return comm->pt2pt_ops->recvv(comm, iov, count, src_proc_idx, tag, req);
-}
-
-static inline atl_status_t atl_mr_reg(atl_desc_t *atl_desc, const void *buf, size_t len,
-                                      atl_mr_t **atl_mr)
-{
-    return atl_desc->mr_ops->mr_reg(atl_desc, buf, len, atl_mr);
-}
-
-static inline atl_status_t atl_mr_dereg(atl_desc_t *atl_desc, atl_mr_t *atl_mr)
-{
-    return atl_desc->mr_ops->mr_dereg(atl_desc, atl_mr);
-}
-
-static inline atl_status_t atl_comm_read(atl_comm_t *comm, void *buf, size_t len, atl_mr_t *atl_mr,
-                                         uint64_t addr, uintptr_t r_key, size_t dest_proc_idx, atl_req_t *req)
-{
-    return comm->rma_ops->read(comm, buf, len, atl_mr, addr, r_key, dest_proc_idx, req);
-}
-
-static inline atl_status_t atl_comm_write(atl_comm_t *comm, const void *buf, size_t len, atl_mr_t *atl_mr,
-                                          uint64_t addr, uintptr_t r_key, size_t dest_proc_idx, atl_req_t *req)
-{
-    return comm->rma_ops->write(comm, buf, len, atl_mr, addr, r_key, dest_proc_idx, req);
-}
-
-static inline atl_status_t atl_comm_probe(atl_comm_t *comm, size_t src_proc_idx,
-                                          uint64_t tag, int *found, size_t *recv_len)
-{
-    return comm->pt2pt_ops->probe(comm, src_proc_idx, tag, found, recv_len);
-}
-
-static inline atl_status_t atl_comm_cancel(atl_comm_t *comm, atl_req_t *req)
-{
-    return comm->comp_ops->cancel(comm, req);
-}
-
-static inline atl_status_t atl_comm_wait(atl_comm_t *comm, atl_req_t *req)
-{
-    return comm->comp_ops->wait(comm, req);
-}
-
-static inline atl_status_t atl_comm_wait_all(atl_comm_t *comm, atl_req_t *req, size_t count)
-{
-    return comm->comp_ops->wait_all(comm, req, count);
-}
-
-static inline atl_status_t atl_comm_poll(atl_comm_t *comm)
-{
-    return comm->comp_ops->poll(comm);
-}
-
-static inline atl_status_t atl_comm_check(atl_comm_t *comm, int *status, atl_req_t *req)
-{
-    return comm->comp_ops->check(comm, status, req);
+    return ctx->ops->finalize(ctx);
 }
 
 static inline atl_status_t
-atl_comm_allreduce(atl_comm_t *comm, const void *s_buf, void *r_buf, size_t len,
-                   atl_datatype_t dtype, atl_reduction_t op, atl_req_t *req)
+atl_update(atl_ctx_t* ctx)
 {
-    return comm->coll_ops->allreduce(comm, s_buf, r_buf, len, dtype, op, req);
+    return ctx->ops->update(ctx);
 }
 
 static inline atl_status_t
-atl_comm_reduce(atl_comm_t *comm, const void *s_buf, void *r_buf, size_t len, size_t root,
-                atl_datatype_t dtype, atl_reduction_t op, atl_req_t *req)
+atl_wait_notification(atl_ctx_t* ctx)
 {
-    return comm->coll_ops->reduce(comm, s_buf, r_buf, len, root,  dtype, op,req);
+    return ctx->ops->wait_notification(ctx);
 }
 
 static inline atl_status_t
-atl_comm_allgatherv(atl_comm_t *comm, const void *s_buf, size_t s_len,
-                    void *r_buf, int r_lens[], int displs[], atl_req_t *req)
+atl_set_resize_function(atl_ctx_t* ctx,
+                        atl_resize_fn_t fn)
 {
-    return comm->coll_ops->allgatherv(comm, s_buf, s_len, r_buf, r_lens, displs, req);
+    return ctx->ops->set_resize_function(fn);
+}
+
+static inline atl_ep_t**
+atl_get_eps(atl_ctx_t* ctx)
+{
+    return ctx->eps;
+}
+
+static inline atl_proc_coord_t*
+atl_get_proc_coord(atl_ctx_t* ctx)
+{
+    return &(ctx->coord);
+}
+
+static inline int
+atl_is_resize_enabled(atl_ctx_t* ctx)
+{
+    return ctx->is_resize_enabled;
 }
 
 static inline atl_status_t
-atl_comm_alltoall(atl_comm_t *comm, const void *s_buf, void *r_buf,
-                  int lens, atl_req_t *req)
+atl_mr_reg(atl_ctx_t* ctx, const void* buf, size_t len, atl_mr_t** mr)
 {
-    return comm->coll_ops->alltoall(comm, s_buf, r_buf, lens, req);
+    return ctx->mr_ops->mr_reg(ctx, buf, len, mr);
 }
 
 static inline atl_status_t
-atl_comm_bcast(atl_comm_t *comm, void *buf, size_t len, size_t root, atl_req_t *req)
+atl_mr_dereg(atl_ctx_t* ctx, atl_mr_t* mr)
 {
-    return comm->coll_ops->bcast(comm, buf, len, root, req);
+    return ctx->mr_ops->mr_dereg(ctx, mr);
 }
 
 static inline atl_status_t
-atl_comm_barrier(atl_comm_t *comm, atl_req_t *req)
+atl_ep_send(atl_ep_t* ep, const void* buf, size_t len,
+            size_t dst_proc_idx, uint64_t tag, atl_req_t* req)
 {
-    return comm->coll_ops->barrier(comm, req);
+    return ep->p2p_ops->send(ep, buf, len, dst_proc_idx, tag, req);
+}
+
+static inline atl_status_t
+atl_ep_recv(atl_ep_t* ep, void* buf, size_t len,
+            size_t src_proc_idx, uint64_t tag, atl_req_t* req)
+{
+    return ep->p2p_ops->recv(ep, buf, len, src_proc_idx, tag, req);
+}
+
+static inline atl_status_t
+atl_ep_probe(atl_ep_t* ep, size_t src_proc_idx,
+             uint64_t tag, int* found, size_t* recv_len)
+{
+    return ep->p2p_ops->probe(ep, src_proc_idx, tag, found, recv_len);
+}
+
+static inline atl_status_t
+atl_ep_allgatherv(atl_ep_t* ep, const void* send_buf, size_t send_len,
+                  void* recv_buf, const int* recv_lens, const int* offsets, atl_req_t* req)
+{
+    return ep->coll_ops->allgatherv(ep, send_buf, send_len, recv_buf, recv_lens, offsets, req);
+}
+
+static inline atl_status_t
+atl_ep_allreduce(atl_ep_t* ep, const void* send_buf, void* recv_buf, size_t len,
+                 atl_datatype_t dtype, atl_reduction_t op, atl_req_t* req)
+{
+    return ep->coll_ops->allreduce(ep, send_buf, recv_buf, len, dtype, op, req);
+}
+
+static inline atl_status_t
+atl_ep_alltoall(atl_ep_t* ep, const void* send_buf, void* recv_buf,
+                int len, atl_req_t* req)
+{
+    return ep->coll_ops->alltoall(ep, send_buf, recv_buf, len, req);
+}
+
+static inline atl_status_t
+atl_ep_alltoallv(atl_ep_t* ep, const void* send_buf, const int* send_lens, const int* send_offsets,
+                 void* recv_buf, const int* recv_lens, const int* recv_offsets, atl_req_t* req)
+{
+    return ep->coll_ops->alltoallv(ep, send_buf, send_lens, send_offsets,
+                                   recv_buf, recv_lens, recv_offsets, req);
+}
+
+static inline atl_status_t
+atl_ep_barrier(atl_ep_t* ep, atl_req_t* req)
+{
+    return ep->coll_ops->barrier(ep, req);
+}
+
+static inline atl_status_t
+atl_ep_bcast(atl_ep_t* ep, void* buf, size_t len,
+             size_t root, atl_req_t* req)
+{
+    return ep->coll_ops->bcast(ep, buf, len, root, req);
+}
+
+static inline atl_status_t
+atl_ep_reduce(atl_ep_t* ep, const void* send_buf,
+              void* recv_buf, size_t len, size_t root,
+              atl_datatype_t dtype, atl_reduction_t op,
+              atl_req_t* req)
+{
+    return ep->coll_ops->reduce(ep, send_buf, recv_buf, len, root, dtype, op, req);
+}
+
+static inline atl_status_t
+atl_ep_read(atl_ep_t* ep, void* buf,
+            size_t len, atl_mr_t* mr,
+            uint64_t addr, uintptr_t remote_key,
+            size_t dst_proc_idx, atl_req_t* req)
+{
+    return ep->rma_ops->read(ep, buf, len, mr, addr,
+                             remote_key, dst_proc_idx, req);
+}
+
+static inline atl_status_t
+atl_ep_write(atl_ep_t* ep, const void* buf,
+             size_t len, atl_mr_t* mr,
+             uint64_t addr, uintptr_t remote_key,
+             size_t dst_proc_idx, atl_req_t* req)
+{
+    return ep->rma_ops->write(ep, buf, len, mr, addr,
+                              remote_key, dst_proc_idx, req);
+}
+
+static inline atl_status_t
+atl_ep_wait(atl_ep_t* ep, atl_req_t* req)
+{
+    return ep->comp_ops->wait(ep, req);
+}
+
+static inline atl_status_t
+atl_ep_wait_all(atl_ep_t* ep, atl_req_t* req, size_t count)
+{
+    return ep->comp_ops->wait_all(ep, req, count);
+}
+
+static inline atl_status_t
+atl_ep_cancel(atl_ep_t* ep, atl_req_t* req)
+{
+    return ep->comp_ops->cancel(ep, req);
+}
+
+static inline atl_status_t
+atl_ep_poll(atl_ep_t* ep)
+{
+    return ep->comp_ops->poll(ep);
+}
+
+static inline atl_status_t
+atl_ep_check(atl_ep_t* ep, int* status, atl_req_t* req)
+{
+    return ep->comp_ops->check(ep, status, req);
 }

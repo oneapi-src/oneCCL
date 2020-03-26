@@ -57,6 +57,20 @@ void ccl_sched_base::update_coll_param_and_attr(const ccl_coll_param& param,
         }
     }
 
+    if (coll_param.ctype == ccl_coll_alltoallv)
+    {
+        coll_param.send_counts = param.send_counts;
+        coll_param.recv_counts = param.recv_counts;
+
+        CCL_THROW_IF_NOT(coll_param_copy.a2av_send_counts.size() == coll_param.comm->size());
+        CCL_THROW_IF_NOT(coll_param_copy.a2av_recv_counts.size() == coll_param.comm->size());
+
+        coll_param_copy.a2av_send_counts.assign((size_t*)param.send_counts,
+                                                (size_t*)param.send_counts + coll_param.comm->size());
+        coll_param_copy.a2av_recv_counts.assign((size_t*)param.recv_counts,
+                                                (size_t*)param.recv_counts + coll_param.comm->size());
+    }
+
     if (coll_param.ctype == ccl_coll_sparse_allreduce)
     {
         coll_param.sparse_param.send_ind_buf = param.sparse_param.send_ind_buf;
@@ -160,7 +174,7 @@ void ccl_sched_base::alloc_buffers_for_sycl_copy()
 
     LOG_DEBUG("alloc tmp buffers for D2H and H2D copies, coll_type ", ccl_coll_type_to_str(param.ctype));
 
-    size_t idx, recv_count = 0;
+    size_t idx, send_count = 0, recv_count = 0;
 
     switch (param.ctype)
     {
@@ -169,7 +183,7 @@ void ccl_sched_base::alloc_buffers_for_sycl_copy()
             param.sycl_recv_buf = static_cast<ccl_sycl_buffer_t*>(param.recv_buf);
             param.send_buf = alloc_buffer(param.send_count * ccl_datatype_get_size(param.dtype)).get_ptr();
             for (idx = 0; idx < param.comm->size(); idx++)
-                 recv_count += param.recv_counts[idx];
+                recv_count += param.recv_counts[idx];
             param.recv_buf = alloc_buffer(recv_count * ccl_datatype_get_size(param.dtype)).get_ptr();
             break;
         case ccl_coll_allreduce:
@@ -183,6 +197,17 @@ void ccl_sched_base::alloc_buffers_for_sycl_copy()
             param.sycl_recv_buf = static_cast<ccl_sycl_buffer_t*>(param.recv_buf);
             param.send_buf = alloc_buffer(param.count * ccl_datatype_get_size(param.dtype) * param.comm->size()).get_ptr();
             param.recv_buf = alloc_buffer(param.count * ccl_datatype_get_size(param.dtype) * param.comm->size()).get_ptr();
+            break;
+        case ccl_coll_alltoallv:
+            param.sycl_send_buf = static_cast<ccl_sycl_buffer_t*>((void*)param.send_buf);
+            param.sycl_recv_buf = static_cast<ccl_sycl_buffer_t*>(param.recv_buf);
+            for (idx = 0; idx < param.comm->size(); idx++)
+            {
+                send_count += param.send_counts[idx];
+                recv_count += param.recv_counts[idx];
+            }
+            param.send_buf = alloc_buffer(send_count * ccl_datatype_get_size(param.dtype)).get_ptr();
+            param.recv_buf = alloc_buffer(recv_count * ccl_datatype_get_size(param.dtype)).get_ptr();
             break;
         case ccl_coll_bcast:
             param.sycl_buf = static_cast<ccl_sycl_buffer_t*>(param.buf);

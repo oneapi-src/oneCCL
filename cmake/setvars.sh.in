@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 WORK_DIR="$(cd "$( dirname "${BASH_SOURCE[0]}" )" > /dev/null && pwd)"
 export CCL_ROOT="$(cd ${WORK_DIR}/../; pwd -P)"
 if [ -z "${I_MPI_ROOT}" ]

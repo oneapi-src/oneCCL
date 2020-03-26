@@ -40,6 +40,28 @@
 
 constexpr size_t LOGGER_BUFFER_SIZE = 2048;
 
+
+constexpr const char* get_str_end(const char *str)
+{
+    return *str ? get_str_end(str + 1) : str;
+}
+
+constexpr bool is_slash(const char *str)
+{
+    return *str == '/' ? true : (*str ? is_slash(str + 1) : false);
+}
+
+constexpr const char* trim_slash(const char* str)
+{
+    return *str == '/' ? (str + 1) : trim_slash(str - 1);
+}
+
+constexpr const char* basedir_static(const char* str)
+{
+    return is_slash(str) ? trim_slash(get_str_end(str)) : str;
+}
+
+
 enum class ccl_log_level
 {
     ERROR = 0,
@@ -234,36 +256,36 @@ private:
 
 extern thread_local ccl_logger logger;
 
-#define LOG_ERROR(...)                                                                      \
-{                                                                                           \
-    if (logger.get_log_level() >= ccl_log_level::ERROR)                                     \
-    {                                                                                       \
-        logger.error(__FILENAME__,":", __FUNCTION__, ":", __LINE__, " ", ##__VA_ARGS__);    \
-    }                                                                                       \
+#define LOG_ERROR(...)                                                                                      \
+{                                                                                                           \
+    if (logger.get_log_level() >= ccl_log_level::ERROR)                                                     \
+    {                                                                                                       \
+        logger.error(basedir_static(__FILE__), ":", __LINE__ , "\t", __FUNCTION__, " ", ##__VA_ARGS__);     \
+    }                                                                                                       \
 }
 
-#define LOG_INFO(...)                                                                       \
-{                                                                                           \
-    if (logger.get_log_level() >= ccl_log_level::INFO)                                      \
-    {                                                                                       \
-        logger.info( __FUNCTION__, ":", __LINE__, " ", ##__VA_ARGS__);                      \
-    }                                                                                       \
+#define LOG_INFO(...)                                                                                       \
+{                                                                                                           \
+    if (logger.get_log_level() >= ccl_log_level::INFO)                                                      \
+    {                                                                                                       \
+        logger.info(basedir_static(__FILE__), ":", __LINE__ , "\t", __FUNCTION__, " ", ##__VA_ARGS__);      \
+    }                                                                                                       \
 }
 
-#define LOG_DEBUG(...)                                                                      \
-{                                                                                           \
-    if (logger.get_log_level() >= ccl_log_level::DEBUG)                                     \
-    {                                                                                       \
-        logger.debug( __FUNCTION__, ":", __LINE__, " ", ##__VA_ARGS__);                     \
-    }                                                                                       \
+#define LOG_DEBUG(...)                                                                                      \
+{                                                                                                           \
+    if (logger.get_log_level() >= ccl_log_level::DEBUG)                                                     \
+    {                                                                                                       \
+        logger.debug(basedir_static(__FILE__), ":", __LINE__ , "\t", __FUNCTION__, " ", ##__VA_ARGS__);     \
+    }                                                                                                       \
 }
 
-#define LOG_TRACE(...)                                                                      \
-{                                                                                           \
-    if (logger.get_log_level() >= ccl_log_level::TRACE)                                     \
-    {                                                                                       \
-        logger.trace( __FUNCTION__, ":", __LINE__, " ", ##__VA_ARGS__);                     \
-    }                                                                                       \
+#define LOG_TRACE(...)                                                                                      \
+{                                                                                                           \
+    if (logger.get_log_level() >= ccl_log_level::TRACE)                                                     \
+    {                                                                                                       \
+        logger.trace(basedir_static(__FILE__), ":", __LINE__ , "\t", __FUNCTION__, " ", ##__VA_ARGS__);     \
+    }                                                                                                       \
 }
 
 /**

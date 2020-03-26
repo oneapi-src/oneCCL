@@ -15,6 +15,7 @@
 */
 #include "coll/algorithms/allreduce/allreduce_2d.hpp"
 #include "coll/selection/selection.hpp"
+#include "comp/bfp16/bfp16_utils.h"
 #include "common/comm/atl_tag.hpp"
 #include "common/global/global.hpp"
 #include "common/stream/stream.hpp"
@@ -70,8 +71,8 @@ ccl_status_t ccl_init()
         if (global_data.executor->get_global_proc_idx() == 0)
             ccl_env_print();
 
-        global_data.atl_tag = std::unique_ptr<ccl_atl_tag>(new ccl_atl_tag(global_data.executor->atl_attr.tag_bits,
-                                                                           global_data.executor->atl_attr.max_tag));
+        global_data.atl_tag = std::unique_ptr<ccl_atl_tag>(new ccl_atl_tag(global_data.executor->get_atl_attr().tag_bits,
+                                                                           global_data.executor->get_atl_attr().max_tag));
         global_data.algorithm_selector =
             std::unique_ptr<ccl_algorithm_selector_wrapper<CCL_COLL_LIST>>(
                 new ccl_algorithm_selector_wrapper<CCL_COLL_LIST>());
@@ -85,6 +86,21 @@ ccl_status_t ccl_init()
         global_data.allreduce_2d_builder =
             std::unique_ptr<ccl_allreduce_2d_builder>(new ccl_allreduce_2d_builder());
 
+        global_data.is_bfp16_enabled = ccl_bfp16_is_enabled();
+
+        if (global_data.is_bfp16_enabled)
+        {
+            LOG_INFO("BFP16 is enabled");
+        }
+        else
+        {
+#ifdef CCL_BFP16_COMPILER
+            LOG_INFO("BFP16 is disabled on HW level");
+#else
+            LOG_INFO("BFP16 is disabled on compiler level");
+#endif
+        }
+
         return ccl_status_success;
     }
     COMMON_CATCH_BLOCK();
@@ -96,12 +112,14 @@ ccl_status_t CCL_API ccl_get_version(ccl_version_t* version)
     {
         return ccl_status_invalid_arguments;
     }
+
     version->major = CCL_MAJOR_VERSION;
     version->minor = CCL_MINOR_VERSION;
     version->update = CCL_UPDATE_VERSION;
     version->product_status = CCL_PRODUCT_STATUS;
     version->build_date = CCL_PRODUCT_BUILD_DATE;
     version->full = CCL_PRODUCT_FULL;
+
     return ccl_status_success;
 }
 
@@ -123,8 +141,6 @@ void ccl_reset_for_size_update(ccl_global_data* gl_data)
 
 ccl_status_t ccl_finalize()
 {
-    ccl_barrier(nullptr, nullptr);
-
     try
     {
         /* keep reverse order of initialization */
@@ -366,6 +382,33 @@ ccl_status_t CCL_API ccl_alltoall(
         auto request = ccl_alltoall_impl(send_buf, recv_buf, count, dtype, attr,
                                          (comm) ? static_cast<ccl_comm*>(comm) : global_data.comm.get(),
                                          static_cast<const ccl_stream*>(stream));
+        *req = static_cast<ccl_request_t>(request);
+        return ccl_status_success;
+    }
+    COMMON_CATCH_BLOCK();
+}
+
+ccl_status_t CCL_API ccl_alltoallv(
+    const void* send_buf,
+    const size_t* send_counts,
+    void* recv_buf,
+    const size_t* recv_counts,
+    ccl_datatype_t dtype,
+    const ccl_coll_attr_t* attr,
+    ccl_comm_t comm,
+    ccl_stream_t stream,
+    ccl_request_t* req)
+{
+    CCL_CHECK_IS_BLOCKED();
+    try
+    {
+        if (!req)
+        {
+            return ccl_status_invalid_arguments;
+        }
+        auto request = ccl_alltoallv_impl(send_buf, send_counts, recv_buf, recv_counts, dtype, attr,
+                                          (comm) ? static_cast<ccl_comm*>(comm) : global_data.comm.get(),
+                                          static_cast<const ccl_stream*>(stream));
         *req = static_cast<ccl_request_t>(request);
         return ccl_status_success;
     }

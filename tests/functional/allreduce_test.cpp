@@ -14,17 +14,15 @@
  limitations under the License.
 */
 #define TEST_CCL_REDUCE
-#define Collective_Name "CCL_ALLREDUCE"
 
-#include <chrono>
-#include <functional>
-#include <vector>
+#define COLL_NAME "CCL_ALLREDUCE"
 
 #include "base_impl.hpp"
 
 template <typename T> class allreduce_test : public base_test <T>
 {
 public:
+
     int check(typed_test_param<T>& param)
     {
         for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++)
@@ -36,40 +34,24 @@ public:
                     T expected =
                         ((param.process_count * (param.process_count - 1) / 2) +
                         ((elem_idx + buf_idx) * param.process_count));
-                    if (param.recv_buf[buf_idx][elem_idx] != expected)
-                    {
-                        snprintf(allreduce_test::get_err_message(), ERR_MESSAGE_MAX_LEN,
-                                 "[%zu] sent send_buf[%zu][%zu] = %f, got recv_buf[%zu][%zu] = %f, but expected = %f\n",
-                                 param.process_idx, buf_idx, elem_idx, (double) param.send_buf[buf_idx][elem_idx], buf_idx,
-                                 elem_idx, (double) param.recv_buf[buf_idx][elem_idx], (double) expected);
+                    if (base_test<T>::check_error(param, expected, buf_idx, elem_idx))
                         return TEST_FAILURE;
-                    }
                 }
 
                 if (param.test_conf.reduction_type == RT_MAX)
                 {
                     T expected = get_expected_max<T>(elem_idx, buf_idx, param.process_count);
-                    if (param.recv_buf[buf_idx][elem_idx] != expected)
-                    {
-                        snprintf(allreduce_test::get_err_message(), ERR_MESSAGE_MAX_LEN,
-                                 "[%zu] sent send_buf[%zu][%zu] = %f, got recv_buf[%zu][%zu] = %f, but expected = %f\n",
-                                 param.process_idx, buf_idx, elem_idx, (double) param.send_buf[buf_idx][elem_idx], buf_idx,
-                                 elem_idx, (double) param.recv_buf[buf_idx][elem_idx], (double) expected);
+                    if (base_test<T>::check_error(param, expected, buf_idx, elem_idx))
                         return TEST_FAILURE;
-                    }
                 }
+
                 if (param.test_conf.reduction_type == RT_MIN)
                 {
                     T expected = get_expected_min<T>(elem_idx, buf_idx, param.process_count);
-                    if (param.recv_buf[buf_idx][elem_idx] != expected)
-                    {
-                        snprintf(allreduce_test::get_err_message(), ERR_MESSAGE_MAX_LEN,
-                                 "[%zu] sent send_buf[%zu][%zu] = %f, got recv_buf[%zu][%zu] = %f, but expected = %f\n",
-                                 param.process_idx, buf_idx, elem_idx, (double) param.send_buf[buf_idx][elem_idx], buf_idx,
-                                 elem_idx, (double) param.recv_buf[buf_idx][elem_idx], (double) expected);
+                    if (base_test<T>::check_error(param, expected, buf_idx, elem_idx))
                         return TEST_FAILURE;
-                    }
                 }
+
                 if (param.test_conf.reduction_type == RT_PROD)
                 {
                     T expected = 1;
@@ -77,35 +59,41 @@ public:
                     {
                         expected *= elem_idx + buf_idx + k;
                     }
-                    if (param.recv_buf[buf_idx][elem_idx] != expected)
-                    {
-                        snprintf(allreduce_test::get_err_message(), ERR_MESSAGE_MAX_LEN,
-                                 "[%zu] sent send_buf[%zu][%zu] = %f, got recv_buf[%zu][%zu] = %f, but expected = %f\n",
-                                 param.process_idx, buf_idx, elem_idx, (double) param.send_buf[buf_idx][elem_idx], buf_idx,
-                                 elem_idx, (double) param.recv_buf[buf_idx][elem_idx], (double) expected);
+                    if (base_test<T>::check_error(param, expected, buf_idx, elem_idx))
                         return TEST_FAILURE;
-                    }
                 }
             }
         }
         return TEST_SUCCESS;
     }
 
+    size_t get_recv_buf_size(typed_test_param<T>& param)
+    {
+        return param.elem_count;
+    }
+
     void run_derived(typed_test_param<T>& param)
     {
-        const ccl_test_conf& test_conf = param.get_conf();
+        void* send_buf;
+        void* recv_buf;
         size_t count = param.elem_count;
+        const ccl_test_conf& test_conf = param.get_conf();
         ccl::reduction reduction = (ccl::reduction) test_conf.reduction_type;
         ccl::coll_attr* attr = &param.coll_attr;
         ccl::stream_t& stream = param.get_stream();
+        ccl::data_type data_type = static_cast<ccl::data_type>(test_conf.data_type);
+
         for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++)
         {
+            size_t new_idx = param.buf_indexes[buf_idx];
             param.prepare_coll_attr(param.buf_indexes[buf_idx]);
-            T* send_buf = param.send_buf[param.buf_indexes[buf_idx]].data();
-            T* recv_buf = param.recv_buf[param.buf_indexes[buf_idx]].data();
+
+            send_buf = param.get_send_buf(new_idx);
+            recv_buf = param.get_recv_buf(new_idx);
+
             param.reqs[buf_idx] =
-                param.global_comm->allreduce((test_conf.place_type == PT_IN) ? recv_buf : send_buf,
-                                             recv_buf, count, reduction, attr, stream);
+                param.global_comm->allreduce((test_conf.place_type == PT_IN) ? recv_buf : send_buf, 
+                                             recv_buf, count, data_type, reduction, attr, stream);
         }
     }
 };

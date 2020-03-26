@@ -115,9 +115,9 @@ void sched_entry::dump_detail(std::stringstream& str) const
 
 void sched_entry::update_status(atl_status_t atl_status)
 {
-    if (unlikely(atl_status != atl_status_success))
+    if (unlikely(atl_status != ATL_STATUS_SUCCESS))
     {
-        if (atl_status == atl_status_again)
+        if (atl_status == ATL_STATUS_AGAIN)
         {
             status = ccl_sched_entry_status_again;
             return;

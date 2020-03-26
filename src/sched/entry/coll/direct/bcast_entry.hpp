@@ -43,9 +43,9 @@ public:
         size_t bytes = cnt * ccl_datatype_get_size(dtype);
         LOG_DEBUG("BCAST entry req ", &req, ", bytes ", bytes);
 
-        atl_status_t atl_status = atl_comm_bcast(sched->bin->get_comm_ctx(), buf.get_ptr(bytes),
+        atl_status_t atl_status = atl_ep_bcast(sched->bin->get_atl_ep(), buf.get_ptr(bytes),
                                                  bytes, root, &req);
-        if (unlikely(atl_status != atl_status_success))
+        if (unlikely(atl_status != ATL_STATUS_SUCCESS))
         {
             CCL_THROW("BCAST entry failed. atl_status: ", atl_status_to_str(atl_status));
         }
@@ -56,9 +56,9 @@ public:
     void update() override
     {
         int req_status;
-        atl_status_t atl_status = atl_comm_check(sched->bin->get_comm_ctx(), &req_status, &req);
+        atl_status_t atl_status = atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
 
-        if (unlikely(atl_status != atl_status_success))
+        if (unlikely(atl_status != ATL_STATUS_SUCCESS))
         {
             CCL_THROW("BCAST entry failed. atl_status: ", atl_status_to_str(atl_status));
         }

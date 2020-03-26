@@ -50,7 +50,7 @@ public:
         if (status == ccl_sched_entry_status_started)
         {
             LOG_DEBUG("cancel WRITE entry dst ", dst, ", req ", &req);
-            atl_comm_cancel(sched->bin->get_comm_ctx(), &req);
+            atl_ep_cancel(sched->bin->get_atl_ep(), &req);
         }
     }
 
@@ -71,20 +71,20 @@ public:
         size_t global_dst = comm->get_global_rank(dst);
 
         size_t bytes = cnt * ccl_datatype_get_size(dtype);
-        atl_status_t atl_status = atl_comm_write(sched->bin->get_comm_ctx(),
-                                                 src_buf.get_ptr(bytes),
-                                                 bytes, src_mr,
-                                                 (uint64_t)dst_mr->buf + dst_buf_off,
-                                                 dst_mr->r_key, global_dst, &req);
+        atl_status_t atl_status = atl_ep_write(sched->bin->get_atl_ep(),
+                                               src_buf.get_ptr(bytes),
+                                               bytes, src_mr,
+                                               (uint64_t)dst_mr->buf + dst_buf_off,
+                                               dst_mr->remote_key, global_dst, &req);
         update_status(atl_status);
     }
 
     void update() override
     {
         int req_status;
-        atl_status_t atl_status = atl_comm_check(sched->bin->get_comm_ctx(), &req_status, &req);
+        atl_status_t atl_status = atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
 
-        if (unlikely(atl_status != atl_status_success))
+        if (unlikely(atl_status != ATL_STATUS_SUCCESS))
         {
             CCL_THROW("WRITE entry failed. atl_status: ", atl_status_to_str(atl_status));
         }

@@ -13,27 +13,49 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
 #include <assert.h>
+#include <inttypes.h>
 #include <math.h>
-#include <time.h>
-
-#include <unistd.h>
-#include <sys/syscall.h>
-
 #include <rdma/fabric.h>
 #include <rdma/fi_cm.h>
 #include <rdma/fi_tagged.h>
 #include <rdma/fi_rma.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/syscall.h>
+#include <time.h>
+#include <unistd.h>
 
-#include <inttypes.h>
+#include "atl.h"
 #include "pm_rt.h"
 
-#ifndef gettid
-#define gettid() syscall(SYS_gettid)
-#endif
+#define ATL_OFI_BASE_PM_KEY         "atl-ofi"
+#define ATL_OFI_FI_ADDR_PM_KEY      ATL_OFI_BASE_PM_KEY"-fiaddr"
+#define ATL_OFI_HOSTNAME_PM_KEY     ATL_OFI_BASE_PM_KEY"-hostname"
+#define ATL_OFI_TIMEOUT_SEC_ENV     "ATL_OFI_TIMEOUT_SEC"
+#define ATL_OFI_DEFAULT_TIMEOUT_SEC 60
+#define ATL_OFI_MAX_RETRY_COUNT     10000
+#define ATL_OFI_MAX_HOSTNAME_LEN    64
+#define ATL_OFI_WAIT_SEC            10
+#define ATL_OFI_CQ_READ_ITERS       10000
+#define ATL_OFI_CQ_BUNCH_SIZE       8
+#define ATL_OFI_PMI_PROC_MULTIPLIER 100
+#define ATL_OFI_MAX_PROV_COUNT      2 /* NW and SHM providers */
+
+#define MAX(a, b)            \
+({                           \
+    __typeof__ (a) _a = (a); \
+    __typeof__ (b) _b = (b); \
+    _a > _b ? _a : _b;       \
+})
+
+#define MIN(a, b)            \
+({                           \
+    __typeof__ (a) _a = (a); \
+    __typeof__ (b) _b = (b); \
+    _a < _b ? _a : _b;       \
+})
 
 #define ATL_OFI_PRINT(s, ...)                             \
     do {                                                  \
@@ -47,6 +69,10 @@
         fflush(stdout);                                   \
     } while (0)
 
+#define ATL_OFI_PRINT_ROOT(s, ...)       \
+    if (coord->global_idx == 0)          \
+        ATL_OFI_PRINT(s, ##__VA_ARGS__); \
+
 #define ATL_OFI_ASSERT(cond, ...)                 \
     do {                                          \
         if (!(cond))                              \
@@ -59,36 +85,36 @@
 
 #ifdef ENABLE_DEBUG
 #define ATL_OFI_DEBUG_PRINT(s, ...) ATL_OFI_PRINT(s, ##__VA_ARGS__)
+#define ATL_OFI_DEBUG_PRINT_ROOT(s, ...) ATL_OFI_PRINT_ROOT(s, ##__VA_ARGS__)
 #else
 #define ATL_OFI_DEBUG_PRINT(s, ...)
+#define ATL_OFI_DEBUG_PRINT_ROOT(s, ...)
 #endif
 
-#define ATL_OFI_TIMEOUT_SEC_ENV     "ATL_OFI_TIMEOUT_SEC"
+static inline atl_status_t atl_ofi_ep_poll(atl_ep_t* ep);
 
-#define ATL_OFI_DEFAULT_TIMEOUT_SEC 60
-#define ATL_OFI_MAX_RETRY_COUNT     10000
-#define ATL_OFI_MAX_HOSTNAME_LEN    256
-#define ATL_OFI_WAIT_SEC            10
-#define ATL_OFI_CQ_READ_ITERS       10000
-#define ATL_OFI_CQ_BUNCH_SIZE       8
-#define ATL_OFI_PMI_PROC_MULTIPLIER 100
+#define ATL_OFI_CALL(func, ret_val, err_action)                  \
+  do {                                                           \
+      ret_val = func;                                            \
+      if (ret_val != FI_SUCCESS)                                 \
+      {                                                          \
+          ATL_OFI_PRINT(#func "\n fails with ret %"PRId64", %s", \
+                        ret_val, fi_strerror(ret_val));          \
+          err_action;                                            \
+      }                                                          \
+  } while (0)
 
-#define ATL_OFI_PM_KEY              "atl-ofi"
-
-typedef struct
-{
-    size_t timeout_sec;
-    int is_resize_enabled;
-} atl_ofi_global_data_t;
-
-static atl_ofi_global_data_t global_data;
-
-#define ATL_OFI_RETRY(func, comm, ret_val)                                 \
+#define ATL_OFI_RETRY(func, ep, ret_val)                                   \
     do {                                                                   \
+        atl_ctx_t* ctx = ep->ctx;                                          \
+        atl_ofi_ctx_t* ofi_ctx =                                           \
+            container_of(ctx, atl_ofi_ctx_t, ctx);                         \
+        size_t timeout_sec = ofi_ctx->timeout_sec;                         \
+        int is_resize_enabled = ctx->is_resize_enabled;                    \
         time_t start = 0, end = 0;                                         \
         do {                                                               \
             size_t retry_count = 0;                                        \
-            if (global_data.is_resize_enabled)                             \
+            if (is_resize_enabled)                                         \
             {                                                              \
                 start = time(NULL);                                        \
             }                                                              \
@@ -102,16 +128,16 @@ static atl_ofi_global_data_t global_data;
                     ATL_OFI_ASSERT(0, "OFI function error");               \
                     break;                                                 \
                 }                                                          \
-                (void) atl_ofi_comm_poll(comm);                            \
+                (void)atl_ofi_ep_poll(ep);                                 \
                 retry_count += 1;                                          \
             } while (ret_val == -FI_EAGAIN &&                              \
                      retry_count < ATL_OFI_MAX_RETRY_COUNT);               \
-            if (global_data.is_resize_enabled)                             \
+            if (is_resize_enabled)                                         \
             {                                                              \
                 end = time(NULL);                                          \
             }                                                              \
         } while (ret_val == -FI_EAGAIN &&                                  \
-                (end - start) < global_data.timeout_sec);                  \
+                (end - start) < timeout_sec);                              \
     } while (0)
 
 /* OFI returns 0 or -errno */
@@ -119,59 +145,14 @@ static atl_ofi_global_data_t global_data;
     ({                                                              \
         atl_status_t res;                                           \
         if (ret == -FI_EAGAIN)                                      \
-            res = atl_status_again;                                 \
+            res = ATL_STATUS_AGAIN;                                 \
         else                                                        \
-            res = (ret) ? atl_status_failure : atl_status_success;  \
+            res = (ret) ? ATL_STATUS_FAILURE : ATL_STATUS_SUCCESS;  \
         res;                                                        \
     })
 
-static const char *atl_ofi_name = "ofi";
-
-typedef struct atl_ofi_context {
-    atl_desc_t atl_desc;
-
-    atl_proc_coord_t proc_coord;
-
-    pm_rt_desc_t *pm_rt;
-
-    struct fi_info *prov;
-    struct fid_fabric *fabric;
-    struct fid_domain *domain;
-    struct fid_av *av;
-
-    int is_shm_enabled;
-    struct fi_info *shm_prov;
-    struct fid_fabric *shm_fabric;
-    struct fid_domain *shm_domain;
-    struct fid_av *shm_av;
-
-    /* This is used only in case of SEP supported */
-    struct fid_ep *sep;
-    int rx_ctx_bits;
-    size_t comm_ref_count;
-    struct {
-        fi_addr_t *table;
-        size_t ep_num; /* table[][0..ep_num], this is 1 for SEP */
-        /* table[0..global_proc_count][] */
-    } addr_table;
-    size_t addr_len;
-} atl_ofi_context_t;
-
-typedef struct atl_ofi_comm_name {
-    void *addr;
-    size_t len;
-} atl_ofi_comm_name_t;
-
-typedef struct atl_ofi_comm_context {
-    atl_comm_t atl_comm;
-    size_t idx;
-    struct fid_ep *tx_ctx;
-    struct fid_ep *rx_ctx;
-    struct fid_cq *cq;
-    atl_ofi_comm_name_t *name;
-} atl_ofi_comm_context_t;
-
-typedef enum atl_ofi_comp_state {
+typedef enum
+{
     ATL_OFI_COMP_POSTED,
     ATL_OFI_COMP_COMPLETED,
     ATL_OFI_COMP_PEEK_STARTED,
@@ -179,41 +160,135 @@ typedef enum atl_ofi_comp_state {
     ATL_OFI_COMP_PEEK_NOT_FOUND,
 } atl_ofi_comp_state_t;
 
-typedef struct atl_ofi_req {
-    struct fi_context ofi_context;
+typedef struct
+{
+    atl_mr_t mr;
+    struct fid_mr* fi_mr;
+} atl_ofi_mr_t;
 
-    atl_ofi_comm_context_t *comm;
-    struct fid_ep *last_ctx;
+typedef struct
+{
+    void* addr;
+    size_t len;
+} atl_ofi_prov_ep_name_t;
+
+typedef struct
+{
+    struct fid_ep* tx;
+    struct fid_ep* rx;
+    struct fid_cq* cq;
+    atl_ofi_prov_ep_name_t name;
+} atl_ofi_prov_ep_t;
+
+typedef struct
+{
+    struct fi_info* info;
+    struct fid_fabric* fabric;
+    struct fid_domain* domain;
+    struct fid_av* av;
+    atl_ofi_prov_ep_t* eps;
+
+    int is_shm;
+    size_t max_msg_size;
+
+    /* used only in case of SEP supported */
+    struct fid_ep* sep;
+    int rx_ctx_bits;
+
+    /* table[0..proc_count][0..ep_count] */
+    fi_addr_t* addr_table;
+    size_t addr_len;
+    size_t first_proc_idx;
+
+} atl_ofi_prov_t;
+
+typedef struct
+{
+    atl_ep_t ep;
+} atl_ofi_ep_t;
+
+typedef struct
+{
+    atl_ctx_t ctx;
+    pm_rt_desc_t* pm_rt;
+
+    atl_ofi_prov_t provs[ATL_OFI_MAX_PROV_COUNT];
+    size_t prov_count;
+    size_t shm_prov_idx;
+    size_t nw_prov_idx;
+
+    size_t timeout_sec;
+} atl_ofi_ctx_t;
+
+typedef struct
+{
+    struct fi_context fi_ctx;
+    atl_ofi_prov_ep_t* prov_ep;
+    struct fid_ep* fi_ep;
     atl_ofi_comp_state_t comp_state;
     size_t recv_len;
 } atl_ofi_req_t;
 
-typedef struct atl_ofi_mr {
-    atl_mr_t atl_mr;
-    struct fid_mr *mr;
-} atl_ofi_mr_t;
+static void
+atl_ofi_print_coord(atl_proc_coord_t* coord)
+{
+    ATL_OFI_PRINT("coord: global [idx %zu, cnt %zu], local [idx %zu, cnt %zu]",
+        coord->global_idx, coord->global_count,
+        coord->local_idx, coord->local_count);
+}
+
+static inline atl_ofi_prov_t*
+atl_ofi_get_prov(atl_ep_t* ep, size_t peer_proc_idx, size_t msg_size)
+{
+    size_t prov_idx;
+    atl_ofi_ctx_t* ofi_ctx = container_of(ep->ctx, atl_ofi_ctx_t, ctx);
+
+    if (ofi_ctx->prov_count == 1)
+    {
+        prov_idx = 0;
+    }
+    else
+    {
+        ATL_OFI_ASSERT(ofi_ctx->prov_count == ATL_OFI_MAX_PROV_COUNT,
+            "unexpected prov_count %zu", ofi_ctx->prov_count);
+
+        atl_proc_coord_t* coord = &(ep->ctx->coord);
+        size_t my_node_idx = coord->global_idx / coord->local_count;
+        size_t peer_node_idx = peer_proc_idx / coord->local_count;
+
+        if ((my_node_idx == peer_node_idx) &&
+            (msg_size <= ofi_ctx->provs[ofi_ctx->shm_prov_idx].max_msg_size))
+            prov_idx = ofi_ctx->shm_prov_idx;
+        else
+            prov_idx = ofi_ctx->nw_prov_idx;
+    }
+
+    ATL_OFI_ASSERT(msg_size <= ofi_ctx->provs[prov_idx].max_msg_size,
+        "msg_size (%zu) is greater than max_msg_size (%zu), prov_idx %zu",
+        msg_size, ofi_ctx->provs[prov_idx].max_msg_size, prov_idx);
+
+    return &(ofi_ctx->provs[prov_idx]);
+}
 
 static inline fi_addr_t
-atl_ofi_comm_atl_addr_2_fi_addr(atl_ofi_context_t *atl, size_t proc_idx, size_t ep_idx)
+atl_ofi_get_addr(atl_ctx_t* ctx, atl_ofi_prov_t* prov, size_t proc_idx, size_t ep_idx)
 {
-    if (atl->sep)
-        return fi_rx_addr(*(atl->addr_table.table + ((atl->addr_table.ep_num * proc_idx))),
-                          ep_idx, atl->rx_ctx_bits);
-    else
-        return *(atl->addr_table.table + ((atl->addr_table.ep_num * proc_idx) + ep_idx));
+    return *(prov->addr_table + ((ctx->ep_count * (proc_idx - prov->first_proc_idx)) + ep_idx));
 }
 
 static atl_status_t
-atl_ofi_get_local_proc_coord(atl_ofi_context_t *atl_ofi_context)
+atl_ofi_get_local_proc_coord(atl_ofi_ctx_t* ofi_ctx)
 {
-    ATL_OFI_ASSERT(atl_ofi_context, "atl_ofi_context is null");
+    ATL_OFI_ASSERT(ofi_ctx, "ofi_ctx is null");
 
-    int ret = atl_status_success, i;
+    atl_proc_coord_t* coord = &(ofi_ctx->ctx.coord);
+
+    int ret = ATL_STATUS_SUCCESS, i;
     size_t local_idx = 0, local_count = 0;
-    char *all_hostnames = NULL;
+    char* all_hostnames = NULL;
     char my_hostname[ATL_OFI_MAX_HOSTNAME_LEN] = { 0 };
     size_t my_hostname_len = 0;
-    size_t my_global_proc_idx = atl_ofi_context->proc_coord.global_idx;
+    size_t my_global_proc_idx = coord->global_idx;
 
     gethostname(my_hostname, ATL_OFI_MAX_HOSTNAME_LEN - 1);
     my_hostname_len = strlen(my_hostname);
@@ -222,7 +297,8 @@ atl_ofi_get_local_proc_coord(atl_ofi_context_t *atl_ofi_context)
                    "unexpected my_hostname_len %zu, expected max %zu",
                    my_hostname_len, (size_t)(ATL_OFI_MAX_HOSTNAME_LEN));
 
-    if (ATL_OFI_MAX_HOSTNAME_LEN - my_hostname_len <= 10) {
+    if (ATL_OFI_MAX_HOSTNAME_LEN - my_hostname_len <= 10)
+    {
         ATL_OFI_PRINT("WARNING: hostname is quite long (len %zu, name %s)",
                       my_hostname_len, my_hostname);
     }
@@ -231,39 +307,45 @@ atl_ofi_get_local_proc_coord(atl_ofi_context_t *atl_ofi_context)
              ATL_OFI_MAX_HOSTNAME_LEN - my_hostname_len,
              "-%zu", my_global_proc_idx);
 
-    ret = pmrt_kvs_put(atl_ofi_context->pm_rt, ATL_OFI_PM_KEY,
+    ret = pmrt_kvs_put(ofi_ctx->pm_rt, ATL_OFI_HOSTNAME_PM_KEY,
                        my_global_proc_idx * ATL_OFI_PMI_PROC_MULTIPLIER,
                        my_hostname,
                        ATL_OFI_MAX_HOSTNAME_LEN);
 
-    if (ret) {
+    if (ret)
+    {
         ATL_OFI_PRINT("pmrt_kvs_put: ret: %d", ret);
         goto fn_err;
     }
 
-    pmrt_barrier(atl_ofi_context->pm_rt);
+    pmrt_barrier(ofi_ctx->pm_rt);
 
-    all_hostnames = calloc(1, atl_ofi_context->proc_coord.global_count * ATL_OFI_MAX_HOSTNAME_LEN);
-    if (!all_hostnames) {
+    all_hostnames = calloc(1, coord->global_count * ATL_OFI_MAX_HOSTNAME_LEN);
+    if (!all_hostnames)
+    {
         ATL_OFI_PRINT("can't allocate all_hostnames");
         goto fn_err;
     }
 
-    for (i = 0; i < atl_ofi_context->proc_coord.global_count; i++) {
-        ret = pmrt_kvs_get(atl_ofi_context->pm_rt, ATL_OFI_PM_KEY,
+    for (i = 0; i < coord->global_count; i++)
+    {
+        ret = pmrt_kvs_get(ofi_ctx->pm_rt, ATL_OFI_HOSTNAME_PM_KEY,
                            i * ATL_OFI_PMI_PROC_MULTIPLIER,
                            all_hostnames + i * ATL_OFI_MAX_HOSTNAME_LEN,
                            ATL_OFI_MAX_HOSTNAME_LEN);
-        if (ret) {
-            ATL_OFI_PRINT("pmrt_kvs_put: ret: %d", ret);
+        if (ret)
+        {
+            ATL_OFI_PRINT("pmrt_kvs_get: ret: %d", ret);
             goto fn_err;
         }
     }
 
-    for (i = 0; i < atl_ofi_context->proc_coord.global_count; i++) {
+    for (i = 0; i < coord->global_count; i++)
+    {
         if (!strncmp(my_hostname,
                      all_hostnames + i * ATL_OFI_MAX_HOSTNAME_LEN,
-                     my_hostname_len + 1 /* including "-" at the end */)) {
+                     my_hostname_len + 1 /* including "-" at the end */))
+        {
             local_count++;
             size_t peer_global_proc_idx;
             sscanf(all_hostnames + i * ATL_OFI_MAX_HOSTNAME_LEN + my_hostname_len + 1,
@@ -273,8 +355,8 @@ atl_ofi_get_local_proc_coord(atl_ofi_context_t *atl_ofi_context)
         }
     }
 
-    atl_ofi_context->proc_coord.local_idx = local_idx;
-    atl_ofi_context->proc_coord.local_count = local_count;
+    coord->local_idx = local_idx;
+    coord->local_count = local_count;
 
 
 fn_exit:
@@ -282,377 +364,365 @@ fn_exit:
     return ret;
 
 fn_err:
-    ret = atl_status_failure;
+    ret = ATL_STATUS_FAILURE;
     goto fn_exit;
 }
 
 static atl_status_t
-atl_ofi_update_addr_table(atl_ofi_context_t *atl_ofi_context)
+atl_ofi_prov_update_addr_table(atl_ofi_ctx_t* ofi_ctx, atl_ofi_prov_t* prov)
 {
+    ATL_OFI_ASSERT(ofi_ctx, "ofi_ctx is null");
+
+    atl_ctx_t* ctx = &(ofi_ctx->ctx);
+
     int ret;
     size_t i, j;
-    char *epnames_table;
+
+    size_t addr_idx = 0;
+    char* epnames_table;
     size_t epnames_table_len;
 
-    /* Allocate OFI EP names table that will contain all published names */
-    epnames_table_len = atl_ofi_context->addr_len *
-                        atl_ofi_context->addr_table.ep_num *
-                        atl_ofi_context->proc_coord.global_count;
+    size_t named_ep_count = (prov->sep ? 1 : ctx->ep_count);
 
-    if (epnames_table_len == 0) {
-        ATL_OFI_PRINT("epnames_table_len == 0");
-        return atl_status_failure;
+    size_t local_count = ctx->coord.local_count;
+    size_t node_idx = ctx->coord.global_idx / local_count;
+    size_t shm_start_idx = node_idx * local_count;
+    size_t shm_end_idx = (node_idx + 1) * local_count;
+
+    ATL_OFI_DEBUG_PRINT("shm_start_idx %zu, shm_end_idx %zu",
+        shm_start_idx, shm_end_idx);
+
+    size_t proc_count = prov->is_shm ?
+        ctx->coord.local_count : ctx->coord.global_count;
+
+    if (proc_count == 0)
+        return ATL_STATUS_SUCCESS;
+
+    ATL_OFI_DEBUG_PRINT("name %s, is_shm %d, addr_len %zu, local_count %zu, global_count %zu, proc_count %zu",
+        prov->info->fabric_attr->prov_name, prov->is_shm,
+        prov->addr_len, ctx->coord.local_count,
+        ctx->coord.global_count, proc_count);
+
+    /* allocate OFI EP names table that will contain all published names */
+    epnames_table_len = prov->addr_len *
+                        named_ep_count *
+                        proc_count;
+
+    if (epnames_table_len == 0)
+    {
+        ATL_OFI_PRINT("epnames_table_len == 0, addr_len %zu, named_ep_count %zu, proc_count %zu",
+                      prov->addr_len,
+                      named_ep_count,
+                      proc_count);
+        return ATL_STATUS_FAILURE;
     }
 
-    epnames_table = (char *)calloc(1, epnames_table_len);
-    if (!epnames_table) {
-        ATL_OFI_PRINT("Can't allocate epnames_table");
-        return atl_status_failure;
+    epnames_table = (char*)calloc(1, epnames_table_len);
+    if (!epnames_table)
+    {
+        ATL_OFI_PRINT("can't allocate epnames_table");
+        return ATL_STATUS_FAILURE;
     }
-    pmrt_barrier(atl_ofi_context->pm_rt);
 
-    /* Retrieve all the OFI EP names in order */
-    for (i = 0; i < atl_ofi_context->proc_coord.global_count; i++) {
-        for (j = 0; j < atl_ofi_context->addr_table.ep_num; j++) {
-            ret = pmrt_kvs_get(atl_ofi_context->pm_rt, ATL_OFI_PM_KEY,
+    pmrt_barrier(ofi_ctx->pm_rt);
+
+    /* retrieve all OFI EP names in order */
+    for (i = 0; i < ctx->coord.global_count; i++)
+    {
+        if (prov->is_shm)
+        {
+            if (!(i >= shm_start_idx && i < shm_end_idx))
+            {
+                continue;
+            }
+        }
+
+        for (j = 0; j < named_ep_count; j++)
+        {
+            ret = pmrt_kvs_get(ofi_ctx->pm_rt, ATL_OFI_FI_ADDR_PM_KEY,
                                i * ATL_OFI_PMI_PROC_MULTIPLIER + j,
-                               epnames_table +
-                               (/* iterate by comms(EPs) per process */ j +
-                                /* iterate by processes */
-                                (i * atl_ofi_context->addr_table.ep_num)) *
-                               atl_ofi_context->addr_len,
-                               atl_ofi_context->addr_len);
+                               epnames_table + addr_idx * prov->addr_len,
+                               prov->addr_len);
+
             if (ret)
+            {
+                ATL_OFI_PRINT("kvs_get error: ret %d, proc_idx %zu, ep_idx %zu, addr_idx %zu",
+                              ret, i, j, addr_idx);
                 goto err_ep_names;
+            }
+
+            addr_idx++;
         }
     }
 
-    if (atl_ofi_context->addr_table.table != NULL)
-        free(atl_ofi_context->addr_table.table);
+    ATL_OFI_DEBUG_PRINT("kvs_get: ep_count %zu, proc_count %zu, got %zu",
+        named_ep_count, proc_count, addr_idx);
 
-    atl_ofi_context->addr_table.table =
-        calloc(1, atl_ofi_context->addr_table.ep_num *
-                  atl_ofi_context->proc_coord.global_count *
-                  sizeof(fi_addr_t));
-    if (!atl_ofi_context->addr_table.table)
-        goto err_ep_names;
+    if (addr_idx != named_ep_count * proc_count)
+    {
+        ATL_OFI_PRINT("unexpected kvs_get results: expected %zu, got %zu",
+                      named_ep_count * proc_count, addr_idx);
 
-    /* Insert all the EP names into the AV */
-    ret = fi_av_insert(atl_ofi_context->av, epnames_table,
-                       atl_ofi_context->addr_table.ep_num *
-                       atl_ofi_context->proc_coord.global_count,
-                       atl_ofi_context->addr_table.table, 0, NULL);
-
-    ATL_OFI_DEBUG_PRINT("av_insert: ep_num %zu, global_proc_count %zu, inserted %d",
-        atl_ofi_context->addr_table.ep_num, atl_ofi_context->proc_coord.global_count, ret);
-
-    if (ret != atl_ofi_context->addr_table.ep_num * atl_ofi_context->proc_coord.global_count) {
-        ret = atl_status_failure;
+        ret = ATL_STATUS_FAILURE;
         goto err_addr_table;
-    } else {
-        ret = atl_status_success;
     }
 
-    /* Normal end of execution */
+    if (prov->addr_table != NULL)
+        free(prov->addr_table);
+
+    prov->addr_table = calloc(1, ctx->ep_count * proc_count * sizeof(fi_addr_t));
+
+    if (!prov->addr_table)
+        goto err_ep_names;
+
+    /* insert all the EP names into the AV */
+    ret = fi_av_insert(prov->av, epnames_table,
+                       named_ep_count *
+                       proc_count,
+                       prov->addr_table, 0, NULL);
+
+    ATL_OFI_DEBUG_PRINT("av_insert: ep_count %zu, proc_count %zu, inserted %d",
+        named_ep_count, proc_count, ret);
+
+    if (ret != named_ep_count * proc_count)
+    {
+        ATL_OFI_PRINT("unexpected av_insert results: expected %zu, got %d",
+                      named_ep_count * proc_count, ret);
+        ret = ATL_STATUS_FAILURE;
+        goto err_addr_table;
+    }
+    else
+    {
+        ret = ATL_STATUS_SUCCESS;
+    }
+
+    if (prov->sep)
+    {
+        ATL_OFI_ASSERT(named_ep_count == 1, "unexpected named_ep_count %zu", named_ep_count);
+
+        fi_addr_t* table = calloc(1, proc_count * sizeof(fi_addr_t));
+        memcpy(table, prov->addr_table, proc_count * sizeof(fi_addr_t));
+
+        for (i = 0; i < proc_count; i++)
+        {
+            for (j = 0; j < ctx->ep_count; j++)
+            {
+                prov->addr_table[i * ctx->ep_count + j] =
+                    fi_rx_addr(table[i], j, prov->rx_ctx_bits);
+            }
+        }
+        free(table);
+    }
+
+    /* normal end of execution */
     free(epnames_table);
     return ret;
 
-    /*Abnormal end of execution */
+    /* abnormal end of execution */
 err_addr_table:
-    free(atl_ofi_context->addr_table.table);
-    atl_ofi_context->addr_table.ep_num = 0;
+    free(prov->addr_table);
+
 err_ep_names:
     free(epnames_table);
     return RET2ATL(ret);
 }
 
 static atl_status_t
-atl_ofi_comms_connect(atl_ofi_context_t *atl_ofi_context,
-                      atl_comm_t **comms, size_t comm_count)
+atl_ofi_prov_ep_get_name(atl_ofi_prov_t* prov, size_t ep_idx)
 {
     int ret;
-    size_t i;
 
-    atl_ofi_context->addr_table.ep_num =
-        (atl_ofi_context->sep ? 1 : comm_count);
+    atl_ofi_prov_ep_t* ep = &(prov->eps[ep_idx]);
+    struct fid_ep* fi_ep = (prov->sep) ? prov->sep : ep->tx;
 
-    for (i = 0; i < atl_ofi_context->addr_table.ep_num; i++) {
-        atl_ofi_comm_context_t *comm_context =
-            container_of(comms[i], atl_ofi_comm_context_t, atl_comm);
-        ret = pmrt_kvs_put(atl_ofi_context->pm_rt, ATL_OFI_PM_KEY,
-                           atl_ofi_context->proc_coord.global_idx * ATL_OFI_PMI_PROC_MULTIPLIER + i,
-                           comm_context->name->addr,
-                           comm_context->name->len);
-        if (ret) {
-            ATL_OFI_PRINT("pmrt_kvs_put: ret: %d", ret);
-            return atl_status_failure;
+    ep->name.addr = NULL;
+    ep->name.len = 0;
+
+    ret = fi_getname(&fi_ep->fid, ep->name.addr, &(ep->name.len));
+    if ((ret != -FI_ETOOSMALL) || ep->name.len <= 0)
+        ep->name.len = FI_NAME_MAX;
+
+    if (ep->name.addr)
+        free(ep->name.addr);
+
+    ep->name.addr = calloc(1, ep->name.len);
+
+    if (!(ep->name.addr))
+    {
+        ATL_OFI_PRINT("can't allocate addr");
+        ret = ATL_STATUS_FAILURE;
+        goto err_addr;
+    }
+
+    ret = fi_getname(&fi_ep->fid, ep->name.addr, &(ep->name.len));
+    if (ret)
+    {
+        ATL_OFI_PRINT("fi_getname error");
+        goto err_getname;
+    }
+
+    prov->addr_len = MAX(prov->addr_len, ep->name.len);
+
+    return ATL_STATUS_SUCCESS;
+
+err_getname:
+    free(ep->name.addr);
+    ep->name.addr = NULL;
+    ep->name.len = 0;
+
+err_addr:
+    return RET2ATL(ret);
+}
+
+static atl_status_t
+atl_ofi_prov_eps_connect(atl_ofi_ctx_t* ofi_ctx,
+                         size_t prov_idx)
+{
+    int ret;
+    size_t ep_idx;
+
+    atl_ctx_t* ctx = &(ofi_ctx->ctx);
+    atl_ofi_prov_t* prov = &(ofi_ctx->provs[prov_idx]);
+    size_t named_ep_count = (prov->sep ? 1 : ctx->ep_count);
+    atl_proc_coord_t* coord = &(ctx->coord);
+
+    prov->addr_len = 0;
+    prov->first_proc_idx = (prov->is_shm) ?
+        ((coord->global_idx / coord->local_count) * coord->local_count) : 0;
+
+    for (ep_idx = 0; ep_idx < ctx->ep_count; ep_idx++)
+    {
+        ret = atl_ofi_prov_ep_get_name(prov, ep_idx);
+        if (ret)
+        {
+            ATL_OFI_PRINT("atl_ofi_prov_ep_get_name error");
+            return ATL_STATUS_FAILURE;
         }
     }
 
-    ret = atl_ofi_update_addr_table(atl_ofi_context);
+    for (ep_idx = 0; ep_idx < named_ep_count; ep_idx++)
+    {
+        atl_ofi_prov_ep_t* ep = &(prov->eps[ep_idx]);
+        ret = pmrt_kvs_put(ofi_ctx->pm_rt, ATL_OFI_FI_ADDR_PM_KEY,
+                           coord->global_idx * ATL_OFI_PMI_PROC_MULTIPLIER + ep_idx,
+                           ep->name.addr,
+                           ep->name.len);
+        if (ret)
+        {
+            ATL_OFI_PRINT("pmrt_kvs_put: ret: %d", ret);
+            return ATL_STATUS_FAILURE;
+        }
+    }
+
+    ret = atl_ofi_prov_update_addr_table(ofi_ctx, prov);
 
     return ret;
 }
 
-static atl_status_t atl_ofi_comms_destroy_conns(atl_ofi_context_t *atl_ofi_context)
+static void
+atl_ofi_prov_ep_destroy(atl_ofi_prov_t* prov, atl_ofi_prov_ep_t* ep)
 {
-    int ret = atl_status_success;
+    if (ep->rx)
+        fi_close(&ep->rx->fid);
 
-    /* disabled as it leads to unstable fails */
-//     ret = fi_av_remove(atl_ofi_context->av, atl_ofi_context->addr_table.table,
-//                        atl_ofi_context->addr_table.ep_num *
-//                        atl_ofi_context->proc_coord.global_count, 0);
-//
-//    if (ret)
-//        ATL_OFI_DEBUG_PRINT("AV remove failed (%d)", ret);
+    if (prov->sep && ep->tx)
+        fi_close(&ep->tx->fid);
 
-    free(atl_ofi_context->addr_table.table);
-    atl_ofi_context->addr_table.ep_num = 0;
+    if (ep->cq)
+        fi_close(&ep->cq->fid);
 
-    return RET2ATL(ret);
+    if (ep->name.addr)
+        free(ep->name.addr);
+
+    ep->rx = ep->tx = NULL;
+    ep->cq = NULL;
+    ep->name.addr = NULL;
+    ep->name.len = 0;
 }
 
-static atl_status_t
-atl_ofi_comm_get_epname(struct fid_ep *ep, atl_ofi_comm_name_t **name)
-{
-    int ret;
-
-    *name = calloc(1, sizeof(atl_ofi_comm_name_t));
-    if (!*name) {
-        ATL_OFI_PRINT("can't allocate name");
-        return atl_status_failure;
-    }
-
-    ret = fi_getname(&ep->fid, (*name)->addr, &(*name)->len);
-    if ((ret != -FI_ETOOSMALL) || ((*name)->len <= 0))
-        (*name)->len = FI_NAME_MAX;
-
-    (*name)->addr = calloc(1, (*name)->len);
-    if (!(*name)->addr) {
-        ATL_OFI_PRINT("can't allocate addr");
-        ret = atl_status_failure;
-        goto err_addr;
-    }
-
-    ret = fi_getname(&ep->fid, (*name)->addr, &(*name)->len);
-    if (ret)
-        goto err_getname;
-
-    return atl_status_success;
-err_getname:
-    free((*name)->addr);
-    (*name)->len = 0;
-err_addr:
-    free(*name);
-    *name = NULL;
-    return RET2ATL(ret);
-}
-
-static void atl_ofi_comms_set_epname(atl_comm_t **comms, size_t comm_count,
-                                     atl_ofi_comm_name_t *name)
-{
-    atl_ofi_comm_context_t *comm_context;
-    int i;
-
-    for (i = 0; i < comm_count; i++) {
-        comm_context = container_of(comms[i], atl_ofi_comm_context_t, atl_comm);
-        comm_context->name = name;
-    }
-}
-
-static void atl_ofi_comm_ep_destroy(atl_ofi_context_t *atl_ofi_context,
-                                    atl_ofi_comm_context_t *atl_ofi_comm_context)
-{
-    if (atl_ofi_context->sep) {
-        if (atl_ofi_comm_context->rx_ctx)
-            fi_close(&atl_ofi_comm_context->rx_ctx->fid);
-        if (atl_ofi_comm_context->tx_ctx)
-            fi_close(&atl_ofi_comm_context->tx_ctx->fid);
-    } else {
-        if (atl_ofi_comm_context->rx_ctx && atl_ofi_comm_context->tx_ctx)
-            fi_close(&atl_ofi_comm_context->rx_ctx->fid);
-        atl_ofi_comm_context->rx_ctx = atl_ofi_comm_context->tx_ctx = NULL;
-    }
-}
-
-static void atl_ofi_comm_conn_destroy(atl_ofi_context_t *atl_ofi_context,
-                                 atl_comm_t *comm)
-{
-    atl_ofi_comm_context_t *atl_ofi_comm_context =
-        container_of(comm, atl_ofi_comm_context_t, atl_comm);
-
-    atl_ofi_comm_ep_destroy(atl_ofi_context, atl_ofi_comm_context);
-    if (atl_ofi_comm_context->name) {
-        free(atl_ofi_comm_context->name->addr);
-        atl_ofi_comm_context->name->addr = NULL;
-        atl_ofi_comm_context->name->len = 0;
-        free(atl_ofi_comm_context->name);
-        atl_ofi_comm_context->name = NULL;
-    }
-}
-
-static void atl_ofi_comms_conn_destroy(atl_ofi_context_t *atl_ofi_context,
-                                       atl_comm_t **comms)
+static void
+atl_ofi_prov_destroy(atl_ctx_t* ctx, atl_ofi_prov_t* prov)
 {
     size_t i;
 
-    if (atl_ofi_context->sep) {
-        atl_ofi_comm_context_t *atl_ofi_comm_context =
-            container_of(comms[0], atl_ofi_comm_context_t, atl_comm);
-        /* Free memory for one of the COMM contexts, for other - just set to NULL*/
-        free(atl_ofi_comm_context->name->addr);
-        atl_ofi_comm_context->name->addr = NULL;
-        atl_ofi_comm_context->name->len = 0;
-        free(atl_ofi_comm_context->name);
-        atl_ofi_comms_set_epname(comms, atl_ofi_context->comm_ref_count, NULL);
+    for (i = 0; i < ctx->ep_count; i++)
+    {
+        atl_ofi_prov_ep_destroy(prov, &(prov->eps[i]));
     }
 
-    for (i = 0; i < atl_ofi_context->comm_ref_count; i++)
-        atl_ofi_comm_conn_destroy(atl_ofi_context, comms[i]);
+    free(prov->eps);
+    free(prov->addr_table);
 
-    if (atl_ofi_context->sep)
-        fi_close(&atl_ofi_context->sep->fid);
-}
+    if (prov->sep)
+        fi_close(&prov->sep->fid);
 
-static atl_status_t atl_ofi_finalize(atl_desc_t *atl_desc, atl_comm_t **atl_comms)
-{
-    int ret;
-    size_t i;
-    atl_ofi_context_t *atl_ofi_context =
-        container_of(atl_desc, atl_ofi_context_t, atl_desc);
+    if (prov->av)
+        fi_close(&prov->av->fid);
 
-    ret = atl_ofi_comms_destroy_conns(atl_ofi_context);
-    atl_ofi_comms_conn_destroy(atl_ofi_context, atl_comms);
-    for (i = 0; i < atl_ofi_context->comm_ref_count; i++) {
-        atl_ofi_comm_context_t *atl_ofi_comm_context =
-            container_of(atl_comms[i], atl_ofi_comm_context_t, atl_comm);
-        if (atl_ofi_comm_context->cq)
-            fi_close(&atl_ofi_comm_context->cq->fid);
-        free(atl_ofi_comm_context);
+    if (prov->domain)
+        fi_close(&prov->domain->fid);
+
+    if (prov->fabric)
+        fi_close(&prov->fabric->fid);
+
+    if (prov->info)
+    {
+        fi_freeinfo(prov->info);
     }
-    free(atl_comms);
-    fi_close(&atl_ofi_context->av->fid);
-    fi_close(&atl_ofi_context->domain->fid);
-    fi_close(&atl_ofi_context->fabric->fid);
-    fi_freeinfo(atl_ofi_context->prov);
-    pmrt_finalize(atl_ofi_context->pm_rt);
-    free(atl_ofi_context);
-
-    return RET2ATL(ret);
 }
 
 static atl_status_t
-atl_ofi_comm_ep_create(atl_ofi_context_t *atl_ofi_context,
-                       atl_ofi_comm_context_t *atl_ofi_comm_context,
-                       size_t index)
-{
-    int ret;
-    struct fi_cq_attr cq_attr = {
-        .format = FI_CQ_FORMAT_TAGGED,
-    };
-    struct fi_tx_attr tx_attr;
-    struct fi_rx_attr rx_attr;
-
-    ret = fi_cq_open(atl_ofi_context->domain, &cq_attr,
-                     &atl_ofi_comm_context->cq, NULL);
-    if (ret)
-        return atl_status_failure;
-
-    if (atl_ofi_context->sep) {
-        rx_attr = *atl_ofi_context->prov->rx_attr;
-        rx_attr.caps |= FI_TAGGED;
-        ret = fi_rx_context(atl_ofi_context->sep, index, &rx_attr,
-                            &atl_ofi_comm_context->rx_ctx, NULL);
-        if (ret)
-            goto err;
-        ret = fi_ep_bind(atl_ofi_comm_context->rx_ctx,
-                         &atl_ofi_comm_context->cq->fid, FI_RECV);
-        if (ret)
-            goto err;
-
-        tx_attr = *atl_ofi_context->prov->tx_attr;
-        tx_attr.caps |= FI_TAGGED;
-        ret = fi_tx_context(atl_ofi_context->sep, index, &tx_attr,
-                            &atl_ofi_comm_context->tx_ctx, NULL);
-        if (ret)
-            goto err;
-        ret = fi_ep_bind(atl_ofi_comm_context->tx_ctx,
-                         &atl_ofi_comm_context->cq->fid, FI_SEND);
-        if (ret)
-            goto err;
-
-        fi_enable(atl_ofi_comm_context->rx_ctx);
-        fi_enable(atl_ofi_comm_context->tx_ctx);
-    } else {
-        struct fid_ep *ep;
-
-        ret = fi_endpoint(atl_ofi_context->domain, atl_ofi_context->prov, &ep, NULL);
-        if (ret)
-            goto err;
-        atl_ofi_comm_context->tx_ctx = atl_ofi_comm_context->rx_ctx = ep;
-        ret = fi_ep_bind(ep, &atl_ofi_comm_context->cq->fid, FI_SEND | FI_RECV);
-        if (ret)
-            goto err;
-        ret = fi_ep_bind(ep, &atl_ofi_context->av->fid, 0);
-        if (ret)
-            goto err;
-
-        fi_enable(ep);
-
-        ret = atl_ofi_comm_get_epname(ep, &atl_ofi_comm_context->name);
-        if (ret)
-            goto err;
-        atl_ofi_context->addr_len = atl_ofi_comm_context->name->len;
-        if (ret)
-            goto err;
-    }
-
-    return atl_status_success;
-err:
-    atl_ofi_comm_ep_destroy(atl_ofi_context, atl_ofi_comm_context);
-    return RET2ATL(ret);
-}
-
-static atl_status_t atl_ofi_comm_handle_cq_err(atl_ofi_comm_context_t *comm_context)
+atl_ofi_prov_ep_handle_cq_err(atl_ofi_prov_ep_t* ep)
 {
     struct fi_cq_err_entry err_entry;
-    atl_ofi_req_t *ofi_req;
-    int ret = fi_cq_readerr(comm_context->cq, &err_entry, 0);
-    if (ret != 1) {
+    atl_ofi_req_t* ofi_req;
+
+    int ret = fi_cq_readerr(ep->cq, &err_entry, 0);
+    if (ret != 1)
+    {
         ATL_OFI_ASSERT(0, "unable to read error from cq");
-        return atl_status_failure;
-    } else {
-        ofi_req = container_of(err_entry.op_context, atl_ofi_req_t, ofi_context);
-        if (err_entry.err == FI_ECANCELED) {
-            return atl_status_success;
+        return ATL_STATUS_FAILURE;
+    }
+    else
+    {
+        ofi_req = container_of(err_entry.op_context, atl_ofi_req_t, fi_ctx);
+
+        if (err_entry.err == FI_ECANCELED)
+        {
+            return ATL_STATUS_SUCCESS;
         }
+
         if (err_entry.err == FI_ENOMSG &&
-            ofi_req->comp_state == ATL_OFI_COMP_PEEK_STARTED) {
+            ofi_req->comp_state == ATL_OFI_COMP_PEEK_STARTED)
+        {
             ofi_req->comp_state = ATL_OFI_COMP_PEEK_NOT_FOUND;
         }
-        else {
+        else
+        {
             ATL_OFI_PRINT("fi_cq_readerr: err: %d, prov_err: %s (%d)",
-                          err_entry.err,
-                          fi_cq_strerror(comm_context->cq,
-                                         err_entry.prov_errno,
-                                         err_entry.err_data,
-                                         NULL, 0),
-                          err_entry.prov_errno);
-            return atl_status_failure;
+                err_entry.err,
+                fi_cq_strerror(ep->cq,
+                               err_entry.prov_errno,
+                               err_entry.err_data,
+                               NULL, 0),
+                err_entry.prov_errno);
+            return ATL_STATUS_FAILURE;
         }
-        return atl_status_success;
+        return ATL_STATUS_SUCCESS;
     }
 }
 
-static inline void atl_ofi_process_comps(struct fi_cq_tagged_entry *entries,
-                                         ssize_t ret)
+static inline void
+atl_ofi_process_comps(struct fi_cq_tagged_entry* entries,
+                      ssize_t ret)
 {
     size_t idx;
-    atl_ofi_req_t *comp_ofi_req;
-    for (idx = 0; idx < ret; idx++) {
-        comp_ofi_req = container_of(entries[idx].op_context, atl_ofi_req_t,
-                                    ofi_context);
-        switch (comp_ofi_req->comp_state) {
+    atl_ofi_req_t* comp_ofi_req;
+    for (idx = 0; idx < ret; idx++)
+    {
+        comp_ofi_req = container_of(entries[idx].op_context, atl_ofi_req_t, fi_ctx);
+        switch (comp_ofi_req->comp_state)
+        {
             case ATL_OFI_COMP_POSTED:
                 comp_ofi_req->comp_state = ATL_OFI_COMP_COMPLETED;
                 break;
@@ -665,253 +735,16 @@ static inline void atl_ofi_process_comps(struct fi_cq_tagged_entry *entries,
                 ATL_OFI_ASSERT(0, "unexpected completion state %d", comp_ofi_req->comp_state);
                 break;
         }
-        if (entries[idx].flags & FI_RECV) {
+
+        if (entries[idx].flags & FI_RECV)
+        {
             comp_ofi_req->recv_len = entries[idx].len;
         }
     }
 }
 
-static inline atl_status_t atl_ofi_comm_poll(atl_comm_t *comm)
-{
-    atl_ofi_comm_context_t *comm_context =
-        container_of(comm, atl_ofi_comm_context_t, atl_comm);
-    struct fi_cq_tagged_entry entries[ATL_OFI_CQ_BUNCH_SIZE];
-    ssize_t ret;
-
-    do {
-        ret = fi_cq_read(comm_context->cq, entries, ATL_OFI_CQ_BUNCH_SIZE);
-        if (ret > 0) {
-            atl_ofi_process_comps(entries, ret);
-        } else if (ret == -FI_EAGAIN) {
-            break;
-        } else {
-            return atl_ofi_comm_handle_cq_err(comm_context);
-        }
-    } while (ret > 0);
-
-    return atl_status_success;
-}
-
-/* Non-blocking I/O vector pt2pt ops */
-static atl_status_t
-atl_ofi_comm_sendv(atl_comm_t *comm, const struct iovec *iov, size_t count,
-                   size_t dest_proc_idx, uint64_t tag, atl_req_t *req)
-{
-    atl_ofi_comm_context_t *comm_context =
-        container_of(comm, atl_ofi_comm_context_t, atl_comm);
-    atl_ofi_req_t *ofi_req = ((atl_ofi_req_t *)req->internal);
-    ssize_t ret;
-
-    req->remote_proc_idx = dest_proc_idx;
-    req->tag = tag;
-    ofi_req->comp_state = ATL_OFI_COMP_POSTED;
-
-    ofi_req->last_ctx = comm_context->tx_ctx;
-    ofi_req->comm = comm_context;
-
-    ATL_OFI_RETRY(fi_tsendv(comm_context->tx_ctx, iov, NULL, count,
-                             atl_ofi_comm_atl_addr_2_fi_addr(
-                             container_of(comm->atl_desc,
-                                          atl_ofi_context_t,
-                                          atl_desc),
-                             dest_proc_idx, comm_context->idx),
-                             tag, &ofi_req->ofi_context),
-                  comm, ret);
-    return RET2ATL(ret);
-}
-
-static atl_status_t
-atl_ofi_comm_recvv(atl_comm_t *comm, struct iovec *iov, size_t count,
-                   size_t src_proc_idx, uint64_t tag, atl_req_t *req)
-{
-    atl_ofi_comm_context_t *comm_context =
-        container_of(comm, atl_ofi_comm_context_t, atl_comm);
-    atl_ofi_req_t *ofi_req = ((atl_ofi_req_t *)req->internal);
-    ssize_t ret;
-
-    req->remote_proc_idx = src_proc_idx;
-    req->tag = tag;
-    ofi_req->comp_state = ATL_OFI_COMP_POSTED;
-
-    ofi_req->last_ctx = comm_context->rx_ctx;
-    ofi_req->comm = comm_context;
-
-    ATL_OFI_RETRY(fi_trecvv(comm_context->rx_ctx, iov, NULL, count,
-                            atl_ofi_comm_atl_addr_2_fi_addr(
-                                 container_of(comm->atl_desc,
-                                              atl_ofi_context_t,
-                                              atl_desc),
-                                 src_proc_idx, comm_context->idx),
-                            tag, 0, &ofi_req->ofi_context),
-                  comm, ret);
-    return RET2ATL(ret);
-}
-
-/* Non-blocking pt2pt ops */
-static atl_status_t
-atl_ofi_comm_send(atl_comm_t *comm, const void *buf, size_t len,
-                  size_t dest_proc_idx, uint64_t tag, atl_req_t *req)
-{
-    atl_ofi_comm_context_t *comm_context =
-        container_of(comm, atl_ofi_comm_context_t, atl_comm);
-    atl_ofi_req_t *ofi_req = ((atl_ofi_req_t *)req->internal);
-    ssize_t ret;
-
-    req->remote_proc_idx = dest_proc_idx;
-    req->tag = tag;
-    ofi_req->comp_state = ATL_OFI_COMP_POSTED;
-
-    ofi_req->last_ctx = comm_context->tx_ctx;
-    ofi_req->comm = comm_context;
-
-    ATL_OFI_RETRY(fi_tsend(comm_context->tx_ctx, buf, len, NULL,
-                           atl_ofi_comm_atl_addr_2_fi_addr(
-                                container_of(comm->atl_desc,
-                                             atl_ofi_context_t,
-                                             atl_desc),
-                                dest_proc_idx, comm_context->idx),
-                           tag, &ofi_req->ofi_context),
-                  comm, ret);
-    return RET2ATL(ret);
-}
-
-static atl_status_t
-atl_ofi_comm_recv(atl_comm_t *comm, void *buf, size_t len,
-                  size_t src_proc_idx, uint64_t tag, atl_req_t *req)
-{
-    atl_ofi_comm_context_t *comm_context =
-        container_of(comm, atl_ofi_comm_context_t, atl_comm);
-    atl_ofi_req_t *ofi_req = ((atl_ofi_req_t *)req->internal);
-    ssize_t ret;
-
-    req->remote_proc_idx = src_proc_idx;
-    req->tag = tag;
-    ofi_req->comp_state = ATL_OFI_COMP_POSTED;
-
-    ofi_req->last_ctx = comm_context->rx_ctx;
-    ofi_req->comm = comm_context;
-
-    ATL_OFI_RETRY(fi_trecv(comm_context->rx_ctx, buf, len, NULL,
-                           atl_ofi_comm_atl_addr_2_fi_addr(
-                                container_of(comm->atl_desc,
-                                             atl_ofi_context_t,
-                                             atl_desc),
-                                src_proc_idx, comm_context->idx),
-                           tag, 0, &ofi_req->ofi_context),
-                  comm, ret);
-    return RET2ATL(ret);
-}
-
-static atl_status_t
-atl_ofi_comm_read(atl_comm_t *comm, void *buf, size_t len, atl_mr_t *atl_mr,
-                  uint64_t addr, uintptr_t r_key, size_t dest_proc_idx, atl_req_t *req)
-{
-    atl_ofi_comm_context_t *comm_context =
-        container_of(comm, atl_ofi_comm_context_t, atl_comm);
-    atl_ofi_req_t *ofi_req = ((atl_ofi_req_t *)req->internal);
-    ssize_t ret;
-
-    req->remote_proc_idx = dest_proc_idx;
-    req->tag = 0;
-    ofi_req->comp_state = ATL_OFI_COMP_POSTED;
-
-    ofi_req->last_ctx = comm_context->tx_ctx;
-    ofi_req->comm = comm_context;
-
-    ATL_OFI_RETRY(fi_read(comm_context->tx_ctx, buf, len, (void*)atl_mr->l_key,
-                          atl_ofi_comm_atl_addr_2_fi_addr(
-                              container_of(comm->atl_desc,
-                                           atl_ofi_context_t,
-                                           atl_desc),
-                              dest_proc_idx, comm_context->idx),
-                          addr, r_key, &ofi_req->ofi_context),
-                  comm, ret);
-    return RET2ATL(ret);
-}
-
-static atl_status_t
-atl_ofi_comm_write(atl_comm_t *comm, const void *buf, size_t len, atl_mr_t *atl_mr,
-                   uint64_t addr, uintptr_t r_key, size_t dest_proc_idx, atl_req_t *req)
-{
-    atl_ofi_comm_context_t *comm_context =
-        container_of(comm, atl_ofi_comm_context_t, atl_comm);
-    atl_ofi_req_t *ofi_req = ((atl_ofi_req_t *)req->internal);
-    ssize_t ret;
-
-    req->remote_proc_idx = dest_proc_idx;
-    req->tag = 0;
-    ofi_req->comp_state = ATL_OFI_COMP_POSTED;
-
-    ofi_req->last_ctx = comm_context->tx_ctx;
-    ofi_req->comm = comm_context;
-
-    ATL_OFI_RETRY(fi_write(comm_context->tx_ctx, buf, len, (void*)atl_mr->l_key,
-                           atl_ofi_comm_atl_addr_2_fi_addr(
-                               container_of(comm->atl_desc,
-                                            atl_ofi_context_t,
-                                            atl_desc),
-                               dest_proc_idx, comm_context->idx),
-                           addr, r_key, &ofi_req->ofi_context),
-                   comm, ret);
-    return RET2ATL(ret);
-}
-
-static atl_status_t
-atl_ofi_comm_probe(atl_comm_t *comm, size_t src_proc_idx, uint64_t tag,
-                   int *found, size_t *recv_len)
-{
-    atl_status_t ret = atl_status_success;
-    ssize_t ofi_ret;
-    atl_ofi_comm_context_t *comm_context =
-        container_of(comm, atl_ofi_comm_context_t, atl_comm);
-    atl_ofi_req_t req;
-    int flag = 0, len = 0;
-
-    struct fi_msg_tagged msg = {
-        .msg_iov = NULL,
-        .desc = NULL,
-        .iov_count = 0,
-        .addr = atl_ofi_comm_atl_addr_2_fi_addr(
-                    container_of(comm->atl_desc,
-                                 atl_ofi_context_t,
-                                 atl_desc),
-                    src_proc_idx, comm_context->idx),
-        .tag = tag,
-        .ignore = 0,
-        .context = &(req.ofi_context),
-        .data = 0,
-    };
-
-    req.comp_state = ATL_OFI_COMP_PEEK_STARTED;
-    ATL_OFI_RETRY(fi_trecvmsg(comm_context->rx_ctx, &msg,
-                              FI_PEEK | FI_COMPLETION),
-                  comm, ofi_ret);
-
-    while (req.comp_state == ATL_OFI_COMP_PEEK_STARTED)
-    {
-        ret = atl_ofi_comm_poll(comm);
-        if (ret != atl_status_success)
-            return ret;
-    }
-
-    if (req.comp_state == ATL_OFI_COMP_PEEK_FOUND)
-    {
-        flag = 1;
-        len = req.recv_len;
-    }
-    else if (req.comp_state != ATL_OFI_COMP_PEEK_NOT_FOUND)
-    {
-        ATL_OFI_ASSERT(0, "unexpected completion state %d", req.comp_state);
-    }
-
-    if (found) *found = flag;
-    if (recv_len) *recv_len = len;
-
-    return RET2ATL(ofi_ret);
-}
-
 static int
-atl_ofi_wait_cancel_cq(struct fid_cq *cq)
+atl_ofi_wait_cancel_cq(struct fid_cq* cq)
 {
     struct fi_cq_err_entry err_entry;
     int ret, i;
@@ -934,267 +767,124 @@ atl_ofi_wait_cancel_cq(struct fid_cq *cq)
                 if (err_entry.err != FI_ECANCELED)
                 {
                     ATL_OFI_PRINT("fi_cq_readerr: err: %d, prov_err: %s (%d)",
-                                  err_entry.err, fi_cq_strerror(cq,
-                                                                err_entry.prov_errno,
-                                                                err_entry.err_data,
-                                                                NULL, 0),
-                                  err_entry.prov_errno);
-                    return atl_status_failure;
+                        err_entry.err, fi_cq_strerror(cq,
+                                                      err_entry.prov_errno,
+                                                      err_entry.err_data,
+                                                      NULL, 0),
+                        err_entry.prov_errno);
+                    return ATL_STATUS_FAILURE;
                 }
-                return atl_status_success;
+                return ATL_STATUS_SUCCESS;
             }
         }
         end = clock();
         time += (double) (end - start) / CLOCKS_PER_SEC;
     }
+
     ATL_OFI_PRINT("too long for cancel");
-    return atl_status_failure;
+
+    return ATL_STATUS_FAILURE;
 }
 
-
-static atl_status_t atl_ofi_comm_cancel(atl_comm_t *comm, atl_req_t *req)
+static atl_status_t
+atl_ofi_prov_ep_init(atl_ofi_prov_t* prov, size_t ep_idx)
 {
-    atl_status_t ret = atl_status_success;
-    atl_ofi_req_t *ofi_req = ((atl_ofi_req_t *)req->internal);
-
-    ret = fi_cancel(&ofi_req->last_ctx->fid, &ofi_req->ofi_context);
-    if (ret == 0)
+    ssize_t ret = 0;
+    struct fi_cq_attr cq_attr =
     {
-        return atl_ofi_wait_cancel_cq(ofi_req->comm->cq);
+        .format = FI_CQ_FORMAT_TAGGED,
+    };
+    struct fi_tx_attr tx_attr;
+    struct fi_rx_attr rx_attr;
+
+    atl_ofi_prov_ep_t* ep = &(prov->eps[ep_idx]);
+
+    ATL_OFI_CALL(fi_cq_open(prov->domain, &cq_attr,
+                            &ep->cq, NULL),
+                 ret, return ATL_STATUS_FAILURE);
+
+    if (prov->sep)
+    {
+        rx_attr = *prov->info->rx_attr;
+        rx_attr.caps |= FI_TAGGED;
+
+        ATL_OFI_CALL(fi_rx_context(prov->sep, ep_idx, &rx_attr,
+                                   &ep->rx, NULL),
+                     ret, goto err);
+
+        ATL_OFI_CALL(fi_ep_bind(ep->rx,
+                                &ep->cq->fid, FI_RECV),
+                     ret, goto err);
+
+        tx_attr = *prov->info->tx_attr;
+        tx_attr.caps |= FI_TAGGED;
+
+        ATL_OFI_CALL(fi_tx_context(prov->sep, ep_idx, &tx_attr,
+                                   &ep->tx, NULL),
+                     ret, goto err);
+
+        ATL_OFI_CALL(fi_ep_bind(ep->tx,
+                                &ep->cq->fid, FI_SEND),
+                     ret, goto err);
+
+        fi_enable(ep->rx);
+        fi_enable(ep->tx);
+    }
+    else
+    {
+        struct fid_ep* endpoint;
+
+        ATL_OFI_CALL(fi_endpoint(prov->domain, prov->info, &endpoint, NULL),
+                     ret, goto err);
+
+        ep->tx = ep->rx = endpoint;
+
+        ATL_OFI_CALL(fi_ep_bind(endpoint, &ep->cq->fid, FI_SEND | FI_RECV),
+                     ret, goto err);
+
+        ATL_OFI_CALL(fi_ep_bind(endpoint, &prov->av->fid, 0), 
+                     ret, goto err);
+
+        fi_enable(endpoint);
     }
 
-    return atl_status_success;
-}
+    return ATL_STATUS_SUCCESS;
 
-static atl_status_t atl_ofi_comm_wait(atl_comm_t *comm, atl_req_t *req)
-{
-    atl_status_t ret = atl_status_success;
-    atl_ofi_req_t *ofi_req = ((atl_ofi_req_t *)req->internal);
-
-    while ((ofi_req->comp_state != ATL_OFI_COMP_COMPLETED) &&
-           ((ret = atl_ofi_comm_poll(comm)) == atl_status_success));
-
-    return ret;
-}
-
-static atl_status_t
-atl_ofi_comm_wait_all(atl_comm_t *comm, atl_req_t *reqs, size_t count)
-{
-    size_t i;
-    atl_status_t ret;
-
-    for (i = 0; i < count; i++) {
-        ret = atl_ofi_comm_wait(comm, &reqs[i]);
-        if (ret != atl_status_success)
-            return ret;
-    }
-
-    return atl_status_success;
-}
-
-static atl_status_t
-atl_ofi_comm_check(atl_comm_t *comm, int *status, atl_req_t *req)
-{
-    atl_ofi_req_t *ofi_req = ((atl_ofi_req_t *)req->internal);
-    *status = (ofi_req->comp_state == ATL_OFI_COMP_COMPLETED);
-    return atl_status_success;
-}
-
-static atl_status_t
-atl_ofi_comm_allgatherv(atl_comm_t *comm, const void *send_buf, size_t send_len,
-                        void *recv_buf, const int recv_lens[], int displs[], atl_req_t *req)
-{
-    return atl_status_unsupported;
-}
-
-static atl_status_t
-atl_ofi_comm_allreduce(atl_comm_t *comm, const void *send_buf, void *recv_buf, size_t count,
-                       atl_datatype_t dtype, atl_reduction_t op, atl_req_t *req)
-{
-    return atl_status_unsupported;
-}
-
-static atl_status_t
-atl_ofi_comm_barrier(atl_comm_t *comm, atl_req_t *req)
-{
-    return atl_status_unsupported;
-}
-
-static atl_status_t
-atl_ofi_comm_bcast(atl_comm_t *comm, void *buf, size_t len, size_t root,
-                   atl_req_t *req)
-{
-    return atl_status_unsupported;
-}
-
-static atl_status_t
-atl_ofi_comm_reduce(atl_comm_t *comm, const void *send_buf, void *recv_buf, size_t count, size_t root,
-                    atl_datatype_t dtype, atl_reduction_t op, atl_req_t *req)
-{
-    return atl_status_unsupported;
-}
-
-static atl_coll_ops_t atl_ofi_comm_coll_ops = {
-    .allgatherv = atl_ofi_comm_allgatherv,
-    .allreduce = atl_ofi_comm_allreduce,
-    .barrier = atl_ofi_comm_barrier,
-    .bcast = atl_ofi_comm_bcast,
-    .reduce = atl_ofi_comm_reduce,
-};
-
-static atl_pt2pt_ops_t atl_ofi_comm_pt2pt_ops = {
-    .sendv = atl_ofi_comm_sendv,
-    .recvv = atl_ofi_comm_recvv,
-    .send = atl_ofi_comm_send,
-    .recv = atl_ofi_comm_recv,
-    .probe = atl_ofi_comm_probe,
-};
-
-static atl_rma_ops_t atl_ofi_comm_rma_ops = {
-    .read = atl_ofi_comm_read,
-    .write = atl_ofi_comm_write,
-};
-
-static atl_comp_ops_t atl_ofi_comm_comp_ops = {
-    .wait = atl_ofi_comm_wait,
-    .wait_all = atl_ofi_comm_wait_all,
-    .cancel = atl_ofi_comm_cancel,
-    .poll = atl_ofi_comm_poll,
-    .check = atl_ofi_comm_check
-};
-
-static atl_status_t
-atl_ofi_comm_init(atl_ofi_context_t *atl_ofi_context, atl_comm_attr_t *attr,
-                  size_t index, atl_comm_t **comm)
-{
-    int ret;
-    atl_ofi_comm_context_t *atl_ofi_comm_context;
-
-    atl_ofi_comm_context = calloc(1, sizeof(*atl_ofi_comm_context));
-    if (!atl_ofi_comm_context)
-        return atl_status_failure;
-
-    ret = atl_ofi_comm_ep_create(atl_ofi_context, atl_ofi_comm_context, index);
-    if (ret)
-        goto err_ep;
-
-    atl_ofi_comm_context->idx = index;
-    *comm = &atl_ofi_comm_context->atl_comm;
-    (*comm)->atl_desc = &atl_ofi_context->atl_desc;
-    (*comm)->coll_ops = &atl_ofi_comm_coll_ops;
-    (*comm)->pt2pt_ops = &atl_ofi_comm_pt2pt_ops;
-    (*comm)->rma_ops = &atl_ofi_comm_rma_ops;
-    (*comm)->comp_ops = &atl_ofi_comm_comp_ops;
-
-    return atl_status_success;
-err_ep:
-    free(atl_ofi_comm_context);
+err:
+    atl_ofi_prov_ep_destroy(prov, ep);
     return RET2ATL(ret);
 }
 
 static atl_status_t
-atl_ofi_comms_init(atl_ofi_context_t *atl_ofi_context, size_t comm_count,
-                   atl_comm_attr_t *attr, atl_comm_t ***comms)
-{
-    int i = 0, ret;
-
-    *comms = calloc(1, sizeof(**comms) * comm_count);
-    if (!*comms)
-        return atl_status_failure;
-
-    if (atl_ofi_context->prov->domain_attr->max_ep_tx_ctx > 1) {
-        ret = fi_scalable_ep(atl_ofi_context->domain, atl_ofi_context->prov,
-                             &atl_ofi_context->sep, NULL);
-        if (ret)
-            goto err_sep;
-        ret = fi_scalable_ep_bind(atl_ofi_context->sep,
-                                  &atl_ofi_context->av->fid, 0);
-        if (ret) {
-            fi_close(&atl_ofi_context->sep->fid);
-            goto err_sep;
-        }
-    }
-
-    for (i = 0; i < comm_count; i++) {
-        ret = atl_ofi_comm_init(atl_ofi_context, attr, i, &(*comms)[i]);
-        if (ret)
-            goto err_comm;
-        atl_ofi_context->comm_ref_count++;
-    }
-
-    if (atl_ofi_context->sep) {
-        atl_ofi_comm_name_t *name;
-
-        fi_enable(atl_ofi_context->sep);
-
-        ret = atl_ofi_comm_get_epname(atl_ofi_context->sep, &name);
-        if (ret)
-            goto err_comm;
-        atl_ofi_comms_set_epname(*comms, comm_count, name);
-        atl_ofi_context->addr_len = name->len;
-    }
-
-    ret = atl_ofi_comms_connect(atl_ofi_context, *comms, comm_count);
-    if (ret)
-        goto err_comm;
-
-    return atl_status_success;
-err_comm:
-    if (atl_ofi_context->sep)
-        fi_close(&atl_ofi_context->sep->fid);
-    while (atl_ofi_context->comm_ref_count) {
-        atl_ofi_comm_context_t *atl_ofi_comm_context =
-            container_of((*comms)[atl_ofi_context->comm_ref_count],
-                         atl_ofi_comm_context_t, atl_comm);
-        atl_ofi_comm_conn_destroy(atl_ofi_context,
-                                  (*comms)[atl_ofi_context->comm_ref_count]);
-        free(atl_ofi_comm_context);
-        atl_ofi_context->comm_ref_count--;
-    }
-err_sep:
-    free(*comms);
-    return RET2ATL(ret);
-}
-
-static void atl_ofi_global_proc_idx(atl_desc_t *atl_desc, size_t *global_proc_idx)
-{
-    atl_ofi_context_t *atl_ofi_context =
-        container_of(atl_desc, atl_ofi_context_t, atl_desc);
-    *global_proc_idx = atl_ofi_context->proc_coord.global_idx;
-}
-
-static void atl_ofi_global_proc_count(atl_desc_t *atl_desc, size_t *global_proc_count)
-{
-    atl_ofi_context_t *atl_ofi_context =
-        container_of(atl_desc, atl_ofi_context_t, atl_desc);
-    *global_proc_count = atl_ofi_context->proc_coord.global_count;
-}
-
-static atl_status_t atl_ofi_try_to_drain_cq_err(struct fid_cq *cq)
+atl_ofi_try_to_drain_cq_err(struct fid_cq* cq)
 {
     struct fi_cq_err_entry err_entry;
     int ret = fi_cq_readerr(cq, &err_entry, 0);
-    if (ret != 1) {
-        ATL_OFI_DEBUG_PRINT("Unable to fi_cq_readerr");
-        return atl_status_failure;
-    } else {
+    if (ret != 1)
+    {
+        ATL_OFI_DEBUG_PRINT("unable to fi_cq_readerr");
+        return ATL_STATUS_FAILURE;
+    }
+    else
+    {
         if (err_entry.err != FI_ENOMSG
             && err_entry.err != FI_ECANCELED
-            && err_entry.err != FI_ETRUNC) {
+            && err_entry.err != FI_ETRUNC)
+        {
             ATL_OFI_PRINT("fi_cq_readerr: err: %d, prov_err: %s (%d)",
-                          err_entry.err, fi_cq_strerror(cq,
-                                                        err_entry.prov_errno,
-                                                        err_entry.err_data,
-                                                        NULL, 0),
-                          err_entry.prov_errno);
-            return atl_status_failure;
+                err_entry.err, fi_cq_strerror(cq,
+                                              err_entry.prov_errno,
+                                              err_entry.err_data,
+                                              NULL, 0),
+                err_entry.prov_errno);
+            return ATL_STATUS_FAILURE;
         }
-        return atl_status_success;
+        return ATL_STATUS_SUCCESS;
     }
 }
 
 static int
-atl_ofi_try_to_drain_cq(struct fid_cq *cq)
+atl_ofi_try_to_drain_cq(struct fid_cq* cq)
 {
     int ret, i;
     double time = 0;
@@ -1225,156 +915,56 @@ atl_ofi_try_to_drain_cq(struct fid_cq *cq)
 }
 
 static void
-atl_ofi_reset(size_t comm_ref_count, atl_comm_t** atl_comms)
+atl_ofi_reset(atl_ctx_t* ctx)
 {
-    int again = 1, i;
+    atl_ofi_ctx_t* ofi_ctx = container_of(ctx, atl_ofi_ctx_t, ctx);
+
+    int again = 1, ep_idx, prov_idx;
     int recv_buf_len = sizeof(char);
     char* recv_buf = malloc(recv_buf_len);
-    struct fi_context ofi_context;
+    struct fi_context fi_ctx;
 
-    for (i = 0; i < comm_ref_count; i++)
+    for (prov_idx = 0; prov_idx < ofi_ctx->prov_count; prov_idx++)
     {
-        atl_ofi_comm_context_t *comm_context =
-            container_of(atl_comms[i], atl_ofi_comm_context_t, atl_comm);
-        // complete active sends and receives
-        while (atl_ofi_try_to_drain_cq(comm_context->cq) != -FI_EAGAIN) {}
+        atl_ofi_prov_t* prov = &(ofi_ctx->provs[prov_idx]);
 
-        // try to complete active incoming sends
-        while (again)
+        for (ep_idx = 0; ep_idx < ctx->ep_count; ep_idx++)
         {
-            again = 0;
-            // post recv to complete incoming send
-            while (fi_trecv(comm_context->rx_ctx, recv_buf, recv_buf_len, NULL,
-                            FI_ADDR_UNSPEC, 0, UINTMAX_MAX, &ofi_context) ==
-                   -FI_EAGAIN)
-            {}
+            atl_ofi_prov_ep_t* ep = &(prov->eps[ep_idx]);
 
-            // wait until recv will be completed or finished by timeout
-            while (atl_ofi_try_to_drain_cq(comm_context->cq) != -FI_EAGAIN)
+            /* complete active sends and receives */
+            while (atl_ofi_try_to_drain_cq(ep->cq) != -FI_EAGAIN) {}
+
+            /* try to complete active incoming sends */
+            while (again)
             {
-                // Something is completed -> send queue not empty
-                again = 1;
+                again = 0;
+                /* post recv to complete incoming send */
+                while (fi_trecv(ep->rx, recv_buf, recv_buf_len, NULL,
+                                FI_ADDR_UNSPEC, 0, UINTMAX_MAX, &fi_ctx) ==
+                       -FI_EAGAIN)
+                {}
+
+                /* wait until recv will be completed or finished by timeout */
+                while (atl_ofi_try_to_drain_cq(ep->cq) != -FI_EAGAIN)
+                {
+                    /* something is completed -> send queue not empty */
+                    again = 1;
+                }
             }
+
+            /* nothing to recv -> cancel last recv */
+            fi_cancel(&ep->rx->fid, &fi_ctx);
+
+            atl_ofi_wait_cancel_cq(ep->cq);
         }
-
-        // Nothing to recv -> cancel last recv
-        fi_cancel(&comm_context->rx_ctx->fid, &ofi_context);
-
-        atl_ofi_wait_cancel_cq(comm_context->cq);
     }
 
     free(recv_buf);
 }
 
-static atl_status_t
-atl_ofi_update(atl_proc_coord_t *proc_coord, atl_desc_t *atl_desc, atl_comm_t** atl_comms)
-{
-    int ret;
-
-    atl_ofi_context_t *atl_ofi_context =
-        container_of(atl_desc, atl_ofi_context_t, atl_desc);
-
-    pmrt_barrier(atl_ofi_context->pm_rt);
-
-    atl_ofi_reset(atl_ofi_context->comm_ref_count, atl_comms);
-    memset(proc_coord, 0, sizeof(atl_proc_coord_t));
-
-    ret = pmrt_update(&atl_ofi_context->proc_coord.global_idx,
-                      &atl_ofi_context->proc_coord.global_count,
-                      atl_ofi_context->pm_rt);
-    if (ret)
-        goto err_pmrt_update;
-
-    ret = atl_ofi_get_local_proc_coord(atl_ofi_context);
-    if (ret)
-        goto err_pmrt_update;
-
-    ret = atl_ofi_update_addr_table(atl_ofi_context);
-    if (ret)
-        goto err_pmrt_update;
-
-    *proc_coord = atl_ofi_context->proc_coord;
-
-    /* Normal end of execution */
-    return ret;
-
-    /* Abnormal end of execution */
-err_pmrt_update:
-    return RET2ATL(ret);
-}
-
-static atl_status_t
-atl_ofi_wait_notification(atl_desc_t *atl_desc)
-{
-    int ret;
-
-    atl_ofi_context_t *atl_ofi_context =
-        container_of(atl_desc, atl_ofi_context_t, atl_desc);
-
-    ret = pmrt_wait_notification(atl_ofi_context->pm_rt);
-
-    return RET2ATL(ret);
-}
-
-static atl_status_t atl_ofi_mr_reg(atl_desc_t *atl_desc, const void *buf, size_t len,
-                                   atl_mr_t **atl_mr)
-{
-    int ret;
-    atl_ofi_context_t *atl_context =
-        container_of(atl_desc, atl_ofi_context_t, atl_desc);
-    atl_ofi_mr_t *atl_ofi_mr = calloc(1, sizeof(*atl_ofi_mr));
-    if (!atl_ofi_mr)
-        return atl_status_failure;
-
-    ret = fi_mr_reg(atl_context->domain, buf, len,
-                    FI_SEND | FI_RECV | FI_READ | FI_WRITE |
-                    FI_REMOTE_READ | FI_REMOTE_WRITE, 0, 0, 0,
-                    &atl_ofi_mr->mr, NULL);
-    if (ret)
-        goto mr_reg_err;
-
-    atl_ofi_mr->atl_mr.buf = (void *)buf;
-    atl_ofi_mr->atl_mr.len = len;
-    atl_ofi_mr->atl_mr.r_key = (uintptr_t)fi_mr_key(atl_ofi_mr->mr);
-    atl_ofi_mr->atl_mr.l_key = (uintptr_t)fi_mr_desc(atl_ofi_mr->mr);
-
-    *atl_mr = &atl_ofi_mr->atl_mr;
-    return atl_status_success;
-
-mr_reg_err:
-    free(atl_ofi_mr);
-    return atl_status_failure;
-}
-
-static atl_status_t atl_ofi_mr_dereg(atl_desc_t *atl_desc, atl_mr_t *atl_mr)
-{
-    atl_ofi_mr_t *atl_ofi_mr = container_of(atl_mr, atl_ofi_mr_t, atl_mr);
-    int ret = fi_close(&atl_ofi_mr->mr->fid);
-    free(atl_ofi_mr);
-    return RET2ATL(ret);
-}
-
-
-static atl_status_t atl_ofi_set_resize_function(atl_resize_fn_t resize_fn)
-{
-    return pmrt_set_resize_function(resize_fn);
-}
-
-atl_ops_t atl_ofi_ops = {
-    .global_proc_idx        = atl_ofi_global_proc_idx,
-    .global_proc_count      = atl_ofi_global_proc_count,
-    .finalize               = atl_ofi_finalize,
-    .update                 = atl_ofi_update,
-    .wait_notification      = atl_ofi_wait_notification,
-    .set_resize_function = atl_ofi_set_resize_function,
-};
-
-static atl_mr_ops_t atl_ofi_mr_ops = {
-    .mr_reg = atl_ofi_mr_reg,
-    .mr_dereg = atl_ofi_mr_dereg,
-};
-
-static void atl_ofi_tune(void)
+static void
+atl_ofi_tune(void)
 {
     setenv("FI_PSM2_TIMEOUT", "1", 0);
     setenv("FI_PSM2_DELAY", "0", 0);
@@ -1385,15 +975,536 @@ static void atl_ofi_tune(void)
     setenv("FI_OFI_RXM_TX_SIZE", "8192", 0);
     setenv("FI_OFI_RXM_MSG_RX_SIZE", "128", 0);
     setenv("FI_OFI_RXM_MSG_TX_SIZE", "128", 0);
+
+    /* IMPI/libfabric knob */
+    setenv("FI_INFO_UTIL", "1", 0);
 }
 
-atl_status_t atl_ofi_init(int *argc, char ***argv, atl_proc_coord_t *proc_coord,
-                          atl_attr_t *attr, atl_comm_t ***atl_comms, atl_desc_t **atl_desc)
+static atl_status_t
+atl_ofi_finalize(atl_ctx_t* ctx)
 {
-    struct fi_info *providers, *hints;
+    int ret = 0;
+    size_t idx;
+
+    atl_ofi_ctx_t* ofi_ctx = container_of(ctx, atl_ofi_ctx_t, ctx);
+
+    for (idx = 0; idx < ofi_ctx->prov_count; idx++)
+    {
+        atl_ofi_prov_t* prov = &ofi_ctx->provs[idx];
+        atl_ofi_prov_destroy(ctx, prov);
+    }
+
+    for (idx = 0; idx < ctx->ep_count; idx++)
+    {
+        atl_ofi_ep_t* ofi_ep = container_of(ctx->eps[idx], atl_ofi_ep_t, ep);
+        free(ofi_ep);
+    }
+
+    free(ctx->eps);
+
+    if (ofi_ctx->pm_rt)
+        pmrt_finalize(ofi_ctx->pm_rt);
+
+    free(ofi_ctx);
+
+    return RET2ATL(ret);
+}
+
+static atl_status_t
+atl_ofi_update(atl_ctx_t* ctx)
+{
+    int ret;
+    size_t prov_idx;
+
+    atl_ofi_ctx_t* ofi_ctx =
+        container_of(ctx, atl_ofi_ctx_t, ctx);
+
+    pmrt_barrier(ofi_ctx->pm_rt);
+
+    atl_ofi_reset(ctx);
+    memset(&(ctx->coord), 0, sizeof(atl_proc_coord_t));
+
+    ret = pmrt_update(&ctx->coord.global_idx,
+                      &ctx->coord.global_count,
+                      ofi_ctx->pm_rt);
+    if (ret)
+        goto err_pmrt_update;
+
+    ret = atl_ofi_get_local_proc_coord(ofi_ctx);
+    if (ret)
+        goto err_pmrt_update;
+
+    atl_proc_coord_t* coord = &(ctx->coord);
+
+    if (ofi_ctx->prov_count == 1 && ofi_ctx->provs[0].is_shm)
+    {
+        ATL_OFI_ASSERT(coord->global_count == coord->local_count,
+            "unexpected coord after update: global_count %zu, local_count %zu",
+            coord->global_count, coord->local_count);
+        /* TODO: recreate providers */
+    }
+
+    for (prov_idx = 0; prov_idx < ofi_ctx->prov_count; prov_idx++)
+    {
+        ret = atl_ofi_prov_eps_connect(ofi_ctx, prov_idx);
+        if (ret)
+            goto err_pmrt_update;
+    }
+
+    pmrt_barrier(ofi_ctx->pm_rt);
+
+    /* normal end of execution */
+    return ret;
+
+    /* abnormal end of execution */
+err_pmrt_update:
+    return RET2ATL(ret);
+}
+
+static atl_status_t
+atl_ofi_wait_notification(atl_ctx_t* ctx)
+{
+    int ret;
+
+    atl_ofi_ctx_t* ofi_ctx =
+        container_of(ctx, atl_ofi_ctx_t, ctx);
+
+    ret = pmrt_wait_notification(ofi_ctx->pm_rt);
+
+    return RET2ATL(ret);
+}
+
+static atl_status_t
+atl_ofi_set_resize_function(atl_resize_fn_t fn)
+{
+    return pmrt_set_resize_function(fn);
+}
+
+static atl_status_t
+atl_ofi_mr_reg(atl_ctx_t* ctx, const void* buf, size_t len, atl_mr_t** mr)
+{
+    int ret;
+    atl_ofi_ctx_t* ofi_ctx =
+        container_of(ctx, atl_ofi_ctx_t, ctx);
+    atl_ofi_prov_t* prov = &(ofi_ctx->provs[0]);
+
+    atl_ofi_mr_t* ofi_mr = calloc(1, sizeof(atl_ofi_mr_t));
+    if (!ofi_mr)
+        return ATL_STATUS_FAILURE;
+
+    ret = fi_mr_reg(prov->domain, buf, len,
+                    FI_SEND | FI_RECV | FI_READ | FI_WRITE |
+                    FI_REMOTE_READ | FI_REMOTE_WRITE, 0, 0, 0,
+                    &ofi_mr->fi_mr, NULL);
+    if (ret)
+        goto mr_reg_err;
+
+    ofi_mr->mr.buf = (void*)buf;
+    ofi_mr->mr.len = len;
+    ofi_mr->mr.remote_key = (uintptr_t)fi_mr_key(ofi_mr->fi_mr);
+    ofi_mr->mr.local_key = (uintptr_t)fi_mr_desc(ofi_mr->fi_mr);
+
+    *mr = &ofi_mr->mr;
+    return ATL_STATUS_SUCCESS;
+
+mr_reg_err:
+    free(ofi_mr);
+    return ATL_STATUS_FAILURE;
+}
+
+static atl_status_t
+atl_ofi_mr_dereg(atl_ctx_t* ctx, atl_mr_t* mr)
+{
+    atl_ofi_mr_t* ofi_mr = container_of(mr, atl_ofi_mr_t, mr);
+    int ret = fi_close(&ofi_mr->fi_mr->fid);
+    free(ofi_mr);
+    return RET2ATL(ret);
+}
+
+static atl_status_t
+atl_ofi_ep_send(atl_ep_t* ep, const void* buf, size_t len,
+                size_t dst_proc_idx, uint64_t tag, atl_req_t* req)
+{
+    ssize_t ret;
+
+    atl_ofi_prov_t* prov = atl_ofi_get_prov(ep, dst_proc_idx, len);
+    atl_ofi_prov_ep_t* prov_ep = &(prov->eps[ep->idx]);
+    atl_ofi_req_t* ofi_req = ((atl_ofi_req_t*)req->internal);
+
+    req->tag = tag;
+    req->remote_proc_idx = dst_proc_idx;
+    ofi_req->comp_state = ATL_OFI_COMP_POSTED;
+
+    ofi_req->prov_ep = prov_ep;
+    ofi_req->fi_ep = prov_ep->tx;
+
+    ATL_OFI_RETRY(fi_tsend(prov_ep->tx, buf, len, NULL,
+                           atl_ofi_get_addr(ep->ctx, prov, dst_proc_idx, ep->idx),
+                           tag, &ofi_req->fi_ctx),
+                  ep, ret);
+    return RET2ATL(ret);
+}
+
+static atl_status_t
+atl_ofi_ep_recv(atl_ep_t* ep, void* buf, size_t len,
+                size_t src_proc_idx, uint64_t tag, atl_req_t* req)
+{
+    ssize_t ret;
+
+    atl_ofi_prov_t* prov = atl_ofi_get_prov(ep, src_proc_idx, len);
+    atl_ofi_prov_ep_t* prov_ep = &(prov->eps[ep->idx]);
+    atl_ofi_req_t* ofi_req = ((atl_ofi_req_t*)req->internal);
+
+    req->tag = tag;
+    req->remote_proc_idx = src_proc_idx;
+    ofi_req->comp_state = ATL_OFI_COMP_POSTED;
+
+    ofi_req->prov_ep = prov_ep;
+    ofi_req->fi_ep = prov_ep->rx;
+
+    ATL_OFI_RETRY(fi_trecv(prov_ep->rx, buf, len, NULL,
+                           atl_ofi_get_addr(ep->ctx, prov, src_proc_idx, ep->idx),
+                           tag, 0, &ofi_req->fi_ctx),
+                  ep, ret);
+    return RET2ATL(ret);
+}
+
+static atl_status_t
+atl_ofi_ep_probe(atl_ep_t* ep, size_t src_proc_idx, uint64_t tag,
+                 int* found, size_t* recv_len)
+{
+    atl_status_t ret = ATL_STATUS_SUCCESS;
+    atl_ofi_req_t reqs[ATL_OFI_MAX_PROV_COUNT];
+    struct fi_msg_tagged msgs[ATL_OFI_MAX_PROV_COUNT];
+    int flag = 0, len = 0;
+    ssize_t ofi_ret = FI_SUCCESS;
+    size_t idx;
+    int do_poll = 1;
+
+    atl_ofi_ctx_t* ofi_ctx = container_of(ep->ctx, atl_ofi_ctx_t, ctx);
+
+    for (idx = 0; idx < ofi_ctx->prov_count; idx++)
+    {
+        atl_ofi_prov_t* prov = &(ofi_ctx->provs[idx]);
+        atl_ofi_prov_ep_t* prov_ep = &(prov->eps[ep->idx]);
+        atl_ofi_req_t* req = &(reqs[idx]);
+        struct fi_msg_tagged* msg = &(msgs[idx]);
+
+        if (prov->is_shm &&
+            ((src_proc_idx < prov->first_proc_idx) ||
+             (src_proc_idx >= (prov->first_proc_idx + ep->ctx->coord.local_count))))
+        {
+            req->prov_ep = NULL;
+            continue;
+        }
+
+        req->comp_state = ATL_OFI_COMP_PEEK_STARTED;
+        req->prov_ep = prov_ep;
+        req->fi_ep = prov_ep->rx;
+
+        msg->msg_iov = NULL;
+        msg->desc = NULL;
+        msg->iov_count = 0;
+        msg->addr = atl_ofi_get_addr(ep->ctx, prov, src_proc_idx, ep->idx);
+        msg->tag = tag;
+        msg->ignore = 0;
+        msg->context = &(req->fi_ctx);
+        msg->data = 0;
+
+        ATL_OFI_RETRY(fi_trecvmsg(prov_ep->rx, msg,
+                                  FI_PEEK | FI_COMPLETION),
+                      ep, ofi_ret);
+    }
+
+    do
+    {
+        ret = atl_ofi_ep_poll(ep);
+        if (ret != ATL_STATUS_SUCCESS)
+            return ret;
+
+        for (idx = 0; idx < ofi_ctx->prov_count; idx++)
+        {
+            atl_ofi_req_t* req = &(reqs[idx]);
+
+            if (!req->prov_ep)
+                continue;
+
+            if (req->comp_state != ATL_OFI_COMP_PEEK_STARTED)
+            {
+                do_poll = 0;
+
+                if (req->comp_state == ATL_OFI_COMP_PEEK_FOUND)
+                {
+                    flag = 1;
+                    len = req->recv_len;
+                    req->prov_ep = NULL;
+                }
+                else if (req->comp_state == ATL_OFI_COMP_PEEK_NOT_FOUND)
+                {
+                    req->prov_ep = NULL;
+                }
+                else
+                {
+                    ATL_OFI_ASSERT(0, "unexpected completion state %d", req->comp_state);
+                }
+
+                break;
+            }
+        }
+    } while (do_poll);
+
+    for (idx = 0; idx < ofi_ctx->prov_count; idx++)
+    {
+        atl_ofi_req_t* req = &(reqs[idx]);
+
+        if (!req->prov_ep)
+            continue;
+
+        if (fi_cancel(&req->fi_ep->fid, &req->fi_ctx) == 0)
+        {
+            atl_ofi_wait_cancel_cq(req->prov_ep->cq);
+        }
+    }
+
+    if (found) *found = flag;
+    if (recv_len) *recv_len = len;
+
+    return RET2ATL(ofi_ret);
+}
+
+static atl_status_t
+atl_ofi_ep_allgatherv(atl_ep_t* ep, const void* send_buf, size_t send_len,
+                      void* recv_buf, const int* recv_lens, const int* offsets, atl_req_t* req)
+{
+    return ATL_STATUS_UNSUPPORTED;
+}
+
+static atl_status_t
+atl_ofi_ep_allreduce(atl_ep_t* ep, const void* send_buf, void* recv_buf, size_t count,
+                     atl_datatype_t dtype, atl_reduction_t op, atl_req_t* req)
+{
+    return ATL_STATUS_UNSUPPORTED;
+}
+
+static atl_status_t
+atl_ofi_ep_alltoall(atl_ep_t* ep, const void* send_buf, void* recv_buf,
+                    size_t len, atl_req_t* req)
+{
+    return ATL_STATUS_UNSUPPORTED;
+}
+
+static atl_status_t
+atl_ofi_ep_alltoallv(atl_ep_t* ep, const void* send_buf, const int* send_lens, const int* send_offsets,
+                     void* recv_buf, const int* recv_lens, const int* recv_offsets, atl_req_t* req)
+{
+    return ATL_STATUS_UNSUPPORTED;
+}
+
+static atl_status_t
+atl_ofi_ep_barrier(atl_ep_t* ep, atl_req_t* req)
+{
+    return ATL_STATUS_UNSUPPORTED;
+}
+
+static atl_status_t
+atl_ofi_ep_bcast(atl_ep_t* ep, void* buf, size_t len, size_t root, atl_req_t* req)
+{
+    return ATL_STATUS_UNSUPPORTED;
+}
+
+static atl_status_t
+atl_ofi_ep_reduce(atl_ep_t* ep, const void* send_buf, void* recv_buf, size_t count, size_t root,
+                  atl_datatype_t dtype, atl_reduction_t op, atl_req_t* req)
+{
+    return ATL_STATUS_UNSUPPORTED;
+}
+
+static atl_status_t
+atl_ofi_ep_read(atl_ep_t* ep, void* buf, size_t len, atl_mr_t* mr,
+                uint64_t addr, uintptr_t remote_key, size_t dst_proc_idx, atl_req_t* req)
+{
+    ssize_t ret;
+
+    atl_ofi_prov_t* prov = atl_ofi_get_prov(ep, dst_proc_idx, len);
+    atl_ofi_prov_ep_t* prov_ep = &(prov->eps[ep->idx]);
+    atl_ofi_req_t* ofi_req = ((atl_ofi_req_t*)req->internal);
+
+    req->tag = 0;
+    req->remote_proc_idx = dst_proc_idx;
+    ofi_req->comp_state = ATL_OFI_COMP_POSTED;
+
+    ofi_req->prov_ep = prov_ep;
+    ofi_req->fi_ep = prov_ep->tx;
+
+    ATL_OFI_RETRY(fi_read(prov_ep->tx, buf, len, (void*)mr->local_key,
+                          atl_ofi_get_addr(ep->ctx, prov, dst_proc_idx, ep->idx),
+                          addr, remote_key, &ofi_req->fi_ctx),
+                  ep, ret);
+    return RET2ATL(ret);
+}
+
+static atl_status_t
+atl_ofi_ep_write(atl_ep_t* ep, const void* buf, size_t len, atl_mr_t* mr,
+                 uint64_t addr, uintptr_t remote_key, size_t dst_proc_idx, atl_req_t* req)
+{
+    ssize_t ret;
+
+    atl_ofi_prov_t* prov = atl_ofi_get_prov(ep, dst_proc_idx, len);
+    atl_ofi_prov_ep_t* prov_ep = &(prov->eps[ep->idx]);
+    atl_ofi_req_t* ofi_req = ((atl_ofi_req_t*)req->internal);
+
+    req->tag = 0;
+    req->remote_proc_idx = dst_proc_idx;
+    ofi_req->comp_state = ATL_OFI_COMP_POSTED;
+
+    ofi_req->prov_ep = prov_ep;
+    ofi_req->fi_ep = prov_ep->tx;
+
+    ATL_OFI_RETRY(fi_write(prov_ep->tx, buf, len, (void*)mr->local_key,
+                           atl_ofi_get_addr(ep->ctx, prov, dst_proc_idx, ep->idx),
+                           addr, remote_key, &ofi_req->fi_ctx),
+                  ep, ret);
+    return RET2ATL(ret);
+}
+
+static atl_status_t
+atl_ofi_ep_wait(atl_ep_t* ep, atl_req_t* req)
+{
+    atl_status_t ret = ATL_STATUS_SUCCESS;
+    atl_ofi_req_t* ofi_req = ((atl_ofi_req_t*)req->internal);
+
+    while ((ofi_req->comp_state != ATL_OFI_COMP_COMPLETED) &&
+           ((ret = atl_ofi_ep_poll(ep)) == ATL_STATUS_SUCCESS));
+
+    return ret;
+}
+
+static atl_status_t
+atl_ofi_ep_wait_all(atl_ep_t* ep, atl_req_t* reqs, size_t count)
+{
+    size_t i;
+    atl_status_t ret;
+
+    for (i = 0; i < count; i++)
+    {
+        ret = atl_ofi_ep_wait(ep, &reqs[i]);
+        if (ret != ATL_STATUS_SUCCESS)
+            return ret;
+    }
+
+    return ATL_STATUS_SUCCESS;
+}
+
+static atl_status_t
+atl_ofi_ep_cancel(atl_ep_t* ep, atl_req_t* req)
+{
+    atl_status_t ret = ATL_STATUS_SUCCESS;
+    atl_ofi_req_t* ofi_req = ((atl_ofi_req_t*)req->internal);
+
+    ret = fi_cancel(&ofi_req->fi_ep->fid, &ofi_req->fi_ctx);
+    if (ret == 0)
+    {
+        return atl_ofi_wait_cancel_cq(ofi_req->prov_ep->cq);
+    }
+
+    return ATL_STATUS_SUCCESS;
+}
+
+static inline atl_status_t
+atl_ofi_ep_poll(atl_ep_t* ep)
+{
+    ssize_t ret;
+    size_t idx;
+    struct fi_cq_tagged_entry entries[ATL_OFI_CQ_BUNCH_SIZE];
+
+    atl_ofi_ctx_t* ofi_ctx = container_of(ep->ctx, atl_ofi_ctx_t, ctx);
+    size_t ep_idx = ep->idx;
+
+    /* ensure progress for all providers */
+    for (idx = 0; idx < ofi_ctx->prov_count; idx++)
+    {
+        atl_ofi_prov_ep_t* prov_ep = &(ofi_ctx->provs[idx].eps[ep_idx]);
+        do
+        {
+            ret = fi_cq_read(prov_ep->cq, entries, ATL_OFI_CQ_BUNCH_SIZE);
+            if (ret > 0)
+                atl_ofi_process_comps(entries, ret);
+            else if (ret == -FI_EAGAIN)
+                break;
+            else
+                return atl_ofi_prov_ep_handle_cq_err(prov_ep);
+        } while (ret > 0);
+    }
+
+    return ATL_STATUS_SUCCESS;
+}
+
+static atl_status_t
+atl_ofi_ep_check(atl_ep_t* ep, int* status, atl_req_t* req)
+{
+    atl_ofi_req_t* ofi_req = ((atl_ofi_req_t*)req->internal);
+    *status = (ofi_req->comp_state == ATL_OFI_COMP_COMPLETED);
+    return ATL_STATUS_SUCCESS;
+}
+
+static atl_ops_t atl_ofi_ops =
+{
+    .finalize            = atl_ofi_finalize,
+    .update              = atl_ofi_update,
+    .wait_notification   = atl_ofi_wait_notification,
+    .set_resize_function = atl_ofi_set_resize_function,
+};
+
+static atl_mr_ops_t atl_ofi_mr_ops =
+{
+    .mr_reg   = atl_ofi_mr_reg,
+    .mr_dereg = atl_ofi_mr_dereg,
+};
+
+static atl_p2p_ops_t atl_ofi_ep_p2p_ops =
+{
+    .send  = atl_ofi_ep_send,
+    .recv  = atl_ofi_ep_recv,
+    .probe = atl_ofi_ep_probe,
+};
+
+static atl_coll_ops_t atl_ofi_ep_coll_ops =
+{
+    .allgatherv = atl_ofi_ep_allgatherv,
+    .allreduce  = atl_ofi_ep_allreduce,
+    .alltoall   = atl_ofi_ep_alltoall,
+    .alltoallv  = atl_ofi_ep_alltoallv,
+    .barrier    = atl_ofi_ep_barrier,
+    .bcast      = atl_ofi_ep_bcast,
+    .reduce     = atl_ofi_ep_reduce,
+};
+
+static atl_rma_ops_t atl_ofi_ep_rma_ops =
+{
+    .read  = atl_ofi_ep_read,
+    .write = atl_ofi_ep_write,
+};
+
+static atl_comp_ops_t atl_ofi_ep_comp_ops =
+{
+    .wait     = atl_ofi_ep_wait,
+    .wait_all = atl_ofi_ep_wait_all,
+    .cancel   = atl_ofi_ep_cancel,
+    .poll     = atl_ofi_ep_poll,
+    .check    = atl_ofi_ep_check
+};
+
+static atl_status_t
+atl_ofi_init(int* argc, char*** argv,
+             atl_attr_t* attr,
+             atl_ctx_t** out_ctx,
+             const char* main_addr)
+{
+    struct fi_info* providers = NULL, *base_hints = NULL, *prov_hints = NULL;
     struct fi_av_attr av_attr = { (enum fi_av_type)0 };
-    int fi_version, ret;
-    atl_ofi_context_t *atl_ofi_context;
+    int fi_version;
+    ssize_t ret = 0;
+    size_t idx = 0, ep_idx = 0;
 
     ATL_OFI_ASSERT((sizeof(atl_ofi_req_t) <= sizeof(atl_req_t) - offsetof(atl_req_t, internal)),
                    "unexpected offset: atl_ofi_request size %zu, atl_request size %zu, expected offset %zu",
@@ -1401,168 +1512,393 @@ atl_status_t atl_ofi_init(int *argc, char ***argv, atl_proc_coord_t *proc_coord,
 
     atl_ofi_tune();
 
-    atl_ofi_context = calloc(1, sizeof(*atl_ofi_context));
-    if (!atl_ofi_context)
-        return atl_status_failure;
+    atl_ofi_ctx_t* ofi_ctx = calloc(1, sizeof(atl_ofi_ctx_t));
+    if (!ofi_ctx)
+        return ATL_STATUS_FAILURE;
 
-    memset(proc_coord, 0, sizeof(atl_proc_coord_t));
+    atl_ctx_t* ctx = &(ofi_ctx->ctx);
 
-    ret = pmrt_init(&atl_ofi_context->proc_coord.global_idx,
-                    &atl_ofi_context->proc_coord.global_count,
-                    &atl_ofi_context->pm_rt);
+    ctx->ops = &atl_ofi_ops;
+    ctx->mr_ops = &atl_ofi_mr_ops;
+    ctx->ep_count = attr->ep_count;
+    ctx->eps = calloc(1, sizeof(void*) * attr->ep_count);
+    if (!ctx->eps)
+        goto err;
 
+    ret = pmrt_init(&ctx->coord.global_idx,
+                    &ctx->coord.global_count,
+                    &ofi_ctx->pm_rt,
+                    main_addr);
     if (ret)
-        goto err_pmrt_init;
+    {
+        ATL_OFI_PRINT("pmrt_init error");
+        goto err;
+    }
 
-    ret = atl_ofi_get_local_proc_coord(atl_ofi_context);
+    ret = atl_ofi_get_local_proc_coord(ofi_ctx);
     if (ret)
-        goto err_pmrt_init;
+    {
+        ATL_OFI_PRINT("atl_ofi_get_local_proc_coord error");
+        goto err;
+    }
 
-    *proc_coord = atl_ofi_context->proc_coord;
+    atl_proc_coord_t* coord = &(ctx->coord);
 
-    hints = fi_allocinfo();
-    if (!hints)
-        goto err_hints;
+    ctx->is_resize_enabled = is_pm_resize_enabled();
 
-    hints->mode = FI_CONTEXT;
-    hints->ep_attr->type = FI_EP_RDM;
-    hints->domain_attr->resource_mgmt = FI_RM_ENABLED;
-    hints->domain_attr->control_progress = FI_PROGRESS_MANUAL;
-    hints->domain_attr->data_progress = FI_PROGRESS_MANUAL;
-    hints->caps = FI_TAGGED;
+    base_hints = fi_allocinfo();
+    if (!base_hints)
+    {
+        ATL_OFI_PRINT("can't alloc base_hints");
+        goto err;
+    }
+
+    base_hints->mode = FI_CONTEXT;
+    base_hints->ep_attr->type = FI_EP_RDM;
+    base_hints->domain_attr->resource_mgmt = FI_RM_ENABLED;
+    base_hints->domain_attr->control_progress = FI_PROGRESS_MANUAL;
+    base_hints->domain_attr->data_progress = FI_PROGRESS_MANUAL;
+    base_hints->caps = FI_TAGGED;
 
     fi_version = FI_VERSION(1, 0);
 
-    ret = fi_getinfo(fi_version, NULL, NULL, 0ULL, hints, &providers);
-    if (ret || !providers)
-        goto err_getinfo;
+    ATL_OFI_DEBUG_PRINT_ROOT("libfabric version: %s", fi_tostr("1" /* ignored */, FI_TYPE_VERSION));
 
-    if (providers->domain_attr->max_ep_tx_ctx > 1)
+    char* fi_prov_env = getenv("FI_PROVIDER");
+    if (attr->enable_shm && fi_prov_env && strcmp(fi_prov_env, "shm"))
     {
-        hints->ep_attr->tx_ctx_cnt = attr->comm_count;
-        hints->ep_attr->rx_ctx_cnt = attr->comm_count;
-    }
-    fi_freeinfo(providers);
-
-    if (attr->enable_rma)
-    {
-        ATL_OFI_DEBUG_PRINT("try to enable RMA");
-        hints->caps |= FI_RMA | FI_READ | FI_WRITE | FI_REMOTE_READ | FI_REMOTE_WRITE;
-        hints->domain_attr->mr_mode = FI_MR_UNSPEC;
-        // TODO:
-        //hints->domain_attr->mr_mode = FI_MR_ALLOCATED | FI_MR_PROV_KEY | FI_MR_VIRT_ADDR | FI_MR_LOCAL | FI_MR_BASIC;
+        ATL_OFI_PRINT_ROOT("FI_PROVIDER will hide shm provider, please use CCL_ATL_OFI_PROVIDER instead");
     }
 
-    ret = fi_getinfo(fi_version, NULL, NULL, 0ULL, hints, &providers);
-    if (ret || !providers)
+    /* don't use FI_PROVIDER for now because it will hide shm provider */
+    char* prov_env = getenv("CCL_ATL_OFI_PROVIDER");
+    if (prov_env && !strcmp(prov_env, "shm"))
     {
-        if (attr->enable_rma)
+        ATL_OFI_ASSERT(coord->global_count == coord->local_count,
+            "shm provider is requested as primary provider but global_count (%zu) != local_count (%zu)",
+            coord->global_count, coord->local_count);
+
+        ATL_OFI_ASSERT(attr->enable_shm,
+            "shm provider is requested through CCL_ATL_OFI_PROVIDER but not requested from CCL level");
+
+        ATL_OFI_DEBUG_PRINT_ROOT("shm provider is requested through CCL_ATL_OFI_PROVIDER");
+    }
+
+    if (attr->enable_shm)
+    {
+        prov_hints = fi_dupinfo(base_hints);
+        prov_hints->fabric_attr->prov_name = strdup("shm");
+        ret = fi_getinfo(fi_version, NULL, NULL, 0ULL, prov_hints, &providers);
+        if (ret || !providers)
         {
-            attr->enable_rma = 0;
-            ATL_OFI_DEBUG_PRINT("try without RMA");
-            hints->caps = FI_TAGGED;
-            hints->domain_attr->mr_mode = FI_MR_UNSPEC;
-            ret = fi_getinfo(fi_version, NULL, NULL, 0ULL, hints, &providers);
-            if (ret || !providers)
-                goto err_getinfo;
+            attr->enable_shm = 0;
+            ATL_OFI_DEBUG_PRINT("shm provider is requested but not available");
         }
         else
-            goto err_getinfo;
+        {
+            ATL_OFI_DEBUG_PRINT("shm provider is requested and available");
+        }
+
+        fi_freeinfo(providers);
+        providers = NULL;
+
+        fi_freeinfo(prov_hints);
+        prov_hints = NULL;
+
+        if (attr->enable_shm)
+        {
+            /* TODO: tmp code to detect CMA, remove when OFI/shm will have runtime detection */
+            int scope = 0, fret;
+            FILE* file = fopen("/proc/sys/kernel/yama/ptrace_scope", "r");
+            if (file)
+            {
+                fret = fscanf(file, "%d", &scope);
+                if (fret != 1)
+                {
+                    ATL_OFI_PRINT("error getting value from ptrace_scope");
+                    scope = 1;
+                }
+                else
+                {
+                    fret = fclose(file);
+                    if (fret)
+                    {
+                        ATL_OFI_PRINT("error closing ptrace_scope file");
+                        scope = 1;
+                    }
+                }
+            }
+
+            if (!file && (errno != ENOENT))
+            {
+                ATL_OFI_PRINT("can't open ptrace_scope file, disable shm provider");
+                attr->enable_shm = 0;
+            }
+            else if (scope)
+            {
+                ATL_OFI_PRINT("ptrace_scope > 0, disable shm provider");
+                attr->enable_shm = 0;
+            }
+        }
     }
 
-    /* Use first provider from the list of providers */
-    atl_ofi_context->prov = fi_dupinfo(providers);
-    if (!atl_ofi_context->prov)
-        goto err_prov;
-
-    attr->max_order_waw_size = atl_ofi_context->prov->ep_attr->max_order_waw_size;
-    attr->is_tagged_coll_enabled = 0;
     attr->tag_bits = 64;
     attr->max_tag = 0xFFFFFFFFFFFFFFFF;
 
-    ATL_OFI_DEBUG_PRINT("provider %s", atl_ofi_context->prov->fabric_attr->prov_name);
-    ATL_OFI_DEBUG_PRINT("mr_mode %d", atl_ofi_context->prov->domain_attr->mr_mode);
-    ATL_OFI_DEBUG_PRINT("threading %d", atl_ofi_context->prov->domain_attr->threading);
-    ATL_OFI_DEBUG_PRINT("tx_ctx_cnt %zu", atl_ofi_context->prov->domain_attr->tx_ctx_cnt);
-    ATL_OFI_DEBUG_PRINT("max_ep_tx_ctx %zu", atl_ofi_context->prov->domain_attr->max_ep_tx_ctx);
+    if ((coord->global_count == coord->local_count) && !(ctx->is_resize_enabled))
+    {
+        ofi_ctx->prov_count = 1;
+        ofi_ctx->provs[0].is_shm = (attr->enable_shm) ? 1 : 0;
+    }
+    else
+    {
+        if (attr->enable_shm)
+        {
+            ofi_ctx->prov_count = 2;
+            ofi_ctx->shm_prov_idx = 0;
+            ofi_ctx->nw_prov_idx = 1;
+            ofi_ctx->provs[ofi_ctx->shm_prov_idx].is_shm = 1;
+            ofi_ctx->provs[ofi_ctx->nw_prov_idx].is_shm = 0;
+        }
+        else
+        {
+            ofi_ctx->prov_count = 1;
+            ofi_ctx->provs[0].is_shm = 0;
+        }
+    }
 
-    ret = fi_fabric(atl_ofi_context->prov->fabric_attr,
-                    &atl_ofi_context->fabric, NULL);
-    if (ret)
-        goto err_fab;
+    if (attr->enable_rma && (ofi_ctx->prov_count > 1))
+    {
+        ATL_OFI_PRINT_ROOT("RMA and multiple providers requested both, disable RMA");
+        attr->enable_rma = 0;
+    }
 
-    ret = fi_domain(atl_ofi_context->fabric, atl_ofi_context->prov,
-                    &atl_ofi_context->domain, NULL);
-    if (ret)
-        goto err_dom;
+    ATL_OFI_DEBUG_PRINT_ROOT("prov_count %zu", ofi_ctx->prov_count);
 
-    av_attr.type = FI_AV_TABLE;
-    av_attr.rx_ctx_bits = atl_ofi_context->rx_ctx_bits =
-        (int)ceil(log2(hints->ep_attr->rx_ctx_cnt));
-    ret = fi_av_open(atl_ofi_context->domain, &av_attr,
-                     &atl_ofi_context->av, NULL);
-    if (ret)
-        goto err_av;
+    for (idx = 0; idx < ofi_ctx->prov_count; idx++)
+    {
+        atl_ofi_prov_t* prov = &ofi_ctx->provs[idx];
 
-    atl_ofi_context->comm_ref_count = 0;
+        prov_hints = fi_dupinfo(base_hints);
+        prov_hints->fabric_attr->prov_name = (prov->is_shm) ?
+            strdup("shm") :
+            prov_env ? strdup(prov_env) : NULL;
 
-    ret = atl_ofi_comms_init(atl_ofi_context, attr->comm_count,
-                             &attr->comm_attr, atl_comms);
-    if (ret)
-        goto err_comms_init;
+        ret = fi_getinfo(fi_version, NULL, NULL, 0ULL, prov_hints, &providers);
 
-    atl_ofi_context->atl_desc.ops = &atl_ofi_ops;
-    global_data.is_resize_enabled = is_pm_resize_enabled();
-    atl_ofi_context->atl_desc.ops->is_resize_enabled = global_data.is_resize_enabled;
+        if (ret || !providers)
+        {
+            ATL_OFI_PRINT("fi_getinfo error (max_ep_tx_ctx), prov_idx %zu", idx);
+            goto err;
+        }
+
+        if (providers->domain_attr->max_ep_tx_ctx > 1)
+        {
+            prov_hints->ep_attr->tx_ctx_cnt = attr->ep_count;
+            prov_hints->ep_attr->rx_ctx_cnt = attr->ep_count;
+        }
+        else
+        {
+            prov_hints->ep_attr->tx_ctx_cnt = 1;
+            prov_hints->ep_attr->rx_ctx_cnt = 1;
+        }
+
+        fi_freeinfo(providers);
+        providers = NULL;
+
+        if (attr->enable_rma)
+        {
+            ATL_OFI_DEBUG_PRINT("try to enable RMA");
+            prov_hints->caps |= FI_RMA | FI_READ | FI_WRITE | FI_REMOTE_READ | FI_REMOTE_WRITE;
+            prov_hints->domain_attr->mr_mode = FI_MR_UNSPEC;
+            // TODO:
+            //hints->domain_attr->mr_mode = FI_MR_ALLOCATED | FI_MR_PROV_KEY | FI_MR_VIRT_ADDR | FI_MR_LOCAL | FI_MR_BASIC;
+        }
+
+        ret = fi_getinfo(fi_version, NULL, NULL, 0ULL, prov_hints, &providers);
+        if (ret || !providers)
+        {
+            if (attr->enable_rma)
+            {
+                attr->enable_rma = 0;
+                ATL_OFI_DEBUG_PRINT("try without RMA");
+                prov_hints->caps = FI_TAGGED;
+                prov_hints->domain_attr->mr_mode = FI_MR_UNSPEC;
+                ret = fi_getinfo(fi_version, NULL, NULL, 0ULL, prov_hints, &providers);
+                if (ret || !providers)
+                {
+                    ATL_OFI_PRINT("fi_getinfo error (rma fallback), prov_idx %zu", idx);
+                    goto err;
+                }
+            }
+            else
+            {
+                ATL_OFI_PRINT("fi_getinfo error (main path), prov_idx %zu", idx);
+                goto err;
+            }
+        }
+
+        /* use first provider from the list of providers */
+        prov->info = fi_dupinfo(providers);
+        struct fi_info* prov_info = prov->info;
+        if (!prov_info)
+        {
+            ATL_OFI_PRINT("fi_dupinfo error");
+            goto err;
+        }
+
+        fi_freeinfo(providers);
+        providers = NULL;
+
+        attr->max_order_waw_size = (idx == 0) ?
+            prov_info->ep_attr->max_order_waw_size :
+            MIN(attr->max_order_waw_size, prov_info->ep_attr->max_order_waw_size);
+
+        prov->max_msg_size = prov_info->ep_attr->max_msg_size;
+
+        ATL_OFI_DEBUG_PRINT_ROOT("provider %s", prov_info->fabric_attr->prov_name);
+        ATL_OFI_DEBUG_PRINT_ROOT("mr_mode %d", prov_info->domain_attr->mr_mode);
+        ATL_OFI_DEBUG_PRINT_ROOT("threading %d", prov_info->domain_attr->threading);
+        ATL_OFI_DEBUG_PRINT_ROOT("tx_ctx_cnt %zu", prov_info->domain_attr->tx_ctx_cnt);
+        ATL_OFI_DEBUG_PRINT_ROOT("max_ep_tx_ctx %zu", prov_info->domain_attr->max_ep_tx_ctx);
+        ATL_OFI_DEBUG_PRINT_ROOT("max_msg_size %zu", prov_info->ep_attr->max_msg_size);
+
+        ATL_OFI_CALL(fi_fabric(prov_info->fabric_attr,
+                               &prov->fabric, NULL),
+                     ret, goto err);
+
+        ATL_OFI_CALL(fi_domain(prov->fabric, prov_info,
+                               &prov->domain, NULL),
+                     ret, goto err);
+
+        av_attr.type = FI_AV_TABLE;
+        av_attr.rx_ctx_bits = prov->rx_ctx_bits =
+            (int)ceil(log2(prov_hints->ep_attr->rx_ctx_cnt));
+
+        ATL_OFI_CALL(fi_av_open(prov->domain, &av_attr,
+                         &prov->av, NULL),
+                     ret, goto err);
+
+        if (prov_info->domain_attr->max_ep_tx_ctx > 1)
+        {
+            ATL_OFI_CALL(fi_scalable_ep(prov->domain, prov_info,
+                                        &prov->sep, NULL),
+                         ret, goto err);
+
+            ATL_OFI_CALL(fi_scalable_ep_bind(prov->sep,
+                                             &prov->av->fid, 0),
+                         ret, goto err);
+        }
+
+        prov->eps = calloc(1, sizeof(atl_ofi_prov_ep_t) * attr->ep_count);
+        if (!prov->eps)
+        {
+            ATL_OFI_PRINT("can't allocate prov->eps");
+            goto err;
+        }
+
+        for (ep_idx = 0; ep_idx < attr->ep_count; ep_idx++)
+        {
+            ret = atl_ofi_prov_ep_init(prov, ep_idx);
+            if (ret)
+            {
+                ATL_OFI_PRINT("atl_ofi_prov_ep_init error");
+                goto err;
+            }
+        }
+
+        if (prov->sep)
+        {
+            fi_enable(prov->sep);
+        }
+
+        ret = atl_ofi_prov_eps_connect(ofi_ctx, idx);
+        if (ret)
+        {
+            ATL_OFI_PRINT("atl_ofi_prov_eps_connect error, prov_idx %zu", idx);
+            goto err;
+        }
+
+        fi_freeinfo(prov_hints);
+    }
+
+    for (ep_idx = 0; ep_idx < attr->ep_count; ep_idx++)
+    {
+        atl_ofi_ep_t* ofi_ep = calloc(1, sizeof(atl_ofi_ep_t));
+        if (!ofi_ep)
+        {
+            ATL_OFI_PRINT("can't alloc ofi_ep, idx %zu", ep_idx);
+            goto err;
+        }
+
+        atl_ep_t* ep = &(ofi_ep->ep);
+        ep->idx = ep_idx;
+        ep->ctx = ctx;
+        ep->p2p_ops = &atl_ofi_ep_p2p_ops;
+        ep->coll_ops = &atl_ofi_ep_coll_ops;
+        ep->rma_ops = &atl_ofi_ep_rma_ops;
+        ep->comp_ops = &atl_ofi_ep_comp_ops;
+
+        ctx->eps[ep_idx] = ep;
+    }
+
+    pmrt_barrier(ofi_ctx->pm_rt);
 
     /* by default don't use timeout for retry operations and just break by retry_count */
-    global_data.timeout_sec = 0;
+    ofi_ctx->timeout_sec = 0;
 
-    if (global_data.is_resize_enabled)
+    if (ctx->is_resize_enabled)
     {
         char* timeout_sec_env = getenv(ATL_OFI_TIMEOUT_SEC_ENV);
         if (timeout_sec_env)
         {
-            global_data.timeout_sec = strtol(timeout_sec_env, NULL, 10);
+            ofi_ctx->timeout_sec = strtol(timeout_sec_env, NULL, 10);
         }
         else
         {
-            global_data.timeout_sec = ATL_OFI_DEFAULT_TIMEOUT_SEC;
+            ofi_ctx->timeout_sec = ATL_OFI_DEFAULT_TIMEOUT_SEC;
         }
     }
 
-    atl_ofi_context->atl_desc.mr_ops = &atl_ofi_mr_ops;
-    *atl_desc = &atl_ofi_context->atl_desc;
+    *out_ctx = ctx;
 
-    fi_freeinfo(providers);
-    fi_freeinfo(hints);
+    fi_freeinfo(base_hints);
 
-    return atl_status_success;
+    return ATL_STATUS_SUCCESS;
 
-err_comms_init:
-    fi_close(&atl_ofi_context->av->fid);
-err_av:
-    fi_close(&atl_ofi_context->domain->fid);
-err_dom:
-    fi_close(&atl_ofi_context->fabric->fid);
-err_fab:
-    fi_freeinfo(atl_ofi_context->prov);
-err_prov:
-    fi_freeinfo(providers);
-err_getinfo:
-    ATL_OFI_DEBUG_PRINT("can't find suitable provider");
-    fi_freeinfo(hints);
-err_hints:
-    pmrt_finalize(atl_ofi_context->pm_rt);
-err_pmrt_init:
-    free(atl_ofi_context);
+err:
+
+    ATL_OFI_PRINT("can't find suitable provider");
+
+    if (providers)
+    {
+        fi_freeinfo(providers);
+    }
+
+    if (base_hints)
+    {
+        fi_freeinfo(base_hints);
+    }
+
+    if (prov_hints)
+    {
+        fi_freeinfo(prov_hints);
+    }
+
+    atl_ofi_finalize(ctx);
+
     return RET2ATL(ret);
+}
+
+atl_status_t atl_ofi_main_addr_reserv(char* main_addr)
+{
+    return pmrt_main_addr_reserv(main_addr);
 }
 
 ATL_OFI_INI
 {
-    atl_transport->name = atl_ofi_name;
+    atl_transport->name = "ofi";
     atl_transport->init = atl_ofi_init;
-
-    return atl_status_success;
+    atl_transport->main_addr_reserv = atl_ofi_main_addr_reserv;
+    return ATL_STATUS_SUCCESS;
 }

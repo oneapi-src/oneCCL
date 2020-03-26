@@ -1,33 +1,40 @@
+Intel(R) Intel(R) oneAPI Collective Communications Library (oneCCL) 
+2021.1-beta05 Third Party Programs File
+
 This file is the "third-party-programs.txt" file specified in the associated 
-Intel end user license agreement for the Intel software you are licensing. The 
-third party programs and their corresponding required notices and/or license 
+Intel end user license agreement for the Intel software you are licensing.
+Third party programs and their corresponding required notices and/or license 
 terms are listed below.
 
-This third-party-programs.txt file applies to Intel(R) oneAPI Collective
-Communications Library (oneCCL) 2021.1-beta04.
+-------------------------------------------------------------------------------
 
-1. Intel(R) MPI Library: Intel Simplified Software License (Version April 2018)
+1. Intel(R) MPI Library
 
-Copyright (c) 2018 Intel Corporation.
+   Copyright (c) 2018 Intel Corporation.
+   
+   
+ Intel Simplified Software License (Version April 2018)
+
 
 Use and Redistribution.  You may use and redistribute the software (the
 "Software"), without modification, provided the following conditions are met:
 
-* Redistributions must reproduce the above copyright notice and the following
-  terms of use in the Software and in the documentation and/or other materials
-  provided with the distribution.
-* Neither the name of Intel nor the names of its suppliers may be used to
-  endorse or promote products derived from this Software without specific prior
-  written permission.
-* No reverse engineering, decompilation, or disassembly of this Software is
-  permitted.
+ * Redistributions must reproduce the above copyright notice and the following
+   terms of use in the Software and in the documentation and/or other 
+   materials provided with the distribution.
+ * Neither the name of Intel nor the names of its suppliers may be used to
+   endorse or promote products derived from this Software without specific
+   prior written permission.
+ * No reverse engineering, decompilation, or disassembly of this Software is
+   permitted.
 
 Limited patent license.  Intel grants you a world-wide, royalty-free,
 non-exclusive license under patents it now or hereafter owns or controls to
-make, have made, use, import, offer to sell and sell ("Utilize") this Software,
-but solely to the extent that any such patent is necessary to Utilize the
-Software alone. The patent license shall not apply to any combinations which
-include this software. No hardware per se is licensed hereunder.
+make, have made, use, import, offer to sell and sell ("Utilize") this 
+Software, but solely to the extent that any such patent is necessary to 
+Utilize the Software alone. The patent license shall not apply to any 
+combinations which include this software. No hardware per se is licensed 
+hereunder.
 
 Third party and other Intel programs.  "Third Party Programs" are the files
 listed in the "third-party-programs.txt" text file that is included with the
@@ -48,12 +55,12 @@ INTEL WAS NEGLIGENT REGARDING THE DESIGN OR MANUFACTURE OF THE MATERIALS.
 LIMITATION OF LIABILITY.  IN NO EVENT WILL INTEL BE LIABLE FOR ANY DIRECT,
 INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
 BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. YOU AGREE TO INDEMNIFY AND HOLD INTEL
-HARMLESS AGAINST ANY CLAIMS AND EXPENSES RESULTING FROM YOUR USE OR UNAUTHORIZED
-USE OF THE SOFTWARE.
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY 
+OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, 
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. YOU AGREE TO INDEMNIFY AND
+HOLD INTEL HARMLESS AGAINST ANY CLAIMS AND EXPENSES RESULTING FROM YOUR USE OR
+UNAUTHORIZED USE OF THE SOFTWARE.
 
 No support.  Intel may make changes to the Software, at any time without notice,
 and is not obligated to support, update or provide training for the Software.
@@ -82,17 +89,15 @@ objections. The United Nations Convention on Contracts for the International
 Sale of Goods (1980) is specifically excluded and will not apply to the
 Software.
 
-2. MPICH* BSD License
+-------------------------------------------------------------------------------
 
-                        COPYRIGHT
+2. MPICH
 
-  The following is a notice of limited availability of the code, and disclaimer
-  which must be included in the prologue of the code and in all source listings
-  of the code.
-
-  Copyright Notice
-   + 2002 University of Chicago
-
+   Copyright Notice + 2002 University of Chicago
+   
+   
+  Mpich license
+  
   Permission is hereby granted to use, reproduce, prepare derivative works, and
   to redistribute to others.  This software was authored by:
 
@@ -105,7 +110,7 @@ Software.
   University of Illinois at Urbana-Champaign
 
 
-  					GOVERNMENT LICENSE
+  GOVERNMENT LICENSE
 
   Portions of this material resulted from work developed under a U.S.
   Government Contract and are subject to the following license: the Government
@@ -113,7 +118,7 @@ Software.
   irrevocable worldwide license in this computer software to reproduce, prepare
   derivative works, and perform publicly and display publicly.
 
-  						DISCLAIMER
+  DISCLAIMER
 
   This computer code material was prepared, in part, as an account of work
   sponsored by an agency of the United States Government.  Neither the United
@@ -122,13 +127,16 @@ Software.
   for the accuracy, completeness, or usefulness of any information, apparatus,
   product, or process disclosed, or represents that its use would not infringe
   privately owned rights.
+  
+-------------------------------------------------------------------------------
 
-3. Libfabric* and OpenFabrics Interfaces* (OFI*): BSD License 
+3. Libfabric and OpenFabrics Interfaces (OFI)
 
-  Copyright (c) 2015-2019 Intel Corporation.  All rights reserved.
-  Copyright (c) 2015-2019 Cisco Systems, Inc.  All rights reserved.
+   Copyright (c) 2015-2019 Intel Corporation.  All rights reserved. 
+   Copyright (c) 2015-2019 Cisco Systems, Inc.  All rights reserved.
+   
 
-              BSD license
+  The -2-Clause BSD license
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions
@@ -155,12 +163,15 @@ Software.
   ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
   POSSIBILITY OF SUCH DAMAGE.
 
-4. OpenSHMEM*: BSD License 
+-------------------------------------------------------------------------------
+
+4. OpenSHMEM 
 
   Copyright (c) 2017 Intel Corporation. All rights reserved.
   This software is available to you under the BSD license.
 
-  COPYRIGHT
+  
+  The -3-Clause BSD license
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are
@@ -196,5 +207,14 @@ Software.
   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  
+-------------------------------------------------------------------------------
+  
+  The following third party programs have their own third party programs. These 
+  additional third party program files are as follows:
+  1. Intel(R) Intel(R) MPI Library 
+  <install_dir>/mpi/licensing/third-party-programs.txt
+  
+-------------------------------------------------------------------------------
 
-* Other names and brands may be claimed as the property of others.
+Other names and brands may be claimed as the property of others.

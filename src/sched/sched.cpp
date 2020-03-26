@@ -23,7 +23,8 @@
 
 ccl_sched::~ccl_sched()
 {
-    CCL_ASSERT(in_bin_status != ccl_sched_in_bin_added);
+    if (in_bin_status != ccl_sched_in_bin_added)
+        LOG_DEBUG("in_bin_status != ccl_sched_in_bin_added");
 
     if (finalize_fn)
     {

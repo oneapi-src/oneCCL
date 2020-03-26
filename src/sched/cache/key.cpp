@@ -45,7 +45,7 @@ void ccl_sched_key::set(const ccl_coll_param& param,
     switch (f.ctype)
     {
         case ccl_coll_allgatherv:
-            f.buf = (void*)param.recv_counts;
+            f.buf1 = (void*)param.recv_counts;
             f.count1 = param.send_count;
             break;
         case ccl_coll_allreduce:
@@ -54,6 +54,10 @@ void ccl_sched_key::set(const ccl_coll_param& param,
             break;
         case ccl_coll_alltoall:
             f.count1 = param.count;
+            break;
+        case ccl_coll_alltoallv:
+            f.buf1 = (void*)param.send_counts;
+            f.buf2 = (void*)param.recv_counts;
             break;
         case ccl_coll_barrier:
             break;
@@ -94,7 +98,7 @@ bool ccl_sched_key::check(const ccl_coll_param& param,
     switch (f.ctype)
     {
         case ccl_coll_allgatherv:
-            result &= (param.recv_counts == f.buf &&
+            result &= (param.recv_counts == f.buf1 &&
                        param.send_count == f.count1);
             break;
         case ccl_coll_allreduce:
@@ -103,6 +107,10 @@ bool ccl_sched_key::check(const ccl_coll_param& param,
             break;
         case ccl_coll_alltoall:
             result &= (param.count == f.count1);
+            break;
+        case ccl_coll_alltoallv:
+            result &= (param.send_counts == f.buf1 &&
+                       param.recv_counts == f.buf2);
             break;
         case ccl_coll_barrier:
             break;
@@ -166,7 +174,7 @@ size_t ccl_sched_key_hasher::operator()(const ccl_sched_key& k) const
     if (env_data.cache_key_type == ccl_cache_key_full)
     {
         hash_value += k.f.ctype + k.f.dtype + k.f.itype + k.f.reduction +
-            k.f.count1 + k.f.count2 + k.f.root + (size_t)k.f.buf +
+            k.f.count1 + k.f.count2 + k.f.root + (size_t)k.f.buf1 + (size_t)k.f.buf2 +
             (size_t)k.f.count3 + (size_t)k.f.count4 + (size_t)k.f.comm +
             (size_t)k.f.prologue_fn + (size_t)k.f.epilogue_fn + (size_t)k.f.reduction_fn;
     }

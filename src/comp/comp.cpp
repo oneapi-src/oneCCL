@@ -13,8 +13,10 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#include "comp/bfp16/bfp16.hpp"
 #include "comp/comp.hpp"
 #include "common/log/log.hpp"
+#include "common/env/env.hpp"
 #include "common/utils/utils.hpp"
 
 #define CCL_REDUCE(type)                                                \
@@ -49,7 +51,7 @@
         }                                                               \
     } while (0)
 
-ccl_status_t ccl_comp_copy(const void *in_buf, void *out_buf, size_t count, ccl_datatype_internal_t dtype)
+ccl_status_t ccl_comp_copy(const void* in_buf, void* out_buf, size_t count, ccl_datatype_internal_t dtype)
 {
     CCL_ASSERT(in_buf, "in_buf is null");
     CCL_ASSERT(out_buf, "out_buf is null");
@@ -57,7 +59,7 @@ ccl_status_t ccl_comp_copy(const void *in_buf, void *out_buf, size_t count, ccl_
     return ccl_status_success;
 }
 
-ccl_status_t ccl_comp_reduce(const void *in_buf, size_t in_count, void *inout_buf, size_t *out_count,
+ccl_status_t ccl_comp_reduce(const void* in_buf, size_t in_count, void* inout_buf, size_t* out_count,
                              ccl_datatype_internal_t dtype, ccl_reduction_t reduction,
                              ccl_reduction_fn_t reduction_fn, const ccl_fn_context_t* context)
 {
@@ -69,7 +71,8 @@ ccl_status_t ccl_comp_reduce(const void *in_buf, size_t in_count, void *inout_bu
     }
 
     size_t i;
-    switch (dtype->type) {
+    switch (dtype->type)
+    {
         case ccl_dtype_char:
             CCL_REDUCE(char);
             break;
@@ -77,7 +80,9 @@ ccl_status_t ccl_comp_reduce(const void *in_buf, size_t in_count, void *inout_bu
             CCL_REDUCE(int);
             break;
         case ccl_dtype_bfp16:
-            // TODO:
+            if (global_data.is_bfp16_enabled == 0)
+                CCL_FATAL("CCL doesn't support reductions in BFP16 on this CPU");
+            ccl_bfp16_reduce(in_buf, in_count, inout_buf, out_count, reduction);
             break;
         case ccl_dtype_float:
             CCL_REDUCE(float);
@@ -100,7 +105,8 @@ ccl_status_t ccl_comp_reduce(const void *in_buf, size_t in_count, void *inout_bu
 
 const char *ccl_reduction_to_str(ccl_reduction_t type)
 {
-    switch (type) {
+    switch (type)
+    {
         case ccl_reduction_sum:
             return "SUM";
         case ccl_reduction_prod:

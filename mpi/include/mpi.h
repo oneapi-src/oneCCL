@@ -595,8 +595,8 @@ typedef int (MPI_Delete_function) ( MPI_Comm, int, void *, void * );
  * digits for REV, 1 digit for EXT and 2 digits for EXT_NUMBER. So,
  * 2019.0.0b0 will have the numeric version 20190000100.
  */
-#define I_MPI_VERSION "2021.1.0b4"
-#define I_MPI_NUMVERSION 20210100104
+#define I_MPI_VERSION "2021.1.0b5"
+#define I_MPI_NUMVERSION 20210100105
 
 /* for the datatype decoders */
 enum MPIR_Combiner_enum {
@@ -852,14 +852,14 @@ typedef struct {
     MPI_Fint MPI_ERROR;
 } MPI_F08_status;
 
-extern MPI_F08_status MPIR_F08_MPI_STATUS_IGNORE_OBJ MPICH_API_PUBLIC;
-extern MPI_F08_status MPIR_F08_MPI_STATUSES_IGNORE_OBJ[1] MPICH_API_PUBLIC;
-extern int MPIR_F08_MPI_IN_PLACE MPICH_API_PUBLIC;
-extern int MPIR_F08_MPI_BOTTOM MPICH_API_PUBLIC;
+extern MPIU_DLL_SPEC MPI_F08_status MPIR_F08_MPI_STATUS_IGNORE_OBJ MPICH_API_PUBLIC;
+extern MPIU_DLL_SPEC MPI_F08_status MPIR_F08_MPI_STATUSES_IGNORE_OBJ[1] MPICH_API_PUBLIC;
+extern MPIU_DLL_SPEC int MPIR_F08_MPI_IN_PLACE MPICH_API_PUBLIC;
+extern MPIU_DLL_SPEC int MPIR_F08_MPI_BOTTOM MPICH_API_PUBLIC;
 
 /* Pointers to above objects */
-extern MPI_F08_status *MPI_F08_STATUS_IGNORE MPICH_API_PUBLIC;
-extern MPI_F08_status *MPI_F08_STATUSES_IGNORE MPICH_API_PUBLIC;
+extern MPIU_DLL_SPEC MPI_F08_status *MPI_F08_STATUS_IGNORE MPICH_API_PUBLIC;
+extern MPIU_DLL_SPEC MPI_F08_status *MPI_F08_STATUSES_IGNORE MPICH_API_PUBLIC;
 
 /* For supported thread levels */
 #define MPI_THREAD_SINGLE 0

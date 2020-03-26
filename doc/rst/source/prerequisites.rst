@@ -3,10 +3,10 @@
 Prerequisites
 =============
 
-Before you start using oneCCL, make sure to set up the library environment. 
-With oneCCL being installed into ``<installdir>``, there are two ways to set up the environment:
+Before you start using |product_short|, make sure to set up the library environment. 
+With |product_short| installed into ``<installdir>``, there are two ways to set up the environment:
 
-- Using standalone oneCCL package:
+- Using standalone |product_short| package:
 
     .. prompt:: bash
 

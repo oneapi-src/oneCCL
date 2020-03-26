@@ -37,7 +37,8 @@ size_t ccl_sched_bin::erase(size_t idx, size_t& next_idx)
     size_t size = 0;
     {
         std::lock_guard<sched_queue_lock_t> lock(sched_list.elem_guard);
-        size_t size = sched_list.elems.size();
+        size = sched_list.elems.size();
+        CCL_THROW_IF_NOT(size > 0, "unexpected sched_list size ", size);
         CCL_ASSERT(idx < size);
         sched = sched_list.elems[idx];
         sched->set_in_bin_status(ccl_sched_in_bin_erased);
@@ -51,20 +52,20 @@ size_t ccl_sched_bin::erase(size_t idx, size_t& next_idx)
     return size;
 }
 
-ccl_sched_queue::ccl_sched_queue(std::vector<atl_comm_t*> comm_ctxs)
-    : comm_ctxs(comm_ctxs)
+ccl_sched_queue::ccl_sched_queue(std::vector<atl_ep_t*> atl_eps)
+    : atl_eps(atl_eps)
 {
-    LOG_DEBUG("created sched_queue, comm_ctxs count ",  comm_ctxs.size(),
-              ", comm_ctxs[0] ", comm_ctxs[0]);
+    LOG_DEBUG("created sched_queue, atl_eps count ",  atl_eps.size(),
+              ", atl_eps[0] ", atl_eps[0]);
 
     if (env_data.priority_mode != ccl_priority_none)
     {
-        CCL_ASSERT(comm_ctxs.size() == CCL_PRIORITY_BUCKET_COUNT,
-            "unexpected comm_cxt count ", comm_ctxs.size(), ", expected ",
+        CCL_ASSERT(atl_eps.size() == CCL_PRIORITY_BUCKET_COUNT,
+            "unexpected atl_eps count ", atl_eps.size(), ", expected ",
             CCL_PRIORITY_BUCKET_COUNT);
     }
     else
-        CCL_ASSERT(!comm_ctxs.empty());
+        CCL_ASSERT(!atl_eps.empty());
 }
 
 ccl_sched_queue::~ccl_sched_queue()
@@ -111,20 +112,20 @@ void ccl_sched_queue::add(ccl_sched* sched)
     }
     else
     {
-        atl_comm_t* comm_ctx = nullptr;
+        atl_ep_t* atl_ep = nullptr;
         if (env_data.priority_mode == ccl_priority_none)
-            comm_ctx = comm_ctxs[0];
+            atl_ep = atl_eps[0];
         else
         {
-            size_t comm_idx = (priority / CCL_PRIORITY_BUCKET_SIZE) % CCL_PRIORITY_BUCKET_COUNT;
-            comm_ctx = comm_ctxs[comm_idx];
-            LOG_DEBUG("priority ", priority, ", comm_idx ", comm_idx);
+            size_t ep_idx = (priority / CCL_PRIORITY_BUCKET_SIZE) % CCL_PRIORITY_BUCKET_COUNT;
+            atl_ep = atl_eps[ep_idx];
+            LOG_DEBUG("priority ", priority, ", ep_idx ", ep_idx);
         }
 
         // in-place construct priority bin with added sched
         auto emplace_result = bins.emplace(std::piecewise_construct,
                                            std::forward_as_tuple(priority),
-                                           std::forward_as_tuple(this, comm_ctx, priority, sched));
+                                           std::forward_as_tuple(this, atl_ep, priority, sched));
         CCL_ASSERT(emplace_result.second);
         bin = &(emplace_result.first->second);
 

@@ -13,7 +13,10 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#include <math.h>
+
 #include "base.hpp"
+#include "base_bfp16.hpp"
 
 template <typename T>
 void typed_test_param<T>::prepare_coll_attr(size_t idx)
@@ -21,6 +24,7 @@ void typed_test_param<T>::prepare_coll_attr(size_t idx)
     coll_attr.priority = generate_priority_value(idx);
     coll_attr.to_cache = test_conf.cache_type;
     coll_attr.vector_buf = 0;
+
     char* test_unordered_coll = getenv("CCL_UNORDERED_COLL");
     if (test_unordered_coll && atoi(test_unordered_coll) == 1)
     {
@@ -30,9 +34,11 @@ void typed_test_param<T>::prepare_coll_attr(size_t idx)
     {
         coll_attr.synchronous = test_conf.sync_type;
     }
+
     match_id = create_match_id(idx);
     coll_attr.match_id = match_id.c_str();
 }
+
 template <typename T>
 std::string typed_test_param<T>::create_match_id(size_t buf_idx)
 {
@@ -52,6 +58,7 @@ std::string typed_test_param<T>::create_match_id(size_t buf_idx)
             std::to_string(test_conf.prolog_type) +
             std::to_string(test_conf.epilog_type));
 }
+
 template <typename T>
 bool typed_test_param<T>::complete_request(std::shared_ptr < ccl::request > reqs)
 {
@@ -70,12 +77,12 @@ bool typed_test_param<T>::complete_request(std::shared_ptr < ccl::request > reqs
         return false;
     }
 }
+
 template <typename T>
 void typed_test_param<T>::define_start_order()
 {
     if (test_conf.start_order_type == ORDER_DIRECT || test_conf.start_order_type == ORDER_DISABLE)
     {
-        
         std::iota(buf_indexes.begin(), buf_indexes.end(), 0);
     }
     else if (test_conf.start_order_type == ORDER_INDIRECT)
@@ -102,7 +109,8 @@ void typed_test_param<T>::define_start_order()
                 buf_indexes[buf_idx] = tmp_idx;
             }
         }
-        else {
+        else
+        {
             std::iota(buf_indexes.begin(), buf_indexes.end(), 0);
         }
     }
@@ -111,6 +119,7 @@ void typed_test_param<T>::define_start_order()
         std::iota(buf_indexes.begin(), buf_indexes.end(), 0);
     }
 }
+
 template <typename T>
 bool typed_test_param<T>::complete()
 {
@@ -118,6 +127,7 @@ bool typed_test_param<T>::complete()
     size_t completions = 0;
     int msg_completions[buffer_count];
     memset(msg_completions, 0, buffer_count * sizeof(int));
+
     while (completions < buffer_count)
     {
         for (idx = 0; idx < buffer_count; idx++)
@@ -138,7 +148,9 @@ bool typed_test_param<T>::complete()
             {
                 msg_idx = idx;
             }
+
             if (msg_completions[msg_idx]) continue;
+
             if (complete_request(reqs[msg_idx]))
             {
                 completions++;
@@ -148,6 +160,7 @@ bool typed_test_param<T>::complete()
     }
     return TEST_SUCCESS;
 }
+
 template <typename T>
 void typed_test_param<T>::swap_buffers(size_t iter)
 {
@@ -163,11 +176,13 @@ void typed_test_param<T>::swap_buffers(size_t iter)
         }
     }
 }
+
 template <typename T>
 size_t typed_test_param<T>::generate_priority_value(size_t buf_idx)
 {
     return buf_idx++;
 }
+
 template <typename T>
 void typed_test_param<T>::print(std::ostream &output)
 {
@@ -180,6 +195,7 @@ void typed_test_param<T>::print(std::ostream &output)
             "\nmatch_id: " << match_id <<
             "\n-------------\n" << std::endl;
 }
+
 template <typename T>
 base_test<T>::base_test()
 {
@@ -188,17 +204,66 @@ base_test<T>::base_test()
     global_process_count = comm->size();
     memset(err_message, '\0', ERR_MESSAGE_MAX_LEN);
 }
+
+template <typename T>
+int base_test<T>::check_error(typed_test_param<T>& param, T expected, size_t buf_idx, size_t elem_idx)
+{
+    double max_error = 0;
+
+    if (param.test_conf.data_type == DT_BFP16)
+    {
+        /* TODO: handle float and double */
+
+        // sources https://www.mcs.anl.gov/papers/P4093-0713_1.pdf
+
+#ifdef CCL_BFP16_COMPILER
+        double log_base2 = log(param.process_count)/log(2);
+        double precision = BFP16_PRECISION;
+        double g = (log_base2 * precision) / (1 - (log_base2 * precision));
+        max_error = g * expected;
+#else
+        ASSERT(0, "unexpected data_type %d", param.test_conf.data_type);
+#endif
+    }
+    
+    if (fabs(max_error) < fabs((double)expected - (double)param.recv_buf[buf_idx][elem_idx]))
+    {
+        printf("[%zu] got param.recvBuf[%zu][%zu] = %0.7f, but expected = %0.7f, max_error = %0.16f\n",
+               param.process_idx, buf_idx, elem_idx,
+               (double)param.recv_buf[buf_idx][elem_idx],
+               (double)expected, (double) max_error);
+        return TEST_FAILURE;
+    }
+
+    return TEST_SUCCESS;
+}
+
 template <typename T>
 void base_test<T>::alloc_buffers(typed_test_param<T>& param)
 {
     param.send_buf.resize(param.buffer_count);
     param.recv_buf.resize(param.buffer_count);
     param.reqs.resize(param.buffer_count);
-    for (size_t elem_idx = 0; elem_idx < param.buffer_count; elem_idx++)
+
+    for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++)
     {
-        param.send_buf[elem_idx].resize(param.elem_count * param.process_count);
+        param.send_buf[buf_idx].resize(param.elem_count * param.process_count);
+        param.recv_buf[buf_idx].resize(param.elem_count * param.process_count);
+    }
+
+    if (param.test_conf.data_type == DT_BFP16)
+    {
+        param.send_buf_bfp16.resize(param.buffer_count);
+        param.recv_buf_bfp16.resize(param.buffer_count);
+
+        for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++)
+        {
+            param.send_buf_bfp16[buf_idx].resize(param.elem_count * param.process_count);
+            param.recv_buf_bfp16[buf_idx].resize(param.elem_count * param.process_count);
+        }
     }
 }
+
 template <typename T>
 void base_test<T>::fill_buffers(typed_test_param<T>& param)
 {
@@ -206,19 +271,12 @@ void base_test<T>::fill_buffers(typed_test_param<T>& param)
     {
         std::iota(param.send_buf[buf_idx].begin(), param.send_buf[buf_idx].end(), param.process_idx + buf_idx);
     }
-    if (param.test_conf.place_type == PT_OOP)
-    {
-        for (size_t elem_idx = 0; elem_idx < param.buffer_count; elem_idx++)
-        {
-            // TODO: add parameter resize to SOME_VALUE
-            param.recv_buf[elem_idx].resize(param.elem_count * param.process_count);
-        }
-    }
-    else
+
+    if (param.test_conf.place_type == PT_IN)
     {
         for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++)
         {
-                param.recv_buf[buf_idx] = param.send_buf[buf_idx];
+            param.recv_buf[buf_idx] = param.send_buf[buf_idx];
         }
     }
 }
@@ -227,17 +285,39 @@ template <typename T>
 int base_test<T>::run(typed_test_param<T>& param)
 {
     size_t result = 0;
-    SHOW_ALGO(Collective_Name);
+
+    SHOW_ALGO(COLL_NAME);
+
     for (size_t iter = 0; iter < ITER_COUNT; iter++)
     {
         try
         {
-            this->alloc_buffers(param);
-            this->fill_buffers(param);
+            alloc_buffers(param);
+            fill_buffers(param);
             param.swap_buffers(iter);
             param.define_start_order();
-            this->run_derived(param);
+
+            if (param.test_conf.data_type == DT_BFP16)
+            {
+#ifdef CCL_BFP16_COMPILER
+                make_bfp16_prologue<T>(param, get_recv_buf_size(param));
+#else
+                ASSERT(0, "unexpected data_type %d", param.test_conf.data_type);
+#endif
+            }
+
+            run_derived(param);
             param.complete();
+
+            if (param.test_conf.data_type == DT_BFP16)
+            {
+#ifdef CCL_BFP16_COMPILER
+                make_bfp16_epilogue<T>(param, get_recv_buf_size(param));
+#else
+                ASSERT(0, "unexpected data_type %d", param.test_conf.data_type);
+#endif
+            }
+
             result += check(param);
         }
         catch (const std::exception& ex)
@@ -246,5 +326,6 @@ int base_test<T>::run(typed_test_param<T>& param)
             printf("WARNING! %s iter number: %zu", ex.what(), iter);
         }
     }
+
     return result;
 }

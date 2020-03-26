@@ -122,7 +122,7 @@ MPILIBNAME="mpi"
 PMPILIBNAME="pmpi"
 
 # MPIVERSION is the version of the MPICH2 library that mpicc is intended for
-MPIVERSION="2021.1-beta03"
+MPIVERSION="2021.1-beta05"
 #
 # Internal variables
 # Show is set to echo to cause the compilation command to be echoed instead
@@ -420,7 +420,7 @@ for arg in "$@" ; do
     qarg="'$arg'"
     ;;
     *\'*)
-    qarg=`echo "$arg"`
+    qarg=`echo \"$arg\"`
     ;;
     *)
     qarg="'$arg'"

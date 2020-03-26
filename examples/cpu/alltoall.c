@@ -51,7 +51,9 @@ int main()
 {
     int* send_buf;
     int* recv_buf;
+    
     test_init();
+    
     send_buf = malloc(sizeof(int) * COUNT * size);
     recv_buf = malloc(sizeof(int) * COUNT * size);
 

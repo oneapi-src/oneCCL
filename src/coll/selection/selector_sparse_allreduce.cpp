@@ -22,13 +22,13 @@ std::map<ccl_coll_sparse_allreduce_algo,
     std::make_pair(ccl_coll_sparse_allreduce_basic, "basic"),
     std::make_pair(ccl_coll_sparse_allreduce_size, "size"),
     std::make_pair(ccl_coll_sparse_allreduce_mask, "mask"),
-    std::make_pair(ccl_coll_sparse_allreduce_3_allgatherv, "allgather")
+    std::make_pair(ccl_coll_sparse_allreduce_3_allgatherv, "allgatherv")
   };
 
 ccl_algorithm_selector<ccl_coll_sparse_allreduce>::ccl_algorithm_selector()
 {
-    insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_sparse_allreduce_basic);
-    insert(fallback_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_sparse_allreduce_basic);
+    insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_sparse_allreduce_mask);
+    insert(fallback_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_sparse_allreduce_mask);
 }
 
 template<>

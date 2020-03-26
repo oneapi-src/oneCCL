@@ -192,7 +192,7 @@ size_t CCL_API ccl::communicator::size()
 }
 
 
-//allgatherv
+/* allgatherv */
 ccl::communicator::coll_request_t CCL_API
 ccl::communicator::allgatherv(const void* send_buf,
                               size_t send_count,
@@ -242,7 +242,7 @@ ccl::communicator::allgatherv(const buffer_container_type& send_buf,
                       attr, stream);
 }
 
-//allreduce
+/* allreduce */
 ccl::communicator::coll_request_t CCL_API
 ccl::communicator::allreduce(const void* send_buf,
                              void* recv_buf,
@@ -270,7 +270,7 @@ ccl::communicator::allreduce(const buffer_type* send_buf,
                              const ccl::coll_attr* attr,
                              const ccl::stream_t& stream)
 {
-    return allreduce((const void*) send_buf, (void*)recv_buf, count,
+    return allreduce((const void*)send_buf, (void*)recv_buf, count,
                      ccl::native_type_info<buffer_type>::ccl_datatype_value,
                      reduction, attr, stream);
 }
@@ -291,7 +291,7 @@ ccl::communicator::allreduce(const buffer_container_type& send_buf,
                      reduction, attr, stream);
 }
 
-//alltoall
+/* alltoall */
 ccl::communicator::coll_request_t CCL_API
 ccl::communicator::alltoall(const void* send_buf,
                             void* recv_buf,
@@ -315,7 +315,7 @@ ccl::communicator::alltoall(const buffer_type* send_buf,
                             const ccl::coll_attr* attr,
                             const ccl::stream_t& stream)
 {
-    return alltoall((const void*) send_buf, (void*)recv_buf, count,
+    return alltoall((const void*)send_buf, (void*)recv_buf, count,
                     ccl::native_type_info<buffer_type>::ccl_datatype_value,
                     attr, stream);
 }
@@ -334,7 +334,62 @@ ccl::communicator::alltoall(const buffer_container_type& send_buf,
                     attr, stream);
 }
 
-//bcast
+/* alltoallv */
+ccl::communicator::coll_request_t CCL_API
+ccl::communicator::alltoallv(const void* send_buf,
+                             const size_t* send_counts,
+                             void* recv_buf,
+                             const size_t* recv_counts,
+                             ccl::data_type dtype,
+                             const ccl::coll_attr* attr,
+                             const ccl::stream_t& stream)
+{
+    ccl_request* req = ccl_alltoallv_impl(send_buf, send_counts, recv_buf, recv_counts,
+                                          static_cast<ccl_datatype_t>(dtype),
+                                          attr, comm_impl.get(),
+                                          (stream) ? stream->stream_impl.get() : nullptr);
+    return std::unique_ptr<ccl::request_impl>(new ccl::request_impl(req));
+}
+
+template<class buffer_type, typename T>
+ccl::communicator::coll_request_t CCL_API
+ccl::communicator::alltoallv(const buffer_type* send_buf,
+                             const size_t* send_counts,
+                             buffer_type* recv_buf,
+                             const size_t* recv_counts,
+                             const ccl::coll_attr* attr,
+                             const ccl::stream_t& stream)
+{
+    return alltoallv((const void*)send_buf, send_counts, (void*)recv_buf, recv_counts,
+                     ccl::native_type_info<buffer_type>::ccl_datatype_value,
+                     attr, stream);
+}
+
+template<class buffer_container_type, typename T>
+ccl::communicator::coll_request_t CCL_API
+ccl::communicator::alltoallv(const buffer_container_type& send_buf,
+                             const size_t* send_counts,
+                             buffer_container_type& recv_buf,
+                             const size_t* recv_counts,
+                             const ccl::coll_attr* attr,
+                             const ccl::stream_t& stream)
+{
+    return alltoallv(reinterpret_cast<const void*>(&send_buf), send_counts,
+                     reinterpret_cast<void*>(&recv_buf), recv_counts,
+                     ccl::native_type_info<buffer_container_type>::ccl_datatype_value,
+                     attr, stream);
+}
+
+/* barrier */
+void CCL_API
+ccl::communicator::barrier(const ccl::stream_t& stream)
+{
+    ccl_barrier_impl(comm_impl.get(),
+                     (stream) ? stream->stream_impl.get() : nullptr);
+    return;
+}
+
+/* bcast */
 ccl::communicator::coll_request_t CCL_API
 ccl::communicator::bcast(void* buf,
                          size_t count,
@@ -380,7 +435,7 @@ ccl::communicator::bcast(buffer_container_type& buf,
 }
 
 
-//reduce
+/* reduce */
 ccl::communicator::coll_request_t CCL_API
 ccl::communicator::reduce(const void* send_buf,
                           void* recv_buf,
@@ -410,7 +465,7 @@ ccl::communicator::reduce(const buffer_type* send_buf,
                           const ccl::coll_attr* attr,
                           const ccl::stream_t& stream)
 {
-    return reduce((const void*) send_buf, (void*)recv_buf, count,
+    return reduce((const void*)send_buf, (void*)recv_buf, count,
                   ccl::native_type_info<buffer_type>::ccl_datatype_value,
                   reduction, root, attr, stream);
 }
@@ -433,7 +488,7 @@ ccl::communicator::reduce(const buffer_container_type& send_buf,
 }
 
 
-//sparse allreduce
+/* sparse_allreduce */
 ccl::communicator::coll_request_t CCL_API
 ccl::communicator::sparse_allreduce(const void* send_ind_buf, size_t send_ind_count,
                                     const void* send_val_buf, size_t send_val_count,
@@ -499,94 +554,124 @@ ccl::communicator::sparse_allreduce(const index_buffer_container_type& send_ind_
                             reduction, attr, stream);
 }
 
-void CCL_API ccl::communicator::barrier(const ccl::stream_t& stream)
-{
-    ccl_barrier_impl(comm_impl.get(),
-                     (stream) ? stream->stream_impl.get() : nullptr);
-    return;
-}
 /***********************************************************************/
 
-#define COLL_EXPLICIT_INSTANTIATION(type)                                                                                              \
-template ccl::communicator::coll_request_t CCL_API ccl::communicator::allreduce(const type* send_buf,                                  \
-                                                                            type* recv_buf,                                            \
-                                                                            size_t count,                                              \
-                                                                            ccl::reduction reduction,                                  \
-                                                                            const ccl::coll_attr* attr,                                \
-                                                                            const ccl::stream_t& stream);                              \
-template ccl::communicator::coll_request_t CCL_API ccl::communicator::alltoall(const type* send_buf,                                   \
-                                                                               type* recv_buf,                                         \
-                                                                               size_t count,                                           \
-                                                                               const ccl::coll_attr* attr,                             \
-                                                                               const ccl::stream_t& stream);                           \
-template ccl::communicator::coll_request_t CCL_API ccl::communicator::allgatherv(const type* send_buf,                                 \
-                                                                             size_t send_count,                                        \
-                                                                             type* recv_buf,                                           \
-                                                                             const size_t* recv_counts,                                \
-                                                                             const ccl::coll_attr* attr,                               \
-                                                                             const ccl::stream_t& stream);                             \
-template ccl::communicator::coll_request_t CCL_API ccl::communicator::bcast(type* buf,                                                 \
-                                                                        size_t count,                                                  \
-                                                                        size_t root,                                                   \
-                                                                        const ccl::coll_attr* attr,                                    \
-                                                                        const ccl::stream_t& stream);                                  \
-template ccl::communicator::coll_request_t CCL_API ccl::communicator::reduce(const type* send_buf,                                     \
-                                                                         type* recv_buf,                                               \
-                                                                         size_t count,                                                 \
-                                                                         ccl::reduction reduction,                                     \
-                                                                         size_t root,                                                  \
-                                                                         const ccl::coll_attr* attr,                                   \
-                                                                         const ccl::stream_t& stream);
+#define COLL_EXPLICIT_INSTANTIATION(type)                   \
+                                                            \
+template ccl::communicator::coll_request_t CCL_API          \
+ccl::communicator::allgatherv(const type* send_buf,         \
+                              size_t send_count,            \
+                              type* recv_buf,               \
+                              const size_t* recv_counts,    \
+                              const ccl::coll_attr* attr,   \
+                              const ccl::stream_t& stream); \
+                                                            \
+template ccl::communicator::coll_request_t CCL_API          \
+ccl::communicator::allreduce(const type* send_buf,          \
+                             type* recv_buf,                \
+                             size_t count,                  \
+                             ccl::reduction reduction,      \
+                             const ccl::coll_attr* attr,    \
+                             const ccl::stream_t& stream);  \
+                                                            \
+template ccl::communicator::coll_request_t CCL_API          \
+ccl::communicator::alltoall(const type* send_buf,           \
+                            type* recv_buf,                 \
+                            size_t count,                   \
+                            const ccl::coll_attr* attr,     \
+                            const ccl::stream_t& stream);   \
+                                                            \
+template ccl::communicator::coll_request_t CCL_API          \
+ccl::communicator::alltoallv(const type* send_buf,          \
+                             const size_t* send_counts,     \
+                             type* recv_buf,                \
+                             const size_t* recv_counts,     \
+                             const ccl::coll_attr* attr,    \
+                             const ccl::stream_t& stream);  \
+                                                            \
+template ccl::communicator::coll_request_t CCL_API          \
+ccl::communicator::bcast(type* buf,                         \
+                         size_t count,                      \
+                         size_t root,                       \
+                         const ccl::coll_attr* attr,        \
+                         const ccl::stream_t& stream);      \
+                                                            \
+template ccl::communicator::coll_request_t CCL_API          \
+ccl::communicator::reduce(const type* send_buf,             \
+                          type* recv_buf,                   \
+                          size_t count,                     \
+                          ccl::reduction reduction,         \
+                          size_t root,                      \
+                          const ccl::coll_attr* attr,       \
+                          const ccl::stream_t& stream);
 
-#define COLL_EXPLICIT_CLASS_INSTANTIATION(type)                                                                                        \
-template ccl::communicator::coll_request_t CCL_API ccl::communicator::allreduce(const type& send_buf,                                  \
-                                                                            type& recv_buf,                                            \
-                                                                            size_t count,                                              \
-                                                                            ccl::reduction reduction,                                  \
-                                                                            const ccl::coll_attr* attr,                                \
-                                                                            const ccl::stream_t& stream);                              \
-template ccl::communicator::coll_request_t CCL_API ccl::communicator::alltoall(const type& send_buf,                                   \
-                                                                               type& recv_buf,                                         \
-                                                                               size_t count,                                           \
-                                                                               const ccl::coll_attr* attr,                             \
-                                                                               const ccl::stream_t& stream);                           \
-template ccl::communicator::coll_request_t CCL_API ccl::communicator::allgatherv(const type& send_buf,                                 \
-                                                                             size_t send_count,                                        \
-                                                                             type& recv_buf,                                           \
-                                                                             const size_t* recv_counts,                                \
-                                                                             const ccl::coll_attr* attr,                               \
-                                                                             const ccl::stream_t& stream);                             \
-template ccl::communicator::coll_request_t CCL_API ccl::communicator::bcast(type& buf,                                                 \
-                                                                        size_t count,                                                  \
-                                                                        size_t root,                                                   \
-                                                                        const ccl::coll_attr* attr,                                    \
-                                                                        const ccl::stream_t& stream);                                  \
-template ccl::communicator::coll_request_t CCL_API ccl::communicator::reduce(const type& send_buf,                                     \
-                                                                         type& recv_buf,                                               \
-                                                                         size_t count,                                                 \
-                                                                         ccl::reduction reduction,                                     \
-                                                                         size_t root,                                                  \
-                                                                         const ccl::coll_attr* attr,                                   \
-                                                                         const ccl::stream_t& stream);
+#define COLL_EXPLICIT_CLASS_INSTANTIATION(type)             \
+                                                            \
+template ccl::communicator::coll_request_t CCL_API          \
+ccl::communicator::allgatherv(const type& send_buf,         \
+                              size_t send_count,            \
+                              type& recv_buf,               \
+                              const size_t* recv_counts,    \
+                              const ccl::coll_attr* attr,   \
+                              const ccl::stream_t& stream); \
+                                                            \
+template ccl::communicator::coll_request_t CCL_API          \
+ccl::communicator::allreduce(const type& send_buf,          \
+                             type& recv_buf,                \
+                             size_t count,                  \
+                             ccl::reduction reduction,      \
+                             const ccl::coll_attr* attr,    \
+                             const ccl::stream_t& stream);  \
+                                                            \
+template ccl::communicator::coll_request_t CCL_API          \
+ccl::communicator::alltoall(const type& send_buf,           \
+                            type& recv_buf,                 \
+                            size_t count,                   \
+                            const ccl::coll_attr* attr,     \
+                            const ccl::stream_t& stream);   \
+                                                            \
+template ccl::communicator::coll_request_t CCL_API          \
+ccl::communicator::alltoallv(const type& send_buf,          \
+                             const size_t* send_counts,     \
+                             type& recv_buf,                \
+                             const size_t* recv_counts,     \
+                             const ccl::coll_attr* attr,    \
+                             const ccl::stream_t& stream);  \
+                                                            \
+template ccl::communicator::coll_request_t CCL_API          \
+ccl::communicator::bcast(type& buf,                         \
+                         size_t count,                      \
+                         size_t root,                       \
+                         const ccl::coll_attr* attr,        \
+                         const ccl::stream_t& stream);      \
+                                                            \
+template ccl::communicator::coll_request_t CCL_API          \
+ccl::communicator::reduce(const type& send_buf,             \
+                          type& recv_buf,                   \
+                          size_t count,                     \
+                          ccl::reduction reduction,         \
+                          size_t root,                      \
+                          const ccl::coll_attr* attr,       \
+                          const ccl::stream_t& stream);
 
-#define SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(index_type, value_type)                                                                \
-template                                                                                                                               \
-ccl::communicator::coll_request_t CCL_API ccl::communicator::sparse_allreduce(const index_type* send_ind_buf, size_t send_ind_count,   \
-                                                                  const value_type* send_val_buf, size_t send_val_count,               \
-                                                                  index_type** recv_ind_buf, size_t* recv_ind_count,                   \
-                                                                  value_type** recv_val_buf, size_t* recv_val_count,                   \
-                                                                  ccl::reduction reduction,                                            \
-                                                                  const ccl::coll_attr* attr,                                          \
-                                                                  const ccl::stream_t& stream);
+#define SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(index_type, value_type)                    \
+template ccl::communicator::coll_request_t CCL_API                                         \
+ccl::communicator::sparse_allreduce(const index_type* send_ind_buf, size_t send_ind_count, \
+                                    const value_type* send_val_buf, size_t send_val_count, \
+                                    index_type** recv_ind_buf, size_t* recv_ind_count,     \
+                                    value_type** recv_val_buf, size_t* recv_val_count,     \
+                                    ccl::reduction reduction,                              \
+                                    const ccl::coll_attr* attr,                            \
+                                    const ccl::stream_t& stream);
+                                                                                           \
+#define SPARSE_ALLREDUCE_EXPLICIT_CLASS_INSTANTIATION(index_type, value_type)              \
+template ccl::communicator::coll_request_t CCL_API                                         \
+ccl::communicator::sparse_allreduce(const index_type& send_ind_buf, size_t send_ind_count, \
+                                    const value_type& send_val_buf, size_t send_val_count, \
+                                    index_type** recv_ind_buf, size_t* recv_ind_count,     \
+                                    value_type** recv_val_buf, size_t* recv_val_count,     \
+                                    ccl::reduction reduction,                              \
+                                    const ccl::coll_attr* attr,                            \
+                                    const ccl::stream_t& stream);
 
-
-#define SPARSE_ALLREDUCE_EXPLICIT_CLASS_INSTANTIATION(index_type, value_type)                                                          \
-template                                                                                                                               \
-ccl::communicator::coll_request_t CCL_API ccl::communicator::sparse_allreduce(const index_type& send_ind_buf, size_t send_ind_count,   \
-                                                                  const value_type& send_val_buf, size_t send_val_count,               \
-                                                                  index_type** recv_ind_buf, size_t* recv_ind_count,                   \
-                                                                  value_type** recv_val_buf, size_t* recv_val_count,                   \
-                                                                  ccl::reduction reduction,                                            \
-                                                                  const ccl::coll_attr* attr,                                          \
-                                                                  cconst ccl::stream_t& stream);
 #include "ccl_cpp_api_explicit_in.hpp"

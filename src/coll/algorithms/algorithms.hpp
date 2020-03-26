@@ -210,13 +210,15 @@ ccl_status_t ccl_coll_build_direct_alltoall(ccl_sched *sched,
                                             size_t count,
                                             ccl_datatype_internal_t dtype,
                                             ccl_comm* comm);
-#if 0
-ccl_status_t ccl_coll_build_scatter_alltoall(ccl_sched *sched,
+
+ccl_status_t ccl_coll_build_direct_alltoallv(ccl_sched* sched,
                                              ccl_buffer send_buf,
+                                             const size_t* send_counts,
                                              ccl_buffer recv_buf,
-                                             size_t count,
-                                             ccl_datatype_internal_t dtype);
-#endif
+                                             const size_t* recv_counts,
+                                             ccl_datatype_internal_t dtype,
+                                             ccl_comm* comm);
+
 ccl_status_t ccl_coll_build_direct_bcast(ccl_sched *sched,
                                          ccl_buffer buf,
                                          size_t count,

@@ -92,7 +92,7 @@ extern "C" {
 #endif
 
 #define FI_MAJOR_VERSION 1
-#define FI_MINOR_VERSION 8
+#define FI_MINOR_VERSION 9
 
 enum {
 	FI_PATH_MAX		= 256,
@@ -333,6 +333,28 @@ enum {
 	FI_PROTO_EFA
 };
 
+enum {
+	FI_TC_UNSPEC = 0,
+	FI_TC_DSCP = 0x100,
+	FI_TC_LABEL = 0x200,
+	FI_TC_BEST_EFFORT = FI_TC_LABEL,
+	FI_TC_LOW_LATENCY,
+	FI_TC_DEDICATED_ACCESS,
+	FI_TC_BULK_DATA,
+	FI_TC_SCAVENGER,
+	FI_TC_NETWORK_CTRL,
+};
+
+static inline uint32_t fi_tc_dscp_set(uint8_t dscp)
+{
+	return ((uint32_t) dscp) | FI_TC_DSCP;
+}
+
+static inline uint8_t fi_tc_dscp_get(uint32_t tclass)
+{
+	return tclass & FI_TC_DSCP ? (uint8_t) tclass : 0;
+}
+
 /* Mode bits */
 #define FI_CONTEXT		(1ULL << 59)
 #define FI_MSG_PREFIX		(1ULL << 58)
@@ -354,6 +376,7 @@ struct fi_tx_attr {
 	size_t			size;
 	size_t			iov_limit;
 	size_t			rma_iov_limit;
+	uint32_t		tclass;
 };
 
 struct fi_rx_attr {
@@ -410,6 +433,7 @@ struct fi_domain_attr {
 	size_t 			auth_key_size;
 	size_t			max_err_data;
 	size_t			mr_cnt;
+	uint32_t		tclass;
 };
 
 struct fi_fabric_attr {
@@ -663,6 +687,7 @@ enum fi_type {
 	FI_TYPE_MR_MODE,
 	FI_TYPE_OP_TYPE,
 	FI_TYPE_FID,
+	FI_TYPE_COLLECTIVE_OP,
 };
 
 char *fi_tostr(const void *data, enum fi_type datatype);
@@ -683,7 +708,6 @@ struct fi_param {
 
 int fi_getparams(struct fi_param **params, int *count);
 void fi_freeparams(struct fi_param *params);
-
 
 #ifdef FABRIC_DIRECT
 #include <rdma/fi_direct.h>

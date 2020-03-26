@@ -50,7 +50,7 @@ public:
     {
         int found = 0;
         size_t len = 0;
-        atl_status_t atl_status = atl_comm_probe(sched->bin->get_comm_ctx(), src, atl_tag, &found, &len);
+        atl_status_t atl_status = atl_ep_probe(sched->bin->get_atl_ep(), src, atl_tag, &found, &len);
 
         update_status(atl_status);
 

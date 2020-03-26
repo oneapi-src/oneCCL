@@ -156,7 +156,7 @@ void send_notification(int sig)
 
 int run_listener(void)
 {
-    socklen_t len;
+    socklen_t len = 0;
     char recv_buf[INT_STR_SIZE];
 
     if (sock_listener == -1)

@@ -51,7 +51,7 @@ int main()
 
     const char* sparse_algo = std::getenv("CCL_SPARSE_ALLREDUCE");
     if (!sparse_algo)
-       sparse_algo = "basic";
+       sparse_algo = "mask";
 
 
     using supported_sparce_index_types = sparce_index_types<ccl_dtype_char,

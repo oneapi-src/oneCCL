@@ -159,14 +159,14 @@ class ccl_sched_bin
 {
 public:
     friend class ccl_sched_queue;
-    ccl_sched_bin(ccl_sched_queue* queue, atl_comm_t* comm_ctx, size_t priority, ccl_sched* sched)
+    ccl_sched_bin(ccl_sched_queue* queue, atl_ep_t* atl_ep, size_t priority, ccl_sched* sched)
         : queue(queue),
-          comm_ctx(comm_ctx),
+          atl_ep(atl_ep),
           sched_list(sched),
           priority(priority)
     {
         CCL_ASSERT(queue);
-        CCL_ASSERT(comm_ctx);
+        CCL_ASSERT(atl_ep);
         CCL_ASSERT(sched);
         sched->bin = this;
         sched->queue = queue;
@@ -181,7 +181,7 @@ public:
 
     size_t size() { return sched_list.size(); }
     size_t get_priority() { return priority; }
-    atl_comm_t* get_comm_ctx() { return comm_ctx; }
+    atl_ep_t* get_atl_ep() { return atl_ep; }
     ccl_sched_queue* get_queue() { return queue; }
 
     void add(ccl_sched* sched);
@@ -195,7 +195,7 @@ public:
 
 private:
     ccl_sched_queue* queue = nullptr; //!< pointer to the queue which owns the bin
-    atl_comm_t* comm_ctx = nullptr;   //!< ATL communication context
+    atl_ep_t* atl_ep = nullptr;       //!< ATL communication endpoint
     ccl_sched_list sched_list;        //!< list of schedules
     size_t priority{};                //!< the single priority for all elems
 };
@@ -203,7 +203,7 @@ private:
 class ccl_sched_queue
 {
 public:
-    ccl_sched_queue(std::vector<atl_comm_t*> comm_ctxs);
+    ccl_sched_queue(std::vector<atl_ep_t*> atl_eps);
 
     ccl_sched_queue() = delete;
     ccl_sched_queue(const ccl_sched_queue& other) = delete;
@@ -245,7 +245,7 @@ private:
 
     mutable sched_queue_lock_t bins_guard{};
 
-    std::vector<atl_comm_t*> comm_ctxs;
+    std::vector<atl_ep_t*> atl_eps;
     sched_bin_list_t bins { CCL_SCHED_QUEUE_INITIAL_BIN_COUNT };
     size_t max_priority = 0;
     std::atomic<ccl_sched_bin*> cached_max_priority_bin{};

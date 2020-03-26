@@ -6,10 +6,10 @@ Fault tolerance / elasticity
 Main instructions
 +++++++++++++++++
 
-Before ranks launch, user can specify :ref:`CCL_WORLD_SIZE` = N, where N is the number of ranks to start.
+Before launchung ranks, you can specify :ref:`CCL_WORLD_SIZE` = N, where N is the number of ranks to start.
 If k8s with k8s manager support is used, then N is equal to ``replicasize`` by default.
 
-Users can specify their own function that decides what oneCCL should do on the "world" resize event: 
+You can specify your own function that decides what |product_short| should do on the "world" resize event: 
 
 - wait
 - use current "world" information 
@@ -34,10 +34,10 @@ Users can specify their own function that decides what oneCCL should do on the "
 
   ccl_set_resize_callback(ccl_on_resize_fn_t callback);
 
-In case the number of ranks is changed, this function is called on oneCCL level. 
-Application level (e.g. framework) should return the action that oneCCL should perform.
+In case the number of ranks is changed, this function is called on |product_short| level. 
+Application level (e.g. framework) should return the action that |product_short| should perform.
 
-Setting this function to ``NULL`` (default value) means that oneCCL will work with exactly
+Setting this function to ``NULL`` (default value) means that |product_short| will work with exactly
 :ref:`CCL_WORLD_SIZE` or ``replicasize`` ranks without fault tolerant / elasticity.
 
 
@@ -47,7 +47,7 @@ Examples
 Without k8s manager
 *******************
 
-To run ranks in k8s without k8s manager, e.g. set of pods:
+To run ranks in k8s without k8s manager, for example, set of pods:
 
 -   :ref:`CCL_PM_TYPE` = resizable
 -   :ref:`CCL_K8S_API_ADDR` = k8s server address and port (in a format of IP:PORT)

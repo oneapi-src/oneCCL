@@ -1,12 +1,15 @@
+Intel(R) MPI Library 2021.1-beta05 Third Party Programs File
+
 This file is the "third-party-programs.txt" file specified in the associated 
-Intel end user license agreement for the Intel software you are licensing. The 
-third party programs and their corresponding required notices and/or license 
+Intel end user license agreement for the Intel software you are licensing.
+Third party programs and their corresponding required notices and/or license 
 terms are listed below.
 
-This third-party-programs.txt file applies to the Intel(R) MPI Library 
-2019 Update 6.
+-------------------------------------------------------------------------------
 
-1. Intel(R) MPI Benchmarks: Common Public License Version 1.0
+1. Intel(R) MPI Benchmarks
+
+  Common Public License Version 1.0
 
   THE ACCOMPANYING PROGRAM IS PROVIDED UNDER THE TERMS OF THIS COMMON
   PUBLIC LICENSE ("AGREEMENT"). ANY USE, REPRODUCTION OR DISTRIBUTION OF
@@ -237,11 +240,14 @@ This third-party-programs.txt file applies to the Intel(R) MPI Library
   party to this Agreement will bring a legal action under this Agreement
   more than one year after the cause of action arose. Each party waives
   its rights to a jury trial in any resulting litigation.
+  
+-------------------------------------------------------------------------------
 
-2. MPICH*: Mpich license
+2. MPICH 
 
-  Copyright Notice
-   + 2002 University of Chicago
+   Copyright Notice + 2002 University of Chicago
+   
+  Mpich license
 
   Permission is hereby granted to use, reproduce, prepare derivative works, and
   to redistribute to others.  This software was authored by:
@@ -272,9 +278,89 @@ This third-party-programs.txt file applies to the Intel(R) MPI Library
   for the accuracy, completeness, or usefulness of any information, apparatus,
   product, or process disclosed, or represents that its use would not infringe
   privately owned rights.
+  
+-------------------------------------------------------------------------------
 
+3. Open MPI 
 
-3. Open MPI*: BSD license
+   Copyright (c) 2004-2010 The Trustees of Indiana University and Indiana
+                           University Research and Technology
+                           Corporation.  All rights reserved.
+   Copyright (c) 2004-2017 The University of Tennessee and The University
+                           of Tennessee Research Foundation.  All rights
+                           reserved.
+   Copyright (c) 2004-2010 High Performance Computing Center Stuttgart,
+                           University of Stuttgart.  All rights reserved.
+   Copyright (c) 2004-2008 The Regents of the University of California.
+                           All rights reserved.
+   Copyright (c) 2006-2017 Los Alamos National Security, LLC.  All rights
+                           reserved.
+   Copyright (c) 2006-2017 Cisco Systems, Inc.  All rights reserved.
+   Copyright (c) 2006-2010 Voltaire, Inc. All rights reserved.
+   Copyright (c) 2006-2017 Sandia National Laboratories. All rights reserved.
+   Copyright (c) 2006-2010 Sun Microsystems, Inc.  All rights reserved.
+                           Use is subject to license terms.
+   Copyright (c) 2006-2017 The University of Houston. All rights reserved.
+   Copyright (c) 2006-2009 Myricom, Inc.  All rights reserved.
+   Copyright (c) 2007-2017 UT-Battelle, LLC. All rights reserved.
+   Copyright (c) 2007-2017 IBM Corporation.  All rights reserved.
+   Copyright (c) 1998-2005 Forschungszentrum Juelich, Juelich Supercomputing
+                           Centre, Federal Republic of Germany
+   Copyright (c) 2005-2008 ZIH, TU Dresden, Federal Republic of Germany
+   Copyright (c) 2007      Evergrid, Inc. All rights reserved.
+   Copyright (c) 2008      Chelsio, Inc.  All rights reserved.
+   Copyright (c) 2008-2009 Institut National de Recherche en
+                           Informatique.  All rights reserved.
+   Copyright (c) 2007      Lawrence Livermore National Security, LLC.
+                           All rights reserved.
+   Copyright (c) 2007-2017 Mellanox Technologies.  All rights reserved.
+   Copyright (c) 2006-2010 QLogic Corporation.  All rights reserved.
+   Copyright (c) 2008-2017 Oak Ridge National Labs.  All rights reserved.
+   Copyright (c) 2006-2012 Oracle and/or its affiliates.  All rights reserved.
+   Copyright (c) 2009-2015 Bull SAS.  All rights reserved.
+   Copyright (c) 2010      ARM ltd.  All rights reserved.
+   Copyright (c) 2016      ARM, Inc.  All rights reserved.
+   Copyright (c) 2010-2011 Alex Brick <bricka@ccs.neu.edu>.  All rights reserved.
+   Copyright (c) 2012      The University of Wisconsin-La Crosse. All rights
+                           reserved.
+   Copyright (c) 2013-2016 Intel, Inc. All rights reserved.
+   Copyright (c) 2011-2017 NVIDIA Corporation.  All rights reserved.
+   Copyright (c) 2016      Broadcom Limited.  All rights reserved.
+   Copyright (c) 2011-2017 Fujitsu Limited.  All rights reserved.
+   Copyright (c) 2014-2015 Hewlett-Packard Development Company, LP.  All
+                           rights reserved.
+   Copyright (c) 2013-2017 Research Organization for Information Science (RIST).
+                           All rights reserved.
+   Copyright (c) 2017-2018 Amazon.com, Inc. or its affiliates.  All Rights
+                           reserved.
+   Copyright (c) 2018      DataDirect Networks. All rights reserved.
+   Copyright (c) 2018-2019 Triad National Security, LLC. All rights reserved.
+
+   
+   hwloc 
+   
+   Copyright (c) 2004-2005 The University of Tennessee and The University of 
+                           Tennessee Research Foundation.  All rights reserved.
+   Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+                           University of Stuttgart.  All rights reserved.
+   Copyright (c) 2004-2005 The Regents of the University of California. 
+                           All rights reserved.
+   Copyright (c) 2009      CNRS
+   Copyright (c) 2009-2016 Inria.  All rights reserved.
+   Copyright (c) 2009-2015 Université Bordeaux
+   Copyright (c) 2009-2015 Cisco Systems, Inc.  All rights reserved.
+   Copyright (c) 2009-2012 Oracle and/or its affiliates.  All rights reserved.
+   Copyright (c) 2010      IBM
+   Copyright (c) 2010      Jirka Hladky
+   Copyright (c) 2012      Aleksej Saushev, The NetBSD Foundation
+   Copyright (c) 2012      Blue Brain Project, EPFL. All rights reserved.
+   Copyright (c) 2013-2014 University of Wisconsin-La Crosse. All rights reserved.
+   Copyright (c) 2015      Research Organization for Information Science and 
+                           Technology (RIST). All rights reserved.
+   Copyright (c) 2015-2016 Intel, Inc.  All rights reserved.
+ 
+
+  The -3-Clause BSD license
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are
@@ -310,13 +396,15 @@ This third-party-programs.txt file applies to the Intel(R) MPI Library
   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  
+-------------------------------------------------------------------------------  
 
-4. Libfabric* and OpenFabrics Interfaces* (OFI*): BSD license
+4. Libfabric and OpenFabrics Interfaces (OFI)
 
-  Copyright (c) 2015 Intel Corporation.  All rights reserved. 
-  Copyright (c) 2015 Cisco Systems, Inc.  All rights reserved. 
-
-         BSD license
+   Copyright (c) 2015 Intel Corporation.  All rights reserved. 
+   Copyright (c) 2015 Cisco Systems, Inc.  All rights reserved. 
+     
+  The -2-Clause BSD license
 
   Redistribution and use in source and binary forms, with or without 
   modification, are permitted provided that the following conditions 
@@ -343,11 +431,15 @@ This third-party-programs.txt file applies to the Intel(R) MPI Library
   LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN 
   ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
   POSSIBILITY OF SUCH DAMAGE.
+  
+-------------------------------------------------------------------------------  
 
-5. Python*: PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2
+5. Python 
+   
+   PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2
 
   PSF LICENSE AGREEMENT FOR PYTHON
-  ------------------------------------
+
   1. This LICENSE AGREEMENT is between the Python Software Foundation
   ("PSF"), and the Individual or Organization ("Licensee") accessing and
   otherwise using Python software in source or binary form and its
@@ -387,11 +479,14 @@ This third-party-programs.txt file applies to the Intel(R) MPI Library
   agrees to be bound by the terms and conditions of this License
   Agreement.
 
+-------------------------------------------------------------------------------
 
-6. uthash*: Troy Hanson BSD license
+6. uthash
 
-  Copyright (c) 2005-2014, Troy D. Hanson http://troydhanson.github.com/uthash/
-  All rights reserved.
+   Copyright (c) 2005-2014, Troy D. Hanson http://troydhanson.github.com/uthash/
+   All rights reserved.
+  
+  Troy Hanson BSD license
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions are met:
@@ -410,8 +505,15 @@ This third-party-programs.txt file applies to the Intel(R) MPI Library
   LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
   NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  
+-------------------------------------------------------------------------------  
 
-7. json-c*: MIT license
+7. json-c
+   
+   Copyright (c) 2009-2012 Eric Haszlakiewicz
+   Copyright (c) 2004, 2005 Metaparadigm Pte Ltd
+
+  MIT license
 
   Permission is hereby granted, free of charge, to any person obtaining a
   copy of this software and associated documentation files (the "Software"),
@@ -431,55 +533,13 @@ This third-party-programs.txt file applies to the Intel(R) MPI Library
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
 
-8. hwloc*: BSD license
+-------------------------------------------------------------------------------
 
-  Copyright (c) 2004-2005 The University of Tennessee and The University of 
-                          Tennessee Research Foundation.  All rights reserved.
-  Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
-                          University of Stuttgart.  All rights reserved.
-  Copyright (c) 2004-2005 The Regents of the University of California. 
-                          All rights reserved.
-  Copyright (c) 2009      CNRS
-  Copyright (c) 2009-2016 Inria.  All rights reserved.
-  Copyright (c) 2009-2015 Université Bordeaux
-  Copyright (c) 2009-2015 Cisco Systems, Inc.  All rights reserved.
-  Copyright (c) 2009-2012 Oracle and/or its affiliates.  All rights reserved.
-  Copyright (c) 2010      IBM
-  Copyright (c) 2010      Jirka Hladky
-  Copyright (c) 2012      Aleksej Saushev, The NetBSD Foundation
-  Copyright (c) 2012      Blue Brain Project, EPFL. All rights reserved.
-  Copyright (c) 2013-2014 University of Wisconsin-La Crosse. All rights reserved.
-  Copyright (c) 2015      Research Organization for Information Science and 
-                          Technology (RIST). All rights reserved.
-  Copyright (c) 2015-2016 Intel, Inc.  All rights reserved.
-  See COPYING in top-level directory.
+8. zlib 
 
-  Redistribution and use in source and binary forms, with or without
-  modification, are permitted provided that the following conditions
-  are met:
-  1. Redistributions of source code must retain the above copyright
-     notice, this list of conditions and the following disclaimer.
-  2. Redistributions in binary form must reproduce the above copyright
-     notice, this list of conditions and the following disclaimer in the
-     documentation and/or other materials provided with the distribution.
-  3. The name of the author may not be used to endorse or promote products
-     derived from this software without specific prior written permission.
-
-  THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
-  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-9. zlib*: Permissive software license
-
-  Copyright (c) <''year''> <''copyright holders''>
-
+   Copyright (c) <''year''> <''copyright holders''>
+   
+  Permissive software license
   This software is provided 'as-is', without any express or implied
   warranty. In no event will the authors be held liable for any damages
   arising from the use of this software.
@@ -495,5 +555,13 @@ This third-party-programs.txt file applies to the Intel(R) MPI Library
   2. Altered source versions must be plainly marked as such, and must not be
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
-
-* Other names and brands may be claimed as the property of others.
+  
+-------------------------------------------------------------------------------
+  
+  The following third party programs have their own third party programs. These 
+  additional third party program files are as follows:
+  1. Intel(R) MPI Benchmarks <install_dir>/imb/license/third-party-programs.txt
+  
+-------------------------------------------------------------------------------
+  
+Other names and brands may be claimed as the property of others.
