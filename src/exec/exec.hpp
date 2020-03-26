@@ -40,7 +40,7 @@ public:
     ccl_executor(ccl_executor&& other) = delete;
     ccl_executor& operator=(ccl_executor&& other) = delete;
 
-    ccl_executor();
+    ccl_executor(const char* main_addr = NULL);
     ~ccl_executor();
 
     struct worker_guard
@@ -80,31 +80,34 @@ public:
     void unlock_workers();
     bool is_locked = false;
 
-    size_t get_global_proc_idx() const { return atl_proc_coord.global_idx; }
-    size_t get_global_proc_count() const { return atl_proc_coord.global_count; }
-    size_t get_local_proc_idx() const { return atl_proc_coord.local_idx; }
-    size_t get_local_proc_count() const { return atl_proc_coord.local_count; }
-    atl_proc_coord_t* get_proc_coord() { return &atl_proc_coord; }
+    size_t get_global_proc_idx() const { return atl_proc_coord->global_idx; }
+    size_t get_global_proc_count() const { return atl_proc_coord->global_count; }
+    size_t get_local_proc_idx() const { return atl_proc_coord->local_idx; }
+    size_t get_local_proc_count() const { return atl_proc_coord->local_count; }
 
-    atl_desc_t* atl_desc = nullptr;
+    atl_ctx_t* get_atl_ctx() const { return atl_ctx; }
+    atl_proc_coord_t* get_proc_coord() const { return atl_proc_coord; }
+    const atl_attr_t& get_atl_attr() const { return atl_attr; }
+
+private:
+    static size_t calculate_atl_ep_count(size_t worker_count);
+    std::unique_ptr<ccl_sched_queue> create_sched_queue(size_t idx, size_t ep_per_worker);
+    void do_work();
 
     atl_attr_t atl_attr =
     {
-        0, /* enable_shm */
-        0, /* is_tagged_coll_enabled */
+        1, /* ep_count */
+        1, /* enable_shm */
         64, /* tag_bits */
         0xFFFFFFFFFFFFFFFF, /* max_tag */
         0, /* enable_rma */
         0 /* max_order_waw_size */
     };
 
-private:
-    size_t get_atl_comm_count(size_t worker_count);
-    std::unique_ptr<ccl_sched_queue> create_sched_queue(size_t idx, size_t comm_per_worker);
-    void do_work(); 
+    atl_proc_coord_t* atl_proc_coord = nullptr;
+    atl_ep_t** atl_eps = nullptr;
+    atl_ctx_t* atl_ctx = nullptr;
 
-    atl_comm_t** atl_comms = nullptr;
-    atl_proc_coord_t atl_proc_coord;
     std::vector<std::unique_ptr<ccl_worker>> workers;
     std::unique_ptr<ccl_listener> listener;
 };

@@ -36,13 +36,15 @@ int main(int argc, char **argv)
     /* create SYCL stream */
     auto stream = ccl::environment::instance().create_stream(ccl::stream_type::sycl, &q);
 
-    /* open buf and initialize it on the CPU side */
-    auto host_acc_sbuf = buf.get_access<mode::write>();
-    for (i = 0; i < COUNT; i++) {
-        if (rank == COLL_ROOT)
-            host_acc_sbuf[i] = rank;
-        else
-            host_acc_sbuf[i] = 0;
+    {
+        /* open buf and initialize it on the CPU side */
+        auto host_acc_sbuf = buf.get_access<mode::write>();
+        for (i = 0; i < COUNT; i++) {
+            if (rank == COLL_ROOT)
+                host_acc_sbuf[i] = rank;
+            else
+                host_acc_sbuf[i] = 0;
+        }
     }
 
     /* open buf and modify it on the target device side */

@@ -39,7 +39,9 @@
 enum pmir_resize_action;
 typedef enum pmir_resize_action (*pmir_resize_fn_t)(size_t comm_size);
 
-int PMIR_API PMIR_Init(void);
+int PMIR_API PMIR_Main_Addr_Reserv(char* main_addr);
+
+int PMIR_API PMIR_Init(const char* main_addr);
 
 int PMIR_API PMIR_Finalize(void);
 

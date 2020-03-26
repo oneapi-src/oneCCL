@@ -17,21 +17,20 @@
 
 template<>
 std::map<ccl_coll_alltoall_algo,
-    std::string> ccl_algorithm_selector_helper<ccl_coll_alltoall_algo>::algo_names =
-    {
-        std::make_pair(ccl_coll_alltoall_direct, "direct"),
-        std::make_pair(ccl_coll_alltoall_scatter, "scatter"),
-        std::make_pair(ccl_coll_alltoall_scatter_message, "scatter_message"),
-    };
+         std::string> ccl_algorithm_selector_helper<ccl_coll_alltoall_algo>::algo_names =
+  {
+    std::make_pair(ccl_coll_alltoall_direct, "direct"),
+    std::make_pair(ccl_coll_alltoall_naive, "naive")
+  };
 
 ccl_algorithm_selector<ccl_coll_alltoall>::ccl_algorithm_selector()
 {
     if (env_data.atl_transport == ccl_atl_ofi)
-        insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_alltoall_scatter);
+        insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_alltoall_naive);
     else if (env_data.atl_transport == ccl_atl_mpi)
         insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_alltoall_direct);
 
-    insert(fallback_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_alltoall_scatter);
+    insert(fallback_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_alltoall_naive);
 }
 
 template<>
@@ -48,4 +47,5 @@ bool ccl_algorithm_selector_helper<ccl_coll_alltoall_algo>::can_use(ccl_coll_all
     return true;
 }
 
-CCL_SELECTION_DEFINE_HELPER_METHODS(ccl_coll_alltoall_algo, ccl_coll_alltoall, env_data.alltoall_algo_raw, param.count);
+CCL_SELECTION_DEFINE_HELPER_METHODS(ccl_coll_alltoall_algo, ccl_coll_alltoall,
+                                    env_data.alltoall_algo_raw, param.count);

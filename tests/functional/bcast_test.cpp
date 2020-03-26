@@ -13,34 +13,30 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#define TEST_CCL_BCAST
 
-#define Collective_Name "CCL_BCAST"
-
-#include <chrono>
-#include <functional>
-#include <vector>
+#define COLL_NAME "CCL_BCAST"
 
 #include "base_impl.hpp"
 
 template <typename T> class bcast_test : public base_test <T>
 {
 public:
+
     int check(typed_test_param<T>& param)
     {
         for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++)
         {
             for (size_t elem_idx = 0; elem_idx < param.elem_count; elem_idx++)
             {
-                if (param.send_buf[buf_idx][elem_idx] != static_cast<T>(elem_idx))
-                {
-                    snprintf(bcast_test::get_err_message(), ERR_MESSAGE_MAX_LEN, "[%zu] got send_buf[%zu][%zu] = %f, but expected = %f\n",
-                             param.process_idx, buf_idx, elem_idx, (double)param.send_buf[buf_idx][elem_idx], (double)elem_idx);
+                T expected = static_cast<T>(elem_idx);
+                if (base_test<T>::check_error(param, expected, buf_idx, elem_idx))
                     return TEST_FAILURE;
-                }
             }
         }
         return TEST_SUCCESS;
     }
+
     void fill_buffers(typed_test_param<T>& param)
     {
         for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++)
@@ -48,23 +44,45 @@ public:
             for (size_t elem_idx = 0; elem_idx < param.elem_count; elem_idx++)
             {
                 if (param.process_idx == ROOT_PROCESS_IDX)
-                    param.send_buf[buf_idx][elem_idx] = elem_idx;
+                {
+                    param.recv_buf[buf_idx][elem_idx] = elem_idx;
+                }
                 else
-                    param.send_buf[buf_idx][elem_idx] = static_cast<T>(SOME_VALUE);
+                {
+                    param.recv_buf[buf_idx][elem_idx] = static_cast<T>(SOME_VALUE);
+                    if (param.test_conf.data_type == DT_BFP16)
+                    {
+                        param.recv_buf_bfp16[buf_idx][elem_idx] = static_cast<short>(SOME_VALUE);
+                    }
+                }
             }
+            param.send_buf[buf_idx] = param.recv_buf[buf_idx];
         }
+    }
+
+    size_t get_recv_buf_size(typed_test_param<T>& param)
+    {
+        return param.elem_count;
     }
 
     void run_derived(typed_test_param<T>& param)
     {
+        void* recv_buf;
         size_t count = param.elem_count;
+        const ccl_test_conf& test_conf = param.get_conf();
         ccl::coll_attr* attr = &param.coll_attr;
-        ccl::stream_t &stream = param.get_stream();
-        for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++) 
+        ccl::stream_t& stream = param.get_stream();
+        ccl::data_type data_type = static_cast<ccl::data_type>(test_conf.data_type);
+
+        for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++)
         {
+            size_t new_idx = param.buf_indexes[buf_idx];
             param.prepare_coll_attr(param.buf_indexes[buf_idx]);
-            T* send_buf = param.send_buf[param.buf_indexes[buf_idx]].data();
-            param.reqs[buf_idx] = param.global_comm->bcast(send_buf, count, ROOT_PROCESS_IDX, attr, stream);
+
+            recv_buf = param.get_recv_buf(new_idx);
+
+            param.reqs[buf_idx] =
+                    param.global_comm->bcast(recv_buf, count, data_type, ROOT_PROCESS_IDX, attr, stream);
         }
     }
 };

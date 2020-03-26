@@ -68,6 +68,7 @@ struct alignas(CACHELINE_SIZE) ccl_global_data
     std::unique_ptr<ccl_allreduce_2d_builder> allreduce_2d_builder;
     static thread_local bool is_worker_thread;
     bool is_ft_enabled;
+    bool is_bfp16_enabled;
 };
 
 extern ccl_global_data global_data;

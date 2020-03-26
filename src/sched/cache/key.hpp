@@ -60,7 +60,8 @@ public:
     struct ccl_sched_key_inner_fields
     {
         ccl_coll_type ctype = ccl_coll_internal;
-        void* buf = nullptr; /* non-data buffer which can be used for caching */
+        void* buf1 = nullptr; /* non-data buffer which can be used for caching */
+        void* buf2 = nullptr; /* non-data buffer which can be used for caching */
         ccl_datatype_t dtype = ccl_dtype_char;
         ccl_datatype_t itype = ccl_dtype_char; /* used in sparse collective to store index type */
         ccl_reduction_t reduction = ccl_reduction_sum;
@@ -88,7 +89,8 @@ public:
                    ", dtype ", ccl_datatype_get(f.dtype)->name,
                    ", itype ", ccl_datatype_get(f.itype)->name,
                    ", reduction ", ccl_reduction_to_str(f.reduction),
-                   ", buf ", f.buf,
+                   ", buf1 ", f.buf1,
+                   ", buf2 ", f.buf2,
                    ", count1 ", f.count1,
                    ", count2 ", f.count2,
                    ", count3 ", f.count3,

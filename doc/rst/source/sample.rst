@@ -1,7 +1,7 @@
 Sample application
 =========================
 
-Below is a complete sample that shows how oneCCL API can be used to perform allreduce communication for SYCL* buffers: 
+The sample code below shows how to use |product_short| API to perform allreduce communication for SYCL* buffers: 
 
 ::
 
@@ -38,11 +38,14 @@ Below is a complete sample that shows how oneCCL API can be used to perform allr
         // create CCL stream based on SYCL* command queue
         ccl_stream_create(ccl_stream_sycl, &q, &stream);
 
-        /* open sendbuf and initialize it on the CPU side */
-        auto host_acc_sbuf = sendbuf.get_access<mode::write>();
-
-        for (i = 0; i < COUNT; i++) {
-            host_acc_sbuf[i] = rank;
+        {
+                /* open buffers and initialize them on the CPU side */
+                auto host_acc_sbuf = sendbuf.get_access<mode::write>();
+                auto host_acc_rbuf = recvbuf.get_access<mode::write>();
+                for (i = 0; i < COUNT; i++) {
+                    host_acc_sbuf[i] = rank;
+                    host_acc_rbuf[i] = -1;
+                }
         }
 
         /* open sendbuf and modify it on the target device side */
@@ -102,7 +105,7 @@ Below is a complete sample that shows how oneCCL API can be used to perform allr
 Build details
 *************
 
-#. oneCCL should be built with SYCL* support.
+#. |product_short| should be built with SYCL* support.
 
 #. Set up the library environment (see :ref:`|prerequisites|`).
 
@@ -124,7 +127,4 @@ To run the sample, use the following command:
 
     mpiexec <parameters> ./ccl_sample
 
-``<parameters>`` is optional mpiexec parameters such as node count, processes per node, hosts, etc.
-
-
-
+where ``<parameters>`` represents optional mpiexec parameters such as node count, processes per node, hosts, and so on.

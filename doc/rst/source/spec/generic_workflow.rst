@@ -1,7 +1,7 @@
 Generic Workflow
 =================
 
-Below is a generic flow for using C++ API of oneCCL:
+Below is a generic flow for using C++ API of |product_short|:
 
 #. Initialize the library:
 

@@ -240,6 +240,7 @@ void accept_new_ranks(shift_list_t* cur_list)
             free(kvs_values[i]);
         }
     }
+
     if (kvs_keys != NULL)
         free(kvs_keys);
     if (kvs_values != NULL)
@@ -315,13 +316,15 @@ size_t get_barrier_idx(void)
     if (count_kvs_values == 0)
         return 0;
 
-    min_barrier_num = strtol(kvs_values[i], NULL, 10);
+    min_barrier_num = strtol(kvs_values[0], NULL, 10);
     for (i = 1; i < count_kvs_values; i++)
     {
         tmp_barrier_num = strtol(kvs_values[i], NULL, 10);
         if (min_barrier_num > tmp_barrier_num)
             min_barrier_num = tmp_barrier_num;
-
+    }
+    for (i = 0; i < count_kvs_values; i++)
+    {
         free(kvs_values[i]);
     }
     free(kvs_values);
@@ -468,6 +471,7 @@ void reg_rank(void)
         my_num_in_pod_request_line = 0;
 
         count_values = kvs_get_keys_values_by_name(KVS_POD_REQUEST, &kvs_keys, &kvs_values);
+
         for (i = 0; i < count_values; i++)
         {
             if (strstr(kvs_values[i], rank_str))
@@ -499,6 +503,7 @@ void reg_rank(void)
                 }
             }
         }
+
         if (!wait_shift)
         {
             my_rank++;
@@ -506,6 +511,7 @@ void reg_rank(void)
             kvs_set_value(KVS_POD_REQUEST, my_hostname, rank_str);
         }
     }
+
     kvs_remove_name_key(KVS_POD_REQUEST, my_hostname);
 
     if (kvs_keys != NULL)

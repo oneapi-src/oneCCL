@@ -27,8 +27,9 @@ typedef struct pm_rt_desc pm_rt_desc_t;
 
 /* PMI RT */
 atl_status_t pmirt_init(size_t *proc_idx, size_t *procs_num, pm_rt_desc_t **pmrt_desc);
-atl_status_t resizable_pmirt_init(size_t *proc_idx, size_t *proc_count, pm_rt_desc_t **pmrt_desc);
+atl_status_t resizable_pmirt_init(size_t *proc_idx, size_t *proc_count, pm_rt_desc_t **pmrt_desc, const char* main_addr);
 atl_status_t resizable_pmirt_set_resize_function(atl_resize_fn_t resize_fn);
+atl_status_t resizable_pmirt_main_addr_reserv(char* main_addr);
 
 typedef enum pm_rt_type {
     PM_RT_SIMPLE   = 0,
@@ -65,7 +66,7 @@ is_pm_resize_enabled()
 }
 
 static inline atl_status_t
-pmrt_init(size_t *proc_idx, size_t *procs_num, pm_rt_desc_t **pmrt_desc)
+pmrt_init(size_t *proc_idx, size_t *procs_num, pm_rt_desc_t **pmrt_desc, const char* main_addr)
 {
     char* type_str = getenv(PM_TYPE);
 
@@ -82,7 +83,7 @@ pmrt_init(size_t *proc_idx, size_t *procs_num, pm_rt_desc_t **pmrt_desc)
         else
         {
             printf("Unknown %s: %s\n", PM_TYPE, type_str);
-            return atl_status_failure;
+            return ATL_STATUS_FAILURE;
         }
     }
 
@@ -90,12 +91,19 @@ pmrt_init(size_t *proc_idx, size_t *procs_num, pm_rt_desc_t **pmrt_desc)
     case PM_RT_SIMPLE:
         return pmirt_init(proc_idx, procs_num, pmrt_desc);
     case PM_RT_RESIZABLE:
-        return resizable_pmirt_init(proc_idx, procs_num, pmrt_desc);
+        return resizable_pmirt_init(proc_idx, procs_num, pmrt_desc, main_addr);
     default:
         printf("Wrong CCL_PM_TYPE: %s", type_str);
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
     }
 }
+
+static inline atl_status_t
+pmrt_main_addr_reserv(char* main_addr)
+{
+    return resizable_pmirt_main_addr_reserv(main_addr);
+}
+
 static inline atl_status_t
 pmrt_set_resize_function(atl_resize_fn_t user_checker)
 {
@@ -103,7 +111,7 @@ pmrt_set_resize_function(atl_resize_fn_t user_checker)
     case PM_RT_RESIZABLE:
         return resizable_pmirt_set_resize_function(user_checker);
     default:
-        return atl_status_success;
+        return ATL_STATUS_SUCCESS;
     }
 }
 static inline atl_status_t pmrt_update(size_t *proc_idx, size_t *proc_count, pm_rt_desc_t *pmrt_desc)

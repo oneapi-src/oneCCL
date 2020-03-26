@@ -76,7 +76,7 @@ public:
         {
             size_t bytes = in_cnt * ccl_datatype_get_size(dtype);
             LOG_DEBUG("cancel RECV in RECV_REDUCE entry, src ", src, ", req ", &req, ", bytes", bytes);
-            atl_comm_cancel(sched->bin->get_comm_ctx(), &req);
+            atl_ep_cancel(sched->bin->get_atl_ep(), &req);
         }
 
         if (own_comm_buff)
@@ -93,8 +93,8 @@ public:
         size_t bytes = in_cnt * ccl_datatype_get_size(dtype);
         LOG_DEBUG("starting RECV in RECV_REDUCE entry, src ", global_src, ", tag ", atl_tag, ", req ", &req, ", bytes ", bytes);
 
-        atl_status_t atl_status = atl_comm_recv(sched->bin->get_comm_ctx(), comm_buf.get_ptr(bytes),
-                                                bytes, global_src, atl_tag, &req);
+        atl_status_t atl_status = atl_ep_recv(sched->bin->get_atl_ep(), comm_buf.get_ptr(bytes),
+                                              bytes, global_src, atl_tag, &req);
 
         update_status(atl_status);
     }
@@ -102,9 +102,9 @@ public:
     void update() override
     {
         int req_status;
-        atl_status_t atl_status = atl_comm_check(sched->bin->get_comm_ctx(), &req_status, &req);
+        atl_status_t atl_status = atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
 
-        if (unlikely(atl_status != atl_status_success))
+        if (unlikely(atl_status != ATL_STATUS_SUCCESS))
         {
             CCL_THROW("RECV_REDUCE entry failed. atl_status: ", atl_status_to_str(atl_status));
         }

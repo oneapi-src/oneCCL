@@ -36,6 +36,7 @@
 #include "sched/entry/coll/direct/allgatherv_entry.hpp"
 #include "sched/entry/coll/direct/allreduce_entry.hpp"
 #include "sched/entry/coll/direct/alltoall_entry.hpp"
+#include "sched/entry/coll/direct/alltoallv_entry.hpp"
 #include "sched/entry/coll/direct/barrier_entry.hpp"
 #include "sched/entry/coll/direct/bcast_entry.hpp"
 #include "sched/entry/coll/direct/reduce_entry.hpp"

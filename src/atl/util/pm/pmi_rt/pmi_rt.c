@@ -67,32 +67,32 @@ pmirt_kvs_put(pm_rt_desc_t *pmrt_desc, char *kvs_key, size_t proc_idx,
         container_of(pmrt_desc, pmi_pm_context_t, pmrt_desc);
 
     if (!ctx->pmirt_main.initialized)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
     if (kvs_val_len > ctx->pmirt_main.max_vallen)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
     ret = snprintf(ctx->pmirt_main.key_storage, ctx->pmirt_main.max_keylen,
                    PMI_RT_KEY_FORMAT, kvs_key, proc_idx);
     if (ret < 0)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
     ret = encode(kvs_val, kvs_val_len, ctx->pmirt_main.val_storage,
                  ctx->pmirt_main.max_vallen);
     if (ret)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
     ret = PMI_KVS_Put(ctx->pmirt_main.kvsname,
                       ctx->pmirt_main.key_storage,
                       ctx->pmirt_main.val_storage);
     if (ret != PMI_SUCCESS)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
     ret = PMI_KVS_Commit(ctx->pmirt_main.kvsname);
     if (ret != PMI_SUCCESS)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
-    return atl_status_success;
+    return ATL_STATUS_SUCCESS;
 }
 
 static atl_status_t
@@ -104,24 +104,26 @@ pmirt_kvs_get(pm_rt_desc_t *pmrt_desc, char *kvs_key, size_t proc_idx,
         container_of(pmrt_desc, pmi_pm_context_t, pmrt_desc);
 
     if (!ctx->pmirt_main.initialized)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
     ret = snprintf(ctx->pmirt_main.key_storage, ctx->pmirt_main.max_keylen,
                    PMI_RT_KEY_FORMAT, kvs_key, proc_idx);
     if (ret < 0)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
-    ret = PMI_KVS_Get(ctx->pmirt_main.kvsname, ctx->pmirt_main.key_storage,
+    ret = PMI_KVS_Get(ctx->pmirt_main.kvsname,
+                      ctx->pmirt_main.key_storage,
                       ctx->pmirt_main.val_storage,
-		      ctx->pmirt_main.max_vallen);
+                      ctx->pmirt_main.max_vallen);
+
     if (ret != PMI_SUCCESS)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
     ret = decode(ctx->pmirt_main.val_storage, kvs_val, kvs_val_len);
     if (ret)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
-    return atl_status_success;
+    return ATL_STATUS_SUCCESS;
 }
 
 static void pmirt_barrier(pm_rt_desc_t *pmrt_desc)
@@ -139,12 +141,12 @@ atl_status_t pmirt_update(size_t *proc_idx, size_t *proc_count)
 {
     PMI_Get_size((int *)proc_idx);
     PMI_Get_rank((int *)proc_count);
-    return atl_status_success;
+    return ATL_STATUS_SUCCESS;
 }
 
 atl_status_t pmirt_wait_notification()
 {
-    return atl_status_failure;
+    return ATL_STATUS_FAILURE;
 }
 
 pm_rt_ops_t ops = {
@@ -168,12 +170,12 @@ atl_status_t pmirt_init(size_t *proc_idx, size_t *proc_count, pm_rt_desc_t **pmr
         PMI_Get_rank((int *)proc_count);
         *pmrt_desc = &pmi_ctx_singleton.pmrt_desc;
         pmi_ctx_singleton.pmirt_main.ref_cnt++;
-        return atl_status_success;
+        return ATL_STATUS_SUCCESS;
     }
 
     ret = PMI_Init(&spawned);
     if (ret != PMI_SUCCESS)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
     ret = PMI_Get_size((int *)proc_count);
     if (ret != PMI_SUCCESS)
@@ -219,12 +221,12 @@ atl_status_t pmirt_init(size_t *proc_idx, size_t *proc_count, pm_rt_desc_t **pmr
     pmi_ctx_singleton.pmrt_desc.kvs_ops = &kvs_ops;
     *pmrt_desc = &pmi_ctx_singleton.pmrt_desc;
 
-    return atl_status_success;
+    return ATL_STATUS_SUCCESS;
 err_alloc_val:
     free(pmi_ctx_singleton.pmirt_main.key_storage);
 err_alloc_key:
     free(pmi_ctx_singleton.pmirt_main.kvsname);
 err_pmi:
     PMI_Finalize();
-    return atl_status_failure;    
+    return ATL_STATUS_FAILURE;
 }

@@ -25,8 +25,6 @@
 
 constexpr const char* CCL_ENV_NOT_SPECIFIED = "<not specified>";
 
-/* TODO: rework logging code */
-constexpr const char* CCL_VERSION = "CCL_VERSION";
 constexpr const char* CCL_LOG_LEVEL = "CCL_LOG_LEVEL";
 constexpr const char* CCL_SCHED_DUMP = "CCL_SCHED_DUMP";
 
@@ -40,6 +38,7 @@ constexpr const char* CCL_ATL_SHM = "CCL_ATL_SHM";
 constexpr const char* CCL_ALLGATHERV = "CCL_ALLGATHERV";
 constexpr const char* CCL_ALLREDUCE = "CCL_ALLREDUCE";
 constexpr const char* CCL_ALLTOALL = "CCL_ALLTOALL";
+constexpr const char* CCL_ALLTOALLV = "CCL_ALLTOALLV";
 constexpr const char* CCL_BARRIER = "CCL_BARRIER";
 constexpr const char* CCL_BCAST = "CCL_BCAST";
 constexpr const char* CCL_REDUCE = "CCL_REDUCE";
@@ -102,6 +101,7 @@ struct alignas(CACHELINE_SIZE) ccl_env_data
     std::string allgatherv_algo_raw;
     std::string allreduce_algo_raw;
     std::string alltoall_algo_raw;
+    std::string alltoallv_algo_raw;
     std::string barrier_algo_raw;
     std::string bcast_algo_raw;
     std::string reduce_algo_raw;
@@ -148,3 +148,5 @@ int ccl_env_parse_cache_key();
 
 const char* ccl_priority_mode_to_str(ccl_priority_mode type);
 const char* ccl_atl_transport_to_str(ccl_atl_transport transport);
+
+void ccl_detect_iset();

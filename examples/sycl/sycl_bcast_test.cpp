@@ -38,11 +38,13 @@ int main(int argc, char **argv)
     /* create SYCL stream */
     ccl_stream_create(ccl_stream_sycl, &q, &stream);
 
-    /* open buf and initialize it on the CPU side */
-    auto host_acc_buf = buf.get_access<mode::write>();
+    {
+        /* open buf and initialize it on the CPU side */
+        auto host_acc_buf = buf.get_access<mode::write>();
 
-    for (i = 0; i < COUNT; i++) {
-        host_acc_buf[i] = rank;
+        for (i = 0; i < COUNT; i++) {
+            host_acc_buf[i] = rank;
+        }
     }
 
     /* open buf and modify it on the target device side */

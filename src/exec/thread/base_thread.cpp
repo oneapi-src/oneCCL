@@ -52,6 +52,7 @@ ccl_status_t ccl_base_thread::stop()
 ccl_status_t ccl_base_thread::pin(int proc_id)
 {
     LOG_DEBUG(name(), " # ", idx, ", proc_id ", proc_id);
+
     int pthread_err;
     cpu_set_t cpuset;
 

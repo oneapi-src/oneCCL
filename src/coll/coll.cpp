@@ -57,6 +57,8 @@ const char* ccl_coll_type_to_str(ccl_coll_type type)
             return "allreduce";
         case ccl_coll_alltoall:
             return "alltoall";
+        case ccl_coll_alltoallv:
+            return "alltoallv";
         case ccl_coll_barrier:
             return "barrier";
         case ccl_coll_bcast:
@@ -269,15 +271,43 @@ ccl_status_t ccl_coll_build_alltoall(
     switch (algo)
     {
         case ccl_coll_alltoall_direct:
-            CCL_CALL(ccl_coll_build_direct_alltoall(sched, send_buf, recv_buf, count, dtype, comm));
+            CCL_CALL(ccl_coll_build_direct_alltoall(sched, send_buf, recv_buf,
+                                                    count, dtype, comm));
             break;
-#if 0
-        case ccl_coll_alltoall_scatter:
-            CCL_CALL(ccl_coll_build_scatter_alltoall(sched, send_buf, recv_buf, count, dtype, comm));
-            break;
-#endif
         default:
-            CCL_FATAL("unexpected allreduce_algo ", ccl_coll_algorithm_to_str(algo));
+            CCL_FATAL("unexpected alltoall_algo ", ccl_coll_algorithm_to_str(algo));
+            return ccl_status_invalid_arguments;
+    }
+
+    return status;
+}
+
+ccl_status_t ccl_coll_build_alltoallv(
+    ccl_sched* sched,
+    ccl_buffer send_buf,
+    const size_t* send_counts,
+    ccl_buffer recv_buf,
+    const size_t* recv_counts,
+    ccl_datatype_internal_t dtype,
+    ccl_comm* comm)
+{
+    ccl_status_t status = ccl_status_success;
+
+    ccl_selector_param param;
+    param.ctype = ccl_coll_alltoallv;
+    param.dtype = dtype;
+    param.comm = comm;
+
+    auto algo = global_data.algorithm_selector->get<ccl_coll_alltoallv>(param);
+
+    switch (algo)
+    {
+        case ccl_coll_alltoallv_direct:
+            CCL_CALL(ccl_coll_build_direct_alltoallv(sched, send_buf, send_counts,
+                                                     recv_buf, recv_counts, dtype, comm));
+            break;
+        default:
+            CCL_FATAL("unexpected alltoallv_algo ", ccl_coll_algorithm_to_str(algo));
             return ccl_status_invalid_arguments;
     }
 
@@ -557,6 +587,31 @@ ccl_request* ccl_alltoall_impl(const void* send_buf,
 
     auto req = ccl_coll_create(param, ccl_coll_attr(attr));
     LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req, " count ", count);
+    return req;
+}
+
+ccl_request* ccl_alltoallv_impl(const void* send_buf,
+                                const size_t* send_counts,
+                                void* recv_buf,
+                                const size_t* recv_counts,
+                                ccl_datatype_t dtype,
+                                const ccl_coll_attr_t* attr,
+                                ccl_comm* comm,
+                                const ccl_stream* stream)
+{
+    ccl_coll_param param{};
+
+    param.ctype = ccl_coll_alltoallv;
+    param.send_buf = send_buf;
+    param.send_counts = send_counts;
+    param.recv_buf = recv_buf;
+    param.recv_counts = recv_counts;
+    param.dtype = ccl_datatype_get(dtype);
+    param.stream = stream;
+    param.comm = comm;
+
+    auto req = ccl_coll_create(param, ccl_coll_attr(attr));
+    LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req);
     return req;
 }
 

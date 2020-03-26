@@ -226,11 +226,17 @@ void Hard_finilize(int sig)
         old_act.sa_handler(sig);
 }
 
-int PMIR_API PMIR_Init(void)
+int PMIR_API PMIR_Main_Addr_Reserv(char* main_addr)
+{
+    main_server_address_reserve(main_addr);
+    return 0;
+}
+
+int PMIR_API PMIR_Init(const char* main_addr)
 {
     struct sigaction act;
     FILE* fp;
-    memset(my_hostname, '\0', MAX_KVS_VAL_LENGTH);
+    memset(my_hostname, 0, MAX_KVS_VAL_LENGTH);
     if ((fp = popen("hostname", READ_ONLY)) == NULL)
     {
         printf("Can't get hostname\n");
@@ -244,7 +250,7 @@ int PMIR_API PMIR_Init(void)
 
     SET_STR(&(my_hostname[strlen(my_hostname)]), MAX_KVS_VAL_LENGTH - (int)strlen(my_hostname) - 1, "-%d", getpid());
 
-    if (kvs_init())
+    if (kvs_init(main_addr))
     {
         return 1;
     }

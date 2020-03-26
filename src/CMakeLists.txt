@@ -1,3 +1,18 @@
+#
+# Copyright 2016-2020 Intel Corporation
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 #builds ccl
 
 add_subdirectory(atl)
@@ -11,6 +26,7 @@ set(CCL_SRC
     coll/algorithms/allreduce/allreduce_2d.cpp
     coll/algorithms/allreduce/allreduce_rma.cpp
     coll/algorithms/alltoall.cpp
+    coll/algorithms/alltoallv.cpp
     coll/algorithms/barrier.cpp
     coll/algorithms/bcast.cpp
     coll/algorithms/double_tree_ops.cpp
@@ -20,11 +36,13 @@ set(CCL_SRC
     coll/selection/selector_allgatherv.cpp
     coll/selection/selector_allreduce.cpp
     coll/selection/selector_alltoall.cpp
+    coll/selection/selector_alltoallv.cpp
     coll/selection/selector_barrier.cpp
     coll/selection/selector_bcast.cpp
     coll/selection/selector_reduce.cpp
     coll/selection/selector_reduce_scatter.cpp
     coll/selection/selector_sparse_allreduce.cpp
+    comp/bfp16/bfp16.cpp
     comp/comp.cpp
     sched/sched.cpp
     sched/master_sched.cpp

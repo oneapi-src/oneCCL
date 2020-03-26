@@ -16,6 +16,7 @@
 #pragma once
 
 #include "common/comm/comm_id_storage.hpp"
+#include "common/utils/utils.hpp"
 
 using ccl_op_id_t = uint8_t;
 using ccl_sched_id_t = uint16_t;
@@ -27,7 +28,17 @@ public:
     ccl_atl_tag(size_t tag_bits, size_t max_tag) :
         tag_bits(tag_bits),
         max_tag(max_tag)
-    {}
+    {
+        if (max_tag == ccl_pof2(max_tag) * 2 - 1)
+            max_tag_mask = max_tag;
+        else
+            max_tag_mask = ccl_pof2(max_tag) - 1;
+
+        LOG_INFO("tag_bits ", tag_bits,
+                 ", max_tag ", max_tag,
+                 ", pof2(max_tag) ", ccl_pof2(max_tag),
+                 ", max_tag_mask ", max_tag_mask);
+    }
 
     ccl_atl_tag(const ccl_atl_tag& other) = delete;
     ccl_atl_tag(ccl_atl_tag&& other) = delete;
@@ -58,6 +69,7 @@ private:
 
     size_t tag_bits;
     size_t max_tag;
+    size_t max_tag_mask;
 
     const int op_id_shift = 0;
     const int sched_id_shift = 8;

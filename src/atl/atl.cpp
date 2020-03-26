@@ -13,121 +13,154 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#include <algorithm>
+#include <assert.h>
+#include <cstring>
+#include <dirent.h>
+#include <dlfcn.h>
+
 #include "atl/atl.h"
 #include "common/log/log.hpp"
 
-#include <dlfcn.h>
-#include <dirent.h>
-#include <assert.h>
-#include <algorithm>
-#include <cstring>
-
-#define LIB_SUFFIX ".so"
+#define LIB_SUFFIX     ".so"
+#define ATL_LIB_PREFIX "libccl_atl_"
 
 static int initialized = 0;
+static int is_main_addr_reserv = 0;
 
-static int lib_filter(const struct dirent *entry) {
-    size_t l = strlen(entry->d_name);
-    size_t sfx = sizeof(LIB_SUFFIX) - 1;
+static int
+atl_lib_filter(const struct dirent* entry)
+{
+    size_t entry_len = strlen(entry->d_name);
+    size_t sfx_len = strlen(LIB_SUFFIX);
+    const char* sfx_ptr;
 
-    if (l > sfx) {
-        return strstr((entry->d_name), LIB_SUFFIX) ? 1 : 0;
-    } else {
-        return 0;
+    if (entry_len > sfx_len)
+    {
+        sfx_ptr = strstr((entry->d_name), LIB_SUFFIX);
+
+        if (strstr((entry->d_name), ATL_LIB_PREFIX) &&
+            sfx_ptr && (strlen(sfx_ptr) == sfx_len))
+            return 1;
+        else
+            return 0;
     }
+    else
+        return 0;
 }
 
-static void atl_ini_dir(int *argc, char ***argv, atl_proc_coord_t *proc_coord,
-                        atl_attr_t *attr, atl_comm_t ***atl_comms, atl_desc_t **atl_desc,
-                        const char *dir, const char *transport_name) {
+static void
+atl_ini_dir(const char* transport_name,
+            int* argc, char*** argv,
+            atl_attr_t* attr,
+            atl_ctx_t** ctx,
+            const char* dir,
+            const char* main_addr)
+{
     int n = 0;
-    char *lib;
-    void *dlhandle;
-    struct dirent **liblist = NULL;
+    char* lib;
+    void* dlhandle;
+    struct dirent** liblist = NULL;
     typedef atl_status_t (*init_f)(atl_transport_t *);
     init_f init_func;
     size_t transport_name_len = strlen(transport_name);
 
-    if (strcmp(transport_name, "mpi") == 0 && !getenv("I_MPI_ROOT")) {
+    if (strcmp(transport_name, "mpi") == 0 && !getenv("I_MPI_ROOT"))
+    {
         LOG_INFO("ATL MPI transport is requested but seems Intel MPI environment is not set. "
                  "Please source release_mt version of Intel MPI (2019 or higher version).");
     }
 
-    n = scandir(dir, &liblist, lib_filter, NULL);
+    n = scandir(dir, &liblist, atl_lib_filter, NULL);
     if (n < 0)
         goto libdl_done;
 
-    while (n--) {
+    while (n--)
+    {
         if (asprintf(&lib, "%s/%s", dir, liblist[n]->d_name) < 0)
             goto libdl_done;
 
         LOG_DEBUG("opening lib ", lib);
         dlhandle = dlopen(lib, RTLD_NOW);
         free(liblist[n]);
-        if (dlhandle == NULL) {
-            LOG_DEBUG("can't open lib ", lib, ", error ", dlerror());
+        if (dlhandle == NULL)
+        {
+            LOG_ERROR("can't open lib ", lib, ", error ", dlerror());
             free(lib);
             continue;
         }
 
         init_func = reinterpret_cast<init_f >(dlsym(dlhandle, "atl_ini"));
-        if (init_func == NULL) {
+        if (init_func == NULL)
+        {
             dlclose(dlhandle);
             free(lib);
-        } else {
+        }
+        else
+        {
             LOG_DEBUG("lib ", lib, " contains necessary symbol");
-            atl_transport_t transport;
-            // TODO: propagate atl_status to upper level
-            atl_status_t ret;
             free(lib);
 
-            if ((init_func)(&transport) != atl_status_success)
+            atl_transport_t transport;
+            atl_status_t ret;
+
+            if ((init_func)(&transport) != ATL_STATUS_SUCCESS)
                 continue;
 
             if (strncmp(transport.name, transport_name,
                         std::min(transport_name_len, strlen(transport.name))))
                 continue;
-
-            ret = transport.init(argc, argv, proc_coord,
-                                 attr, atl_comms, atl_desc);
-            if (ret != atl_status_success)
+            if (is_main_addr_reserv)
+            {
+                ret = transport.main_addr_reserv(const_cast<char*>(main_addr));
+            }
+            else
+            {
+                ret = transport.init(argc, argv, attr, ctx, main_addr);
+            }
+            if (ret != ATL_STATUS_SUCCESS)
                 continue;
 
             break;
         }
     }
 
-    libdl_done:
+libdl_done:
     while (n-- > 0)
         free(liblist[n]);
     free(liblist);
 }
 
-/* Split the given string "s" using the specified delimiter(s) in the string
- * "delim" and return an array of strings. The array is terminated with a NULL
- * pointer. Returned array should be freed with ofi_free_string_array().
- *
- * Returns NULL on failure.
+/*
+    Split the given string "s" using the specified delimiter(s) in the string
+    "delim" and return an array of strings. The array is terminated with a NULL
+    pointer. Returned array should be freed with ofi_free_string_array().
+
+    Returns NULL on failure.
  */
-char **atl_split_and_alloc(const char *s, const char *delim, size_t *count) {
+static char**
+atl_split_and_alloc(const char* s, const char* delim, size_t* count)
+{
     int i, n;
-    char *tmp;
-    char *dup = NULL;
-    char **arr = NULL;
+    char* tmp;
+    char* dup = NULL;
+    char** arr = NULL;
 
     if (!s || !delim)
         return NULL;
 
     dup = strdup(s);
-    if (!dup) {
+    if (!dup)
         return NULL;
-    }
 
     /* compute the array size */
     n = 1;
-    for (tmp = dup; *tmp != '\0'; ++tmp) {
-        for (i = 0; delim[i] != '\0'; ++i) {
-            if (*tmp == delim[i]) {
+    for (tmp = dup; *tmp != '\0'; ++tmp)
+    {
+        for (i = 0; delim[i] != '\0'; ++i)
+        {
+            if (*tmp == delim[i])
+            {
                 ++n;
                 break;
             }
@@ -136,27 +169,29 @@ char **atl_split_and_alloc(const char *s, const char *delim, size_t *count) {
 
     /* +1 to leave space for NULL terminating pointer */
     arr = static_cast<char**>(calloc(n + 1, sizeof(*arr)));
-    if (!arr) {
+    if (!arr)
         goto cleanup;
-    }
 
     /* set array elts to point inside the dup'ed string */
-    for (tmp = dup, i = 0; tmp != NULL; ++i) {
+    for (tmp = dup, i = 0; tmp != NULL; ++i)
         arr[i] = strsep(&tmp, delim);
-    }
+
     assert(i == n);
 
     if (count)
         *count = n;
+
     return arr;
 
-    cleanup:
+cleanup:
     free(dup);
     return NULL;
 }
 
 /* see atl_split_and_alloc() */
-void atl_free_string_array(char **s) {
+static void
+atl_free_string_array(char** s)
+{
     /* all strings are allocated from the same strdup'ed slab, so just free
      * the first element */
     if (s != NULL)
@@ -166,20 +201,24 @@ void atl_free_string_array(char **s) {
     free(s);
 }
 
-atl_status_t atl_init(const char *transport_name, int *argc, char ***argv, atl_proc_coord_t *proc_coord,
-                      atl_attr_t *attr, atl_comm_t ***atl_comms, atl_desc_t **atl_desc) {
-    const char *transport_dl_dir = NULL;
+atl_status_t atl_init(const char* transport_name,
+                      int* argc, char*** argv,
+                      atl_attr_t* attr,
+                      atl_ctx_t** ctx,
+                      const char* main_addr)
+{
+    const char* transport_dl_dir = NULL;
     int n = 0;
-    char **dirs;
-    void *dlhandle;
+    char** dirs;
+    void* dlhandle;
 
     if (initialized)
-        return atl_status_failure;
+        return ATL_STATUS_FAILURE;
 
     dlhandle = dlopen(NULL, RTLD_NOW);
-    if (dlhandle == NULL) {
+    if (dlhandle == NULL)
         goto err_dlopen;
-    }
+
     dlclose(dlhandle);
 
     transport_dl_dir = getenv("CCL_ATL_TRANSPORT_PATH");
@@ -187,17 +226,28 @@ atl_status_t atl_init(const char *transport_name, int *argc, char ***argv, atl_p
         transport_dl_dir = ATL_TRANSPORT_DL_DIR;
 
     dirs = atl_split_and_alloc(transport_dl_dir, ":", NULL);
-    if (dirs) {
-        for (n = 0; dirs[n]; ++n) {
-            atl_ini_dir(argc, argv, proc_coord,
-                        attr, atl_comms, atl_desc,
-                        dirs[n], transport_name);
+    if (dirs)
+    {
+        for (n = 0; dirs[n]; ++n)
+        {
+            atl_ini_dir(transport_name,
+                        argc, argv,
+                        attr, ctx,
+                        dirs[n],
+                        main_addr);
         }
         atl_free_string_array(dirs);
     }
 
-    return atl_status_success;
+    return ATL_STATUS_SUCCESS;
 
-    err_dlopen:
-    return atl_status_failure;
+err_dlopen:
+    return ATL_STATUS_FAILURE;
+}
+
+void atl_main_addr_reserv(char* main_addr)
+{
+    is_main_addr_reserv = 1;
+    atl_init("ofi", NULL, NULL, NULL, NULL, main_addr);
+    is_main_addr_reserv = 0;
 }

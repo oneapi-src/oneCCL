@@ -55,9 +55,9 @@ public:
 
         LOG_DEBUG("SEND entry dst ", global_dst, ", tag ", atl_tag, ", req ", &req, ", bytes ", bytes);
 
-        atl_status_t atl_status = atl_comm_send(sched->bin->get_comm_ctx(), buf.get_ptr(bytes),
-                                                bytes, global_dst,
-                                                atl_tag, &req);
+        atl_status_t atl_status = atl_ep_send(sched->bin->get_atl_ep(), buf.get_ptr(bytes),
+                                              bytes, global_dst,
+                                              atl_tag, &req);
 
         update_status(atl_status);
     }
@@ -65,9 +65,9 @@ public:
     void update() override
     {
         int req_status;
-        atl_status_t atl_status = atl_comm_check(sched->bin->get_comm_ctx(), &req_status, &req);
+        atl_status_t atl_status = atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
 
-        if (unlikely(atl_status != atl_status_success))
+        if (unlikely(atl_status != ATL_STATUS_SUCCESS))
         {
             CCL_THROW("SEND entry failed. atl_status: ", atl_status_to_str(atl_status));
         }

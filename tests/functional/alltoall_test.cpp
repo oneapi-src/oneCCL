@@ -13,16 +13,16 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#define Collective_Name "CCL_ALLTOALL"
+#define TEST_CCL_ALLTOALL
 
-#include <chrono>
-#include <functional>
-#include <vector>
+#define COLL_NAME "CCL_ALLTOALL"
 
 #include "base_impl.hpp"
 
-template <typename T> class alltoall_test : public base_test <T> {
+template <typename T> class alltoall_test : public base_test <T>
+{
 public:
+
      int check(typed_test_param<T>& param)
      {
         for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++)
@@ -32,24 +32,17 @@ public:
                 for (size_t elem_idx = 0; elem_idx < param.elem_count; elem_idx++)
                 {
                     T expected = static_cast<T>(proc_idx);
-                    if (param.recv_buf[buf_idx][(param.elem_count * proc_idx) + elem_idx] != expected)
-                    {
-                        sprintf(alltoall_test::get_err_message(), "[%zu] got recv_buf[%zu][%zu]  = %f, but expected = %f\n",
-                                param.process_idx, buf_idx, (param.elem_count * proc_idx) + elem_idx, (double) param.recv_buf[buf_idx][(param.elem_count * proc_idx) + elem_idx], (double) expected);
+                    size_t size = (param.elem_count * proc_idx) + elem_idx;
+                    if (base_test<T>::check_error(param, expected, buf_idx, size))
                         return TEST_FAILURE;
-                    }
                 }
             }
         }
         return TEST_SUCCESS;
     }
+
     void fill_buffers(typed_test_param<T>& param)
     {
-        for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++)
-        {
-            param.recv_buf[buf_idx].resize(param.elem_count * param.process_count * sizeof(T));
-            param.send_buf[buf_idx].resize(param.elem_count * param.process_count * sizeof(T));
-        }
         for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++)
         {
             for (size_t proc_idx = 0; proc_idx < param.process_count * param.elem_count; proc_idx++)
@@ -57,27 +50,47 @@ public:
                 param.send_buf[buf_idx][proc_idx] = param.process_idx;
                 if (param.test_conf.place_type == PT_OOP)
                 {
-                    param.recv_buf[buf_idx][proc_idx] = static_cast<T>SOME_VALUE;
+                    param.recv_buf[buf_idx][proc_idx] = static_cast<T>(SOME_VALUE);
+                    if (param.test_conf.data_type == DT_BFP16)
+                    {
+                        param.recv_buf_bfp16[buf_idx][proc_idx] = static_cast<short>(SOME_VALUE);
+                    }
                 }
             }
         }
+
         if (param.test_conf.place_type != PT_OOP)
+        {
             param.recv_buf = param.send_buf;
+        }
     }
+
+    size_t get_recv_buf_size(typed_test_param<T>& param)
+    {
+        return param.elem_count * param.process_count;
+    }
+
     void run_derived(typed_test_param<T>& param)
     {
-        const ccl_test_conf& test_conf = param.get_conf();
+        void* send_buf;
+        void* recv_buf;
         size_t count = param.elem_count;
+        const ccl_test_conf& test_conf = param.get_conf();
         ccl::coll_attr* attr = &param.coll_attr;
         ccl::stream_t& stream = param.get_stream();
+        ccl::data_type data_type = static_cast<ccl::data_type>(test_conf.data_type);
+
         for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++)
         {
+            size_t new_idx = param.buf_indexes[buf_idx];
             param.prepare_coll_attr(param.buf_indexes[buf_idx]);
-            T* send_buf = param.send_buf[param.buf_indexes[buf_idx]].data();
-            T* recv_buf = param.recv_buf[param.buf_indexes[buf_idx]].data();
+
+            send_buf = param.get_send_buf(new_idx);
+            recv_buf = param.get_recv_buf(new_idx);
+
             param.reqs[buf_idx] =
-                param.global_comm->alltoall((test_conf.place_type == PT_IN) ? recv_buf : send_buf,
-                 recv_buf, count, attr, stream);
+                param.global_comm->alltoall((test_conf.place_type == PT_IN) ? recv_buf : send_buf, 
+                                            recv_buf, count, data_type, attr, stream);    
         }
     }
 };

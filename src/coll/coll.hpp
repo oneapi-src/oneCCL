@@ -27,6 +27,8 @@ typedef cl::sycl::buffer<char, 1> ccl_sycl_buffer_t;
 
 template<class native_type>
 using ccl_sycl_typed_buffer_t = cl::sycl::buffer<native_type, 1>;
+
+/* ordering should be aligned with ccl_datatype_t */
 using ccl_sycle_buffer_one_dim_types =
       std::tuple<ccl_sycl_typed_buffer_t<char>,
                  ccl_sycl_typed_buffer_t<int>,
@@ -84,6 +86,7 @@ struct ccl_coll_param
     void* recv_buf;
     size_t count;
     size_t send_count;
+    const size_t* send_counts;
     const size_t* recv_counts;
     ccl_datatype_internal_t dtype;
     ccl_reduction_t reduction;
@@ -107,8 +110,12 @@ struct ccl_coll_param
 struct ccl_coll_param_copy
 {
     /* keep copy of user options which can be invalidated after collective call */
+
     std::vector<void*> ag_recv_bufs;
     std::vector<size_t> ag_recv_counts;
+
+    std::vector<size_t> a2av_send_counts;
+    std::vector<size_t> a2av_recv_counts;
 };
 
 const char* ccl_coll_type_to_str(ccl_coll_type type);
@@ -135,6 +142,14 @@ ccl_status_t ccl_coll_build_alltoall(ccl_sched* sched,
                                      size_t count,
                                      ccl_datatype_internal_t dtype,
                                      ccl_comm* comm);
+
+ccl_status_t ccl_coll_build_alltoallv(ccl_sched* sched,
+                                      ccl_buffer send_buf,
+                                      const size_t* send_counts,
+                                      ccl_buffer recv_buf,
+                                      const size_t* recv_counts,
+                                      ccl_datatype_internal_t dtype,
+                                      ccl_comm* comm);
 
 ccl_status_t ccl_coll_build_barrier(ccl_sched* sched, ccl_comm* comm);
 
@@ -198,6 +213,15 @@ ccl_request* ccl_alltoall_impl(const void* send_buf,
                                const ccl_coll_attr_t* attr,
                                ccl_comm* comm,
                                const ccl_stream* stream);
+
+ccl_request* ccl_alltoallv_impl(const void* send_buf,
+                                const size_t* send_counts,
+                                void* recv_buf,
+                                const size_t* recv_counts,
+                                ccl_datatype_t dtype,
+                                const ccl_coll_attr_t* attr,
+                                ccl_comm* comm,
+                                const ccl_stream* stream);
 
 void ccl_barrier_impl(ccl_comm* comm,
                       const ccl_stream* stream);

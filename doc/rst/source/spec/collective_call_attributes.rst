@@ -23,11 +23,11 @@ Collective Call Attributes
         /* Treat buffer as vector/regular - applicable for allgatherv only */
         int vector_buf;
         /**
-        * Id of the operation. If specified, new communicator will be created and collective
-        * operations with the same @b match_id will be executed in the same order.
+        * Id of the operation. If specified, new communicator is created and collective
+        * operations with the same @b match_id are executed in the same order.
         */
         const char* match_id;
     } ccl_coll_attr_t;
 
-``ccl_coll_attr_t`` (``ccl::coll_attr`` in C++ version of API) is extendable structure which serves as a modificator of communication primitive behaviour. 
-It can be optionally passed into any collective operation exposed by oneCCL.
+``ccl_coll_attr_t`` (``ccl::coll_attr`` in C++ version of API) is an extendable structure that serves as a modificator of communication primitive behaviour. 
+It can be optionally passed into any collective operation exposed by |product_short|.

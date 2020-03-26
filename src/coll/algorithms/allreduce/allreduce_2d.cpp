@@ -50,7 +50,7 @@ ccl_allreduce_2d_builder::ccl_allreduce_2d_builder()
             second_dim_ranks += " " + std::to_string(second_dim_comm->get_global_rank(idx));
         }
         LOG_INFO("created allreduce_2d builder:",
-                 ", first_dim_comm: size ", first_dim_comm->size(),
+                 " first_dim_comm: size ", first_dim_comm->size(),
                  ", ranks ", first_dim_ranks,
                  ", second_dim_comm: size ", second_dim_comm->size(),
                  ", ranks ", second_dim_ranks);

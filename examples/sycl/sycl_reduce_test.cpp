@@ -39,13 +39,15 @@ int main(int argc, char **argv)
     /* create SYCL stream */
     ccl_stream_create(ccl_stream_sycl, &q, &stream);
 
-    /* open sendbuf and recvbuf and initialize them on the CPU side */
-    auto host_acc_sbuf = sendbuf.get_access<mode::write>();
-    auto host_acc_rbuf = recvbuf.get_access<mode::write>();
+    {
+        /* open sendbuf and recvbuf and initialize them on the CPU side */
+        auto host_acc_sbuf = sendbuf.get_access<mode::write>();
+        auto host_acc_rbuf = recvbuf.get_access<mode::write>();
 
-    for (i = 0; i < COUNT; i++) {
-        host_acc_sbuf[i] = rank;
-        host_acc_rbuf[i] = 0;
+        for (i = 0; i < COUNT; i++) {
+            host_acc_sbuf[i] = rank;
+            host_acc_rbuf[i] = 0;
+        }
     }
 
     /* open sendbuf and modify it on the target device side */

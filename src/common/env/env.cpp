@@ -33,6 +33,7 @@ ccl_env_data env_data =
     .allgatherv_algo_raw = std::string(),
     .allreduce_algo_raw = std::string(),
     .alltoall_algo_raw = std::string(),
+    .alltoallv_algo_raw = std::string(),
     .barrier_algo_raw = std::string(),
     .bcast_algo_raw = std::string(),
     .reduce_algo_raw = std::string(),
@@ -58,7 +59,7 @@ ccl_env_data env_data =
     .rs_chunk_count = 1,
     .rs_min_chunk_size = 65536,
     .ar2d_chunk_count = 1,
-    .ar2d_min_chunk_size = 65536,
+    .ar2d_min_chunk_size = 65536
 };
 
 int ccl_env_2_int(const char* env_name, int& val)
@@ -142,6 +143,7 @@ void ccl_env_parse()
     ccl_env_2_string(CCL_ALLGATHERV, env_data.allgatherv_algo_raw);
     ccl_env_2_string(CCL_ALLREDUCE, env_data.allreduce_algo_raw);
     ccl_env_2_string(CCL_ALLTOALL, env_data.alltoall_algo_raw);
+    ccl_env_2_string(CCL_ALLTOALLV, env_data.alltoallv_algo_raw);
     ccl_env_2_string(CCL_BARRIER, env_data.barrier_algo_raw);
     ccl_env_2_string(CCL_BCAST, env_data.bcast_algo_raw);
     ccl_env_2_string(CCL_REDUCE, env_data.reduce_algo_raw);
@@ -169,11 +171,25 @@ void ccl_env_parse()
     ccl_env_parse_cache_key();
 
     ccl_env_2_size_t(CCL_CHUNK_COUNT, env_data.chunk_count);
+    CCL_THROW_IF_NOT(env_data.chunk_count >= 1, "incorrect ",
+                     CCL_CHUNK_COUNT, " ", env_data.chunk_count);
     ccl_env_2_size_t(CCL_MIN_CHUNK_SIZE, env_data.min_chunk_size);
+    CCL_THROW_IF_NOT(env_data.min_chunk_size >= 1, "incorrect ",
+                     CCL_MIN_CHUNK_SIZE, " ", env_data.min_chunk_size);
+
     ccl_env_2_size_t(CCL_RS_CHUNK_COUNT, env_data.rs_chunk_count);
+    CCL_THROW_IF_NOT(env_data.rs_chunk_count >= 1, "incorrect ",
+                     CCL_RS_CHUNK_COUNT, " ", env_data.rs_chunk_count);
     ccl_env_2_size_t(CCL_RS_MIN_CHUNK_SIZE, env_data.rs_min_chunk_size);
+    CCL_THROW_IF_NOT(env_data.rs_min_chunk_size >= 1, "incorrect ",
+                     CCL_RS_MIN_CHUNK_SIZE, " ", env_data.rs_min_chunk_size);
+
     ccl_env_2_size_t(CCL_AR2D_CHUNK_COUNT, env_data.ar2d_chunk_count);
+    CCL_THROW_IF_NOT(env_data.ar2d_chunk_count >= 1, "incorrect ",
+                     CCL_AR2D_CHUNK_COUNT, " ", env_data.ar2d_chunk_count);
     ccl_env_2_size_t(CCL_AR2D_MIN_CHUNK_SIZE, env_data.ar2d_min_chunk_size);
+    CCL_THROW_IF_NOT(env_data.ar2d_min_chunk_size >= 1, "incorrect ",
+                     CCL_AR2D_MIN_CHUNK_SIZE, " ", env_data.ar2d_min_chunk_size);
 
     if (env_data.enable_unordered_coll && env_data.atl_transport != ccl_atl_ofi)
     {
@@ -188,15 +204,15 @@ void ccl_env_print()
 #else
     const char* build_mode = "release";
 #endif
-    LOG_INFO("CCL library is built in ", build_mode, " mode");
+    LOG_INFO("build mode : ", build_mode);
 
     ccl_version_t version;
-    if(ccl_get_version(&version) != ccl_status_success)
+    if (ccl_get_version(&version) != ccl_status_success)
     {
-        throw std::runtime_error("Cannot determine CCL version!");
+        throw std::runtime_error("cannot determine CCL version!");
     }
 
-    LOG_INFO(CCL_VERSION, ": ", version.full);
+    LOG_INFO("version : ", version.full);
 
     LOG_INFO(CCL_LOG_LEVEL, ": ", env_data.log_level);
     LOG_INFO(CCL_SCHED_DUMP, ": ", env_data.sched_dump);
@@ -217,6 +233,8 @@ void ccl_env_print()
         env_data.allreduce_algo_raw : CCL_ENV_NOT_SPECIFIED);
     LOG_INFO(CCL_ALLTOALL, ": ", (env_data.alltoall_algo_raw.length()) ?
         env_data.alltoall_algo_raw : CCL_ENV_NOT_SPECIFIED);
+    LOG_INFO(CCL_ALLTOALLV, ": ", (env_data.alltoallv_algo_raw.length()) ?
+        env_data.alltoallv_algo_raw : CCL_ENV_NOT_SPECIFIED);
     LOG_INFO(CCL_BARRIER, ": ", (env_data.barrier_algo_raw.length()) ?
         env_data.barrier_algo_raw : CCL_ENV_NOT_SPECIFIED);
     LOG_INFO(CCL_BCAST, ": ", (env_data.bcast_algo_raw.length()) ?
