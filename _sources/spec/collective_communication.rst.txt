@@ -1,7 +1,7 @@
 oneCCL Collective Communication
 ===============================
 
-Thi section covers collective communcation operations implemented in |product_full|.
+This section covers collective communcation operations implemented in |product_full|.
 
 .. toctree::
    :maxdepth: 1

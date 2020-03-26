@@ -150,6 +150,25 @@ Program Listing for File ccl.hpp
                                const ccl::coll_attr* attr = nullptr,
                                const ccl::stream_t& stream = ccl::stream_t());
    
+       coll_request_t alltoallv(const void* send_buf, const size_t* send_counts,
+                                void* recv_buf, const size_t* recv_counts,
+                                ccl::data_type dtype,
+                                const ccl::coll_attr* attr = nullptr,
+                                const ccl::stream_t& stream = ccl::stream_t());
+   
+       template<class buffer_type,
+                class = typename std::enable_if<ccl::is_native_type_supported<buffer_type>()>::type>
+       coll_request_t alltoallv(const buffer_type* send_buf, const size_t* send_counts,
+                                buffer_type* recv_buf, const size_t* recv_counts,
+                                const ccl::coll_attr* attr = nullptr,
+                                const ccl::stream_t& stream = ccl::stream_t());
+       template<class buffer_container_type,
+                class = typename std::enable_if<ccl::is_class_supported<buffer_container_type>()>::type>
+       coll_request_t alltoallv(const buffer_container_type& send_buf, const size_t* send_counts,
+                                buffer_container_type& recv_buf, const size_t* recv_counts,
+                                const ccl::coll_attr* attr = nullptr,
+                                const ccl::stream_t& stream = ccl::stream_t());
+   
        void barrier(const ccl::stream_t& stream = ccl::stream_t());
    
        coll_request_t bcast(void* buf, size_t count,

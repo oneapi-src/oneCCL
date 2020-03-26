@@ -26,6 +26,8 @@
         <script type="text/javascript" src="_static/underscore.js"></script>
         <script type="text/javascript" src="_static/doctools.js"></script>
         <script type="text/javascript" src="_static/language_data.js"></script>
+        <script type="text/javascript" src="_static/sphinx_tabs/semantic-ui-2.4.1/tab.min.js"></script>
+        <script type="text/javascript" src="_static/sphinx_tabs/tabs.js"></script>
         <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
@@ -35,7 +37,10 @@
   
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/style.css" type="text/css" />
+  <link rel="stylesheet" href="_static/sphinx_tabs/semantic-ui-2.4.1/segment.min.css" type="text/css" />
+  <link rel="stylesheet" href="_static/sphinx_tabs/semantic-ui-2.4.1/menu.min.css" type="text/css" />
+  <link rel="stylesheet" href="_static/sphinx_tabs/semantic-ui-2.4.1/tab.min.css" type="text/css" />
+  <link rel="stylesheet" href="_static/sphinx_tabs/tabs.css" type="text/css" />
     <link rel="index" title="Index" href="#" />
     <link rel="search" title="Search" href="search.html" />
     <link href="_static/style.css" rel="stylesheet" type="text/css">
@@ -87,7 +92,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="prerequisites.html">Prerequisites</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#installation-using-cli">Installation using CLI</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#installation-using-command-line-interface">Installation using Command Line Interface</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="installation.html#custom-installation">Custom Installation</a></li>
 </ul>
 </li>
@@ -116,10 +121,11 @@
 <li class="toctree-l2"><a class="reference internal" href="spec/communication_primitives.html">Collective Opertations</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="spec/communication_primitives.html#allgatherv">Allgatherv</a></li>
 <li class="toctree-l3"><a class="reference internal" href="spec/communication_primitives.html#allreduce">Allreduce</a></li>
-<li class="toctree-l3"><a class="reference internal" href="spec/communication_primitives.html#reduce">Reduce</a></li>
 <li class="toctree-l3"><a class="reference internal" href="spec/communication_primitives.html#alltoall">Alltoall</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spec/communication_primitives.html#alltoallv">Alltoallv</a></li>
 <li class="toctree-l3"><a class="reference internal" href="spec/communication_primitives.html#barrier">Barrier</a></li>
 <li class="toctree-l3"><a class="reference internal" href="spec/communication_primitives.html#broadcast">Broadcast</a></li>
+<li class="toctree-l3"><a class="reference internal" href="spec/communication_primitives.html#reduce">Reduce</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="spec/ccl_datatypes.html">Data Types</a></li>
@@ -180,7 +186,6 @@
 <p class="caption"><span class="caption-text">Reference Materials</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="env_variables.html">Environment variables</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-atl-transport">CCL_ATL_TRANSPORT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env_variables.html#collective-algorithms-selection">Collective algorithms selection</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="env_variables.html#ccl-coll-name">CCL_&lt;coll_name&gt;</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="env_variables.html#example">Example</a></li>
@@ -191,6 +196,7 @@
 <li class="toctree-l4"><a class="reference internal" href="env_variables.html#allgatherv-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLGATHERV</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="env_variables.html#allreduce-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLREDUCE</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="env_variables.html#alltoall-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLTOALL</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="env_variables.html#alltoallv-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLTOALLV</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="env_variables.html#barrier-algorithms"><code class="docutils literal notranslate"><span class="pre">BARRIER</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="env_variables.html#bcast-algorithms"><code class="docutils literal notranslate"><span class="pre">BCAST</span></code> algorithms</a></li>
 <li class="toctree-l4"><a class="reference internal" href="env_variables.html#reduce-algorithms"><code class="docutils literal notranslate"><span class="pre">REDUCE</span></code> algorithms</a></li>
@@ -201,23 +207,28 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-fusion">CCL_FUSION</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#fusion">Fusion</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="env_variables.html#ccl-fusion">CCL_FUSION</a></li>
 <li class="toctree-l3"><a class="reference internal" href="env_variables.html#ccl-fusion-bytes-threshold">CCL_FUSION_BYTES_THRESHOLD</a></li>
 <li class="toctree-l3"><a class="reference internal" href="env_variables.html#ccl-fusion-count-threshold">CCL_FUSION_COUNT_THRESHOLD</a></li>
 <li class="toctree-l3"><a class="reference internal" href="env_variables.html#ccl-fusion-cycle-ms">CCL_FUSION_CYCLE_MS</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#pmi">PMI</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="env_variables.html#ccl-pm-type">CCL_PM_TYPE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="env_variables.html#ccl-kvs-ip-exchange">CCL_KVS_IP_EXCHANGE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="env_variables.html#ccl-k8s-api-addr">CCL_K8S_API_ADDR</a></li>
+<li class="toctree-l3"><a class="reference internal" href="env_variables.html#ccl-k8s-manager-type">CCL_K8S_MANAGER_TYPE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="env_variables.html#ccl-kvs-ip-port">CCL_KVS_IP_PORT</a></li>
+<li class="toctree-l3"><a class="reference internal" href="env_variables.html#ccl-world-size">CCL_WORLD_SIZE</a></li>
+<li class="toctree-l3"><a class="reference internal" href="env_variables.html#ccl-job-name">CCL_JOB_NAME</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-atl-transport">CCL_ATL_TRANSPORT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-unordered-coll">CCL_UNORDERED_COLL</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-priority">CCL_PRIORITY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-worker-count">CCL_WORKER_COUNT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-worker-affinity">CCL_WORKER_AFFINITY</a></li>
-<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-pm-type">CCL_PM_TYPE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-kvs-ip-exchange">CCL_KVS_IP_EXCHANGE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-k8s-api-addr">CCL_K8S_API_ADDR</a></li>
-<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-k8s-manager-type">CCL_K8S_MANAGER_TYPE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-kvs-ip-port">CCL_KVS_IP_PORT</a></li>
-<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-world-size">CCL_WORLD_SIZE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-job-name">CCL_JOB_NAME</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="api/library_root.html">Library API</a><ul>
@@ -259,6 +270,7 @@
 <li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1a976c31a7b1a91c33b6a9c09f13cd1796.html">Function ccl_allgatherv</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1a9e104eaa3dc77cb6d61030778637ed5a.html">Function ccl_allreduce</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1aa890514a6e244e841dcb1f3c6c4a616f.html">Function ccl_alltoall</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1ac1791fd81f923eb9af19b8bf07a5ecf5.html">Function ccl_alltoallv</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1ac5618870776b28aac8f1f9e84b178577.html">Function ccl_barrier</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1a1cdf74249061dbabd47ea293832e9296.html">Function ccl_bcast</a></li>
 <li class="toctree-l4"><a class="reference internal" href="api/function_ccl_8h_1abb843675ca240e8d1aa42d604537ca62.html">Function ccl_comm_create</a></li>
@@ -389,6 +401,8 @@
 </li>
       <li><a href="api/classccl_1_1communicator.html#_CPPv4I00EN3ccl12communicator8alltoallE14coll_request_tPK11buffer_typeP11buffer_type6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE">ccl::communicator::alltoall (C++ function)</a>, <a href="api/classccl_1_1communicator.html#_CPPv4I00EN3ccl12communicator8alltoallE14coll_request_tRK21buffer_container_typeR21buffer_container_type6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE">[1]</a>, <a href="api/classccl_1_1communicator.html#_CPPv4N3ccl12communicator8alltoallEPKvPv6size_tN3ccl9data_typeEPKN3ccl9coll_attrERKN3ccl8stream_tE">[2]</a>
 </li>
+      <li><a href="api/classccl_1_1communicator.html#_CPPv4I00EN3ccl12communicator9alltoallvE14coll_request_tPK11buffer_typePK6size_tP11buffer_typePK6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE">ccl::communicator::alltoallv (C++ function)</a>, <a href="api/classccl_1_1communicator.html#_CPPv4I00EN3ccl12communicator9alltoallvE14coll_request_tRK21buffer_container_typePK6size_tR21buffer_container_typePK6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE">[1]</a>, <a href="api/classccl_1_1communicator.html#_CPPv4N3ccl12communicator9alltoallvEPKvPK6size_tPvPK6size_tN3ccl9data_typeEPKN3ccl9coll_attrERKN3ccl8stream_tE">[2]</a>
+</li>
       <li><a href="api/classccl_1_1communicator.html#_CPPv4N3ccl12communicator7barrierERKN3ccl8stream_tE">ccl::communicator::barrier (C++ function)</a>
 </li>
       <li><a href="api/classccl_1_1communicator.html#_CPPv4I00EN3ccl12communicator5bcastE14coll_request_tP11buffer_type6size_t6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE">ccl::communicator::bcast (C++ function)</a>, <a href="api/classccl_1_1communicator.html#_CPPv4I00EN3ccl12communicator5bcastE14coll_request_tR21buffer_container_type6size_t6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE">[1]</a>, <a href="api/classccl_1_1communicator.html#_CPPv4N3ccl12communicator5bcastEPv6size_tN3ccl9data_typeE6size_tPKN3ccl9coll_attrERKN3ccl8stream_tE">[2]</a>
@@ -491,10 +505,10 @@
 </li>
       <li><a href="api/structccl__coll__attr__t.html#_CPPv4N15ccl_coll_attr_t11prologue_fnE">ccl_coll_attr_t::prologue_fn (C++ member)</a>
 </li>
-      <li><a href="api/structccl__coll__attr__t.html#_CPPv4N15ccl_coll_attr_t12reduction_fnE">ccl_coll_attr_t::reduction_fn (C++ member)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/structccl__coll__attr__t.html#_CPPv4N15ccl_coll_attr_t12reduction_fnE">ccl_coll_attr_t::reduction_fn (C++ member)</a>
+</li>
       <li><a href="api/structccl__coll__attr__t.html#_CPPv4N15ccl_coll_attr_t11synchronousE">ccl_coll_attr_t::synchronous (C++ member)</a>
 </li>
       <li><a href="api/structccl__coll__attr__t.html#_CPPv4N15ccl_coll_attr_t8to_cacheE">ccl_coll_attr_t::to_cache (C++ member)</a>
@@ -630,7 +644,7 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2020
+        &copy; Copyright 2019–2020
 
     </p>
   </div>

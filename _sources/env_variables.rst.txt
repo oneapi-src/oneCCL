@@ -1,32 +1,6 @@
 Environment variables
 =====================
 
-CCL_ATL_TRANSPORT
-#################
-**Syntax**
-
-:: 
-
-  CCL_ATL_TRANSPORT=<value>
-
-**Arguments**
-
-.. list-table:: 
-   :widths: 25 50
-   :header-rows: 1
-   :align: left
-   
-   * - <value> 
-     - Description
-   * - ``mpi``
-     - MPI transport (**default**).
-   * - ``ofi``
-     - OFI (libfaric) transport.
-
-**Description**
-
-Set this environment variable to select the transport for inter-node communications.
-
 Collective algorithms selection
 ###############################
 
@@ -44,16 +18,16 @@ To set a specific algorithm for a specific message size range:
 
 ::
 
-  CCL_<coll_name>="<algo_name_1>[:<size_range_1>][;<algo_name_2><size_range_2>][;...]"
+  CCL_<coll_name>="<algo_name_1>[:<size_range_1>][;<algo_name_2>:<size_range_2>][;...]"
 
 Where:
 
-- ``<coll_name>`` is selected from a list of available collective operations (`Available collectives`_)
+- ``<coll_name>`` is selected from a list of available collective operations (`Available collectives`_).
 - ``<algo_name>`` is selected from a list of available algorithms for a specific collective operation (`Available algorithms`_).
 - ``<size_range>`` is described by the left and the right size borders in a format ``<left>-<right>``. 
-  Size is specified in bytes. Reserved word ``max`` can be used to specify the maximum message size.
+  Size is specified in bytes. Use reserved word ``max`` to specify the maximum message size.
 
-oneCCL internally fills algorithm selection table with sensible defaults. User input complements the selection table. 
+|product_short| internally fills algorithm selection table with sensible defaults. User input complements the selection table. 
 To see the actual table values set ``CCL_LOG_LEVEL=1``.
 
 Example
@@ -68,9 +42,10 @@ Available collectives
 
 Available collective operations (``<coll_name>``):
 
--   ``ALLGATHER``
+-   ``ALLGATHERV``
 -   ``ALLREDUCE``
 -   ``ALLTOALL``
+-   ``ALLTOALLV``
 -   ``BARRIER``
 -   ``BCAST``
 -   ``REDUCE``
@@ -80,7 +55,7 @@ Available collective operations (``<coll_name>``):
 Available algorithms
 ********************
 
-Available algirithms for each collective operation (``<algo_name>``):
+Available algorithms for each collective operation (``<algo_name>``):
 
 ``ALLGATHERV`` algorithms
 +++++++++++++++++++++++++
@@ -94,7 +69,7 @@ Available algirithms for each collective operation (``<algo_name>``):
    * - ``naive``
      - Send to all, receive from all
    * - ``flat``
-     - Alltoall-based allgorithm
+     - Alltoall-based algorithm
    * - ``multi_bcast``
      - Series of broadcast operations with different root ranks
 
@@ -123,7 +98,7 @@ Available algirithms for each collective operation (``<algo_name>``):
    * - ``recursive_doubling``
      - Recursive doubling algorithm
    * - ``2d``
-     - 2-dimensional allgorithm (reduce_scatter+allreduce+allgather)
+     - 2-dimensional algorithm (reduce_scatter+allreduce+allgather)
 
 
 ``ALLTOALL`` algorithms
@@ -135,7 +110,20 @@ Available algirithms for each collective operation (``<algo_name>``):
 
    * - ``direct``
      - Based on ``MPI_Ialltoall``
-   * - ``scatter``
+   * - ``naive``
+     - Send to all, receive from all
+
+
+``ALLTOALLV`` algorithms
+++++++++++++++++++++++++
+
+.. list-table:: 
+   :widths: 25 50
+   :align: left
+
+   * - ``direct``
+     - Based on ``MPI_Ialltoallv``
+   * - ``naive``
      - Send to all, receive from all
 
 
@@ -149,7 +137,7 @@ Available algirithms for each collective operation (``<algo_name>``):
    * - ``direct``
      - Based on ``MPI_Ibarrier``
    * - ``ring``
-     - Ring-based allgorithm
+     - Ring-based algorithm
 
 
 ``BCAST`` algorithms
@@ -193,10 +181,10 @@ Available algirithms for each collective operation (``<algo_name>``):
    :widths: 25 50
    :align: left
 
-   * - ``basic``
-     - Basic allgorithm
    * - ``mask``
-     - Mask-based allgorithm
+     - Mask matrix based algorithm
+   * - ``allgatherv``
+     - 3-allgatherv based algorithm
 
 
 CCL_RS_CHUNK_COUNT
@@ -249,8 +237,12 @@ CCL_RS_MIN_CHUNK_SIZE
 Set this environment variable to specify minimum number of bytes in chunk for reduce_scatter phase in ring allreduce. Affects actual value of ``CCL_RS_CHUNK_COUNT``.
 
 
+Fusion
+######
+
 CCL_FUSION
-##########
+**********
+
 **Syntax**
 
 :: 
@@ -273,7 +265,8 @@ CCL_FUSION
 
 **Description**
 
-Set this environment variable to control fusion of collective operations. The real fusion will depend on additional settings described below.
+Set this environment variable to control fusion of collective operations.
+The real fusion depends on additional settings described below.
 
 
 CCL_FUSION_BYTES_THRESHOLD
@@ -294,8 +287,8 @@ CCL_FUSION_BYTES_THRESHOLD
    * - <value> 
      - Description
    * - ``SIZE``
-     - Bytes threshold for a collective operation. If the size of a communication buffer in bytes is less or equal
-       to ``SIZE``, then oneCCL fuses this operation with the other ones.
+     - Bytes threshold for a collective operation. If the size of a communication buffer in bytes is less than or equal
+       to ``SIZE``, then |product_short| fuses this operation with the other ones.
 
 **Description**
 
@@ -321,7 +314,7 @@ CCL_FUSION_COUNT_THRESHOLD
      - Description
    * - ``COUNT``
      - The threshold for the number of collective operations.
-       oneCCL can fuse together no more than ``COUNT`` operations at a time.
+       |product_short| can fuse together no more than ``COUNT`` operations at a time.
 
 **Description**
 
@@ -355,119 +348,11 @@ CCL_FUSION_CYCLE_MS
 
 Set this environment variable to specify the frequency of checking for collectives operations to be fused.
 
-
-CCL_UNORDERED_COLL
-##################
-**Syntax**
-
-:: 
-
-  CCL_UNORDERED_COLL=<value>
-
-**Arguments**
-
-.. list-table:: 
-   :widths: 25 50
-   :header-rows: 1
-   :align: left
-   
-   * - <value> 
-     - Description
-   * - ``1``
-     - Enable execution of unordered collectives.
-       It requires for a user to additionally specify ``coll_attr.match_id``.
-   * - ``0``
-     - Disable execution of unordered collectives (**default**).
-
-**Description**
-
-Set this environment variable to enable execution of unordered collective operations on different nodes. 
-
-
-CCL_PRIORITY
-############
-**Syntax**
-
-:: 
-
-  CCL_PRIORITY=<value>
-
-**Arguments**
-
-.. list-table:: 
-   :widths: 25 50
-   :header-rows: 1
-   :align: left
-   
-   * - <value> 
-     - Description
-   * - ``direct``
-     - Priority is explicitly specified by users using ``coll_attr.priority``.
-   * - ``lifo``
-     - Priority is implicitly increased on each collective call. Users do not specify a priority.
-   * - ``none``
-     - Disable prioritization (**default**).
-
-**Description**
-
-Set this environment variable to control priority mode of collective operations. 
-
-
-CCL_WORKER_COUNT
-################
-**Syntax**
-
-:: 
-
-  CCL_WORKER_COUNT=<value>
-
-**Arguments**
-
-.. list-table:: 
-   :widths: 25 50
-   :header-rows: 1
-   :align: left
-   
-   * - <value> 
-     - Description
-   * - ``N``
-     - The number of worker threads for oneCCL rank (``1`` if not specified).
-
-**Description**
-
-Set this environment variable to specify the number of oneCCL worker threads.
-
-
-CCL_WORKER_AFFINITY
-###################
-**Syntax**
-
-:: 
-
-  CCL_WORKER_AFFINITY=<proclist>
-
-**Arguments**
-
-.. list-table:: 
-   :widths: 25 50
-   :header-rows: 1
-   :align: left
-   
-   * - <proclist> 
-     - Description
-   * - ``n1,n2,..``
-     - Affinity is explicitly specified by a user.
-   * - ``auto``
-     - Workers are pinned to K last cores of pin domain, where K is ``CCL_WORKER_COUNT`` (**default**). 
-
-**Description**
-
-Set this environment variable to specify cpu affinity for oneCCL worker threads.
-
-
+PMI
+###
 
 CCL_PM_TYPE
-###########
+***********
 **Syntax**
 
 :: 
@@ -494,7 +379,7 @@ Set this environment variable to specify the process manager type.
 
 
 CCL_KVS_IP_EXCHANGE
-###################
+*******************
 **Syntax**
 
 :: 
@@ -521,7 +406,7 @@ Set this environment variable to specify the way to IP addresses of ran processe
 
 
 CCL_K8S_API_ADDR
-################
+****************
 **Syntax**
 
 :: 
@@ -546,7 +431,7 @@ Set this environment variable to specify k8s kvs address.
 
 
 CCL_K8S_MANAGER_TYPE
-####################
+********************
 **Syntax**
 
 :: 
@@ -573,7 +458,7 @@ Set this environment variable to specify the way of IP exchange.
 
 
 CCL_KVS_IP_PORT
-###############
+***************
 **Syntax**
 
 :: 
@@ -598,7 +483,7 @@ Set this environment variable to specify the master kvs address.
 
 
 CCL_WORLD_SIZE
-##############
+**************
 **Syntax**
 
 :: 
@@ -619,11 +504,11 @@ CCL_WORLD_SIZE
 
 **Description**
 
-Set this environment variable to specify the number of oneCCL processes.
+Set this environment variable to specify the number of |product_short| processes.
 
 
 CCL_JOB_NAME
-############
+************
 **Syntax**
 
 :: 
@@ -646,3 +531,136 @@ CCL_JOB_NAME
 
 Set this label on the pods that should be connected with each other.
 
+CCL_ATL_TRANSPORT
+#################
+**Syntax**
+
+:: 
+
+  CCL_ATL_TRANSPORT=<value>
+
+**Arguments**
+
+.. list-table:: 
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+   
+   * - <value> 
+     - Description
+   * - ``mpi``
+     - MPI transport (**default**).
+   * - ``ofi``
+     - OFI (libfaric) transport.
+
+**Description**
+
+Set this environment variable to select the transport for inter-node communications.
+
+CCL_UNORDERED_COLL
+##################
+**Syntax**
+
+:: 
+
+  CCL_UNORDERED_COLL=<value>
+
+**Arguments**
+
+.. list-table:: 
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+   
+   * - <value> 
+     - Description
+   * - ``1``
+     - Enable execution of unordered collectives.
+       You have to additionally specify ``coll_attr.match_id``.
+   * - ``0``
+     - Disable execution of unordered collectives (**default**).
+
+**Description**
+
+Set this environment variable to enable execution of unordered collective operations on different nodes. 
+
+
+CCL_PRIORITY
+############
+**Syntax**
+
+:: 
+
+  CCL_PRIORITY=<value>
+
+**Arguments**
+
+.. list-table:: 
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+   
+   * - <value> 
+     - Description
+   * - ``direct``
+     - You have to explicitly specify priority using ``coll_attr.priority``.
+   * - ``lifo``
+     - Priority is implicitly increased on each collective call. You do not have to specify priority.
+   * - ``none``
+     - Disable prioritization (**default**).
+
+**Description**
+
+Set this environment variable to control priority mode of collective operations. 
+
+
+CCL_WORKER_COUNT
+################
+**Syntax**
+
+:: 
+
+  CCL_WORKER_COUNT=<value>
+
+**Arguments**
+
+.. list-table:: 
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+   
+   * - <value> 
+     - Description
+   * - ``N``
+     - The number of worker threads for |product_short| rank (``1`` if not specified).
+
+**Description**
+
+Set this environment variable to specify the number of |product_short| worker threads.
+
+
+CCL_WORKER_AFFINITY
+###################
+**Syntax**
+
+:: 
+
+  CCL_WORKER_AFFINITY=<proclist>
+
+**Arguments**
+
+.. list-table:: 
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+   
+   * - <proclist> 
+     - Description
+   * - ``n1,n2,..``
+     - Affinity is explicitly specified by a user.
+   * - ``auto``
+     - Workers are pinned to K last cores of pin domain, where K is ``CCL_WORKER_COUNT`` (**default**). 
+
+**Description**
+
+Set this environment variable to specify cpu affinity for |product_short| worker threads.

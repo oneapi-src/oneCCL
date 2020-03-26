@@ -3,7 +3,7 @@
 Execution of collective operations
 **********************************
 
-Collective operations are executed by CCL worker threads (workers). The number of workers is controlled by :ref:`CCL_WORKER_COUNT` environment variable.
+Collective operations are executed by CCL worker threads (workers). The number of workers is controlled by the :ref:`CCL_WORKER_COUNT` environment variable.
 
 Workers affinity is controlled by :ref:`CCL_WORKER_AFFINITY`.
 
@@ -19,7 +19,7 @@ To set affinity explicitly, pass ID of the cores to be bound to to  the ``CCL_WO
 Example
 +++++++
 
-In the example below, oneCCL creates 4 threads and pins them to cores with numbers 3, 4, 5, and 6, respectively:
+In the example below, |product_short| creates 4 threads and pins them to cores with numbers 3, 4, 5, and 6, respectively:
 ::
 
    export CCL_WORKER_COUNT=4
@@ -28,14 +28,14 @@ In the example below, oneCCL creates 4 threads and pins them to cores with numbe
 Automatic setup
 ###############
 
-.. note:: Automatic pinning only works if application is launched using ``mpirun`` provided by the oneCCL distribution package.
+.. note:: Automatic pinning only works if application is launched using ``mpirun`` provided by the |product_short| distribution package.
 
 To set affinity automatically, set ``CCL_WORKER_AFFINITY`` to ``auto``. 
 
 Example
 +++++++
 
-In the example below, oneCCL creates 4 threads and pins them to the last 4 cores available for the process launched:
+In the example below, |product_short| creates four threads and pins them to the last four cores available for the process launched:
 ::
 
    export CCL_WORKER_COUNT=4
