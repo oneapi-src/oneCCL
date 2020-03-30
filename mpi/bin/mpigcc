@@ -494,7 +494,6 @@ if [ $# -eq 0 ] ; then
     "$0" -help
     exit 1
 fi
-esac
 if [ "$static_mpi" = yes ] ; then
     if [ "x$fortran_binding" = "x" ]; then
         mpilibs="${libdir}/libmpifort.a ${libdir}${MPILIBDIR}/lib${MPILIBNAME}.a"
