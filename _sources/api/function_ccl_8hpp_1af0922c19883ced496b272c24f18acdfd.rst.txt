@@ -1,0 +1,13 @@
+.. _exhale_function_ccl_8hpp_1af0922c19883ced496b272c24f18acdfd:
+
+Function ccl::datatype_get_size
+===============================
+
+- Defined in :ref:`file_include_ccl.hpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: ccl::datatype_get_size(ccl::datatype)

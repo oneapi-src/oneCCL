@@ -1,0 +1,13 @@
+.. _exhale_function_ccl_8hpp_1aa4525ab94cc09017af30688ceb99cf6f:
+
+Function ccl::datatype_create
+=============================
+
+- Defined in :ref:`file_include_ccl.hpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: ccl::datatype_create(const ccl::datatype_attr *)

@@ -1,0 +1,13 @@
+.. _exhale_typedef_ccl__types_8h_1af916cb1cffcd5a398e6ff9a079b71ce6:
+
+Typedef ccl_prologue_fn_t
+=========================
+
+- Defined in :ref:`file_include_ccl_types.h`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: ccl_prologue_fn_t

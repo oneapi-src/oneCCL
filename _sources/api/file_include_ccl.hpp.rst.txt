@@ -62,6 +62,17 @@ Classes
 - :ref:`exhale_class_classccl_1_1stream`
 
 
+Functions
+---------
+
+
+- :ref:`exhale_function_ccl_8hpp_1aa4525ab94cc09017af30688ceb99cf6f`
+
+- :ref:`exhale_function_ccl_8hpp_1a622195e20f52785df57a0fcfafd3041d`
+
+- :ref:`exhale_function_ccl_8hpp_1af0922c19883ced496b272c24f18acdfd`
+
+
 Typedefs
 --------
 

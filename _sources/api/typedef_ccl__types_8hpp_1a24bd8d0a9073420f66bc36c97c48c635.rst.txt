@@ -1,0 +1,13 @@
+.. _exhale_typedef_ccl__types_8hpp_1a24bd8d0a9073420f66bc36c97c48c635:
+
+Typedef ccl::datatype_attr
+==========================
+
+- Defined in :ref:`file_include_ccl_types.hpp`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: ccl::datatype_attr
