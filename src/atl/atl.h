@@ -87,8 +87,7 @@ typedef enum
     ATL_DTYPE_FLOAT,
     ATL_DTYPE_DOUBLE,
     ATL_DTYPE_INT64,
-    ATL_DTYPE_UINT64,
-    ATL_DTYPE_CUSTOM
+    ATL_DTYPE_UINT64
 } atl_datatype_t;
 
 typedef enum

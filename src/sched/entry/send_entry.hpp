@@ -34,7 +34,7 @@ public:
     send_entry(ccl_sched* sched,
                const ccl_buffer buf,
                size_t cnt,
-               ccl_datatype_internal_t dtype,
+               const ccl_datatype& dtype,
                size_t dst,
                ccl_comm* comm) :
         sched_entry(sched), buf(buf),
@@ -51,7 +51,7 @@ public:
 
         atl_tag = global_data.atl_tag->create(sched->get_comm_id(), global_rank,
                                               sched->sched_id, sched->get_op_id());
-        size_t bytes = cnt * ccl_datatype_get_size(dtype);
+        size_t bytes = cnt * dtype.size();
 
         LOG_DEBUG("SEND entry dst ", global_dst, ", tag ", atl_tag, ", req ", &req, ", bytes ", bytes);
 
@@ -98,7 +98,7 @@ protected:
     void dump_detail(std::stringstream& str) const override
     {
         ccl_logger::format(str,
-                           "dt ", ccl_datatype_get_name(dtype),
+                           "dt ", global_data.dtypes->name(dtype),
                            ", cnt ", cnt,
                            ", buf ", buf,
                            ", dst ", dst,
@@ -111,7 +111,7 @@ protected:
 private:
     ccl_buffer buf;
     size_t cnt;
-    ccl_datatype_internal_t dtype;
+    ccl_datatype dtype;
     size_t dst;
     ccl_comm* comm;
     uint64_t atl_tag = 0;

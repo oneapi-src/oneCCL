@@ -88,7 +88,8 @@ public:
 
     void set(void* src, ssize_t size, int offset, ccl_buffer_type type)
     {
-        LOG_DEBUG("set: src ", src, ", size ", size, ", offset ", offset, ", type ", type);
+        LOG_DEBUG("set: src ", src, ", size ", size, ", offset ", offset, ", type ", type,
+                  ", old src: ", this->src);
         CCL_ASSERT(src, "new src is null");
 
         this->src = src;
@@ -162,6 +163,24 @@ public:
         }
     }
 
+    void get_ptr_addr(void**& to_addr, ssize_t access_size = 0) 
+    {
+        CCL_ASSERT(check_offset(access_size));
+
+        if (!src)
+            return;
+
+        if (type == ccl_buffer_type::DIRECT)
+        {
+            to_addr = &src;
+            *to_addr = (char*)*to_addr + offset;
+        }
+        else
+        {
+            CCL_ASSERT(false, "Not implemented");
+        }
+    }
+    
     operator bool() const
     {
         if (type == ccl_buffer_type::DIRECT)

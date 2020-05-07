@@ -29,7 +29,7 @@ public:
                        ccl_buffer send_buf,
                        ccl_buffer recv_buf,
                        size_t count,
-                       ccl_datatype_internal_t dtype,
+                       const ccl_datatype& dtype,
                        ccl_reduction_t op,
                        ccl_comm* comm);
 

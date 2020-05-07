@@ -39,10 +39,11 @@ struct ccl_selector_param
 {
     ccl_coll_type ctype;
     size_t count;
+    ccl_datatype dtype;
+    ccl_comm* comm;
+
     const size_t* send_counts;
     const size_t* recv_counts;
-    ccl_comm* comm;
-    ccl_datatype_internal_t dtype;
     int vector_buf;
 };
 

@@ -47,19 +47,16 @@ typedef struct
 } ccl_version_t;
 
 /** Datatypes. */
-typedef enum
-{
-    ccl_dtype_char   = 0,
-    ccl_dtype_int    = 1,
-    ccl_dtype_bfp16  = 2,
-    ccl_dtype_float  = 3,
-    ccl_dtype_double = 4,
-    ccl_dtype_int64  = 5,
-    ccl_dtype_uint64 = 6,
-    ccl_dtype_custom = 7,
+typedef int ccl_datatype_t;
 
-    ccl_dtype_last_value
-} ccl_datatype_t;
+#define ccl_dtype_char       ((ccl_datatype_t)(0))
+#define ccl_dtype_int        ((ccl_datatype_t)(1))
+#define ccl_dtype_bfp16      ((ccl_datatype_t)(2))
+#define ccl_dtype_float      ((ccl_datatype_t)(3))
+#define ccl_dtype_double     ((ccl_datatype_t)(4))
+#define ccl_dtype_int64      ((ccl_datatype_t)(5))
+#define ccl_dtype_uint64     ((ccl_datatype_t)(6))
+#define ccl_dtype_last_value ((ccl_datatype_t)(7))
 
 /** Reduction operations. */
 typedef enum
@@ -102,14 +99,21 @@ typedef struct
 /* comm_size */
 typedef ccl_resize_action_t(*ccl_resize_fn_t)(size_t comm_size);
 
-/* in_buf, in_count, in_dtype, out_buf, out_count, out_dtype, out_dtype_size */
-typedef ccl_status_t(*ccl_prologue_fn_t) (const void*, size_t, ccl_datatype_t, void**, size_t*, const ccl_fn_context_t*, ccl_datatype_t*, size_t*);
+/* in_buf, in_count, in_dtype, out_buf, out_count, out_dtype, context */
+typedef ccl_status_t(*ccl_prologue_fn_t) (const void*, size_t, ccl_datatype_t,
+                                          void**, size_t*, ccl_datatype_t*,
+                                          const ccl_fn_context_t*);
 
-/* in_buf, in_count, in_dtype, out_buf, out_count, out_dtype */
-typedef ccl_status_t(*ccl_epilogue_fn_t) (const void*, size_t, ccl_datatype_t, void*, size_t*, const ccl_fn_context_t*, ccl_datatype_t);
+/* in_buf, in_count, in_dtype, out_buf, out_count, out_dtype, context */
+typedef ccl_status_t(*ccl_epilogue_fn_t) (const void*, size_t, ccl_datatype_t,
+                                          void*, size_t*, ccl_datatype_t,
+                                          const ccl_fn_context_t*);
 
-/* in_buf, in_count, inout_buf, out_count, context, datatype */
-typedef ccl_status_t(*ccl_reduction_fn_t) (const void*, size_t, void*, size_t*, const ccl_fn_context_t*, ccl_datatype_t);
+/* in_buf, in_count, inout_buf, out_count, dtype, context */
+typedef ccl_status_t(*ccl_reduction_fn_t) (const void*, size_t,
+                                           void*, size_t*,
+                                           ccl_datatype_t,
+                                           const ccl_fn_context_t*);
 
 /** Extendable list of collective attributes. */
 typedef struct
@@ -159,6 +163,13 @@ typedef struct
     /* Hint that operation is local to process. Unused */
     int local;
 } ccl_comm_attr_t;
+
+/** List of datatype attributes. */
+typedef struct
+{
+    /* Size of single element */
+    size_t size;
+} ccl_datatype_attr_t;
 
 typedef void* ccl_comm_t;
 

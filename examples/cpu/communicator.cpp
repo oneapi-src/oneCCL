@@ -23,10 +23,6 @@
 
 using namespace std;
 
-#define PRINT_BY_ROOT(fmt, ...)           \
-    if (::rank == 0) {                    \
-        printf(fmt"\n", ##__VA_ARGS__); } \
-
 void check_allreduce_on_comm(ccl_comm_t comm)
 {
     size_t cur_comm_rank{};
@@ -53,7 +49,7 @@ void check_allreduce_on_comm(ccl_comm_t comm)
 
     float expected = (cur_comm_size - 1) * ((float) cur_comm_size / 2);
 
-    for(size_t i = 0; i < recv_buf.size(); ++i)
+    for (size_t i = 0; i < recv_buf.size(); ++i)
     {
         if (recv_buf[i] != expected)
         {
@@ -246,7 +242,7 @@ int main()
 {
     test_init();
 
-    PRINT_BY_ROOT("Running communicators on %zu ranks", size);
+    PRINT_BY_ROOT("run communicator test on %zu ranks", size);
 
     check_allreduce();
     check_max_comm_number();

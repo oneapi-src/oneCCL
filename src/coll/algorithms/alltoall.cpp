@@ -27,7 +27,7 @@ ccl_status_t ccl_coll_build_direct_alltoall(ccl_sched* sched,
                                             ccl_buffer send_buf,
                                             ccl_buffer recv_buf,
                                             size_t count,
-                                            ccl_datatype_internal_t dtype,
+                                            const ccl_datatype& dtype,
                                             ccl_comm* comm)
 {
     LOG_DEBUG("build direct alltoall");
@@ -43,14 +43,14 @@ ccl_status_t ccl_coll_build_scatter_alltoall(ccl_sched* sched,
                                              ccl_buffer send_buf,
                                              ccl_buffer recv_buf,
                                              size_t count,
-                                             ccl_datatype_internal_t dtype,
+                                             const ccl_datatype& dtype,
                                              ccl_comm* comm)
 {
     LOG_DEBUG("build scatter alltoall");
 
     size_t comm_size     = comm->size();
     size_t this_rank     = comm->rank();
-    size_t dtype_size    = ccl_datatype_get_size(dtype);
+    size_t dtype_size    = dtype.size();
     size_t* offsets      = static_cast<size_t*>(CCL_MALLOC(comm_size * sizeof(size_t), "offsets"));
     ccl_status_t status = ccl_status_success;
     size_t bblock = comm_size;

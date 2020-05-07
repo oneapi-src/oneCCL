@@ -84,7 +84,7 @@ public:
         ccl::reduction reduction = (ccl::reduction) test_conf.reduction_type;
         ccl::coll_attr* attr = &param.coll_attr;
         ccl::stream_t& stream = param.get_stream();
-        ccl::data_type data_type = static_cast<ccl::data_type>(param.test_conf.data_type);
+        ccl::datatype data_type = static_cast<ccl::datatype>(param.test_conf.data_type);
 
         for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++)
         {

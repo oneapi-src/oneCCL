@@ -27,6 +27,8 @@ ccl_status_t CCL_API ccl_finalize(void);
 
 ccl_status_t CCL_API ccl_set_resize_fn(ccl_resize_fn_t callback);
 
+/* Collective API */
+
 ccl_status_t CCL_API ccl_allgatherv(
     const void* send_buf,
     size_t send_count,
@@ -108,8 +110,12 @@ ccl_status_t CCL_API ccl_sparse_allreduce(
     ccl_stream_t stream,
     ccl_request_t* req);
 
+/* Completion API */
+
 ccl_status_t CCL_API ccl_wait(ccl_request_t req);
 ccl_status_t CCL_API ccl_test(ccl_request_t req, int* is_completed);
+
+/* Communicator API */
 
 ccl_status_t CCL_API ccl_comm_create(ccl_comm_t* comm,
                                      const ccl_comm_attr_t* attr);
@@ -117,6 +123,16 @@ ccl_status_t CCL_API ccl_comm_free(ccl_comm_t comm);
 
 ccl_status_t CCL_API ccl_get_comm_rank(ccl_comm_t comm, size_t* rank);
 ccl_status_t CCL_API ccl_get_comm_size(ccl_comm_t comm, size_t* size);
+
+/* Datatype API */
+
+ccl_status_t CCL_API ccl_datatype_create(ccl_datatype_t* type,
+                                         const ccl_datatype_attr_t* attr);
+ccl_status_t CCL_API ccl_datatype_free(ccl_datatype_t type);
+
+ccl_status_t CCL_API ccl_get_datatype_size(ccl_datatype_t type, size_t* size);
+
+/* Stream API */
 
 ccl_status_t CCL_API ccl_stream_create(ccl_stream_type_t type,
                                        void* native_stream,

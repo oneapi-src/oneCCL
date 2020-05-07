@@ -34,7 +34,7 @@ public:
                 ccl_buffer src_buf,
                 atl_mr_t* src_mr,
                 size_t cnt,
-                ccl_datatype_internal_t dtype,
+                const ccl_datatype& dtype,
                 size_t dst,
                 atl_mr_t* dst_mr,
                 size_t dst_buf_off,
@@ -70,7 +70,7 @@ public:
 
         size_t global_dst = comm->get_global_rank(dst);
 
-        size_t bytes = cnt * ccl_datatype_get_size(dtype);
+        size_t bytes = cnt * dtype.size();
         atl_status_t atl_status = atl_ep_write(sched->bin->get_atl_ep(),
                                                src_buf.get_ptr(bytes),
                                                bytes, src_mr,
@@ -115,7 +115,7 @@ protected:
     void dump_detail(std::stringstream& str) const override
     {
         ccl_logger::format(str,
-                           "dt ", ccl_datatype_get_name(dtype),
+                           "dt ", global_data.dtypes->name(dtype),
                            ", cnt ", cnt,
                            ", src_buf ", src_buf,
                            ", src_mr ", src_mr,
@@ -131,7 +131,7 @@ private:
     ccl_buffer src_buf;
     atl_mr_t* src_mr;
     size_t cnt;
-    ccl_datatype_internal_t dtype;
+    ccl_datatype dtype;
     size_t dst;
     atl_mr_t* dst_mr;
     size_t dst_buf_off;

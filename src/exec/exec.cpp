@@ -47,7 +47,14 @@ ccl_executor::ccl_executor(const char* main_addr)
 
     atl_attr.ep_count = ep_count;
     atl_attr.enable_shm = env_data.enable_shm;
-    atl_attr.enable_rma = env_data.enable_rma;
+
+    /*
+        TODO:
+        executor may be destroyed before cached rma-based schedule made memory deregistration
+        need to refactor global objects dependencies
+        don't use ring_rma till that
+    */
+    atl_attr.enable_rma = 0; // env_data.enable_rma;
 
     LOG_INFO("init ATL, requested ep_count ", atl_attr.ep_count);
 
@@ -78,6 +85,11 @@ ccl_executor::ccl_executor(const char* main_addr)
                  "\n  enable_rma:             ", atl_attr.enable_rma,
                  "\n  max_order_waw_size:     ", atl_attr.max_order_waw_size);
     }
+
+    CCL_THROW_IF_NOT(ccl_env_parse_worker_affinity(get_local_proc_idx(),
+                                                   get_local_proc_count()));
+
+    start_workers();
 }
 
 void ccl_executor::start_workers()
@@ -251,16 +263,7 @@ void ccl_executor::start(ccl_master_sched* sched)
     size_t worker_idx;
     for (size_t idx = 0; idx < sched->partial_scheds.size(); idx++)
     {
-        if (env_data.atl_transport == ccl_atl_mpi && sched->coll_param.ctype == ccl_coll_sparse_allreduce)
-        {
-            /* to workaround issue with multi-threaded MPI_Iprobe support in IMPI */
-            worker_idx = 0;
-        }
-        else
-        {
-            worker_idx = sched->partial_scheds[idx]->sched_id % workers.size();
-        }
-
+        worker_idx = sched->partial_scheds[idx]->sched_id % workers.size();
         workers[worker_idx]->add(sched->partial_scheds[idx].get());
     }
 }

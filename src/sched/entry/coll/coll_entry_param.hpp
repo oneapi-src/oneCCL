@@ -27,7 +27,7 @@ struct ccl_coll_entry_param
     size_t send_count;
     const size_t* send_counts;
     const size_t* recv_counts;
-    ccl_datatype_internal_t dtype;
+    ccl_datatype dtype;
     ccl_reduction_t reduction;
     size_t root;
     ccl_comm* comm;

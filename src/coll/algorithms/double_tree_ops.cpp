@@ -21,7 +21,7 @@ static void bcast_tree(const ccl_bin_tree& tree,
                        ccl_sched* sched,
                        ccl_buffer buffer,
                        size_t count,
-                       ccl_datatype_internal_t dtype,
+                       const ccl_datatype& dtype,
                        ccl_comm* comm)
 {
     if (tree.parent() != -1)
@@ -52,7 +52,7 @@ static void reduce_tree(const ccl_bin_tree& tree,
                         ccl_sched* sched,
                         ccl_buffer buffer,
                         size_t count,
-                        ccl_datatype_internal_t dtype,
+                        const ccl_datatype& dtype,
                         ccl_reduction_t reduction,
                         ccl_comm* comm)
 {
@@ -87,7 +87,7 @@ static void reduce_bcast_tree(const ccl_bin_tree& tree,
                               ccl_sched* sched,
                               ccl_buffer buffer,
                               size_t count,
-                              ccl_datatype_internal_t dtype,
+                              const ccl_datatype& dtype,
                               ccl_reduction_t reduction,
                               ccl_comm* comm)
 {
@@ -148,7 +148,7 @@ ccl_status_t ccl_coll_build_double_tree_op(ccl_sched* sched,
                                            ccl_buffer send_buf,
                                            ccl_buffer recv_buf,
                                            size_t count,
-                                           ccl_datatype_internal_t dtype,
+                                           const ccl_datatype& dtype,
                                            ccl_reduction_t op,
                                            const ccl_double_tree& dtree,
                                            ccl_comm* comm)
@@ -168,10 +168,10 @@ ccl_status_t ccl_coll_build_double_tree_op(ccl_sched* sched,
     size_t t2_count = count - t1_count;
 
     ccl_buffer t1_start = recv_buf;
-    ccl_buffer t1_end = t1_start + t1_count * dtype->size;
+    ccl_buffer t1_end = t1_start + t1_count * dtype.size();
 
     ccl_buffer t2_start = t1_end;
-    ccl_buffer t2_end = t2_start + t2_count * dtype->size;
+    ccl_buffer t2_end = t2_start + t2_count * dtype.size();
 
     //todo: evaluate/configure k param;
     size_t parts = 1;
@@ -202,7 +202,7 @@ ccl_status_t ccl_coll_build_double_tree_op(ccl_sched* sched,
             t1_work_count = t1_end.get_difference(t1_start + t1_work_count * iter);
         }
 
-        ccl_buffer t1_work_buf = t1_start + t1_work_count * dtype->size * iter;
+        ccl_buffer t1_work_buf = t1_start + t1_work_count * dtype.size() * iter;
 
         size_t t2_work_count = t2_part_count;
         if (t2_start + t2_work_count * iter > t2_end)
@@ -212,7 +212,7 @@ ccl_status_t ccl_coll_build_double_tree_op(ccl_sched* sched,
             t2_work_count = t2_end.get_difference(t2_start + t2_work_count * iter);
         }
 
-        ccl_buffer t2_work_buf = t2_start + t2_work_count * dtype->size * iter;
+        ccl_buffer t2_work_buf = t2_start + t2_work_count * dtype.size() * iter;
 
         std::function<void(ccl_sched*)> funcT1;
         std::function<void(ccl_sched*)> funcT2;
@@ -224,13 +224,13 @@ ccl_status_t ccl_coll_build_double_tree_op(ccl_sched* sched,
         {
             case ccl_coll_bcast:
                 entry_factory::make_entry<subsched_entry>(sched, t1_op_id,
-                    [t1_work_buf, t1_work_count, dtype, t1, comm](ccl_sched* s)
+                    [t1_work_buf, t1_work_count, &dtype, t1, comm](ccl_sched* s)
                     {
                         bcast_tree(t1, s, t1_work_buf, t1_work_count, dtype, comm);
                     }, "bcast_t1");
 
                 entry_factory::make_entry<subsched_entry>(sched, t2_op_id,
-                    [t2_work_buf, t2_work_count, dtype, t2, comm](ccl_sched* s)
+                    [t2_work_buf, t2_work_count, &dtype, t2, comm](ccl_sched* s)
                     {
                         bcast_tree(t2, s, t2_work_buf, t2_work_count, dtype, comm);
                     }, "bcast_t2");
@@ -242,13 +242,13 @@ ccl_status_t ccl_coll_build_double_tree_op(ccl_sched* sched,
                 {
                     //even ranks are leaves in T2, start schedule with T2
                     entry_factory::make_entry<subsched_entry>(sched, t2_op_id,
-                        [t2_work_buf, t2_work_count, dtype, op, t2, comm](ccl_sched* s)
+                        [t2_work_buf, t2_work_count, &dtype, op, t2, comm](ccl_sched* s)
                         {
                             reduce_tree(t2, s, t2_work_buf, t2_work_count, dtype, op, comm);
                         },"reduce_t2");
 
                     entry_factory::make_entry<subsched_entry>(sched, t1_op_id,
-                        [t1_work_buf, t1_work_count, dtype, op, t1, comm](ccl_sched* s)
+                        [t1_work_buf, t1_work_count, &dtype, op, t1, comm](ccl_sched* s)
                         {
                             reduce_tree(t1, s, t1_work_buf, t1_work_count, dtype, op, comm);
                         },"reduce_t1");
@@ -256,13 +256,13 @@ ccl_status_t ccl_coll_build_double_tree_op(ccl_sched* sched,
                 else
                 {
                     entry_factory::make_entry<subsched_entry>(sched, t2_op_id,
-                        [t2_work_buf, t2_work_count, dtype, op, t2, comm](ccl_sched* s)
+                        [t2_work_buf, t2_work_count, &dtype, op, t2, comm](ccl_sched* s)
                         {
                             reduce_tree(t2, s, t2_work_buf, t2_work_count, dtype, op, comm);
                         },"reduce_t2");
 
                     entry_factory::make_entry<subsched_entry>(sched, t1_op_id,
-                        [t1_work_buf, t1_work_count, dtype, op, t1, comm](ccl_sched* s)
+                        [t1_work_buf, t1_work_count, &dtype, op, t1, comm](ccl_sched* s)
                         {
                             reduce_tree(t1, s, t1_work_buf, t1_work_count, dtype, op, comm);
                         },"reduce_t1");
@@ -276,13 +276,13 @@ ccl_status_t ccl_coll_build_double_tree_op(ccl_sched* sched,
                 {
                     //even ranks are leaves in T2, start schedule with T2
                     entry_factory::make_entry<subsched_entry>(sched, t2_op_id,
-                        [t2_work_buf, t2_work_count, dtype, op, t2, comm](ccl_sched* s)
+                        [t2_work_buf, t2_work_count, &dtype, op, t2, comm](ccl_sched* s)
                         {
                             reduce_bcast_tree(t2, s, t2_work_buf, t2_work_count, dtype, op, comm);
                         }, "reduce_bcast_t2");
 
                     entry_factory::make_entry<subsched_entry>(sched, t1_op_id,
-                        [t1_work_buf, t1_work_count, dtype, op, t1, comm](ccl_sched* s)
+                        [t1_work_buf, t1_work_count, &dtype, op, t1, comm](ccl_sched* s)
                         {
                             reduce_bcast_tree(t1, s, t1_work_buf, t1_work_count, dtype, op, comm);
                         },
@@ -291,14 +291,14 @@ ccl_status_t ccl_coll_build_double_tree_op(ccl_sched* sched,
                 else
                 {
                     entry_factory::make_entry<subsched_entry>(sched, t1_op_id,
-                        [t1_work_buf, t1_work_count, dtype, op, t1, comm](ccl_sched* s)
+                        [t1_work_buf, t1_work_count, &dtype, op, t1, comm](ccl_sched* s)
                         {
                             reduce_bcast_tree(t1, s, t1_work_buf, t1_work_count, dtype, op, comm);
                         },
                         "reduce_bcast_t1");
 
                     entry_factory::make_entry<subsched_entry>(sched, t2_op_id,
-                        [t2_work_buf, t2_work_count, dtype, op, t2, comm](ccl_sched* s)
+                        [t2_work_buf, t2_work_count, &dtype, op, t2, comm](ccl_sched* s)
                         {
                             reduce_bcast_tree(t2, s, t2_work_buf, t2_work_count, dtype, op, comm);
                         }, "reduce_bcast_t2");

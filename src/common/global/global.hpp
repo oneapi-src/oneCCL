@@ -18,6 +18,7 @@
 #include "ccl.h"
 #include "common/utils/utils.hpp"
 #include "coll/algorithms/algorithms_enum.hpp"
+#include "comp/bfp16/bfp16_utils.h"
 
 #include <memory>
 #include <thread>
@@ -43,6 +44,7 @@ class ccl_comm;
 class ccl_stream;
 class ccl_atl_tag;
 class ccl_comm_id_storage;
+class ccl_datatype_storage;
 class ccl_executor;
 class ccl_sched_cache;
 class ccl_parallelizer;
@@ -57,6 +59,7 @@ struct alignas(CACHELINE_SIZE) ccl_global_data
 {
     std::unique_ptr<ccl_comm_id_storage> comm_ids;
     std::shared_ptr<ccl_comm> comm;
+    std::unique_ptr<ccl_datatype_storage> dtypes;
     std::unique_ptr<ccl_atl_tag> atl_tag;
     std::unique_ptr<ccl_executor> executor;
     std::unique_ptr<ccl_coll_attr_t> default_coll_attr;
@@ -68,7 +71,7 @@ struct alignas(CACHELINE_SIZE) ccl_global_data
     std::unique_ptr<ccl_allreduce_2d_builder> allreduce_2d_builder;
     static thread_local bool is_worker_thread;
     bool is_ft_enabled;
-    bool is_bfp16_enabled;
+    ccl_bfp16_impl_type bfp16_impl_type;
 };
 
 extern ccl_global_data global_data;
@@ -84,6 +87,5 @@ extern ccl_global_data global_data;
     } while (0);                                       \
   }
 
-void ccl_reset_for_size_update(ccl_global_data* gl_data);
-
-void ccl_init_global_objects(ccl_global_data& gl_data);
+void ccl_init_resize_dependent_objects(ccl_global_data& gl_data);
+void ccl_reset_resize_dependent_objects(ccl_global_data& gl_data);

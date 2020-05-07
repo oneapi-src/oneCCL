@@ -13,66 +13,150 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#include <limits>
+
 #include "common/datatype/datatype.hpp"
-#include "common/log/log.hpp"
 
-ccl_datatype_internal_t ccl_dtype_internal_none;
-ccl_datatype_internal_t ccl_dtype_internal_char;
-ccl_datatype_internal_t ccl_dtype_internal_int;
-ccl_datatype_internal_t ccl_dtype_internal_bfp16;
-ccl_datatype_internal_t ccl_dtype_internal_float;
-ccl_datatype_internal_t ccl_dtype_internal_double;
-ccl_datatype_internal_t ccl_dtype_internal_int64;
-ccl_datatype_internal_t ccl_dtype_internal_uint64;
+ccl_datatype ccl_datatype_char;
 
-const ccl_datatype_internal ccl_dtype_internal_none_value = { .type = ccl_dtype_char, .size = 0, .name = "NONE" };
-const ccl_datatype_internal ccl_dtype_internal_char_value = { .type = ccl_dtype_char, .size = 1, .name = "CHAR" };
-const ccl_datatype_internal ccl_dtype_internal_int_value = { .type = ccl_dtype_int, .size = 4, .name = "INT" };
-const ccl_datatype_internal ccl_dtype_internal_bfp16_value = { .type = ccl_dtype_bfp16, .size = 2, .name = "BFP16" };
-const ccl_datatype_internal ccl_dtype_internal_float_value = { .type = ccl_dtype_float, .size = 4, .name = "FLOAT" };
-const ccl_datatype_internal ccl_dtype_internal_double_value = { .type = ccl_dtype_double, .size = 8, .name = "DOUBLE" };
-const ccl_datatype_internal ccl_dtype_internal_int64_value = { .type = ccl_dtype_int64, .size = 8, .name = "INT64" };
-const ccl_datatype_internal ccl_dtype_internal_uint64_value = { .type = ccl_dtype_uint64, .size = 8, .name = "UINT64" };
-
-ccl_status_t ccl_datatype_init()
+ccl_datatype::ccl_datatype(ccl_datatype_t idx, size_t size)
+    : m_idx(idx),
+      m_size(size)
 {
-    ccl_dtype_internal_none = &ccl_dtype_internal_none_value;
-    ccl_dtype_internal_char = &ccl_dtype_internal_char_value;
-    ccl_dtype_internal_int = &ccl_dtype_internal_int_value;
-    ccl_dtype_internal_bfp16 = &ccl_dtype_internal_bfp16_value;
-    ccl_dtype_internal_float = &ccl_dtype_internal_float_value;
-    ccl_dtype_internal_double = &ccl_dtype_internal_double_value;
-    ccl_dtype_internal_int64 = &ccl_dtype_internal_int64_value;
-    ccl_dtype_internal_uint64 = &ccl_dtype_internal_uint64_value;
-    return ccl_status_success;
+    CCL_THROW_IF_NOT(m_size > 0, "unexpected datatype size ", m_size);
 }
 
-size_t ccl_datatype_get_size(ccl_datatype_internal_t dtype)
+ccl_datatype_storage::ccl_datatype_storage()
+    : custom_idx(ccl_dtype_last_value)
 {
-    CCL_THROW_IF_NOT(dtype, "empty dtype");
-    CCL_ASSERT(dtype->size > 0);
-    return dtype->size;
-}
+    LOG_DEBUG("create datatype_storage");
 
-const char* ccl_datatype_get_name(ccl_datatype_internal_t dtype)
-{
-    CCL_ASSERT(dtype);
-    return dtype->name;
-}
+    size_t size = 0;
+    std::string name_str;
 
-ccl_datatype_internal_t ccl_datatype_get(ccl_datatype_t type)
-{
-    ccl_datatype_internal_t dtype = NULL;
-    switch (type)
+    for (ccl_datatype_t idx = ccl_dtype_char; idx < ccl_dtype_last_value; idx++)
     {
-        case ccl_dtype_char: { dtype = ccl_dtype_internal_char; break; }
-        case ccl_dtype_int: { dtype = ccl_dtype_internal_int; break; }
-        case ccl_dtype_bfp16: { dtype = ccl_dtype_internal_bfp16; break; }
-        case ccl_dtype_float: { dtype = ccl_dtype_internal_float; break; }
-        case ccl_dtype_double: { dtype = ccl_dtype_internal_double; break; }
-        case ccl_dtype_int64: { dtype = ccl_dtype_internal_int64; break; }
-        case ccl_dtype_uint64: { dtype = ccl_dtype_internal_uint64; break; }
-        default: CCL_FATAL("unexpected dtype ", type);
+        /* fill table with predefined datatypes */
+        size = (idx == ccl_dtype_char) ? sizeof(char) :
+               (idx == ccl_dtype_int) ? sizeof(int) :
+               (idx == ccl_dtype_bfp16) ? sizeof(uint16_t) :
+               (idx == ccl_dtype_float) ? sizeof(float) :
+               (idx == ccl_dtype_double) ? sizeof(double) :
+               (idx == ccl_dtype_int64) ? sizeof(int64_t) :
+               (idx == ccl_dtype_uint64) ? sizeof(uint64_t) : 0;
+
+        name_str = (idx == ccl_dtype_char) ? "CHAR" :
+                   (idx == ccl_dtype_int) ? "INT" :
+                   (idx == ccl_dtype_bfp16) ? "BFLOAT16" :
+                   (idx == ccl_dtype_float) ? "FLOAT" :
+                   (idx == ccl_dtype_double) ? "DOUBLE" :
+                   (idx == ccl_dtype_int64) ? "INT64" :
+                   (idx == ccl_dtype_uint64) ? "UINT64" : 0;
+
+        create_internal(predefined_table, idx, size, name_str);
+
+        const ccl_datatype& dtype = get(idx);
+        const std::string& dtype_name = name(dtype);
+
+        CCL_THROW_IF_NOT(dtype.idx() == idx,
+            "unexpected datatype idx ", dtype.idx(), ", expected ", idx);
+        CCL_THROW_IF_NOT(dtype.idx() == idx,
+            "unexpected datatype size ", dtype.size(), ", expected ", size);
+        CCL_THROW_IF_NOT(!dtype_name.compare(name_str),
+            "unexpected datatype name ", dtype_name, ", expected ", name_str);
     }
-    return dtype;
+
+    ccl_datatype_char = get(ccl_dtype_char);
+}
+
+ccl_datatype_storage::~ccl_datatype_storage()
+{
+    std::lock_guard<ccl_datatype_lock_t> lock{guard};
+    predefined_table.clear();
+    custom_table.clear();
+}
+
+void ccl_datatype_storage::create_internal(ccl_datatype_table_t& table,
+                                           size_t idx, size_t size,
+                                           const std::string& name)
+{
+    CCL_THROW_IF_NOT(table.find(idx) == table.end(), "datatype index is busy, idx ", idx);
+    table[idx] = std::make_pair(ccl_datatype(idx, size), name);
+    LOG_DEBUG("created datatype idx: ", idx, ", size: ", size, ", name: ", name);
+}
+
+ccl_datatype_t ccl_datatype_storage::create(const ccl_datatype_attr_t* attr)
+{
+    std::lock_guard<ccl_datatype_lock_t> lock{guard};
+
+    while (custom_table.find(custom_idx) != custom_table.end() ||
+           is_predefined_datatype(custom_idx))
+    {
+        custom_idx++;
+        if (custom_idx < 0)
+            custom_idx = 0;
+    }
+    
+    create_internal(custom_table, custom_idx,
+                    (attr) ? attr->size : 1,
+                    std::string("DTYPE_") + std::to_string(custom_idx));
+
+    return custom_idx;
+}
+
+void ccl_datatype_storage::free(ccl_datatype_t idx)
+{
+    std::lock_guard<ccl_datatype_lock_t> lock{guard};
+
+    if (is_predefined_datatype(idx))
+    {
+        CCL_THROW("attempt to free predefined datatype idx ", idx);
+        return;
+    }
+
+    if (custom_table.find(idx) == custom_table.end())
+    {
+        CCL_THROW("attempt to free non-existing datatype idx ", idx);
+        return;
+    }
+
+    LOG_DEBUG("free datatype idx ", idx);
+    custom_table.erase(idx);
+}
+
+const ccl_datatype& ccl_datatype_storage::get(ccl_datatype_t idx) const
+{
+    if (is_predefined_datatype(idx))
+    {
+        return predefined_table.find(idx)->second.first;
+    }
+    else
+    {
+        std::lock_guard<ccl_datatype_lock_t> lock{guard};
+        return custom_table.find(idx)->second.first;
+    }
+}
+
+const std::string& ccl_datatype_storage::name(const ccl_datatype& dtype) const
+{
+    size_t idx = dtype.idx();
+    if (is_predefined_datatype(idx))
+    {
+        return predefined_table.find(idx)->second.second;
+    }
+    else
+    {
+        std::lock_guard<ccl_datatype_lock_t> lock{guard};
+        return custom_table.find(idx)->second.second;
+    }
+}
+
+const std::string& ccl_datatype_storage::name(ccl_datatype_t idx) const
+{
+    return name(get(idx));
+}
+
+bool ccl_datatype_storage::is_predefined_datatype(ccl_datatype_t idx)
+{
+    return (idx >= ccl_dtype_char && idx < ccl_dtype_last_value) ? true : false;
 }

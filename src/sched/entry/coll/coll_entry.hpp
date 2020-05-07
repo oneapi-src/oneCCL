@@ -77,7 +77,7 @@ public:
         return param.count;
     }
 
-    ccl_datatype_internal_t& get_field_ref(field_id_t<ccl_sched_entry_field_dtype> id)
+    ccl_datatype& get_field_ref(field_id_t<ccl_sched_entry_field_dtype> id)
     {
         return param.dtype;
     }
@@ -86,7 +86,7 @@ protected:
     void dump_detail(std::stringstream& str) const override
     {
         ccl_logger::format(str,
-                            "dt ", ccl_datatype_get_name(param.dtype),
+                            "dt ", global_data.dtypes->name(param.dtype),
                             ", coll_type ", ccl_coll_type_to_str(param.ctype),
                             ", buf ", param.buf,
                             ", send_buf ", param.send_buf,

@@ -42,7 +42,7 @@ public:
 
     ccl_sched_key(const ccl_coll_param& param, const ccl_coll_attr& attr);
     void set(const ccl_coll_param& param, const ccl_coll_attr& attr);
-    bool check(const ccl_coll_param& param, const ccl_coll_attr& attr);
+    bool check(const ccl_coll_param& param, const ccl_coll_attr& attr) const;
 
     size_t get_hasher_result() const
     {
@@ -83,25 +83,7 @@ public:
 
     bool operator== (const ccl_sched_key& k) const;
 
-    void print() const
-    {
-        LOG_DEBUG( "ctype ", ccl_coll_type_to_str(f.ctype),
-                   ", dtype ", ccl_datatype_get(f.dtype)->name,
-                   ", itype ", ccl_datatype_get(f.itype)->name,
-                   ", reduction ", ccl_reduction_to_str(f.reduction),
-                   ", buf1 ", f.buf1,
-                   ", buf2 ", f.buf2,
-                   ", count1 ", f.count1,
-                   ", count2 ", f.count2,
-                   ", count3 ", f.count3,
-                   ", count4 ", f.count4,
-                   ", root ", f.root,
-                   ", comm ", f.comm,
-                   ", prologue_fn ", (void*)f.prologue_fn,
-                   ", epilogue_fn ", (void*)f.epilogue_fn,
-                   ", reduction_fn ", (void*)f.reduction_fn,
-                   ", match_id ", match_id);
-    }
+    void print() const;
 };
 
 class ccl_sched_key_hasher

@@ -13,6 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#include "common/global/global.hpp"
 #include "common/log/log.hpp"
 #include "comp/bfp16/bfp16.hpp"
 #include "comp/bfp16/bfp16_intrisics.h"
@@ -30,31 +31,27 @@ void ccl_bfp16_reduce(const void* in_buf, size_t in_cnt,
         *out_cnt = in_cnt;
     }
 
-    bfp16_reduction_func_ptr reduction_op_func = nullptr;
+    ccl_bfp16_reduction_func_ptr op = nullptr;
     switch (reduction_op)
     {
         case ccl_reduction_sum:
-            reduction_op_func = &sum_wrap;
+            op = &sum_wrap;
             break;
         case ccl_reduction_prod:
-            reduction_op_func = &prod_wrap;
+            op = &prod_wrap;
             break;
         case ccl_reduction_min:
-            reduction_op_func = &min_wrap;
+            op = &min_wrap;
             break;
         case ccl_reduction_max:
-            reduction_op_func = &max_wrap;
+            op = &max_wrap;
             break;
         default:
             CCL_FATAL("unexpected value ", reduction_op);
     }
-    
-    int i = 0;
-    for (i = 0; i <= (int)in_cnt - 16; i += 16)
-    {
-        ccl_bfp16_reduce_256((uint16_t*)in_buf + i, (uint16_t*)inout_buf + i, reduction_op_func);
-    }
-    ccl_bfp16_reduce_masked((uint16_t*)in_buf + i, (uint16_t*)inout_buf + i, (uint8_t)(in_cnt - i), reduction_op_func);
+
+    ccl_bfp16_reduce_impl(in_buf, inout_buf, in_cnt,
+                          op, global_data.bfp16_impl_type);
 }
 
 #else /* CCL_BFP16_COMPILER */

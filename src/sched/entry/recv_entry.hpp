@@ -34,7 +34,7 @@ public:
     recv_entry(ccl_sched* sched,
                ccl_buffer buf,
                size_t cnt,
-               ccl_datatype_internal_t dtype,
+               const ccl_datatype& dtype,
                size_t src,
                ccl_comm* comm) :
         sched_entry(sched), buf(buf),
@@ -47,7 +47,7 @@ public:
     {
         if (status == ccl_sched_entry_status_started)
         {
-            size_t bytes = cnt * ccl_datatype_get_size(dtype);
+            size_t bytes = cnt * dtype.size();
             LOG_DEBUG("cancel RECV entry src ", src, ", req ", &req, ", bytes ", bytes);
             atl_ep_cancel(sched->bin->get_atl_ep(), &req);
         }
@@ -60,7 +60,7 @@ public:
         size_t global_src = comm->get_global_rank(src);
         atl_tag = global_data.atl_tag->create(sched->get_comm_id(), global_src,
                                               sched->sched_id, sched->get_op_id());
-        size_t bytes = cnt * ccl_datatype_get_size(dtype);
+        size_t bytes = cnt * dtype.size();
 
         LOG_DEBUG("RECV entry src ", global_src, ", tag ", atl_tag, ", req ", &req, ", bytes ", bytes);
 
@@ -106,7 +106,7 @@ protected:
     void dump_detail(std::stringstream& str) const override
     {
         ccl_logger::format(str,
-                           "dt ", ccl_datatype_get_name(dtype),
+                           "dt ", global_data.dtypes->name(dtype),
                            ", cnt ", cnt,
                            ", buf ", buf,
                            ", src ", src,
@@ -119,7 +119,7 @@ protected:
 private:
     ccl_buffer buf;
     size_t cnt;
-    ccl_datatype_internal_t dtype;
+    ccl_datatype dtype;
     size_t src;
     ccl_comm* comm;
     uint64_t atl_tag = 0;

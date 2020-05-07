@@ -33,7 +33,7 @@ public:
                                    ccl_buffer in_buf,
                                    ccl_buffer out_buf,
                                    size_t cnt,
-                                   ccl_datatype_internal_t dtype,
+                                   const ccl_datatype& dtype,
                                    const ccl_stream* stream) :
                                    sched_entry(sched), in_buf(in_buf), out_buf(out_buf),
                                    cnt(cnt), dtype(dtype), stream(stream)
@@ -63,7 +63,7 @@ protected:
     void dump_detail(std::stringstream& str) const override
     {
         ccl_logger::format(str,
-                           "  dtype ", dtype,
+                           "  dtype ", global_data.dtypes->name(dtype),
                            ", cnt ", cnt,
                            ", in_buf ", in_buf,
                            ", out_buf ", out_buf,
@@ -75,6 +75,6 @@ private:
     ccl_buffer in_buf;
     ccl_buffer out_buf;
     size_t cnt;
-    ccl_datatype_internal_t dtype;
+    ccl_datatype dtype;
     const ccl_stream* stream;
 };

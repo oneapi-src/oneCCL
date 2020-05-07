@@ -42,6 +42,7 @@
 #define ATL_OFI_CQ_BUNCH_SIZE       8
 #define ATL_OFI_PMI_PROC_MULTIPLIER 100
 #define ATL_OFI_MAX_PROV_COUNT      2 /* NW and SHM providers */
+#define ATL_OFI_SHM_PROV_NAME       "shm"
 
 #define MAX(a, b)            \
 ({                           \
@@ -216,6 +217,8 @@ typedef struct
     size_t prov_count;
     size_t shm_prov_idx;
     size_t nw_prov_idx;
+
+    char* prov_env_copy;
 
     size_t timeout_sec;
 } atl_ofi_ctx_t;
@@ -964,7 +967,7 @@ atl_ofi_reset(atl_ctx_t* ctx)
 }
 
 static void
-atl_ofi_tune(void)
+atl_ofi_adjust_env(atl_ofi_ctx_t* ofi_ctx, const atl_attr_t* attr)
 {
     setenv("FI_PSM2_TIMEOUT", "1", 0);
     setenv("FI_PSM2_DELAY", "0", 0);
@@ -976,8 +979,45 @@ atl_ofi_tune(void)
     setenv("FI_OFI_RXM_MSG_RX_SIZE", "128", 0);
     setenv("FI_OFI_RXM_MSG_TX_SIZE", "128", 0);
 
-    /* IMPI/libfabric knob */
-    setenv("FI_INFO_UTIL", "1", 0);
+    char* prov_env = getenv("FI_PROVIDER");
+
+    if (prov_env && strlen(prov_env))
+    {
+        ofi_ctx->prov_env_copy = calloc(strlen(prov_env) + 1, sizeof(char));
+        memcpy(ofi_ctx->prov_env_copy, prov_env, strlen(prov_env));
+    }
+    else
+        ofi_ctx->prov_env_copy = NULL;
+
+    if (attr->enable_shm)
+    {
+        /* add shm provider in the list of allowed providers */
+        if (prov_env && !strstr(prov_env, ATL_OFI_SHM_PROV_NAME))
+        {
+            /* whether single provider will be in the final env variable */
+            int single_prov = (strlen(prov_env) == 0) ? 1 : 0;
+
+            size_t prov_env_copy_size = strlen(prov_env) +
+                                        strlen(ATL_OFI_SHM_PROV_NAME) +
+                                        (single_prov ? 0 : 1) + /* for delimeter */
+                                        1; /* for terminating null symbol */
+
+            char* prov_env_copy = calloc(prov_env_copy_size, sizeof(char));
+
+            if (single_prov)
+                snprintf(prov_env_copy, prov_env_copy_size, "%s", ATL_OFI_SHM_PROV_NAME);
+            else
+            {
+                snprintf(prov_env_copy, prov_env_copy_size, "%s,%s", prov_env, ATL_OFI_SHM_PROV_NAME);
+            }
+
+            ATL_OFI_DEBUG_PRINT("modify FI_PROVIDER: old value %s, new value %s", prov_env, prov_env_copy);
+
+            setenv("FI_PROVIDER", prov_env_copy, 1);
+
+            free(prov_env_copy);
+        }        
+    }
 }
 
 static atl_status_t
@@ -1510,11 +1550,11 @@ atl_ofi_init(int* argc, char*** argv,
                    "unexpected offset: atl_ofi_request size %zu, atl_request size %zu, expected offset %zu",
                    sizeof(atl_ofi_req_t), sizeof(atl_req_t), offsetof(atl_req_t, internal));
 
-    atl_ofi_tune();
-
     atl_ofi_ctx_t* ofi_ctx = calloc(1, sizeof(atl_ofi_ctx_t));
     if (!ofi_ctx)
         return ATL_STATUS_FAILURE;
+
+    atl_ofi_adjust_env(ofi_ctx, attr);
 
     atl_ctx_t* ctx = &(ofi_ctx->ctx);
 
@@ -1564,30 +1604,21 @@ atl_ofi_init(int* argc, char*** argv,
 
     ATL_OFI_DEBUG_PRINT_ROOT("libfabric version: %s", fi_tostr("1" /* ignored */, FI_TYPE_VERSION));
 
-    char* fi_prov_env = getenv("FI_PROVIDER");
-    if (attr->enable_shm && fi_prov_env && strcmp(fi_prov_env, "shm"))
-    {
-        ATL_OFI_PRINT_ROOT("FI_PROVIDER will hide shm provider, please use CCL_ATL_OFI_PROVIDER instead");
-    }
-
-    /* don't use FI_PROVIDER for now because it will hide shm provider */
-    char* prov_env = getenv("CCL_ATL_OFI_PROVIDER");
-    if (prov_env && !strcmp(prov_env, "shm"))
+    char* prov_env = getenv("FI_PROVIDER");
+    if (prov_env && !strcmp(prov_env, ATL_OFI_SHM_PROV_NAME))
     {
         ATL_OFI_ASSERT(coord->global_count == coord->local_count,
             "shm provider is requested as primary provider but global_count (%zu) != local_count (%zu)",
             coord->global_count, coord->local_count);
 
         ATL_OFI_ASSERT(attr->enable_shm,
-            "shm provider is requested through CCL_ATL_OFI_PROVIDER but not requested from CCL level");
-
-        ATL_OFI_DEBUG_PRINT_ROOT("shm provider is requested through CCL_ATL_OFI_PROVIDER");
+            "shm provider is requested through FI_PROVIDER but not requested from CCL level");
     }
 
     if (attr->enable_shm)
     {
         prov_hints = fi_dupinfo(base_hints);
-        prov_hints->fabric_attr->prov_name = strdup("shm");
+        prov_hints->fabric_attr->prov_name = strdup(ATL_OFI_SHM_PROV_NAME);
         ret = fi_getinfo(fi_version, NULL, NULL, 0ULL, prov_hints, &providers);
         if (ret || !providers)
         {
@@ -1680,15 +1711,29 @@ atl_ofi_init(int* argc, char*** argv,
         atl_ofi_prov_t* prov = &ofi_ctx->provs[idx];
 
         prov_hints = fi_dupinfo(base_hints);
-        prov_hints->fabric_attr->prov_name = (prov->is_shm) ?
-            strdup("shm") :
-            prov_env ? strdup(prov_env) : NULL;
+
+        char* prov_name = NULL;
+
+        if (prov->is_shm)
+            prov_name = ATL_OFI_SHM_PROV_NAME;
+        else
+        {
+            if (ofi_ctx->prov_env_copy && !strstr(ofi_ctx->prov_env_copy, ","))
+                prov_name = ofi_ctx->prov_env_copy;
+            else
+                prov_name = NULL;
+        }
+
+        prov_hints->fabric_attr->prov_name = (prov_name) ? strdup(prov_name) : NULL;
+
+        ATL_OFI_DEBUG_PRINT_ROOT("request provider: idx %zu, name %s, is_shm %d",
+            idx, prov_hints->fabric_attr->prov_name, prov->is_shm);
 
         ret = fi_getinfo(fi_version, NULL, NULL, 0ULL, prov_hints, &providers);
 
         if (ret || !providers)
         {
-            ATL_OFI_PRINT("fi_getinfo error (max_ep_tx_ctx), prov_idx %zu", idx);
+            ATL_OFI_PRINT("fi_getinfo erro: ret %zd, providers %p, prov_idx %zu", ret, providers, idx);
             goto err;
         }
 
@@ -1863,6 +1908,9 @@ atl_ofi_init(int* argc, char*** argv,
     *out_ctx = ctx;
 
     fi_freeinfo(base_hints);
+
+    free(ofi_ctx->prov_env_copy);
+    ofi_ctx->prov_env_copy = NULL;
 
     return ATL_STATUS_SUCCESS;
 

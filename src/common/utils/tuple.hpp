@@ -39,40 +39,82 @@ typename std::remove_reference<typename std::remove_cv<T>::type>::type& ccl_tupl
     return std::get<get_tuple_elem_index<0, non_ref_type, Args...>::index>(t);
 }
 
-template<typename TupleType, typename FunctionType>
-void ccl_tuple_for_each(TupleType&&, FunctionType,
-                        std::integral_constant<size_t, std::tuple_size<typename std::remove_reference<TupleType>::type >::value>)
+template<class specific_tuple, class functor, size_t cur_index>
+void ccl_tuple_for_each_impl(specific_tuple&& t, functor f, 
+                             std::true_type tuple_finished)
+{
+    // nothing to do
+}
+
+template<class specific_tuple, class functor, size_t cur_index>
+void ccl_tuple_for_each_impl(specific_tuple&& t, functor f, 
+                             std::false_type tuple_not_finished)
+{
+    f(std::get<cur_index>(std::forward<specific_tuple>(t)));
+
+    constexpr std::size_t tuple_size = 
+        std::tuple_size<typename std::remove_reference<specific_tuple>::type>::value;
+
+    using is_tuple_finished_t = 
+        std::integral_constant<bool, cur_index + 1>= tuple_size>;
+
+    ccl_tuple_for_each_impl<specific_tuple,
+                            functor,
+                            cur_index + 1>(std::forward<specific_tuple>(t), f, 
+                                           is_tuple_finished_t{});
+}
+
+template<class specific_tuple, class functor, size_t cur_index = 0>
+void ccl_tuple_for_each(specific_tuple&& t, functor f)
+{
+    constexpr std::size_t tuple_size = 
+        std::tuple_size<typename std::remove_reference<specific_tuple>::type>::value;
+    static_assert(tuple_size != 0, "Nothing to do, tuple is empty");
+
+    using is_tuple_finished_t = std::integral_constant<bool,
+                                                       cur_index >= tuple_size>;
+    ccl_tuple_for_each_impl<specific_tuple, 
+                            functor,
+                            cur_index>(std::forward<specific_tuple>(t), f,
+                                       is_tuple_finished_t{});
+}
+
+
+template<typename specific_tuple, size_t cur_index, 
+         typename functor, class ...FunctionArgs>
+void ccl_tuple_for_each_indexed_impl(functor, std::true_type tuple_finished, 
+                                     const FunctionArgs&...args)
 {}
 
-template<std::size_t I, typename TupleType, typename FunctionType
-       , typename = typename std::enable_if<I!=std::tuple_size<typename std::remove_reference<TupleType>::type>::value>::type >
-void ccl_tuple_for_each(TupleType&& t, FunctionType f, std::integral_constant<size_t, I>)
+template<typename specific_tuple, size_t cur_index,
+         typename functor, class ...FunctionArgs>
+void ccl_tuple_for_each_indexed_impl(functor f, std::false_type tuple_not_finished, 
+                                     const FunctionArgs& ...args)
 {
-    f(std::get<I>(std::forward<TupleType>(t)));
-    ccl_tuple_for_each(std::forward<TupleType>(t), f, std::integral_constant<size_t, I + 1>());
+    using tuple_element_t = typename std::tuple_element<cur_index, specific_tuple>::type;
+
+    f.template invoke<cur_index, tuple_element_t>(args...);
+
+    constexpr std::size_t tuple_size = 
+        std::tuple_size<typename std::remove_reference<specific_tuple>::type>::value;
+
+    using is_tuple_finished_t = 
+        std::integral_constant<bool, cur_index + 1 >= tuple_size>;
+
+    ccl_tuple_for_each_indexed_impl<specific_tuple, 
+                                    cur_index + 1,
+                                    functor>(f, is_tuple_finished_t{}, args...);
 }
 
-template<typename TupleType, typename FunctionType>
-void ccl_tuple_for_each(TupleType&& t, FunctionType f)
+template<typename specific_tuple, typename functor, class ...FunctionArgs>
+void ccl_tuple_for_each_indexed(functor f, const FunctionArgs& ...args)
 {
-    ccl_tuple_for_each(std::forward<TupleType>(t), f, std::integral_constant<size_t, 0>());
-}
+    constexpr std::size_t tuple_size = 
+        std::tuple_size<typename std::remove_reference<specific_tuple>::type>::value;
+    static_assert(tuple_size != 0, "Nothing to do, tuple is empty");
 
-template<typename TupleType, typename FunctionType>
-void ccl_tuple_for_each_indexed(FunctionType,
-                        std::integral_constant<size_t, std::tuple_size<typename std::remove_reference<TupleType>::type >::value>)
-{}
-
-template<typename TupleType, typename FunctionType, std::size_t I,
-       typename = typename std::enable_if<I!=std::tuple_size<typename std::remove_reference<TupleType>::type>::value>::type >
-void ccl_tuple_for_each_indexed(FunctionType f, std::integral_constant<size_t, I>)
-{
-    f.template invoke<I, typename std::tuple_element<I, TupleType>::type>();
-    ccl_tuple_for_each_indexed<TupleType, FunctionType>(f, std::integral_constant<size_t, I + 1>());
-}
-
-template<typename TupleType, typename FunctionType>
-void ccl_tuple_for_each_indexed(FunctionType f)
-{
-    ccl_tuple_for_each_indexed<TupleType, FunctionType, 0>(f, std::integral_constant<size_t, 0>());
+    using is_tuple_finished_t = std::false_type; //non-empty tuple started
+    ccl_tuple_for_each_indexed_impl<specific_tuple,
+                                    0, functor,
+                                    FunctionArgs...>(f, is_tuple_finished_t{}, args...);
 }

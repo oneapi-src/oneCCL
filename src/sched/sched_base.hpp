@@ -69,7 +69,9 @@ struct ccl_sched_base
 
     size_t get_priority() const;
     ccl_buffer alloc_buffer(size_t bytes);
+    void alloc_buffer_ptr(void**& out_ptr_to_allocated_ptr, size_t bytes);
     ccl_buffer update_buffer(ccl_buffer buffer, size_t new_size);
+    ccl_buffer find_and_realloc_buffer(void* buffer, size_t new_size, size_t expected_size = 0);
     void free_buffers();
 
     void add_memory_region(atl_mr_t* mr);

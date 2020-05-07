@@ -146,60 +146,71 @@ void ccl_master_sched::dump(std::ostream& out) const
 }
 
 ccl_master_sched::ccl_master_sched_ptr ccl_master_sched::create(const ccl_coll_param& param,
-                                                                const ccl_coll_attr& attr,
-                                                                bool postpone_caching)
+                                                                const ccl_coll_attr& attr)
 {
-    /* check contract at first */
-    CCL_THROW_IF_NOT(param.ctype == ccl_coll_allreduce ||
-                     !(attr.prologue_fn || attr.epilogue_fn || attr.reduction_fn),
-                     "prologue/epilogue/custom reduction is supported for allreduce only");
+    /* check contracts at first */
 
     CCL_THROW_IF_NOT(env_data.atl_transport == ccl_atl_ofi || !(attr.reduction_fn),
                      "custom reduction is supported for OFI transport only");
 
+    CCL_THROW_IF_NOT(ccl_datatype_storage::is_predefined_datatype(param.dtype.idx()) ||
+                     env_data.atl_transport == ccl_atl_ofi,
+                     "custom datatype is supported for OFI transport only");
+
+    CCL_THROW_IF_NOT((param.ctype != ccl_coll_allreduce &&
+                      param.ctype != ccl_coll_reduce &&
+                      param.ctype != ccl_coll_sparse_allreduce) ||
+                     ccl_datatype_storage::is_predefined_datatype(param.dtype.idx()) ||
+                     attr.reduction_fn,
+                     "custom datatype requires custom reduction");
+
+    CCL_THROW_IF_NOT(param.ctype == ccl_coll_allreduce ||
+                     !(attr.prologue_fn || attr.epilogue_fn || attr.reduction_fn),
+                     "prologue/epilogue/custom reduction is supported for allreduce only");
+
     CCL_THROW_IF_NOT(param.ctype == ccl_coll_allgatherv || !(attr.vector_buf),
                      "vector buffer is supported for allgatherv only");
 
-    CCL_THROW_IF_NOT(param.ctype != ccl_coll_sparse_allreduce || env_data.sparse_allreduce_algo_raw != "mask" || !(attr.reduction_fn), 
+    CCL_THROW_IF_NOT(param.ctype != ccl_coll_sparse_allreduce ||
+                     env_data.sparse_allreduce_algo_raw != "mask" ||
+                     !(attr.reduction_fn), 
                      "mask algorithm for sparse_allreduce does not support custom reduction");
 
-    CCL_THROW_IF_NOT(param.dtype->type != ccl_dtype_bfp16 || global_data.is_bfp16_enabled,
+    CCL_THROW_IF_NOT((param.dtype.idx() != ccl_dtype_bfp16) || (global_data.bfp16_impl_type != ccl_bfp16_none),
                      "BFP16 datatype is requested but not supported");
 
     ccl_sched_key key;
-    ccl_master_sched_ptr sched = nullptr;
+    std::pair<ccl_master_sched_ptr, bool> result;
+    ccl_master_sched_ptr sched;
+    bool is_created = false;
+    auto create_fn = [param]() -> ccl_master_sched_ptr { return new ccl_master_sched(param); };
 
     if (attr.to_cache)
     {
         key.set(param, attr);
-        sched = global_data.sched_cache->find(key);
-        if (sched)
-        {
-            /* update some parameters and attributes in existing schedule
-               as they could be changed since previous call */
-            sched->update_coll_param_and_attr(param, attr);
-
-            LOG_DEBUG("found sched, reuse ", sched, ", type ",
-                      ccl_coll_type_to_str(sched->coll_param.ctype));
-        }
+        std::tie(sched, is_created) = global_data.sched_cache->find_or_create(std::move(key), create_fn);
     }
-
-    if (!sched)
+    else
     {
-        std::unique_ptr<ccl_master_sched> new_sched(new ccl_master_sched(param));
-        LOG_DEBUG("didn't find sched, create new one ", new_sched.get(), ", type ",
-                  ccl_coll_type_to_str(new_sched->coll_param.ctype));
-
-        new_sched->set_coll_attr(attr);
-        new_sched->alloc_buffers_for_sycl_copy();
-
-        if (attr.to_cache && !postpone_caching)
-        {
-            global_data.sched_cache->add(std::move(key), new_sched.get());
-            // don't use 'key' anymore, because it was moved
-        }
-
-        sched = new_sched.release();
+        sched = create_fn();
+        is_created = true;
     }
+
+    if (is_created)
+    {
+        sched->set_coll_attr(attr);
+        sched->alloc_buffers_for_sycl_copy();
+        LOG_DEBUG("didn't find sched, create new one ", sched, ", type ",
+                  ccl_coll_type_to_str(sched->coll_param.ctype));
+    }
+    else
+    {
+        /* update some parameters and attributes in existing schedule
+           as they could be changed since previous call */
+        sched->update_coll_param_and_attr(param, attr);
+        LOG_DEBUG("found sched, reuse ", sched, ", type ",
+                  ccl_coll_type_to_str(sched->coll_param.ctype));
+    }
+
     return sched;
 }

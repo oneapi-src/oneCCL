@@ -48,11 +48,11 @@ int main(int argc, char** argv)
 
     /* invoke ccl_allreduce */
     comm->allreduce(sendbuf,
-                   recvbuf,
-                   COUNT,
-                   ccl::reduction::sum,
-                   nullptr, /* attr */
-                   stream)->wait();
+                    recvbuf,
+                    COUNT,
+                    ccl::reduction::sum,
+                    nullptr, /* attr */
+                    stream)->wait();
 
     /* check correctness of recvbuf */
     for (i = 0; i < COUNT; i++) {

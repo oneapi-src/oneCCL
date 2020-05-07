@@ -249,7 +249,7 @@ algo_group_type ccl_algorithm_selector_base<algo_group_type>::get(const ccl_sele
     ccl_selection_border_type elem_border;
 
     size_t count = ccl_algorithm_selector_helper<algo_group_type>::get_count(param);
-    size_t size = count * ccl_datatype_get_size(param.dtype);
+    size_t size = count * param.dtype.size();
     auto lower_bound = main_table.lower_bound(size);
     ccl_selection_unpack_elem(elem_size, elem_algo, elem_border, lower_bound, main_table);
 

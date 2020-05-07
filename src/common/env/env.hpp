@@ -57,6 +57,7 @@ constexpr const char* CCL_SPIN_COUNT = "CCL_SPIN_COUNT";
 constexpr const char* CCL_YIELD = "CCL_YIELD";
 constexpr const char* CCL_MAX_SHORT_SIZE = "CCL_MAX_SHORT_SIZE";
 constexpr const char* CCL_CACHE_KEY = "CCL_CACHE_KEY";
+constexpr const char* CCL_CACHE_FLUSH = "CCL_CACHE_FLUSH";
 
 constexpr const char* CCL_CHUNK_COUNT = "CCL_CHUNK_COUNT";
 constexpr const char* CCL_MIN_CHUNK_SIZE = "CCL_MIN_CHUNK_SIZE";
@@ -121,6 +122,7 @@ struct alignas(CACHELINE_SIZE) ccl_env_data
     ccl_yield_type yield_type;
     size_t max_short_size;
     ccl_cache_key_type cache_key_type;
+    int enable_cache_flush;
 
     size_t chunk_count;
     size_t min_chunk_size;

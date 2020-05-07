@@ -51,27 +51,27 @@
         }                                                               \
     } while (0)
 
-ccl_status_t ccl_comp_copy(const void* in_buf, void* out_buf, size_t count, ccl_datatype_internal_t dtype)
+ccl_status_t ccl_comp_copy(const void* in_buf, void* out_buf, size_t count, const ccl_datatype& dtype)
 {
     CCL_ASSERT(in_buf, "in_buf is null");
     CCL_ASSERT(out_buf, "out_buf is null");
-    CCL_MEMCPY(out_buf, in_buf, count * ccl_datatype_get_size(dtype));
+    CCL_MEMCPY(out_buf, in_buf, count * dtype.size());
     return ccl_status_success;
 }
 
 ccl_status_t ccl_comp_reduce(const void* in_buf, size_t in_count, void* inout_buf, size_t* out_count,
-                             ccl_datatype_internal_t dtype, ccl_reduction_t reduction,
+                             const ccl_datatype& dtype, ccl_reduction_t reduction,
                              ccl_reduction_fn_t reduction_fn, const ccl_fn_context_t* context)
 {
     if (reduction == ccl_reduction_custom)
     {
         CCL_THROW_IF_NOT(reduction_fn, "custom reduction requires user callback");
-        reduction_fn(in_buf, in_count, inout_buf, out_count, context, dtype->type);
+        reduction_fn(in_buf, in_count, inout_buf, out_count, dtype.idx(), context);
         return ccl_status_success;
     }
 
     size_t i;
-    switch (dtype->type)
+    switch (dtype.idx())
     {
         case ccl_dtype_char:
             CCL_REDUCE(char);
@@ -80,7 +80,7 @@ ccl_status_t ccl_comp_reduce(const void* in_buf, size_t in_count, void* inout_bu
             CCL_REDUCE(int);
             break;
         case ccl_dtype_bfp16:
-            if (global_data.is_bfp16_enabled == 0)
+            if (global_data.bfp16_impl_type == ccl_bfp16_none)
                 CCL_FATAL("CCL doesn't support reductions in BFP16 on this CPU");
             ccl_bfp16_reduce(in_buf, in_count, inout_buf, out_count, reduction);
             break;
@@ -97,7 +97,7 @@ ccl_status_t ccl_comp_reduce(const void* in_buf, size_t in_count, void* inout_bu
             CCL_REDUCE(uint64_t);
             break;
         default:
-            CCL_FATAL("unexpected value ", dtype->type);
+            CCL_FATAL("unexpected value ", dtype.idx());
             break;
     }
     return ccl_status_success;

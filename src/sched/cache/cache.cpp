@@ -16,58 +16,64 @@
 #include "common/env/env.hpp"
 #include "sched/cache/cache.hpp"
 
-ccl_master_sched* ccl_sched_cache::find(ccl_sched_key& key)
+ccl_master_sched* ccl_sched_cache::find_unsafe(const ccl_sched_key& key) const
 {
     ccl_master_sched* sched = nullptr;
     {
-        std::lock_guard<sched_cache_lock_t> lock{guard};
-        sched_table_t::iterator it = table.find(key);
+        auto it = table.find(key);
         if (it != table.end())
         {
             sched = it->second;
         }
     }
-
-    if (sched)
-    {
-        LOG_DEBUG("found sched in cache, ",sched);
-        if (env_data.cache_key_type != ccl_cache_key_full)
-        {
-            LOG_DEBUG("do check for found sched");
-            CCL_ASSERT(key.check(sched->coll_param, sched->coll_attr));
-        }
-        return sched;
-    }
-    else
-    {
-        LOG_DEBUG("didn't find sched in cache");
-        return nullptr;
-    }
+    return sched;
 }
 
-void ccl_sched_cache::add(ccl_sched_key&& key, ccl_master_sched* sched)
+void ccl_sched_cache::recache(const ccl_sched_key& old_key, ccl_sched_key&& new_key)
 {
     {
         std::lock_guard<sched_cache_lock_t> lock{guard};
-        auto emplace_result = table.emplace(std::move(key), sched);
-        CCL_ASSERT(emplace_result.second);
+        auto it = table.find(old_key);
+        if (it == table.end())
+        {
+            std::string error_message = "old_key wasn't found";
+            CCL_ASSERT(false, error_message, old_key.match_id);
+            throw ccl::ccl_error(error_message + old_key.match_id);
+        }
+        ccl_master_sched* sched = it->second;
+        table.erase(it);
+        auto emplace_result = table.emplace(std::move(new_key), sched);
+        CCL_THROW_IF_NOT(emplace_result.second);
     }
-
-    LOG_DEBUG("size ", table.size(),
-              ", bucket_count ", table.bucket_count(),
-              ", load_factor ", table.load_factor(),
-              ", max_load_factor ", table.max_load_factor());
 }
 
-void ccl_sched_cache::remove_all()
+void ccl_sched_cache::release(ccl_master_sched* sched)
 {
+    reference_counter--;
+    LOG_TRACE("reference_counter=",  reference_counter);
+}
+
+bool ccl_sched_cache::try_flush()
+{
+    if (!env_data.enable_cache_flush)
+        return true;
+
     std::lock_guard<sched_cache_lock_t> lock{guard};
-    for (auto it = table.begin(); it != table.end(); ++it)
+
+    if (reference_counter == 0)
     {
-        ccl_master_sched* sched = it->second;
-        CCL_ASSERT(sched);
-        LOG_DEBUG("remove sched ", sched, " from cache");
-        delete sched;
+        for (auto it = table.begin(); it != table.end(); ++it)
+        {
+            ccl_master_sched* sched = it->second;
+            CCL_ASSERT(sched);
+            LOG_DEBUG("remove sched ", sched, " from cache");
+            delete sched;
+        }
+        table.clear();
+        return true;
     }
-    table.clear();
+    else
+    {
+        return false;
+    }
 }

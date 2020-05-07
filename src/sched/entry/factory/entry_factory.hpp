@@ -55,7 +55,10 @@ namespace entry_factory
     EntryType* make_entry(ccl_sched* sched, Arguments &&...args)
     {
         LOG_DEBUG("creating ", EntryType::class_name(), " entry");
-        return detail::entry_creator<EntryType>::create(sched, std::forward<Arguments>(args)...);
+        EntryType* new_entry = detail::entry_creator<EntryType>::create(sched, std::forward<Arguments>(args)...);
+        LOG_DEBUG("created: ", EntryType::class_name(), ", entry: ", new_entry,
+                  ", for sched: ", sched);
+        return new_entry;
     }
 
     /* Example for non-standard entry 'my_non_standard_entry' creation

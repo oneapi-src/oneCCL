@@ -20,7 +20,7 @@ namespace entry_factory
     void make_chunked_send_entry(ccl_sched* sched,
                                  const ccl_buffer buf,
                                  size_t cnt,
-                                 ccl_datatype_internal_t dtype,
+                                 const ccl_datatype& dtype,
                                  size_t dst,
                                  ccl_comm* comm)
     {
@@ -36,7 +36,7 @@ namespace entry_factory
     void make_chunked_recv_entry(ccl_sched* sched,
                                  const ccl_buffer buf,
                                  size_t cnt,
-                                 ccl_datatype_internal_t dtype,
+                                 const ccl_datatype& dtype,
                                  size_t src,
                                  ccl_comm* comm)
     {
@@ -53,7 +53,7 @@ namespace entry_factory
                                         ccl_buffer inout_buf,
                                         size_t cnt,
                                         size_t* out_cnt,
-                                        ccl_datatype_internal_t dtype,
+                                        const ccl_datatype& dtype,
                                         ccl_reduction_t reduction_op,
                                         size_t src,
                                         ccl_buffer comm_buf,

@@ -67,8 +67,7 @@ public:
     //factory method (TODO: wrap into smart-pointer)
     using ccl_master_sched_ptr = ccl_master_sched*;
     static ccl_master_sched_ptr create(const ccl_coll_param& param,
-                                       const ccl_coll_attr& attr,
-                                       bool postpone_caching);
+                                       const ccl_coll_attr& attr);
 private:
     void prepare_partial_scheds();
 };

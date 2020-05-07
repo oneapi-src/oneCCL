@@ -17,8 +17,6 @@
 #include "common/comm/comm.hpp"
 #include "sched/sched.hpp"
 
-std::atomic_size_t ccl_comm::comm_count{};
-
 ccl_comm::ccl_comm(size_t rank,
                    size_t size,
                    ccl_comm_id_storage::comm_id&& id) :
