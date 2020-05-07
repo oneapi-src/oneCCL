@@ -1,0 +1,13 @@
+.. _exhale_define_ccl__types_8h_1abdb992edaff7cd8ac9e1595681cb3c07:
+
+Define ccl_dtype_uint64
+=======================
+
+- Defined in :ref:`file_include_ccl_types.h`
+
+
+Define Documentation
+--------------------
+
+
+.. doxygendefine:: ccl_dtype_uint64

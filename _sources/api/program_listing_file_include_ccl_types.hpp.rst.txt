@@ -30,7 +30,7 @@ Program Listing for File ccl_types.hpp
        last_value = ccl_reduction_last_value
    };
    
-   enum class data_type
+   enum datatype: int
    {
        dt_char = ccl_dtype_char,
        dt_int = ccl_dtype_int,
@@ -55,6 +55,8 @@ Program Listing for File ccl_types.hpp
    
    typedef ccl_comm_attr_t comm_attr;
    
+   typedef ccl_datatype_attr_t datatype_attr;
+   
    class ccl_error : public std::runtime_error
    {
    public:
@@ -72,7 +74,7 @@ Program Listing for File ccl_types.hpp
        using ccl_type = std::integral_constant<ccl_datatype_t, ccl_type_v>;
        static constexpr size_t size = size_of_type;
        static constexpr ccl_datatype_t ccl_type_value = ccl_type::value;
-       static constexpr data_type ccl_datatype_value = static_cast<data_type>(ccl_type_value);
+       static constexpr datatype ccl_datatype_value = static_cast<datatype>(ccl_type_value);
        static constexpr bool is_class = iclass;
        static constexpr bool is_supported = supported;
    };

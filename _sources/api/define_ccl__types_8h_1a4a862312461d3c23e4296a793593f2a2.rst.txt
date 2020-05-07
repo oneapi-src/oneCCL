@@ -1,0 +1,13 @@
+.. _exhale_define_ccl__types_8h_1a4a862312461d3c23e4296a793593f2a2:
+
+Define ccl_dtype_bfp16
+======================
+
+- Defined in :ref:`file_include_ccl_types.h`
+
+
+Define Documentation
+--------------------
+
+
+.. doxygendefine:: ccl_dtype_bfp16

@@ -1,0 +1,13 @@
+.. _exhale_typedef_ccl__type__traits_8hpp_1a896099a6bfb3e7c8cdd8424abbfe7eb7:
+
+Typedef ccl::bfp16
+==================
+
+- Defined in :ref:`file_include_ccl_type_traits.hpp`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: ccl::bfp16

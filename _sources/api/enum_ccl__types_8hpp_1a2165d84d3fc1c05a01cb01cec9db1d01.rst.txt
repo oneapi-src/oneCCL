@@ -1,0 +1,13 @@
+.. _exhale_enum_ccl__types_8hpp_1a2165d84d3fc1c05a01cb01cec9db1d01:
+
+Enum datatype
+=============
+
+- Defined in :ref:`file_include_ccl_types.hpp`
+
+
+Enum Documentation
+------------------
+
+
+.. doxygenenum:: ccl::datatype

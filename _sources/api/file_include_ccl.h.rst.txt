@@ -56,11 +56,17 @@ Functions
 
 - :ref:`exhale_function_ccl_8h_1a2f90c583079ea7cc752e0323c1a6da14`
 
+- :ref:`exhale_function_ccl_8h_1a0364110c07fc9deeec0f21cfc953851e`
+
+- :ref:`exhale_function_ccl_8h_1abd02cad9cd2fb2c653b2355fe6fa84aa`
+
 - :ref:`exhale_function_ccl_8h_1a4c39317f260e16a8011a721aabd08169`
 
 - :ref:`exhale_function_ccl_8h_1ad8a13061b6dc0088712f2a23aa65d4cd`
 
 - :ref:`exhale_function_ccl_8h_1aad4a37be50f4cdcf9c056dc48b18cf54`
+
+- :ref:`exhale_function_ccl_8h_1a149c3bbdf6848c0bddac1c052db92037`
 
 - :ref:`exhale_function_ccl_8h_1a3dd7671f84f0e6feefb0070ed716d3e9`
 

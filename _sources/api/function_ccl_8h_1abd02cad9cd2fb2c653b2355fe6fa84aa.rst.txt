@@ -1,0 +1,13 @@
+.. _exhale_function_ccl_8h_1abd02cad9cd2fb2c653b2355fe6fa84aa:
+
+Function ccl_datatype_free
+==========================
+
+- Defined in :ref:`file_include_ccl.h`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: ccl_datatype_free(ccl_datatype_t)
