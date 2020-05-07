@@ -101,7 +101,7 @@ MPICH_VERSION="3.3"
 CXXFLAGS=""
 LDFLAGS=" -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl"
 LIBS=" -lpthread  -lfabric -lrt "
-MPIVERSION="2021.1-beta05"
+MPIVERSION="2021.1-beta06"
 MPILIBNAME="mpi"
 MPICXXLIBNAME="mpicxx"
 

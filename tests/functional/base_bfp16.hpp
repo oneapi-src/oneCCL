@@ -27,18 +27,52 @@
 #define BFP16_SHIFT     16
 #define BFP16_PRECISION 0.0390625 // 2^-8
 
+int is_avx512bf_enabled()
+{
+#ifdef CCL_BFP16_AVX512BF_COMPILER
+    static int is_enabled = -1;
+
+    if (is_enabled == -1)
+    {
+        uint32_t reg[4];
+
+        __asm__ __volatile__ ("cpuid" :
+                              "=a" (reg[0]), "=b" (reg[1]), "=c" (reg[2]), "=d" (reg[3]) :
+                              "a" (7), "c" (1));
+        is_enabled = ( reg[0] & (1 << 5) ) >> 5;
+    }
+
+    return is_enabled;
+#else
+    return 0;
+#endif
+}
+
 // float32 -> bfloat16
 #ifdef CCL_BFP16_TARGET_ATTRIBUTES
+#ifdef CCL_BFP16_AVX512BF_COMPILER
+void convert_fp32_to_bfp16(const void* src, void* dst) __attribute__((target("avx512bw,avx512bf16")));
+#else
 void convert_fp32_to_bfp16(const void* src, void* dst) __attribute__((target("avx512bw")));
+#endif
 #endif
 void convert_fp32_to_bfp16(const void* src, void* dst)
 {
-    _mm256_storeu_si256((__m256i*)(dst), _mm512_cvtepi32_epi16(_mm512_bsrli_epi128(_mm512_loadu_si512(src), 2))); 
+#ifdef CCL_BFP16_AVX512BF_COMPILER
+    if (is_avx512bf_enabled())
+        _mm256_storeu_si256((__m256i*)(dst), _mm512_cvtneps_pbh(_mm512_loadu_ps(src)));
+    else
+#endif
+        _mm256_storeu_si256((__m256i*)(dst), _mm512_cvtepi32_epi16(_mm512_bsrli_epi128(_mm512_loadu_si512(src), 2))); 
 }
 
 // bfloat16 -> float32
 #ifdef CCL_BFP16_TARGET_ATTRIBUTES
+#ifdef CCL_BFP16_AVX512BF_COMPILER
+void convert_bfp16_to_fp32(const void* src, void* dst) __attribute__((target("avx512bw,avx512bf16")));
+#else
 void convert_bfp16_to_fp32(const void* src, void* dst) __attribute__((target("avx512bw")));
+#endif
 #endif
 void convert_bfp16_to_fp32(const void* src, void* dst)
 {

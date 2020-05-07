@@ -41,7 +41,7 @@ public:
                       ccl_buffer inout_buf,
                       size_t cnt,
                       size_t* out_cnt,
-                      ccl_datatype_internal_t dtype,
+                      const ccl_datatype& dtype,
                       ccl_reduction_t reduction_op,
                       size_t src,
                       ccl_buffer comm_buf,
@@ -64,7 +64,7 @@ public:
 
         if (comm_buf.get_ptr() == nullptr || comm_buf == inout_buf)
         {
-            size_t comm_buf_size = in_cnt * ccl_datatype_get_size(dtype);
+            size_t comm_buf_size = in_cnt * dtype.size();
             this->comm_buf.set(CCL_MALLOC(comm_buf_size, "recv_reduce.comm_buf"), comm_buf_size);
             own_comm_buff = true;
         }
@@ -74,7 +74,7 @@ public:
     {
         if (status == ccl_sched_entry_status_started)
         {
-            size_t bytes = in_cnt * ccl_datatype_get_size(dtype);
+            size_t bytes = in_cnt * dtype.size();
             LOG_DEBUG("cancel RECV in RECV_REDUCE entry, src ", src, ", req ", &req, ", bytes", bytes);
             atl_ep_cancel(sched->bin->get_atl_ep(), &req);
         }
@@ -90,7 +90,7 @@ public:
         size_t global_src = comm->get_global_rank(src);
         atl_tag = global_data.atl_tag->create(sched->get_comm_id(), global_src,
                                               sched->sched_id, sched->get_op_id());
-        size_t bytes = in_cnt * ccl_datatype_get_size(dtype);
+        size_t bytes = in_cnt * dtype.size();
         LOG_DEBUG("starting RECV in RECV_REDUCE entry, src ", global_src, ", tag ", atl_tag, ", req ", &req, ", bytes ", bytes);
 
         atl_status_t atl_status = atl_ep_recv(sched->bin->get_atl_ep(), comm_buf.get_ptr(bytes),
@@ -112,7 +112,7 @@ public:
         if (req_status)
         {
             LOG_DEBUG("completed RECV in RECV_REDUCE entry, req=", &req, ", starting REDUCE");
-            size_t bytes = in_cnt * ccl_datatype_get_size(dtype);
+            size_t bytes = in_cnt * dtype.size();
             size_t offset = inout_buf.get_offset();
 
             const ccl_fn_context_t context = { sched->coll_attr.match_id.c_str(), offset };
@@ -142,7 +142,7 @@ protected:
     void dump_detail(std::stringstream& str) const override
     {
         ccl_logger::format(str,
-                           "dt ", ccl_datatype_get_name(dtype),
+                           "dt ", global_data.dtypes->name(dtype),
                            ", inout_buf ", inout_buf,
                            ", in_cnt ", in_cnt,
                            ", out_cnt ", out_cnt,
@@ -161,7 +161,7 @@ private:
     ccl_buffer inout_buf;
     size_t in_cnt;
     size_t* out_cnt;
-    ccl_datatype_internal_t dtype;
+    ccl_datatype dtype;
     ccl_reduction_t op;
     size_t src;
     ccl_buffer comm_buf;

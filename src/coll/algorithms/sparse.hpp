@@ -17,32 +17,9 @@
 #include "coll/algorithms/sparse_handler.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
 
-#define MASK(op, vtype)                           \
-({                                                \
-    vtype value;                                  \
-    switch (op)                                   \
-    {                                             \
-    case ccl_reduction_sum:                       \
-        value = 0;                                \
-        break;                                    \
-    case ccl_reduction_prod:                      \
-        value = 1;                                \
-        break;                                    \
-    case ccl_reduction_min:                       \
-        value = std::numeric_limits<vtype>::max();\
-        break;                                    \
-    case ccl_reduction_max:                       \
-        value = std::numeric_limits<vtype>::min();\
-        break;                                    \
-    case ccl_reduction_custom:                    \
-        CCL_FATAL("ccl_reduction_custom is not supported for sparse allreduce based on mask algorithm");\
-        return ccl_status_invalid_arguments;      \
-    default:                                      \
-        value = 0;                                \
-        break;                                    \
-    }                                             \
-    value;                                        \
-})
+#define BFP16_ONE 0x3f80
+#define BFP16_MAX 0x7f7f
+#define BFP16_MIN 0xff7f
 
 #define CCL_DEFINE_ALGO(itype, vtype)                                                     \
     do {                                                                                  \
@@ -94,7 +71,7 @@
 
 #define CCL_DEFINE_VALUE(itype)                                         \
     do {                                                                \
-         switch (value_dtype->type)                                     \
+         switch (value_dtype.idx())                                     \
          {                                                              \
               case ccl_dtype_float:                                     \
                   CCL_DEFINE_ALGO(itype, float);                        \
@@ -114,11 +91,60 @@
               case ccl_dtype_uint64:                                    \
                   CCL_DEFINE_ALGO(itype, uint64_t);                     \
                   break;                                                \
+              case ccl_dtype_bfp16:                                     \
+                  CCL_DEFINE_ALGO(itype, ccl::bfp16);                   \
+                  break;                                                \
               default:                                                  \
-                  CCL_FATAL("value data type ", ccl_datatype_get_name(value_dtype), " is not supported yet");\
+                  CCL_FATAL("value datatype ",                          \
+                            global_data.dtypes->name(value_dtype),      \
+                            " is not supported yet");                   \
                   return ccl_status_invalid_arguments;                  \
          }                                                              \
     } while (0)
+
+template<typename vtype>
+typename std::enable_if<!std::is_same<vtype, ccl::bfp16>::value, vtype>::type
+get_mask(ccl_reduction_t op)
+{
+    switch (op)
+    {
+    case ccl_reduction_sum:
+        return 0;
+    case ccl_reduction_prod:
+        return 1;
+    case ccl_reduction_min:
+        return std::numeric_limits<vtype>::max();
+    case ccl_reduction_max:
+        return std::numeric_limits<vtype>::min(); 
+    case ccl_reduction_custom:
+        CCL_FATAL("ccl_reduction_custom is not supported for sparse allreduce based on mask algorithm");
+        return ccl_status_invalid_arguments;
+    default:
+        return 0;
+    }
+}
+
+template <typename vtype>
+typename std::enable_if<std::is_same<vtype, ccl::bfp16>::value, vtype>::type
+get_mask(ccl_reduction_t op)
+{
+    switch (op)
+    {
+    case ccl_reduction_sum:
+        return 0;
+    case ccl_reduction_prod:
+        return BFP16_ONE;
+    case ccl_reduction_min:
+        return BFP16_MAX;
+    case ccl_reduction_max:
+        return BFP16_MIN; 
+    case ccl_reduction_custom:
+        CCL_FATAL("ccl_reduction_custom is not supported for sparse allreduce based on mask algorithm");
+        return ccl_status_invalid_arguments;
+    default:
+        return 0;
+    }
+}
 
 ccl_status_t sparse_define_recv_size(const void* ctx)
 {
@@ -156,7 +182,7 @@ ccl_status_t sparse_reduce(const void* ctx)
     /* copy data from recv_buf so that it would be easier to identify unique indices */
     size_t idx_size = sa_handler->itype_size * sa_handler->send_count[0];
     std::vector<i_type> rcv_i(sa_handler->send_count[0]);
-    ccl_comp_copy((i_type*)(*sa_handler->recv_buf), rcv_i.data(), idx_size, ccl_dtype_internal_char);
+    ccl_comp_copy((i_type*)(*sa_handler->recv_buf), rcv_i.data(), idx_size, ccl_datatype_char);
     v_type* rcv_v = (v_type*)((char*)(*sa_handler->recv_buf) + idx_size);
 
     /* Look at received indices and the ones we already have. Check if there are equal
@@ -192,8 +218,8 @@ ccl_status_t sparse_reduce(const void* ctx)
         std::vector<v_type> buf_v(merge_idx_len * sa_handler->val_dim_cnt);
 
         /* copy what we already have reduced*/
-        ccl_comp_copy(snd_i, buf_i.data(), sa_handler->itype_size * sa_handler->dst_count[0], ccl_dtype_internal_char);
-        ccl_comp_copy(snd_v, buf_v.data(), sa_handler->vtype_size * sa_handler->dst_count[1], ccl_dtype_internal_char);
+        ccl_comp_copy(snd_i, buf_i.data(), sa_handler->itype_size * sa_handler->dst_count[0], ccl_datatype_char);
+        ccl_comp_copy(snd_v, buf_v.data(), sa_handler->vtype_size * sa_handler->dst_count[1], ccl_datatype_char);
 
         size_t idx_offset = 0;
         for (size_t num = 0; num < sa_handler->send_count[0]; num++)
@@ -220,8 +246,8 @@ ccl_status_t sparse_reduce(const void* ctx)
                                                                sa_handler->dst_count[0] * sa_handler->itype_size + sa_handler->dst_count[1] * sa_handler->vtype_size),
                                                                new_dst_size)).get_ptr();
 
-        ccl_comp_copy(buf_i.data(), (i_type*)(sa_handler->dst_buf), sa_handler->itype_size * merge_idx_len, ccl_dtype_internal_char);
-        ccl_comp_copy(buf_v.data(), (v_type*)((char*)(sa_handler->dst_buf) + sa_handler->itype_size * merge_idx_len), sa_handler->vtype_size * merge_idx_len * sa_handler->val_dim_cnt, ccl_dtype_internal_char);
+        ccl_comp_copy(buf_i.data(), (i_type*)(sa_handler->dst_buf), sa_handler->itype_size * merge_idx_len, ccl_datatype_char);
+        ccl_comp_copy(buf_v.data(), (v_type*)((char*)(sa_handler->dst_buf) + sa_handler->itype_size * merge_idx_len), sa_handler->vtype_size * merge_idx_len * sa_handler->val_dim_cnt, ccl_datatype_char);
 
         sa_handler->dst_count[0] = merge_idx_len;
         sa_handler->dst_count[1] = merge_idx_len * sa_handler->val_dim_cnt;
@@ -236,7 +262,7 @@ ccl_status_t sparse_reduce(const void* ctx)
         sa_handler->send_buf_size = *sa_handler->recv_icount;
 
     }
-    ccl_comp_copy(*sa_handler->recv_buf, sa_handler->send_tmp_buf, *sa_handler->recv_icount, ccl_dtype_internal_char);
+    ccl_comp_copy(*sa_handler->recv_buf, sa_handler->send_tmp_buf, *sa_handler->recv_icount, ccl_datatype_char);
 
     return ccl_status_success;
 }
@@ -255,7 +281,7 @@ ccl_status_t sparse_prepare_result(const void* ctx)
 
     sa_handler->iv_map->clear();
 
-    ccl_comp_copy(sa_handler->dst_buf, *sa_handler->recv_buf, total_size, ccl_dtype_internal_char);
+    ccl_comp_copy(sa_handler->dst_buf, *sa_handler->recv_buf, total_size, ccl_datatype_char);
     *sa_handler->recv_vbuf = ((char*)(*sa_handler->recv_buf) + sa_handler->itype_size * (*sa_handler->recv_icount));
 
     return ccl_status_success;
@@ -299,8 +325,8 @@ ccl_status_t ccl_coll_build_sparse_allreduce_basic(ccl_sched* sched,
                                                    ccl_buffer send_val_buf, size_t send_val_count,
                                                    ccl_buffer recv_ind_buf, size_t* recv_ind_count,
                                                    ccl_buffer recv_val_buf, size_t* recv_val_count,
-                                                   ccl_datatype_internal_t index_dtype,
-                                                   ccl_datatype_internal_t value_dtype,
+                                                   const ccl_datatype& index_dtype,
+                                                   const ccl_datatype& value_dtype,
                                                    ccl_reduction_t op,
                                                    ccl_comm* comm)
 {
@@ -432,7 +458,7 @@ ccl_status_t ccl_coll_build_sparse_allreduce_basic(ccl_sched* sched,
     {
         /* send local data to the right neighbour */
         send_entry* se = entry_factory::make_entry<send_entry>(sched, ccl_buffer(), 0,
-                                                               ccl_dtype_internal_char, send_to, comm);
+                                                               ccl_datatype_char, send_to, comm);
         se->set_field_fn<ccl_sched_entry_field_buf>(sparse_get_send_buf, sa_handler);
         se->set_field_fn<ccl_sched_entry_field_cnt>(sparse_get_send_count, sa_handler);
         sched->add_barrier();
@@ -446,7 +472,7 @@ ccl_status_t ccl_coll_build_sparse_allreduce_basic(ccl_sched* sched,
         sched->add_barrier();
 
         recv_entry* re = entry_factory::make_entry<recv_entry>(sched, ccl_buffer(), 0,
-                                                               ccl_dtype_internal_char, recv_from, comm);
+                                                               ccl_datatype_char, recv_from, comm);
         re->set_field_fn<ccl_sched_entry_field_buf>(sparse_get_recv_buf, sa_handler);
         re->set_field_fn<ccl_sched_entry_field_cnt>(sparse_get_recv_count, sa_handler);
         sched->add_barrier();
@@ -500,8 +526,8 @@ ccl_status_t ccl_coll_build_sparse_allreduce_size(ccl_sched* sched,
                                                    ccl_buffer send_val_buf, size_t send_val_count,
                                                    ccl_buffer recv_ind_buf, size_t* recv_ind_count,
                                                    ccl_buffer recv_val_buf, size_t* recv_val_count,
-                                                   ccl_datatype_internal_t index_dtype,
-                                                   ccl_datatype_internal_t value_dtype,
+                                                   const ccl_datatype& index_dtype,
+                                                   const ccl_datatype& value_dtype,
                                                    ccl_reduction_t op,
                                                    ccl_comm* comm)
 {
@@ -624,7 +650,7 @@ ccl_status_t ccl_coll_build_sparse_allreduce_size(ccl_sched* sched,
     param.recv_buf = ccl_buffer(sa_handler->recv_sizes, sizeof(size_t) * comm_size);
     param.send_count = sizeof(size_t);
     param.recv_counts = sa_handler->size_per_rank;
-    param.dtype = ccl_dtype_internal_char;
+    param.dtype = ccl_datatype_char;
     param.comm = comm;
 
     entry_factory::make_entry<coll_entry>(sched, param);
@@ -637,7 +663,7 @@ ccl_status_t ccl_coll_build_sparse_allreduce_size(ccl_sched* sched,
     {
         /* send local data to the right neighbour */
         send_entry* se = entry_factory::make_entry<send_entry>(sched, ccl_buffer(), 0,
-                                                               ccl_dtype_internal_char, send_to, comm);
+                                                               ccl_datatype_char, send_to, comm);
         se->set_field_fn<ccl_sched_entry_field_buf>(sparse_get_send_buf, sa_handler);
         se->set_field_fn<ccl_sched_entry_field_cnt>(sparse_get_send_count, sa_handler);
         sched->add_barrier();
@@ -648,7 +674,7 @@ ccl_status_t ccl_coll_build_sparse_allreduce_size(ccl_sched* sched,
 
         /* receive data from the left neighbour */
         recv_entry* re = entry_factory::make_entry<recv_entry>(sched, ccl_buffer(), 0,
-                                                               ccl_dtype_internal_char, recv_from, comm);
+                                                               ccl_datatype_char, recv_from, comm);
         re->set_field_fn<ccl_sched_entry_field_buf>(sparse_get_recv_buf, sa_handler);
         re->set_field_fn<ccl_sched_entry_field_cnt>(sparse_get_recv_count, sa_handler);
         sched->add_barrier();
@@ -671,11 +697,14 @@ template<typename i_type, typename v_type>
 ccl_status_t sparse_create_matrix(const void* ctx)
 {
     ccl_sparse_allreduce_handler* sa_handler = (ccl_sparse_allreduce_handler*)ctx;
+    LOG_TRACE("sa_handler: ", sa_handler, ", sa_handler->recv_count: ", sa_handler->recv_count,
+              ", sa_handler->recv_buf: ", sa_handler->recv_buf,
+              ", *sa_handler->recv_buf: ", *sa_handler->recv_buf);
 
     /* get rid of the duplicates in allgathered indices list */
-    std::set<i_type> idx_set;
-    for (size_t i = 0; i < sa_handler->recv_count; i++)
-        idx_set.insert(((i_type*)(*sa_handler->recv_buf))[i]);
+    std::set<i_type> idx_set(static_cast<i_type*>(*sa_handler->recv_buf), 
+                             static_cast<i_type*>(*sa_handler->recv_buf) + 
+                                                  sa_handler->recv_count);
 
     /* create a matrix expanded with zeros for indices that are not
     present in the unique indices list specified for this very process*/
@@ -684,7 +713,7 @@ ccl_status_t sparse_create_matrix(const void* ctx)
     v_type* matrix = static_cast<v_type*>(CCL_MALLOC(matrix_size, "matrix"));
     v_type* values = (v_type*)((char*)(sa_handler->dst_buf) + sa_handler->itype_size * sa_handler->dst_count[0]);
 
-    v_type mask_value = MASK(sa_handler->op, v_type);
+    v_type mask_value = get_mask<v_type>(sa_handler->op);
     size_t idx_offset = 0;
     for (typename std::set<i_type>::iterator it = idx_set.begin(); it != idx_set.end(); ++it)
     {
@@ -705,22 +734,25 @@ ccl_status_t sparse_create_matrix(const void* ctx)
     }
 
     size_t cur_dst_size = sa_handler->dst_count[0] * sa_handler->itype_size + sa_handler->dst_count[1] * sa_handler->vtype_size;
-    if (matrix_size > cur_dst_size)
-    {
-        sa_handler->dst_buf = (sa_handler->sched->update_buffer(ccl_buffer(sa_handler->dst_buf, cur_dst_size), matrix_size)).get_ptr();
-    }
-    ccl_comp_copy(matrix, sa_handler->dst_buf, matrix_size, ccl_dtype_internal_char);
-    CCL_FREE(matrix);
-    size_t idx_cnt = idx_set.size();
+    sa_handler->dst_buf = sa_handler->sched->find_and_realloc_buffer(sa_handler->dst_buf, matrix_size, cur_dst_size).get_ptr();
 
+    ccl_comp_copy(matrix, sa_handler->dst_buf, matrix_size, ccl_datatype_char);
+    CCL_FREE(matrix);
+
+    size_t idx_cnt = idx_set.size();
     sa_handler->dst_count[1] = idx_cnt * sa_handler->val_dim_cnt;
     size_t i_new_size = sa_handler->itype_size * idx_cnt;
     size_t v_new_size = sa_handler->vtype_size * sa_handler->dst_count[1];
 
     if (idx_cnt > *sa_handler->recv_icount)
     {
+        void* old_ibuf = *sa_handler->recv_ibuf;
+        void* old_vbuf = *sa_handler->recv_vbuf;
         *sa_handler->recv_ibuf = CCL_REALLOC(*sa_handler->recv_ibuf, *sa_handler->recv_icount * sa_handler->itype_size, i_new_size, CACHELINE_SIZE, "recv_ibuf");
         *sa_handler->recv_vbuf = CCL_REALLOC(*sa_handler->recv_vbuf, *sa_handler->recv_vcount * sa_handler->vtype_size, v_new_size, CACHELINE_SIZE, "recv_vbuf");
+        LOG_DEBUG("realloc for user buffers happened - "
+                  "ibuf {from: ", old_ibuf, ", to: ", *sa_handler->recv_ibuf, "}, "
+                  "vbuf {from: ", old_vbuf, ", to: ", *sa_handler->recv_vbuf, "}");
     }
     *sa_handler->recv_icount = idx_cnt;
     *sa_handler->recv_vcount = sa_handler->dst_count[1];
@@ -734,7 +766,7 @@ ccl_status_t sparse_post_reduce_result(const void* ctx)
 {
     ccl_sparse_allreduce_handler* sa_handler = (ccl_sparse_allreduce_handler*)ctx;
 
-    ccl_comp_copy(sa_handler->dst_buf, *sa_handler->recv_vbuf, sa_handler->vtype_size * (*sa_handler->recv_vcount), ccl_dtype_internal_char);
+    ccl_comp_copy(sa_handler->dst_buf, *sa_handler->recv_vbuf, sa_handler->vtype_size * (*sa_handler->recv_vcount), ccl_datatype_char);
 
     sa_handler->iv_map->clear();
 
@@ -763,8 +795,8 @@ ccl_status_t ccl_coll_build_sparse_allreduce_mask(ccl_sched* sched,
                                                   ccl_buffer send_val_buf, size_t send_val_count,
                                                   ccl_buffer recv_ind_buf, size_t* recv_ind_count,
                                                   ccl_buffer recv_val_buf, size_t* recv_val_count,
-                                                  ccl_datatype_internal_t index_dtype,
-                                                  ccl_datatype_internal_t value_dtype,
+                                                  const ccl_datatype& index_dtype,
+                                                  const ccl_datatype& value_dtype,
                                                   ccl_reduction_t op,
                                                   ccl_comm* comm)
 {
@@ -786,15 +818,43 @@ ccl_status_t ccl_coll_build_sparse_allreduce_mask(ccl_sched* sched,
     i_type* src_i = nullptr;
     v_type* src_v = nullptr;
 
-    if (send_ind_buf.get_ptr() != *((void**)(recv_ind_buf.get_ptr())))
+    void* r_ind_buf = *((void**)(recv_ind_buf.get_ptr()));
+    void* r_val_buf = *((void**)(recv_val_buf.get_ptr()));
+
+    if (comm_size == 1)
+    {
+        if (send_ind_buf.get_ptr() != r_ind_buf)
+            entry_factory::make_entry<copy_entry>(sched, send_ind_buf,
+                                                  ccl_buffer(r_ind_buf, send_ind_count * itype_size),
+                                                  send_ind_count, index_dtype);
+
+        if (send_val_buf.get_ptr() != r_val_buf)
+            entry_factory::make_entry<copy_entry>(sched, send_val_buf,
+                                                  ccl_buffer(r_val_buf, send_val_count * vtype_size),
+                                                  send_val_count, value_dtype);
+        return status;
+    }
+
+    if (send_ind_buf.get_ptr() != r_ind_buf)
     {
         src_i = (i_type*)send_ind_buf.get_ptr();
-        src_v = (v_type*)send_val_buf.get_ptr();
+        LOG_TRACE("doesn't use inplace buffers - src_i: ", src_i);
     }
     else
     {
-        src_i = (i_type*)*((void**)(recv_ind_buf.get_ptr()));
-        src_v = (v_type*)*((void**)(recv_val_buf.get_ptr()));
+        src_i = (i_type*)r_ind_buf;
+        LOG_TRACE("use inplace buffers - src_i: ", src_i);
+    }
+
+    if (send_val_buf.get_ptr() != r_val_buf)
+    {
+        src_v = (v_type*)send_val_buf.get_ptr();
+        LOG_TRACE("doesn't use inplace buffers - src_v: ", src_v);
+    }
+    else
+    {
+        src_v = (v_type*)r_val_buf;
+        LOG_TRACE("use inplace buffers - src_v: ", src_v);
     }
 
     /* fill in the <index:value_offset> map */
@@ -810,7 +870,9 @@ ccl_status_t ccl_coll_build_sparse_allreduce_mask(ccl_sched* sched,
         else
         {
             /* reduce values locally from duplicate indices */
-            ccl_comp_reduce((void*)(src_v + i * val_dim_cnt), val_dim_cnt, (void*)(src_v + it->second), nullptr, value_dtype, op, nullptr, nullptr);
+            ccl_comp_reduce((void*)(src_v + i * val_dim_cnt), val_dim_cnt,
+                            (void*)(src_v + it->second), nullptr, value_dtype,
+                            op, nullptr, nullptr);
         }
     }
 
@@ -832,8 +894,7 @@ ccl_status_t ccl_coll_build_sparse_allreduce_mask(ccl_sched* sched,
         val_offset = idx_offset * val_dim_cnt;
         CCL_MEMCPY(dst_v + val_offset, src_v + it.second, vtype_size * val_dim_cnt);
         it.second = val_offset;
-        idx_offset++;
-        
+        idx_offset++;  
     }
 
     /* create handler for sched function callbacks */
@@ -854,13 +915,18 @@ ccl_status_t ccl_coll_build_sparse_allreduce_mask(ccl_sched* sched,
     sa_handler->recv_vbuf = (void**)recv_val_buf.get_ptr();
     sa_handler->recv_icount = recv_ind_count;
     sa_handler->recv_vcount = recv_val_count;
+    sa_handler->op = op;
+    sa_handler->value_dtype = value_dtype;
 
-    void* recv_buf = sched->alloc_buffer(itype_size * sa_handler->recv_count).get_ptr();
-    sa_handler->recv_buf = &recv_buf;
+    sched->alloc_buffer_ptr(sa_handler->recv_buf, itype_size * sa_handler->recv_count);
 
     size_t* recv_counts = static_cast<size_t*>(sched->alloc_buffer(sizeof(size_t) * comm_size).get_ptr());
     for (size_t i = 0; i < comm_size; i++)
         recv_counts[i] = send_ind_count;
+
+    LOG_TRACE("sa_handler: ", sa_handler, ", sa_handler->recv_count: ", sa_handler->recv_count,
+              ", sa_handler->recv_buf: ", sa_handler->recv_buf,
+              ", *sa_handler->recv_buf: ", *sa_handler->recv_buf);
 
     ccl_coll_entry_param param_allgatherv{};
     param_allgatherv.ctype = ccl_coll_allgatherv;
@@ -945,7 +1011,8 @@ ccl_status_t sparse_reduce_gathered(const void* ctx)
         else
         {
             ccl_comp_reduce((void*)(values + i * sa_handler->val_dim_cnt), sa_handler->val_dim_cnt, 
-                            (void*)(values + it->second), nullptr, sa_handler->value_dtype, sa_handler->op, nullptr, nullptr);
+                            (void*)(values + it->second), nullptr, sa_handler->value_dtype,
+                            sa_handler->op, nullptr, nullptr);
         }
     }
     size_t idx_cnt = iv_map->size();
@@ -955,8 +1022,13 @@ ccl_status_t sparse_reduce_gathered(const void* ctx)
 
     if (idx_cnt > (*sa_handler->recv_icount))
     {
+        void* old_ibuf = *sa_handler->recv_ibuf;
+        void* old_vbuf = *sa_handler->recv_vbuf;
         *sa_handler->recv_ibuf = CCL_REALLOC(*sa_handler->recv_ibuf, sa_handler->itype_size * (*sa_handler->recv_icount), i_new_size, CACHELINE_SIZE, "recv_ibuf");
         *sa_handler->recv_vbuf = CCL_REALLOC(*sa_handler->recv_vbuf, sa_handler->vtype_size * (*sa_handler->recv_vcount), v_new_size, CACHELINE_SIZE, "recv_vbuf");
+        LOG_DEBUG("realloc for user buffers happened - "
+                  "ibuf {from: ", old_ibuf, ", to: ", *sa_handler->recv_ibuf, "}, "
+                  "vbuf {from: ", old_vbuf, ", to: ", *sa_handler->recv_vbuf, "}");
     }
     *sa_handler->recv_icount = idx_cnt;
     *sa_handler->recv_vcount = idx_cnt * sa_handler->val_dim_cnt;
@@ -1002,8 +1074,8 @@ ccl_status_t ccl_coll_build_sparse_allreduce_3_allgatherv(ccl_sched *sched,
                                                   ccl_buffer send_val_buf, size_t send_val_count,
                                                   ccl_buffer recv_ind_buf, size_t* recv_ind_count,
                                                   ccl_buffer recv_val_buf, size_t* recv_val_count,
-                                                  ccl_datatype_internal_t index_dtype,
-                                                  ccl_datatype_internal_t value_dtype,
+                                                  const ccl_datatype& index_dtype,
+                                                  const ccl_datatype& value_dtype,
                                                   ccl_reduction_t op,
                                                   ccl_comm* comm)
 {
@@ -1025,15 +1097,43 @@ ccl_status_t ccl_coll_build_sparse_allreduce_3_allgatherv(ccl_sched *sched,
     i_type* src_i = nullptr;
     v_type* src_v = nullptr;
 
-    if (send_ind_buf.get_ptr() != *((void**)(recv_ind_buf.get_ptr())))
+    void* r_ind_buf = *((void**)(recv_ind_buf.get_ptr()));
+    void* r_val_buf = *((void**)(recv_val_buf.get_ptr()));
+
+    if (comm_size == 1)
+    {
+        if (send_ind_buf.get_ptr() != r_ind_buf)
+            entry_factory::make_entry<copy_entry>(sched, send_ind_buf,
+                                                  ccl_buffer(r_ind_buf, send_ind_count * itype_size),
+                                                  send_ind_count, index_dtype);
+
+        if (send_val_buf.get_ptr() != r_val_buf)
+            entry_factory::make_entry<copy_entry>(sched, send_val_buf,
+                                                  ccl_buffer(r_val_buf, send_val_count * vtype_size),
+                                                  send_val_count, value_dtype);
+        return status;
+    }
+
+    if (send_ind_buf.get_ptr() != r_ind_buf)
     {
         src_i = (i_type*)send_ind_buf.get_ptr();
-        src_v = (v_type*)send_val_buf.get_ptr();
+        LOG_TRACE("doesn't use inplace buffers - src_i: ", src_i);
     }
     else
     {
-        src_i = (i_type*)*((void**)(recv_ind_buf.get_ptr()));
-        src_v = (v_type*)*((void**)(recv_val_buf.get_ptr()));
+        src_i = (i_type*)r_ind_buf;
+        LOG_TRACE("use inplace buffers - src_i: ", src_i);
+    }
+
+    if (send_val_buf.get_ptr() != r_val_buf)
+    {
+        src_v = (v_type*)send_val_buf.get_ptr();
+        LOG_TRACE("doesn't use inplace buffers - src_v: ", src_v);
+    }
+    else
+    {
+        src_v = (v_type*)r_val_buf;
+        LOG_TRACE("use inplace buffers - src_v: ", src_v);
     }
 
     /* fill in the <index:value_offset> map */
@@ -1077,7 +1177,7 @@ ccl_status_t ccl_coll_build_sparse_allreduce_3_allgatherv(ccl_sched *sched,
     iv_map->clear();
 
     /* create handler for sched function callbacks */
-    ccl_sparse_allreduce_handler *sa_handler =
+    ccl_sparse_allreduce_handler* sa_handler =
         static_cast<ccl_sparse_allreduce_handler*>(sched->alloc_buffer(sizeof(ccl_sparse_allreduce_handler)).get_ptr());
 
     /* _count variables needed for sending/receiving */
@@ -1109,7 +1209,7 @@ ccl_status_t ccl_coll_build_sparse_allreduce_3_allgatherv(ccl_sched *sched,
     param.recv_buf = ccl_buffer(sa_handler->recv_counts, sizeof(size_t) * comm_size);
     param.send_count = sizeof(size_t);
     param.recv_counts = sa_handler->size_per_rank;
-    param.dtype = ccl_dtype_internal_char;
+    param.dtype = ccl_datatype_char;
     param.comm = comm;
 
     entry_factory::make_entry<coll_entry>(sched, param);

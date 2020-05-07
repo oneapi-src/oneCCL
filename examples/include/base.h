@@ -35,6 +35,8 @@
 
 void test_finalize(void);
 
+#define PRINT_BY_ROOT(fmt, ...) if (::rank == 0) printf(fmt"\n", ##__VA_ARGS__)
+
 #define ASSERT(cond, fmt, ...)                            \
   do                                                      \
   {                                                       \

@@ -18,13 +18,13 @@ Data Types
                 ccl_dtype_double = 4,
                 ccl_dtype_int64  = 5,
                 ccl_dtype_uint64 = 6,
-            } ccl _datatype_t;
+            } ccl_datatype_t;
 
     .. group-tab:: |cpp_api|
 
         ::
 
-            enum class data_type
+            enum datatype: int
             {
                 dt_char = ccl_dtype_char,
                 dt_int = ccl_dtype_int,

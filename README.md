@@ -1,5 +1,11 @@
-# oneccl
-Intel(R) oneAPI Collective Communications Library (oneCCL)
+# oneAPI Collective Communications Library (oneCCL)
+
+oneAPI Collective Communications Library (oneCCL) provides an efficient implementation of communication patterns used in deep learning.
+
+oneCCL is integrated into:
+* [Horovod\*](https://github.com/horovod/horovod) (distributed training framework). Refer to [Horovod with oneCCL](https://github.com/horovod/horovod/blob/master/docs/oneccl.md) for details.
+* [PyTorch\*](https://github.com/pytorch/pytorch) (machine learning framework). Refer to [PyTorch bindings for oneCCL](https://github.com/intel/torch-ccl) for details.
+
 ## Prerequisites
 
 Ubuntu* 18

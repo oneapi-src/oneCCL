@@ -78,7 +78,7 @@ public:
         const ccl_test_conf& test_conf = param.get_conf();
         ccl::coll_attr* attr = &param.coll_attr;
         ccl::stream_t& stream = param.get_stream();
-        ccl::data_type data_type = static_cast<ccl::data_type>(test_conf.data_type);
+        ccl::datatype data_type = static_cast<ccl::datatype>(test_conf.data_type);
 
         for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++)
         {

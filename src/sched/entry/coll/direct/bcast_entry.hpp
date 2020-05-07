@@ -29,7 +29,7 @@ public:
     bcast_entry(ccl_sched* sched,
                 ccl_buffer buf,
                 size_t cnt,
-                ccl_datatype_internal_t dtype,
+                const ccl_datatype& dtype,
                 size_t root,
                 ccl_comm* comm) :
         base_coll_entry(sched), buf(buf),
@@ -40,7 +40,7 @@ public:
 
     void start() override
     {
-        size_t bytes = cnt * ccl_datatype_get_size(dtype);
+        size_t bytes = cnt * dtype.size();
         LOG_DEBUG("BCAST entry req ", &req, ", bytes ", bytes);
 
         atl_status_t atl_status = atl_ep_bcast(sched->bin->get_atl_ep(), buf.get_ptr(bytes),
@@ -78,7 +78,7 @@ protected:
     void dump_detail(std::stringstream& str) const override
     {
         ccl_logger::format(str,
-                            "dt ", ccl_datatype_get_name(dtype),
+                            "dt ", global_data.dtypes->name(dtype),
                             ", cnt ", cnt,
                             ", root ", root,
                             ", buf ", buf,
@@ -91,7 +91,7 @@ private:
     ccl_buffer buf;
     size_t cnt;
     size_t root;
-    ccl_datatype_internal_t dtype;
+    ccl_datatype dtype;
     ccl_comm* comm;
     atl_req_t req{};
 };

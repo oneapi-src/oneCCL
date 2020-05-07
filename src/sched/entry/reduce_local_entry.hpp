@@ -32,7 +32,7 @@ public:
                        size_t in_cnt,
                        ccl_buffer inout_buf,
                        size_t* out_cnt,
-                       ccl_datatype_internal_t dtype,
+                       const ccl_datatype& dtype,
                        ccl_reduction_t reduction_op) :
         sched_entry(sched), in_buf(in_buf),
         in_cnt(in_cnt), inout_buf(inout_buf),
@@ -45,12 +45,12 @@ public:
 
     void start() override
     {
-        size_t bytes = in_cnt * ccl_datatype_get_size(dtype);
-        size_t offset = in_buf.get_offset();
+        size_t bytes = in_cnt * dtype.size();
+        size_t offset = inout_buf.get_offset();
         const ccl_fn_context_t context = { sched->coll_attr.match_id.c_str(), offset };
         ccl_status_t comp_status = ccl_comp_reduce(in_buf.get_ptr(bytes), in_cnt,
-                                                     inout_buf.get_ptr(bytes), out_cnt,
-                                                     dtype, op, fn, &context);
+                                                   inout_buf.get_ptr(bytes), out_cnt,
+                                                   dtype, op, fn, &context);
         CCL_ASSERT(comp_status == ccl_status_success, "bad status ", comp_status);
 
         status = ccl_sched_entry_status_complete;
@@ -65,7 +65,7 @@ protected:
     void dump_detail(std::stringstream& str) const override
     {
         ccl_logger::format(str,
-                           "dt ", ccl_datatype_get_name(dtype),
+                           "dt ", global_data.dtypes->name(dtype),
                            ", in_buf ", in_buf,
                            ", in_cnt ", in_cnt,
                            ", inout_buf ", inout_buf,
@@ -80,7 +80,7 @@ private:
     size_t in_cnt;
     ccl_buffer inout_buf;
     size_t* out_cnt;
-    ccl_datatype_internal_t dtype;
+    ccl_datatype dtype;
     ccl_reduction_t op;
     ccl_reduction_fn_t fn;
 };

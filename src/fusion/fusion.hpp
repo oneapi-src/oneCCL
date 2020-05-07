@@ -64,12 +64,11 @@ public:
     bool add(ccl_master_sched* sched);
     void execute();
     void release_buffer(void* buf);
-    void clear();
 
 private:
     ccl_master_sched* build_sched();
     void clear_exec_queue();
-    void check_tracked_scheds();
+    void check_tracked_scheds(bool force_release = false);
 
     const size_t bytes_threshold;
     const size_t count_threshold;

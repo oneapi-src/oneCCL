@@ -21,6 +21,7 @@
 #include "common/global/global.hpp"
 #include "common/request/request.hpp"
 #include "exec/thread/listener.hpp"
+#include "sched/extra_sched.hpp"
 
 #include <memory>
 #include <vector>
@@ -112,19 +113,32 @@ private:
     std::unique_ptr<ccl_listener> listener;
 };
 
+inline void ccl_release_sched(ccl_master_sched *sched)
+{
+    if (sched->coll_attr.to_cache)
+    {
+        global_data.sched_cache->release(sched);
+    }
+    else
+    {
+        delete sched;
+    }
+}
+
+inline void ccl_release_sched(ccl_extra_sched *sched)
+{
+    delete sched;
+}
+
 template<class sched_type = ccl_master_sched>
 inline void ccl_wait_impl(ccl_executor* exec, ccl_request* request)
 {
     exec->wait(request);
-
-    sched_type* sched = static_cast<sched_type*>(request);
-    LOG_DEBUG("req ", request, " completed, sched ",
-              ccl_coll_type_to_str(sched->coll_param.ctype));
-    if (!sched->coll_attr.to_cache
-        && !exec->is_locked
-       )
+    if (!exec->is_locked)
     {
-        delete sched;
+        LOG_DEBUG("req ", request, " completed, sched ",
+                  ccl_coll_type_to_str(static_cast<sched_type*>(request)->coll_param.ctype));
+        ccl_release_sched(static_cast<sched_type*>(request));
     }
 }
 
@@ -139,11 +153,9 @@ inline bool ccl_test_impl(ccl_executor* exec, ccl_request* request)
         LOG_DEBUG("req ", request, " completed, sched ",
                   ccl_coll_type_to_str(sched->coll_param.ctype));
 
-        if (!sched->coll_attr.to_cache
-            && !exec->is_locked
-           )
+        if (!exec->is_locked)
         {
-            delete sched;
+            ccl_release_sched(sched);
         }
     }
 

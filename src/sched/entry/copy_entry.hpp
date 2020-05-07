@@ -34,8 +34,9 @@ public:
                const ccl_buffer in_buf,
                ccl_buffer out_buf,
                size_t cnt,
-               ccl_datatype_internal_t dtype) :
-        sched_entry(sched), in_buf(in_buf), out_buf(out_buf), cnt(cnt), dtype(dtype)
+               const ccl_datatype& dtype) :
+        sched_entry(sched), in_buf(in_buf),
+        out_buf(out_buf), cnt(cnt), dtype(dtype)
     {
     }
 
@@ -43,7 +44,7 @@ public:
     {
         update_fields();
 
-        size_t bytes = cnt * ccl_datatype_get_size(dtype);
+        size_t bytes = cnt * dtype.size();
         auto comp_status = ccl_comp_copy(in_buf.get_ptr(bytes), out_buf.get_ptr(bytes), cnt, dtype);
         CCL_ASSERT(comp_status == ccl_status_success, "bad status ", comp_status);
         status = ccl_sched_entry_status_complete;
@@ -64,7 +65,7 @@ public:
         return cnt;
     }
 
-    ccl_datatype_internal_t& get_field_ref(field_id_t<ccl_sched_entry_field_dtype> id)
+    ccl_datatype& get_field_ref(field_id_t<ccl_sched_entry_field_dtype> id)
     {
         return dtype;
     }
@@ -73,7 +74,7 @@ protected:
     void dump_detail(std::stringstream& str) const override
     {
         ccl_logger::format(str,
-                           "dt ", ccl_datatype_get_name(dtype),
+                           "dt ", global_data.dtypes->name(dtype),
                            ", cnt ", cnt,
                            ", in_buf ", in_buf,
                            ", out_buf ", out_buf,
@@ -84,5 +85,5 @@ private:
     ccl_buffer in_buf;
     ccl_buffer out_buf;
     size_t cnt;
-    ccl_datatype_internal_t dtype;
+    ccl_datatype dtype;
 };

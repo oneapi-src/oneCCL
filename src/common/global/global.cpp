@@ -17,6 +17,7 @@
 #include "coll/selection/selection.hpp"
 #include "common/comm/atl_tag.hpp"
 #include "common/comm/comm_id_storage.hpp"
+#include "common/datatype/datatype.hpp"
 #include "common/global/global.hpp"
 #include "common/stream/stream.hpp"
 #include "common/utils/tree.hpp"

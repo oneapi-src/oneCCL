@@ -140,7 +140,7 @@ size_t kvs_get_count_names(const char* kvs_name)
 
 size_t kvs_get_keys_values_by_name(const char* kvs_name, char*** kvs_keys, char*** kvs_values)
 {
-    size_t count;
+    size_t count = 0;
     size_t i;
     kvs_request_t request;
     kvs_request_t* answers;
@@ -462,7 +462,9 @@ size_t init_main_server_by_env(void)
         return 1;
     }
 
-    if ((port = strstr(tmp_host_ip, "_")) == NULL)
+    memset(main_host_ip, 0, CCL_IP_LEN);
+    STR_COPY(main_host_ip, tmp_host_ip, CCL_IP_LEN);
+    if ((port = strstr(main_host_ip, "_")) == NULL)
     {
         printf("You must set %s like IP_PORT\n", CCL_KVS_IP_PORT_ENV);
         return 1;
@@ -470,8 +472,6 @@ size_t init_main_server_by_env(void)
     port[0] = '\0';
     port++;
 
-    memset(main_host_ip, 0, CCL_IP_LEN);
-    STR_COPY(main_host_ip, tmp_host_ip, CCL_IP_LEN);
 
     main_port = strtol(port, NULL, 10);
     main_server_address.sin_port = main_port;
@@ -529,6 +529,7 @@ size_t init_main_server_by_string(const char* main_addr)
 size_t main_server_address_reserve(char* main_address)
 {
     FILE* fp;
+    char* additional_local_host_ips;
     if ((fp = popen(CHECKER_IP, READ_ONLY)) == NULL)
     {
         printf("Can't get host IP - %s\n", strerror(errno));
@@ -538,8 +539,15 @@ size_t main_server_address_reserve(char* main_address)
     pclose(fp);
     while (local_host_ip[strlen(local_host_ip) - 1] == '\n' ||
         local_host_ip[strlen(local_host_ip) - 1] == ' ')
-        local_host_ip[strlen(local_host_ip) - 1] = '\0';
+        local_host_ip[strlen(local_host_ip) - 1] = NULL_CHAR;
+    if ((additional_local_host_ips = strstr(local_host_ip, " ")) != NULL)
+        additional_local_host_ips[0] = NULL_CHAR;
 
+    if (strlen(local_host_ip) >= CCL_IP_LEN - INT_STR_SIZE - 1)
+    {
+        printf("Error: Local host IP is too bigger: %zu, expected: %d\n", strlen(local_host_ip), CCL_IP_LEN - INT_STR_SIZE - 1);
+        exit(1);
+    }
     if ((sock_listener = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
         printf("Server: socket init failed - %s\n", strerror(errno));
@@ -559,7 +567,8 @@ size_t main_server_address_reserve(char* main_address)
     local_server_address.sin_port = main_server_address.sin_port;
 
     memset(main_address, '\0', CCL_IP_LEN);
-    snprintf(main_address, CCL_IP_LEN, "%s_%d", local_host_ip, main_server_address.sin_port);
+    snprintf(main_address, CCL_IP_LEN, "%s", local_host_ip);
+    snprintf(main_address + strlen(local_host_ip), INT_STR_SIZE + 1, "_%d", main_server_address.sin_port);
 
     return 0;
 }
@@ -568,21 +577,23 @@ size_t init_main_server_address(const char* main_addr)
 {
     char* ip_getting_type = getenv(CCL_KVS_IP_EXCHANGE_ENV);
     FILE* fp;
-    char* point_to_space;
+    char* additional_local_host_ips;
 
     if ((fp = popen(CHECKER_IP, READ_ONLY)) == NULL)
     {
         printf("Can't get host IP\n");
         exit(1);
     }
+    memset(local_host_ip, 0 , CCL_IP_LEN);
     CHECK_FGETS(fgets(local_host_ip, CCL_IP_LEN, fp), local_host_ip);
     pclose(fp);
 
     while (local_host_ip[strlen(local_host_ip) - 1] == '\n' ||
            local_host_ip[strlen(local_host_ip) - 1] == ' ')
-        local_host_ip[strlen(local_host_ip) - 1] = '\0';
-    if ((point_to_space = strstr(local_host_ip, " ")) != NULL)
-        point_to_space[0] = NULL_CHAR;
+        local_host_ip[strlen(local_host_ip) - 1] = NULL_CHAR;
+    if ((additional_local_host_ips = strstr(local_host_ip, " ")) != NULL)
+        additional_local_host_ips[0] = NULL_CHAR;
+    additional_local_host_ips++;
 
     if (ip_getting_type)
     {
@@ -636,11 +647,26 @@ size_t init_main_server_address(const char* main_addr)
         case IGT_ENV:
         {
             int res = init_main_server_by_env();
+            int is_master_node = 0;
 
             if (res)
                 return res;
 
             if (strstr(local_host_ip, main_host_ip))
+            {
+                is_master_node = 1;
+            }
+            else
+            {
+                if (additional_local_host_ips && strstr(additional_local_host_ips, main_host_ip))
+                {
+                    is_master_node = 1;
+                    memset(local_host_ip, 0, CCL_IP_LEN);
+                    strncpy(local_host_ip, main_host_ip, CCL_IP_LEN);
+                    local_server_address.sin_addr.s_addr = inet_addr(local_host_ip);
+                }
+            }
+            if (is_master_node)
             {
                 if (bind(sock_listener, (const struct sockaddr*) &main_server_address,
                          sizeof(main_server_address)) < 0)
@@ -731,8 +757,10 @@ size_t kvs_init(const char* main_addr)
         printf("Client: accept error: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
-
-    while (connect(sock_sender, (struct sockaddr*) &main_server_address, sizeof(main_server_address)) < 0)
+    /* Wait connection to master */
+    errno = 0;
+    while ((err = connect(sock_sender, (struct sockaddr*) &main_server_address, sizeof(main_server_address))) < 0 ||
+            errno != 0)
     {}
 
     request.mode = AM_CONNECT;
@@ -765,18 +793,12 @@ size_t kvs_finalize(void)
 
         CHECK_RW_OP(read(accepted_local_sock, &err, sizeof(int)), sizeof(int));
 
-        err = pthread_cancel(thread);
-
-        if (err)
-        {
-            printf("error while canceling progress listener, pthread_cancel returns %d\n", err);
-        }
-
         err = pthread_join(thread, &exit_code);
         if (err)
         {
             printf("error while joining progress listener, pthread_join returns %d\n", err);
         }
+        thread = 0;
         close(accepted_local_sock);
         close(local_sock);
     }

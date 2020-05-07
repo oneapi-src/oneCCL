@@ -23,7 +23,7 @@ namespace ccl
 {
 
 /**
- * Supported ccl reduction types
+ * Supported reduction operations
  */
 enum class reduction
 {
@@ -37,9 +37,9 @@ enum class reduction
 };
 
 /**
- * Supported ccl data types
+ * Supported datatypes
  */
-enum class data_type
+enum datatype: int
 {
     dt_char = ccl_dtype_char,
     dt_int = ccl_dtype_int,
@@ -53,7 +53,7 @@ enum class data_type
 };
 
 /**
- * Supported ccl stream types
+ * Supported stream types
  */
 enum class stream_type
 {
@@ -66,6 +66,8 @@ enum class stream_type
 typedef ccl_coll_attr_t coll_attr;
 
 typedef ccl_comm_attr_t comm_attr;
+
+typedef ccl_datatype_attr_t datatype_attr;
 
 /**
  * Exception type that may be thrown by ccl API
@@ -90,7 +92,7 @@ struct ccl_type_info_export
     using ccl_type = std::integral_constant<ccl_datatype_t, ccl_type_v>;
     static constexpr size_t size = size_of_type;
     static constexpr ccl_datatype_t ccl_type_value = ccl_type::value;
-    static constexpr data_type ccl_datatype_value = static_cast<data_type>(ccl_type_value);
+    static constexpr datatype ccl_datatype_value = static_cast<datatype>(ccl_type_value);
     static constexpr bool is_class = iclass;
     static constexpr bool is_supported = supported;
 };

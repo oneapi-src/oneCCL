@@ -30,7 +30,7 @@ public:
                  const ccl_buffer send_buf,
                  ccl_buffer recv_buf,
                  size_t cnt,
-                 ccl_datatype_internal_t dtype,
+                 const ccl_datatype& dtype,
                  ccl_reduction_t reduction,
                  size_t root,
                  ccl_comm* comm) :
@@ -42,10 +42,10 @@ public:
     void start() override
     {
         LOG_DEBUG("REDUCE entry req ", &req, ", cnt ", cnt);
-        size_t bytes = cnt * ccl_datatype_get_size(dtype);
+        size_t bytes = cnt * dtype.size();
         atl_status_t atl_status = atl_ep_reduce(sched->bin->get_atl_ep(), send_buf.get_ptr(bytes),
                                                 recv_buf.get_ptr(bytes), cnt, root,
-                                                static_cast<atl_datatype_t>(dtype->type),
+                                                static_cast<atl_datatype_t>(dtype.idx()),
                                                 static_cast<atl_reduction_t>(op), &req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS))
@@ -79,7 +79,7 @@ protected:
     void dump_detail(std::stringstream& str) const override
     {
         ccl_logger::format(str,
-                            "dt ", ccl_datatype_get_name(dtype),
+                            "dt ", global_data.dtypes->name(dtype),
                             ", cnt ", cnt,
                             ", send_buf ", send_buf,
                             ", recv_buf ", recv_buf,
@@ -94,7 +94,7 @@ private:
     ccl_buffer send_buf;
     ccl_buffer recv_buf;
     size_t cnt;
-    ccl_datatype_internal_t dtype;
+    ccl_datatype dtype;
     ccl_reduction_t op;
     size_t root;
     ccl_comm* comm;

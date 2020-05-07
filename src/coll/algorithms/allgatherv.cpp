@@ -20,7 +20,7 @@
 ccl_status_t ccl_coll_build_direct_allgatherv(ccl_sched* sched,
                                               ccl_buffer send_buf, size_t send_count,
                                               ccl_buffer recv_buf, const size_t* recv_counts,
-                                              ccl_datatype_internal_t dtype,
+                                              const ccl_datatype& dtype,
                                               ccl_comm* comm)
 {
     LOG_DEBUG("build direct allgatherv");
@@ -33,15 +33,15 @@ ccl_status_t ccl_coll_build_direct_allgatherv(ccl_sched* sched,
 ccl_status_t ccl_coll_build_naive_allgatherv(ccl_sched* sched,
                                              ccl_buffer send_buf, size_t send_count,
                                              ccl_buffer recv_buf, const size_t* recv_counts,
-                                             ccl_datatype_internal_t dtype,
+                                             const ccl_datatype& dtype,
                                              ccl_comm* comm)
 {
     LOG_DEBUG("build naive allgatherv");
 
-    size_t comm_size     = comm->size();
-    size_t this_rank     = comm->rank();
-    size_t dtype_size    = ccl_datatype_get_size(dtype);
-    size_t* offsets      = static_cast<size_t*>(CCL_MALLOC(comm_size * sizeof(size_t), "offsets"));
+    size_t comm_size    = comm->size();
+    size_t this_rank    = comm->rank();
+    size_t dtype_size   = dtype.size();
+    size_t* offsets     = static_cast<size_t*>(CCL_MALLOC(comm_size * sizeof(size_t), "offsets"));
     ccl_status_t status = ccl_status_success;
 
     offsets[0] = 0;
@@ -77,14 +77,14 @@ ccl_status_t ccl_coll_build_naive_allgatherv(ccl_sched* sched,
 ccl_status_t ccl_coll_build_ring_allgatherv(ccl_sched* sched,
                                             ccl_buffer send_buf, size_t send_count,
                                             ccl_buffer recv_buf, const size_t* recv_counts,
-                                            ccl_datatype_internal_t dtype,
+                                            const ccl_datatype& dtype,
                                             ccl_comm* comm)
 {
     LOG_DEBUG("build ring allgatherv, send_count ", send_count);
 
     ccl_status_t status = ccl_status_success;
     size_t comm_size, rank;
-    size_t dtype_size = ccl_datatype_get_size(dtype);
+    size_t dtype_size = dtype.size();
     size_t idx = 0;
     size_t src, dst;
 

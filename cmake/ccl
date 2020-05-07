@@ -3,11 +3,55 @@
 ## Intel(R) oneAPI Collective Communications Library modulefile
 ##
 
-module-whatis	"Sets up the Intel(R) oneAPI Collective Communications Library environment"
+# get full pathname for this script file
+set scriptpath "${ModulesCurrentModulefile}"
 
-set                topdir                               [ file dirname [ file dirname ${ModulesCurrentModulefile}]]
+# if modulefile script name is a symlink, resolve it
+if { "[file type "$scriptpath"]" eq "link" } {
+    set scriptpath "[file readlink "$scriptpath"]"
+}
 
-setenv             CCL_ROOT                             $topdir
-setenv             CCL_ATL_TRANSPORT_PATH               $topdir/lib/cpu_gpu_dpcpp
+# if fullpath contains links, resolve them
+set scriptpath "[file normalize "$scriptpath"]"
 
-prepend-path       LD_LIBRARY_PATH                      $topdir/lib/cpu_gpu_dpcpp
+# get directory holding this modulefile script and others
+set modulefileroot "[file dirname "$scriptpath"]"
+
+# get name of modulefile script we are loading
+set modulefilename "[file tail "$scriptpath"]"
+
+# determine modulefile script version
+set modulefilever "[file dirname "$modulefileroot"]"
+set modulefilever "[file tail "$modulefilever"]"
+
+# point to component top-level root folder
+set componentroot "[file dirname "$modulefileroot"]"
+set componentroot "[file dirname "$componentroot"]"
+
+# get component folder name
+set componentname "[file tail "$componentroot"]"
+
+# get oneAPI top-level root folder
+set oneapiroot "[file dirname "$componentroot"]"
+
+# On load print component name and version being loaded
+if { [ module-info mode load ] } {
+    puts stderr "Loading $modulefilename"
+}
+
+# On remove print component name and version being removed
+if { [ module-info mode ] == "unload" || [ module-info mode ] == "remove" } {
+    puts stderr "Removing $modulefilename"
+}
+
+
+# ###### Component Specific env vars setup ###################################
+
+module-whatis "Intel(R) oneAPI Collective Communications Library"
+
+set                topdir                               "$componentroot/$modulefilever"
+
+setenv             CCL_ROOT                             "$topdir"
+setenv             CCL_ATL_TRANSPORT_PATH               "$topdir/lib"
+
+prepend-path       LD_LIBRARY_PATH                      "$topdir/lib"

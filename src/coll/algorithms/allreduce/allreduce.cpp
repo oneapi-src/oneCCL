@@ -27,7 +27,7 @@
 ccl_status_t ccl_coll_build_direct_allreduce(ccl_sched *sched,
                                              ccl_buffer send_buf,
                                              ccl_buffer recv_buf,
-                                             size_t count, ccl_datatype_internal_t dtype,
+                                             size_t count, const ccl_datatype& dtype,
                                              ccl_reduction_t op,
                                              ccl_comm* comm)
 {
@@ -40,7 +40,7 @@ ccl_status_t ccl_coll_build_direct_allreduce(ccl_sched *sched,
 ccl_status_t ccl_coll_build_rabenseifner_allreduce(ccl_sched *sched,
                                                    ccl_buffer send_buf,
                                                    ccl_buffer recv_buf,
-                                                   size_t count, ccl_datatype_internal_t dtype,
+                                                   size_t count, const ccl_datatype& dtype,
                                                    ccl_reduction_t op,
                                                    ccl_comm* comm)
 {
@@ -51,7 +51,7 @@ ccl_status_t ccl_coll_build_rabenseifner_allreduce(ccl_sched *sched,
     int comm_size, rank, newrank, pof2, rem;
     int i, send_idx, recv_idx, last_idx, mask, newdst, dst, send_cnt, recv_cnt;
     int *cnts = NULL, *disps = NULL;
-    size_t dtype_size = ccl_datatype_get_size(dtype);
+    size_t dtype_size = dtype.size();
 
     comm_size = comm->size();
     rank = comm->rank();
@@ -255,7 +255,7 @@ ccl_status_t ccl_coll_build_recursive_doubling_allreduce(ccl_sched *sched,
                                                          ccl_buffer send_buf,
                                                          ccl_buffer recv_buf,
                                                          size_t count,
-                                                         ccl_datatype_internal_t dtype,
+                                                         const ccl_datatype& dtype,
                                                          ccl_reduction_t op,
                                                          ccl_comm* comm)
 {
@@ -269,7 +269,7 @@ ccl_status_t ccl_coll_build_recursive_doubling_allreduce(ccl_sched *sched,
     comm_size = comm->size();
     rank = comm->rank();
 
-    size_t dtype_size = ccl_datatype_get_size(dtype);
+    size_t dtype_size = dtype.size();
 
     ccl_buffer tmp_buf = sched->alloc_buffer(count * dtype_size);
 
@@ -362,7 +362,7 @@ ccl_status_t ccl_coll_build_starlike_allreduce(ccl_sched *sched,
                                                ccl_buffer send_buf,
                                                ccl_buffer recv_buf,
                                                size_t count,
-                                               ccl_datatype_internal_t dtype,
+                                               const ccl_datatype& dtype,
                                                ccl_reduction_t op,
                                                ccl_comm* comm)
 {
@@ -373,7 +373,7 @@ ccl_status_t ccl_coll_build_starlike_allreduce(ccl_sched *sched,
     size_t this_rank = comm->rank();
     size_t* buffer_counts = static_cast<size_t*>(CCL_MALLOC(comm_size * sizeof(size_t), "buffer_count"));
     size_t* buffer_offsets = static_cast<size_t*>(CCL_MALLOC(comm_size * sizeof(size_t), "buffer_offsets"));
-    size_t dtype_size = ccl_datatype_get_size(dtype);
+    size_t dtype_size = dtype.size();
 
     // copy local data into recv_buf
     if (send_buf != recv_buf)
@@ -437,7 +437,7 @@ ccl_status_t ccl_coll_build_ring_allreduce(ccl_sched *sched,
                                            ccl_buffer send_buf,
                                            ccl_buffer recv_buf,
                                            size_t count,
-                                           ccl_datatype_internal_t dtype,
+                                           const ccl_datatype& dtype,
                                            ccl_reduction_t op,
                                            ccl_comm* comm)
 {

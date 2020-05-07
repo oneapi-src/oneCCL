@@ -46,6 +46,16 @@ public:
                                            sched->sched_id));
         subsched->coll_param.ctype = ccl_coll_internal;
         subsched->set_op_id(op_id);
+
+        if (sched->coll_param.ctype == ccl_coll_allreduce ||
+            sched->coll_param.ctype == ccl_coll_reduce ||
+            sched->coll_param.ctype == ccl_coll_reduce_scatter)
+        {
+            subsched->coll_attr.reduction_fn = sched->coll_attr.reduction_fn;
+            /* required to create ccl_fn_context in reduce/recv_reduce entries */
+            subsched->coll_attr.match_id = sched->coll_attr.match_id;
+        }
+
         fill_fn(subsched.get());
     }
 

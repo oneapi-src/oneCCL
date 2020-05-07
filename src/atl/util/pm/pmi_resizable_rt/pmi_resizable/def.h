@@ -40,15 +40,16 @@
       }                            \
   } while (0)
 
-#define CHECK_RW_OP(expr, size)         \
-  do                                    \
-  {                                     \
-      ssize_t res = expr;               \
-      if ((res == -1) || (res != size)) \
-      {                                 \
-          printf("read/write error\n"); \
-          exit(EXIT_FAILURE);           \
-      }                                 \
+#define CHECK_RW_OP(expr, size)            \
+  do                                       \
+  {                                        \
+      ssize_t res = expr;                  \
+      if ((res == -1) || (res != size))    \
+      {                                    \
+          printf("read/write error: %s\n", \
+                 strerror(errno));         \
+          exit(EXIT_FAILURE);              \
+      }                                    \
   } while (0)
 
 #define BARRIER_NUM_MAX      1024

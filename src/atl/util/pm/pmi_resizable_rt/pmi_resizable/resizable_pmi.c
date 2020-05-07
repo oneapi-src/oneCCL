@@ -236,6 +236,7 @@ int PMIR_API PMIR_Init(const char* main_addr)
 {
     struct sigaction act;
     FILE* fp;
+    finalized = 0;
     memset(my_hostname, 0, MAX_KVS_VAL_LENGTH);
     if ((fp = popen("hostname", READ_ONLY)) == NULL)
     {

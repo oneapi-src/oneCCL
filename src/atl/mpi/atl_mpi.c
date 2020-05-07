@@ -27,13 +27,9 @@
 #include "comp/bfp16/bfp16_intrisics.h"
 #include "comp/bfp16/bfp16_utils.h"
 
-const int optimized_impi_versions[] = { 2019, 2020, 2021 };
-int is_external_init = 0;
-
 #define ATL_MPI_PM_KEY              "atl-mpi"
 #define EP_IDX_MAX_STR_LEN           4
 #define EP_IDX_KEY                   "ep_idx"
-#define OPTIMIZED_MPI_VERSION_PREFIX "Intel(R) MPI Library"
 
 #define ATL_MPI_PRINT(s, ...)                             \
     do {                                                  \
@@ -65,6 +61,26 @@ int is_external_init = 0;
 
 #define RET2ATL(ret) (ret != MPI_SUCCESS) ? ATL_STATUS_FAILURE : ATL_STATUS_SUCCESS
 
+typedef enum
+{
+    ATL_MPI_LIB_NONE,
+    ATL_MPI_LIB_IMPI
+} atl_mpi_lib_kind_t;
+
+typedef struct
+{
+    atl_mpi_lib_kind_t kind;
+    const char* name;
+    const char* version_prefix;
+    const char* version_string_part;
+    int version_numerical_part;
+} atl_mpi_lib_info_t;
+
+#define MPI_LIB_INFO_MAX_COUNT 1
+
+static atl_mpi_lib_info_t mpi_lib_infos[MPI_LIB_INFO_MAX_COUNT]
+  = { { ATL_MPI_LIB_IMPI,  "impi",  "Intel(R) MPI Library",      "",     2019 } };
+
 typedef struct
 {
 #ifdef CCL_BFP16_COMPILER
@@ -87,15 +103,18 @@ typedef struct
     // custom MPI dtype for BFP16
     MPI_Datatype dtype;
 
+    ccl_bfp16_impl_type impl_type;
+
 } atl_mpi_bfp16_data_t;
 
 typedef struct
 {
-    int use_optimized_mpi;
+    atl_mpi_lib_kind_t mpi_lib_kind;
     atl_mpi_bfp16_data_t bfp16;
 } atl_mpi_global_data_t;
 
 static atl_mpi_global_data_t global_data;
+static int is_external_init = 0;
 
 typedef struct
 {
@@ -142,17 +161,13 @@ atl_mpi_check_op_params(void* in_buf, void* inout_buf, int* length,
 
 static void INLINE_TARGET_ATTRIBUTE_ALL
 atl_mpi_bfp16_base_op(void* in, void* inout, int* length, 
-                      bfp16_reduction_func_ptr reduction_op_func)
+                      ccl_bfp16_reduction_func_ptr op)
 {
     unsigned short* in_buf = (unsigned short*)in;
     unsigned short* inout_buf = (unsigned short*)inout;
 
-    int i = 0;
-    for (i = 0; i <= (int)*length - 16; i += 16)
-    {
-        ccl_bfp16_reduce_256((uint16_t*)in_buf + i, (uint16_t*)inout_buf + i, reduction_op_func);
-    }
-    ccl_bfp16_reduce_masked((uint16_t*)in_buf + i, (uint16_t*)inout_buf + i, (uint8_t)(*length - i), reduction_op_func);
+    size_t len = *length;
+    ccl_bfp16_reduce_impl(in_buf, inout_buf, len, op, global_data.bfp16.impl_type);
 }
     
 // MPI BFP16 operation definitions
@@ -219,8 +234,10 @@ atl_mpi_bfp16_init()
     global_data.bfp16.prod_op = MPI_OP_NULL;
     global_data.bfp16.min_op = MPI_OP_NULL;
     global_data.bfp16.max_op = MPI_OP_NULL;
+
+    global_data.bfp16.impl_type = ccl_bfp16_get_impl_type();
     
-    if (ccl_bfp16_is_enabled() == 0)
+    if (global_data.bfp16.impl_type == ccl_bfp16_none)
     {
         ATL_MPI_DEBUG_PRINT("%s: success - BFP16 is not supported on current arch",
                             __FUNCTION__);
@@ -384,63 +401,96 @@ atl2mpi_op(atl_reduction_t rtype, MPI_Datatype dtype)
 #endif /* ATL_MPI_BFP16 */
 }
 
-int atl_mpi_use_optimized_mpi(const atl_attr_t* attr)
+atl_mpi_lib_kind_t
+atl_mpi_get_lib_kind()
 {
-    int i, use_optimized_mpi = 0;
+    atl_mpi_lib_kind_t lib_kind = ATL_MPI_LIB_NONE;
     char mpi_version[MPI_MAX_LIBRARY_VERSION_STRING];
-    int mpi_version_len;
-    char* use_opt_env = NULL;
+    int mpi_version_len, i;
+    atl_mpi_lib_info_t* final_info = NULL;
 
-    if (attr->ep_count == 1)
-    {
-        ATL_MPI_DEBUG_PRINT("set use_optimized_mpi = 0 because single ATL EP is requested");
-        use_optimized_mpi = 0;
-    }
-    else if (attr->ep_count > 1)
-    {
-        MPI_Get_library_version(mpi_version, &mpi_version_len);
-        ATL_MPI_DEBUG_PRINT("initial use_optimized_mpi = %d", use_optimized_mpi);
-        ATL_MPI_DEBUG_PRINT("MPI version %s", mpi_version);
+    MPI_Get_library_version(mpi_version, &mpi_version_len);
+    ATL_MPI_DEBUG_PRINT("MPI version %s", mpi_version);
 
-        if (strncmp(mpi_version, OPTIMIZED_MPI_VERSION_PREFIX, strlen(OPTIMIZED_MPI_VERSION_PREFIX)) == 0)
+    for (i = 0; i < MPI_LIB_INFO_MAX_COUNT; i++)
+    {
+        atl_mpi_lib_info_t* info = &(mpi_lib_infos[i]);
+
+        const char* mpi_version_substr = NULL;
+        if ((mpi_version_substr = strstr(mpi_version, info->version_prefix)))
         {
-            int impi_version = atoi(mpi_version + strlen(OPTIMIZED_MPI_VERSION_PREFIX));
-            ATL_MPI_DEBUG_PRINT("IMPI version %d", impi_version);
-            for (i = 0; i < SIZEOFARR(optimized_impi_versions); i++)
+            mpi_version_substr += strlen(info->version_prefix);
+            ATL_MPI_DEBUG_PRINT("mpi_version_substr %s", mpi_version_substr);
+
+            mpi_version_substr = strstr(mpi_version_substr, info->version_string_part);
+            mpi_version_substr += strlen(info->version_string_part);
+            ATL_MPI_DEBUG_PRINT("mpi_version_substr %s", mpi_version_substr);
+
+            int numerical_version = atoi(mpi_version_substr);
+            ATL_MPI_DEBUG_PRINT("MPI numerical version %d", numerical_version);
+
+            if (numerical_version >= info->version_numerical_part)
             {
-                if (impi_version == optimized_impi_versions[i])
-                {
-                    ATL_MPI_DEBUG_PRINT("set use_optimized_mpi = 1 because IMPI version matches with expected one");
-                    use_optimized_mpi = 1;
-                    break;
-                }
+                final_info = info;
+                ATL_MPI_DEBUG_PRINT("set lib_kind = %s because version is greater than expected one",
+                    info->name);
+                break;
             }
         }
     }
 
-    if ((use_opt_env = getenv("CCL_ATL_MPI_OPT")) != NULL)
+    /* user input has higher priority */
+    char* lib_kind_env = NULL;
+    if ((lib_kind_env = getenv("CCL_ATL_MPI_LIB_KIND")) != NULL)
     {
-        use_optimized_mpi = atoi(use_opt_env);
-        ATL_MPI_DEBUG_PRINT("set use_optimized_mpi = %d because optimized MPI environment is requested explicitly",
-            use_optimized_mpi);
+        final_info = NULL;
+        for (i = 0; i < MPI_LIB_INFO_MAX_COUNT; i++)
+        {
+            atl_mpi_lib_info_t* info = &(mpi_lib_infos[i]);
+
+            if (!strcmp(lib_kind_env, info->name))
+            {
+                final_info = info;
+                ATL_MPI_DEBUG_PRINT("set lib_kind = %s because it is requested explicitly",
+                    lib_kind_env);
+                break;
+            }
+        }
     }
 
-    ATL_MPI_DEBUG_PRINT("final use_optimized_mpi = %d", use_optimized_mpi);
+    if (final_info)
+    {
+        ATL_MPI_DEBUG_PRINT("use lib_kind = %s", final_info->name);
+        lib_kind = final_info->kind;
+    }
+    else
+    {
+        ATL_MPI_DEBUG_PRINT("use lib_kind none");
+        lib_kind = ATL_MPI_LIB_NONE;
+    }
 
-    return use_optimized_mpi;
+    return lib_kind;
 }
 
 atl_status_t
-atl_mpi_set_optimized_mpi_environment(const atl_attr_t* attr)
+atl_mpi_set_lib_environment(const atl_attr_t* attr)
 {
     char ep_count_str[EP_IDX_MAX_STR_LEN] = { 0 };
     snprintf(ep_count_str, EP_IDX_MAX_STR_LEN, "%zu", attr->ep_count);
 
-    setenv("I_MPI_THREAD_SPLIT", "1", 0);
-    setenv("I_MPI_THREAD_RUNTIME", "generic", 0);
-    setenv("I_MPI_THREAD_MAX", ep_count_str, 0);
-    setenv("I_MPI_THREAD_ID_KEY", EP_IDX_KEY, 0);
-    setenv("I_MPI_THREAD_LOCK_LEVEL", "vci", 0);
+    if (global_data.mpi_lib_kind == ATL_MPI_LIB_IMPI)
+    {
+        setenv("I_MPI_THREAD_SPLIT", "1", 0);
+        setenv("I_MPI_THREAD_RUNTIME", "generic", 0);
+        setenv("I_MPI_THREAD_MAX", ep_count_str, 0);
+        setenv("I_MPI_THREAD_ID_KEY", EP_IDX_KEY, 0);
+        setenv("I_MPI_THREAD_LOCK_LEVEL", "vci", 0);
+
+        if (attr->enable_shm)
+            setenv("I_MPI_FABRICS", "shm:ofi", 0);
+        else
+            setenv("I_MPI_FABRICS", "ofi", 0);
+    }
 
     return ATL_STATUS_SUCCESS;
 }
@@ -580,7 +630,7 @@ atl_mpi_ep_allgatherv(atl_ep_t* ep, const void* send_buf, size_t send_len,
     atl_mpi_req_t* mpi_req = ((atl_mpi_req_t*)req->internal);
     int ret = MPI_SUCCESS;
 
-    ret = MPI_Iallgatherv((send_buf == recv_buf) ? MPI_IN_PLACE : send_buf, send_len, MPI_CHAR,
+    ret = MPI_Iallgatherv((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf, send_len, MPI_CHAR,
                           recv_buf, recv_lens, offsets, MPI_CHAR,
                           mpi_ep->mpi_comm, &mpi_req->native_req);
     mpi_req->comp_state = ATL_MPI_COMP_POSTED;
@@ -600,12 +650,12 @@ atl_mpi_ep_allreduce(atl_ep_t* ep, const void* send_buf, void* recv_buf, size_t 
 
     MPI_Datatype mpi_dtype = atl2mpi_dtype(dtype);
     MPI_Op mpi_op = atl2mpi_op(op, mpi_dtype);
-    int ret = MPI_Iallreduce((send_buf == recv_buf) ? MPI_IN_PLACE : send_buf,
+    int ret = MPI_Iallreduce((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
                              recv_buf, count, mpi_dtype, mpi_op,
                              mpi_ep->mpi_comm, &mpi_req->native_req);
 
 #ifdef ENABLE_DEBUG
-    if (global_data.use_optimized_mpi)
+    if (global_data.mpi_lib_kind != ATL_MPI_LIB_NONE)
     {
         MPI_Info info_out;
         char buf[MPI_MAX_INFO_VAL];
@@ -638,7 +688,7 @@ atl_mpi_ep_alltoall(atl_ep_t* ep, const void* send_buf, void* recv_buf,
     atl_mpi_req_t* mpi_req = ((atl_mpi_req_t*)req->internal);
     int ret = MPI_SUCCESS;
 
-    ret = MPI_Ialltoall((send_buf == recv_buf) ? MPI_IN_PLACE : send_buf, len,  MPI_CHAR,
+    ret = MPI_Ialltoall((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf, len, MPI_CHAR,
                         recv_buf, len, MPI_CHAR,
                         mpi_ep->mpi_comm, &mpi_req->native_req);
     mpi_req->comp_state = ATL_MPI_COMP_POSTED;
@@ -656,7 +706,8 @@ atl_mpi_ep_alltoallv(atl_ep_t* ep, const void* send_buf, const int* send_lens, c
     atl_mpi_req_t* mpi_req = ((atl_mpi_req_t*)req->internal);
     int ret = MPI_SUCCESS;
 
-    ret = MPI_Ialltoallv((send_buf == recv_buf) ? MPI_IN_PLACE : send_buf, send_lens, send_offsets, MPI_CHAR,
+    ret = MPI_Ialltoallv((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
+                         send_lens, send_offsets, MPI_CHAR,
                          recv_buf, recv_lens, recv_offsets, MPI_CHAR,
                          mpi_ep->mpi_comm, &mpi_req->native_req);
     mpi_req->comp_state = ATL_MPI_COMP_POSTED;
@@ -707,7 +758,7 @@ atl_mpi_ep_reduce(atl_ep_t* ep, const void* send_buf, void* recv_buf, size_t cou
 
     MPI_Datatype mpi_dtype = atl2mpi_dtype(dtype);
     MPI_Op mpi_op = atl2mpi_op(op, mpi_dtype);
-    int ret = MPI_Ireduce(((send_buf == recv_buf) && (root == my_proc_idx)) ? MPI_IN_PLACE : send_buf,
+    int ret = MPI_Ireduce((send_buf && (send_buf == recv_buf) && (root == my_proc_idx)) ? MPI_IN_PLACE : send_buf,
                           recv_buf, count, mpi_dtype, mpi_op, root,
                           mpi_ep->mpi_comm, &mpi_req->native_req);
 
@@ -879,17 +930,12 @@ atl_mpi_init(int* argc, char*** argv,
 
     atl_ctx_t* ctx = &(mpi_ctx->ctx);
 
-    global_data.use_optimized_mpi = atl_mpi_use_optimized_mpi(attr);
+    global_data.mpi_lib_kind = atl_mpi_get_lib_kind();
 
-    if (global_data.use_optimized_mpi)
+    if (global_data.mpi_lib_kind != ATL_MPI_LIB_NONE)
     {
-        atl_mpi_set_optimized_mpi_environment(attr);
+        atl_mpi_set_lib_environment(attr);
     }
-
-    if (attr->enable_shm)
-        setenv("I_MPI_FABRICS", "shm:ofi", 0);
-    else
-        setenv("I_MPI_FABRICS", "ofi", 0);
 
     int is_mpi_inited = 0;
     MPI_Initialized(&is_mpi_inited);

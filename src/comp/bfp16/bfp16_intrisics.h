@@ -15,33 +15,38 @@
 */
 #pragma once
 
-#include <inttypes.h>
-
 #ifdef CCL_BFP16_COMPILER
 
 #include <immintrin.h>
+#include <inttypes.h>
+
+#include "comp/bfp16/bfp16_utils.h"
 
 #ifdef CCL_BFP16_TARGET_ATTRIBUTES
 
-#define TARGET_ATTRIBUTE_F          __attribute__((target("avx512f")))
-#define TARGET_ATTRIBUTE_BW         __attribute__((target("avx512bw")))
-#define TARGET_ATTRIBUTE_BWF        __attribute__((target("avx512bw,avx512f")))
-#define TARGET_ATTRIBUTE_ALL        __attribute__((target("avx512bw,avx512vl,avx512f")))
-#define INLINE_TARGET_ATTRIBUTE_BW  __attribute__((__always_inline__, target("avx512bw"))) inline
-#define INLINE_TARGET_ATTRIBUTE_ALL __attribute__((__always_inline__, target("avx512bw,avx512vl,avx512f"))) inline
+#ifdef CCL_BFP16_AVX512BF_COMPILER
+#define ALL_BFP16_ATTRS "avx512bw,avx512vl,avx512f,avx512bf16"
+#else
+#define ALL_BFP16_ATTRS "avx512bw,avx512vl,avx512f"
+#endif
+
+#define TARGET_ATTRIBUTE_BWF         __attribute__((target("avx512bw,avx512f")))
+#define TARGET_ATTRIBUTE_ALL         __attribute__((target(ALL_BFP16_ATTRS)))
+#define INLINE_TARGET_ATTRIBUTE_BW   __attribute__((__always_inline__, target("avx512bw"))) inline
+#define INLINE_TARGET_ATTRIBUTE_BF16 __attribute__((__always_inline__, target("avx512bf16"))) inline
+#define INLINE_TARGET_ATTRIBUTE_ALL  __attribute__((__always_inline__, target(ALL_BFP16_ATTRS))) inline
 
 #else /* CCL_BFP16_TARGET_ATTRIBUTES */
 
-#define TARGET_ATTRIBUTE_F
-#define TARGET_ATTRIBUTE_BW
 #define TARGET_ATTRIBUTE_BWF
 #define TARGET_ATTRIBUTE_ALL
-#define INLINE_TARGET_ATTRIBUTE_BW  __attribute__((__always_inline__)) inline
-#define INLINE_TARGET_ATTRIBUTE_ALL __attribute__((__always_inline__)) inline
+#define INLINE_TARGET_ATTRIBUTE_BW   __attribute__((__always_inline__)) inline
+#define INLINE_TARGET_ATTRIBUTE_BF16 __attribute__((__always_inline__)) inline
+#define INLINE_TARGET_ATTRIBUTE_ALL  __attribute__((__always_inline__)) inline
 
 #endif /* CCL_BFP16_TARGET_ATTRIBUTES */
 
-typedef __m512 (*bfp16_reduction_func_ptr)(__m512 a, __m512 b);
+typedef __m512 (*ccl_bfp16_reduction_func_ptr)(__m512 a, __m512 b);
 
 TARGET_ATTRIBUTE_BWF __m512
 sum_wrap(__m512 a, __m512 b)
@@ -68,52 +73,99 @@ max_wrap(__m512 a, __m512 b)
 }
 
 TARGET_ATTRIBUTE_BWF __m512
-ccl_m512_reduce(__m512 a, __m512 b, bfp16_reduction_func_ptr reduction_op)
+ccl_m512_reduce(__m512 a, __m512 b, ccl_bfp16_reduction_func_ptr op)
 {
-    return (*reduction_op)(a, b);
+    return (*op)(a, b);
 }
 
 INLINE_TARGET_ATTRIBUTE_BW void
 ccl_bfp16_load_as_fp32(const void* src, void* dst)
 {
-    /* TBD: At some point we may want to use more optimized implementation thru AVX512BF */
     __m512i y = _mm512_cvtepu16_epi32(_mm256_loadu_si256((__m256i const*)src));
     _mm512_storeu_si512(dst, _mm512_bslli_epi128(y, 2));
 }
 
 INLINE_TARGET_ATTRIBUTE_BW void
-ccl_fp32_cvt_bfp16(const void* src, void* dst)
+ccl_fp32_store_as_bfp16_avx512f(const void* src, void* dst)
 {
     _mm256_storeu_si256((__m256i*)(dst), _mm512_cvtepi32_epi16(_mm512_bsrli_epi128(_mm512_loadu_si512(src), 2)));
 }
 
-INLINE_TARGET_ATTRIBUTE_ALL void
-ccl_bfp16_reduce_inputs(const void* a, const void* b, void* res, bfp16_reduction_func_ptr reduction_op)
+#ifdef CCL_BFP16_AVX512BF_COMPILER
+INLINE_TARGET_ATTRIBUTE_BF16 void
+ccl_fp32_store_as_bfp16_avx512bf(const void* src, void* dst)
 {
-    __m512  vfp32_in, vfp32_inout;
-    ccl_bfp16_load_as_fp32(a, (void*)&vfp32_in);
-    ccl_bfp16_load_as_fp32(b, (void*)&vfp32_inout);
-    __m512  vfp32_out = ccl_m512_reduce(vfp32_in, vfp32_inout, reduction_op);
-    ccl_fp32_cvt_bfp16((const void*)&vfp32_out, res);
+    _mm256_storeu_si256((__m256i*)(dst), _mm512_cvtneps_pbh(_mm512_loadu_ps(src)));
 }
+#endif
+
+#define CCL_BFP16_REDUCE_FUNC_DEFINITIONS(impl_type)                              \
+                                                                                  \
+    INLINE_TARGET_ATTRIBUTE_ALL void                                              \
+    ccl_bfp16_reduce_inputs_##impl_type(const void* a, const void* b, void* res,  \
+                                        ccl_bfp16_reduction_func_ptr op)          \
+    {                                                                             \
+        __m512 vfp32_in, vfp32_inout;                                             \
+        ccl_bfp16_load_as_fp32(a, (void*)&vfp32_in);                              \
+        ccl_bfp16_load_as_fp32(b, (void*)&vfp32_inout);                           \
+        __m512 vfp32_out = ccl_m512_reduce(vfp32_in, vfp32_inout, op);            \
+        ccl_fp32_store_as_bfp16_##impl_type((const void*)&vfp32_out, res);        \
+    }                                                                             \
+                                                                                  \
+    INLINE_TARGET_ATTRIBUTE_ALL void                                              \
+    ccl_bfp16_reduce_256_##impl_type(const void* in, const void* inout,           \
+                                     ccl_bfp16_reduction_func_ptr op)             \
+    {                                                                             \
+        __m256i vbfp16_out;                                                       \
+        ccl_bfp16_reduce_inputs_##impl_type(in, inout, (void*)&vbfp16_out, op);   \
+        _mm256_storeu_si256((__m256i*)(inout), vbfp16_out);                       \
+    }                                                                             \
+                                                                                  \
+    INLINE_TARGET_ATTRIBUTE_ALL void                                              \
+    ccl_bfp16_reduce_masked_##impl_type(const void* in, void* inout, uint8_t len, \
+                                        ccl_bfp16_reduction_func_ptr op)          \
+    {                                                                             \
+        if (len == 0) return;                                                     \
+        uint16_t mask = ((uint16_t)0xFFFF) >> (16 - len);                         \
+        __m256i vbfp16_out;                                                       \
+        ccl_bfp16_reduce_inputs_##impl_type(in, inout, (void*)&vbfp16_out, op);   \
+        _mm256_mask_storeu_epi16(inout, (__mmask16)mask, vbfp16_out);             \
+    }                                                                             \
+                                                                                  \
+    INLINE_TARGET_ATTRIBUTE_ALL void                                              \
+    ccl_bfp16_reduce_impl_##impl_type(const void* in_buf,                         \
+                                      void* inout_buf,                            \
+                                      size_t in_cnt,                              \
+                                      ccl_bfp16_reduction_func_ptr op)            \
+    {                                                                             \
+        int i = 0;                                                                \
+        for (i = 0; i <= (int)in_cnt - 16; i += 16)                               \
+        {                                                                         \
+            ccl_bfp16_reduce_256_##impl_type((uint16_t*)in_buf + i,               \
+                                             (uint16_t*)inout_buf + i, op);       \
+        }                                                                         \
+        ccl_bfp16_reduce_masked_##impl_type((uint16_t*)in_buf + i,                \
+                                            (uint16_t*)inout_buf + i,             \
+                                            (uint8_t)(in_cnt - i), op);           \
+    }
+
+CCL_BFP16_REDUCE_FUNC_DEFINITIONS(avx512f);
+#ifdef CCL_BFP16_AVX512BF_COMPILER
+CCL_BFP16_REDUCE_FUNC_DEFINITIONS(avx512bf);
+#endif
 
 INLINE_TARGET_ATTRIBUTE_ALL void
-ccl_bfp16_reduce_256(const void* in, const void* inout, bfp16_reduction_func_ptr reduction_op)
+ccl_bfp16_reduce_impl(const void* in_buf, void* inout_buf, size_t in_cnt,
+                      ccl_bfp16_reduction_func_ptr op,
+                      ccl_bfp16_impl_type impl_type)
 {
-    __m256i vbfp16_out;
-    ccl_bfp16_reduce_inputs(in, inout, (void*)&vbfp16_out, reduction_op);
-    _mm256_storeu_si256( (__m256i*)(inout), vbfp16_out );
-}
+    if (impl_type == ccl_bfp16_avx512f)
+        ccl_bfp16_reduce_impl_avx512f(in_buf, inout_buf, in_cnt, op);
+#ifdef CCL_BFP16_AVX512BF_COMPILER
+    else if (impl_type == ccl_bfp16_avx512bf)
+        ccl_bfp16_reduce_impl_avx512bf(in_buf, inout_buf, in_cnt, op);
+#endif
 
-INLINE_TARGET_ATTRIBUTE_ALL void
-ccl_bfp16_reduce_masked(const void* in, void* inout, uint8_t len, bfp16_reduction_func_ptr reduction_op)
-{
-    if (len == 0) return;
-
-    uint16_t mask = ( (uint16_t) 0xFFFF ) >> (16 - len);
-    __m256i vbfp16_out;
-    ccl_bfp16_reduce_inputs(in, inout, (void*)&vbfp16_out, reduction_op);
-    _mm256_mask_storeu_epi16(inout, (__mmask16) mask, vbfp16_out);
 }
 
 #endif /* CCL_BFP16_COMPILER */

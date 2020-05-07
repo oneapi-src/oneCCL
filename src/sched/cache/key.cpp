@@ -39,7 +39,7 @@ void ccl_sched_key::set(const ccl_coll_param& param,
     match_id = attr.match_id;
 
     f.ctype = param.ctype;
-    f.dtype = param.dtype->type;
+    f.dtype = param.dtype.idx();
     f.comm = param.comm;
 
     switch (f.ctype)
@@ -75,7 +75,7 @@ void ccl_sched_key::set(const ccl_coll_param& param,
             f.count2 = param.sparse_param.send_val_count;
             f.count3 = param.sparse_param.recv_ind_count;
             f.count4 = param.sparse_param.recv_val_count;
-            f.itype = param.sparse_param.itype->type;
+            f.itype = param.sparse_param.itype.idx();
             f.reduction = param.reduction;
             break;
         default:
@@ -84,7 +84,7 @@ void ccl_sched_key::set(const ccl_coll_param& param,
 }
 
 bool ccl_sched_key::check(const ccl_coll_param& param, 
-                          const ccl_coll_attr& attr)
+                          const ccl_coll_attr& attr) const
 {
     bool result = true;
 
@@ -92,7 +92,7 @@ bool ccl_sched_key::check(const ccl_coll_param& param,
                attr.epilogue_fn == f.epilogue_fn ||
                attr.reduction_fn == f.reduction_fn ||
                param.ctype == f.ctype ||
-               param.dtype->type == f.dtype ||
+               param.dtype.idx() == f.dtype ||
                param.comm == f.comm);
 
     switch (f.ctype)
@@ -128,7 +128,7 @@ bool ccl_sched_key::check(const ccl_coll_param& param,
                        param.sparse_param.send_val_count == f.count2 &&
                        param.sparse_param.recv_ind_count == f.count3 &&
                        param.sparse_param.recv_val_count == f.count4 &&
-                       param.sparse_param.itype->type == f.itype &&
+                       param.sparse_param.itype.idx() == f.itype &&
                        param.reduction == f.reduction);
             break;
         default:
@@ -163,6 +163,26 @@ bool ccl_sched_key::operator== (const ccl_sched_key& k) const
     print();
     k.print();
     return are_keys_equal;
+}
+
+void ccl_sched_key::print() const
+{
+    LOG_DEBUG("ctype ", ccl_coll_type_to_str(f.ctype),
+              ", dtype ", global_data.dtypes->name(f.dtype),
+              ", itype ", global_data.dtypes->name(f.itype),
+              ", reduction ", ccl_reduction_to_str(f.reduction),
+              ", buf1 ", f.buf1,
+              ", buf2 ", f.buf2,
+              ", count1 ", f.count1,
+              ", count2 ", f.count2,
+              ", count3 ", f.count3,
+              ", count4 ", f.count4,
+              ", root ", f.root,
+              ", comm ", f.comm,
+              ", prologue_fn ", (void*)f.prologue_fn,
+              ", epilogue_fn ", (void*)f.epilogue_fn,
+              ", reduction_fn ", (void*)f.reduction_fn,
+              ", match_id ", match_id);
 }
 
 size_t ccl_sched_key_hasher::operator()(const ccl_sched_key& k) const

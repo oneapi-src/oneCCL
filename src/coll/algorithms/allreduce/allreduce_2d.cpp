@@ -68,7 +68,7 @@ ccl_allreduce_2d_add_allreduce_allgather(ccl_sched* sched,
                                          ccl_buffer send_buf,
                                          ccl_buffer recv_buf,
                                          size_t count,
-                                         ccl_datatype_internal_t dtype,
+                                         const ccl_datatype& dtype,
                                          ccl_reduction_t op,
                                          ccl_comm* comm,
                                          size_t chunk_idx,
@@ -77,7 +77,7 @@ ccl_allreduce_2d_add_allreduce_allgather(ccl_sched* sched,
     ccl_comm* first_dim_comm = global_data.allreduce_2d_builder->get_first_dim_comm();
     ccl_comm* second_dim_comm = global_data.allreduce_2d_builder->get_second_dim_comm();
 
-    size_t dtype_size = ccl_datatype_get_size(dtype);
+    size_t dtype_size = dtype.size();
     size_t main_chunk_size = count / chunk_count;
     size_t last_chunk_size = main_chunk_size + count % chunk_count;
     size_t cnt = (chunk_idx == (chunk_count - 1)) ? last_chunk_size : main_chunk_size;
@@ -109,7 +109,7 @@ ccl_allreduce_2d_add_reduce_scatter_allreduce_allgather(ccl_sched* sched,
                                                         ccl_buffer send_buf,
                                                         ccl_buffer recv_buf,
                                                         size_t count,
-                                                        ccl_datatype_internal_t dtype,
+                                                        const ccl_datatype& dtype,
                                                         ccl_reduction_t op,
                                                         ccl_comm* comm,
                                                         size_t chunk_idx,
@@ -117,7 +117,7 @@ ccl_allreduce_2d_add_reduce_scatter_allreduce_allgather(ccl_sched* sched,
 {
     ccl_comm* first_dim_comm = global_data.allreduce_2d_builder->get_first_dim_comm();
 
-    size_t dtype_size = ccl_datatype_get_size(dtype);
+    size_t dtype_size = dtype.size();
     size_t main_chunk_size = count / chunk_count;
     size_t last_chunk_size = main_chunk_size + count % chunk_count;
     size_t cnt = (chunk_idx == (chunk_count - 1)) ? last_chunk_size : main_chunk_size;
@@ -136,14 +136,14 @@ ccl_allreduce_2d_add_reduce_scatter_allreduce_allgather(ccl_sched* sched,
     else
     {
         entry_factory::make_entry<subsched_entry>(sched, chunk_idx,
-            [send_buf, recv_buf, count, dtype, op, comm, chunk_idx, chunk_count](ccl_sched* s)
+            [send_buf, recv_buf, count, &dtype, op, comm, chunk_idx, chunk_count](ccl_sched* s)
             {
                 ccl_allreduce_2d_add_allreduce_allgather(s, send_buf, recv_buf, count, dtype,
                                                          op, comm, chunk_idx, chunk_count);
             }, "AR_AG");
 
         entry_factory::make_entry<subsched_entry>(sched, chunk_idx + 1,
-            [send_buf, recv_buf, count, dtype, op, comm, chunk_idx, chunk_count](ccl_sched* s)
+            [send_buf, recv_buf, count, &dtype, op, comm, chunk_idx, chunk_count](ccl_sched* s)
             {
                 ccl_allreduce_2d_add_reduce_scatter_allreduce_allgather(s, send_buf, recv_buf, count, dtype,
                                                                         op, comm, chunk_idx + 1, chunk_count);
@@ -155,7 +155,7 @@ ccl_status_t ccl_allreduce_2d_builder::build(ccl_sched* sched,
                                              ccl_buffer send_buf,
                                              ccl_buffer recv_buf,
                                              size_t count,
-                                             ccl_datatype_internal_t dtype,
+                                             const ccl_datatype& dtype,
                                              ccl_reduction_t op,
                                              ccl_comm* comm)
 {

@@ -20,10 +20,10 @@
 #include "common/utils/spinlock.hpp"
 
 #include <functional>
-#include <vector>
-#include <limits>
 #include <iostream>
+#include <limits>
 #include <mutex>
+#include <vector>
 
 using ccl_comm_id_t = uint16_t;
 
@@ -70,7 +70,7 @@ public:
 
         ~comm_id()
         {
-            if(!refuse)
+            if (!refuse)
             {
                 id_storage.get().release_id(id);
             }

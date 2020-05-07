@@ -121,10 +121,6 @@ public:
     }
 
     /**
-     * Total number of active communicators
-     */
-    static std::atomic_size_t comm_count;
-    /**
      * Maximum available number of active communicators
      */
     static constexpr ccl_sched_id_t max_comm_count = std::numeric_limits<ccl_comm_id_t>::max();

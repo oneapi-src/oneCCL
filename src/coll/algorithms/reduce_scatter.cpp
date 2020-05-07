@@ -23,7 +23,7 @@ ccl_status_t ccl_coll_build_ring_reduce_scatter(ccl_sched *sched,
                                                 ccl_buffer send_buf,
                                                 ccl_buffer recv_buf,
                                                 size_t send_count,
-                                                ccl_datatype_internal_t dtype,
+                                                const ccl_datatype& dtype,
                                                 ccl_reduction_t op,
                                                 ccl_comm* comm)
 {
@@ -34,7 +34,7 @@ ccl_status_t ccl_coll_build_ring_reduce_scatter(ccl_sched *sched,
 
     ccl_status_t status = ccl_status_success;
     size_t comm_size, rank;
-    size_t dtype_size = ccl_datatype_get_size(dtype);
+    size_t dtype_size = dtype.size();
 
     comm_size = comm->size();
     rank = comm->rank();

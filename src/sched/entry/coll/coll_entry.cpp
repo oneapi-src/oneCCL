@@ -34,9 +34,9 @@ void coll_entry::start()
         CCL_ASSERT(res == ccl_status_success, "error during build_schedule, res ", res);
     }
 
-    LOG_DEBUG("starting COLL entry");
+    LOG_DEBUG("starting COLL entry: ", this, ", subsched: ", coll_sched.get());
     auto req = sched->start_subsched(coll_sched.get());
-    LOG_DEBUG("COLL entry: sched ", coll_sched.get(), ", req ", req);
+    LOG_DEBUG(" started COLL entry: ", this, ", subsched ", coll_sched.get(), ", req ", req);
 
     status = ccl_sched_entry_status_started;
 }
@@ -46,7 +46,7 @@ void coll_entry::update()
     CCL_THROW_IF_NOT(coll_sched, "empty request");
     if (coll_sched->is_completed())
     {
-        LOG_DEBUG("COLL entry, completed sched: ", coll_sched.get());
+        LOG_DEBUG("COLL entry, completed: ", this, ", sched: ", coll_sched.get());
         status = ccl_sched_entry_status_complete;
     }
 }

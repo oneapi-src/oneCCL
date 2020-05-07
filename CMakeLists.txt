@@ -38,15 +38,18 @@ if (NOT CMAKE_DISABLE_SYCL)
     set(CMAKE_DISABLE_SYCL 0)
 endif()
 
+#make build variable case insensitive
+string( TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_CASE_INSENSITIVE)
+
 #show build info
 message(STATUS "Installation directory: ${CMAKE_INSTALL_PREFIX}")
-message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE_CASE_INSENSITIVE}")
 message(STATUS "C compiler : ${CMAKE_C_COMPILER}")
 message(STATUS "CXX compiler : ${CMAKE_CXX_COMPILER}")
 
 #predefined options
 option(USE_SECURITY_FLAGS "Use security flags" TRUE)
-if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+if (${CMAKE_BUILD_TYPE_CASE_INSENSITIVE} STREQUAL "debug")
     set(USE_SECURITY_FLAGS FALSE)
 endif()
 
@@ -70,6 +73,14 @@ set(CCL_INSTALL_LICENSE "${CMAKE_INSTALL_PREFIX}/licensing")
 set(CCL_INSTALL_MODULE "${CMAKE_INSTALL_PREFIX}/modulefiles")
 set(CCL_INSTALL_EXAMPLES "${CMAKE_INSTALL_PREFIX}/examples")
 set(CCL_INSTALL_TESTS "${CMAKE_INSTALL_PREFIX}/tests")
+if ( "${LIBFABRIC_DIR}" STREQUAL "")
+    set(LIBFABRIC_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/ofi/include")
+    set(LIBFABRIC_LIB_DIR "${PROJECT_SOURCE_DIR}/ofi/lib/")
+else()
+    set(LIBFABRIC_INCLUDE_DIR "${LIBFABRIC_DIR}/include/")
+    set(LIBFABRIC_LIB_DIR "${LIBFABRIC_DIR}/lib")
+endif()
+
 
 set(CMAKE_SKIP_INSTALL_RPATH TRUE)
 set(CMAKE_SKIP_RPATH TRUE)
@@ -135,7 +146,7 @@ if(${CMAKE_C_COMPILER_ID} STREQUAL "GNU" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "
     endif()
 endif()
 
-if(WITH_ASAN AND ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+if(WITH_ASAN AND ${CMAKE_BUILD_TYPE_CASE_INSENSITIVE} STREQUAL "debug")
     message(STATUS "Compiling with address sanitizer")
     set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address -fno-omit-frame-pointer")
     set(CMAKE_C_FLAGS_DEBUG  "${CMAKE_C_FLAGS_DEBUG} -fsanitize=address -fno-omit-frame-pointer")
@@ -143,6 +154,8 @@ if(WITH_ASAN AND ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 endif()
 
 set(GCC_BFP16_MIN_SUPPORTED "4.9.0")
+set(GCC_BFP16_AVX512BF_MIN_SUPPORTED "10.0.0")
+set(ICC_BFP16_AVX512BF_MIN_SUPPORTED "19.1.0")
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "Intel" OR ${CMAKE_C_COMPILER_ID} STREQUAL "Clang" OR (${CMAKE_C_COMPILER_ID} STREQUAL "GNU" AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${GCC_BFP16_MIN_SUPPORTED}))
     add_definitions(-DCCL_BFP16_COMPILER)
@@ -151,6 +164,13 @@ if (${CMAKE_C_COMPILER_ID} STREQUAL "Intel" OR ${CMAKE_C_COMPILER_ID} STREQUAL "
 else()
     set(CCL_BFP16_COMPILER OFF)
     message(STATUS "BFP16 compiler: no")
+endif()
+
+if ((${CMAKE_C_COMPILER_ID} STREQUAL "Intel" AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${ICC_BFP16_AVX512BF_MIN_SUPPORTED}) OR ${CMAKE_C_COMPILER_ID} STREQUAL "Clang" OR (${CMAKE_C_COMPILER_ID} STREQUAL "GNU" AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${GCC_BFP16_AVX512BF_MIN_SUPPORTED}))
+    add_definitions(-DCCL_BFP16_AVX512BF_COMPILER)
+    message(STATUS "BFP16 AVX512BF compiler: yes")
+else()
+    message(STATUS "BFP16 AVX512BF compiler: no")
 endif()
 
 if (CCL_BFP16_COMPILER)
@@ -186,14 +206,15 @@ add_subdirectory(tests/functional)
 configure_file(cmake/vars.sh.in ${CMAKE_CURRENT_BINARY_DIR}/vars.sh @ONLY)
 configure_file(cmake/setvars.sh.in ${CMAKE_CURRENT_BINARY_DIR}/setvars.sh @ONLY)
 configure_file(cmake/ccl ${CMAKE_CURRENT_BINARY_DIR}/ccl @ONLY)
+configure_file(third-party-programs.txt ${CMAKE_CURRENT_BINARY_DIR}/third-party-programs.txt COPYONLY)
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/vars.sh DESTINATION ${CCL_INSTALL_ENV})
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/setvars.sh DESTINATION ${CCL_INSTALL_ENV})
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/ccl DESTINATION ${CCL_INSTALL_MODULE})
+install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/third-party-programs.txt DESTINATION ${CCL_INSTALL_LICENSE})
 install(PROGRAMS ${PROJECT_SOURCE_DIR}/LICENSE DESTINATION ${CCL_INSTALL_LICENSE})
-install(PROGRAMS ${PROJECT_SOURCE_DIR}/third-party-programs.txt DESTINATION ${CCL_INSTALL_LICENSE}
-)
+
 set(CCL_MAJOR_VERSION     "0")
-set(CCL_MINOR_VERSION     "5")
+set(CCL_MINOR_VERSION     "6")
 set(CCL_UPDATE_VERSION    "0")
 set(CCL_PRODUCT_STATUS    "beta")
 string(TIMESTAMP CCL_PRODUCT_BUILD_DATE "%Y-%m-%dT %H:%M:%SZ")
@@ -201,4 +222,3 @@ get_vcs_properties("git")
 set(CCL_PRODUCT_FULL "${CCL_PRODUCT_STATUS}-${CCL_MAJOR_VERSION}.${CCL_MINOR_VERSION}.${CCL_UPDATE_VERSION} ${CCL_PRODUCT_BUILD_DATE} ${VCS_INFO}")
 configure_file(${PROJECT_SOURCE_DIR}/include/ccl_config.h.in "${CMAKE_CURRENT_BINARY_DIR}/include/ccl_config.h")
 file(COPY "${CMAKE_CURRENT_BINARY_DIR}/include/ccl_config.h" DESTINATION ${PROJECT_SOURCE_DIR}/include/)
-

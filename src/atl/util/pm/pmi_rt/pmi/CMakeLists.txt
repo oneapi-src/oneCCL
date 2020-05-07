@@ -20,8 +20,7 @@ set(PMI_SRC
     simple_pmi.c)
 
 set(COMMON_PMI_INC_DIRS
-    ${PROJECT_SOURCE_DIR}/src/atl/util/pm/pmi_rt/pmi
-    ${PROJECT_SOURCE_DIR}/ofi/include)
+    ${PROJECT_SOURCE_DIR}/src/atl/util/pm/pmi_rt/pmi)
 
 #special library that holds objects only
 add_library(pmi-objects OBJECT ${PMI_SRC})
