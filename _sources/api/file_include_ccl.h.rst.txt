@@ -76,7 +76,7 @@ Functions
 
 - :ref:`exhale_function_ccl_8h_1a4a3092281bb0486bd832f9b3a48c1953`
 
-- :ref:`exhale_function_ccl_8h_1a338cc1918d32ec4079f1777b67fc91fc`
+- :ref:`exhale_function_ccl_8h_1a431e27b2e896b2b788b368951187370e`
 
 - :ref:`exhale_function_ccl_8h_1a4b7988205b012b6d5be39b7f865e79ec`
 

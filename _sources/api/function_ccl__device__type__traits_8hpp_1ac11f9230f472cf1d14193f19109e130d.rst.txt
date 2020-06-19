@@ -1,0 +1,13 @@
+.. _exhale_function_ccl__device__type__traits_8hpp_1ac11f9230f472cf1d14193f19109e130d:
+
+Template Function ccl::is_stream_supported
+==========================================
+
+- Defined in :ref:`file_include_ccl_device_type_traits.hpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: ccl::is_stream_supported()

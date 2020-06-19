@@ -14,7 +14,13 @@ Program Listing for File ccl_types.hpp
    
    #include "ccl_types.h"
    
+   #include <bitset>
+   #include <limits>
+   #include <map>
+   #include <memory>
+   #include <set>
    #include <stdexcept>
+   #include <vector>
    
    namespace ccl
    {
@@ -45,8 +51,9 @@ Program Listing for File ccl_types.hpp
    
    enum class stream_type
    {
+       host = ccl_stream_host,
        cpu = ccl_stream_cpu,
-       sycl = ccl_stream_sycl,
+       gpu = ccl_stream_gpu,
    
        last_value = ccl_stream_last_value
    };
@@ -56,6 +63,9 @@ Program Listing for File ccl_types.hpp
    typedef ccl_comm_attr_t comm_attr;
    
    typedef ccl_datatype_attr_t datatype_attr;
+   
+   template<ccl_host_attributes attrId>
+   struct ccl_host_attributes_traits {};
    
    class ccl_error : public std::runtime_error
    {
@@ -78,4 +88,8 @@ Program Listing for File ccl_types.hpp
        static constexpr bool is_class = iclass;
        static constexpr bool is_supported = supported;
    };
+   
    }
+   #ifdef MULTI_GPU_SUPPORT
+       #include "ccl_device_types.hpp"
+   #endif

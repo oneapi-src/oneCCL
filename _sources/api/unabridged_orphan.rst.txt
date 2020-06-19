@@ -30,6 +30,26 @@ Files
 .. toctree::
    :maxdepth: 5
 
+   file_include_ccl_device_type_traits.hpp.rst
+
+.. toctree::
+   :maxdepth: 5
+
+   file_include_ccl_device_types.h.rst
+
+.. toctree::
+   :maxdepth: 5
+
+   file_include_ccl_device_types.hpp.rst
+
+.. toctree::
+   :maxdepth: 5
+
+   file_include_ccl_gpu_modules.h.rst
+
+.. toctree::
+   :maxdepth: 5
+
    file_include_ccl_type_traits.hpp.rst
 
 .. toctree::
@@ -41,3 +61,8 @@ Files
    :maxdepth: 5
 
    file_include_ccl_types.hpp.rst
+
+.. toctree::
+   :maxdepth: 5
+
+   file_include_gpu_communicator.hpp.rst

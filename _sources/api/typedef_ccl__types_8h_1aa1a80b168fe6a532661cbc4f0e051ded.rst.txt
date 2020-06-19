@@ -1,0 +1,13 @@
+.. _exhale_typedef_ccl__types_8h_1aa1a80b168fe6a532661cbc4f0e051ded:
+
+Typedef ccl_host_comm_attr_t
+============================
+
+- Defined in :ref:`file_include_ccl_types.h`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: ccl_host_comm_attr_t

@@ -18,12 +18,37 @@ Classes and Structs
 .. toctree::
    :maxdepth: 5
 
+   structccl_1_1api__type__info.rst
+
+.. toctree::
+   :maxdepth: 5
+
+   structccl_1_1ccl__host__attributes__traits.rst
+
+.. toctree::
+   :maxdepth: 5
+
+   structccl_1_1ccl__host__attributes__traits_3_01ccl__host__color_01_4.rst
+
+.. toctree::
+   :maxdepth: 5
+
+   structccl_1_1ccl__host__attributes__traits_3_01ccl__host__version_01_4.rst
+
+.. toctree::
+   :maxdepth: 5
+
    structccl__coll__attr__t.rst
 
 .. toctree::
    :maxdepth: 5
 
    structccl__comm__attr__t.rst
+
+.. toctree::
+   :maxdepth: 5
+
+   structccl__comm__attr__versioned__t.rst
 
 .. toctree::
    :maxdepth: 5
@@ -44,6 +69,11 @@ Classes and Structs
    :maxdepth: 5
 
    classccl_1_1ccl__error.rst
+
+.. toctree::
+   :maxdepth: 5
+
+   classccl_1_1ccl__host__attr.rst
 
 .. toctree::
    :maxdepth: 5
@@ -87,6 +117,11 @@ Enums
 .. toctree::
    :maxdepth: 5
 
+   enum_ccl__types_8h_1aa8125c78bac1c8172e54fb08f7be6ed4.rst
+
+.. toctree::
+   :maxdepth: 5
+
    enum_ccl__types_8h_1a42085859d35d75cc288367198c003e0d.rst
 
 .. toctree::
@@ -126,6 +161,11 @@ Functions
 .. toctree::
    :maxdepth: 5
 
+   function_ccl__type__traits_8hpp_1ad129bc80e4ad44309546dfafa0bcdc45.rst
+
+.. toctree::
+   :maxdepth: 5
+
    function_ccl__type__traits_8hpp_1a433b9255dcb5482e42bbb60e9064a397.rst
 
 .. toctree::
@@ -137,6 +177,11 @@ Functions
    :maxdepth: 5
 
    function_ccl__type__traits_8hpp_1a150aaf3343efbab089e5dea87737f60d.rst
+
+.. toctree::
+   :maxdepth: 5
+
+   function_ccl__device__type__traits_8hpp_1ac11f9230f472cf1d14193f19109e130d.rst
 
 .. toctree::
    :maxdepth: 5
@@ -236,7 +281,7 @@ Functions
 .. toctree::
    :maxdepth: 5
 
-   function_ccl_8h_1a338cc1918d32ec4079f1777b67fc91fc.rst
+   function_ccl_8h_1a431e27b2e896b2b788b368951187370e.rst
 
 .. toctree::
    :maxdepth: 5
@@ -261,6 +306,11 @@ Functions
 Defines
 *******
 
+
+.. toctree::
+   :maxdepth: 5
+
+   define_ccl__device__type__traits_8hpp_1ac2c8dd0bba7c5d7bff744bb0e5953794.rst
 
 .. toctree::
    :maxdepth: 5
@@ -302,6 +352,11 @@ Defines
 
    define_ccl__types_8h_1abdb992edaff7cd8ac9e1595681cb3c07.rst
 
+.. toctree::
+   :maxdepth: 5
+
+   define_ccl__device__type__traits_8hpp_1a74a185522b8ce9a3d8cf8d5c94b15ffe.rst
+
 Typedefs
 ********
 
@@ -324,12 +379,22 @@ Typedefs
 .. toctree::
    :maxdepth: 5
 
+   typedef_ccl_8hpp_1a92948b610e91f22a828e1f11379ca14b.rst
+
+.. toctree::
+   :maxdepth: 5
+
    typedef_ccl_8hpp_1afb67f3fd79049729ef6509f6e8e44efa.rst
 
 .. toctree::
    :maxdepth: 5
 
    typedef_ccl__types_8hpp_1a24bd8d0a9073420f66bc36c97c48c635.rst
+
+.. toctree::
+   :maxdepth: 5
+
+   typedef_ccl_8hpp_1a50f33e112e768736bb0e63896f9fddb0.rst
 
 .. toctree::
    :maxdepth: 5
@@ -350,6 +415,11 @@ Typedefs
    :maxdepth: 5
 
    typedef_ccl__types_8h_1a3cd4a42e22d22d20b9e2386e87f2dfab.rst
+
+.. toctree::
+   :maxdepth: 5
+
+   typedef_ccl__types_8h_1aa1a80b168fe6a532661cbc4f0e051ded.rst
 
 .. toctree::
    :maxdepth: 5
@@ -375,6 +445,11 @@ Typedefs
    :maxdepth: 5
 
    typedef_ccl__types_8h_1a18fa4bbd5cc606204bdada4979625ff4.rst
+
+.. toctree::
+   :maxdepth: 5
+
+   typedef_ccl__types_8h_1a21fdbaac2bedefc853712b36fab6f4bb.rst
 
 .. toctree::
    :maxdepth: 5

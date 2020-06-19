@@ -43,6 +43,8 @@ Included By
 
 - :ref:`file_include_ccl_types.hpp`
 
+- :ref:`file_include_ccl_gpu_modules.h`
+
 
 
 
@@ -54,6 +56,8 @@ Classes
 
 - :ref:`exhale_struct_structccl__comm__attr__t`
 
+- :ref:`exhale_struct_structccl__comm__attr__versioned__t`
+
 - :ref:`exhale_struct_structccl__datatype__attr__t`
 
 - :ref:`exhale_struct_structccl__fn__context__t`
@@ -64,6 +68,8 @@ Classes
 Enums
 -----
 
+
+- :ref:`exhale_enum_ccl__types_8h_1aa8125c78bac1c8172e54fb08f7be6ed4`
 
 - :ref:`exhale_enum_ccl__types_8h_1a42085859d35d75cc288367198c003e0d`
 
@@ -105,6 +111,8 @@ Typedefs
 
 - :ref:`exhale_typedef_ccl__types_8h_1a3cd4a42e22d22d20b9e2386e87f2dfab`
 
+- :ref:`exhale_typedef_ccl__types_8h_1aa1a80b168fe6a532661cbc4f0e051ded`
+
 - :ref:`exhale_typedef_ccl__types_8h_1af916cb1cffcd5a398e6ff9a079b71ce6`
 
 - :ref:`exhale_typedef_ccl__types_8h_1aa3f6ea5d22b45bb11c22b1539654ac50`
@@ -114,6 +122,8 @@ Typedefs
 - :ref:`exhale_typedef_ccl__types_8h_1aa827bd4240d612fa112cc603dda7172f`
 
 - :ref:`exhale_typedef_ccl__types_8h_1a18fa4bbd5cc606204bdada4979625ff4`
+
+- :ref:`exhale_typedef_ccl__types_8h_1a21fdbaac2bedefc853712b36fab6f4bb`
 
 - :ref:`exhale_typedef_ccl__types_8h_1ae4f1fe2e25f4a0189765458d8a83def5`
 

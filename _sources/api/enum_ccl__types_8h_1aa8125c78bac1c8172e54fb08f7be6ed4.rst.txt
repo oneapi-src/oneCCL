@@ -1,0 +1,13 @@
+.. _exhale_enum_ccl__types_8h_1aa8125c78bac1c8172e54fb08f7be6ed4:
+
+Enum ccl_host_attributes
+========================
+
+- Defined in :ref:`file_include_ccl_types.h`
+
+
+Enum Documentation
+------------------
+
+
+.. doxygenenum:: ccl_host_attributes

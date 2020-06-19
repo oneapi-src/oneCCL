@@ -1,0 +1,13 @@
+.. _exhale_function_ccl__type__traits_8hpp_1ad129bc80e4ad44309546dfafa0bcdc45:
+
+Template Function ccl::is_attribute_value_supported
+===================================================
+
+- Defined in :ref:`file_include_ccl_type_traits.hpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: ccl::is_attribute_value_supported()

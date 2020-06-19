@@ -1,0 +1,13 @@
+.. _exhale_define_ccl__device__type__traits_8hpp_1ac2c8dd0bba7c5d7bff744bb0e5953794:
+
+Define API_CLASS_TYPE_INFO
+==========================
+
+- Defined in :ref:`file_include_ccl_device_type_traits.hpp`
+
+
+Define Documentation
+--------------------
+
+
+.. doxygendefine:: API_CLASS_TYPE_INFO

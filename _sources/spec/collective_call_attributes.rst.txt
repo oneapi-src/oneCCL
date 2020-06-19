@@ -14,6 +14,10 @@ Collective Call Attributes
         ccl_prologue_fn_t prologue_fn;
         ccl_epilogue_fn_t epilogue_fn;
         ccl_reduction_fn_t reduction_fn;
+        /* Sparse allreduce collective related fields */
+        ccl_sparse_allreduce_completion_fn_t sparse_allreduce_completion_fn;
+        /* User context for saving sparse_allreduce results */
+        const void* sparse_allreduce_completion_ctx;
         /* Priority for collective operation */
         size_t priority;
         /* Blocking/non-blocking */
