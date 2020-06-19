@@ -37,7 +37,7 @@ int main(int argc, char** argv)
     ccl_get_comm_size(NULL, &size);
 
     /* create CPU stream */
-    ccl_stream_create(ccl_stream_cpu, NULL, &stream);
+    ccl_stream_create(ccl_stream_host, NULL, &stream);
 
     /* initialize sendbuf */
     for (i = 0; i < COUNT; i++) {

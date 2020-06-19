@@ -36,6 +36,8 @@ public:
         cnt(cnt), root(root), dtype(dtype),
         comm(comm)
     {
+        //TODO: Add way to using MPI communicator
+        CCL_UNUSED(this->comm);
     }
 
     void start() override

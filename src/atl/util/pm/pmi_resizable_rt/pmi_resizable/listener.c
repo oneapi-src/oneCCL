@@ -20,10 +20,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include "def.h"
 #include "kvs.h"
 #define KVS_LISTENER "CCL_LISTENER"
+
+#define LISTENER_TIMEOUT 5
+
+enum return_status
+{
+    get_new = 0,
+    timeout = 1,
+};
 
 static int sock_sender;
 static size_t num_listeners;
@@ -158,6 +167,7 @@ int run_listener(void)
 {
     socklen_t len = 0;
     char recv_buf[INT_STR_SIZE];
+    memset(recv_buf, 0, INT_STR_SIZE);
 
     if (sock_listener == -1)
     {
@@ -166,6 +176,8 @@ int run_listener(void)
         int addr_len = sizeof(addr);
         char my_ip[MAX_KVS_VAL_LENGTH];
         char* point_to_space;
+        struct timeval timeout;
+        timeout.tv_sec = LISTENER_TIMEOUT;
 
         if ((fp = popen(CHECKER_IP, READ_ONLY)) == NULL)
         {
@@ -195,14 +207,28 @@ int run_listener(void)
 
         SET_STR(addr_for_kvs, REQUEST_POSTFIX_SIZE, KVS_NAME_TEMPLATE_I, my_ip, (size_t)addr.sin_port);
         kvs_set_value(KVS_LISTENER, my_hostname, addr_for_kvs);
+        if (setsockopt(sock_listener, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
+            perror("Error");
+        }
         num_changes = 0;
     }
 
     while (num_changes <= 0)
     {
-        recvfrom(sock_listener, (char*) recv_buf, INT_STR_SIZE, MSG_WAITALL, (struct sockaddr*)&addr, &len);
+        int ret = recvfrom(sock_listener, (char*) recv_buf, INT_STR_SIZE, MSG_WAITALL, (struct sockaddr*)&addr, &len);
+        if (ret == -1)
+        {
+            if (errno == EAGAIN)
+            {
+                return timeout;
+            }
+            if (errno != EINTR)
+            {
+                printf("listner: accept error: %s\n", strerror(errno));
+            }
+        }
         num_changes++;
     }
 
-    return 0;
+    return get_new;
 }

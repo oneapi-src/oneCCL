@@ -175,12 +175,14 @@ ccl_master_sched::ccl_master_sched_ptr ccl_master_sched::create(const ccl_coll_p
                      env_data.sparse_allreduce_algo_raw != "mask" ||
                      !(attr.reduction_fn), 
                      "mask algorithm for sparse_allreduce does not support custom reduction");
+    
+    CCL_THROW_IF_NOT(param.ctype != ccl_coll_sparse_allreduce || attr.sparse_allreduce_completion_fn,
+                     "sparse_allreduce requires completion function pointer for proper work");
 
     CCL_THROW_IF_NOT((param.dtype.idx() != ccl_dtype_bfp16) || (global_data.bfp16_impl_type != ccl_bfp16_none),
                      "BFP16 datatype is requested but not supported");
 
     ccl_sched_key key;
-    std::pair<ccl_master_sched_ptr, bool> result;
     ccl_master_sched_ptr sched;
     bool is_created = false;
     auto create_fn = [param]() -> ccl_master_sched_ptr { return new ccl_master_sched(param); };

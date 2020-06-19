@@ -16,10 +16,6 @@
 
 find_package(OpenCL REQUIRED)
 
-message(${OpenCL_LIBRARIES})
-message(${OpenCL_INCLUDE_DIRS})
-message(${OpenCL_FOUND})
-
 include(CheckCXXCompilerFlag)
 include(FindPackageHandleStandardArgs)
 
@@ -52,7 +48,7 @@ if(ComputeCpp_FOUND AND NOT TARGET Codeplay::ComputeCpp)
   set(COMPUTECPP_FLAGS
       "-sycl-driver -Wno-sycl-undef-func -no-serial-memop -intelspirmetadata")
   set_target_properties(Codeplay::ComputeCpp PROPERTIES
-        IMPORTED_LINK_INTERFACE_LIBRARIES OpenCL::OpenCL
+        INTERFACE_LINK_LIBRARIES OpenCL::OpenCL
         INTERFACE_INCLUDE_DIRECTORIES "${COMPUTECPP_INCLUDE_DIRS}"
         IMPORTED_LOCATION "${COMPUTECPP_LIBRARIES}"
         IMPORTED_NO_SONAME OFF)
@@ -62,4 +58,3 @@ if(ComputeCpp_FOUND AND NOT TARGET Codeplay::ComputeCpp)
             COMPUTECPP_INCLUDE_DIRS
             COMPUTECPP_BINARY_DIR)
 endif()
-

@@ -58,6 +58,8 @@ struct ccl_coll_attr
     ccl_prologue_fn_t prologue_fn = nullptr;
     ccl_epilogue_fn_t epilogue_fn = nullptr;
     ccl_reduction_fn_t reduction_fn = nullptr;
+    ccl_sparse_allreduce_completion_fn_t sparse_allreduce_completion_fn = nullptr;
+    const void* sparse_allreduce_completion_ctx = nullptr;
     size_t priority = 0;
     int synchronous = 0;
     int to_cache = 0;
@@ -71,10 +73,10 @@ struct ccl_coll_sparse_param
     size_t send_ind_count;
     const void* send_val_buf;
     size_t send_val_count;
-    void** recv_ind_buf;
-    size_t* recv_ind_count;
-    void** recv_val_buf;
-    size_t* recv_val_count;
+    void* recv_ind_buf;
+    size_t recv_ind_count;
+    void* recv_val_buf;
+    size_t recv_val_count;
     ccl_datatype itype;
 };
 
@@ -118,8 +120,6 @@ struct ccl_coll_param_copy
     std::vector<size_t> a2av_send_counts;
     std::vector<size_t> a2av_recv_counts;
 };
-
-const char* ccl_coll_type_to_str(ccl_coll_type type);
 
 ccl_status_t ccl_coll_build_allgatherv(ccl_sched* sched,
                                        ccl_buffer send_buf,
@@ -182,8 +182,8 @@ ccl_status_t ccl_coll_build_reduce_scatter(ccl_sched* sched,
 ccl_status_t ccl_coll_build_sparse_allreduce(ccl_sched* sched,
                                              ccl_buffer send_ind_buf, size_t send_ind_count,
                                              ccl_buffer send_val_buf, size_t send_val_count,
-                                             ccl_buffer recv_ind_buf, size_t* recv_ind_count,
-                                             ccl_buffer recv_val_buf, size_t* recv_val_count,
+                                             void** recv_ind_buf, size_t* recv_ind_count,
+                                             void** recv_val_buf, size_t* recv_val_count,
                                              const ccl_datatype& index_dtype,
                                              const ccl_datatype& value_dtype,
                                              ccl_reduction_t reduction,
@@ -199,6 +199,15 @@ ccl_request* ccl_allgatherv_impl(const void* send_buf,
                                  const ccl_stream* stream);
 
 ccl_request* ccl_allreduce_impl(const void* send_buf,
+                                void* recv_buf,
+                                size_t count,
+                                ccl_datatype_t dtype,
+                                ccl_reduction_t reduction,
+                                const ccl_coll_attr_t* attr,
+                                ccl_comm* comm,
+                                const ccl_stream* stream);
+template<class gpu_device_type>
+ccl_request* ccl_allreduce_gpu_impl(const void* send_buf,
                                 void* recv_buf,
                                 size_t count,
                                 ccl_datatype_t dtype,
@@ -247,8 +256,8 @@ ccl_request* ccl_reduce_impl(const void* send_buf,
 
 ccl_request* ccl_sparse_allreduce_impl(const void* send_ind_buf, size_t send_ind_count,
                                        const void* send_val_buf, size_t send_val_count,
-                                       void** recv_ind_buf, size_t* recv_ind_count,
-                                       void** recv_val_buf, size_t* recv_val_count,
+                                       void* recv_ind_buf, size_t recv_ind_count,
+                                       void* recv_val_buf, size_t recv_val_count,
                                        ccl_datatype_t index_dtype, ccl_datatype_t dtype,
                                        ccl_reduction_t reduction, const ccl_coll_attr_t* attr,
                                        ccl_comm* comm, const ccl_stream* stream);

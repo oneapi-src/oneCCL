@@ -34,8 +34,10 @@ public:
 
     coll_entry() = delete;
     coll_entry(ccl_sched* sched,
-               const ccl_coll_entry_param& param)
-        : sched_entry(sched), param(param), coll_sched()
+               const ccl_coll_entry_param& param,
+               ccl_op_id_t op_id = 0)
+        : sched_entry(sched), param(param), coll_sched(),
+          coll_sched_op_id(op_id)
     {
     }
 
@@ -101,4 +103,5 @@ protected:
 private:
     ccl_coll_entry_param param;
     std::unique_ptr<ccl_extra_sched> coll_sched;
+    ccl_op_id_t coll_sched_op_id;
 };

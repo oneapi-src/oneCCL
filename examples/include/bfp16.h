@@ -94,8 +94,7 @@ void convert_fp32_to_bfp16(const void* src, void* dst)
     else
 #endif
     {
-        __m512i y = _mm512_bsrli_epi128(_mm512_loadu_si512(src), 2);
-        _mm256_storeu_si256((__m256i*)(dst), _mm512_cvtepi32_epi16(y));
+        _mm256_storeu_si256((__m256i*)(dst), _mm512_cvtepi32_epi16(_mm512_bsrli_epi128(_mm512_loadu_si512(src), 2)));
     }
 }
 
@@ -109,8 +108,7 @@ void convert_bfp16_to_fp32(const void* src, void* dst) __attribute__((target("av
 #endif
 void convert_bfp16_to_fp32(const void* src, void* dst)
 {
-    __m512i y = _mm512_cvtepu16_epi32(_mm256_loadu_si256((__m256i const*)src));
-    _mm512_storeu_si512(dst, _mm512_bslli_epi128(y, 2));
+    _mm512_storeu_si512(dst, _mm512_bslli_epi128(_mm512_cvtepu16_epi32(_mm256_loadu_si256((__m256i const*)src)), 2));
 }
 
 void convert_fp32_to_bfp16_arrays(void* send_buf, void* send_buf_bfp16, int count)

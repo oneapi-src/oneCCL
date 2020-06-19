@@ -29,6 +29,8 @@ public:
     barrier_entry(ccl_sched* sched, ccl_comm* comm) :
         base_coll_entry(sched), comm(comm)
     {
+        //TODO: Add way to using MPI communicator
+        CCL_UNUSED(this->comm);
     }
 
     void start() override

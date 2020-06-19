@@ -21,6 +21,7 @@ int main(int argc, char **argv)
     int i = 0;
     size_t size = 0;
     size_t rank = 0;
+    ccl_stream_type_t stream_type;
 
     cl::sycl::queue q;
     cl::sycl::buffer<int, 1> sendbuf(COUNT);
@@ -31,11 +32,11 @@ int main(int argc, char **argv)
     rank = comm->rank();
     size = comm->size();
 
-    if (create_sycl_queue(argc, argv, q) != 0) {
+    if (create_sycl_queue(argc, argv, q, stream_type) != 0) {
         return -1;
     }
     /* create SYCL stream */
-    auto stream = ccl::environment::instance().create_stream(ccl::stream_type::sycl, &q);
+    auto stream = ccl::environment::instance().create_stream(q);
 
     {
         /* open buffers and initialize them on the CPU side */
@@ -55,6 +56,8 @@ int main(int argc, char **argv)
        });
     });
 
+    handle_exception(q);
+
     /* invoke ccl_allreduce on the CPU side */
     comm->allreduce(sendbuf,
                    recvbuf,
@@ -72,6 +75,8 @@ int main(int argc, char **argv)
            }
        });
     });
+
+    handle_exception(q);
 
     /* print out the result of the test on the CPU side */
     if (rank == COLL_ROOT){

@@ -45,7 +45,7 @@ public:
         subsched.reset(new ccl_extra_sched(sched->coll_param,
                                            sched->sched_id));
         subsched->coll_param.ctype = ccl_coll_internal;
-        subsched->set_op_id(op_id);
+        subsched->set_op_id(this->op_id);
 
         if (sched->coll_param.ctype == ccl_coll_allreduce ||
             sched->coll_param.ctype == ccl_coll_reduce ||

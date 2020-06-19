@@ -40,3 +40,81 @@ function(get_vcs_properties VCS)
         set(VCS_INFO "(${GIT_BRANCH}/${GIT_COMMIT_HASH})" PARENT_SCOPE)
     endif()
 endfunction(get_vcs_properties)
+
+
+function(activate_compute_runtime MODULES_PATH COMPUTE_RUNTIME)
+    
+    string( TOLOWER "${COMPUTE_RUNTIME}" COMPUTE_RUNTIME)
+    set(CCL_ENABLE_SYCL_V 0 PARENT_SCOPE)
+    message("Search Compute Runtime by MODULES_PATH: ${MODULES_PATH}")
+    list(APPEND CMAKE_MODULE_PATH "${MODULES_PATH}")
+    
+    if(COMPUTE_RUNTIME STREQUAL "computecpp")
+        message ("COMPUTE_RUNTIME=${COMPUTE_RUNTIME} requested. Using ComputeCpp provider")
+        SET (COMPUTE_RUNTIME_LOAD_MODULE "ComputeCpp" 
+                CACHE STRING 
+             "COMPUTE_RUNTIME=${COMPUTE_RUNTIME} requested. Using ComputeCpp provider")
+        find_package(${COMPUTE_RUNTIME_LOAD_MODULE} REQUIRED)
+    
+        set (CCL_ENABLE_SYCL_V 1 PARENT_SCOPE)
+    
+        # remember compilation flags, because flag required for OBJECTS target
+        # but if we use `target_link_libraries`, then these flags applied to all compiler options
+        # for c & cxx. But we need special flags for cxx only
+        # So set it manually
+        set (COMPUTE_RUNTIME_CXXFLAGS_LOCAL "${COMPUTE_RUNTIME_CXXFLAGS_LOCAL} ${COMPUTECPP_FLAGS}")
+        
+        # remember current target for `target_link_libraries` in ccl
+        set (COMPUTE_RUNTIME_TARGET_NAME Codeplay::ComputeCpp)
+        set (COMPUTE_RUNTIME_TARGET_NAME Codeplay::ComputeCpp PARENT_SCOPE)
+    endif()
+
+    if(COMPUTE_RUNTIME STREQUAL "dpcpp")
+        message ("COMPUTE_RUNTIME=${COMPUTE_RUNTIME} requested. Using DPC++ provider")
+        SET (COMPUTE_RUNTIME_LOAD_MODULE "IntelSYCL" 
+                CACHE STRING 
+             "COMPUTE_RUNTIME=${COMPUTE_RUNTIME} requested. Using DPC++ provider")
+        find_package(${COMPUTE_RUNTIME_LOAD_MODULE} REQUIRED)
+
+        set(CCL_ENABLE_SYCL_V 1 PARENT_SCOPE)
+
+        # remember compilation flags, because flag required for OBJECTS target
+        # but if we use `target_link_libraries`, then these flags applied to all compiler options
+        # for c & cxx. But we need special flags for cxx only
+        # So set it manually
+        set (COMPUTE_RUNTIME_CXXFLAGS_LOCAL "${COMPUTE_RUNTIME_CXXFLAGS_LOCAL} ${INTEL_SYCL_FLAGS}")
+        
+        # remember current target for `target_link_libraries` in ccl
+        set (COMPUTE_RUNTIME_TARGET_NAME Intel::SYCL)
+        set (COMPUTE_RUNTIME_TARGET_NAME Intel::SYCL PARENT_SCOPE)
+    endif()
+    
+    if(COMPUTE_RUNTIME STREQUAL "l0")
+        SET (COMPUTE_RUNTIME_LOAD_MODULE "L0" 
+                CACHE STRING 
+             "COMPUTE_RUNTIME=${COMPUTE_RUNTIME} requested")
+        find_package(${COMPUTE_RUNTIME_LOAD_MODULE} REQUIRED)
+
+        # No compiler flags        
+        set (COMPUTE_RUNTIME_CXXFLAGS_LOCAL "")
+        
+        # remember current target for `target_link_libraries` in ccl
+        set (COMPUTE_RUNTIME_TARGET_NAME ze_loader)
+        set (COMPUTE_RUNTIME_TARGET_NAME ze_loader PARENT_SCOPE)
+    endif()
+
+    # extract target properties
+    get_target_property(COMPUTE_RUNTIME_INCLUDE_DIRS_LOCAL
+                        ${COMPUTE_RUNTIME_TARGET_NAME} INTERFACE_INCLUDE_DIRECTORIES)
+    get_target_property(COMPUTE_RUNTIME_LIBRARIES_LOCAL 
+                        ${COMPUTE_RUNTIME_TARGET_NAME} INTERFACE_LINK_LIBRARIES)
+  
+    # set output variables in the parent scope:
+    # Only `COMPUTE_RUNTIME_FLAGS` is actually required, because  the other flags are derived from 
+    # 'target_link_libraries'.
+    # For simplicity, set all variables
+    set(COMPUTE_RUNTIME_FLAGS        ${COMPUTE_RUNTIME_CXXFLAGS_LOCAL}      PARENT_SCOPE)
+    set(COMPUTE_RUNTIME_LIBRARIES    ${COMPUTE_RUNTIME_LIBRARIES_LOCAL}     PARENT_SCOPE)
+    set(COMPUTE_RUNTIME_INCLUDE_DIRS ${COMPUTE_RUNTIME_INCLUDE_DIRS_LOCAL}  PARENT_SCOPE)
+
+endfunction(activate_compute_runtime)

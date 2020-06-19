@@ -20,8 +20,19 @@
 #cmakedefine CCL_PRODUCT_BUILD_DATE         "@CCL_PRODUCT_BUILD_DATE@"
 #cmakedefine CCL_PRODUCT_FULL               "@CCL_PRODUCT_FULL@"
 
+
+/* Configuration settings for multi GPU extension support*/
+#cmakedefine MULTI_GPU_SUPPORT
+
 /* Auto-generated configuration settings for SYCL support */
 #cmakedefine CCL_ENABLE_SYCL
+
 #ifdef CCL_ENABLE_SYCL
 @CCL_ENABLCE_SYCL_CHECK_CONTRACT@
 #endif
+
+#define CCL_ENABLE_SYCL_V              @CCL_ENABLE_SYCL_V@
+#define CCL_ENABLE_SYCL_TRUE                1
+#define CCL_ENABLE_SYCL_FALSE               0
+#cmakedefine CCL_GPU_DEVICES_AFFINITY_ENABLE
+#cmakedefine CCL_GPU_DEVICES_AFFINITY_MASK_SIZE @CCL_GPU_DEVICES_AFFINITY_MASK_SIZE@

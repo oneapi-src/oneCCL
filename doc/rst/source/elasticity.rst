@@ -6,7 +6,9 @@ Fault tolerance / elasticity
 Main instructions
 +++++++++++++++++
 
-Before launchung ranks, you can specify :ref:`CCL_WORLD_SIZE` = N, where N is the number of ranks to start.
+Start with setting :ref:`CCL_ATL_TRANSPORT` to `ofi`.
+
+Before launching ranks, you can specify :ref:`CCL_WORLD_SIZE` = N, where N is the number of ranks to start.
 If k8s with k8s manager support is used, then N is equal to ``replicasize`` by default.
 
 You can specify your own function that decides what |product_short| should do on the "world" resize event: 
@@ -30,9 +32,9 @@ You can specify your own function that decides what |product_short| should do on
 
   } ccl_resize_action_t;
 
-  typedef ccl_resize_action_t(*ccl_on_resize_fn_t)(size_t comm_size);
+  typedef ccl_resize_action_t(*ccl_resize_fn_t)(size_t comm_size);
 
-  ccl_set_resize_callback(ccl_on_resize_fn_t callback);
+  set_resize_fn(ccl_resize_fn_t callback);
 
 In case the number of ranks is changed, this function is called on |product_short| level. 
 Application level (e.g. framework) should return the action that |product_short| should perform.

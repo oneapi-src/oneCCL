@@ -36,12 +36,16 @@ namespace entry_factory
             template <class T, class ...U>
             friend T* make_entry(ccl_sched* sched, U &&...args);
 
-            template<class ...Arguments>
+            template <class T, ccl_sched_add_mode mode, class ...U>
+            friend T* make_entry(ccl_sched* sched, U &&...args);
+
+            template<ccl_sched_add_mode mode, class ...Arguments>
             static EntryType* create(ccl_sched* sched, Arguments &&...args)
             {
                 return static_cast<EntryType*>(sched->add_entry(std::unique_ptr<EntryType> (
                                                                         new EntryType(sched,
-                                                                        std::forward<Arguments>(args)...))));
+                                                                        std::forward<Arguments>(args)...)),
+                                                                ccl_sched_base::add_entry_mode_t<mode>()));
             }
         };
     }

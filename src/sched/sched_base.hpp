@@ -40,8 +40,12 @@ enum ccl_sched_internal_type
 enum ccl_sched_add_mode
 {
     ccl_sched_add_front,
-    ccl_sched_add_back
+    ccl_sched_add_back,
+
+    ccl_sched_add_mode_last_value
 };
+
+std::string to_string(ccl_sched_add_mode mode);
 
 struct ccl_sched_buffer_handler
 {
@@ -62,14 +66,20 @@ static size_t lifo_priority = 0;
 
 struct ccl_sched_base
 {
+    template<ccl_sched_add_mode mode = ccl_sched_add_mode_last_value>
+    using add_entry_mode_t = std::integral_constant<ccl_sched_add_mode, mode>;
+
+    using add_entry_front_t = add_entry_mode_t<ccl_sched_add_front>;
+    using add_entry_back_t = add_entry_mode_t<ccl_sched_add_back>;
+
     void set_coll_attr(const ccl_coll_attr& attr);
 
     void update_coll_param_and_attr(const ccl_coll_param& param,
                                     const ccl_coll_attr& attr);
 
     size_t get_priority() const;
+
     ccl_buffer alloc_buffer(size_t bytes);
-    void alloc_buffer_ptr(void**& out_ptr_to_allocated_ptr, size_t bytes);
     ccl_buffer update_buffer(ccl_buffer buffer, size_t new_size);
     ccl_buffer find_and_realloc_buffer(void* buffer, size_t new_size, size_t expected_size = 0);
     void free_buffers();

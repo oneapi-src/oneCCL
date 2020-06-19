@@ -29,8 +29,12 @@
 
 #define SIZEOFARR(arr) (sizeof(arr) / sizeof(arr[0]))
 
-#define ATL_CACHELINE_LEN 64
-#define ATL_REQ_SIZE      8
+#define ATL_CACHELINE_LEN     64
+#define ATL_REQ_SIZE          8
+#define ATL_PROGRESS_MODE_ENV "ATL_PROGRESS_MODE"
+
+#define DIR_SEP '/'
+#define FILENAME (strrchr(__FILE__, DIR_SEP) ? strrchr(__FILE__, DIR_SEP) + 1 : __FILE__)
 
 /*
  * Dynamically loaded transports must export the following entry point.
@@ -45,6 +49,12 @@ atl_status_t atl_ini(atl_transport_t *atl_transport)
 
 typedef struct atl_ctx atl_ctx_t;
 typedef struct atl_ep atl_ep_t;
+
+typedef enum
+{
+    ATL_PROGRESS_POLL,
+    ATL_PROGRESS_CHECK
+} atl_progress_mode_t;
 
 typedef enum
 {
@@ -135,7 +145,8 @@ typedef struct
 typedef struct
 {
     const char* name;
-    atl_status_t (*init)(int* argc, char*** argv, atl_attr_t* attr, atl_ctx_t** ctx, const char * main_addr);
+    atl_status_t (*init)(int* argc, char*** argv, atl_attr_t* attr,
+                         atl_ctx_t** ctx, const char * main_addr);
     atl_status_t (*main_addr_reserv)(char * main_addr);
 } atl_transport_t;
 
@@ -213,7 +224,7 @@ typedef struct
     atl_status_t (*wait_all)(atl_ep_t* ep, atl_req_t* reqs, size_t count);
     atl_status_t (*cancel)(atl_ep_t* ep, atl_req_t* req);
     atl_status_t (*poll)(atl_ep_t* ep);
-    atl_status_t (*check)(atl_ep_t* ep, int* status, atl_req_t* req);
+    atl_status_t (*check)(atl_ep_t* ep, int* is_completed, atl_req_t* req);
 } atl_comp_ops_t;
 
 struct atl_ep
@@ -407,7 +418,7 @@ atl_ep_poll(atl_ep_t* ep)
 }
 
 static inline atl_status_t
-atl_ep_check(atl_ep_t* ep, int* status, atl_req_t* req)
+atl_ep_check(atl_ep_t* ep, int* is_completed, atl_req_t* req)
 {
-    return ep->comp_ops->check(ep, status, req);
+    return ep->comp_ops->check(ep, is_completed, req);
 }

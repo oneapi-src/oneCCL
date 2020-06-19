@@ -24,6 +24,16 @@
 #include "parallelizer/parallelizer.hpp"
 #include "unordered_coll/unordered_coll.hpp"
 
+ccl_status_t ccl_set_resize_fn(ccl_resize_fn_t callback)
+{
+    CCL_CHECK_IS_BLOCKED();
+    try
+    {
+        return global_data.executor->create_listener(callback);
+    }
+    COMMON_CATCH_BLOCK();
+}
+
 void ccl_init_resize_dependent_objects(ccl_global_data& gl_data)
 {
     global_data.dtypes = std::unique_ptr<ccl_datatype_storage>(new ccl_datatype_storage());
@@ -57,6 +67,8 @@ void ccl_init_resize_dependent_objects(ccl_global_data& gl_data)
     gl_data.atl_tag =
         std::unique_ptr<ccl_atl_tag>(new ccl_atl_tag(gl_data.executor->get_atl_attr().tag_bits,
                                                      gl_data.executor->get_atl_attr().max_tag));
+    if (env_data.default_resizable)
+        ccl_set_resize_fn(nullptr);
 }
 
 void ccl_init_resize_independent_objects(ccl_global_data& gl_data)
@@ -147,6 +159,19 @@ ccl_status_t ccl_finalize()
     COMMON_CATCH_BLOCK();
 }
 
+#ifdef MULTI_GPU_SUPPORT
+ccl_status_t CCL_API ccl_set_device_comm_attr(ccl_device_comm_attr_t* comm_attr, unsigned long attribute, ...)
+{
+    if (!comm_attr)
+    {
+        return ccl_status_invalid_arguments;
+    }
+
+    //TODO
+    return ccl_status_invalid_arguments;
+}
+#endif //MULTI_GPU_SUPPORT
+
 ccl_status_t CCL_API ccl_get_version(ccl_version_t* version)
 {
     if (!version)
@@ -162,16 +187,6 @@ ccl_status_t CCL_API ccl_get_version(ccl_version_t* version)
     version->full = CCL_PRODUCT_FULL;
 
     return ccl_status_success;
-}
-
-ccl_status_t ccl_set_resize_fn(ccl_resize_fn_t callback)
-{
-    CCL_CHECK_IS_BLOCKED();
-    try
-    {
-        return global_data.executor->create_listener(callback);
-    }
-    COMMON_CATCH_BLOCK();
 }
 
 ccl_status_t CCL_API ccl_wait(ccl_request_t req)
@@ -333,8 +348,28 @@ ccl_status_t ccl_stream_create(ccl_stream_type_t type,
     CCL_ASSERT(stream);
     try
     {
-        LOG_DEBUG("create stream");
-        *stream = static_cast<void*>(new ccl_stream(type, native_stream));
+        LOG_DEBUG("create stream by type: ", type);
+#ifdef MULTI_GPU_SUPPORT
+    #ifdef CCL_ENABLE_SYCL
+            *stream = static_cast<void*>(stream_provider_dispatcher::create(*static_cast<cl::sycl::queue*>(native_stream)).release());
+    #else
+            *stream = static_cast<void*>(stream_provider_dispatcher::create(*static_cast<ze_command_queue_handle_t*>(native_stream)).release());
+    #endif
+#else
+    #ifdef CCL_ENABLE_SYCL
+        if( type != ccl_stream_host)
+        {
+            *stream = static_cast<void*>(stream_provider_dispatcher::create(*static_cast<cl::sycl::queue*>(native_stream)).release());
+        }
+        else
+    #endif
+        {
+            *stream = static_cast<void*>(stream_provider_dispatcher::create(native_stream).release());
+        }
+
+        //for legacy stream: override type for 'host' related queue
+        static_cast<ccl_stream*>(*stream)->type = type;
+#endif
         return ccl_status_success;
     }
     COMMON_CATCH_BLOCK();
@@ -527,9 +562,10 @@ ccl_status_t CCL_API ccl_reduce(
 
 ccl_status_t CCL_API ccl_sparse_allreduce(const void* send_ind_buf, size_t send_ind_count,
                                           const void* send_val_buf, size_t send_val_count,
-                                          void** recv_ind_buf, size_t* recv_ind_count,
-                                          void** recv_val_buf, size_t* recv_val_count,
-                                          ccl_datatype_t index_dtype, ccl_datatype_t dtype,
+                                          void* recv_ind_buf, size_t recv_ind_count,
+                                          void* recv_val_buf, size_t recv_val_count,
+                                          ccl_datatype_t index_dtype,
+                                          ccl_datatype_t value_dtype,
                                           ccl_reduction_t reduction,
                                           const ccl_coll_attr_t* attr,
                                           ccl_comm_t comm,
@@ -543,9 +579,12 @@ ccl_status_t CCL_API ccl_sparse_allreduce(const void* send_ind_buf, size_t send_
         {
             return ccl_status_invalid_arguments;
         }
-        auto request = ccl_sparse_allreduce_impl(send_ind_buf, send_ind_count, send_val_buf, send_val_count,
-                                                 recv_ind_buf, recv_ind_count, recv_val_buf, recv_val_count,
-                                                 index_dtype, dtype, reduction, attr,
+        auto request = ccl_sparse_allreduce_impl(send_ind_buf, send_ind_count,
+                                                 send_val_buf, send_val_count,
+                                                 recv_ind_buf, recv_ind_count,
+                                                 recv_val_buf, recv_val_count,
+                                                 index_dtype, value_dtype,
+                                                 reduction, attr,
                                                  (comm) ? static_cast<ccl_comm*>(comm) : global_data.comm.get(),
                                                  static_cast<const ccl_stream*>(stream));
         *req = static_cast<ccl_request_t>(request);

@@ -21,6 +21,7 @@ int main(int argc, char **argv)
     int i = 0;
     size_t size = 0;
     size_t rank = 0;
+    ccl_stream_type_t stream_type;
 
     ccl_init();
     ccl_get_comm_rank(NULL, &rank);
@@ -33,11 +34,11 @@ int main(int argc, char **argv)
     ccl_request_t request;
     ccl_stream_t stream;
 
-    if (create_sycl_queue(argc, argv, q) != 0) {
+    if (create_sycl_queue(argc, argv, q, stream_type) != 0) {
         return -1;
     }
     /* create SYCL stream */
-    ccl_stream_create(ccl_stream_sycl, &q, &stream);
+    ccl_stream_create(stream_type, &q, &stream);
 
     {
         /* open buffers and initialize them on the CPU side */
@@ -60,6 +61,8 @@ int main(int argc, char **argv)
        });
     });
 
+    handle_exception(q);
+
     /* invoke ccl_alltoall on the CPU side */
     ccl_alltoall(&sendbuf,
                  &recvbuf,
@@ -81,6 +84,8 @@ int main(int argc, char **argv)
            }
        });
     });
+
+    handle_exception(q);
 
     /* print out the result of the test on the CPU side */
     if (rank == COLL_ROOT) {

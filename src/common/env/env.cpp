@@ -15,7 +15,8 @@
 */
 #include "common/env/env.hpp"
 #include "common/log/log.hpp"
-
+#include <iterator>
+#include <sstream>
 #include <unistd.h>
 
 ccl_env_data env_data =
@@ -52,6 +53,7 @@ ccl_env_data env_data =
     .spin_count = 100,
     .yield_type = ccl_yield_pause,
     .max_short_size = 4096,
+    .bcast_part_count = CCL_ENV_SIZET_NOT_SPECIFIED,
     .cache_key_type = ccl_cache_key_match_id,
     .enable_cache_flush = 1,
 
@@ -60,7 +62,9 @@ ccl_env_data env_data =
     .rs_chunk_count = 1,
     .rs_min_chunk_size = 65536,
     .ar2d_chunk_count = 1,
-    .ar2d_min_chunk_size = 65536
+    .ar2d_min_chunk_size = 65536,
+
+    .default_resizable = 0
 };
 
 int ccl_env_2_int(const char* env_name, int& val)
@@ -81,7 +85,7 @@ int ccl_env_2_size_t(const char* env_name, size_t& val)
     val_ptr = getenv(env_name);
     if (val_ptr)
     {
-        val = std::strtoul(val_ptr, nullptr, 10);
+        val = std::strtoull(val_ptr, nullptr, 10);
         return 1;
     }
     return 0;
@@ -111,6 +115,21 @@ int ccl_env_2_string(const char* env_name, std::string& str)
     return 0;
 }
 
+template<class T>
+int ccl_env_get(const char* env_name, T& val)
+{
+    const char* val_ptr = nullptr;
+    val_ptr = getenv(env_name);
+    if (val_ptr)
+    {
+        std::stringstream ss;
+        ss << val_ptr;
+        ss >> val;
+        return 1;
+    }
+    return 0;
+}
+
 template<typename T>
 void str_to_array(const char* input,
                   std::vector<T>& output,
@@ -127,6 +146,27 @@ void str_to_array(const char* input,
         }
     }
 }
+
+template<>
+void str_to_array(const char* input,
+                  std::vector<std::string>& output,
+                  char delimiter)
+{
+    std::string processes_input(input);
+
+    processes_input.erase(std::remove_if(processes_input.begin(), processes_input.end(), [](unsigned char x) { return std::isspace(x);}),
+                          processes_input.end());
+
+    std::replace(processes_input.begin(), processes_input.end(), delimiter, ' ');
+    std::stringstream ss(processes_input);
+
+
+    while (ss >> processes_input)
+    {
+        output.push_back(processes_input);
+    }
+}
+void ccl_parse_l0_cluster_affinity(const std::string& l0_node_affinity);
 
 void ccl_env_parse()
 {
@@ -169,6 +209,7 @@ void ccl_env_parse()
     ccl_env_2_size_t(CCL_SPIN_COUNT, env_data.spin_count);
     ccl_env_parse_yield_type();
     ccl_env_2_size_t(CCL_MAX_SHORT_SIZE, env_data.max_short_size);
+    ccl_env_2_size_t(CCL_BCAST_PART_COUNT, (size_t&)env_data.bcast_part_count);
     ccl_env_parse_cache_key();
     ccl_env_2_int(CCL_CACHE_FLUSH, env_data.enable_cache_flush);
 
@@ -197,6 +238,10 @@ void ccl_env_parse()
     {
         CCL_THROW("unordered collectives are supported for OFI transport only");
     }
+
+    ccl_env_2_size_t(CCL_DEFAULT_RESIZABLE, env_data.default_resizable);
+    CCL_THROW_IF_NOT(env_data.default_resizable <= 2, "incorrect ",
+                     CCL_DEFAULT_RESIZABLE, " ", env_data.default_resizable);
 }
 
 void ccl_env_print()
@@ -230,21 +275,21 @@ void ccl_env_print()
     LOG_INFO(CCL_ATL_SHM, ": ", env_data.enable_shm);
 
     LOG_INFO(CCL_ALLGATHERV, ": ", (env_data.allgatherv_algo_raw.length()) ?
-        env_data.allgatherv_algo_raw : CCL_ENV_NOT_SPECIFIED);
+        env_data.allgatherv_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_ALLREDUCE, ": ", (env_data.allreduce_algo_raw.length()) ?
-        env_data.allreduce_algo_raw : CCL_ENV_NOT_SPECIFIED);
+        env_data.allreduce_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_ALLTOALL, ": ", (env_data.alltoall_algo_raw.length()) ?
-        env_data.alltoall_algo_raw : CCL_ENV_NOT_SPECIFIED);
+        env_data.alltoall_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_ALLTOALLV, ": ", (env_data.alltoallv_algo_raw.length()) ?
-        env_data.alltoallv_algo_raw : CCL_ENV_NOT_SPECIFIED);
+        env_data.alltoallv_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_BARRIER, ": ", (env_data.barrier_algo_raw.length()) ?
-        env_data.barrier_algo_raw : CCL_ENV_NOT_SPECIFIED);
+        env_data.barrier_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_BCAST, ": ", (env_data.bcast_algo_raw.length()) ?
-        env_data.bcast_algo_raw : CCL_ENV_NOT_SPECIFIED);
+        env_data.bcast_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_REDUCE, ": ", (env_data.reduce_algo_raw.length()) ?
-        env_data.reduce_algo_raw : CCL_ENV_NOT_SPECIFIED);
+        env_data.reduce_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_SPARSE_ALLREDUCE, ": ", (env_data.sparse_allreduce_algo_raw.length()) ?
-        env_data.sparse_allreduce_algo_raw : CCL_ENV_NOT_SPECIFIED);
+        env_data.sparse_allreduce_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_UNORDERED_COLL, ": ", env_data.enable_unordered_coll);
 
     LOG_INFO(CCL_FUSION, ": ", env_data.enable_fusion);
@@ -258,6 +303,8 @@ void ccl_env_print()
     LOG_INFO(CCL_SPIN_COUNT, ": ", env_data.spin_count);
     LOG_INFO(CCL_YIELD, ": ", ccl_yield_type_to_str(env_data.yield_type));
     LOG_INFO(CCL_MAX_SHORT_SIZE, ": ", env_data.max_short_size);
+    LOG_INFO(CCL_BCAST_PART_COUNT, ": ", (env_data.bcast_part_count != CCL_ENV_SIZET_NOT_SPECIFIED) ?
+        std::to_string(env_data.bcast_part_count) : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_CACHE_KEY, ": ", ccl_cache_key_type_to_str(env_data.cache_key_type));
     LOG_INFO(CCL_CACHE_FLUSH, ": ", env_data.enable_cache_flush);
 
@@ -378,6 +425,12 @@ int ccl_env_parse_worker_affinity(size_t local_proc_idx, size_t local_proc_count
 
     CCL_FREE(affinity_copy);
     return read_env;
+}
+
+void ccl_parse_l0_cluster_affinity(const std::string& l0_node_affinity)
+{
+    std::vector<std::string> array;
+    str_to_array<std::string>(l0_node_affinity.c_str(), array, ',');
 }
 
 int ccl_env_parse_atl_transport()

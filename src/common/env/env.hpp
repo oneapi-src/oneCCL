@@ -15,6 +15,7 @@
 */
 #pragma once
 
+#include "ccl_types.hpp"
 #include "coll/coll.hpp"
 #include "common/utils/utils.hpp"
 #include "common/utils/yield.hpp"
@@ -23,7 +24,8 @@
 #include <string>
 #include <vector>
 
-constexpr const char* CCL_ENV_NOT_SPECIFIED = "<not specified>";
+constexpr const char* CCL_ENV_STR_NOT_SPECIFIED = "<not specified>";
+constexpr const ssize_t CCL_ENV_SIZET_NOT_SPECIFIED = -1;
 
 constexpr const char* CCL_LOG_LEVEL = "CCL_LOG_LEVEL";
 constexpr const char* CCL_SCHED_DUMP = "CCL_SCHED_DUMP";
@@ -56,6 +58,7 @@ constexpr const char* CCL_PRIORITY = "CCL_PRIORITY";
 constexpr const char* CCL_SPIN_COUNT = "CCL_SPIN_COUNT";
 constexpr const char* CCL_YIELD = "CCL_YIELD";
 constexpr const char* CCL_MAX_SHORT_SIZE = "CCL_MAX_SHORT_SIZE";
+constexpr const char* CCL_BCAST_PART_COUNT = "CCL_BCAST_PART_COUNT";
 constexpr const char* CCL_CACHE_KEY = "CCL_CACHE_KEY";
 constexpr const char* CCL_CACHE_FLUSH = "CCL_CACHE_FLUSH";
 
@@ -65,6 +68,8 @@ constexpr const char* CCL_RS_CHUNK_COUNT = "CCL_RS_CHUNK_COUNT";
 constexpr const char* CCL_RS_MIN_CHUNK_SIZE = "CCL_RS_MIN_CHUNK_SIZE";
 constexpr const char* CCL_AR2D_CHUNK_COUNT = "CCL_AR2D_CHUNK_COUNT";
 constexpr const char* CCL_AR2D_MIN_CHUNK_SIZE = "CCL_AR2D_MIN_CHUNK_SIZE";
+
+constexpr const char* CCL_DEFAULT_RESIZABLE = "CCL_DEFAULT_RESIZABLE";
 
 enum ccl_priority_mode
 {
@@ -121,6 +126,7 @@ struct alignas(CACHELINE_SIZE) ccl_env_data
     size_t spin_count;
     ccl_yield_type yield_type;
     size_t max_short_size;
+    ssize_t bcast_part_count;
     ccl_cache_key_type cache_key_type;
     int enable_cache_flush;
 
@@ -130,6 +136,8 @@ struct alignas(CACHELINE_SIZE) ccl_env_data
     size_t rs_min_chunk_size;
     size_t ar2d_chunk_count;
     size_t ar2d_min_chunk_size;
+
+    size_t default_resizable;
 };
 
 extern ccl_env_data env_data;

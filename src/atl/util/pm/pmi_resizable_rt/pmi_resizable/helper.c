@@ -218,7 +218,7 @@ void accept_new_ranks(shift_list_t* cur_list)
 
             for (i = 0; i < count_values; i++)
             {
-                if (strstr(kvs_values[i], old_rank_str))
+                if (!strcmp(kvs_values[i], old_rank_str))
                 {
                     kvs_set_value(KVS_ACCEPT, kvs_keys[i], new_rank_str);
                     break;
@@ -393,7 +393,7 @@ size_t get_val_count(const char* name, const char* val)
 
     for (i = 0; i < count_values; i++)
     {
-        if (strstr(val, kvs_values[i]))
+        if (!strcmp(val, kvs_values[i]))
         {
             res++;
         }
@@ -474,10 +474,10 @@ void reg_rank(void)
 
         for (i = 0; i < count_values; i++)
         {
-            if (strstr(kvs_values[i], rank_str))
+            if (!strcmp(kvs_values[i], rank_str))
             {
                 my_num_in_pod_request_line++;
-                if (strstr(kvs_keys[i], my_hostname))
+                if (!strcmp(kvs_keys[i], my_hostname))
                     break;
             }
         }

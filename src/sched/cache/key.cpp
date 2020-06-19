@@ -45,7 +45,6 @@ void ccl_sched_key::set(const ccl_coll_param& param,
     switch (f.ctype)
     {
         case ccl_coll_allgatherv:
-            f.buf1 = (void*)param.recv_counts;
             f.count1 = param.send_count;
             break;
         case ccl_coll_allreduce:
@@ -98,8 +97,7 @@ bool ccl_sched_key::check(const ccl_coll_param& param,
     switch (f.ctype)
     {
         case ccl_coll_allgatherv:
-            result &= (param.recv_counts == f.buf1 &&
-                       param.send_count == f.count1);
+            result &= (param.send_count == f.count1);
             break;
         case ccl_coll_allreduce:
             result &= (param.count == f.count1 &&

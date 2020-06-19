@@ -38,7 +38,7 @@
         ptr;                                                                \
 })
 
-constexpr size_t LOGGER_BUFFER_SIZE = 2048;
+constexpr size_t LOGGER_BUFFER_SIZE = 20480; //TODO
 
 
 constexpr const char* get_str_end(const char *str)

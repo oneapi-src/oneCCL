@@ -37,6 +37,8 @@ public:
         base_coll_entry(sched), send_buf(send_buf), recv_buf(recv_buf),
         cnt(cnt), dtype(dtype), op(reduction), root(root), comm(comm)
     {
+        //TODO: Add way to using MPI communicator
+        CCL_UNUSED(this->comm);
     }
 
     void start() override

@@ -18,6 +18,8 @@
 #include "ccl.h"
 #include "common/log/log.hpp"
 
+#include <atomic>
+
 class ccl_base_thread
 {
 public:
@@ -40,6 +42,8 @@ public:
     };
 
     const size_t idx;
+    std::atomic<bool> should_stop {false};
+    std::atomic<bool> started {false};
     pthread_t thread{};
 
     void*(*progress_function)(void*);

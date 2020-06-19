@@ -39,6 +39,4 @@ public:
 private:
     std::shared_ptr<ccl_comm> first_dim_comm;
     std::shared_ptr<ccl_comm> second_dim_comm;
-
-    int switch_dim = 0;
 };
