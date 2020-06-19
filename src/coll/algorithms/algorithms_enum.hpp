@@ -51,6 +51,8 @@ enum ccl_coll_alltoall_algo
 {
     ccl_coll_alltoall_direct,
     ccl_coll_alltoall_naive,
+    ccl_coll_alltoall_scatter,
+    ccl_coll_alltoall_scatter_barrier,
 
     ccl_coll_alltoall_last_value
 };
@@ -59,6 +61,8 @@ enum ccl_coll_alltoallv_algo
 {
     ccl_coll_alltoallv_direct,
     ccl_coll_alltoallv_naive,
+    ccl_coll_alltoallv_scatter,
+    ccl_coll_alltoallv_scatter_barrier,
 
     ccl_coll_alltoallv_last_value
 };
@@ -100,8 +104,7 @@ enum ccl_coll_reduce_scatter_algo
 
 enum ccl_coll_sparse_allreduce_algo
 {
-    ccl_coll_sparse_allreduce_basic,
-    ccl_coll_sparse_allreduce_size,
+    ccl_coll_sparse_allreduce_ring,
     ccl_coll_sparse_allreduce_mask,
     ccl_coll_sparse_allreduce_3_allgatherv,
 
@@ -123,3 +126,33 @@ enum ccl_coll_type
 
     ccl_coll_last_value
 };
+
+inline const char* ccl_coll_type_to_str(ccl_coll_type type)
+{
+    switch (type)
+    {
+        case ccl_coll_allgatherv:
+            return "allgatherv";
+        case ccl_coll_allreduce:
+            return "allreduce";
+        case ccl_coll_alltoall:
+            return "alltoall";
+        case ccl_coll_alltoallv:
+            return "alltoallv";
+        case ccl_coll_barrier:
+            return "barrier";
+        case ccl_coll_bcast:
+            return "bcast";
+        case ccl_coll_reduce:
+            return "reduce";
+        case ccl_coll_reduce_scatter:
+            return "reduce_scatter";
+        case ccl_coll_sparse_allreduce:
+            return "sparse_allreduce";
+        case ccl_coll_internal:
+            return "internal";
+        default:
+            return "unknown";
+    }
+    return "unknown";
+}

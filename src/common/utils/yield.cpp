@@ -16,6 +16,14 @@
 #include "common/log/log.hpp"
 #include "common/utils/yield.hpp"
 
+std::map<ccl_yield_type, std::string> ccl_yield_type_names =
+  {
+    std::make_pair(ccl_yield_none, "none"),
+    std::make_pair(ccl_yield_pause, "pause"),
+    std::make_pair(ccl_yield_sleep, "sleep"),
+    std::make_pair(ccl_yield_sched_yield, "sched_yield")
+  };
+
 void ccl_yield(ccl_yield_type yield_type)
 {
     struct timespec sleep_time;
@@ -38,22 +46,4 @@ void ccl_yield(ccl_yield_type yield_type)
         default:
             break;
     }
-}
-
-const char* ccl_yield_type_to_str(ccl_yield_type type)
-{
-    switch (type)
-    {
-        case ccl_yield_none:
-            return "none";
-        case ccl_yield_pause:
-            return "pause";
-        case ccl_yield_sleep:
-            return "sleep";
-        case ccl_yield_sched_yield:
-            return "sched_yield";
-        default:
-            CCL_FATAL("unknown yield_type ", type);
-    }
-    return "unknown";
 }

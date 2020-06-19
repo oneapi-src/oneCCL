@@ -13,17 +13,37 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#include "common/global/global.hpp"
+#include "common/utils/yield.hpp"
 #include "exec/thread/base_thread.hpp"
 
-ccl_status_t ccl_base_thread::start()
+ccl_status_t ccl_base_thread::start(int affinity)
 {
     LOG_DEBUG(name(), " ", idx);
-    int err = pthread_create(&thread, nullptr, progress_function, get_this());
+
+    start_affinity = affinity;
+
+    /* start thread with initial affinity */
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    cpu_set_t cpuset;
+    __CPU_ZERO_S(sizeof(cpu_set_t), &cpuset);
+    __CPU_SET_S(affinity, sizeof(cpu_set_t), &cpuset);
+    pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset);
+
+    int err = pthread_create(&thread, &attr, progress_function, get_this());
     if (err)
     {
-        LOG_ERROR("error while creating ", name(), " thread #", idx, " pthread_create returns ", err);
+        LOG_ERROR("error while creating ", name(),
+            " thread #", idx, " pthread_create returns ", err);
         return ccl_status_runtime_error;
     }
+
+    while (!started.load(std::memory_order_relaxed))
+    {
+        ccl_yield(ccl::global_data::env().yield_type);
+    }
+
     return ccl_status_success;
 }
 
@@ -32,32 +52,40 @@ ccl_status_t ccl_base_thread::stop()
     LOG_DEBUG(name(), " # ", idx);
 
     void* exit_code;
-    int err = pthread_cancel(thread);
-    if (err)
-        LOG_INFO("error while canceling progress thread # ", idx, ", pthread_cancel returns ", err);
+    int err;
+
+    should_stop = true;
+
+    while (started.load(std::memory_order_relaxed))
+    {
+        ccl_yield(ccl::global_data::env().yield_type);
+    }
 
     err = pthread_join(thread, &exit_code);
     if (err)
     {
-        LOG_INFO("error while joining progress thread # ", idx, " , pthread_join returns ", err);
+        LOG_INFO("error while joining progress thread # ", idx,
+            " , pthread_join returns ", err);
     }
     else
     {
-        LOG_DEBUG("progress thread # ", idx, ", exited with code ",
-                  idx, " (", (uintptr_t) exit_code, (exit_code == PTHREAD_CANCELED) ? "PTHREAD_CANCELED" : "?", ")");
+        LOG_DEBUG("progress thread # ", idx,
+            ", exited with code (", (uintptr_t) exit_code,
+            (exit_code == PTHREAD_CANCELED) ? "PTHREAD_CANCELED" : "?", ")");
     }
+
     return ccl_status_success;
 }
 
-ccl_status_t ccl_base_thread::pin(int proc_id)
+ccl_status_t ccl_base_thread::set_affinity(int affinity)
 {
-    LOG_DEBUG(name(), " # ", idx, ", proc_id ", proc_id);
+    LOG_DEBUG(name(), " # ", idx, ", affinity ", affinity);
 
     int pthread_err;
     cpu_set_t cpuset;
 
     __CPU_ZERO_S(sizeof(cpu_set_t), &cpuset);
-    __CPU_SET_S(proc_id, sizeof(cpu_set_t), &cpuset);
+    __CPU_SET_S(affinity, sizeof(cpu_set_t), &cpuset);
 
     if ((pthread_err = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset)) != 0)
     {
@@ -65,17 +93,44 @@ ccl_status_t ccl_base_thread::pin(int proc_id)
         return ccl_status_runtime_error;
     }
 
-    if ((pthread_err = pthread_getaffinity_np(thread, sizeof(cpu_set_t), &cpuset)) != 0)
+    if (get_affinity() != affinity)
     {
-        LOG_ERROR("pthread_getaffinity_np failed, err ", pthread_err);
-        return ccl_status_runtime_error;
-    }
-
-    if (!__CPU_ISSET_S(proc_id, sizeof(cpu_set_t), &cpuset))
-    {
-        LOG_ERROR(name(), " ", idx, " is not pinned on proc_id ", proc_id);
+        LOG_ERROR(name(), " ", idx, " is not pinned ", affinity);
         return ccl_status_runtime_error;
     }
 
     return ccl_status_success;
+}
+
+int ccl_base_thread::get_affinity()
+{
+    int pthread_err;
+    int result = CCL_UNDEFINED_CPU_ID;
+    cpu_set_t cpuset;
+
+    __CPU_ZERO_S(sizeof(cpu_set_t), &cpuset);
+
+    if ((pthread_err = pthread_getaffinity_np(thread, sizeof(cpu_set_t), &cpuset)) != 0)
+    {
+        LOG_ERROR("pthread_getaffinity_np failed, err ", pthread_err);
+    }
+
+    for (int idx = 0; idx < CPU_SETSIZE; idx++)
+    {
+        if (__CPU_ISSET_S(idx, sizeof(cpu_set_t), &cpuset))
+        {
+            if (result == CCL_UNDEFINED_CPU_ID)
+            {
+                result = idx;
+            }
+            else
+            {
+                CCL_THROW("multiple affinity cores, previous ", result, ", new ", idx);
+            }
+        }
+    }
+
+    CCL_THROW_IF_NOT(result != CCL_UNDEFINED_CPU_ID, "can't retrieve affinity");
+
+    return result;
 }

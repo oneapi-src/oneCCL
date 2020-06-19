@@ -33,11 +33,6 @@ public:
             max_tag_mask = max_tag;
         else
             max_tag_mask = ccl_pof2(max_tag) - 1;
-
-        LOG_INFO("tag_bits ", tag_bits,
-                 ", max_tag ", max_tag,
-                 ", pof2(max_tag) ", ccl_pof2(max_tag),
-                 ", max_tag_mask ", max_tag_mask);
     }
 
     ccl_atl_tag(const ccl_atl_tag& other) = delete;
@@ -47,6 +42,8 @@ public:
     ccl_atl_tag& operator=(ccl_atl_tag&& other) = delete;
 
     ~ccl_atl_tag() = default;
+
+    void print();
 
     /**
      * Generates the tag to be used by ATL communication operations

@@ -40,14 +40,15 @@ ccl_sched::~ccl_sched()
             param.comm = coll_param.comm;
             std::unique_ptr<ccl_extra_sched> dereg_sched(new ccl_extra_sched(param, sched_id));
             entry_factory::make_entry<deregister_entry>(dereg_sched.get(), memory.mr_list);
-            if (global_data.is_worker_thread || !env_data.worker_offload)
+            if (ccl::global_data::get().is_worker_thread || !ccl::global_data::env().worker_offload)
             {
                 dereg_sched->do_progress();
             }
             else
             {
                 /* release ownership, because ccl_wait_impl use delete inside */
-                ccl_wait_impl<ccl_extra_sched>(global_data.executor.get(), start_subsched(dereg_sched.release()));
+                ccl_wait_impl<ccl_extra_sched>(ccl::global_data::get().executor.get(),
+                                               start_subsched(dereg_sched.release()));
             }
         }
 
@@ -101,7 +102,6 @@ void ccl_sched::do_progress()
 
 bool ccl_sched::is_strict_order_satisfied()
 {
-    CCL_ASSERT(strict_start_order);
     return std::all_of(entries.begin(), entries.end(), [](const sched_entry_ptr& e)
         {
             return e->is_strict_order_satisfied();
@@ -112,7 +112,7 @@ void ccl_sched::complete()
 {
 #ifdef ENABLE_TIMERS
     exec_complete_time = timer_type::now();
-    if (env_data.sched_dump)
+    if (ccl::global_data::env().sched_dump)
     {
         dump(std::cout);
     }
@@ -162,14 +162,20 @@ ccl_request* ccl_sched::start_subsched(ccl_extra_sched* subsched)
     subsched->set_counter(1);
 
     queue->add(subsched);
-    subsched->dump(std::cout);
+
+    if (ccl::global_data::env().sched_dump)
+    {
+        std::stringstream ostream;
+        subsched->dump(ostream);
+        LOG_INFO(ostream.str());
+    }
 
     return subsched->req;
 }
 
 void ccl_sched::dump(std::ostream& out) const
 {
-    if (!env_data.sched_dump)
+    if (!ccl::global_data::env().sched_dump)
     {
         return;
     }
@@ -187,4 +193,9 @@ void ccl_sched::dump(std::ostream& out) const
     }
     out << msg.str();
     ccl_logger::format(out, "--------------------------------\n");
+}
+
+size_t ccl_sched::entries_count() const
+{
+    return entries.size();
 }

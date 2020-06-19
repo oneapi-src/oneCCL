@@ -13,10 +13,16 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "common/env/env.hpp"
+#include "common/global/global.hpp"
 #include "sched/cache/key.hpp"
 
 #include <cstring>
+
+std::map<ccl_cache_key_type, std::string> ccl_sched_key::key_type_names =
+  {
+    std::make_pair(ccl_cache_key_full, "full"),
+    std::make_pair(ccl_cache_key_match_id, "match_id")
+  };
 
 ccl_sched_key::ccl_sched_key(const ccl_coll_param& param,
                              const ccl_coll_attr& attr)
@@ -27,7 +33,7 @@ ccl_sched_key::ccl_sched_key(const ccl_coll_param& param,
 void ccl_sched_key::set(const ccl_coll_param& param,
                         const ccl_coll_attr& attr)
 {
-    if (env_data.cache_key_type == ccl_cache_key_full)
+    if (ccl::global_data::env().cache_key_type == ccl_cache_key_full)
     {
         /* to zerioize holes in memory layout */
         memset((void*)&f, 0, sizeof(ccl_sched_key_inner_fields));
@@ -45,7 +51,6 @@ void ccl_sched_key::set(const ccl_coll_param& param,
     switch (f.ctype)
     {
         case ccl_coll_allgatherv:
-            f.buf1 = (void*)param.recv_counts;
             f.count1 = param.send_count;
             break;
         case ccl_coll_allreduce:
@@ -98,8 +103,7 @@ bool ccl_sched_key::check(const ccl_coll_param& param,
     switch (f.ctype)
     {
         case ccl_coll_allgatherv:
-            result &= (param.recv_counts == f.buf1 &&
-                       param.send_count == f.count1);
+            result &= (param.send_count == f.count1);
             break;
         case ccl_coll_allreduce:
             result &= (param.count == f.count1 &&
@@ -138,23 +142,9 @@ bool ccl_sched_key::check(const ccl_coll_param& param,
     return result;
 }
 
-const char* ccl_cache_key_type_to_str(ccl_cache_key_type type)
-{
-    switch (type)
-    {
-        case ccl_cache_key_full:
-            return "full";
-        case ccl_cache_key_match_id:
-            return "match_id";
-        default:
-            CCL_FATAL("unknown cache_key_type ", type);
-    }
-    return "unknown";
-}
-
 bool ccl_sched_key::operator== (const ccl_sched_key& k) const
 {
-    bool are_fields_equal = (env_data.cache_key_type == ccl_cache_key_full) ?
+    bool are_fields_equal = (ccl::global_data::env().cache_key_type == ccl_cache_key_full) ?
         !memcmp(&f, &(k.f), sizeof(ccl_sched_key_inner_fields)) : 1;
     bool are_keys_equal = are_fields_equal && !match_id.compare(k.match_id);
 
@@ -168,8 +158,8 @@ bool ccl_sched_key::operator== (const ccl_sched_key& k) const
 void ccl_sched_key::print() const
 {
     LOG_DEBUG("ctype ", ccl_coll_type_to_str(f.ctype),
-              ", dtype ", global_data.dtypes->name(f.dtype),
-              ", itype ", global_data.dtypes->name(f.itype),
+              ", dtype ", ccl::global_data::get().dtypes->name(f.dtype),
+              ", itype ", ccl::global_data::get().dtypes->name(f.itype),
               ", reduction ", ccl_reduction_to_str(f.reduction),
               ", buf1 ", f.buf1,
               ", buf2 ", f.buf2,
@@ -191,7 +181,7 @@ size_t ccl_sched_key_hasher::operator()(const ccl_sched_key& k) const
         return k.get_hasher_result();
 
     size_t hash_value = string_hasher(k.match_id);
-    if (env_data.cache_key_type == ccl_cache_key_full)
+    if (ccl::global_data::env().cache_key_type == ccl_cache_key_full)
     {
         hash_value += k.f.ctype + k.f.dtype + k.f.itype + k.f.reduction +
             k.f.count1 + k.f.count2 + k.f.root + (size_t)k.f.buf1 + (size_t)k.f.buf2 +

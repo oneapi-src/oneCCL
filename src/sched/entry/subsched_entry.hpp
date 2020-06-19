@@ -45,7 +45,7 @@ public:
         subsched.reset(new ccl_extra_sched(sched->coll_param,
                                            sched->sched_id));
         subsched->coll_param.ctype = ccl_coll_internal;
-        subsched->set_op_id(op_id);
+        subsched->set_op_id(this->op_id);
 
         if (sched->coll_param.ctype == ccl_coll_allreduce ||
             sched->coll_param.ctype == ccl_coll_reduce ||
@@ -85,6 +85,11 @@ public:
     const char* name() const override
     {
         return !subsched_name.empty() ? subsched_name.c_str() : class_name();
+    }
+
+    ccl_sched* get_subsched()
+    {
+        return subsched.get();
     }
 
 protected:

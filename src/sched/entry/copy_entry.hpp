@@ -74,7 +74,7 @@ protected:
     void dump_detail(std::stringstream& str) const override
     {
         ccl_logger::format(str,
-                           "dt ", global_data.dtypes->name(dtype),
+                           "dt ", ccl::global_data::get().dtypes->name(dtype),
                            ", cnt ", cnt,
                            ", in_buf ", in_buf,
                            ", out_buf ", out_buf,

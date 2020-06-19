@@ -16,7 +16,7 @@
 #include "comp/bfp16/bfp16.hpp"
 #include "comp/comp.hpp"
 #include "common/log/log.hpp"
-#include "common/env/env.hpp"
+#include "common/global/global.hpp"
 #include "common/utils/utils.hpp"
 
 #define CCL_REDUCE(type)                                                \
@@ -80,7 +80,7 @@ ccl_status_t ccl_comp_reduce(const void* in_buf, size_t in_count, void* inout_bu
             CCL_REDUCE(int);
             break;
         case ccl_dtype_bfp16:
-            if (global_data.bfp16_impl_type == ccl_bfp16_none)
+            if (ccl::global_data::get().bfp16_impl_type == ccl_bfp16_none)
                 CCL_FATAL("CCL doesn't support reductions in BFP16 on this CPU");
             ccl_bfp16_reduce(in_buf, in_count, inout_buf, out_count, reduction);
             break;
@@ -100,6 +100,43 @@ ccl_status_t ccl_comp_reduce(const void* in_buf, size_t in_count, void* inout_bu
             CCL_FATAL("unexpected value ", dtype.idx());
             break;
     }
+    return ccl_status_success;
+}
+
+ccl_status_t ccl_comp_batch_reduce(const void* in_buf, const std::vector<size_t>& offsets, 
+                                   size_t in_count, void* inout_buf, size_t* out_count,
+                                   const ccl_datatype& dtype, ccl_reduction_t reduction,
+                                   ccl_reduction_fn_t reduction_fn, const ccl_fn_context_t* context,
+                                   int bfp16_keep_precision_mode, float* tmp, float* acc)
+{
+    if (bfp16_keep_precision_mode)
+    {
+        //->acc, tmp fusion_buffer_cache???
+    
+        /* inout_buf => inout_buffer + offsets[0] */
+        ccl_convert_bfp16_to_fp32_arrays(inout_buf, acc, in_count);
+
+        for(size_t i = 1; i < offsets.size(); i++)
+        {
+            ccl_convert_bfp16_to_fp32_arrays((char*)in_buf + dtype.size() * offsets[i], tmp, in_count);
+            ccl_comp_reduce(tmp, in_count, acc, out_count,
+                       ccl::global_data::get().dtypes->get(ccl_dtype_float),
+                       reduction, reduction_fn, context);
+        }
+    
+        ccl_convert_fp32_to_bfp16_arrays(acc, inout_buf, in_count);
+    }
+    else
+    {
+        for (size_t i = 1; i < offsets.size(); i++)
+        {
+            ccl_comp_reduce((char*)in_buf + dtype.size() * offsets[i], in_count,
+                            inout_buf, out_count, dtype, reduction, 
+                            reduction_fn, context);
+        }
+    }
+    
+
     return ccl_status_success;
 }
 

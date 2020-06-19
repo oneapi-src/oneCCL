@@ -274,18 +274,19 @@ int PMIR_API PMIR_Finalize(void)
     char kvs_key[MAX_KVS_KEY_LENGTH];
     char kvs_val[MAX_KVS_VAL_LENGTH];
     char rank_str[INT_STR_SIZE];
+    if (finalized)
+        return 0;
 
-    if (finalized) return 0;
+    if (my_rank == 0)
+        PMIR_Barrier();
+
     finalized = 1;
-
 
     initialized = 0;
 
     SET_STR(rank_str, INT_STR_SIZE, SIZE_T_TEMPLATE, my_rank);
 
     kvs_remove_name_key(KVS_POD_NUM, rank_str);
-
-    kvs_remove_name_key(KVS_BARRIER, my_hostname);
 
     while (cut_head(kvs_name, kvs_key, kvs_val, ST_CLIENT))
     {
@@ -296,6 +297,7 @@ int PMIR_API PMIR_Finalize(void)
     {
         kvs_remove_name_key(KVS_UP, KVS_IDX);
     }
+    kvs_remove_name_key(KVS_BARRIER, my_hostname);
 
     kvs_finalize();
 

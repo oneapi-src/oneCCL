@@ -25,9 +25,9 @@ std::map<ccl_coll_barrier_algo,
 
 ccl_algorithm_selector<ccl_coll_barrier>::ccl_algorithm_selector()
 {
-    if (env_data.atl_transport == ccl_atl_ofi)
+    if (ccl::global_data::env().atl_transport == ccl_atl_ofi)
         insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_barrier_ring);
-    else if (env_data.atl_transport == ccl_atl_mpi)
+    else if (ccl::global_data::env().atl_transport == ccl_atl_mpi)
         insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_barrier_direct);
 
     insert(fallback_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_barrier_ring);
@@ -48,4 +48,4 @@ bool ccl_algorithm_selector_helper<ccl_coll_barrier_algo>::can_use(ccl_coll_barr
 }
 
 CCL_SELECTION_DEFINE_HELPER_METHODS(ccl_coll_barrier_algo, ccl_coll_barrier,
-                                    env_data.barrier_algo_raw, 0);
+                                    ccl::global_data::env().barrier_algo_raw, 0);

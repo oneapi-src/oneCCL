@@ -15,8 +15,10 @@
 */
 #pragma once
 
+#include "coll/coll.hpp"
 #include "comp/comp.hpp"
 
+#include <map>
 #include <unordered_map>
 
 enum ccl_cache_key_type
@@ -67,8 +69,8 @@ public:
         ccl_reduction_t reduction = ccl_reduction_sum;
         size_t count1 = 0;
         size_t count2 = 0;
-        size_t* count3 = nullptr; /* used in sparse collective to store recv index count */
-        size_t* count4 = nullptr; /* used in sparse collective to store recv value count */
+        size_t count3 = 0; /* used in sparse collective to store recv index count */
+        size_t count4 = 0; /* used in sparse collective to store recv value count */
         size_t root = 0;
         const ccl_comm* comm = nullptr;
         ccl_prologue_fn_t prologue_fn = nullptr;
@@ -84,6 +86,8 @@ public:
     bool operator== (const ccl_sched_key& k) const;
 
     void print() const;
+
+    static std::map<ccl_cache_key_type, std::string> key_type_names;
 };
 
 class ccl_sched_key_hasher

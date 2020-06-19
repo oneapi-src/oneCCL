@@ -15,7 +15,20 @@
 */
 #include "sched/sched_base.hpp"
 #include "common/global/global.hpp"
-#include "common/env/env.hpp"
+
+std::string to_string(ccl_sched_add_mode mode)
+{
+    switch(mode)
+    {
+        case ccl_sched_add_front:
+            return "FRONT";
+        case ccl_sched_add_back:
+            return "BACK";
+        default:
+            return "DEFAULT";
+    }
+    return "DEFAULT";
+}
 
 void ccl_sched_base::set_coll_attr(const ccl_coll_attr& attr)
 {
@@ -26,7 +39,7 @@ void ccl_sched_base::update_coll_param_and_attr(const ccl_coll_param& param,
                                                 const ccl_coll_attr& attr)
 {
 #ifdef CCL_ENABLE_SYCL
-    if (param.stream && (param.stream->get_type() == ccl_stream_sycl))
+    if (param.stream && param.stream->is_sycl_device_stream())
     {
         coll_param.sycl_buf = static_cast<ccl_sycl_buffer_t*>(param.buf);
         coll_param.sycl_send_buf = static_cast<ccl_sycl_buffer_t*>((void*)param.send_buf);
@@ -79,7 +92,7 @@ void ccl_sched_base::update_coll_param_and_attr(const ccl_coll_param& param,
         coll_param.sparse_param.recv_val_buf = param.sparse_param.recv_val_buf;
     }
 
-    if (env_data.priority_mode == ccl_priority_direct)
+    if (ccl::global_data::env().priority_mode == ccl_priority_direct)
     {
         coll_attr.priority = attr.priority;
     }
@@ -89,7 +102,7 @@ size_t ccl_sched_base::get_priority() const
 {
     size_t priority = 0;
 
-    switch (env_data.priority_mode)
+    switch (ccl::global_data::env().priority_mode)
     {
         case ccl_priority_none:
             priority = 0;
@@ -99,7 +112,7 @@ size_t ccl_sched_base::get_priority() const
             priority = coll_attr.priority;
             break;
         default:
-            CCL_FATAL("unexpected priority_mode ", env_data.priority_mode);
+            CCL_FATAL("unexpected priority_mode ", ccl::global_data::env().priority_mode);
             break;
     }
 
@@ -111,6 +124,7 @@ size_t ccl_sched_base::get_priority() const
 ccl_buffer ccl_sched_base::alloc_buffer(size_t bytes)
 {
 
+    LOG_TRACE("try to allocate buffer size: ", bytes);
     CCL_THROW_IF_NOT(bytes > 0, "incorrect buffer size: ", bytes);
 
     ccl_buffer buffer = ccl_buffer(CCL_CALLOC(bytes, "sched_buffer"),
@@ -121,17 +135,6 @@ ccl_buffer ccl_sched_base::alloc_buffer(size_t bytes)
     LOG_DEBUG("allocated buffer ptr: ", buffer.get_ptr(), 
               ", size: ", buffer.get_size());
     return buffer;
-}
-void ccl_sched_base::alloc_buffer_ptr(void **&out_ptr_to_allocated_ptr, size_t bytes)
-{
-    ccl_buffer buffer = ccl_buffer(CCL_CALLOC(bytes, "sched_buffer"),
-                                   bytes, 0, ccl_buffer_type::DIRECT);
-    memory.buf_list.emplace_back(buffer, bytes);
-    CCL_THROW_IF_NOT(buffer.get_ptr(), "null ptr");
-    
-    LOG_DEBUG("allocated buffer ptr: ", buffer.get_ptr(), 
-              ", size: ", buffer.get_size());
-    memory.buf_list.back().buffer.get_ptr_addr(out_ptr_to_allocated_ptr);
 }
 
 ccl_buffer ccl_sched_base::update_buffer(ccl_buffer buffer, size_t new_size)
@@ -151,7 +154,7 @@ ccl_buffer ccl_sched_base::update_buffer(ccl_buffer buffer, size_t new_size)
     {
         if (it.buffer.get_ptr() == aux_ptr)
         {
-            //assign ptr unconditionally, because realloc can return the same pointer
+            /* assign ptr unconditionally, because realloc can return the same pointer */
             it.buffer = new_buf;
             it.size = new_size;
             updated = true;
@@ -171,7 +174,7 @@ ccl_buffer ccl_sched_base::find_and_realloc_buffer(void* in_ptr, size_t new_size
         if (it.buffer.get_ptr() == in_ptr)
         {
 #ifdef ENABLE_DEBUG_SPARSE
-            if(expected_size != 0 && (it.buffer.get_size() < expected_size))
+            if (expected_size != 0 && (it.buffer.get_size() < expected_size))
             {
                 std::stringstream ss;
                 ss << "Unexpected realloc buffer by pointer: " << in_ptr
@@ -187,7 +190,8 @@ ccl_buffer ccl_sched_base::find_and_realloc_buffer(void* in_ptr, size_t new_size
                 CCL_THROW_IF_NOT(false, "Cannot fin buffer by ptr: ", in_ptr, ", available buffers: ", ss.str() );
             }
 #endif //ENABLE_DEBUG_SPARSE
-            if (it.buffer.get_size() < new_size)
+            if ((it.buffer.get_size() < 0) ||
+                (static_cast<size_t>(it.buffer.get_size()) < new_size))
             {
                 LOG_DEBUG("try to realloc buffer by pointer: ", in_ptr, 
                           ", from: ", it.buffer.get_size(), ", to: ", new_size, 
@@ -202,7 +206,7 @@ ccl_buffer ccl_sched_base::find_and_realloc_buffer(void* in_ptr, size_t new_size
         }
     }
 
-    //Throw expection
+    /* throw expection */
     std::stringstream ss;
     for (const auto& it : memory.buf_list)
     {
@@ -234,8 +238,7 @@ void ccl_sched_base::alloc_buffers_for_sycl_copy()
 #ifdef CCL_ENABLE_SYCL
 
     ccl_coll_param& param = coll_param;
-
-    if (!param.stream || param.stream->get_type() != ccl_stream_sycl)
+    if (!param.stream || (!param.stream->is_sycl_device_stream()))
         return;
 
     LOG_DEBUG("alloc tmp buffers for D2H and H2D copies, coll_type ", ccl_coll_type_to_str(param.ctype));

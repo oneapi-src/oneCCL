@@ -13,193 +13,155 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "common/env/env.hpp"
-#include "common/log/log.hpp"
-
+#include <iterator>
+#include <sstream>
 #include <unistd.h>
 
-ccl_env_data env_data =
+#include "common/env/env.hpp"
+#include "common/global/global.hpp"
+#include "common/log/log.hpp"
+
+namespace ccl
 {
-    .log_level = static_cast<int>(ccl_log_level::ERROR),
-    .sched_dump = 0,
 
-    .worker_count = 1,
-    .worker_offload = 1,
-    .worker_affinity = std::vector<size_t>(),
+std::map<ccl_priority_mode, std::string> env_data::priority_mode_names =
+  {
+    std::make_pair(ccl_priority_none, "none"),
+    std::make_pair(ccl_priority_direct, "direct"),
+    std::make_pair(ccl_priority_lifo, "lifo")
+  };
 
-    .atl_transport = ccl_atl_mpi,
-    .enable_shm = 0,
+std::map<ccl_atl_transport, std::string> env_data::atl_transport_names =
+  {
+    std::make_pair(ccl_atl_ofi, "ofi"),
+    std::make_pair(ccl_atl_mpi, "mpi")
+  };
 
-    .allgatherv_algo_raw = std::string(),
-    .allreduce_algo_raw = std::string(),
-    .alltoall_algo_raw = std::string(),
-    .alltoallv_algo_raw = std::string(),
-    .barrier_algo_raw = std::string(),
-    .bcast_algo_raw = std::string(),
-    .reduce_algo_raw = std::string(),
-    .reduce_scatter_algo_raw = std::string(),
-    .sparse_allreduce_algo_raw = std::string(),
-    .enable_unordered_coll = 0,
+env_data::env_data() :
+    log_level(static_cast<int>(ccl_log_level::ERROR)),
+    sched_dump(0),
 
-    .enable_fusion = 0,
-    .fusion_bytes_threshold = 16384,
-    .fusion_count_threshold = 256,
-    .fusion_check_urgent = 1,
-    .fusion_cycle_ms = 0.2,
+    worker_count(1),
+    worker_offload(1),
 
-    .enable_rma = 0,
-    .priority_mode = ccl_priority_none,
-    .spin_count = 100,
-    .yield_type = ccl_yield_pause,
-    .max_short_size = 4096,
-    .cache_key_type = ccl_cache_key_match_id,
-    .enable_cache_flush = 1,
+    atl_transport(ccl_atl_mpi),
+    enable_shm(0),
 
-    .chunk_count = 1,
-    .min_chunk_size = 65536,
-    .rs_chunk_count = 1,
-    .rs_min_chunk_size = 65536,
-    .ar2d_chunk_count = 1,
-    .ar2d_min_chunk_size = 65536
-};
+    enable_unordered_coll(0),
 
-int ccl_env_2_int(const char* env_name, int& val)
+    enable_fusion(0),
+    fusion_bytes_threshold(16384),
+    fusion_count_threshold(256),
+    fusion_check_urgent(1),
+    fusion_cycle_ms(0.2),
+
+    enable_rma(0),
+    priority_mode(ccl_priority_none),
+    spin_count(100),
+    yield_type(ccl_yield_pause),
+    max_short_size(4096),
+    bcast_part_count(CCL_ENV_SIZET_NOT_SPECIFIED),
+    cache_key_type(ccl_cache_key_match_id),
+    enable_cache_flush(1),
+
+    chunk_count(1),
+    min_chunk_size(65536),
+    rs_chunk_count(1),
+    rs_min_chunk_size(65536),
+    ar2d_chunk_count(1),
+    ar2d_min_chunk_size(65536),
+
+    allreduce_2d_base_size(CCL_ENV_SIZET_NOT_SPECIFIED),
+    allreduce_2d_switch_dims(0),
+
+    alltoall_scatter_max_ops(CCL_ENV_SIZET_NOT_SPECIFIED),
+    alltoall_scatter_plain(0),
+
+    default_resizable(0)
+{}
+
+void env_data::parse()
 {
-    const char* val_ptr;
-    val_ptr = getenv(env_name);
-    if (val_ptr)
-    {
-        val = std::strtol(val_ptr, nullptr, 10);
-        return 1;
-    }
-    return 0;
-}
+    env_2_type(CCL_LOG_LEVEL, log_level);
+    ccl_logger::set_log_level(static_cast<ccl_log_level>(log_level));
+    env_2_type(CCL_SCHED_DUMP, sched_dump);
 
-int ccl_env_2_size_t(const char* env_name, size_t& val)
-{
-    const char* val_ptr;
-    val_ptr = getenv(env_name);
-    if (val_ptr)
-    {
-        val = std::strtoul(val_ptr, nullptr, 10);
-        return 1;
-    }
-    return 0;
-}
+    env_2_type(CCL_WORKER_COUNT, worker_count);
+    CCL_THROW_IF_NOT(worker_count >= 1, "incorrect ", CCL_WORKER_COUNT, " ", worker_count);
+    env_2_type(CCL_WORKER_OFFLOAD, worker_offload);
 
-int ccl_env_2_float(const char* env_name, float& val)
-{
-    const char* val_ptr;
-    val_ptr = getenv(env_name);
-    if (val_ptr)
-    {
-        val = std::strtof(val_ptr, nullptr);
-        return 1;
-    }
-    return 0;
-}
+    env_2_enum(CCL_ATL_TRANSPORT, atl_transport_names, atl_transport);
+    env_2_type(CCL_ATL_SHM, enable_shm);
 
-int ccl_env_2_string(const char* env_name, std::string& str)
-{
-    const char* val_ptr;
-    val_ptr = getenv(env_name);
-    if (val_ptr)
-    {
-        str.assign(val_ptr);
-        return 1;
-    }
-    return 0;
-}
-
-template<typename T>
-void str_to_array(const char* input,
-                  std::vector<T>& output,
-                  char delimiter)
-{
-    std::stringstream ss(input);
-    T temp{};
-    while (ss >> temp)
-    {
-        output.push_back(temp);
-        if (ss.peek() == delimiter)
-        {
-            ss.ignore();
-        }
-    }
-}
-
-void ccl_env_parse()
-{
-    ccl_env_2_int(CCL_LOG_LEVEL, env_data.log_level);
-    ccl_logger::set_log_level(static_cast<ccl_log_level>(env_data.log_level));
-    ccl_env_2_int(CCL_SCHED_DUMP, env_data.sched_dump);
-
-    ccl_env_2_size_t(CCL_WORKER_COUNT, env_data.worker_count);
-    CCL_THROW_IF_NOT(env_data.worker_count >= 1, "incorrect ", CCL_WORKER_COUNT, " ", env_data.worker_count);
-    ccl_env_2_int(CCL_WORKER_OFFLOAD, env_data.worker_offload);
-
-    ccl_env_parse_atl_transport();
-    ccl_env_2_int(CCL_ATL_SHM, env_data.enable_shm);
-
-    ccl_env_2_string(CCL_ALLGATHERV, env_data.allgatherv_algo_raw);
-    ccl_env_2_string(CCL_ALLREDUCE, env_data.allreduce_algo_raw);
-    ccl_env_2_string(CCL_ALLTOALL, env_data.alltoall_algo_raw);
-    ccl_env_2_string(CCL_ALLTOALLV, env_data.alltoallv_algo_raw);
-    ccl_env_2_string(CCL_BARRIER, env_data.barrier_algo_raw);
-    ccl_env_2_string(CCL_BCAST, env_data.bcast_algo_raw);
-    ccl_env_2_string(CCL_REDUCE, env_data.reduce_algo_raw);
-    ccl_env_2_string(CCL_SPARSE_ALLREDUCE, env_data.sparse_allreduce_algo_raw);
-    ccl_env_2_int(CCL_UNORDERED_COLL, env_data.enable_unordered_coll);
-
-    ccl_env_2_int(CCL_FUSION, env_data.enable_fusion);
-    ccl_env_2_int(CCL_FUSION_BYTES_THRESHOLD, env_data.fusion_bytes_threshold);
-    ccl_env_2_int(CCL_FUSION_COUNT_THRESHOLD, env_data.fusion_count_threshold);
-    ccl_env_2_int(CCL_FUSION_CHECK_URGENT, env_data.fusion_check_urgent);
-    ccl_env_2_float(CCL_FUSION_CYCLE_MS, env_data.fusion_cycle_ms);
-    if (env_data.enable_fusion)
-    {
-        CCL_THROW_IF_NOT(env_data.fusion_bytes_threshold >= 1, "incorrect ",
-                         CCL_FUSION_BYTES_THRESHOLD, " ", env_data.fusion_bytes_threshold);
-        CCL_THROW_IF_NOT(env_data.fusion_count_threshold >= 1, "incorrect ",
-                         CCL_FUSION_COUNT_THRESHOLD, " ", env_data.fusion_count_threshold);
-    }
-
-    ccl_env_2_int(CCL_RMA, env_data.enable_rma);
-    ccl_env_parse_priority_mode();
-    ccl_env_2_size_t(CCL_SPIN_COUNT, env_data.spin_count);
-    ccl_env_parse_yield_type();
-    ccl_env_2_size_t(CCL_MAX_SHORT_SIZE, env_data.max_short_size);
-    ccl_env_parse_cache_key();
-    ccl_env_2_int(CCL_CACHE_FLUSH, env_data.enable_cache_flush);
-
-    ccl_env_2_size_t(CCL_CHUNK_COUNT, env_data.chunk_count);
-    CCL_THROW_IF_NOT(env_data.chunk_count >= 1, "incorrect ",
-                     CCL_CHUNK_COUNT, " ", env_data.chunk_count);
-    ccl_env_2_size_t(CCL_MIN_CHUNK_SIZE, env_data.min_chunk_size);
-    CCL_THROW_IF_NOT(env_data.min_chunk_size >= 1, "incorrect ",
-                     CCL_MIN_CHUNK_SIZE, " ", env_data.min_chunk_size);
-
-    ccl_env_2_size_t(CCL_RS_CHUNK_COUNT, env_data.rs_chunk_count);
-    CCL_THROW_IF_NOT(env_data.rs_chunk_count >= 1, "incorrect ",
-                     CCL_RS_CHUNK_COUNT, " ", env_data.rs_chunk_count);
-    ccl_env_2_size_t(CCL_RS_MIN_CHUNK_SIZE, env_data.rs_min_chunk_size);
-    CCL_THROW_IF_NOT(env_data.rs_min_chunk_size >= 1, "incorrect ",
-                     CCL_RS_MIN_CHUNK_SIZE, " ", env_data.rs_min_chunk_size);
-
-    ccl_env_2_size_t(CCL_AR2D_CHUNK_COUNT, env_data.ar2d_chunk_count);
-    CCL_THROW_IF_NOT(env_data.ar2d_chunk_count >= 1, "incorrect ",
-                     CCL_AR2D_CHUNK_COUNT, " ", env_data.ar2d_chunk_count);
-    ccl_env_2_size_t(CCL_AR2D_MIN_CHUNK_SIZE, env_data.ar2d_min_chunk_size);
-    CCL_THROW_IF_NOT(env_data.ar2d_min_chunk_size >= 1, "incorrect ",
-                     CCL_AR2D_MIN_CHUNK_SIZE, " ", env_data.ar2d_min_chunk_size);
-
-    if (env_data.enable_unordered_coll && env_data.atl_transport != ccl_atl_ofi)
+    env_2_type(CCL_ALLGATHERV, allgatherv_algo_raw);
+    env_2_type(CCL_ALLREDUCE, allreduce_algo_raw);
+    env_2_type(CCL_ALLTOALL, alltoall_algo_raw);
+    env_2_type(CCL_ALLTOALLV, alltoallv_algo_raw);
+    env_2_type(CCL_BARRIER, barrier_algo_raw);
+    env_2_type(CCL_BCAST, bcast_algo_raw);
+    env_2_type(CCL_REDUCE, reduce_algo_raw);
+    env_2_type(CCL_SPARSE_ALLREDUCE, sparse_allreduce_algo_raw);
+    env_2_type(CCL_UNORDERED_COLL, enable_unordered_coll);
+    if (enable_unordered_coll && atl_transport != ccl_atl_ofi)
     {
         CCL_THROW("unordered collectives are supported for OFI transport only");
     }
+
+    env_2_type(CCL_FUSION, enable_fusion);
+    env_2_type(CCL_FUSION_BYTES_THRESHOLD, fusion_bytes_threshold);
+    env_2_type(CCL_FUSION_COUNT_THRESHOLD, fusion_count_threshold);
+    env_2_type(CCL_FUSION_CHECK_URGENT, fusion_check_urgent);
+    env_2_type(CCL_FUSION_CYCLE_MS, fusion_cycle_ms);
+    if (enable_fusion)
+    {
+        CCL_THROW_IF_NOT(fusion_bytes_threshold >= 1, "incorrect ",
+                         CCL_FUSION_BYTES_THRESHOLD, " ", fusion_bytes_threshold);
+        CCL_THROW_IF_NOT(fusion_count_threshold >= 1, "incorrect ",
+                         CCL_FUSION_COUNT_THRESHOLD, " ", fusion_count_threshold);
+    }
+
+    env_2_type(CCL_RMA, enable_rma);
+    env_2_enum(CCL_PRIORITY, priority_mode_names, priority_mode);
+    env_2_type(CCL_SPIN_COUNT, spin_count);
+    env_2_enum(CCL_YIELD, ccl_yield_type_names, yield_type);
+    env_2_type(CCL_MAX_SHORT_SIZE, max_short_size);
+    env_2_type(CCL_BCAST_PART_COUNT, (size_t&)bcast_part_count);
+    env_2_enum(CCL_CACHE_KEY, ccl_sched_key::key_type_names, cache_key_type);
+    env_2_type(CCL_CACHE_FLUSH, enable_cache_flush);
+
+    env_2_type(CCL_CHUNK_COUNT, chunk_count);
+    CCL_THROW_IF_NOT(chunk_count >= 1, "incorrect ",
+                     CCL_CHUNK_COUNT, " ", chunk_count);
+    env_2_type(CCL_MIN_CHUNK_SIZE, min_chunk_size);
+    CCL_THROW_IF_NOT(min_chunk_size >= 1, "incorrect ",
+                     CCL_MIN_CHUNK_SIZE, " ", min_chunk_size);
+
+    env_2_type(CCL_RS_CHUNK_COUNT, rs_chunk_count);
+    CCL_THROW_IF_NOT(rs_chunk_count >= 1, "incorrect ",
+                     CCL_RS_CHUNK_COUNT, " ", rs_chunk_count);
+    env_2_type(CCL_RS_MIN_CHUNK_SIZE, rs_min_chunk_size);
+    CCL_THROW_IF_NOT(rs_min_chunk_size >= 1, "incorrect ",
+                     CCL_RS_MIN_CHUNK_SIZE, " ", rs_min_chunk_size);
+
+    env_2_type(CCL_AR2D_CHUNK_COUNT, ar2d_chunk_count);
+    CCL_THROW_IF_NOT(ar2d_chunk_count >= 1, "incorrect ",
+                     CCL_AR2D_CHUNK_COUNT, " ", ar2d_chunk_count);
+    env_2_type(CCL_AR2D_MIN_CHUNK_SIZE, ar2d_min_chunk_size);
+    CCL_THROW_IF_NOT(ar2d_min_chunk_size >= 1, "incorrect ",
+                     CCL_AR2D_MIN_CHUNK_SIZE, " ", ar2d_min_chunk_size);
+
+    env_2_type(CCL_ALLREDUCE_2D_BASE_SIZE, (size_t&)allreduce_2d_base_size);
+    env_2_type(CCL_ALLREDUCE_2D_SWITCH_DIMS, allreduce_2d_switch_dims);
+
+    env_2_type(CCL_ALLTOALL_SCATTER_MAX_OPS, (size_t&)alltoall_scatter_max_ops);
+    env_2_type(CCL_ALLTOALL_SCATTER_PLAIN, alltoall_scatter_plain);
+
+    env_2_type(CCL_DEFAULT_RESIZABLE, default_resizable);
+    CCL_THROW_IF_NOT(default_resizable <= 2, "incorrect ",
+                     CCL_DEFAULT_RESIZABLE, " ", default_resizable);
 }
 
-void ccl_env_print()
+void env_data::print()
 {
 #ifdef ENABLE_DEBUG
     const char* build_mode = "debug";
@@ -216,90 +178,104 @@ void ccl_env_print()
 
     LOG_INFO("version : ", version.full);
 
-    LOG_INFO(CCL_LOG_LEVEL, ": ", env_data.log_level);
-    LOG_INFO(CCL_SCHED_DUMP, ": ", env_data.sched_dump);
+    char* ccl_root = getenv("CCL_ROOT");
+    LOG_INFO("CCL_ROOT : ", (ccl_root) ? ccl_root : CCL_ENV_STR_NOT_SPECIFIED);
 
-    LOG_INFO(CCL_WORKER_COUNT, ": ", env_data.worker_count);
-    LOG_INFO(CCL_WORKER_OFFLOAD, ": ", env_data.worker_offload);
-    for (size_t w_idx = 0; w_idx < env_data.worker_affinity.size(); w_idx++)
+    char* impi_root = getenv("I_MPI_ROOT");
+    LOG_INFO("I_MPI_ROOT : ", (impi_root) ? impi_root : CCL_ENV_STR_NOT_SPECIFIED);
+
+    LOG_INFO(CCL_LOG_LEVEL, ": ", log_level);
+    LOG_INFO(CCL_SCHED_DUMP, ": ", sched_dump);
+
+    LOG_INFO(CCL_WORKER_COUNT, ": ", worker_count);
+    LOG_INFO(CCL_WORKER_OFFLOAD, ": ", worker_offload);
+    for (size_t w_idx = 0; w_idx < worker_affinity.size(); w_idx++)
     {
-        LOG_INFO(CCL_WORKER_AFFINITY, ": worker: ", w_idx, ", processor: ", env_data.worker_affinity[w_idx]);
+        LOG_INFO(CCL_WORKER_AFFINITY, ": worker: ", w_idx, ", processor: ", worker_affinity[w_idx]);
     }
 
-    LOG_INFO(CCL_ATL_TRANSPORT, ": ", ccl_atl_transport_to_str(env_data.atl_transport));
-    LOG_INFO(CCL_ATL_SHM, ": ", env_data.enable_shm);
+    LOG_INFO(CCL_ATL_TRANSPORT, ": ", str_by_enum(atl_transport_names, atl_transport));
+    LOG_INFO(CCL_ATL_SHM, ": ", enable_shm);
 
-    LOG_INFO(CCL_ALLGATHERV, ": ", (env_data.allgatherv_algo_raw.length()) ?
-        env_data.allgatherv_algo_raw : CCL_ENV_NOT_SPECIFIED);
-    LOG_INFO(CCL_ALLREDUCE, ": ", (env_data.allreduce_algo_raw.length()) ?
-        env_data.allreduce_algo_raw : CCL_ENV_NOT_SPECIFIED);
-    LOG_INFO(CCL_ALLTOALL, ": ", (env_data.alltoall_algo_raw.length()) ?
-        env_data.alltoall_algo_raw : CCL_ENV_NOT_SPECIFIED);
-    LOG_INFO(CCL_ALLTOALLV, ": ", (env_data.alltoallv_algo_raw.length()) ?
-        env_data.alltoallv_algo_raw : CCL_ENV_NOT_SPECIFIED);
-    LOG_INFO(CCL_BARRIER, ": ", (env_data.barrier_algo_raw.length()) ?
-        env_data.barrier_algo_raw : CCL_ENV_NOT_SPECIFIED);
-    LOG_INFO(CCL_BCAST, ": ", (env_data.bcast_algo_raw.length()) ?
-        env_data.bcast_algo_raw : CCL_ENV_NOT_SPECIFIED);
-    LOG_INFO(CCL_REDUCE, ": ", (env_data.reduce_algo_raw.length()) ?
-        env_data.reduce_algo_raw : CCL_ENV_NOT_SPECIFIED);
-    LOG_INFO(CCL_SPARSE_ALLREDUCE, ": ", (env_data.sparse_allreduce_algo_raw.length()) ?
-        env_data.sparse_allreduce_algo_raw : CCL_ENV_NOT_SPECIFIED);
-    LOG_INFO(CCL_UNORDERED_COLL, ": ", env_data.enable_unordered_coll);
+    LOG_INFO(CCL_ALLGATHERV, ": ", (allgatherv_algo_raw.length()) ?
+        allgatherv_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_ALLREDUCE, ": ", (allreduce_algo_raw.length()) ?
+        allreduce_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_ALLTOALL, ": ", (alltoall_algo_raw.length()) ?
+        alltoall_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_ALLTOALLV, ": ", (alltoallv_algo_raw.length()) ?
+        alltoallv_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_BARRIER, ": ", (barrier_algo_raw.length()) ?
+        barrier_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_BCAST, ": ", (bcast_algo_raw.length()) ?
+        bcast_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_REDUCE, ": ", (reduce_algo_raw.length()) ?
+        reduce_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_SPARSE_ALLREDUCE, ": ", (sparse_allreduce_algo_raw.length()) ?
+        sparse_allreduce_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_UNORDERED_COLL, ": ", enable_unordered_coll);
 
-    LOG_INFO(CCL_FUSION, ": ", env_data.enable_fusion);
-    LOG_INFO(CCL_FUSION_BYTES_THRESHOLD, ": ", env_data.fusion_bytes_threshold);
-    LOG_INFO(CCL_FUSION_COUNT_THRESHOLD, ": ", env_data.fusion_count_threshold);
-    LOG_INFO(CCL_FUSION_CHECK_URGENT, ": ", env_data.fusion_check_urgent);
-    LOG_INFO(CCL_FUSION_CYCLE_MS, ": ", env_data.fusion_cycle_ms);
+    LOG_INFO(CCL_FUSION, ": ", enable_fusion);
+    LOG_INFO(CCL_FUSION_BYTES_THRESHOLD, ": ", fusion_bytes_threshold);
+    LOG_INFO(CCL_FUSION_COUNT_THRESHOLD, ": ", fusion_count_threshold);
+    LOG_INFO(CCL_FUSION_CHECK_URGENT, ": ", fusion_check_urgent);
+    LOG_INFO(CCL_FUSION_CYCLE_MS, ": ", fusion_cycle_ms);
 
-    LOG_INFO(CCL_RMA, ": ", env_data.enable_rma);
-    LOG_INFO(CCL_PRIORITY, ": ", ccl_priority_mode_to_str(env_data.priority_mode));
-    LOG_INFO(CCL_SPIN_COUNT, ": ", env_data.spin_count);
-    LOG_INFO(CCL_YIELD, ": ", ccl_yield_type_to_str(env_data.yield_type));
-    LOG_INFO(CCL_MAX_SHORT_SIZE, ": ", env_data.max_short_size);
-    LOG_INFO(CCL_CACHE_KEY, ": ", ccl_cache_key_type_to_str(env_data.cache_key_type));
-    LOG_INFO(CCL_CACHE_FLUSH, ": ", env_data.enable_cache_flush);
+    LOG_INFO(CCL_RMA, ": ", enable_rma);
+    LOG_INFO(CCL_PRIORITY, ": ", str_by_enum(priority_mode_names, priority_mode));
+    LOG_INFO(CCL_SPIN_COUNT, ": ", spin_count);
+    LOG_INFO(CCL_YIELD, ": ", str_by_enum(ccl_yield_type_names, yield_type));
+    LOG_INFO(CCL_MAX_SHORT_SIZE, ": ", max_short_size);
+    LOG_INFO(CCL_BCAST_PART_COUNT, ": ", (bcast_part_count != CCL_ENV_SIZET_NOT_SPECIFIED) ?
+        std::to_string(bcast_part_count) : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_CACHE_KEY, ": ", str_by_enum(ccl_sched_key::key_type_names, cache_key_type));
+    LOG_INFO(CCL_CACHE_FLUSH, ": ", enable_cache_flush);
 
-    LOG_INFO(CCL_CHUNK_COUNT, ": ", env_data.chunk_count);
-    LOG_INFO(CCL_MIN_CHUNK_SIZE, ": ", env_data.min_chunk_size);
-    LOG_INFO(CCL_RS_CHUNK_COUNT, ": ", env_data.rs_chunk_count);
-    LOG_INFO(CCL_RS_MIN_CHUNK_SIZE, ": ", env_data.rs_min_chunk_size);
-    LOG_INFO(CCL_AR2D_CHUNK_COUNT, ": ", env_data.ar2d_chunk_count);
-    LOG_INFO(CCL_AR2D_MIN_CHUNK_SIZE, ": ", env_data.ar2d_min_chunk_size);
+    LOG_INFO(CCL_CHUNK_COUNT, ": ", chunk_count);
+    LOG_INFO(CCL_MIN_CHUNK_SIZE, ": ", min_chunk_size);
+    LOG_INFO(CCL_RS_CHUNK_COUNT, ": ", rs_chunk_count);
+    LOG_INFO(CCL_RS_MIN_CHUNK_SIZE, ": ", rs_min_chunk_size);
+    LOG_INFO(CCL_AR2D_CHUNK_COUNT, ": ", ar2d_chunk_count);
+    LOG_INFO(CCL_AR2D_MIN_CHUNK_SIZE, ": ", ar2d_min_chunk_size);
+
+    LOG_INFO(CCL_ALLREDUCE_2D_BASE_SIZE, ": ", (allreduce_2d_base_size != CCL_ENV_SIZET_NOT_SPECIFIED) ?
+        std::to_string(allreduce_2d_base_size) : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_ALLREDUCE_2D_SWITCH_DIMS, ": ", allreduce_2d_switch_dims);
+
+    LOG_INFO(CCL_ALLTOALL_SCATTER_MAX_OPS, ": ", (alltoall_scatter_max_ops != CCL_ENV_SIZET_NOT_SPECIFIED) ?
+        std::to_string(alltoall_scatter_max_ops) : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_ALLTOALL_SCATTER_PLAIN, ": ", alltoall_scatter_plain);
 }
 
-constexpr const char* AVAILABLE_CORES_ENV = "I_MPI_PIN_INFO";
-
-static int ccl_env_parse_auto_worker_affinity(size_t local_proc_idx, size_t workers_per_process)
+int env_data::env_2_worker_affinity_auto(size_t local_proc_idx, size_t workers_per_process)
 {
-    char* available_cores = std::getenv(AVAILABLE_CORES_ENV);
+    char* available_cores = std::getenv(I_MPI_AVAILABLE_CORES_ENV);
     CCL_THROW_IF_NOT(available_cores && strlen(available_cores) != 0,
-                     "auto pinning requires ", AVAILABLE_CORES_ENV, " env variable to be set");
+                     "auto pinning requires ", I_MPI_AVAILABLE_CORES_ENV, " env variable to be set");
     std::vector<size_t> cores;
-    str_to_array(available_cores + 1, cores, ',');
+    ccl_str_to_array(available_cores + 1, cores, ',');
 
     LOG_DEBUG("available_cores ", available_cores);
 
-    CCL_THROW_IF_NOT(env_data.worker_count <= cores.size(),
-                     "count of workers ", env_data.worker_count,
+    CCL_THROW_IF_NOT(worker_count <= cores.size(),
+                     "count of workers ", worker_count,
                      " exceeds the number of available cores ", cores.size());
 
-    size_t ccl_cores_start = cores.size() - env_data.worker_count;
-    for (size_t idx = 0; idx < env_data.worker_count; ++idx)
+    size_t ccl_cores_start = cores.size() - worker_count;
+    for (size_t idx = 0; idx < worker_count; ++idx)
     {
-        env_data.worker_affinity[local_proc_idx * workers_per_process + idx]
+        worker_affinity[local_proc_idx * workers_per_process + idx]
             = cores[ccl_cores_start + idx];
     }
     return 1;
 }
 
-int ccl_env_parse_worker_affinity(size_t local_proc_idx, size_t local_proc_count)
+int env_data::env_2_worker_affinity(size_t local_proc_idx, size_t local_proc_count)
 {
     CCL_THROW_IF_NOT(local_proc_count > 0);
 
     int read_env = 0;
-    size_t workers_per_process = env_data.worker_count;
+    size_t workers_per_process = worker_count;
     size_t w_idx, read_count = 0;
     char* affinity_copy = nullptr;
     char* affinity_to_parse = getenv(CCL_WORKER_AFFINITY);
@@ -308,11 +284,11 @@ int ccl_env_parse_worker_affinity(size_t local_proc_idx, size_t local_proc_count
     size_t proccessor_count;
 
     size_t affinity_size = local_proc_count * workers_per_process;
-    env_data.worker_affinity.assign(affinity_size, 0);
+    worker_affinity.assign(affinity_size, 0);
 
     if (affinity_to_parse && strcmp(affinity_to_parse, "auto") == 0)
     {
-        return ccl_env_parse_auto_worker_affinity(local_proc_idx, workers_per_process);
+        return env_2_worker_affinity_auto(local_proc_idx, workers_per_process);
     }
 
     if (!affinity_to_parse || strlen(affinity_to_parse) == 0)
@@ -323,13 +299,14 @@ int ccl_env_parse_worker_affinity(size_t local_proc_idx, size_t local_proc_count
         {
             if (w_idx < proccessor_count)
             {
-                env_data.worker_affinity[w_idx] = proccessor_count - w_idx - 1;
+                worker_affinity[w_idx] = proccessor_count - w_idx - 1;
             }
             else
             {
-                env_data.worker_affinity[w_idx] = env_data.worker_affinity[w_idx % proccessor_count];
+                worker_affinity[w_idx] = worker_affinity[w_idx % proccessor_count];
             }
         }
+
         read_env = 1;
         CCL_FREE(affinity_copy);
         return read_env;
@@ -353,7 +330,7 @@ int ccl_env_parse_worker_affinity(size_t local_proc_idx, size_t local_proc_count
                 CCL_FREE(affinity_copy);
                 return read_env;
             }
-            env_data.worker_affinity[w_idx] = std::strtoul(proc_id_str, nullptr, 10);
+            worker_affinity[w_idx] = std::strtoul(proc_id_str, nullptr, 10);
             read_count++;
         }
         else
@@ -380,107 +357,4 @@ int ccl_env_parse_worker_affinity(size_t local_proc_idx, size_t local_proc_count
     return read_env;
 }
 
-int ccl_env_parse_atl_transport()
-{
-    char* env = getenv(CCL_ATL_TRANSPORT);
-    if (env)
-    {
-        if (strcmp(env, "ofi") == 0)
-            env_data.atl_transport = ccl_atl_ofi;
-        else if (strcmp(env, "mpi") == 0)
-            env_data.atl_transport = ccl_atl_mpi;
-        else
-        {
-            CCL_THROW("unknown ", CCL_ATL_TRANSPORT, " ", env);
-            return 0;
-        }
-    }
-    return 1;
-}
-
-int ccl_env_parse_priority_mode()
-{
-    char* env = getenv(CCL_PRIORITY);
-    if (env)
-    {
-        if (strcmp(env, "none") == 0)
-            env_data.priority_mode = ccl_priority_none;
-        else if (strcmp(env, "direct") == 0)
-            env_data.priority_mode = ccl_priority_direct;
-        else if (strcmp(env, "lifo") == 0)
-            env_data.priority_mode = ccl_priority_lifo;
-        else
-            CCL_FATAL("unexpected priority_mode ", env);
-    }
-    return 1;
-}
-
-int ccl_env_parse_yield_type()
-{
-    char* env = getenv(CCL_YIELD);
-    if (env)
-    {
-        if (strcmp(env, "none") == 0)
-            env_data.yield_type = ccl_yield_none;
-        else if (strcmp(env, "pause") == 0)
-            env_data.yield_type = ccl_yield_pause;
-        else if (strcmp(env, "sleep") == 0)
-            env_data.yield_type = ccl_yield_sleep;
-        else if (strcmp(env, "sched_yield") == 0)
-            env_data.yield_type = ccl_yield_sched_yield;
-        else
-        {
-            CCL_THROW("unknown ", CCL_YIELD, " ", env);
-            return 0;
-        }
-    }
-    return 1;
-}
-
-int ccl_env_parse_cache_key()
-{
-    char* env = getenv(CCL_CACHE_KEY);
-    if (env)
-    {
-        if (strcmp(env, "full") == 0)
-            env_data.cache_key_type = ccl_cache_key_full;
-        else if (strcmp(env, "match_id") == 0)
-            env_data.cache_key_type = ccl_cache_key_match_id;
-        else
-        {
-            CCL_THROW("unknown ", CCL_CACHE_KEY, " ", env);
-            return 0;
-        }
-    }
-    return 1;
-}
-
-const char* ccl_atl_transport_to_str(ccl_atl_transport transport)
-{
-    switch (transport)
-    {
-        case ccl_atl_ofi:
-            return "ofi";
-        case ccl_atl_mpi:
-            return "mpi";
-        default:
-            CCL_FATAL("unknown transport ", transport);
-    }
-    return "unknown";
-}
-
-const char* ccl_priority_mode_to_str(ccl_priority_mode mode)
-{
-    switch (mode)
-    {
-        case ccl_priority_none:
-            return "none";
-        case ccl_priority_direct:
-            return "direct";
-        case ccl_priority_lifo:
-            return "lifo";
-        default:
-            CCL_FATAL("unknown priority_mode ", mode);
-    }
-    return "unknown";
-}
+} /* namespace ccl */

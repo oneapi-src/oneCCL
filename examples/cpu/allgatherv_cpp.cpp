@@ -67,7 +67,7 @@ int main()
     auto stream = ccl::environment::instance().create_stream();
     ccl::coll_attr coll_attr{};
 
-    MSG_LOOP(
+    MSG_LOOP(comm,
         std::vector<float> send_buf(msg_count, static_cast<float>(msg_count));
         std::vector<float> recv_buf(comm->size() * msg_count, 0);
         std::vector<size_t> recv_counts(comm->size(), msg_count);

@@ -81,10 +81,10 @@ protected:
     void dump_detail(std::stringstream& str) const override
     {
         ccl_logger::format(str,
-                           "in_dt ", global_data.dtypes->name(in_dtype),
+                           "in_dt ", ccl::global_data::get().dtypes->name(in_dtype),
                            ", in_cnt ", in_cnt,
                            ", in_buf ", in_buf,
-                           ", out_dt ", global_data.dtypes->name(out_dtype),
+                           ", out_dt ", ccl::global_data::get().dtypes->name(out_dtype),
                            ", out_cnt ", out_cnt,
                            ", out_buf ", out_buf,
                            ", fn ", fn,

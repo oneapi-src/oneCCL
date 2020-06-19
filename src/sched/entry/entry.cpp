@@ -123,7 +123,10 @@ void sched_entry::update_status(atl_status_t atl_status)
             return;
         }
 
-        CCL_THROW("%s entry failed. atl_status: ", name(), atl_status_to_str(atl_status));
+        std::stringstream ss;
+        dump_detail(ss);
+        CCL_THROW("entry: ", name(), " failed. atl_status: ", atl_status_to_str(atl_status),
+                  ". Entry data:\n",  ss.str());
     }
     else
     {

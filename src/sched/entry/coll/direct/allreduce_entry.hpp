@@ -36,6 +36,8 @@ public:
         base_coll_entry(sched), send_buf(send_buf), recv_buf(recv_buf),
         cnt(cnt), dtype(dtype), op(op), comm(comm)
     {
+        //TODO: Add way to using MPI communicator
+        CCL_UNUSED(this->comm);
     }
 
     void start() override
@@ -78,7 +80,7 @@ protected:
     void dump_detail(std::stringstream& str) const override
     {
         ccl_logger::format(str,
-                            "dt ", global_data.dtypes->name(dtype),
+                            "dt ", ccl::global_data::get().dtypes->name(dtype),
                             ", cnt ", cnt,
                             ", send_buf ", send_buf,
                             ", recv_buf ", recv_buf,

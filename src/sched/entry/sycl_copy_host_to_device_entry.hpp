@@ -43,7 +43,7 @@ public:
     void start() override
     {
         //fill visitor with actual ccl_buffer data
-        auto visitor = make_visitor<cl::sycl::access::mode::discard_write>(dtype, cnt, out_buf, [this](void* sycl_pointer, size_t bytes)
+        auto visitor = make_visitor<cl::sycl::access::mode::write>(dtype, cnt, 0, out_buf, [this](void* sycl_pointer, size_t bytes)
         {
             auto comp_status = ccl_comp_copy(in_buf.get_ptr(bytes), sycl_pointer, cnt, dtype);
             CCL_ASSERT(comp_status == ccl_status_success, "bad status ", comp_status);
@@ -63,11 +63,11 @@ protected:
     void dump_detail(std::stringstream& str) const override
     {
         ccl_logger::format(str,
-                           "  dtype ", global_data.dtypes->name(dtype),
+                           "  dtype ", ccl::global_data::get().dtypes->name(dtype),
                            ", cnt ", cnt,
                            ", in_buf ", in_buf,
                            ", out_buf ", out_buf,
-                           ", native_stream ", stream->get_native_stream(),
+                           ", native_stream ", stream->to_string(),
                            "\n");
     }
 

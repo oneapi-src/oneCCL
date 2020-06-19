@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "common/env/env.hpp"
+#include "common/global/global.hpp"
 #include "common/utils/spinlock.hpp"
 #include "common/utils/yield.hpp"
 
@@ -24,13 +24,13 @@ ccl_spinlock::ccl_spinlock()
 
 void ccl_spinlock::lock()
 {
-    size_t spin_count = env_data.spin_count;
+    size_t spin_count = ccl::global_data::env().spin_count;
     while (flag.test_and_set(std::memory_order_acquire))
     {
         spin_count--;
         if (!spin_count)
         {
-            ccl_yield(env_data.yield_type);
+            ccl_yield(ccl::global_data::env().yield_type);
             spin_count = 1;
         }
     }

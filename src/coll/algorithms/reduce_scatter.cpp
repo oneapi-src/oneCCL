@@ -46,13 +46,13 @@ ccl_status_t ccl_coll_build_ring_reduce_scatter(ccl_sched *sched,
     size_t bytes = count * dtype_size;
 
     size_t chunk_count =
-          (bytes >= env_data.rs_min_chunk_size &&
-           count >= env_data.rs_chunk_count &&
+          (bytes >= ccl::global_data::env().rs_min_chunk_size &&
+           count >= ccl::global_data::env().rs_chunk_count &&
            count >= comm_size) ?
-              env_data.rs_chunk_count : 1;
+              ccl::global_data::env().rs_chunk_count : 1;
 
     while ((chunk_count > 1) &&
-           (bytes / (comm_size * chunk_count) < env_data.rs_min_chunk_size))
+           (bytes / (comm_size * chunk_count) < ccl::global_data::env().rs_min_chunk_size))
     {
         chunk_count--;
     }

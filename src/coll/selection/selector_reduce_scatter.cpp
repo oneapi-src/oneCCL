@@ -43,4 +43,4 @@ bool ccl_algorithm_selector_helper<ccl_coll_reduce_scatter_algo>::can_use(ccl_co
 }
 
 CCL_SELECTION_DEFINE_HELPER_METHODS(ccl_coll_reduce_scatter_algo, ccl_coll_reduce_scatter,
-                                    env_data.reduce_scatter_algo_raw, param.count);
+                                    ccl::global_data::env().reduce_scatter_algo_raw, param.count);

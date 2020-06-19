@@ -27,9 +27,9 @@ std::map<ccl_coll_reduce_algo,
 
 ccl_algorithm_selector<ccl_coll_reduce>::ccl_algorithm_selector()
 {
-    if (env_data.atl_transport == ccl_atl_ofi)
+    if (ccl::global_data::env().atl_transport == ccl_atl_ofi)
         insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_reduce_tree);
-    else if (env_data.atl_transport == ccl_atl_mpi)
+    else if (ccl::global_data::env().atl_transport == ccl_atl_mpi)
         insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_reduce_direct);
 
     insert(fallback_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_reduce_tree);
@@ -56,4 +56,4 @@ bool ccl_algorithm_selector_helper<ccl_coll_reduce_algo>::can_use(ccl_coll_reduc
 }
 
 CCL_SELECTION_DEFINE_HELPER_METHODS(ccl_coll_reduce_algo, ccl_coll_reduce,
-                                    env_data.reduce_algo_raw, param.count);
+                                    ccl::global_data::env().reduce_algo_raw, param.count);

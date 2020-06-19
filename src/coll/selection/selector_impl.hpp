@@ -15,7 +15,6 @@
 */
 #pragma once
 
-#include "common/env/env.hpp"
 #include "coll/selection/selector_helper.hpp"
 #include "exec/exec.hpp"
 
@@ -228,7 +227,7 @@ void ccl_algorithm_selector_base<algo_group_type>::print() const
                     std::to_string(left_size)) << " - "
                 << ((right_size == CCL_SELECTION_MAX_COLL_SIZE) ?
                     CCL_SELECTION_MAX_COLL_SIZE_STR :
-                    std::to_string(right_size)) << "]: " 
+                    std::to_string(right_size)) << "]: "
                 << ccl_coll_algorithm_to_str(elem_algo) << std::endl;
         }
     }

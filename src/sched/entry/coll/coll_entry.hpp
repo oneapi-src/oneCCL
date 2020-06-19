@@ -24,7 +24,8 @@ class coll_entry : public sched_entry,
                                            ccl_sched_entry_field_send_buf,
                                            ccl_sched_entry_field_recv_buf,
                                            ccl_sched_entry_field_cnt,
-                                           ccl_sched_entry_field_dtype>
+                                           ccl_sched_entry_field_dtype,
+                                           ccl_sched_entry_field_send_count>
 {
 public:
     static constexpr const char* class_name() noexcept
@@ -34,8 +35,10 @@ public:
 
     coll_entry() = delete;
     coll_entry(ccl_sched* sched,
-               const ccl_coll_entry_param& param)
-        : sched_entry(sched), param(param), coll_sched()
+               const ccl_coll_entry_param& param,
+               ccl_op_id_t op_id = 0)
+        : sched_entry(sched), param(param), coll_sched(),
+          coll_sched_op_id(op_id)
     {
     }
 
@@ -82,11 +85,16 @@ public:
         return param.dtype;
     }
 
+    size_t& get_field_ref(field_id_t<ccl_sched_entry_field_send_count> id)
+    {
+        return param.send_count;
+    }
+
 protected:
     void dump_detail(std::stringstream& str) const override
     {
         ccl_logger::format(str,
-                            "dt ", global_data.dtypes->name(param.dtype),
+                            "dt ", ccl::global_data::get().dtypes->name(param.dtype),
                             ", coll_type ", ccl_coll_type_to_str(param.ctype),
                             ", buf ", param.buf,
                             ", send_buf ", param.send_buf,
@@ -101,4 +109,5 @@ protected:
 private:
     ccl_coll_entry_param param;
     std::unique_ptr<ccl_extra_sched> coll_sched;
+    ccl_op_id_t coll_sched_op_id;
 };

@@ -30,12 +30,14 @@ struct ccl_unordered_coll_ctx
 
 ccl_unordered_coll_manager::ccl_unordered_coll_manager()
 {
-    coordination_comm = std::unique_ptr<ccl_comm>(new ccl_comm(global_data.executor->get_global_proc_idx(),
-                                                               global_data.executor->get_global_proc_count(),
-                                                               global_data.comm_ids->acquire(true)));
+    ccl::global_data& data = ccl::global_data::get();
+
+    coordination_comm = std::unique_ptr<ccl_comm>(new ccl_comm(data.executor->get_global_proc_idx(),
+                                                               data.executor->get_global_proc_count(),
+                                                               data.comm_ids->acquire(true)));
     CCL_ASSERT(coordination_comm.get(), "coordination_comm is null");
 
-    if (global_data.executor->get_global_proc_idx() == 0)
+    if (data.executor->get_global_proc_idx() == 0)
         LOG_INFO("created unordered collectives manager");
 }
 
@@ -174,7 +176,7 @@ void ccl_unordered_coll_manager::start_coordination(const std::string& match_id)
     std::unique_ptr<ccl_extra_sched> service_sched(new ccl_extra_sched(coll_param,
                                                                        coordination_comm->get_sched_id(true)));
     service_sched->internal_type = ccl_sched_internal_unordered_coll;
-    if (env_data.priority_mode == ccl_priority_lifo)
+    if (ccl::global_data::env().priority_mode == ccl_priority_lifo)
     {
         service_sched->coll_attr.priority = ccl_sched_base::get_lifo_priority();
     }
@@ -193,7 +195,7 @@ void ccl_unordered_coll_manager::start_coordination(const std::string& match_id)
         ctx->match_id_size = match_id.length() + 1;
         ctx->match_id_value = service_sched->alloc_buffer(ctx->match_id_size).get_ptr();
         strncpy(static_cast<char*>(ctx->match_id_value), match_id.c_str(), ctx->match_id_size);
-        ctx->reserved_comm_id = global_data.comm_ids->acquire_id(true);
+        ctx->reserved_comm_id = ccl::global_data::get().comm_ids->acquire_id(true);
         LOG_DEBUG("coordinator bcasts match_id ", match_id,
                   ", comm_id ", ctx->reserved_comm_id,
                   ", ctx->match_id_size ", ctx->match_id_size);
@@ -266,7 +268,7 @@ void ccl_unordered_coll_manager::start_coordination(const std::string& match_id)
 
     LOG_DEBUG("start service_sched ", service_sched.get(), " for match_id ", match_id);
     /* release ownership */
-    global_data.executor->start(service_sched.release());
+    ccl::global_data::get().executor->start(service_sched.release());
 }
 
 void ccl_unordered_coll_manager::start_post_coordination_actions(ccl_unordered_coll_ctx* ctx)
@@ -275,10 +277,10 @@ void ccl_unordered_coll_manager::start_post_coordination_actions(ccl_unordered_c
     {
         /* comm_id is not allocated yet */
         LOG_DEBUG("start_post_coordination_actions: pull_id ", ctx->reserved_comm_id);
-        global_data.comm_ids->pull_id(ctx->reserved_comm_id);
+        ccl::global_data::get().comm_ids->pull_id(ctx->reserved_comm_id);
     }
 
-    ccl_comm_id_storage::comm_id id(*global_data.comm_ids, ctx->reserved_comm_id);
+    ccl_comm_id_storage::comm_id id(*ccl::global_data::get().comm_ids, ctx->reserved_comm_id);
     std::string match_id{static_cast<const char*>(ctx->match_id_value)};
 
     LOG_DEBUG("creating communicator with id ", id.value(), " for match_id ", match_id);
@@ -355,13 +357,13 @@ void ccl_unordered_coll_manager::run_sched(ccl_master_sched* sched, ccl_comm* co
 
     if (sched->coll_attr.to_cache)
     {
-        global_data.sched_cache->recache(old_key, std::move(new_key));
+        ccl::global_data::get().sched_cache->recache(old_key, std::move(new_key));
     }
 
     for (size_t part_idx = 0; part_idx < sched->partial_scheds.size(); ++part_idx)
     {
         sched->partial_scheds[part_idx]->coll_param.comm = comm;
-        if (env_data.priority_mode == ccl_priority_lifo)
+        if (ccl::global_data::env().priority_mode == ccl_priority_lifo)
         {
             /*
                 can't use real lifo priority here because it can be unsynchronized between nodes
@@ -376,7 +378,7 @@ void ccl_unordered_coll_manager::run_sched(ccl_master_sched* sched, ccl_comm* co
               ", type ", ccl_coll_type_to_str(sched->coll_param.ctype),
               ",  for match_id ", sched->coll_attr.match_id);
 
-    sched->start(global_data.executor.get(), false);
+    sched->start(ccl::global_data::get().executor.get(), false);
 }
 
 void ccl_unordered_coll_manager::add_comm(const std::string& match_id, std::shared_ptr<ccl_comm> comm)

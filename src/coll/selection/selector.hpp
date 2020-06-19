@@ -17,7 +17,7 @@
 
 #include "coll/algorithms/algorithms.hpp"
 #include "coll/coll.hpp"
-#include "common/env/env.hpp"
+#include "common/global/global.hpp"
 
 #include <map>
 #include <string>
@@ -25,6 +25,7 @@
 #define CCL_ALLGATHERV_SHORT_MSG_SIZE   32768
 #define CCL_ALLREDUCE_SHORT_MSG_SIZE    8192
 #define CCL_ALLREDUCE_MEDIUM_MSG_SIZE   (1024 * 1024)
+#define CCL_ALLTOALL_MEDIUM_MSG_SIZE    (1024 * 1024)
 #define CCL_BCAST_SHORT_MSG_SIZE        8192
 #define CCL_REDUCE_SHORT_MSG_SIZE       8192
 
@@ -45,6 +46,10 @@ struct ccl_selector_param
     const size_t* send_counts;
     const size_t* recv_counts;
     int vector_buf;
+
+    /* tmp fields to avoid selection of algorithms which don't support all coalesce modes or alloc_fn */
+    ccl_sparse_coalesce_mode_t sparse_coalesce_mode;
+    ccl_sparse_allreduce_alloc_fn_t sparse_allreduce_alloc_fn;
 };
 
 template<ccl_coll_type coll_id>

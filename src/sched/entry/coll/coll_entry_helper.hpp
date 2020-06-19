@@ -30,7 +30,7 @@ public:
                                       const ccl_coll_entry_param& param)
     {
         CCL_THROW_IF_NOT(coll_id == param.ctype);
-        if (env_data.atl_transport == ccl_atl_mpi)
+        if (ccl::global_data::env().atl_transport == ccl_atl_mpi)
         {
             ccl_selector_param selector_param;
             selector_param.ctype = param.ctype;
@@ -44,7 +44,7 @@ public:
                 selector_param.vector_buf = sched->coll_attr.vector_buf;
             }
 
-            bool is_direct_algo = global_data.algorithm_selector->is_direct<coll_id>(selector_param);
+            bool is_direct_algo = ccl::global_data::get().algorithm_selector->is_direct<coll_id>(selector_param);
 
             if (is_direct_algo)
             {

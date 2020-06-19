@@ -17,7 +17,6 @@
 
 #include "atl/atl.h"
 #include "coll/coll.hpp"
-#include "common/env/env.hpp"
 #include "common/global/global.hpp"
 #include "common/request/request.hpp"
 #include "exec/thread/listener.hpp"
@@ -92,6 +91,10 @@ public:
 
 private:
     static size_t calculate_atl_ep_count(size_t worker_count);
+
+    size_t get_worker_idx_round_robin(ccl_sched* sched);
+    size_t get_worker_idx_by_sched_id(ccl_sched* sched);
+
     std::unique_ptr<ccl_sched_queue> create_sched_queue(size_t idx, size_t ep_per_worker);
     void do_work();
 
@@ -111,13 +114,17 @@ private:
 
     std::vector<std::unique_ptr<ccl_worker>> workers;
     std::unique_ptr<ccl_listener> listener;
+
+    typedef size_t(ccl_executor::* get_worker_idx_fn_t) (ccl_sched* sched);
+    get_worker_idx_fn_t get_worker_idx_fn;
+    size_t rr_worker_idx = 0; /* to distribute work in round-robin */
 };
 
 inline void ccl_release_sched(ccl_master_sched *sched)
 {
     if (sched->coll_attr.to_cache)
     {
-        global_data.sched_cache->release(sched);
+        ccl::global_data::get().sched_cache->release(sched);
     }
     else
     {

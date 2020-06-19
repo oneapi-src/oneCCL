@@ -17,6 +17,49 @@
 
 add_subdirectory(atl)
 
+set (EXTENSIONS_SRC)
+
+if(MULTI_GPU_SUPPORT)
+    list (APPEND EXTENSIONS_SRC
+                    ccl_cpp_gpu_api.cpp
+                    ccl_gpu_modules.cpp
+
+                    native_device_api/l0/base.cpp
+                    native_device_api/l0/device.cpp
+                    native_device_api/l0/subdevice.cpp
+                    native_device_api/l0/driver.cpp
+                    native_device_api/l0/platform.cpp
+                    native_device_api/l0/primitives.cpp
+                    sched/gpu_sched.cpp
+                    sched/gpu_concurrent_sched.cpp
+                    common/request/gpu_request.cpp
+
+                    common/comm/l0/devices/ccl_gpu_comm.cpp
+                    common/comm/l0/devices/ccl_virtual_gpu_comm.cpp
+                    common/comm/l0/devices/ccl_ipc_gpu_comm.cpp
+
+                    common/comm/l0/communicator/device_group/device_ring_communicator.cpp
+                    common/comm/l0/communicator/device_group/device_a2a_communicator.cpp
+                    common/comm/l0/communicator/thread_group/thread_ring_communicator.cpp
+                    common/comm/l0/communicator/thread_group/thread_a2a_communicator.cpp
+                    common/comm/l0/communicator/process_group/process_ring_communicator.cpp
+                    common/comm/l0/communicator/process_group/process_a2a_communicator.cpp
+
+                    common/comm/l0/context/process_group_ctx.cpp
+                    common/comm/l0/context/thread_group_ctx.cpp
+                    common/comm/l0/context/device_group_ctx.cpp
+                    common/comm/l0/context/device_storage.cpp
+
+                    common/comm/l0/topology/ring/device_group_ring_creator.cpp
+                    common/comm/l0/topology/ring/thread_group_ring_creator.cpp
+                    common/comm/l0/topology/ring/process_group_ring_creator.cpp
+                    common/comm/l0/topology/topology_construction_utils.cpp
+
+                    common/comm/l0/gpu_comm_attr.cpp
+                    common/comm/l0/modules/base_entry_module.cpp
+                    common/comm/l0/modules/modules_source_data.cpp)
+endif(MULTI_GPU_SUPPORT)
+
 set(CCL_SRC
     ccl.cpp
     ccl_cpp_api.cpp
@@ -65,20 +108,25 @@ set(CCL_SRC
     unordered_coll/unordered_coll.cpp
     common/comm/atl_tag.cpp
     common/comm/comm.cpp
+    common/comm/comm_attributes.cpp
+    common/comm/host_communicator/host_communicator.cpp
+    common/comm/comm_interface.cpp
     common/datatype/datatype.cpp
     common/env/env.cpp
     common/global/global.cpp
     common/log/log.cpp
+    common/request/host_request.cpp
+    common/request/request.cpp
     common/stream/stream.cpp
     common/utils/spinlock.cpp
-    common/utils/yield.cpp)
+    common/utils/yield.cpp
+    ${EXTENSIONS_SRC})
 
-if(${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
-    set(CCL_INC_DIRS "${CCL_INC_DIRS} ${SYCL_BUNDLE_ROOT}/include")
-endif()
-set(CCL_INC_DIRS
-    ${PROJECT_SOURCE_DIR}/include
-    ${PROJECT_SOURCE_DIR}/src)
+list(APPEND CCL_INC_DIRS
+                 ${PROJECT_SOURCE_DIR}/include
+                 ${PROJECT_SOURCE_DIR}/src)
+
+message(STATUS "CCL_INC_DIRS: ${CCL_INC_DIRS}")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
@@ -90,26 +138,39 @@ target_compile_definitions(ccl-objects PRIVATE PT_LOCK_SPIN=1)
 target_compile_definitions(ccl-objects PRIVATE ATL_TRANSPORT_DL_DIR=\"${CCL_BUILD_DIR}\")
 target_include_directories(ccl-objects PRIVATE ${CCL_INC_DIRS})
 
+if(COMPUTE_RUNTIME_TARGET_NAME)
+    target_include_directories(ccl-objects PRIVATE $<TARGET_PROPERTY:${COMPUTE_RUNTIME_TARGET_NAME},INTERFACE_INCLUDE_DIRECTORIES>)
+endif()
+
 #shared library
 add_library(ccl SHARED $<TARGET_OBJECTS:ccl-objects>)
 target_include_directories(ccl PUBLIC ${CCL_INC_DIRS})
-target_link_libraries(ccl PUBLIC dl pthread)
+target_link_libraries(ccl PUBLIC dl pthread ${EXTERNAL_LIBS} ${COMPUTE_RUNTIME_TARGET_NAME})
 set_target_properties(ccl PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CCL_BUILD_DIR})
 install(TARGETS ccl LIBRARY DESTINATION ${CCL_INSTALL_LIB})
-if(${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
 install(FILES
     "../cmake/FindOpenCL.cmake"
+    "../cmake/FindL0.cmake"
     "../cmake/FindSYCL.cmake"
     "../cmake/FindIntelSYCL.cmake"
     "../cmake/FindComputeCpp.cmake"
     DESTINATION ${CCL_INSTALL_LIB})
-endif()
+
 
 #static library
 add_library(ccl-static STATIC $<TARGET_OBJECTS:ccl-objects>)
 set_target_properties(ccl-static PROPERTIES OUTPUT_NAME ccl)
 set_target_properties(ccl-static PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${CCL_BUILD_DIR})
 install(TARGETS ccl-static ARCHIVE DESTINATION ${CCL_INSTALL_LIB})
+
+if(MULTI_GPU_SUPPORT)
+    message("Turn on L0 multi-gpu unit tests")
+    add_library(ccl-ut-static STATIC $<TARGET_OBJECTS:ccl-objects>)
+    set_target_properties(ccl-ut-static PROPERTIES COMPILE_FLAGS "-fvisibility=default")
+    set_target_properties(ccl-ut-static PROPERTIES OUTPUT_NAME cclut)
+    set_target_properties(ccl-ut-static PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${CCL_BUILD_DIR})
+    set_target_properties(ccl-ut-static PROPERTIES INTERFACE_INCLUDE_DIRECTORIES  $<TARGET_PROPERTY:${COMPUTE_RUNTIME_TARGET_NAME},INTERFACE_INCLUDE_DIRECTORIES>)
+endif(MULTI_GPU_SUPPORT)
 
 #headers installation
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
@@ -121,6 +182,9 @@ install(PROGRAMS ${mpi_bins} DESTINATION ${CCL_INSTALL_BIN})
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/ofi/lib/
         DESTINATION ${CCL_INSTALL_LIB})
+
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/mpi/include/
+        DESTINATION ${CCL_INSTALL_INCLUDE})
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/mpi/lib/
         DESTINATION ${CCL_INSTALL_LIB})

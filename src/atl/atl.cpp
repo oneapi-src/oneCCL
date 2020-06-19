@@ -105,11 +105,18 @@ atl_ini_dir(const char* transport_name,
             atl_status_t ret;
 
             if ((init_func)(&transport) != ATL_STATUS_SUCCESS)
+            {
+                dlclose(dlhandle);
                 continue;
+            }
 
             if (strncmp(transport.name, transport_name,
                         std::min(transport_name_len, strlen(transport.name))))
+            {
+                dlclose(dlhandle);
                 continue;
+            }
+
             if (is_main_addr_reserv)
             {
                 ret = transport.main_addr_reserv(const_cast<char*>(main_addr));
@@ -119,7 +126,10 @@ atl_ini_dir(const char* transport_name,
                 ret = transport.init(argc, argv, attr, ctx, main_addr);
             }
             if (ret != ATL_STATUS_SUCCESS)
+            {
+                dlclose(dlhandle);
                 continue;
+            }
 
             break;
         }

@@ -15,23 +15,41 @@
 */
 #pragma once
 
+#include <atomic>
+#include <pthread.h>
+
 #include "ccl.h"
 #include "common/log/log.hpp"
+
+#define CCL_UNDEFINED_CPU_ID (-1)
 
 class ccl_base_thread
 {
 public:
+
+    ccl_base_thread(size_t idx, void*(*progress_function)(void*))
+        : idx(idx),
+          start_affinity(CCL_UNDEFINED_CPU_ID),
+          progress_function(progress_function)
+    {}
+
     ccl_base_thread() = delete;
-    ccl_base_thread(const ccl_base_thread& other) = delete;
-    ccl_base_thread& operator= (const ccl_base_thread& other) = delete;
-    ccl_base_thread(size_t idx, void*(*progress_function)(void*)) :
-                    idx(idx), progress_function(progress_function)
-    { }
-    ccl_status_t start();
+    ~ccl_base_thread() = default;
+
+    ccl_base_thread(const ccl_base_thread&) = delete;
+    ccl_base_thread(ccl_base_thread&&) = delete;
+
+    ccl_base_thread& operator=(const ccl_base_thread&) = delete;
+    ccl_base_thread& operator=(ccl_base_thread&&) = delete;
+
+    ccl_status_t start(int affinity);
     ccl_status_t stop();
-    ccl_status_t pin(int proc_id);
+
     size_t get_idx() { return idx; }
     virtual void* get_this() { return static_cast<void*>(this); };
+
+    int get_start_affinity() { return start_affinity; }
+    int get_affinity();
     
     virtual const std::string& name() const
     {
@@ -39,8 +57,16 @@ public:
         return name;
     };
 
-    const size_t idx;
-    pthread_t thread{};
+    std::atomic<bool> should_stop {false};
+    std::atomic<bool> started {false};
+    
+private:
 
+    ccl_status_t set_affinity(int affinity);
+
+    const size_t idx;
+
+    int start_affinity;
     void*(*progress_function)(void*);
+    pthread_t thread{};
 };

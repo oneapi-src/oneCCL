@@ -28,12 +28,12 @@ std::map<ccl_coll_allgatherv_algo,
 
 ccl_algorithm_selector<ccl_coll_allgatherv>::ccl_algorithm_selector()
 {
-    if (env_data.atl_transport == ccl_atl_ofi)
+    if (ccl::global_data::env().atl_transport == ccl_atl_ofi)
     {
         insert(main_table, 0, CCL_ALLGATHERV_SHORT_MSG_SIZE, ccl_coll_allgatherv_naive);
         insert(main_table, CCL_ALLGATHERV_SHORT_MSG_SIZE + 1, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_allgatherv_ring);
     }
-    else if (env_data.atl_transport == ccl_atl_mpi)
+    else if (ccl::global_data::env().atl_transport == ccl_atl_mpi)
         insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_allgatherv_direct);
 
     insert(fallback_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_allgatherv_flat);
@@ -56,14 +56,14 @@ bool ccl_algorithm_selector_helper<ccl_coll_allgatherv_algo>::can_use(ccl_coll_a
         algo != ccl_coll_allgatherv_flat &&
         algo != ccl_coll_allgatherv_multi_bcast)
         can_use = false;
-    else if (env_data.atl_transport == ccl_atl_mpi &&
+    else if (ccl::global_data::env().atl_transport == ccl_atl_mpi &&
              algo == ccl_coll_allgatherv_multi_bcast)
         can_use = false;
 
     return can_use;
 }
 
-CCL_SELECTION_DEFINE_HELPER_METHODS(ccl_coll_allgatherv_algo, ccl_coll_allgatherv, env_data.allgatherv_algo_raw,
+CCL_SELECTION_DEFINE_HELPER_METHODS(ccl_coll_allgatherv_algo, ccl_coll_allgatherv, ccl::global_data::env().allgatherv_algo_raw,
   ({
       CCL_ASSERT(param.recv_counts);
       size_t count = 0;

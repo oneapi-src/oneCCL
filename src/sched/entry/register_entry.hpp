@@ -40,7 +40,9 @@ public:
     {
         LOG_DEBUG("REGISTER entry size ", size, ", ptr ", ptr);
         CCL_THROW_IF_NOT(size > 0 && ptr && mr, "incorrect input, size ", size, ", ptr ", ptr, " mr ", mr);
-        atl_status_t atl_status = atl_mr_reg(global_data.executor->get_atl_ctx(), ptr.get_ptr(size), size, mr);
+
+        atl_status_t atl_status =
+            atl_mr_reg(ccl::global_data::get().executor->get_atl_ctx(), ptr.get_ptr(size), size, mr);
 
         sched->add_memory_region(*mr);
 

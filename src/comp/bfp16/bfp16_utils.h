@@ -15,6 +15,8 @@
 */
 #pragma once
 
+#include <stdint.h>
+
 typedef enum
 {
     ccl_bfp16_none = 0,

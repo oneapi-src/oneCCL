@@ -47,7 +47,9 @@ public:
     {
         size_t dt_size = dtype.size();
         size_t comm_size = comm->size();
-        size_t i, sum_recv_bytes = 0, sum_send_bytes = 0;
+        size_t i;
+        sum_recv_bytes = 0;
+        sum_send_bytes = 0;
 
         if (!send_bytes && !recv_bytes && !send_offsets && !recv_offsets)
         {
@@ -122,7 +124,7 @@ protected:
     void dump_detail(std::stringstream& str) const override
     {
         ccl_logger::format(str,
-                            "dt ", global_data.dtypes->name(dtype),
+                            "dt ", ccl::global_data::get().dtypes->name(dtype),
                             ", send_cnts ", send_cnts,
                             ", send_buf ", send_buf,
                             ", send_bytes ", send_bytes,

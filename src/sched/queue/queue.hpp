@@ -28,10 +28,10 @@ using sched_container_t = std::vector<ccl_sched*>;
 using sched_bin_list_t = std::unordered_map<size_t, ccl_sched_bin>; // key - priority
 using sched_queue_lock_t = ccl_spinlock;
 
-/* ATL comm is limited resource, each priority bucket consumes single ATL comm and uses it for all bins in bucket */
+/* ATL EP is limited resource, each priority bucket consumes single ATL EP and uses it for all bins in bucket */
 #define CCL_PRIORITY_BUCKET_COUNT (4)
 
-/* the size of priority bucket, each bin in bucket use the same ATL comm although bins have different priorities */
+/* the size of priority bucket, each bin in bucket use the same ATL EP although bins have different priorities */
 #define CCL_PRIORITY_BUCKET_SIZE (8)
 
 #define CCL_BUCKET_INITIAL_ELEMS_COUNT (1024)
@@ -43,6 +43,7 @@ public:
 
     ccl_sched_list()
     {
+        CCL_UNUSED(padding_queue);
         elems.reserve(CCL_BUCKET_INITIAL_ELEMS_COUNT);
     }
 
@@ -55,7 +56,7 @@ public:
 
     ~ccl_sched_list()
     {
-        if (elems.size() != 0 && !global_data.is_ft_enabled)
+        if (elems.size() != 0 && !ccl::global_data::get().is_ft_enabled)
         {
             LOG_ERROR("unexpected elem_count ", elems.size(), ", expected 0");
         }

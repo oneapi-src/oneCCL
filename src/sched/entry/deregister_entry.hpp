@@ -41,7 +41,7 @@ public:
         for (it = mr_list.begin(); it != mr_list.end(); it++)
         {
             LOG_DEBUG("deregister mr ", *it);
-            atl_status = atl_mr_dereg(global_data.executor->get_atl_ctx(), *it);
+            atl_status = atl_mr_dereg(ccl::global_data::get().executor->get_atl_ctx(), *it);
             if (unlikely(atl_status != ATL_STATUS_SUCCESS))
             {
                 CCL_THROW("DEREGISTER entry failed. atl_status: ", atl_status_to_str(atl_status));

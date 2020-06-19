@@ -16,9 +16,10 @@
 #pragma once
 
 #include "ccl.h"
-#include "common/utils/utils.hpp"
 #include "coll/algorithms/algorithms_enum.hpp"
 #include "comp/bfp16/bfp16_utils.h"
+#include "common/env/env.hpp"
+#include "common/utils/utils.hpp"
 
 #include <memory>
 #include <thread>
@@ -55,8 +56,31 @@ class ccl_allreduce_2d_builder;
 template<ccl_coll_type... registered_types_id>
 class ccl_algorithm_selector_wrapper;
 
-struct alignas(CACHELINE_SIZE) ccl_global_data
+namespace ccl
 {
+
+class global_data
+{
+public:
+
+    global_data(const global_data&) = delete;
+    global_data(global_data&&) = delete;
+
+    global_data& operator=(const global_data&) = delete;
+    global_data& operator=(global_data&&) = delete;
+
+    ~global_data();
+
+    ccl_status_t init();
+    ccl_status_t reset();
+
+    static global_data& get();
+    static env_data& env();
+
+    /* public methods to have access from listener thread function */
+    void init_resize_dependent_objects();
+    void reset_resize_dependent_objects();
+
     std::unique_ptr<ccl_comm_id_storage> comm_ids;
     std::shared_ptr<ccl_comm> comm;
     std::unique_ptr<ccl_datatype_storage> dtypes;
@@ -72,20 +96,26 @@ struct alignas(CACHELINE_SIZE) ccl_global_data
     static thread_local bool is_worker_thread;
     bool is_ft_enabled;
     ccl_bfp16_impl_type bfp16_impl_type;
+
+private:
+    global_data();
+
+    void init_resize_independent_objects();
+    void reset_resize_independent_objects();
+
+    env_data env_object;
 };
 
-extern ccl_global_data global_data;
-
-#define CCL_CHECK_IS_BLOCKED()                         \
-  {                                                    \
-    do                                                 \
-    {                                                  \
-        if (unlikely(global_data.executor->is_locked)) \
-        {                                              \
-            return ccl_status_blocked_due_to_resize;   \
-        }                                              \
-    } while (0);                                       \
+#define CCL_CHECK_IS_BLOCKED()                            \
+  {                                                       \
+    do                                                    \
+    {                                                     \
+        if (unlikely(                                     \
+            ccl::global_data::get().executor->is_locked)) \
+        {                                                 \
+            return ccl_status_blocked_due_to_resize;      \
+        }                                                 \
+    } while (0);                                          \
   }
 
-void ccl_init_resize_dependent_objects(ccl_global_data& gl_data);
-void ccl_reset_resize_dependent_objects(ccl_global_data& gl_data);
+} /* namespace ccl */

@@ -14,12 +14,13 @@
  limitations under the License.
 */
 #pragma once
+
 #include "sched/sched.hpp"
-#include "common/env/env.hpp"
+#include "common/global/global.hpp"
 
-
-struct ccl_extra_sched : public ccl_request, public ccl_sched
+class ccl_extra_sched : public ccl_request, public ccl_sched
 {
+public:
     static constexpr const char* class_name()
     {
         return "extra_sched";
@@ -42,7 +43,7 @@ struct ccl_extra_sched : public ccl_request, public ccl_sched
     
     void dump(std::ostream& out) const
     {
-        if (!env_data.sched_dump)
+        if (!ccl::global_data::env().sched_dump)
         {
             return;
         }

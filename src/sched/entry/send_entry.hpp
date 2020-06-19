@@ -49,7 +49,7 @@ public:
         size_t global_dst = comm->get_global_rank(dst);
         size_t global_rank = comm->get_global_rank(comm->rank());
 
-        atl_tag = global_data.atl_tag->create(sched->get_comm_id(), global_rank,
+        atl_tag = ccl::global_data::get().atl_tag->create(sched->get_comm_id(), global_rank,
                                               sched->sched_id, sched->get_op_id());
         size_t bytes = cnt * dtype.size();
 
@@ -98,7 +98,7 @@ protected:
     void dump_detail(std::stringstream& str) const override
     {
         ccl_logger::format(str,
-                           "dt ", global_data.dtypes->name(dtype),
+                           "dt ", ccl::global_data::get().dtypes->name(dtype),
                            ", cnt ", cnt,
                            ", buf ", buf,
                            ", dst ", dst,

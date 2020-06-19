@@ -15,6 +15,7 @@
 */
 #pragma once
 
+#include "stdint.h"
 #include "stdlib.h"
 #include "ccl_config.h"
 
@@ -73,8 +74,9 @@ typedef enum
 /** Stream types. */
 typedef enum
 {
-    ccl_stream_cpu  = 0,
-    ccl_stream_sycl = 1,
+    ccl_stream_host  = 0,
+    ccl_stream_cpu   = 1,
+    ccl_stream_gpu   = 2,
 
     ccl_stream_last_value
 } ccl_stream_type_t;
@@ -96,6 +98,22 @@ typedef struct
     const size_t offset;
 } ccl_fn_context_t;
 
+/* Sparse coalesce modes */
+/* Use this variable to set sparse_allreduce coalescing mode:
+   ccl_sparse_coalesce_regular run regular coalesce funtion;
+   ccl_sparse_coalesce_disable disables coalesce function in sparse_allreduce,
+                               allgathered data is returned;
+   ccl_sparse_coalesce_keep_precision on every local reduce bfp16 data is
+                               converted to fp32, reduced and then converted
+                               back to bfp16.
+*/
+typedef enum ccl_sparse_coalesce_mode
+{
+    ccl_sparse_coalesce_regular        = 0,
+    ccl_sparse_coalesce_disable        = 1,
+    ccl_sparse_coalesce_keep_precision = 2
+} ccl_sparse_coalesce_mode_t;
+
 /* comm_size */
 typedef ccl_resize_action_t(*ccl_resize_fn_t)(size_t comm_size);
 
@@ -114,6 +132,17 @@ typedef ccl_status_t(*ccl_reduction_fn_t) (const void*, size_t,
                                            void*, size_t*,
                                            ccl_datatype_t,
                                            const ccl_fn_context_t*);
+
+/* idx_buf, idx_count, idx_dtype, val_buf, val_count, val_dtype, fn_context */
+typedef ccl_status_t(*ccl_sparse_allreduce_completion_fn_t) (const void*, size_t, ccl_datatype_t,
+                                                             const void*, size_t, ccl_datatype_t,
+                                                             const void*);
+
+/* idx_count, idx_dtype, val_count, val_dtype, fn_context, out_idx_buf, out_val_buf */
+typedef ccl_status_t(*ccl_sparse_allreduce_alloc_fn_t) (size_t, ccl_datatype_t,
+                                                        size_t, ccl_datatype_t,
+                                                        const void*,
+                                                        void**, void**);
 
 /** Extendable list of collective attributes. */
 typedef struct
@@ -144,9 +173,16 @@ typedef struct
      * operations with the same @b match_id will be executed in the same order.
      */
     const char* match_id;
+
+    /* Sparse allreduce specific */
+    ccl_sparse_allreduce_completion_fn_t sparse_allreduce_completion_fn;
+    ccl_sparse_allreduce_alloc_fn_t sparse_allreduce_alloc_fn;
+    const void* sparse_allreduce_fn_ctx;
+    ccl_sparse_coalesce_mode_t sparse_coalesce_mode;
+
 } ccl_coll_attr_t;
 
-/** List of communicator attributes. */
+/** List of host communicator attributes. */
 typedef struct
 {
     /**
@@ -164,7 +200,24 @@ typedef struct
     int local;
 } ccl_comm_attr_t;
 
-/** List of datatype attributes. */
+typedef struct
+{
+    ccl_comm_attr_t comm_attr;
+    int version;
+} ccl_comm_attr_versioned_t;
+
+/** Host attributes
+ *
+ */
+typedef enum
+{
+    ccl_host_color,
+    ccl_host_version
+
+} ccl_host_attributes;
+
+typedef ccl_comm_attr_versioned_t ccl_host_comm_attr_t;
+
 typedef struct
 {
     /* Size of single element */
@@ -177,6 +230,9 @@ typedef void* ccl_request_t;
 
 typedef void* ccl_stream_t;
 
+#ifdef MULTI_GPU_SUPPORT
+    #include "ccl_device_types.h"
+#endif
 #ifdef __cplusplus
 }   /*extern C */
 #endif

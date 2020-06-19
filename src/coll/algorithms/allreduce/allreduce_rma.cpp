@@ -324,7 +324,7 @@ ccl_status_t ccl_coll_build_ring_rma_allreduce(ccl_sched* sched, ccl_buffer send
         entry->set_field_fn<ccl_sched_entry_field_dst_mr>(rma_ring_allreduce_get_remote_rs_dst_buf_mr,
                                                           ar_handler);
 
-        if (block_count * dtype.size() > global_data.executor->get_atl_attr().max_order_waw_size)
+        if (block_count * dtype.size() > ccl::global_data::get().executor->get_atl_attr().max_order_waw_size)
             sched->add_barrier();
 
         entry = entry_factory::make_entry<write_entry>(sched,
@@ -381,7 +381,7 @@ ccl_status_t ccl_coll_build_ring_rma_allreduce(ccl_sched* sched, ccl_buffer send
         entry->set_field_fn<ccl_sched_entry_field_dst_mr>(rma_ring_allreduce_get_remote_recv_buf_mr,
                                                           ar_handler);
 
-        if (block_count * dtype.size() > global_data.executor->get_atl_attr().max_order_waw_size)
+        if (block_count * dtype.size() > ccl::global_data::get().executor->get_atl_attr().max_order_waw_size)
             sched->add_barrier();
 
         entry = entry_factory::make_entry<write_entry>(sched,

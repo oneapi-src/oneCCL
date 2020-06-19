@@ -32,8 +32,8 @@ ccl_status_t release_fusion_buf(const void* ctx)
 {
     void* buf = (void*) ctx;
 
-    if (global_data.fusion_manager)
-        global_data.fusion_manager->release_buffer(buf);
+    if (ccl::global_data::get().fusion_manager)
+        ccl::global_data::get().fusion_manager->release_buffer(buf);
 
     return ccl_status_success;
 }
@@ -105,16 +105,17 @@ void ccl_fusion_buffer_cache::release(void* buf)
 }
 
 ccl_fusion_manager::ccl_fusion_manager()
-    : bytes_threshold(env_data.fusion_bytes_threshold),
-      count_threshold(env_data.fusion_count_threshold),
-      buf_cache(env_data.fusion_bytes_threshold * env_data.fusion_count_threshold)
+    : bytes_threshold(ccl::global_data::env().fusion_bytes_threshold),
+      count_threshold(ccl::global_data::env().fusion_count_threshold),
+      buf_cache(ccl::global_data::env().fusion_bytes_threshold *
+                ccl::global_data::env().fusion_count_threshold)
 {
     CCL_ASSERT(bytes_threshold >= 1, "unexpected fusion_bytes_threshold ",
                bytes_threshold);
     CCL_ASSERT(count_threshold >= 1, "unexpected fusion_count_threshold ",
                count_threshold);
 
-    long cycle_usec = long(env_data.fusion_cycle_ms * 1000.0);
+    long cycle_usec = long(ccl::global_data::env().fusion_cycle_ms * 1000.0);
     cycle = std::chrono::microseconds(cycle_usec);
     last_exec_time = std::chrono::steady_clock::now();
 
@@ -218,7 +219,6 @@ ccl_master_sched* ccl_fusion_manager::build_sched()
               ", sched_count ", exec_queue.size());
 
     ccl_master_sched* sched = nullptr;
-    std::pair<ccl_master_sched*, bool> result;
     auto create_fn = [this, ctype, &fusion_buf, sum_count, dtype, reduction, comm] () {
         ccl_master_sched* sched = nullptr;
         switch (ctype)
@@ -257,7 +257,7 @@ ccl_master_sched* ccl_fusion_manager::build_sched()
         key.match_id = first_sched->coll_attr.match_id + last_sched->coll_attr.match_id;
         LOG_DEBUG("key.match_id ", key.match_id);
         bool is_created = false;
-        std::tie(sched, is_created) = global_data.sched_cache->find_or_create(std::move(key), create_fn);
+        std::tie(sched, is_created) = ccl::global_data::get().sched_cache->find_or_create(std::move(key), create_fn);
 
         fill_sched = is_created;
 
@@ -268,10 +268,10 @@ ccl_master_sched* ccl_fusion_manager::build_sched()
             {
                 LOG_DEBUG("it is not completed sched");
                 stat_overlapped_exec_calls++;
-                if (global_data.executor->get_worker_count() > 1)
+                if (ccl::global_data::get().executor->get_worker_count() > 1)
                 {
                     LOG_DEBUG("found fused_sched in cache, which is not completed yet");
-                    global_data.executor->wait(sched);
+                    ccl::global_data::get().executor->wait(sched);
                 }
                 else
                 {
@@ -301,7 +301,7 @@ ccl_master_sched* ccl_fusion_manager::build_sched()
         return sched;
     }
 
-    sched->commit(global_data.parallelizer.get());
+    sched->commit(ccl::global_data::get().parallelizer.get());
 
     size_t exec_queue_size = exec_queue.size();
     size_t part_count = sched->partial_scheds.size();
@@ -333,7 +333,7 @@ ccl_master_sched* ccl_fusion_manager::build_sched()
             size_t global_copy_idx = idx * copies_per_part + copy_idx;
 
 #ifdef CCL_ENABLE_SYCL
-            if (stream && stream->get_type() == ccl_stream_sycl)
+            if (stream && stream->is_sycl_device_stream())
                 entry_factory::make_entry<sycl_copy_device_to_host_entry>(
                                                       part_scheds[idx].get(),
                                                       ccl_buffer(&(exec_queue[global_copy_idx]->coll_param.sycl_send_buf),
@@ -373,7 +373,7 @@ ccl_master_sched* ccl_fusion_manager::build_sched()
             size_t global_copy_idx = idx * copies_per_part + copy_idx;
 
 #ifdef CCL_ENABLE_SYCL
-            if (stream && stream->get_type() == ccl_stream_sycl)
+            if (stream && stream->is_sycl_device_stream())
                 entry_factory::make_entry<sycl_copy_host_to_device_entry>(
                                                   part_scheds[idx].get(),
                                                   ccl_buffer(fusion_buf, buf_cache.get_buf_size(), offset),
@@ -429,7 +429,7 @@ void ccl_fusion_manager::execute()
     last_exec_time = std::chrono::steady_clock::now();
 
     bool flush_exec_queue = false;
-    if (env_data.fusion_check_urgent && !exec_queue.empty())
+    if (ccl::global_data::env().fusion_check_urgent && !exec_queue.empty())
     {
         /* recheck scheds from exec_queue, maybe some of them were marked as urgent since previous call */
         for (auto it = exec_queue.begin(); it != exec_queue.end(); ++it)
@@ -481,7 +481,7 @@ void ccl_fusion_manager::execute()
                     }
                     exec_queue_sum_bytes += size;
 
-                    if (env_data.fusion_check_urgent && !flush_exec_queue && s->urgent)
+                    if (ccl::global_data::env().fusion_check_urgent && !flush_exec_queue && s->urgent)
                     {
                         LOG_DEBUG("found urgent sched in postponed_queue, flush exec_queue, postponed_queue size ",
                                   postponed_queue.size());
@@ -510,7 +510,7 @@ void ccl_fusion_manager::execute()
     {
         LOG_DEBUG("exec_queue size ", exec_queue.size(), ", bytes ", exec_queue_sum_bytes);
         ccl_master_sched* sched = build_sched();
-        sched->start(global_data.executor.get());
+        sched->start(ccl::global_data::get().executor.get());
     }
 
     if (stat_fused_ops % CCL_FUSION_CHECK_SCHEDS_ITERS == 0)

@@ -15,6 +15,7 @@
 */
 #pragma once
 
+#include "ccl_types.hpp"
 #include "coll/coll.hpp"
 #include "common/utils/utils.hpp"
 #include "common/utils/yield.hpp"
@@ -23,7 +24,8 @@
 #include <string>
 #include <vector>
 
-constexpr const char* CCL_ENV_NOT_SPECIFIED = "<not specified>";
+constexpr const char* CCL_ENV_STR_NOT_SPECIFIED = "<not specified>";
+constexpr const ssize_t CCL_ENV_SIZET_NOT_SPECIFIED = -1;
 
 constexpr const char* CCL_LOG_LEVEL = "CCL_LOG_LEVEL";
 constexpr const char* CCL_SCHED_DUMP = "CCL_SCHED_DUMP";
@@ -31,6 +33,7 @@ constexpr const char* CCL_SCHED_DUMP = "CCL_SCHED_DUMP";
 constexpr const char* CCL_WORKER_COUNT = "CCL_WORKER_COUNT";
 constexpr const char* CCL_WORKER_AFFINITY = "CCL_WORKER_AFFINITY";
 constexpr const char* CCL_WORKER_OFFLOAD = "CCL_WORKER_OFFLOAD";
+constexpr const char* I_MPI_AVAILABLE_CORES_ENV = "I_MPI_PIN_INFO";
 
 constexpr const char* CCL_ATL_TRANSPORT = "CCL_ATL_TRANSPORT";
 constexpr const char* CCL_ATL_SHM = "CCL_ATL_SHM";
@@ -56,6 +59,7 @@ constexpr const char* CCL_PRIORITY = "CCL_PRIORITY";
 constexpr const char* CCL_SPIN_COUNT = "CCL_SPIN_COUNT";
 constexpr const char* CCL_YIELD = "CCL_YIELD";
 constexpr const char* CCL_MAX_SHORT_SIZE = "CCL_MAX_SHORT_SIZE";
+constexpr const char* CCL_BCAST_PART_COUNT = "CCL_BCAST_PART_COUNT";
 constexpr const char* CCL_CACHE_KEY = "CCL_CACHE_KEY";
 constexpr const char* CCL_CACHE_FLUSH = "CCL_CACHE_FLUSH";
 
@@ -65,6 +69,14 @@ constexpr const char* CCL_RS_CHUNK_COUNT = "CCL_RS_CHUNK_COUNT";
 constexpr const char* CCL_RS_MIN_CHUNK_SIZE = "CCL_RS_MIN_CHUNK_SIZE";
 constexpr const char* CCL_AR2D_CHUNK_COUNT = "CCL_AR2D_CHUNK_COUNT";
 constexpr const char* CCL_AR2D_MIN_CHUNK_SIZE = "CCL_AR2D_MIN_CHUNK_SIZE";
+
+constexpr const char* CCL_ALLREDUCE_2D_BASE_SIZE = "CCL_ALLREDUCE_2D_BASE_SIZE";
+constexpr const char* CCL_ALLREDUCE_2D_SWITCH_DIMS = "CCL_ALLREDUCE_2D_SWITCH_DIMS";
+
+constexpr const char* CCL_ALLTOALL_SCATTER_MAX_OPS = "CCL_ALLTOALL_SCATTER_MAX_OPS";
+constexpr const char* CCL_ALLTOALL_SCATTER_PLAIN = "CCL_ALLTOALL_SCATTER_PLAIN";
+
+constexpr const char* CCL_DEFAULT_RESIZABLE = "CCL_DEFAULT_RESIZABLE";
 
 enum ccl_priority_mode
 {
@@ -83,8 +95,25 @@ enum ccl_atl_transport
     ccl_atl_last_value
 };
 
-struct alignas(CACHELINE_SIZE) ccl_env_data
+namespace ccl
 {
+
+class env_data
+{
+public:
+
+    env_data();
+    ~env_data() = default;
+
+    env_data(const env_data&) = delete;
+    env_data(env_data&&) = delete;
+
+    env_data& operator=(const env_data&) = delete;
+    env_data& operator=(env_data&&) = delete;
+
+    void parse();
+    void print();
+
     int log_level;
     int sched_dump;
 
@@ -96,7 +125,8 @@ struct alignas(CACHELINE_SIZE) ccl_env_data
     int enable_shm;
 
     /*
-       parsing logic can be quite complex so hide it inside algorithm_selector module
+       parsing logic can be quite complex
+       so hide it inside algorithm_selector module
        and store only raw strings in env_data
     */
     std::string allgatherv_algo_raw;
@@ -121,6 +151,7 @@ struct alignas(CACHELINE_SIZE) ccl_env_data
     size_t spin_count;
     ccl_yield_type yield_type;
     size_t max_short_size;
+    ssize_t bcast_part_count;
     ccl_cache_key_type cache_key_type;
     int enable_cache_flush;
 
@@ -130,25 +161,83 @@ struct alignas(CACHELINE_SIZE) ccl_env_data
     size_t rs_min_chunk_size;
     size_t ar2d_chunk_count;
     size_t ar2d_min_chunk_size;
+
+    ssize_t allreduce_2d_base_size;
+    int allreduce_2d_switch_dims;
+
+    ssize_t alltoall_scatter_max_ops;
+    int alltoall_scatter_plain;
+
+    size_t default_resizable;
+
+    template<class T>
+    static int env_2_type(const char* env_name, T& val)
+    {
+        const char* env_val = getenv(env_name);
+        if (env_val)
+        {
+            std::stringstream ss;
+            ss << env_val;
+            ss >> val;
+            return 1;
+        }
+        return 0;
+    }
+
+    template<class T>
+    static int env_2_enum(const char* env_name,
+                          const std::map<T, std::string>& values,
+                          T& val)
+    {
+        const char* env_val = getenv(env_name);
+        if (env_val)
+        {
+            val = enum_by_str(values, env_val);
+            return 1;
+        }
+        return 0;
+    }
+
+    template<class T>
+    static T enum_by_str(const std::map<T, std::string>& values,
+                         const std::string& str)
+    {
+        for (const auto& val: values)
+        {
+            if (!str.compare(val.second))
+            {
+                return val.first;
+            }
+        }
+        CCL_THROW("unexpected str '", str, "'");
+    }
+
+    template<class T>
+    static std::string str_by_enum(const std::map<T, std::string>& values,
+                                   const T& val)
+    {
+        typename std::map<T, std::string>::const_iterator it;
+
+        it = values.find(val);
+        if (it != values.end())
+        {
+             return it->second;
+        }
+        else
+        {
+            CCL_THROW("unexpected val ", val);
+            return NULL;
+        }
+    }
+
+    static std::map<ccl_priority_mode, std::string> priority_mode_names;
+    static std::map<ccl_atl_transport, std::string> atl_transport_names;
+
+    int env_2_worker_affinity(size_t local_proc_idx, size_t local_proc_count);
+
+private:
+
+    int env_2_worker_affinity_auto(size_t local_proc_idx, size_t workers_per_process);
 };
 
-extern ccl_env_data env_data;
-
-int ccl_env_2_int(const char* env_name, int& val);
-int ccl_env_2_size_t(const char* env_name, size_t& val);
-int ccl_env_2_float(const char* env_name, float& val);
-int ccl_env_2_string(const char* env_name, std::string& str);
-
-void ccl_env_parse();
-void ccl_env_print();
-
-int ccl_env_parse_worker_affinity(size_t local_proc_idx, size_t local_proc_count);
-int ccl_env_parse_atl_transport();
-int ccl_env_parse_priority_mode();
-int ccl_env_parse_yield_type();
-int ccl_env_parse_cache_key();
-
-const char* ccl_priority_mode_to_str(ccl_priority_mode type);
-const char* ccl_atl_transport_to_str(ccl_atl_transport transport);
-
-void ccl_detect_iset();
+} /* namespace ccl */

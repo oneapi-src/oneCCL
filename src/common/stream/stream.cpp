@@ -15,22 +15,14 @@
 */
 #include "common/log/log.hpp"
 #include "common/stream/stream.hpp"
+#include "common/stream/stream_provider_dispatcher_impl.hpp"
 
 #ifdef CCL_ENABLE_SYCL
-#include <CL/sycl.hpp>
-#endif /* CCL_ENABLE_SYCL */
+    template std::unique_ptr<ccl_stream> stream_provider_dispatcher::create(cl::sycl::queue& native_stream);
+#endif
 
-ccl_stream::ccl_stream(ccl_stream_type_t type,
-                       void* native_stream) :
-    type(type),
-    native_stream(native_stream)
-{
-#ifdef CCL_ENABLE_SYCL
-    if (native_stream && (type == ccl_stream_sycl))
-        LOG_INFO("SYCL queue's device is ",
-                 static_cast<cl::sycl::queue*>(native_stream)->get_device().get_info<cl::sycl::info::device::name>());
+#ifdef MULTI_GPU_SUPPORT
+    template std::unique_ptr<ccl_stream> stream_provider_dispatcher::create(ze_command_queue_handle_t& native_stream);
 #else
-    CCL_THROW_IF_NOT(type != ccl_stream_sycl, "unsupported stream type");
-#endif /* CCL_ENABLE_SYCL */
-}
-
+    template std::unique_ptr<ccl_stream> stream_provider_dispatcher::create(void*& native_stream);
+#endif

@@ -13,8 +13,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #===============================================================================
+# Prioritize L0_ROOT
+list(APPEND dpcpp_root_hints
+            ${DPCPP_ROOT}
+            $ENV{DPCPP_ROOT})
+set(original_cmake_prefix_path ${CMAKE_PREFIX_PATH})
+if(dpcpp_root_hints)
+    list(INSERT CMAKE_PREFIX_PATH 0 ${dpcpp_root_hints})
+else()
+    message("DPCPP_ROOT prefix path hint is not defiend")
+endif()
 
-find_package(OpenCL REQUIRED)
+set(OPENCLROOT "${dpcpp_root_hints}/include/sycl/CL/")
+find_package(OpenCL)
+if(OpenCL_FOUND)
+    set(COMPUTE_RUNTIME_NAME OpenCL::OpenCL)
+endif()
+
+if(MULTI_GPU_SUPPORT)
+    find_package(L0 REQUIRED)
+    if(LevelZero_FOUND)
+        set(COMPUTE_RUNTIME_NAME ze_loader)
+    endif()
+endif()
+
+if (NOT COMPUTE_RUNTIME_NAME)
+    message("Not OpenCL or L0")
+endif()
 
 include(CheckCXXCompilerFlag)
 include(FindPackageHandleStandardArgs)
@@ -32,6 +57,9 @@ find_path(INTEL_SYCL_INCLUDE_DIRS
       "${INTEL_SYCL_BINARY_DIR}/.."
     PATH_SUFFIXES
         include
+        include/sycl
+        lib/clang/11.0.0/include
+        lib/clang/10.0.0/include
         lib/clang/9.0.0/include
         lib/clang/8.0.0/include
     NO_DEFAULT_PATH)
@@ -55,9 +83,9 @@ if(IntelSYCL_FOUND AND NOT TARGET Intel::SYCL)
     add_library(Intel::SYCL UNKNOWN IMPORTED)
     set(imp_libs
         $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:-fsycl>
-        OpenCL::OpenCL)
+        ${COMPUTE_RUNTIME_NAME})
     set_target_properties(Intel::SYCL PROPERTIES
-        IMPORTED_LINK_INTERFACE_LIBRARIES "${imp_libs}"
+        INTERFACE_LINK_LIBRARIES "${imp_libs}"
         INTERFACE_INCLUDE_DIRECTORIES "${INTEL_SYCL_INCLUDE_DIRS}"
         IMPORTED_LOCATION "${INTEL_SYCL_LIBRARIES}")
     set(INTEL_SYCL_FLAGS "-fsycl")
@@ -66,4 +94,3 @@ if(IntelSYCL_FOUND AND NOT TARGET Intel::SYCL)
         INTEL_SYCL_LIBRARIES
         INTEL_SYCL_INCLUDE_DIRS)
 endif()
-

@@ -32,14 +32,14 @@ std::map<ccl_coll_allreduce_algo,
 
 ccl_algorithm_selector<ccl_coll_allreduce>::ccl_algorithm_selector()
 {
-    if (env_data.atl_transport == ccl_atl_ofi)
+    if (ccl::global_data::env().atl_transport == ccl_atl_ofi)
     {
         insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_allreduce_ring);
         insert(main_table, 0, CCL_ALLREDUCE_SHORT_MSG_SIZE, ccl_coll_allreduce_recursive_doubling);
         insert(main_table, CCL_ALLREDUCE_SHORT_MSG_SIZE + 1, CCL_ALLREDUCE_MEDIUM_MSG_SIZE, ccl_coll_allreduce_starlike);
         insert(fallback_table, 0, CCL_ALLREDUCE_SHORT_MSG_SIZE, ccl_coll_allreduce_recursive_doubling);
     }
-    else if (env_data.atl_transport == ccl_atl_mpi)
+    else if (ccl::global_data::env().atl_transport == ccl_atl_mpi)
         insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_allreduce_direct);
 
     insert(fallback_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_allreduce_ring);
@@ -62,18 +62,18 @@ bool ccl_algorithm_selector_helper<ccl_coll_allreduce_algo>::can_use(ccl_coll_al
         param.count < param.comm->pof2())
         can_use = false;
     else if (algo == ccl_coll_allreduce_ring_rma &&
-             !global_data.executor->get_atl_attr().enable_rma)
+             !ccl::global_data::get().executor->get_atl_attr().enable_rma)
         can_use = false;
     else if (algo == ccl_coll_allreduce_starlike &&
         !(param.count / param.comm->size()))
         can_use = false;
     else if (algo == ccl_coll_allreduce_2d &&
-        (env_data.atl_transport == ccl_atl_mpi ||
-         param.comm->size() != global_data.comm->size()))
+        (ccl::global_data::env().atl_transport == ccl_atl_mpi ||
+         param.comm->size() != ccl::global_data::get().comm->size()))
         can_use = false;
 
     return can_use;
 }
 
 CCL_SELECTION_DEFINE_HELPER_METHODS(ccl_coll_allreduce_algo, ccl_coll_allreduce,
-                                    env_data.allreduce_algo_raw, param.count);
+                                    ccl::global_data::env().allreduce_algo_raw, param.count);

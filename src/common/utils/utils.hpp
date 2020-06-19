@@ -21,12 +21,26 @@
 
 #include <algorithm>
 #include <chrono>
+#include <functional>
 #include <malloc.h>
+#include <map>
+#include <mutex>
 #include <stddef.h>
 #include <stdlib.h>
 #include <time.h>
+#include <sstream>
+#include <vector>
+
+#include "common/utils/spinlock.hpp"
 
 /* common */
+
+#ifndef gettid
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include <unistd.h>
+#define gettid() syscall(SYS_gettid)
+#endif
 
 #define CCL_CALL(expr)                                   \
   do {                                                   \
@@ -85,27 +99,30 @@
 #define CCL_CALLOC_IMPL(size, align) calloc(size, 1)
 #define CCL_FREE_IMPL(ptr) free(ptr)
 #else
-# error "this compiler is not supported" 
+# error "this compiler is not supported"
 #endif
 
 #define CCL_MEMALIGN_WRAPPER(size, align, name)                 \
     ({                                                          \
         void* ptr = CCL_MEMALIGN_IMPL(size, align);             \
-        CCL_THROW_IF_NOT(ptr, "CCL out of memory, ", name);     \
+        CCL_THROW_IF_NOT(ptr, "CCL cannot allocate bytes: ",    \
+                         size, ", out of memory, ", name);      \
         ptr;                                                    \
     })
 
 #define CCL_REALLOC_WRAPPER(old_ptr, old_size, new_size, align, name)       \
     ({                                                                      \
         void* ptr = CCL_REALLOC_IMPL(old_ptr, old_size, new_size, align);   \
-        CCL_THROW_IF_NOT(ptr, "CCL out of memory, ", name);                 \
+        CCL_THROW_IF_NOT(ptr, "CCL cannot allocate bytes: ", new_size,      \
+                         ", out of memory, ", name);                        \
         ptr;                                                                \
     })
 
 #define CCL_CALLOC_WRAPPER(size, align, name)                   \
     ({                                                          \
         void* ptr = CCL_CALLOC_IMPL(size, align);               \
-        CCL_THROW_IF_NOT(ptr, "CCL out of memory, ", name);     \
+        CCL_THROW_IF_NOT(ptr, "CCL cannot allocate bytes: ",    \
+                         size,", out of memory, ", name);       \
         ptr;                                                    \
     })
 
@@ -150,3 +167,128 @@ static inline timespec ccl_from_time_point(const std::chrono::time_point<std::ch
 
     return timespec { .tv_sec = sec.time_since_epoch().count(), .tv_nsec = ns.count() };
 }
+
+
+template<class container>
+container tokenize(const std::string& input, char delimeter)
+{
+    std::istringstream ss(input);
+    container ret;
+    std::string str;
+    while (std::getline(ss, str, delimeter))
+    {
+        //use c++14 regex
+        std::stringstream converter;
+        converter << str;
+        typename container::value_type value;
+        converter >> value;
+        ret.push_back(value);
+    }
+    return ret;
+}
+
+template<typename T>
+void ccl_str_to_array(const char* input,
+                      std::vector<T>& output,
+                      char delimiter)
+{
+    std::stringstream ss(input);
+    T temp{};
+    while (ss >> temp)
+    {
+        output.push_back(temp);
+        if (ss.peek() == delimiter)
+        {
+            ss.ignore();
+        }
+    }
+}
+
+//TODO naite implementation, use TBB
+template<class Key, class Value, class = typename std::enable_if<std::is_pointer<Value>::value>::type>
+class concurrent_map
+{
+public:
+    using implementation = std::map<Key, Value>;
+    using value_type = typename implementation::value_type;
+    using lock_t = std::unique_lock<ccl_spinlock>;
+
+    template<class Impl>
+    using accessor = std::tuple<Impl, lock_t>;
+
+    using read_accessor = std::tuple<std::reference_wrapper<typename std::add_const<implementation>::type>, lock_t>;
+    using write_accessor = std::tuple<std::reference_wrapper<implementation>, lock_t>;
+
+    concurrent_map()= default;
+    concurrent_map(concurrent_map<Key, Value>&& src)
+    {
+        src.swap(get_write());
+    }
+
+    concurrent_map<Key, Value>& operator= (const concurrent_map<Key, Value>&& src)
+    {
+        src.swap(get_write());
+        return *this;
+    }
+
+    concurrent_map(const concurrent_map<Key, Value> &) = delete;
+    concurrent_map<Key, Value>& operator= (const concurrent_map<Key, Value>&) = delete;
+
+    std::pair<Value, bool> insert(value_type&& value )
+    {
+        Value ret = nullptr;
+        bool find = false;
+        {
+            std::unique_lock<ccl_spinlock> lock(guard);
+            auto pair = map.insert(std::move(value));
+            find = pair.second;
+            ret = pair.first->second;
+        }
+        return {ret, find};
+    }
+
+    Value find( const Key& key )
+    {
+        Value ret = nullptr;
+        {
+            std::unique_lock<ccl_spinlock> lock(guard);
+            auto it = map.find(key);
+            if(it != map.end())
+            {
+                ret = it->second;
+            }
+        }
+        return ret;
+    }
+
+    read_accessor get_read() const
+    {
+        return {std::cref(map), locker()};
+    }
+
+    write_accessor get_write()
+    {
+        return {std::ref(map), locker()};
+    }
+
+    void swap(write_accessor&& rhs)
+    {
+        {
+            std::unique_lock<ccl_spinlock> lock(guard);
+            std::swap(map, std::get<0>(rhs).get());
+        }
+    }
+
+    void swap(write_accessor& rhs)
+    {
+        swap(rhs);
+    }
+private:
+    std::unique_lock<ccl_spinlock> locker() const
+    {
+        return std::unique_lock<ccl_spinlock>(guard);
+    }
+
+    mutable ccl_spinlock guard;
+    implementation map;
+};

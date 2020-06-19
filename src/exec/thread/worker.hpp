@@ -31,7 +31,7 @@ public:
     ccl_worker() = delete;
     ccl_worker(const ccl_worker& other) = delete;
     ccl_worker& operator= (const ccl_worker& other) = delete;
-    ccl_worker(ccl_executor* executor, size_t idx, std::unique_ptr<ccl_sched_queue> queue);
+    ccl_worker(size_t idx, std::unique_ptr<ccl_sched_queue> queue);
     virtual ~ccl_worker() = default;
     virtual void* get_this() override { return static_cast<void*>(this); };
 
@@ -61,8 +61,6 @@ private:
     ccl_status_t process_strict_sched_queue();
     ccl_status_t process_sched_queue(size_t& processed_count, bool process_all);
     ccl_status_t process_sched_bin(ccl_sched_bin* bin, size_t& processed_count);
-
-    ccl_executor* executor = nullptr;
 
     size_t do_work_counter = 0;
 

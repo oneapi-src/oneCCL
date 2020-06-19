@@ -36,7 +36,7 @@ ccl_master_sched::~ccl_master_sched()
 
 void ccl_master_sched::commit(ccl_parallelizer* parallelizer)
 {
-    if (env_data.priority_mode == ccl_priority_lifo)
+    if (ccl::global_data::env().priority_mode == ccl_priority_lifo)
     {
         coll_attr.priority = ccl_sched_base::get_lifo_priority();
     }
@@ -79,9 +79,11 @@ ccl_request* ccl_master_sched::start(ccl_executor* exec, bool reset_sched)
         reset_request();
     }
 
-    if (env_data.sched_dump)
+    if (ccl::global_data::env().sched_dump)
     {
-        dump(std::cout);
+        std::stringstream ostream;
+        dump(ostream);
+        LOG_INFO(ostream.str());
     }
 
     exec->start(this);
@@ -121,7 +123,7 @@ void ccl_master_sched::sync_partial_scheds()
 
 void ccl_master_sched::dump(std::ostream& out) const
 {
-    if (!env_data.sched_dump)
+    if (!ccl::global_data::env().sched_dump)
     {
         return;
     }
@@ -150,11 +152,11 @@ ccl_master_sched::ccl_master_sched_ptr ccl_master_sched::create(const ccl_coll_p
 {
     /* check contracts at first */
 
-    CCL_THROW_IF_NOT(env_data.atl_transport == ccl_atl_ofi || !(attr.reduction_fn),
+    CCL_THROW_IF_NOT(ccl::global_data::env().atl_transport == ccl_atl_ofi || !(attr.reduction_fn),
                      "custom reduction is supported for OFI transport only");
 
     CCL_THROW_IF_NOT(ccl_datatype_storage::is_predefined_datatype(param.dtype.idx()) ||
-                     env_data.atl_transport == ccl_atl_ofi,
+                     ccl::global_data::env().atl_transport == ccl_atl_ofi,
                      "custom datatype is supported for OFI transport only");
 
     CCL_THROW_IF_NOT((param.ctype != ccl_coll_allreduce &&
@@ -170,17 +172,23 @@ ccl_master_sched::ccl_master_sched_ptr ccl_master_sched::create(const ccl_coll_p
 
     CCL_THROW_IF_NOT(param.ctype == ccl_coll_allgatherv || !(attr.vector_buf),
                      "vector buffer is supported for allgatherv only");
+    
+    if (param.ctype == ccl_coll_sparse_allreduce)
+    {
+        CCL_THROW_IF_NOT(ccl::global_data::env().sparse_allreduce_algo_raw != "mask" || !(attr.reduction_fn), 
+                         "mask algorithm for sparse_allreduce does not support custom reduction");
 
-    CCL_THROW_IF_NOT(param.ctype != ccl_coll_sparse_allreduce ||
-                     env_data.sparse_allreduce_algo_raw != "mask" ||
-                     !(attr.reduction_fn), 
-                     "mask algorithm for sparse_allreduce does not support custom reduction");
+        CCL_THROW_IF_NOT((attr.sparse_allreduce_completion_fn || attr.sparse_allreduce_alloc_fn) &&
+                         !(reinterpret_cast<uintptr_t>(attr.sparse_allreduce_completion_fn) &
+                           reinterpret_cast<uintptr_t>(attr.sparse_allreduce_alloc_fn)),
+                         "sparse_allreduce requires completion callback only or allocation callback only");
+    }
 
-    CCL_THROW_IF_NOT((param.dtype.idx() != ccl_dtype_bfp16) || (global_data.bfp16_impl_type != ccl_bfp16_none),
+    CCL_THROW_IF_NOT((param.dtype.idx() != ccl_dtype_bfp16) ||
+                     (ccl::global_data::get().bfp16_impl_type != ccl_bfp16_none),
                      "BFP16 datatype is requested but not supported");
 
     ccl_sched_key key;
-    std::pair<ccl_master_sched_ptr, bool> result;
     ccl_master_sched_ptr sched;
     bool is_created = false;
     auto create_fn = [param]() -> ccl_master_sched_ptr { return new ccl_master_sched(param); };
@@ -188,7 +196,7 @@ ccl_master_sched::ccl_master_sched_ptr ccl_master_sched::create(const ccl_coll_p
     if (attr.to_cache)
     {
         key.set(param, attr);
-        std::tie(sched, is_created) = global_data.sched_cache->find_or_create(std::move(key), create_fn);
+        std::tie(sched, is_created) = ccl::global_data::get().sched_cache->find_or_create(std::move(key), create_fn);
     }
     else
     {

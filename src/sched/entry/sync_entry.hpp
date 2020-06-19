@@ -15,7 +15,7 @@
 */
 #pragma once
 
-#include "common/env/env.hpp"
+#include "common/global/global.hpp"
 #include "common/utils/sync_object.hpp"
 #include "common/utils/yield.hpp"
 #include "sched/entry/entry.hpp"
@@ -30,7 +30,7 @@ public:
         return "SYNC";
     }
 
-    sync_entry() = default;
+    sync_entry() = delete;
     explicit sync_entry(ccl_sched* sched,
                         std::shared_ptr<sync_object> sync) :
         sched_entry(sched, true), sync(sync)
@@ -59,7 +59,7 @@ public:
         else
         {
             LOG_TRACE("waiting SYNC entry cnt ", counter);
-            ccl_yield(env_data.yield_type);
+            ccl_yield(ccl::global_data::env().yield_type);
         }
     }
 

@@ -13,12 +13,12 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "common/env/env.hpp"
+#include "common/global/global.hpp"
 #include "sched/queue/queue.hpp"
 
 void ccl_sched_bin::add(ccl_sched* sched)
 {
-    if (env_data.priority_mode != ccl_priority_none)
+    if (ccl::global_data::env().priority_mode != ccl_priority_none)
     {
         CCL_ASSERT(sched->coll_attr.priority == priority,
             "unexpected sched priority ", sched->coll_attr.priority,
@@ -58,7 +58,7 @@ ccl_sched_queue::ccl_sched_queue(std::vector<atl_ep_t*> atl_eps)
     LOG_DEBUG("created sched_queue, atl_eps count ",  atl_eps.size(),
               ", atl_eps[0] ", atl_eps[0]);
 
-    if (env_data.priority_mode != ccl_priority_none)
+    if (ccl::global_data::env().priority_mode != ccl_priority_none)
     {
         CCL_ASSERT(atl_eps.size() == CCL_PRIORITY_BUCKET_COUNT,
             "unexpected atl_eps count ", atl_eps.size(), ", expected ",
@@ -85,7 +85,7 @@ void ccl_sched_queue::add(ccl_sched* sched)
     CCL_ASSERT(!sched->bin);
 
     size_t priority = sched->get_priority();
-    if (env_data.priority_mode != ccl_priority_none)
+    if (ccl::global_data::env().priority_mode != ccl_priority_none)
     {
         if (sched->coll_param.ctype == ccl_coll_barrier)
         {
@@ -113,7 +113,7 @@ void ccl_sched_queue::add(ccl_sched* sched)
     else
     {
         atl_ep_t* atl_ep = nullptr;
-        if (env_data.priority_mode == ccl_priority_none)
+        if (ccl::global_data::env().priority_mode == ccl_priority_none)
             atl_ep = atl_eps[0];
         else
         {
