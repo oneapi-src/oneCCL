@@ -15,6 +15,7 @@
 */
 #include "ccl.h"
 #include "common/comm/comm.hpp"
+#include "common/env/env.hpp"
 #include "sched/sched.hpp"
 
 ccl_comm::ccl_comm(size_t rank,
@@ -60,6 +61,11 @@ ccl_comm* ccl_comm::create_with_color(int color,
                                       ccl_comm_id_storage* comm_ids,
                                       const ccl_comm* global_comm)
 {
+    if (env_data.atl_transport == ccl_atl_mpi)
+    {
+        throw ccl::ccl_error("MPI transport doesn't support creation of communicator with color yet");
+    }
+    
     ccl_status_t status = ccl_status_success;
 
     std::vector<int> colors(global_comm->size());

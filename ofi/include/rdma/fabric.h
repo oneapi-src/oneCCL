@@ -92,7 +92,8 @@ extern "C" {
 #endif
 
 #define FI_MAJOR_VERSION 1
-#define FI_MINOR_VERSION 9
+#define FI_MINOR_VERSION 10
+#define FI_REVISION_VERSION 0
 
 enum {
 	FI_PATH_MAX		= 256,
@@ -100,7 +101,7 @@ enum {
 	FI_VERSION_MAX		= 64
 };
 
-#define FI_VERSION(major, minor) ((major << 16) | (minor))
+#define FI_VERSION(major, minor) (((major) << 16) | (minor))
 #define FI_MAJOR(version)	(version >> 16)
 #define FI_MINOR(version)	(version & 0xFFFF)
 #define FI_VERSION_GE(v1, v2)   ((FI_MAJOR(v1) > FI_MAJOR(v2)) || \
@@ -640,6 +641,7 @@ enum {
 	FI_FLUSH_WORK,		/* NULL */
 	FI_REFRESH,		/* mr: fi_mr_modify */
 	FI_DUP,			/* struct fid ** */
+	FI_GETWAITOBJ,		/*enum fi_wait_obj * */
 };
 
 static inline int fi_control(struct fid *fid, int command, void *arg)

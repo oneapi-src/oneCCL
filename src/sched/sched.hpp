@@ -44,8 +44,8 @@ public:
     static constexpr const char* class_name()
     {
         return "worker_sched";
-    }   
-    
+    }
+
     ccl_sched(const ccl_coll_param& coll_param, ccl_request *master_request)
         : ccl_sched_base(coll_param)
     {
@@ -62,7 +62,7 @@ public:
 
     void do_progress();
 
-    void complete();
+    virtual void complete();
 
     void clear()
     {
@@ -105,6 +105,10 @@ public:
      */
     void renew(bool need_update_id = false);
 
+    using ccl_sched_base::add_entry_front_t;
+    using ccl_sched_base::add_entry_back_t;
+    using add_entry_default_t = add_entry_mode_t<ccl_sched_add_mode_last_value>;
+
     sched_entry* add_entry(std::unique_ptr<sched_entry> &&entry)
     {
         entry->set_exec_mode(exec_mode);
@@ -119,6 +123,33 @@ public:
 
         return raw_ptr;
     }
+
+    /**
+     * Policy-based add_entry
+     */
+    sched_entry* add_entry(std::unique_ptr<sched_entry> &&entry, add_entry_mode_t<ccl_sched_add_mode_last_value>)
+    {
+        return add_entry(std::move(entry));
+    }
+
+    sched_entry* add_entry(std::unique_ptr<sched_entry> &&entry, add_entry_front_t)
+    {
+        entry->set_exec_mode(exec_mode);
+
+        sched_entry* raw_ptr = entry.get();
+        entries.push_front(std::move(entry));
+        return raw_ptr;
+    }
+
+    sched_entry* add_entry(std::unique_ptr<sched_entry> &&entry, add_entry_back_t)
+    {
+        entry->set_exec_mode(exec_mode);
+
+        sched_entry* raw_ptr = entry.get();
+        entries.push_back(std::move(entry));
+        return raw_ptr;
+    }
+
 
     /**
      * Require that all previously added entries are completed before subsequent ops
@@ -154,6 +185,7 @@ public:
     }
     ccl_request* req = nullptr;
     void dump(std::ostream& out) const;
+    size_t entries_count() const;
 private:
     ccl_sched_finalize_fn_t finalize_fn = nullptr;
     void* finalize_fn_ctx = nullptr;
@@ -165,6 +197,3 @@ private:
     timer_type::time_point exec_complete_time{};
 #endif
 };
-
-ccl_status_t ccl_bin_progress(ccl_sched_bin* bin,
-                              size_t& completed_sched_count);

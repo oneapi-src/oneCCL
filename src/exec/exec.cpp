@@ -19,6 +19,17 @@
 #include "unordered_coll/unordered_coll.hpp"
 #include "sched/extra_sched.hpp"
 
+size_t ccl_executor::get_worker_idx_by_sched_id(ccl_sched* sched)
+{
+    return sched->sched_id % workers.size();
+}
+
+size_t ccl_executor::get_worker_idx_round_robin(ccl_sched* sched)
+{
+    ++rr_worker_idx %= workers.size();
+    return rr_worker_idx;
+}
+
 size_t ccl_executor::calculate_atl_ep_count(size_t worker_count)
 {
     size_t ep_count = worker_count;
@@ -41,6 +52,10 @@ std::unique_ptr<ccl_sched_queue> ccl_executor::create_sched_queue(size_t idx, si
 
 ccl_executor::ccl_executor(const char* main_addr)
 {
+    get_worker_idx_fn = (env_data.enable_fusion || env_data.enable_unordered_coll) ?
+        &ccl_executor::get_worker_idx_by_sched_id :
+        &ccl_executor::get_worker_idx_round_robin;
+
     auto worker_count = env_data.worker_count;
     workers.reserve(worker_count);
     auto ep_count = calculate_atl_ep_count(worker_count);
@@ -110,12 +125,12 @@ void ccl_executor::start_workers()
         if (env_data.enable_fusion && idx == 0)
         {
             LOG_DEBUG("create service worker");
-            workers.emplace_back(new ccl_service_worker(this, idx, create_sched_queue(idx, ep_per_worker),
+            workers.emplace_back(new ccl_service_worker(idx, create_sched_queue(idx, ep_per_worker),
                                                         *global_data.fusion_manager));
         }
         else
         {
-            workers.emplace_back(new ccl_worker(this, idx, create_sched_queue(idx, ep_per_worker)));
+            workers.emplace_back(new ccl_worker(idx, create_sched_queue(idx, ep_per_worker)));
         }
 
         if (env_data.worker_offload)
@@ -263,7 +278,7 @@ void ccl_executor::start(ccl_master_sched* sched)
     size_t worker_idx;
     for (size_t idx = 0; idx < sched->partial_scheds.size(); idx++)
     {
-        worker_idx = sched->partial_scheds[idx]->sched_id % workers.size();
+        worker_idx = (this->*get_worker_idx_fn)(sched->partial_scheds[idx].get());
         workers[worker_idx]->add(sched->partial_scheds[idx].get());
     }
 }

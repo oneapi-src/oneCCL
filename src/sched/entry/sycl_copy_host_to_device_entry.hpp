@@ -67,7 +67,7 @@ protected:
                            ", cnt ", cnt,
                            ", in_buf ", in_buf,
                            ", out_buf ", out_buf,
-                           ", native_stream ", stream->get_native_stream(),
+                           ", native_stream ", stream->to_string(),
                            "\n");
     }
 

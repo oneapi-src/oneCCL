@@ -18,8 +18,9 @@
 #include "common/env/env.hpp"
 
 
-struct ccl_extra_sched : public ccl_request, public ccl_sched
+class ccl_extra_sched : public ccl_request, public ccl_sched
 {
+public:
     static constexpr const char* class_name()
     {
         return "extra_sched";

@@ -28,16 +28,109 @@ namespace ccl
 
 class communicator;
 class stream;
+struct communicator_interface;
 
+struct host_attr_impl;
+class ccl_host_attr;
+
+#ifdef MULTI_GPU_SUPPORT
+struct gpu_comm_attr;
+class comm_group;
+struct device_attr_impl;
+class ccl_device_attr;
+#endif
 /**
  * Type @c communicator_t allows to operate communicator object in RAII manner
  */
 using communicator_t = std::unique_ptr<ccl::communicator>;
+using shared_communicator_t = std::shared_ptr<ccl::communicator>;
 
 /**
  * Type @c stream_t allows to operate stream object in RAII manner
  */
 using stream_t = std::unique_ptr<ccl::stream>;
+
+/**
+ * Class @c ccl_host_attr allows to configure host wire-up communicator creation parametes
+ */
+class ccl_host_attr
+{
+public:
+    friend class ccl_device_attr;
+    friend struct communicator_interface_dispatcher;
+    friend class environment;
+
+    virtual ~ccl_host_attr() noexcept;
+
+    /**
+     * Set specific value for attribute by @attrId.
+     * Previous attibute value would be returned
+     */
+    template<ccl_host_attributes attrId,
+             class Value,
+             class = typename std::enable_if<is_attribute_value_supported<attrId, Value>()>::type>
+    Value set_value(const Value& v);
+
+    /**
+     * Get specific attribute value by @attrId
+     */
+    template<ccl_host_attributes attrId>
+    const typename ccl_host_attributes_traits<attrId>::type& get_value() const;
+
+protected:
+    ccl_host_attr(const ccl_host_attr& src);
+
+private:
+    ccl_host_attr(const ccl_version_t& library_version,
+                  const ccl_host_comm_attr_t &core = ccl_host_comm_attr_t(),
+                  ccl_version_t api_version = ccl_version_t {CCL_MAJOR_VERSION,
+                                                             CCL_MINOR_VERSION,
+                                                             CCL_UPDATE_VERSION,
+                                                             CCL_PRODUCT_STATUS,
+                                                             CCL_PRODUCT_BUILD_DATE,
+                                                             CCL_PRODUCT_FULL});
+
+    std::unique_ptr<host_attr_impl> pimpl;
+};
+
+using comm_attr_t = std::shared_ptr<ccl_host_attr>;
+
+#ifdef MULTI_GPU_SUPPORT
+using comm_group_t = std::shared_ptr<comm_group>;
+/**
+ * Class @c ccl_device_attr allows to configure device communicator creation parametes
+ */
+class ccl_device_attr : public ccl_host_attr
+{
+public:
+    friend class comm_group;
+    friend struct communicator_interface_dispatcher;
+
+    using base_t = ccl_host_attr;
+    ~ccl_device_attr() noexcept;
+
+    /**
+     * Set specific value for attribute by @attrId.
+     * Previous attibute value would be returned
+     */
+    template<ccl_device_attributes attrId,
+             class Value,
+             class = typename std::enable_if<std::is_same<typename ccl_device_attributes_traits<attrId>::type, Value>::value>::type>
+    Value set_value(Value&& v);
+
+    /**
+     * Get specific attribute value by @attrId
+     */
+    template<ccl_device_attributes attrId>
+    const typename ccl_device_attributes_traits<attrId>::type& get_value() const;
+
+private:
+    ccl_device_attr(const ccl_host_attr& src);
+    std::unique_ptr<device_attr_impl> pimpl;
+};
+
+using device_comm_attr_t = std::shared_ptr<ccl_device_attr>;
+#endif //MULTI_GPU_SUPPORT
 
 /**
  * ccl environment singleton
@@ -66,19 +159,37 @@ public:
      * or creates a copy of global communicator, if @c attr is @c nullptr(default)
      * @param attr
      */
-    communicator_t create_communicator(const ccl::comm_attr* attr = nullptr) const;
+    communicator_t create_communicator(const ccl::comm_attr_t& attr = ccl::comm_attr_t()) const;
 
     /**
-     * Creates a new ccl stream of @c type with @c native stream
-     * @param type the @c ccl::stream_type and may be @c cpu or @c sycl (if configured)
+     * Creates a new ccl stream from @stream_native_type
      * @param native_stream the existing handle of stream
      */
-    stream_t create_stream(ccl::stream_type type = ccl::stream_type::cpu, void* native_stream = nullptr) const;
+    template<class stream_native_type,
+             class = typename std::enable_if<is_stream_supported<stream_native_type>()>::type>
+    stream_t create_stream(stream_native_type& native_stream);
+
+    stream_t create_stream() const;
 
     /**
      * Retrieves the current version
      */
     ccl_version_t get_version() const;
+
+    /**
+     * Created @attr, which used to create host from @environment
+     */
+    comm_attr_t create_host_comm_attr(const ccl_host_comm_attr_t& attr = ccl_host_comm_attr_t()) const;
+
+#ifdef MULTI_GPU_SUPPORT
+    /**
+     * Creates a new device group, which is entrance point of device communicator creation
+     */
+    comm_group_t create_comm_group(size_t current_device_group_size,
+                                   size_t process_device_group_size,
+                                   ccl::shared_communicator_t parent_comm = ccl::shared_communicator_t());
+
+#endif //MULTI_GPU_SUPPORT
 private:
     environment();
 };
@@ -131,23 +242,25 @@ public:
     stream(stream&&) = default;
     stream& operator=(stream&&) = default;
 
+    using impl_t = std::shared_ptr<ccl_stream>;
 private:
     friend class communicator;
     friend class environment;
-    stream();
-    stream(ccl::stream_type type, void* native_stream);
+    stream(impl_t&& impl);
 
-    std::shared_ptr<ccl_stream> stream_impl;
+    impl_t stream_impl;
 };
 
 /**
  * A communicator that permits collective operations
- * Has no defined public constructor. Use ccl::environment::create_communicator
+ * Has no defined public constructor. Use ccl::environment::create_communicator or ccl::comm_group
  * for communicator objects creation
  */
-class communicator
+class communicator final
 {
 public:
+
+    ~communicator();
 
     /**
      * Type allows to operate request interface in RAII manner
@@ -158,13 +271,43 @@ public:
      * Retrieves the rank of the current process in a communicator
      * @return rank of the current process
      */
-    size_t rank();
+    size_t rank() const;
 
     /**
      * Retrieves the number of processes in a communicator
      * @return number of the processes
      */
-    size_t size();
+    size_t size() const;
+
+#ifdef MULTI_GPU_SUPPORT
+    /**
+     * Type allows to get underlying device type,
+     * which was used as communicator construction argument
+     */
+    using device_native_reference_t = typename unified_device_type::native_reference_t;
+
+    /**
+     * Retrieves underlying device, which was used as communicator construction argument
+     */
+    device_native_reference_t get_device();
+
+    /**
+     * Retrieves logically determined devices topology based on hardware preferred
+     * devices topology. Can be overriden during communicator creation phase
+     */
+    ccl::device_topology_type get_topology_type() const;
+
+    device_comm_attr_t get_device_attr() const;
+#endif
+
+    comm_attr_t get_host_attr() const;
+    /**
+     * Retrieves status of wiring-up progress of communicators in group
+     * After all expected communicators are created in parent comm_group,
+     * then wiring-up phase is automatically executed
+     * and all communicator object will go in ready status
+     */
+    bool is_ready() const;
 
     /**
      * Gathers @c buf on all process in the communicator and stores result in @c recv_buf
@@ -528,8 +671,8 @@ public:
      */
     coll_request_t sparse_allreduce(const void* send_ind_buf, size_t send_ind_count,
                                     const void* send_val_buf, size_t send_val_count,
-                                    void** recv_ind_buf, size_t* recv_ind_count,
-                                    void** recv_val_buf, size_t* recv_val_count,
+                                    void* recv_ind_buf, size_t recv_ind_count,
+                                    void* recv_val_buf, size_t recv_val_count,
                                     ccl::datatype index_dtype,
                                     ccl::datatype value_dtype,
                                     ccl::reduction reduction,
@@ -557,8 +700,8 @@ public:
              class = typename std::enable_if<ccl::is_native_type_supported<value_buffer_type>()>::type>
     coll_request_t sparse_allreduce(const index_buffer_type* send_ind_buf, size_t send_ind_count,
                                     const value_buffer_type* send_val_buf, size_t send_val_count,
-                                    index_buffer_type** recv_ind_buf, size_t* recv_ind_count,
-                                    value_buffer_type** recv_val_buf, size_t* recv_val_count,
+                                    index_buffer_type* recv_ind_buf, size_t recv_ind_count,
+                                    value_buffer_type* recv_val_buf, size_t recv_val_count,
                                     ccl::reduction reduction,
                                     const ccl::coll_attr* attr = nullptr,
                                     const ccl::stream_t& stream = ccl::stream_t());
@@ -584,27 +727,25 @@ public:
              class = typename std::enable_if<ccl::is_class_supported<value_buffer_container_type>()>::type>
     coll_request_t sparse_allreduce(const index_buffer_container_type& send_ind_buf, size_t send_ind_count,
                                     const value_buffer_container_type& send_val_buf, size_t send_val_count,
-                                    index_buffer_container_type** recv_ind_buf, size_t* recv_ind_count,
-                                    value_buffer_container_type** recv_val_buf, size_t* recv_val_count,
+                                    index_buffer_container_type& recv_ind_buf, size_t recv_ind_count,
+                                    value_buffer_container_type& recv_val_buf, size_t recv_val_count,
                                     ccl::reduction reduction,
                                     const ccl::coll_attr* attr = nullptr,
                                     const ccl::stream_t& stream = ccl::stream_t());
 
 private:
     friend class environment;
+    friend class comm_group;
+
+    explicit communicator(std::shared_ptr<communicator_interface> impl);
 
     /**
-     * Creates ccl communicator as a copy of global communicator
+     * Holds specific-implementation details of communicator
      */
-    communicator();
-
-    /**
-     * Creates a new communicator according to @c attr parameters
-     * @param attr
-     */
-    explicit communicator(const ccl::comm_attr* attr);
-
-    std::shared_ptr<ccl_comm> comm_impl;
+    std::shared_ptr<communicator_interface> pimpl;
 };
-
 }
+#ifdef MULTI_GPU_SUPPORT
+    #include "ccl_gpu_modules.h"
+    #include "gpu_communicator.hpp"
+#endif

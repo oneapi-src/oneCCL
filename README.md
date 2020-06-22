@@ -6,6 +6,8 @@ oneCCL is integrated into:
 * [Horovod\*](https://github.com/horovod/horovod) (distributed training framework). Refer to [Horovod with oneCCL](https://github.com/horovod/horovod/blob/master/docs/oneccl.md) for details.
 * [PyTorch\*](https://github.com/pytorch/pytorch) (machine learning framework). Refer to [PyTorch bindings for oneCCL](https://github.com/intel/torch-ccl) for details.
 
+Release notes available by [link](https://software.intel.com/content/www/us/en/develop/articles/oneapi-collective-communication-library-ccl-release-notes.html).
+
 ## Prerequisites
 
 Ubuntu* 18
@@ -39,6 +41,21 @@ Modify `cmake` command as follow:
 
 ```
 cmake .. -DCMAKE_C_COMPILER=your_c_compiler -DCMAKE_CXX_COMPILER=your_cxx_compiler
+```
+
+### Specify `SYCL` cross-platform abstraction level
+If your CXX compiler requires SYCL, it is possible to specify it (CodePlay ComputeCpp and DPC++ are available for now).
+Modify `cmake` command as follows:
+
+```
+cmake .. -DCMAKE_C_COMPILER=your_c_compiler -DCMAKE_CXX_COMPILER=compute++ -DCOMPUTE_RUNTIME=computecpp
+cmake .. -DCMAKE_C_COMPILER=your_c_compiler -DCMAKE_CXX_COMPILER=dpcpp -DCOMPUTE_RUNTIME=dpcpp
+```
+
+OpenCL search location path hint can be specified by using standard environment ``OPENCLROOT`` additionally:
+
+```
+OPENCLROOT=your_opencl_location cmake .. -DCMAKE_C_COMPILER=your_c_compiler -DCMAKE_CXX_COMPILER=compute++ -DCOMPUTE_RUNTIME=computecpp
 ```
 
 ### Specify build type
@@ -101,15 +118,12 @@ export CCL_WORKER_AFFINITY=auto
 ```
 With variables above CCL will create 4 threads and pin them to the last 4 cores available for the launched process.
 
-The exact IDs of CPU cores depend on parameters passed to *mpirun* 
+The exact IDs of CPU cores depend on parameters passed to *mpirun*
 
 ## FAQ
 
 ### When do I need a clean build? When should I remove my favorite build directory?
 
-In the most cases there is no need in removal of the current build directory. Just run `make` to 
-compile and link changed files. Only if one sees some suspicious build errors after significant 
+In the most cases there is no need in removal of the current build directory. Just run `make` to
+compile and link changed files. Only if one sees some suspicious build errors after significant
 change in the code (e.g. after rebase or change of branch) then it is a hint to clean build directory.
-
-Release notes available by link: https://software.intel.com/en-us/articles/oneapi-collective-communication-library-ccl-release-notes
-

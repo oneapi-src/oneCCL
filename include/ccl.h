@@ -24,7 +24,9 @@ extern "C" {
 ccl_status_t CCL_API ccl_init(void);
 ccl_status_t CCL_API ccl_get_version(ccl_version_t* version);
 ccl_status_t CCL_API ccl_finalize(void);
-
+#ifdef MULTI_GPU_SUPPORT
+ccl_status_t CCL_API ccl_set_device_comm_attr(ccl_device_comm_attr_t* comm_attr, unsigned long attribute, ...);
+#endif
 ccl_status_t CCL_API ccl_set_resize_fn(ccl_resize_fn_t callback);
 
 /* Collective API */
@@ -97,11 +99,12 @@ ccl_status_t CCL_API ccl_reduce(
     ccl_stream_t stream,
     ccl_request_t* req);
 
+/* WARNING: ccl_sparse_allreduce is currently considered experimental, so the API may change! */
 ccl_status_t CCL_API ccl_sparse_allreduce(
     const void* send_ind_buf, size_t send_ind_count,
     const void* send_val_buf, size_t send_val_count,
-    void** recv_ind_buf, size_t* recv_ind_count,
-    void** recv_val_buf, size_t* recv_val_count,
+    void* recv_ind_buf, size_t recv_ind_count,
+    void* recv_val_buf, size_t recv_val_count,
     ccl_datatype_t index_dtype,
     ccl_datatype_t dtype,
     ccl_reduction_t reduction,

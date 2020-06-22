@@ -70,7 +70,7 @@ int main()
     auto stream = ccl::environment::instance().create_stream();
     ccl::coll_attr coll_attr{};
 
-    MSG_LOOP(
+    MSG_LOOP(comm,
         std::vector<float> buf(msg_count);
         coll_attr.to_cache = 0;
         run_collective("warmup_bcast", buf, comm, stream, coll_attr);

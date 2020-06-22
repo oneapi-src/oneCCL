@@ -30,7 +30,7 @@ public:
         return "SYNC";
     }
 
-    sync_entry() = default;
+    sync_entry() = delete;
     explicit sync_entry(ccl_sched* sched,
                         std::shared_ptr<sync_object> sync) :
         sched_entry(sched, true), sync(sync)

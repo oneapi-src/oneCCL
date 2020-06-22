@@ -101,7 +101,6 @@ void ccl_sched::do_progress()
 
 bool ccl_sched::is_strict_order_satisfied()
 {
-    CCL_ASSERT(strict_start_order);
     return std::all_of(entries.begin(), entries.end(), [](const sched_entry_ptr& e)
         {
             return e->is_strict_order_satisfied();
@@ -187,4 +186,9 @@ void ccl_sched::dump(std::ostream& out) const
     }
     out << msg.str();
     ccl_logger::format(out, "--------------------------------\n");
+}
+
+size_t ccl_sched::entries_count() const
+{
+    return entries.size();
 }

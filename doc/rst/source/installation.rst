@@ -5,7 +5,7 @@
 Installation
 =============
 
-This page explains how to install and configure the |product_full| (|product_short|). 
+This page explains how to install and configure the |product_full| (|product_short|).
 
 |product_short| supports different installation scenarios:
 
@@ -29,25 +29,25 @@ To install |product_short| using command line interface (CLI), follow these step
 #. Create a new folder:
 
    ::
-   
+
       mkdir build
 
 #. Go to the folder created:
-   
-   :: 
-   
+
+   ::
+
       cd build
 
 #. Launch CMake:
-   
+
    ::
-   
+
       cmake ..
 
 #. Install the product:
-   
+
    ::
-   
+
       make -j install
 
 In order to have a clear build, create a new ``build`` directory and invoke ``cmake`` within the directory.
@@ -71,6 +71,20 @@ You can customize CLI-based installation (for example, specify directory, compil
   ::
 
      cmake .. -DCMAKE_C_COMPILER=your_c_compiler -DCMAKE_CXX_COMPILER=your_cxx_compiler
+
+  If ``CMAKE_CXX_COMPILER`` requires ``SYCL`` cross-platform abstraction level it should be specified in ``-DCOMPUTE_RUNTIME`` ( ``compute++`` and ``dpcpp`` supported only):
+
+  ::
+
+     cmake .. -DCMAKE_C_COMPILER=your_c_compiler -DCMAKE_CXX_COMPILER=compute++ -DCOMPUTE_RUNTIME=computecpp
+     cmake .. -DCMAKE_C_COMPILER=your_c_compiler -DCMAKE_CXX_COMPILER=dpcpp -DCOMPUTE_RUNTIME=dpcpp
+
+  OpenCL search location path hint can be specified by using standart environment ``OPENCLROOT`` additionally:
+
+  ::
+
+     OPENCLROOT=your_opencl_location cmake .. -DCMAKE_C_COMPILER=your_c_compiler -DCMAKE_CXX_COMPILER=compute++ -DCOMPUTE_RUNTIME=computecpp
+
 
 * To specify the **build type**, modify the ``cmake`` command:
 
@@ -97,8 +111,8 @@ You can customize CLI-based installation (for example, specify directory, compil
      cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_ASAN=true
 
   Make sure that ``libasan.so`` exists.
-  
-  .. note:: 
+
+  .. note::
 
      Address sanitizer only works in the debug build.
 
@@ -129,7 +143,7 @@ You can get |product_short| through the RPM Package Manager. To install the libr
   .. prompt:: bash
 
      rpm -i intel-ccl-devel-64-<version>.<update>-<package#>.x86_64.rpm
-   
+
      where ``<version>.<update>-<package#>`` is a string. For example, ``2017.0-009``.
 
 To uninstall |product_short| using the RPM Package Manager, execute this command:

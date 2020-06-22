@@ -34,13 +34,15 @@
 #define ATL_OFI_FI_ADDR_PM_KEY      ATL_OFI_BASE_PM_KEY"-fiaddr"
 #define ATL_OFI_HOSTNAME_PM_KEY     ATL_OFI_BASE_PM_KEY"-hostname"
 #define ATL_OFI_TIMEOUT_SEC_ENV     "ATL_OFI_TIMEOUT_SEC"
+#define ATL_OFI_MAX_RETRY_COUNT_ENV "ATL_OFI_MAX_RETRY_COUNT"
 #define ATL_OFI_DEFAULT_TIMEOUT_SEC 60
 #define ATL_OFI_MAX_RETRY_COUNT     10000
 #define ATL_OFI_MAX_HOSTNAME_LEN    64
 #define ATL_OFI_WAIT_SEC            10
 #define ATL_OFI_CQ_READ_ITERS       10000
 #define ATL_OFI_CQ_BUNCH_SIZE       8
-#define ATL_OFI_PMI_PROC_MULTIPLIER 100
+#define ATL_OFI_PMI_PROV_MULTIPLIER 100
+#define ATL_OFI_PMI_PROC_MULTIPLIER (ATL_OFI_PMI_PROV_MULTIPLIER * 10)
 #define ATL_OFI_MAX_PROV_COUNT      2 /* NW and SHM providers */
 #define ATL_OFI_SHM_PROV_NAME       "shm"
 
@@ -65,7 +67,7 @@
         gethostname(hoststr, sizeof(hoststr));            \
         fprintf(stdout, "(%d): %s: @ %s:%d:%s() " s "\n", \
                 tid, hoststr,                             \
-                __FILE__, __LINE__,                       \
+                FILENAME, __LINE__,                       \
                 __func__, ##__VA_ARGS__);                 \
         fflush(stdout);                                   \
     } while (0)
@@ -111,6 +113,7 @@ static inline atl_status_t atl_ofi_ep_poll(atl_ep_t* ep);
         atl_ofi_ctx_t* ofi_ctx =                                           \
             container_of(ctx, atl_ofi_ctx_t, ctx);                         \
         size_t timeout_sec = ofi_ctx->timeout_sec;                         \
+        size_t max_retry_count = ofi_ctx->max_retry_count;                 \
         int is_resize_enabled = ctx->is_resize_enabled;                    \
         time_t start = 0, end = 0;                                         \
         do {                                                               \
@@ -132,7 +135,7 @@ static inline atl_status_t atl_ofi_ep_poll(atl_ep_t* ep);
                 (void)atl_ofi_ep_poll(ep);                                 \
                 retry_count += 1;                                          \
             } while (ret_val == -FI_EAGAIN &&                              \
-                     retry_count < ATL_OFI_MAX_RETRY_COUNT);               \
+                     retry_count < max_retry_count);                       \
             if (is_resize_enabled)                                         \
             {                                                              \
                 end = time(NULL);                                          \
@@ -221,6 +224,8 @@ typedef struct
     char* prov_env_copy;
 
     size_t timeout_sec;
+    size_t max_retry_count;
+    atl_progress_mode_t progress_mode;
 } atl_ofi_ctx_t;
 
 typedef struct
@@ -235,9 +240,9 @@ typedef struct
 static void
 atl_ofi_print_coord(atl_proc_coord_t* coord)
 {
-    ATL_OFI_PRINT("coord: global [idx %zu, cnt %zu], local [idx %zu, cnt %zu]",
-        coord->global_idx, coord->global_count,
-        coord->local_idx, coord->local_count);
+    ATL_OFI_DEBUG_PRINT("coord: global [idx %zu, cnt %zu], local [idx %zu, cnt %zu]",
+                        coord->global_idx, coord->global_count,
+                        coord->local_idx, coord->local_count);
 }
 
 static inline atl_ofi_prov_t*
@@ -266,6 +271,7 @@ atl_ofi_get_prov(atl_ep_t* ep, size_t peer_proc_idx, size_t msg_size)
             prov_idx = ofi_ctx->nw_prov_idx;
     }
 
+    /* TODO: add segmentation logic */
     ATL_OFI_ASSERT(msg_size <= ofi_ctx->provs[prov_idx].max_msg_size,
         "msg_size (%zu) is greater than max_msg_size (%zu), prov_idx %zu",
         msg_size, ofi_ctx->provs[prov_idx].max_msg_size, prov_idx);
@@ -372,11 +378,12 @@ fn_err:
 }
 
 static atl_status_t
-atl_ofi_prov_update_addr_table(atl_ofi_ctx_t* ofi_ctx, atl_ofi_prov_t* prov)
+atl_ofi_prov_update_addr_table(atl_ofi_ctx_t* ofi_ctx, size_t prov_idx)
 {
     ATL_OFI_ASSERT(ofi_ctx, "ofi_ctx is null");
 
     atl_ctx_t* ctx = &(ofi_ctx->ctx);
+    atl_ofi_prov_t* prov = &(ofi_ctx->provs[prov_idx]);
 
     int ret;
     size_t i, j;
@@ -443,7 +450,8 @@ atl_ofi_prov_update_addr_table(atl_ofi_ctx_t* ofi_ctx, atl_ofi_prov_t* prov)
         for (j = 0; j < named_ep_count; j++)
         {
             ret = pmrt_kvs_get(ofi_ctx->pm_rt, ATL_OFI_FI_ADDR_PM_KEY,
-                               i * ATL_OFI_PMI_PROC_MULTIPLIER + j,
+                               i * ATL_OFI_PMI_PROC_MULTIPLIER +
+                               prov_idx * ATL_OFI_PMI_PROV_MULTIPLIER + j,
                                epnames_table + addr_idx * prov->addr_len,
                                prov->addr_len);
 
@@ -607,7 +615,8 @@ atl_ofi_prov_eps_connect(atl_ofi_ctx_t* ofi_ctx,
     {
         atl_ofi_prov_ep_t* ep = &(prov->eps[ep_idx]);
         ret = pmrt_kvs_put(ofi_ctx->pm_rt, ATL_OFI_FI_ADDR_PM_KEY,
-                           coord->global_idx * ATL_OFI_PMI_PROC_MULTIPLIER + ep_idx,
+                           coord->global_idx * ATL_OFI_PMI_PROC_MULTIPLIER +
+                           prov_idx * ATL_OFI_PMI_PROV_MULTIPLIER + ep_idx,
                            ep->name.addr,
                            ep->name.len);
         if (ret)
@@ -617,7 +626,7 @@ atl_ofi_prov_eps_connect(atl_ofi_ctx_t* ofi_ctx,
         }
     }
 
-    ret = atl_ofi_prov_update_addr_table(ofi_ctx, prov);
+    ret = atl_ofi_prov_update_addr_table(ofi_ctx, prov_idx);
 
     return ret;
 }
@@ -969,7 +978,6 @@ atl_ofi_reset(atl_ctx_t* ctx)
 static void
 atl_ofi_adjust_env(atl_ofi_ctx_t* ofi_ctx, const atl_attr_t* attr)
 {
-    setenv("FI_PSM2_TIMEOUT", "1", 0);
     setenv("FI_PSM2_DELAY", "0", 0);
     setenv("FI_PSM2_LOCK_LEVEL", "1", 0);
     setenv("HFI_NO_CPUAFFINITY", "1", 0);
@@ -978,6 +986,9 @@ atl_ofi_adjust_env(atl_ofi_ctx_t* ofi_ctx, const atl_attr_t* attr)
     setenv("FI_OFI_RXM_TX_SIZE", "8192", 0);
     setenv("FI_OFI_RXM_MSG_RX_SIZE", "128", 0);
     setenv("FI_OFI_RXM_MSG_TX_SIZE", "128", 0);
+
+    setenv("FI_SHM_TX_SIZE", "8192", 0);
+    setenv("FI_SHM_RX_SIZE", "8192", 0);
 
     char* prov_env = getenv("FI_PROVIDER");
 
@@ -1083,6 +1094,7 @@ atl_ofi_update(atl_ctx_t* ctx)
             coord->global_count, coord->local_count);
         /* TODO: recreate providers */
     }
+    atl_ofi_print_coord(coord);
 
     for (prov_idx = 0; prov_idx < ofi_ctx->prov_count; prov_idx++)
     {
@@ -1160,6 +1172,9 @@ atl_ofi_mr_dereg(atl_ctx_t* ctx, atl_mr_t* mr)
     free(ofi_mr);
     return RET2ATL(ret);
 }
+
+static atl_status_t
+atl_ofi_ep_wait(atl_ep_t* ep, atl_req_t* req);
 
 static atl_status_t
 atl_ofi_ep_send(atl_ep_t* ep, const void* buf, size_t len,
@@ -1451,7 +1466,7 @@ atl_ofi_ep_cancel(atl_ep_t* ep, atl_req_t* req)
 }
 
 static inline atl_status_t
-atl_ofi_ep_poll(atl_ep_t* ep)
+atl_ofi_ep_progress(atl_ep_t* ep, atl_ofi_req_t* req /* unused */)
 {
     ssize_t ret;
     size_t idx;
@@ -1479,12 +1494,41 @@ atl_ofi_ep_poll(atl_ep_t* ep)
     return ATL_STATUS_SUCCESS;
 }
 
-static atl_status_t
-atl_ofi_ep_check(atl_ep_t* ep, int* status, atl_req_t* req)
+static inline atl_status_t
+atl_ofi_ep_poll(atl_ep_t* ep)
 {
-    atl_ofi_req_t* ofi_req = ((atl_ofi_req_t*)req->internal);
-    *status = (ofi_req->comp_state == ATL_OFI_COMP_COMPLETED);
+    atl_ofi_ctx_t* ofi_ctx = container_of(ep->ctx, atl_ofi_ctx_t, ctx);
+    if (ofi_ctx->progress_mode == ATL_PROGRESS_POLL)
+    {
+        atl_ofi_ep_progress(ep, NULL /* ofi_req */);
+    }
+
     return ATL_STATUS_SUCCESS;
+}
+
+static atl_status_t
+atl_ofi_ep_check(atl_ep_t* ep, int* is_completed, atl_req_t* req)
+{
+    ATL_OFI_ASSERT(is_completed);
+
+    atl_status_t status = ATL_STATUS_SUCCESS;
+
+    atl_ofi_req_t* ofi_req = ((atl_ofi_req_t*)req->internal);
+    atl_ofi_ctx_t* ofi_ctx = container_of(ep->ctx, atl_ofi_ctx_t, ctx);
+
+    *is_completed = (ofi_req->comp_state == ATL_OFI_COMP_COMPLETED);
+    if (*is_completed)
+    {
+        return ATL_STATUS_SUCCESS;
+    }
+
+    if (ofi_ctx->progress_mode == ATL_PROGRESS_CHECK)
+    {
+        status = atl_ofi_ep_progress(ep, ofi_req);
+        *is_completed = (ofi_req->comp_state == ATL_OFI_COMP_COMPLETED);
+    }
+
+    return status;
 }
 
 static atl_ops_t atl_ofi_ops =
@@ -1599,8 +1643,9 @@ atl_ofi_init(int* argc, char*** argv,
     base_hints->domain_attr->control_progress = FI_PROGRESS_MANUAL;
     base_hints->domain_attr->data_progress = FI_PROGRESS_MANUAL;
     base_hints->caps = FI_TAGGED;
+    base_hints->caps |= FI_DIRECTED_RECV;
 
-    fi_version = FI_VERSION(1, 0);
+    fi_version = FI_VERSION(FI_MAJOR_VERSION, FI_MINOR_VERSION);
 
     ATL_OFI_DEBUG_PRINT_ROOT("libfabric version: %s", fi_tostr("1" /* ignored */, FI_TYPE_VERSION));
 
@@ -1614,6 +1659,7 @@ atl_ofi_init(int* argc, char*** argv,
         ATL_OFI_ASSERT(attr->enable_shm,
             "shm provider is requested through FI_PROVIDER but not requested from CCL level");
     }
+    atl_ofi_print_coord(coord);
 
     if (attr->enable_shm)
     {
@@ -1894,16 +1940,31 @@ atl_ofi_init(int* argc, char*** argv,
 
     if (ctx->is_resize_enabled)
     {
+        ofi_ctx->timeout_sec = ATL_OFI_DEFAULT_TIMEOUT_SEC;
         char* timeout_sec_env = getenv(ATL_OFI_TIMEOUT_SEC_ENV);
         if (timeout_sec_env)
         {
             ofi_ctx->timeout_sec = strtol(timeout_sec_env, NULL, 10);
         }
-        else
-        {
-            ofi_ctx->timeout_sec = ATL_OFI_DEFAULT_TIMEOUT_SEC;
-        }
     }
+
+    ofi_ctx->max_retry_count = ATL_OFI_MAX_RETRY_COUNT;
+    char* max_retry_count_env = getenv(ATL_OFI_MAX_RETRY_COUNT_ENV);
+    if (max_retry_count_env)
+    {
+        ofi_ctx->max_retry_count = strtol(max_retry_count_env, NULL, 10);
+    }
+
+    ofi_ctx->progress_mode = ATL_PROGRESS_CHECK;
+    char* progress_mode_env = getenv(ATL_PROGRESS_MODE_ENV);
+    if (progress_mode_env)
+    {
+        ofi_ctx->progress_mode = atoi(progress_mode_env);
+    }
+
+    ATL_OFI_DEBUG_PRINT_ROOT("timeout_sec %zu", ofi_ctx->timeout_sec);
+    ATL_OFI_DEBUG_PRINT_ROOT("max_retry_count %zu", ofi_ctx->max_retry_count);
+    ATL_OFI_DEBUG_PRINT_ROOT("progress_mode %d", ofi_ctx->progress_mode);
 
     *out_ctx = ctx;
 

@@ -32,9 +32,7 @@
 #include <CL/sycl.hpp>
 using namespace cl::sycl;
 using namespace cl::sycl::access;
-#endif
-
-#define DEFAULT_BACKEND "cpu"
+#endif /* CCL_ENABLE_SYCL */
 
 #define ITERS                (16)
 #define COLL_ROOT            (0)
@@ -44,8 +42,8 @@ using namespace cl::sycl::access;
 #define PRINT(fmt, ...)             \
     printf(fmt"\n", ##__VA_ARGS__); \
 
-#define PRINT_BY_ROOT(fmt, ...)         \
-    if (comm->rank() == 0)               \
+#define PRINT_BY_ROOT(comm, fmt, ...)   \
+    if (comm->rank() == 0)              \
     {                                   \
         printf(fmt"\n", ##__VA_ARGS__); \
     }
@@ -62,10 +60,10 @@ using namespace cl::sycl::access;
       }                                                   \
   } while (0)
 
-#define MSG_LOOP(per_msg_code)                                  \
+#define MSG_LOOP(comm, per_msg_code)                            \
   do                                                            \
   {                                                             \
-      PRINT_BY_ROOT("iters=%d, msg_size_count=%d, "             \
+      PRINT_BY_ROOT(comm, "iters=%d, msg_size_count=%d, "       \
                     "start_msg_size_power=%d, coll_root=%d",    \
                     ITERS, MSG_SIZE_COUNT,                      \
                     START_MSG_SIZE_POWER, COLL_ROOT);           \
@@ -82,7 +80,7 @@ using namespace cl::sycl::access;
           {                                                     \
               size_t msg_count = msg_counts[idx];               \
               coll_attr.match_id = msg_match_ids[idx].c_str();  \
-              PRINT_BY_ROOT("msg_count=%zu, match_id=%s",       \
+              PRINT_BY_ROOT(comm, "msg_count=%zu, match_id=%s", \
                             msg_count, coll_attr.match_id);     \
               per_msg_code;                                     \
           }                                                     \
@@ -97,76 +95,7 @@ using namespace cl::sycl::access;
           printf("FAILED\n");                                   \
           fprintf(stderr, "other exception\n");                 \
       }                                                         \
-      PRINT_BY_ROOT("PASSED");                                  \
+      PRINT_BY_ROOT(comm, "PASSED");                            \
   } while (0)
-
-double when(void)
-{
-    struct timeval tv;
-    static struct timeval tv_base;
-    static int is_first = 1;
-
-    if (gettimeofday(&tv, NULL)) {
-        perror("gettimeofday");
-        return 0;
-    }
-
-    if (is_first) {
-        tv_base = tv;
-        is_first = 0;
-    }
-    return (double)(tv.tv_sec - tv_base.tv_sec) * 1.0e6 +
-           (double)(tv.tv_usec - tv_base.tv_usec);
-}
-
-void print_timings(ccl::communicator& comm,
-                  double* timer, size_t elem_count,
-                  size_t elem_size, size_t buf_count,
-                  size_t rank, size_t size)
-{
-    double* timers = (double*)malloc(size * sizeof(double));
-    size_t* recv_counts = (size_t*)malloc(size * sizeof(size_t));
-
-    size_t idx;
-    for (idx = 0; idx < size; idx++)
-        recv_counts[idx] = 1;
-
-    ccl::coll_attr attr;
-    memset(&attr, 0, sizeof(ccl_coll_attr_t));
-
-    comm.allgatherv(timer,
-                    1,
-                    timers,
-                    recv_counts,
-                    &attr,
-                    nullptr)->wait();
-
-    if (rank == 0)
-    {
-        double avg_timer = 0;
-        double avg_timer_per_buf = 0;
-        for (idx = 0; idx < size; idx++)
-        {
-            avg_timer += timers[idx];
-        }
-        avg_timer /= (ITERS * size);
-        avg_timer_per_buf = avg_timer / buf_count;
-
-        double stddev_timer = 0;
-        double sum = 0;
-        for (idx = 0; idx < size; idx++)
-        {
-            double val = timers[idx] / ITERS;
-            sum += (val - avg_timer) * (val - avg_timer);
-        }
-        stddev_timer = sqrt(sum / size) / avg_timer * 100;
-        printf("size %10zu x %5zu bytes, avg %10.2lf us, avg_per_buf %10.2f, stddev %5.1lf %%\n",
-                elem_count * elem_size, buf_count, avg_timer, avg_timer_per_buf, stddev_timer);
-    }
-    comm.barrier();
-
-    free(timers);
-    free(recv_counts);
-}
 
 #endif /* BASE_HPP */

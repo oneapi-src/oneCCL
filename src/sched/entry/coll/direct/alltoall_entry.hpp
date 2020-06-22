@@ -36,6 +36,8 @@ public:
         recv_buf(recv_buf), cnt(cnt), dtype(dtype),
         comm(comm)
     {
+        //TODO: Add way to using MPI communicator
+        CCL_UNUSED(this->comm);
     }
 
     void start() override

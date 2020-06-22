@@ -50,7 +50,10 @@ public:
     {
         int found = 0;
         size_t len = 0;
-        atl_status_t atl_status = atl_ep_probe(sched->bin->get_atl_ep(), src, atl_tag, &found, &len);
+
+        size_t global_src = comm->get_global_rank(src);
+
+        atl_status_t atl_status = atl_ep_probe(sched->bin->get_atl_ep(), global_src, atl_tag, &found, &len);
 
         update_status(atl_status);
 

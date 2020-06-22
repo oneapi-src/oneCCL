@@ -13,6 +13,8 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#include "common/env/env.hpp"
+#include "common/utils/yield.hpp"
 #include "exec/thread/base_thread.hpp"
 
 ccl_status_t ccl_base_thread::start()
@@ -24,6 +26,11 @@ ccl_status_t ccl_base_thread::start()
         LOG_ERROR("error while creating ", name(), " thread #", idx, " pthread_create returns ", err);
         return ccl_status_runtime_error;
     }
+
+    while (!started.load(std::memory_order_relaxed))
+    {
+        ccl_yield(env_data.yield_type);
+    }
     return ccl_status_success;
 }
 
@@ -32,9 +39,14 @@ ccl_status_t ccl_base_thread::stop()
     LOG_DEBUG(name(), " # ", idx);
 
     void* exit_code;
-    int err = pthread_cancel(thread);
-    if (err)
-        LOG_INFO("error while canceling progress thread # ", idx, ", pthread_cancel returns ", err);
+    int err;
+
+    should_stop = true;
+    while (started.load(std::memory_order_relaxed))
+    {
+        ccl_yield(env_data.yield_type);
+    }
+
 
     err = pthread_join(thread, &exit_code);
     if (err)

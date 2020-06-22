@@ -34,7 +34,11 @@ enum ccl_sched_entry_field_id
     ccl_sched_entry_field_dst_mr,
     ccl_sched_entry_field_in_buf,
     ccl_sched_entry_field_in_cnt,
-    ccl_sched_entry_field_in_dtype
+    ccl_sched_entry_field_in_dtype,
+    ccl_sched_entry_field_idx_buf,
+    ccl_sched_entry_field_idx_cnt,
+    ccl_sched_entry_field_val_buf,
+    ccl_sched_entry_field_val_cnt
 };
 
 typedef ccl_status_t(*ccl_sched_entry_field_function_t) (const void*, void*);
@@ -80,7 +84,7 @@ struct postponed_fields
     {
         field_functor(Arg arg, bool& updated) : arg(arg), updated(updated) {}
         template<typename T>
-        void operator()(T& t)
+        void operator () (T& t) const
         {
             if (!t.empty())
             {

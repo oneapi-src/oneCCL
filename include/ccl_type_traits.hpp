@@ -85,7 +85,6 @@ CCL_TYPE_TRAITS(ccl_dtype_double, double,    sizeof(double))
 CCL_TYPE_TRAITS(ccl_dtype_int64,  int64_t,   sizeof(int64_t))
 CCL_TYPE_TRAITS(ccl_dtype_uint64, uint64_t,  sizeof(uint64_t))
 
-
 #ifdef CCL_ENABLE_SYCL
     CCL_CLASS_TYPE_TRAITS(ccl_dtype_char,    cl::sycl::buffer<char COMMA 1>,     sizeof(char))
     CCL_CLASS_TYPE_TRAITS(ccl_dtype_int,     cl::sycl::buffer<int COMMA 1>,      sizeof(int))
@@ -95,6 +94,18 @@ CCL_TYPE_TRAITS(ccl_dtype_uint64, uint64_t,  sizeof(uint64_t))
     CCL_CLASS_TYPE_TRAITS(ccl_dtype_float,   cl::sycl::buffer<float COMMA 1>,    sizeof(float))
     CCL_CLASS_TYPE_TRAITS(ccl_dtype_char,    cl::sycl::buffer<double COMMA 1>,   sizeof(double))
 #endif //CCL_ENABLE_SYCL
+
+template<>
+struct ccl_host_attributes_traits<ccl_host_color>
+{
+    using type = int;
+};
+
+template<>
+struct ccl_host_attributes_traits<ccl_host_version>
+{
+    using type = ccl_version_t;
+};
 
 /**
  * Checks for supporting @c type in ccl API
@@ -134,5 +145,14 @@ constexpr bool is_class_supported()
 {
     return (is_class<type>() and is_supported<type>());
 }
+
+template<ccl_host_attributes attr_id, class value>
+constexpr bool is_attribute_value_supported()
+{
+    return std::is_same<typename ccl_host_attributes_traits<attr_id>::type, 
+                        typename std::remove_cv<typename std::remove_reference<value>::type
+                        >::type>::value;
 }
+}
+#include "ccl_device_type_traits.hpp"
 #endif //TRAITS_H_

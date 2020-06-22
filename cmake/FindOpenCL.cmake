@@ -35,8 +35,13 @@
 list(APPEND opencl_root_hints
             ${OPENCLROOT}
             $ENV{OPENCLROOT})
+
 set(original_cmake_prefix_path ${CMAKE_PREFIX_PATH})
 if(opencl_root_hints)
+    list(INSERT CMAKE_PREFIX_PATH 0 ${opencl_root_hints})
+else()
+    set(opencl_root_hints "/usr")
+    message("OPENCLROOT prefix path hint is not defined, use default: ${opencl_root_hints}")
     list(INSERT CMAKE_PREFIX_PATH 0 ${opencl_root_hints})
 endif()
 
@@ -130,7 +135,7 @@ if(WIN32)
 else()
   if(CMAKE_SIZEOF_VOID_P EQUAL 4)
     find_library(OpenCL_LIBRARY
-      NAMES OpenCL
+      NAMES OpenCL opencl-clang
       PATHS
         ENV AMDAPPSDKROOT
         ENV CUDA_PATH
@@ -139,7 +144,7 @@ else()
         lib)
   elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
     find_library(OpenCL_LIBRARY
-      NAMES OpenCL
+      NAMES OpenCL opencl-clang
       PATHS
         ENV AMDAPPSDKROOT
         ENV CUDA_PATH
@@ -181,4 +186,3 @@ endif()
 
 # Reverting the CMAKE_PREFIX_PATH to its original state
 set(CMAKE_PREFIX_PATH ${original_cmake_prefix_path})
-

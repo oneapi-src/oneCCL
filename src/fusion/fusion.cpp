@@ -218,7 +218,6 @@ ccl_master_sched* ccl_fusion_manager::build_sched()
               ", sched_count ", exec_queue.size());
 
     ccl_master_sched* sched = nullptr;
-    std::pair<ccl_master_sched*, bool> result;
     auto create_fn = [this, ctype, &fusion_buf, sum_count, dtype, reduction, comm] () {
         ccl_master_sched* sched = nullptr;
         switch (ctype)
@@ -333,7 +332,7 @@ ccl_master_sched* ccl_fusion_manager::build_sched()
             size_t global_copy_idx = idx * copies_per_part + copy_idx;
 
 #ifdef CCL_ENABLE_SYCL
-            if (stream && stream->get_type() == ccl_stream_sycl)
+            if (stream && stream->is_sycl_device_stream())
                 entry_factory::make_entry<sycl_copy_device_to_host_entry>(
                                                       part_scheds[idx].get(),
                                                       ccl_buffer(&(exec_queue[global_copy_idx]->coll_param.sycl_send_buf),
@@ -373,7 +372,7 @@ ccl_master_sched* ccl_fusion_manager::build_sched()
             size_t global_copy_idx = idx * copies_per_part + copy_idx;
 
 #ifdef CCL_ENABLE_SYCL
-            if (stream && stream->get_type() == ccl_stream_sycl)
+            if (stream && stream->is_sycl_device_stream())
                 entry_factory::make_entry<sycl_copy_host_to_device_entry>(
                                                   part_scheds[idx].get(),
                                                   ccl_buffer(fusion_buf, buf_cache.get_buf_size(), offset),
