@@ -13,8 +13,13 @@ Files
 
 - :ref:`file_include_ccl.h`
 - :ref:`file_include_ccl.hpp`
+- :ref:`file_include_ccl_device_type_traits.hpp`
+- :ref:`file_include_ccl_device_types.h`
+- :ref:`file_include_ccl_device_types.hpp`
+- :ref:`file_include_ccl_gpu_modules.h`
 - :ref:`file_include_ccl_type_traits.hpp`
 - :ref:`file_include_ccl_types.h`
 - :ref:`file_include_ccl_types.hpp`
+- :ref:`file_include_gpu_communicator.hpp`
 
 

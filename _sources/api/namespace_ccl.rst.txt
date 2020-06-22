@@ -17,7 +17,17 @@ Classes
 -------
 
 
+- :ref:`exhale_struct_structccl_1_1api__type__info`
+
+- :ref:`exhale_struct_structccl_1_1ccl__host__attributes__traits`
+
+- :ref:`exhale_struct_structccl_1_1ccl__host__attributes__traits_3_01ccl__host__color_01_4`
+
+- :ref:`exhale_struct_structccl_1_1ccl__host__attributes__traits_3_01ccl__host__version_01_4`
+
 - :ref:`exhale_class_classccl_1_1ccl__error`
+
+- :ref:`exhale_class_classccl_1_1ccl__host__attr`
 
 - :ref:`exhale_class_classccl_1_1communicator`
 
@@ -49,11 +59,15 @@ Functions
 
 - :ref:`exhale_function_ccl_8hpp_1af0922c19883ced496b272c24f18acdfd`
 
+- :ref:`exhale_function_ccl__type__traits_8hpp_1ad129bc80e4ad44309546dfafa0bcdc45`
+
 - :ref:`exhale_function_ccl__type__traits_8hpp_1a433b9255dcb5482e42bbb60e9064a397`
 
 - :ref:`exhale_function_ccl__type__traits_8hpp_1a00146b9b475d5c7c61eacca34f0edb6c`
 
 - :ref:`exhale_function_ccl__type__traits_8hpp_1a150aaf3343efbab089e5dea87737f60d`
+
+- :ref:`exhale_function_ccl__device__type__traits_8hpp_1ac11f9230f472cf1d14193f19109e130d`
 
 - :ref:`exhale_function_ccl__type__traits_8hpp_1a9d8bc3d839013305bbcb51a78d95c049`
 
@@ -68,8 +82,12 @@ Typedefs
 
 - :ref:`exhale_typedef_ccl__types_8hpp_1a692462538360ba9d937a661ac98329c3`
 
+- :ref:`exhale_typedef_ccl_8hpp_1a92948b610e91f22a828e1f11379ca14b`
+
 - :ref:`exhale_typedef_ccl_8hpp_1afb67f3fd79049729ef6509f6e8e44efa`
 
 - :ref:`exhale_typedef_ccl__types_8hpp_1a24bd8d0a9073420f66bc36c97c48c635`
+
+- :ref:`exhale_typedef_ccl_8hpp_1a50f33e112e768736bb0e63896f9fddb0`
 
 - :ref:`exhale_typedef_ccl_8hpp_1afa826e3536369b356fcb6a1a4f737e45`

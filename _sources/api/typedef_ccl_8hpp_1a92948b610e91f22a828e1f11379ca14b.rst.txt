@@ -1,0 +1,13 @@
+.. _exhale_typedef_ccl_8hpp_1a92948b610e91f22a828e1f11379ca14b:
+
+Typedef ccl::comm_attr_t
+========================
+
+- Defined in :ref:`file_include_ccl.hpp`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: ccl::comm_attr_t

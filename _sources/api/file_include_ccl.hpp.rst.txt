@@ -53,6 +53,8 @@ Classes
 -------
 
 
+- :ref:`exhale_class_classccl_1_1ccl__host__attr`
+
 - :ref:`exhale_class_classccl_1_1communicator`
 
 - :ref:`exhale_class_classccl_1_1environment`
@@ -77,7 +79,11 @@ Typedefs
 --------
 
 
+- :ref:`exhale_typedef_ccl_8hpp_1a92948b610e91f22a828e1f11379ca14b`
+
 - :ref:`exhale_typedef_ccl_8hpp_1afb67f3fd79049729ef6509f6e8e44efa`
+
+- :ref:`exhale_typedef_ccl_8hpp_1a50f33e112e768736bb0e63896f9fddb0`
 
 - :ref:`exhale_typedef_ccl_8hpp_1afa826e3536369b356fcb6a1a4f737e45`
 
