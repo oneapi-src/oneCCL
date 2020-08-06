@@ -162,10 +162,10 @@ set(ICC_BFP16_AVX512BF_MIN_SUPPORTED "19.1.0")
 set(CLANG_BFP16_MIN_SUPPORTED "9.0.0")
 set(CLANG_BFP16_AVX512BF_MIN_SUPPORTED "10.0.0")
 
-if (${CMAKE_C_COMPILER_ID} STREQUAL "Intel" 
-    OR (${CMAKE_C_COMPILER_ID} STREQUAL "Clang" 
+if (${CMAKE_C_COMPILER_ID} STREQUAL "Intel"
+    OR (${CMAKE_C_COMPILER_ID} STREQUAL "Clang"
         AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${CLANG_BFP16_MIN_SUPPORTED})
-    OR (${CMAKE_C_COMPILER_ID} STREQUAL "GNU" 
+    OR (${CMAKE_C_COMPILER_ID} STREQUAL "GNU"
         AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${GCC_BFP16_MIN_SUPPORTED})
     )
     add_definitions(-DCCL_BFP16_COMPILER)
@@ -176,11 +176,11 @@ else()
     message(STATUS "BFP16 compiler: no")
 endif()
 
-if ((${CMAKE_C_COMPILER_ID} STREQUAL "Intel" 
+if ((${CMAKE_C_COMPILER_ID} STREQUAL "Intel"
         AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${ICC_BFP16_AVX512BF_MIN_SUPPORTED})
-    OR (${CMAKE_C_COMPILER_ID} STREQUAL "Clang" 
+    OR (${CMAKE_C_COMPILER_ID} STREQUAL "Clang"
         AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${CLANG_BFP16_AVX512BF_MIN_SUPPORTED})
-    OR (${CMAKE_C_COMPILER_ID} STREQUAL "GNU" 
+    OR (${CMAKE_C_COMPILER_ID} STREQUAL "GNU"
         AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${GCC_BFP16_AVX512BF_MIN_SUPPORTED})
     )
     add_definitions(-DCCL_BFP16_AVX512BF_COMPILER)
@@ -211,7 +211,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 if (MULTI_GPU_SUPPORT)
-   message(FATAL_ERROR "MULTI GPU IS NOT SUPPORTED YET")
+    message(FATAL_ERROR "MULTI GPU IS NOT SUPPORTED YET")
 endif(MULTI_GPU_SUPPORT)
 
 #include other CMakeLists
@@ -220,9 +220,9 @@ add_subdirectory(examples/cpu)
 
 if (CCL_ENABLE_SYCL)
     if (${COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "Intel::SYCL")
-        set (CCL_ENABLCE_SYCL_CHECK_CONTRACT "#if defined(__cplusplus)\n#if !defined(__clang__) || __clang_major__ < 9 || !defined(CL_SYCL_LANGUAGE_VERSION)\n#error This version of CCL configured only for DPC++ compiler\n#endif\n#endif")
+        set (CCL_ENABLCE_SYCL_CHECK_CONTRACT "#if defined(__cplusplus)\n#if !defined(__clang__) || __clang_major__ < 9 || !defined(CL_SYCL_LANGUAGE_VERSION)\n#error This version of CCL configured only for oneAPI DPC++ Compiler\n#endif\n#endif")
     else(${COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "Codeplay::ComputeCpp")
-        set (CCL_ENABLCE_SYCL_CHECK_CONTRACT "#if defined(__cplusplus)\n#if !defined(__clang__) || __clang_major__ < 6\n#error This version of CCL configured only for DPC++ compiler\n#endif\n#endif")
+        set (CCL_ENABLCE_SYCL_CHECK_CONTRACT "#if defined(__cplusplus)\n#if !defined(__clang__) || __clang_major__ < 6\n#error This version of CCL configured only for oneAPI DPC++ Compiler\n#endif\n#endif")
     endif()
     add_subdirectory(examples/sycl)
 endif()
@@ -230,6 +230,10 @@ endif()
 add_subdirectory(examples/benchmark)
 add_subdirectory(examples/common)
 add_subdirectory(tests/functional)
+if(MULTI_GPU_SUPPORT)
+    add_subdirectory(examples/level_zero)
+    add_subdirectory(tests/unit)
+endif()
 
 #generate & install vars.sh
 configure_file(cmake/vars.sh.in ${CMAKE_CURRENT_BINARY_DIR}/vars.sh @ONLY)
@@ -243,7 +247,7 @@ install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/third-party-programs.txt DESTINATIO
 install(PROGRAMS ${PROJECT_SOURCE_DIR}/LICENSE DESTINATION ${CCL_INSTALL_LICENSE})
 
 set(CCL_MAJOR_VERSION     "0")
-set(CCL_MINOR_VERSION     "7")
+set(CCL_MINOR_VERSION     "8")
 set(CCL_UPDATE_VERSION    "0")
 set(CCL_PRODUCT_STATUS    "beta")
 string(TIMESTAMP CCL_PRODUCT_BUILD_DATE "%Y-%m-%dT %H:%M:%SZ")

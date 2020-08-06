@@ -2,24 +2,23 @@
 
 /* All symbols shall be internal unless marked as CCL_API */
 #ifdef __linux__
-#   if __GNUC__ >= 4
-#       define CCL_HELPER_DLL_EXPORT __attribute__ ((visibility ("default")))
-#   else
-#       define CCL_HELPER_DLL_EXPORT
-#   endif
+#if __GNUC__ >= 4
+#define CCL_HELPER_DLL_EXPORT __attribute__((visibility("default")))
+#else
+#define CCL_HELPER_DLL_EXPORT
+#endif
 #else
 #error "unexpected OS"
 #endif
 
 #define CCL_API CCL_HELPER_DLL_EXPORT
 
-#define CCL_MAJOR_VERSION                   @CCL_MAJOR_VERSION@
-#define CCL_MINOR_VERSION                   @CCL_MINOR_VERSION@
-#define CCL_UPDATE_VERSION                  @CCL_UPDATE_VERSION@
-#cmakedefine CCL_PRODUCT_STATUS             "@CCL_PRODUCT_STATUS@"
-#cmakedefine CCL_PRODUCT_BUILD_DATE         "@CCL_PRODUCT_BUILD_DATE@"
-#cmakedefine CCL_PRODUCT_FULL               "@CCL_PRODUCT_FULL@"
-
+#define CCL_MAJOR_VERSION  @CCL_MAJOR_VERSION@
+#define CCL_MINOR_VERSION  @CCL_MINOR_VERSION@
+#define CCL_UPDATE_VERSION @CCL_UPDATE_VERSION@
+#cmakedefine CCL_PRODUCT_STATUS "@CCL_PRODUCT_STATUS@"
+#cmakedefine CCL_PRODUCT_BUILD_DATE "@CCL_PRODUCT_BUILD_DATE@"
+#cmakedefine CCL_PRODUCT_FULL "@CCL_PRODUCT_FULL@"
 
 /* Configuration settings for multi GPU extension support*/
 #cmakedefine MULTI_GPU_SUPPORT
@@ -31,8 +30,8 @@
 @CCL_ENABLCE_SYCL_CHECK_CONTRACT@
 #endif
 
-#define CCL_ENABLE_SYCL_V              @CCL_ENABLE_SYCL_V@
-#define CCL_ENABLE_SYCL_TRUE                1
-#define CCL_ENABLE_SYCL_FALSE               0
+#define CCL_ENABLE_SYCL_V     @CCL_ENABLE_SYCL_V@
+#define CCL_ENABLE_SYCL_TRUE  1
+#define CCL_ENABLE_SYCL_FALSE 0
 #cmakedefine CCL_GPU_DEVICES_AFFINITY_ENABLE
 #cmakedefine CCL_GPU_DEVICES_AFFINITY_MASK_SIZE @CCL_GPU_DEVICES_AFFINITY_MASK_SIZE@

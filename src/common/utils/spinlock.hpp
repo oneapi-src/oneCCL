@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,8 +18,7 @@
 #include <atomic>
 #include <immintrin.h>
 
-class ccl_spinlock
-{
+class ccl_spinlock {
 public:
     ccl_spinlock();
     ccl_spinlock(const ccl_spinlock&) = delete;

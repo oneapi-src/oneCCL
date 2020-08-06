@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,27 +19,22 @@
 
 #include <atomic>
 
-class sync_object
-{
+class sync_object {
 public:
-    explicit sync_object(size_t count) : initial_cnt(count), sync(count)
-    {
+    explicit sync_object(size_t count) : initial_cnt(count), sync(count) {
         CCL_ASSERT(initial_cnt > 0, "count must be greater than 0");
     }
 
-    void visit()
-    {
+    void visit() {
         auto cnt = sync.fetch_sub(1, std::memory_order_release);
         CCL_ASSERT(cnt >= 0 && cnt <= initial_cnt, "invalid count ", cnt);
     }
 
-    void reset()
-    {
+    void reset() {
         sync.store(initial_cnt, std::memory_order_release);
     }
 
-    size_t value() const
-    {
+    size_t value() const {
         return sync.load(std::memory_order_acquire);
     }
 

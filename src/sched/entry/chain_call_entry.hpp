@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,22 +20,19 @@
 #include "sched/extra_sched.hpp"
 #include <memory>
 
-class chain_call_entry : public sched_entry
-{
+class chain_call_entry : public sched_entry {
 public:
-    static constexpr const char* class_name() noexcept
-    {
+    static constexpr const char* class_name() noexcept {
         return "CHAIN";
     }
 
     chain_call_entry() = delete;
     chain_call_entry(ccl_sched* sched,
                      std::function<void(ccl_sched*)> sched_fill_function,
-                     const char* name = nullptr) :
-        sched_entry(sched), entry_special_name(name)
-    {
-        if (name)
-        {
+                     const char* name = nullptr)
+            : sched_entry(sched),
+              entry_special_name(name) {
+        if (name) {
             LOG_DEBUG("entry object name: ", name);
         }
         work_sched.reset(new ccl_extra_sched(sched->coll_param, sched->sched_id));
@@ -43,8 +40,7 @@ public:
         sched_fill_function(work_sched.get());
     }
 
-    void start() override
-    {
+    void start() override {
         work_sched->renew();
         work_sched->bin = sched->bin;
         work_sched->queue = sched->queue;
@@ -52,27 +48,22 @@ public:
         status = ccl_sched_entry_status_started;
     }
 
-    void update() override
-    {
+    void update() override {
         work_sched->do_progress();
-        if (work_sched->start_idx == work_sched->entries.size())
-        {
+        if (work_sched->start_idx == work_sched->entries.size()) {
             status = ccl_sched_entry_status_complete;
         }
     }
 
-    const char* name() const override
-    {
+    const char* name() const override {
         return !entry_special_name.empty() ? entry_special_name.c_str() : class_name();
     }
 
 protected:
-    void dump_detail(std::stringstream& str) const override
-    {
+    void dump_detail(std::stringstream& str) const override {
         ccl_logger::format(str, "content:\n");
 
-        for (size_t idx = 0; idx < work_sched->entries.size(); ++idx)
-        {
+        for (size_t idx = 0; idx < work_sched->entries.size(); ++idx) {
             ccl_logger::format(str, "\t");
             work_sched->entries[idx]->dump(str, idx);
         }

@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,4 +20,6 @@
 #include "common/comm/l0/devices/ccl_virtual_gpu_comm.hpp"
 #include "common/comm/l0/devices/ccl_concurrent_gpu_comm.hpp"
 #include "common/comm/l0/devices/ccl_ipc_source_gpu_comm.hpp"
+#include "common/comm/l0/devices/ccl_numa_proxy.hpp"
 #include "common/comm/l0/devices/ccl_gpu_scaleup_proxy.hpp"
+#include "common/comm/l0/devices/ccl_scaleout_proxy.hpp"

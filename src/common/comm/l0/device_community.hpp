@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,97 +19,114 @@
 #include "common/comm/l0/devices/devices_declaration.hpp"
 #include "common/comm/l0/gpu_device_types.hpp"
 #include "common/comm/l0/gpu_comm_attr.hpp"
+#include "common/comm/l0/device_community_utils.hpp"
 
-namespace native
-{
-using device_indexed_group_ptr = std::unique_ptr<specific_indexed_device_storage>;
+namespace native {
 
-template<ccl::device_topology_type schema_id>
-struct device_community
-{
-    device_community(const ccl::context_comm_addr& comm_addr) :
-        topology_addr(comm_addr)
-    {
-    }
+template <ccl::device_topology_type schema_id>
+struct device_community {
+    device_community(const ccl::context_comm_addr& comm_addr)
+            : community_addr(comm_addr),
+              devices(new specific_indexed_device_storage()) {}
 
     std::multiset<ccl::device_index_type> registered_device_id;
-    ccl::context_comm_addr topology_addr;
 
-    device_indexed_group_ptr& get_device_storage_ptr()
-    {
-        return devices;
-    }
-
-    specific_indexed_device_storage& get_device_storage()
-    {
-        auto &ptr = get_device_storage_ptr();
-        if(!ptr)
-        {
+    specific_indexed_device_storage& get_device_storage() {
+        auto& ptr = get_impl();
+        if (!ptr) {
             abort();
         }
         return *ptr;
     }
 
-    template<class device_t>
-    indexed_device_container<device_t>& get_devices()
-    {
+    template <class device_t>
+    indexed_device_container<device_t>& get_devices() {
         static native::indexed_device_container<device_t> empty;
 
-        return devices ?
-                    std::get<device_t::type_idx()>(*devices) :
-                    empty;
+        return devices ? std::get<device_t::type_idx()>(*devices) : empty;
     }
 
-    template<class device_t>
-    size_t get_device_count() const
-    {
-        return devices ?
-                    std::get<device_t::type_idx()>(*devices).size():
-                    0;
+    template <class device_t>
+    size_t get_device_count() const {
+        return devices ? std::get<device_t::type_idx()>(*devices).size() : 0;
     }
 
-    std::string to_string() const
-    {
+    template <ccl::device_group_split_type group_id>
+    void register_device_by_id(const ccl::device_index_type& device_id,
+                               ccl::context_comm_addr& registered_addr) {
+        if (!get_impl()) {
+            std::string err_str;
+            {
+                std::stringstream str;
+                ccl_logger::format(str,
+                                   "Cannot initialize comm_addr for device id: ",
+                                   device_id,
+                                   " on topology: ",
+                                   ::to_string(group_id),
+                                   ", class: ",
+                                   ::to_string(schema_id),
+                                   ", empty device storage has got from context");
+                err_str = str.str();
+            }
+            LOG_ERROR(err_str);
+            throw std::runtime_error(err_str);
+        }
+
+        if (registered_addr.comm_rank != 0 or registered_addr.comm_size != 0) {
+            std::string err_str;
+            {
+                std::stringstream str;
+                ccl_logger::format(str,
+                                   "Cannot register_device_by_id in topology for device id: ",
+                                   device_id,
+                                   " on topology: ",
+                                   ::to_string(group_id),
+                                   ", class: ",
+                                   ::to_string(schema_id),
+                                   ", because topology registered already, comm addr:",
+                                   registered_addr.to_string());
+                err_str = str.str();
+            }
+            LOG_ERROR(err_str);
+            throw std::runtime_error(err_str);
+        }
+
+        // find device in topology and obtain its rank/sie
+        details::rank_getter<group_id, schema_id> initializer(device_id, registered_device_id);
+        ccl_tuple_for_each(get_device_storage(), initializer);
+
+        // copy shared data from community addr
+        registered_addr = community_addr;
+
+        // get individual rank from initializer
+        registered_addr.comm_rank = initializer.get_assigned_rank();
+    }
+
+    const ccl::context_comm_addr& get_comm_addr() const noexcept {
+        return community_addr;
+    }
+
+    template <ccl::device_group_split_type group_id>
+    std::string to_string() const {
         std::stringstream result;
         result << "Topology: " << ::to_string(schema_id) << "\n";
-        native::details::printer<schema_id> p;
-        if(devices)
-        {
+        native::details::printer<group_id, schema_id> p;
+        if (devices) {
             ccl_tuple_for_each(*devices, p);
             result << p.to_string();
         }
-        else
-        {
+        else {
             result << "EMPTY";
         }
         return result.str();
     }
+
 private:
-    device_indexed_group_ptr devices;
+    ccl::context_comm_addr community_addr;
+    std::unique_ptr<specific_indexed_device_storage>& get_impl() {
+        return devices;
+    }
+
+    std::unique_ptr<specific_indexed_device_storage> devices;
 };
-
-namespace details
-{
-struct device_community_printer
-{
-    device_community_printer(std::ostream& out = std::cout) :
-        output(out)
-    {
-    }
-
-    template<ccl::device_topology_type top>
-    void operator() (const device_community<top>& community)
-    {
-        output << "Community topology: " << community.to_string() << std::endl;
-    }
-    template<ccl::device_topology_type top>
-    void operator() (const std::shared_ptr<device_community<top>>& community_ptr)
-    {
-        output << "Community topology: " << community_ptr->to_string() << std::endl;
-    }
-private:
-    std::ostream& output;
-
-};
-}
-}
+} // namespace native

@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,11 +17,9 @@
 
 #include "sched/entry/entry.hpp"
 
-class prologue_entry : public sched_entry
-{
+class prologue_entry : public sched_entry {
 public:
-    static constexpr const char* class_name() noexcept
-    {
+    static constexpr const char* class_name() noexcept {
         return "PROLOGUE";
     }
 
@@ -33,40 +31,53 @@ public:
                    const ccl_datatype& in_dtype,
                    void** out_buf,
                    size_t* out_cnt,
-                   ccl_datatype_t* out_dtype_idx) :
-        sched_entry(sched), fn(fn), in_buf(in_buf),
-        in_cnt(in_cnt), in_dtype(in_dtype),
-        out_buf(out_buf), out_cnt(out_cnt),
-        out_dtype_idx(out_dtype_idx)
-    {
-    }
+                   ccl_datatype_t* out_dtype_idx)
+            : sched_entry(sched),
+              fn(fn),
+              in_buf(in_buf),
+              in_cnt(in_cnt),
+              in_dtype(in_dtype),
+              out_buf(out_buf),
+              out_cnt(out_cnt),
+              out_dtype_idx(out_dtype_idx) {}
 
-    void start() override
-    {
+    void start() override {
         size_t in_bytes = in_cnt * in_dtype.size();
         size_t offset = in_buf.get_offset();
         const ccl_fn_context_t context = { sched->coll_attr.match_id.c_str(), offset };
-        fn(in_buf.get_ptr(in_bytes), in_cnt, in_dtype.idx(), out_buf, out_cnt, out_dtype_idx, &context);
+        fn(in_buf.get_ptr(in_bytes),
+           in_cnt,
+           in_dtype.idx(),
+           out_buf,
+           out_cnt,
+           out_dtype_idx,
+           &context);
         status = ccl_sched_entry_status_complete;
     }
 
-    const char* name() const override
-    {
+    const char* name() const override {
         return class_name();
     }
 
 protected:
-    void dump_detail(std::stringstream& str) const override
-    {
+    void dump_detail(std::stringstream& str) const override {
         ccl_logger::format(str,
-                           "in_dt ", global_data.dtypes->name(in_dtype),
-                           ", in_cnt ", in_cnt,
-                           ", in_buf ", in_buf,
-                           ", out_dt ", global_data.dtypes->name(*out_dtype_idx),
-                           ", out_dtype_size ", global_data.dtypes->get(*out_dtype_idx).size(),
-                           ", out_cnt ", out_cnt,
-                           ", out_buf ", out_buf,
-                           ", fn ", fn,
+                           "in_dt ",
+                           ccl::global_data::get().dtypes->name(in_dtype),
+                           ", in_cnt ",
+                           in_cnt,
+                           ", in_buf ",
+                           in_buf,
+                           ", out_dt ",
+                           ccl::global_data::get().dtypes->name(*out_dtype_idx),
+                           ", out_dtype_size ",
+                           ccl::global_data::get().dtypes->get(*out_dtype_idx).size(),
+                           ", out_cnt ",
+                           out_cnt,
+                           ", out_buf ",
+                           out_buf,
+                           ", fn ",
+                           fn,
                            "\n");
     }
 

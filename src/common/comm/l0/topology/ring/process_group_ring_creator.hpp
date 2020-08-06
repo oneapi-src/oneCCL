@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +15,7 @@
 */
 #pragma once
 #include "common/comm/l0/topology/topology_construction_utils.hpp"
-
+#if 0
 namespace native
 {
 // First aggregate all devices into from different threads into plain vector represent devices from one host
@@ -34,9 +34,9 @@ class allied_process_group_ring_topology
     size_t device_cluster_size;
 
 public:
-    static constexpr ccl::device_topology_type type()
+    static constexpr ccl::device_group_split_type type()
     {
-        return ccl::device_topology_type::allied_process_group_ring;
+        return ccl::device_group_split_type::cluster;
     }
 
     static constexpr const char* name()
@@ -91,19 +91,22 @@ private:
                         const ccl::device_indices_t& scaleout_device_indices,
                         const details::plain_graph_list& graph_list);
 
-    bool build_specific(std::ostream& out,
+    bool build_specific_colored(std::ostream& out,
                         const ccl::process_device_indices_t& per_thread_device_indices,
                         const ccl::process_device_indices_t& ipc_device_indices,
-                        details::colored_plain_graph& graph);
-    bool build_specific(std::ostream& out,
+                        details::colored_plain_graph& graph,
+                        const std::map<size_t, size_t>& process_device_rank_offset);
+    bool build_specific_scale_up(std::ostream& out,
                         const ccl::process_device_indices_t& per_thread_device_indices,
                         const ccl::process_device_indices_t& ipc_device_indices,
-                        details::colored_plain_graph_list& graph_list);
-    bool build_specific(std::ostream& out,
+                        details::colored_plain_graph_list& graph_list,
+                        const std::map<size_t, size_t>& process_device_rank_offset);
+    bool build_specific_scale_up_out(std::ostream& out,
                         const ccl::process_device_indices_t& per_thread_device_indices,
                         const ccl::process_device_indices_t& scaleout_device_indices,
                         const ccl::process_device_indices_t& ipc_device_indices,
-                        details::colored_plain_graph_list& graph_list);
+                        details::colored_plain_graph_list& graph_list,
+                        const std::map<size_t, size_t>& process_device_rank_offset);
 
     details::plain_graph_list
             create_my_process_graphs(std::ostream& out,
@@ -173,3 +176,4 @@ private:
                                                        details::p2p_rating_function ping);
 };
 }
+#endif

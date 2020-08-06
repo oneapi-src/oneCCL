@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,99 +32,93 @@
 #include "common/comm/l0/modules/modules_source_data.hpp"
 #include "common/comm/l0/gpu_comm_utils.hpp"
 
-namespace native
-{
+namespace native {
 
-template<class gpu_impl, gpu_types type>
-class ccl_gpu_base_comm
-{
+template <class gpu_impl, gpu_types type>
+class ccl_gpu_base_comm {
 public:
     using comm_rank_t = size_t;
     using type_idx_t = typename std::underlying_type<gpu_types>::type;
-    ccl_gpu_base_comm(ccl_device& assigned_device, comm_rank_t idx) :
-        index_in_group(idx),
-        device(assigned_device)
+    ccl_gpu_base_comm(ccl_device& assigned_device, comm_rank_t idx)
+            : index_in_group(idx),
+              device(assigned_device)
 
-    {
-    }
+    {}
 
     ~ccl_gpu_base_comm() = default;
 
-    gpu_impl* get_this()
-    {
+    gpu_impl* get_this() {
         return static_cast<gpu_impl*>(this);
     }
 
-    const gpu_impl* get_this() const
-    {
+    const gpu_impl* get_this() const {
         return static_cast<const gpu_impl*>(this);
     }
 
-    static constexpr const char* name()
-    {
+    static constexpr const char* name() {
         return gpu_impl::name_impl();
     }
 
-    std::string to_string() const
-    {
+    std::string to_string() const {
         return get_this()->to_string_impl();
     }
 
-    static constexpr type_idx_t type_idx()
-    {
+    static constexpr type_idx_t type_idx() {
         return static_cast<type_idx_t>(type);
     }
 
-    ccl_device& get_device()
-    {
+    ccl_device& get_device() {
         return device;
     }
-    [[deprecated]]
-    comm_rank_t get_index_in_group() const
-    {
+    [[deprecated]] comm_rank_t get_index_in_group() const {
         return index_in_group;
     }
 
-    template<ccl::device_topology_type topology_type>
-    bool reset_rank(comm_rank_t new_rank, comm_rank_t new_size)
-    {
+    template <ccl::device_group_split_type group_id, ccl::device_topology_type class_id>
+    bool reset_rank(comm_rank_t new_rank, comm_rank_t new_size) {
         rank = new_rank;
         size = new_size;
-        return device_routing_web.insert<topology_type>(new_rank, new_size);   //consider inheritance
+        return device_routing_web.insert<group_id, class_id>(new_rank,
+                                                             new_size); //consider inheritance
     }
 
-    template<ccl::device_topology_type topology_type>
-    const topology_addr<topology_type>& get_comm_data() const
-    {
-        return device_routing_web.get<topology_type>();
+    template <ccl::device_group_split_type group_id, ccl::device_topology_type class_id>
+    const topology_addr<group_id, class_id>& get_comm_data() const {
+        return device_routing_web.get<group_id, class_id>();
     }
 
-    template<ccl::device_topology_type topology_type>
-    std::string comm_to_str() const
-    {
-        return device_routing_web.to_string<topology_type>();
+    template <ccl::device_group_split_type group_id, ccl::device_topology_type class_id>
+    bool is_registered() const {
+        return device_routing_web.is_registered<group_id, class_id>();
     }
 
-    std::string comm_to_str() const
-    {
+    template <ccl::device_group_split_type group_id, ccl::device_topology_type class_id>
+    std::string comm_to_str() const {
+        return device_routing_web.to_string<group_id, class_id>();
+    }
+
+    std::string comm_to_str() const {
         return device_routing_web.to_string();
     }
 
-    template<ccl_coll_type module_type,
-             ccl::device_topology_type topology_type,
-             template<ccl_coll_type, ccl::device_topology_type> class module_impl>
-    static std::shared_ptr<module_impl<module_type, topology_type>>& get_gpu_module_unsafe(supported_device_modules<module_impl> &modules)
-    {
-        return std::get<topology_type>(std::get<module_type>(modules));
+    template <ccl_coll_type module_type,
+              ccl::device_group_split_type group_id,
+              ccl::device_topology_type class_id,
+              template <ccl_coll_type, ccl::device_group_split_type, ccl::device_topology_type>
+              class module_impl>
+    static std::shared_ptr<module_impl<module_type, group_id, class_id>>& get_gpu_module_unsafe(
+        supported_device_modules<module_impl>& modules) {
+        return std::get<class_id>(std::get<group_id>(std::get<module_type>(modules)));
     }
+
 protected:
     size_t index_in_group;
 
     aggregated_topology_addr device_routing_web;
     ccl_device& device;
 
-    mutable size_t rank;//TODO
-    mutable size_t size;//TODO
+    mutable size_t rank; //TODO
+    mutable size_t size; //TODO
 };
 
-}
+} // namespace native

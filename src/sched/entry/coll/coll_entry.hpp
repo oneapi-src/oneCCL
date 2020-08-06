@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,80 +24,81 @@ class coll_entry : public sched_entry,
                                            ccl_sched_entry_field_send_buf,
                                            ccl_sched_entry_field_recv_buf,
                                            ccl_sched_entry_field_cnt,
-                                           ccl_sched_entry_field_dtype>
-{
+                                           ccl_sched_entry_field_dtype,
+                                           ccl_sched_entry_field_send_count> {
 public:
-    static constexpr const char* class_name() noexcept
-    {
+    static constexpr const char* class_name() noexcept {
         return "COLL";
     }
 
     coll_entry() = delete;
-    coll_entry(ccl_sched* sched,
-               const ccl_coll_entry_param& param,
-               ccl_op_id_t op_id = 0)
-        : sched_entry(sched), param(param), coll_sched(),
-          coll_sched_op_id(op_id)
-    {
-    }
+    coll_entry(ccl_sched* sched, const ccl_coll_entry_param& param, ccl_op_id_t op_id = 0)
+            : sched_entry(sched),
+              param(param),
+              coll_sched(),
+              coll_sched_op_id(op_id) {}
 
-    ~coll_entry()
-    {
+    ~coll_entry() {
         coll_sched.reset();
     }
 
     void start() override;
     void update() override;
 
-    bool is_strict_order_satisfied() override
-    {
+    bool is_strict_order_satisfied() override {
         return (coll_sched) ? coll_sched->is_strict_order_satisfied() : false;
     }
 
-    const char* name() const override
-    {
+    const char* name() const override {
         return class_name();
     }
 
-    ccl_buffer& get_field_ref(field_id_t<ccl_sched_entry_field_buf> id)
-    {
+    ccl_buffer& get_field_ref(field_id_t<ccl_sched_entry_field_buf> id) {
         return param.buf;
     }
 
-    ccl_buffer& get_field_ref(field_id_t<ccl_sched_entry_field_send_buf> id)
-    {
+    ccl_buffer& get_field_ref(field_id_t<ccl_sched_entry_field_send_buf> id) {
         return param.send_buf;
     }
 
-    ccl_buffer& get_field_ref(field_id_t<ccl_sched_entry_field_recv_buf> id)
-    {
+    ccl_buffer& get_field_ref(field_id_t<ccl_sched_entry_field_recv_buf> id) {
         return param.recv_buf;
     }
 
-    size_t& get_field_ref(field_id_t<ccl_sched_entry_field_cnt> id)
-    {
+    size_t& get_field_ref(field_id_t<ccl_sched_entry_field_cnt> id) {
         return param.count;
     }
 
-    ccl_datatype& get_field_ref(field_id_t<ccl_sched_entry_field_dtype> id)
-    {
+    ccl_datatype& get_field_ref(field_id_t<ccl_sched_entry_field_dtype> id) {
         return param.dtype;
     }
 
+    size_t& get_field_ref(field_id_t<ccl_sched_entry_field_send_count> id) {
+        return param.send_count;
+    }
+
 protected:
-    void dump_detail(std::stringstream& str) const override
-    {
+    void dump_detail(std::stringstream& str) const override {
         ccl_logger::format(str,
-                            "dt ", global_data.dtypes->name(param.dtype),
-                            ", coll_type ", ccl_coll_type_to_str(param.ctype),
-                            ", buf ", param.buf,
-                            ", send_buf ", param.send_buf,
-                            ", recv_buf ", param.recv_buf,
-                            ", cnt ", param.count,
-                            ", op ", ccl_reduction_to_str(param.reduction),
-                            ", comm ", param.comm,
-                            ", coll sched ", coll_sched.get(),
-                            "\n");
+                           "dt ",
+                           ccl::global_data::get().dtypes->name(param.dtype),
+                           ", coll_type ",
+                           ccl_coll_type_to_str(param.ctype),
+                           ", buf ",
+                           param.buf,
+                           ", send_buf ",
+                           param.send_buf,
+                           ", recv_buf ",
+                           param.recv_buf,
+                           ", cnt ",
+                           param.count,
+                           ", op ",
+                           ccl_reduction_to_str(param.reduction),
+                           ", comm ",
+                           param.comm,
+                           ", coll sched ",
+                           coll_sched.get(),
+                           "\n");
     }
 
 private:

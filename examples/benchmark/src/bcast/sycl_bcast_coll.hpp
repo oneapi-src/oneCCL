@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,27 +21,26 @@
 #ifdef CCL_ENABLE_SYCL
 #include "sycl_coll.hpp"
 
-template<class Dtype>
+template <class Dtype>
 class bcast_buf_check {};
 
-template<class Dtype>
+template <class Dtype>
 class bcast_buf_fill {};
 
-template<class Dtype>
-struct sycl_bcast_coll : sycl_base_coll<Dtype, bcast_strategy_impl>
-{
+template <class Dtype>
+struct sycl_bcast_coll : sycl_base_coll<Dtype, bcast_strategy_impl> {
     using coll_base = sycl_base_coll<Dtype, bcast_strategy_impl>;
     using coll_base::recv_bufs;
     using coll_base::single_recv_buf;
     using coll_base::comm;
 
-    virtual void prepare(size_t elem_count) override
-    {
+    sycl_bcast_coll(bench_coll_init_attr init_attr)
+            : coll_base(init_attr, base_coll::comm->size(), base_coll::comm->size()) {}
+
+    virtual void prepare(size_t elem_count) override {
         size_t local_rank = comm->rank();
-        for (size_t b_idx = 0; b_idx < BUF_COUNT; b_idx++)
-        {
-            sycl_queue.submit([&](handler& cgh)
-            {
+        for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
+            sycl_queue.submit([&](handler& cgh) {
                 auto recv_buf = (static_cast<sycl_buffer_t<Dtype>*>(recv_bufs[b_idx]));
                 auto recv_buf_acc = recv_buf->template get_access<mode::write>(cgh);
                 cgh.parallel_for<class bcast_buf_fill<Dtype>>(range<1>{elem_count}, [=](item<1> e_idx)
@@ -55,14 +54,11 @@ struct sycl_bcast_coll : sycl_base_coll<Dtype, bcast_strategy_impl>
         }
     }
 
-    virtual void finalize(size_t elem_count) override
-    {
+    virtual void finalize(size_t elem_count) override {
         bool unexpected_device_value = false;
 
-        for (size_t b_idx = 0; b_idx < BUF_COUNT; b_idx++)
-        {
-            sycl_queue.submit([&](handler& cgh)
-            {
+        for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
+            sycl_queue.submit([&](handler& cgh) {
                 auto recv_buf = (static_cast<sycl_buffer_t<Dtype>*>(recv_bufs[b_idx]));
                 auto recv_buf_acc = recv_buf->template get_access<mode::write>(cgh);
                 cgh.parallel_for<class bcast_buf_check<Dtype>>(range<1>{elem_count}, [=](item<1> e_idx) mutable
@@ -73,19 +69,16 @@ struct sycl_bcast_coll : sycl_base_coll<Dtype, bcast_strategy_impl>
             });
         }
 
-        for (size_t b_idx = 0; b_idx < BUF_COUNT; b_idx++)
-        {
+        for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
             auto recv_buf = (static_cast<sycl_buffer_t<Dtype>*>(recv_bufs[b_idx]));
             auto recv_buf_acc = recv_buf->template get_access<mode::read>();
 
-            for (size_t e_idx = 0; e_idx < elem_count; e_idx++)
-            {
+            for (size_t e_idx = 0; e_idx < elem_count; e_idx++) {
                 Dtype value = recv_buf_acc[e_idx];
-                if (value != e_idx)
-                {
-                    std::cout << this->name() << " recv_bufs: buf_idx "
-                              << b_idx << ", elem_idx " << e_idx << ", expected "
-                              << (Dtype)e_idx << ", got " << value << std::endl;
+                if (value != e_idx) {
+                    std::cout << this->name() << " recv_bufs: buf_idx " << b_idx << ", elem_idx "
+                              << e_idx << ", expected " << (Dtype)e_idx << ", got " << value
+                              << std::endl;
                     ASSERT(0, "unexpected value");
                 }
             }

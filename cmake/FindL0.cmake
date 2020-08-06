@@ -7,7 +7,7 @@
 list(APPEND l0_root_hints
             ${ZE_ROOT}
             $ENV{ZE_ROOT})
-            
+
 set(original_cmake_prefix_path ${CMAKE_PREFIX_PATH})
 if(NOT l0_root_hints)
     set(l0_root_hints "/usr")
@@ -33,8 +33,8 @@ if(NOT TARGET ze_loader)
       PATHS
             ENV ZE_ROOT
             ${l0_root_hints}
-      PATH_SUFFIXES 
-            lib 
+      PATH_SUFFIXES
+            lib
             local/lib
             lib/level_zero/
             local/lib/level_zero

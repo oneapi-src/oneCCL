@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,9 +22,7 @@
 
 struct ccl_unordered_coll_ctx;
 
-class ccl_unordered_coll_manager
-{
-
+class ccl_unordered_coll_manager {
 public:
     ccl_unordered_coll_manager(const ccl_unordered_coll_manager& other) = delete;
     const ccl_unordered_coll_manager& operator=(const ccl_unordered_coll_manager& other) = delete;
@@ -36,7 +34,6 @@ public:
     void dump(std::ostream& out) const;
 
 private:
-
     void start_coordination(const std::string& match_id);
     void start_post_coordination_actions(ccl_unordered_coll_ctx* ctx);
     void run_postponed_scheds(const std::string& match_id, ccl_comm* comm);

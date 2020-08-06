@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,16 +13,16 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "common/env/env.hpp"
+#include "common/global/global.hpp"
 #include "sched/queue/queue.hpp"
 
-void ccl_sched_bin::add(ccl_sched* sched)
-{
-    if (env_data.priority_mode != ccl_priority_none)
-    {
+void ccl_sched_bin::add(ccl_sched* sched) {
+    if (ccl::global_data::env().priority_mode != ccl_priority_none) {
         CCL_ASSERT(sched->coll_attr.priority == priority,
-            "unexpected sched priority ", sched->coll_attr.priority,
-            " expected ", priority);
+                   "unexpected sched priority ",
+                   sched->coll_attr.priority,
+                   " expected ",
+                   priority);
     }
     CCL_ASSERT(sched);
     CCL_ASSERT(!sched->bin);
@@ -31,8 +31,7 @@ void ccl_sched_bin::add(ccl_sched* sched)
     sched_list.add(sched);
 }
 
-size_t ccl_sched_bin::erase(size_t idx, size_t& next_idx)
-{
+size_t ccl_sched_bin::erase(size_t idx, size_t& next_idx) {
     ccl_sched* sched = nullptr;
     size_t size = 0;
     {
@@ -52,43 +51,35 @@ size_t ccl_sched_bin::erase(size_t idx, size_t& next_idx)
     return size;
 }
 
-ccl_sched_queue::ccl_sched_queue(std::vector<atl_ep_t*> atl_eps)
-    : atl_eps(atl_eps)
-{
-    LOG_DEBUG("created sched_queue, atl_eps count ",  atl_eps.size(),
-              ", atl_eps[0] ", atl_eps[0]);
+ccl_sched_queue::ccl_sched_queue(std::vector<atl_ep_t*> atl_eps) : atl_eps(atl_eps) {
+    LOG_DEBUG("created sched_queue, atl_eps count ", atl_eps.size(), ", atl_eps[0] ", atl_eps[0]);
 
-    if (env_data.priority_mode != ccl_priority_none)
-    {
+    if (ccl::global_data::env().priority_mode != ccl_priority_none) {
         CCL_ASSERT(atl_eps.size() == CCL_PRIORITY_BUCKET_COUNT,
-            "unexpected atl_eps count ", atl_eps.size(), ", expected ",
-            CCL_PRIORITY_BUCKET_COUNT);
+                   "unexpected atl_eps count ",
+                   atl_eps.size(),
+                   ", expected ",
+                   CCL_PRIORITY_BUCKET_COUNT);
     }
     else
         CCL_ASSERT(!atl_eps.empty());
 }
 
-ccl_sched_queue::~ccl_sched_queue()
-{
-    CCL_ASSERT(bins.empty(),
-               "unexpected bins size ", bins.size(), ", expected 0");
+ccl_sched_queue::~ccl_sched_queue() {
+    CCL_ASSERT(bins.empty(), "unexpected bins size ", bins.size(), ", expected 0");
 
-    CCL_ASSERT(max_priority == 0,
-               "unexpected max_priority ", max_priority, ", expected 0");
+    CCL_ASSERT(max_priority == 0, "unexpected max_priority ", max_priority, ", expected 0");
 
     CCL_ASSERT(!cached_max_priority_bin);
 }
 
-void ccl_sched_queue::add(ccl_sched* sched)
-{
+void ccl_sched_queue::add(ccl_sched* sched) {
     CCL_ASSERT(sched);
     CCL_ASSERT(!sched->bin);
 
     size_t priority = sched->get_priority();
-    if (env_data.priority_mode != ccl_priority_none)
-    {
-        if (sched->coll_param.ctype == ccl_coll_barrier)
-        {
+    if (ccl::global_data::env().priority_mode != ccl_priority_none) {
+        if (sched->coll_param.ctype == ccl_coll_barrier) {
             priority = max_priority;
             sched->coll_attr.priority = priority;
         }
@@ -103,20 +94,17 @@ void ccl_sched_queue::add(ccl_sched* sched)
     std::lock_guard<sched_queue_lock_t> lock(bins_guard);
 
     sched_bin_list_t::iterator it = bins.find(priority);
-    if (it != bins.end())
-    {
+    if (it != bins.end()) {
         bin = &(it->second);
         LOG_DEBUG("found bin ", bin);
         CCL_ASSERT(bin->priority == priority);
         bin->add(sched);
     }
-    else
-    {
+    else {
         atl_ep_t* atl_ep = nullptr;
-        if (env_data.priority_mode == ccl_priority_none)
+        if (ccl::global_data::env().priority_mode == ccl_priority_none)
             atl_ep = atl_eps[0];
-        else
-        {
+        else {
             size_t ep_idx = (priority / CCL_PRIORITY_BUCKET_SIZE) % CCL_PRIORITY_BUCKET_COUNT;
             atl_ep = atl_eps[ep_idx];
             LOG_DEBUG("priority ", priority, ", ep_idx ", ep_idx);
@@ -129,8 +117,7 @@ void ccl_sched_queue::add(ccl_sched* sched)
         CCL_ASSERT(emplace_result.second);
         bin = &(emplace_result.first->second);
 
-        if (priority >= max_priority)
-        {
+        if (priority >= max_priority) {
             max_priority = priority;
             cached_max_priority_bin = bin;
         }
@@ -140,8 +127,7 @@ void ccl_sched_queue::add(ccl_sched* sched)
     CCL_ASSERT(bin);
 }
 
-size_t ccl_sched_queue::erase(ccl_sched_bin* bin, size_t idx)
-{
+size_t ccl_sched_queue::erase(ccl_sched_bin* bin, size_t idx) {
     CCL_ASSERT(bin);
     size_t bin_priority = bin->get_priority();
 
@@ -150,29 +136,24 @@ size_t ccl_sched_queue::erase(ccl_sched_bin* bin, size_t idx)
 
     // erase sched and check bin size after
     // no need to lock whole `bins` for single erase
-    if (!bin->erase(idx, next_idx))
-    {
+    if (!bin->erase(idx, next_idx)) {
         // 'bin 'looks like empty, we can erase it from 'bins'.
         // double check on bin.empty(), before remove it from whole table
-        std::lock_guard<sched_queue_lock_t> lock{bins_guard};
+        std::lock_guard<sched_queue_lock_t> lock{ bins_guard };
         {
             // no need to lock 'bin' here, because all adding are under bins_guard protection
-            if (bin->sched_list.elems.empty())
-            {
+            if (bin->sched_list.elems.empty()) {
                 bins.erase(bin_priority);
 
                 // change priority
-                if (bins.empty())
-                {
+                if (bins.empty()) {
                     max_priority = 0;
                     cached_max_priority_bin = nullptr;
                 }
-                else if (bin_priority == max_priority)
-                {
+                else if (bin_priority == max_priority) {
                     max_priority--;
                     sched_bin_list_t::iterator it;
-                    while ((it = bins.find(max_priority)) == bins.end())
-                    {
+                    while ((it = bins.find(max_priority)) == bins.end()) {
                         max_priority--;
                     }
                     cached_max_priority_bin = &(it->second);
@@ -184,25 +165,21 @@ size_t ccl_sched_queue::erase(ccl_sched_bin* bin, size_t idx)
     return next_idx;
 }
 
-ccl_sched_bin* ccl_sched_queue::peek()
-{
+ccl_sched_bin* ccl_sched_queue::peek() {
     return cached_max_priority_bin;
 }
 
-std::vector<ccl_sched_bin*> ccl_sched_queue::peek_all()
-{
-    std::lock_guard<sched_queue_lock_t> lock{bins_guard};
+std::vector<ccl_sched_bin*> ccl_sched_queue::peek_all() {
+    std::lock_guard<sched_queue_lock_t> lock{ bins_guard };
     std::vector<ccl_sched_bin*> result;
     result.reserve(bins.size());
-    for (auto& bin : bins)
-    {
+    for (auto& bin : bins) {
         result.emplace_back(&(bin.second));
     }
     return result;
 }
 
-void ccl_sched_queue::clear()
-{
+void ccl_sched_queue::clear() {
     cached_max_priority_bin = nullptr;
     bins.clear();
     max_priority = 0;

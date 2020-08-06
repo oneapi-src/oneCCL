@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +32,7 @@ size_t kvs_get_count_names(const char* kvs_name);
 
 size_t kvs_finalize(void);
 
-size_t kvs_get_keys_values_by_name(const char *kvs_name, char ***kvs_keys, char ***kvs_values);
+size_t kvs_get_keys_values_by_name(const char* kvs_name, char*** kvs_keys, char*** kvs_values);
 
 size_t kvs_get_replica_size(void);
 

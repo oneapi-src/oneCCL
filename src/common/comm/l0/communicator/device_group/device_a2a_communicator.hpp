@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,19 +16,19 @@
 #pragma once
 #include "common/comm/l0/communicator/typed_base_communicator.hpp"
 
-namespace native
-{
-    struct device_group_context;
+namespace native {
+struct device_group_context;
 }
 
-class device_group_a2a_communicator :
-        public typed_base_communicator<device_group_a2a_communicator,
-                                       ccl::device_topology_type::a2a_device_group,
-                                       ccl::gpu_communicator_traits>
-{
+class device_group_a2a_communicator
+        : public typed_base_communicator<device_group_a2a_communicator,
+                                         ccl::device_group_split_type::thread,
+                                         ccl::device_topology_type::a2a,
+                                         ccl::gpu_communicator_traits> {
 public:
     using base_t = typed_base_communicator<device_group_a2a_communicator,
-                                           ccl::device_topology_type::a2a_device_group,
+                                           ccl::device_group_split_type::thread,
+                                           ccl::device_topology_type::a2a,
                                            ccl::gpu_communicator_traits>;
 
     device_group_a2a_communicator(ccl::unified_device_type&& device,

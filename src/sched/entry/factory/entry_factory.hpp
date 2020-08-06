@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,7 @@
 #include "sched/entry/sync_entry.hpp"
 #include "sched/entry/prologue_entry.hpp"
 #include "sched/entry/epilogue_entry.hpp"
-#include "sched/entry/sparse_callback_entry.hpp"
+#include "sched/entry/sparse_allreduce_completion_entry.hpp"
 #include "sched/entry/wait_value_entry.hpp"
 #include "sched/entry/function_entry.hpp"
 #include "sched/entry/probe_entry.hpp"
@@ -49,30 +49,25 @@
 
 #include "sched/sched.hpp"
 
-namespace entry_factory
-{
-    /* generic interface for entry creation */
-    template<class EntryType, class ...Arguments>
-    EntryType* make_entry(ccl_sched* sched, Arguments &&...args)
-    {
-        LOG_DEBUG("creating ", EntryType::class_name(), " entry");
-        EntryType* new_entry = detail::entry_creator<EntryType>::template
-                    create<ccl_sched_add_mode::ccl_sched_add_mode_last_value>(
-                                                    sched,
-                                                    std::forward<Arguments>(args)...);
-        LOG_DEBUG("created: ", EntryType::class_name(), ", entry: ", new_entry,
-                  ", for sched: ", sched);
-        return new_entry;
-    }
+namespace entry_factory {
+/* generic interface for entry creation */
+template <class EntryType, class... Arguments>
+EntryType* make_entry(ccl_sched* sched, Arguments&&... args) {
+    LOG_DEBUG("creating ", EntryType::class_name(), " entry");
+    EntryType* new_entry = detail::entry_creator<EntryType>::template create<
+        ccl_sched_add_mode::ccl_sched_add_mode_last_value>(sched, std::forward<Arguments>(args)...);
+    LOG_DEBUG("created: ", EntryType::class_name(), ", entry: ", new_entry, ", for sched: ", sched);
+    return new_entry;
+}
 
-    template<class EntryType, ccl_sched_add_mode mode, class ...Arguments>
-    EntryType* make_ordered_entry(ccl_sched* sched, Arguments &&...args)
-    {
-        LOG_DEBUG("creating ", EntryType::class_name(), " entry, use mode: ", to_string(mode));
-        return detail::entry_creator<EntryType>::template create<mode>(sched, std::forward<Arguments>(args)...);
-    }
+template <class EntryType, ccl_sched_add_mode mode, class... Arguments>
+EntryType* make_ordered_entry(ccl_sched* sched, Arguments&&... args) {
+    LOG_DEBUG("creating ", EntryType::class_name(), " entry, use mode: ", to_string(mode));
+    return detail::entry_creator<EntryType>::template create<mode>(
+        sched, std::forward<Arguments>(args)...);
+}
 
-    /* Example for non-standard entry 'my_non_standard_entry' creation
+/* Example for non-standard entry 'my_non_standard_entry' creation
     namespace detail
     {
         template <>
@@ -90,4 +85,4 @@ namespace entry_factory
             }
         };
     }*/
-}
+} // namespace entry_factory

@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,22 +23,19 @@
 #include <list>
 #include <memory>
 
-
 class ccl_sched_queue;
 class ccl_sched_bin;
 class ccl_request;
 class ccl_parallelizer;
 class ccl_executor;
 
-enum ccl_sched_internal_type
-{
+enum ccl_sched_internal_type {
     ccl_sched_internal_none,
     ccl_sched_internal_fusion,
     ccl_sched_internal_unordered_coll
 };
 
-enum ccl_sched_add_mode
-{
+enum ccl_sched_add_mode {
     ccl_sched_add_front,
     ccl_sched_add_back,
 
@@ -47,26 +44,22 @@ enum ccl_sched_add_mode
 
 std::string to_string(ccl_sched_add_mode mode);
 
-struct ccl_sched_buffer_handler
-{
+struct ccl_sched_buffer_handler {
     ccl_buffer buffer;
     size_t size;
 
-    ccl_sched_buffer_handler(ccl_buffer buffer, size_t size)
-        : buffer(buffer), size(size) {}
+    ccl_sched_buffer_handler(ccl_buffer buffer, size_t size) : buffer(buffer), size(size) {}
 };
 
-struct ccl_sched_memory
-{
+struct ccl_sched_memory {
     std::list<ccl_sched_buffer_handler> buf_list;
     std::list<atl_mr_t*> mr_list;
 };
 
 static size_t lifo_priority = 0;
 
-struct ccl_sched_base
-{
-    template<ccl_sched_add_mode mode = ccl_sched_add_mode_last_value>
+struct ccl_sched_base {
+    template <ccl_sched_add_mode mode = ccl_sched_add_mode_last_value>
     using add_entry_mode_t = std::integral_constant<ccl_sched_add_mode, mode>;
 
     using add_entry_front_t = add_entry_mode_t<ccl_sched_add_front>;
@@ -74,8 +67,7 @@ struct ccl_sched_base
 
     void set_coll_attr(const ccl_coll_attr& attr);
 
-    void update_coll_param_and_attr(const ccl_coll_param& param,
-                                    const ccl_coll_attr& attr);
+    void update_coll_param_and_attr(const ccl_coll_param& param, const ccl_coll_attr& attr);
 
     size_t get_priority() const;
 
@@ -88,13 +80,11 @@ struct ccl_sched_base
 
     void alloc_buffers_for_sycl_copy();
 
-    void set_entry_exec_mode(ccl_sched_entry_exec_mode mode)
-    {
+    void set_entry_exec_mode(ccl_sched_entry_exec_mode mode) {
         exec_mode = mode;
     }
 
-    void set_add_mode(ccl_sched_add_mode mode)
-    {
+    void set_add_mode(ccl_sched_add_mode mode) {
         add_mode = mode;
     }
 
@@ -110,25 +100,20 @@ struct ccl_sched_base
     /* whether sched was created by internal module (fusion_manager/unordered_coll_manager) */
     ccl_sched_internal_type internal_type = ccl_sched_internal_none;
 
-    static size_t get_lifo_priority() noexcept
-    {
+    static size_t get_lifo_priority() noexcept {
         return lifo_priority++;
     }
 
 protected:
-
     ~ccl_sched_base() = default;
 
-    ccl_sched_base(const ccl_coll_param& coll_param) :
-        coll_param(coll_param)
-    {}
+    ccl_sched_base(const ccl_coll_param& coll_param) : coll_param(coll_param) {}
 
-    void update_id()
-    {
+    void update_id() {
         sched_id = coll_param.comm->get_sched_id(internal_type != ccl_sched_internal_none);
     }
 
-    void dump(std::ostream& out, const char *name) const;
+    void dump(std::ostream& out, const char* name) const;
 
     ccl_sched_memory memory;
     ccl_sched_entry_exec_mode exec_mode = ccl_sched_entry_exec_regular;

@@ -94,6 +94,10 @@ find_path(OpenCL_INCLUDE_DIR
   PATH_SUFFIXES
     include
     OpenCL/common/inc
+    sycl
+    sycl/CL
+    include/sycl
+    include/sycl/CL
     "AMD APP/include")
 
 _FIND_OPENCL_VERSION()

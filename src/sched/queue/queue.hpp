@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,53 +35,44 @@ using sched_queue_lock_t = ccl_spinlock;
 #define CCL_PRIORITY_BUCKET_SIZE (8)
 
 #define CCL_BUCKET_INITIAL_ELEMS_COUNT (1024)
-class ccl_sched_list
-{
+class ccl_sched_list {
 public:
     friend class ccl_sched_bin;
     friend class ccl_sched_queue;
 
-    ccl_sched_list()
-    {
+    ccl_sched_list() {
         CCL_UNUSED(padding_queue);
         elems.reserve(CCL_BUCKET_INITIAL_ELEMS_COUNT);
     }
 
-    ccl_sched_list(ccl_sched* sched)
-    {
+    ccl_sched_list(ccl_sched* sched) {
         CCL_ASSERT(sched);
         elems.reserve(CCL_BUCKET_INITIAL_ELEMS_COUNT);
         elems.push_back(sched);
     }
 
-    ~ccl_sched_list()
-    {
-        if (elems.size() != 0 && !global_data.is_ft_enabled)
-        {
+    ~ccl_sched_list() {
+        if (elems.size() != 0 && !ccl::global_data::get().is_ft_enabled) {
             LOG_ERROR("unexpected elem_count ", elems.size(), ", expected 0");
         }
 
-        for (size_t i = 0; i < elems.size(); i++)
-        {
+        for (size_t i = 0; i < elems.size(); i++) {
             elems[i]->clear();
         }
         elems.clear();
     }
 
-    ccl_sched_list& operator= (const ccl_sched_list& other) = delete;
+    ccl_sched_list& operator=(const ccl_sched_list& other) = delete;
 
-    ccl_sched_list(ccl_sched_list &&src)
-    {
+    ccl_sched_list(ccl_sched_list&& src) {
         {
             std::lock_guard<sched_queue_lock_t> lock(src.elem_guard);
             elems = std::move(src.elems);
         }
     }
-    ccl_sched_list& operator= (ccl_sched_list&& other)
-    {
-        if(this != &other)
-        {
-            std::lock (this->elem_guard, other.elem_guard);
+    ccl_sched_list& operator=(ccl_sched_list&& other) {
+        if (this != &other) {
+            std::lock(this->elem_guard, other.elem_guard);
             elems = std::move(other.elems);
             // make sure both already-locked mutexes are unlocked at the end of scope
             std::lock_guard<ccl_spinlock> own_lock(this->elem_guard, std::adopt_lock);
@@ -90,32 +81,28 @@ public:
         return *this;
     }
 
-    void add(ccl_sched* sched)
-    {
+    void add(ccl_sched* sched) {
         {
             std::lock_guard<sched_queue_lock_t> lock(elem_guard);
             elems.emplace_back(sched);
         }
     }
 
-    size_t size()
-    {
+    size_t size() {
         {
             std::lock_guard<sched_queue_lock_t> lock(elem_guard);
             return elems.size();
         }
     }
 
-    bool empty()
-    {
+    bool empty() {
         {
             std::lock_guard<sched_queue_lock_t> lock(elem_guard);
             return elems.empty();
         }
     }
 
-    ccl_sched* get(size_t idx)
-    {
+    ccl_sched* get(size_t idx) {
         {
             std::lock_guard<sched_queue_lock_t> lock(elem_guard);
             CCL_ASSERT(idx < elems.size());
@@ -123,8 +110,7 @@ public:
         }
     }
 
-    ccl_sched* remove(size_t idx, size_t &next_idx)
-    {
+    ccl_sched* remove(size_t idx, size_t& next_idx) {
         ccl_sched* ret = nullptr;
         {
             std::lock_guard<sched_queue_lock_t> lock(elem_guard);
@@ -139,12 +125,10 @@ public:
         return ret;
     }
 
-    void dump(std::ostream& out) const
-    {
+    void dump(std::ostream& out) const {
         {
             std::lock_guard<sched_queue_lock_t> lock(elem_guard);
-            for (auto& e: elems)
-            {
+            for (auto& e : elems) {
                 e->dump(out);
             }
         }
@@ -156,16 +140,14 @@ private:
     char padding_queue[CACHELINE_SIZE];
 };
 
-class ccl_sched_bin
-{
+class ccl_sched_bin {
 public:
     friend class ccl_sched_queue;
     ccl_sched_bin(ccl_sched_queue* queue, atl_ep_t* atl_ep, size_t priority, ccl_sched* sched)
-        : queue(queue),
-          atl_ep(atl_ep),
-          sched_list(sched),
-          priority(priority)
-    {
+            : queue(queue),
+              atl_ep(atl_ep),
+              sched_list(sched),
+              priority(priority) {
         CCL_ASSERT(queue);
         CCL_ASSERT(atl_ep);
         CCL_ASSERT(sched);
@@ -175,40 +157,48 @@ public:
 
     ~ccl_sched_bin() = default;
     ccl_sched_bin() = delete;
-    ccl_sched_bin& operator= (const ccl_sched_bin& other) = delete;
+    ccl_sched_bin& operator=(const ccl_sched_bin& other) = delete;
 
-    ccl_sched_bin(ccl_sched_bin &&src) = default;
-    ccl_sched_bin& operator= (ccl_sched_bin&& other) = default;
+    ccl_sched_bin(ccl_sched_bin&& src) = default;
+    ccl_sched_bin& operator=(ccl_sched_bin&& other) = default;
 
-    size_t size() { return sched_list.size(); }
-    size_t get_priority() { return priority; }
-    atl_ep_t* get_atl_ep() { return atl_ep; }
-    ccl_sched_queue* get_queue() { return queue; }
+    size_t size() {
+        return sched_list.size();
+    }
+    size_t get_priority() {
+        return priority;
+    }
+    atl_ep_t* get_atl_ep() {
+        return atl_ep;
+    }
+    ccl_sched_queue* get_queue() {
+        return queue;
+    }
 
     void add(ccl_sched* sched);
-    size_t erase(size_t idx, size_t &next);
-    ccl_sched* get(size_t idx) { return sched_list.get(idx); }
+    size_t erase(size_t idx, size_t& next);
+    ccl_sched* get(size_t idx) {
+        return sched_list.get(idx);
+    }
 
-    void dump(std::ostream& out) const
-    {
+    void dump(std::ostream& out) const {
         sched_list.dump(out);
     }
 
 private:
     ccl_sched_queue* queue = nullptr; //!< pointer to the queue which owns the bin
-    atl_ep_t* atl_ep = nullptr;       //!< ATL communication endpoint
-    ccl_sched_list sched_list;        //!< list of schedules
-    size_t priority{};                //!< the single priority for all elems
+    atl_ep_t* atl_ep = nullptr; //!< ATL communication endpoint
+    ccl_sched_list sched_list; //!< list of schedules
+    size_t priority{}; //!< the single priority for all elems
 };
 
-class ccl_sched_queue
-{
+class ccl_sched_queue {
 public:
     ccl_sched_queue(std::vector<atl_ep_t*> atl_eps);
 
     ccl_sched_queue() = delete;
     ccl_sched_queue(const ccl_sched_queue& other) = delete;
-    ccl_sched_queue& operator= (const ccl_sched_queue& other) = delete;
+    ccl_sched_queue& operator=(const ccl_sched_queue& other) = delete;
     ~ccl_sched_queue();
 
     void add(ccl_sched* sched);
@@ -224,18 +214,14 @@ public:
 
     std::vector<ccl_sched_bin*> peek_all();
 
-    void dump(std::ostream& out) const
-    {
+    void dump(std::ostream& out) const {
         {
             std::lock_guard<sched_queue_lock_t> lock(bins_guard);
-            if (bins.empty())
-            {
+            if (bins.empty()) {
                 out << "empty sched_queue";
             }
-            else
-            {
-                for (auto& b: bins)
-                {
+            else {
+                for (auto& b : bins) {
                     b.second.dump(out);
                 }
             }
@@ -243,11 +229,10 @@ public:
     }
 
 private:
-
     mutable sched_queue_lock_t bins_guard{};
 
     std::vector<atl_ep_t*> atl_eps;
-    sched_bin_list_t bins { CCL_SCHED_QUEUE_INITIAL_BIN_COUNT };
+    sched_bin_list_t bins{ CCL_SCHED_QUEUE_INITIAL_BIN_COUNT };
     size_t max_priority = 0;
     std::atomic<ccl_sched_bin*> cached_max_priority_bin{};
 };

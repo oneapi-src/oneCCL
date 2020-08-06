@@ -104,7 +104,7 @@ CFLAGS=""
 CPPFLAGS=""
 LDFLAGS=" -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl"
 LIBS=" -lpthread  -lfabric -lrt "
-MPIVERSION="2021.1-beta07"
+MPIVERSION="2021.1-beta08"
 MPILIBNAME="mpi"                           
 
 

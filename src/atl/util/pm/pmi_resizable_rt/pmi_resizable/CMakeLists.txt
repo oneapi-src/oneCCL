@@ -40,7 +40,11 @@ target_compile_definitions(resizable_pmi-objects PRIVATE HAVE_UNISTD_H HAVE_STDL
 #shared lib
 add_library(resizable_pmi SHARED $<TARGET_OBJECTS:resizable_pmi-objects>)
 target_include_directories(resizable_pmi PUBLIC ${COMMON_KVS_INC_DIRS})
-set_target_properties(resizable_pmi PROPERTIES VERSION 1 SOVERSION 1.0)
+if (NOT LIB_RESIZE_PMI_SO_VERSION AND NOT LIB_RESIZE_PMI_MAJOR_VERSION)
+        set_target_properties(resizable_pmi PROPERTIES VERSION 1 SOVERSION 1.0)
+else()
+        set_target_properties(resizable_pmi PROPERTIES VERSION ${LIB_RESIZE_PMI_SO_VERSION} SOVERSION ${LIB_RESIZE_PMI_MAJOR_VERSION})
+endif()
 set_target_properties(resizable_pmi PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CCL_BUILD_DIR})
 
 install(TARGETS resizable_pmi LIBRARY DESTINATION ${CCL_INSTALL_LIB})

@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +14,13 @@
  limitations under the License.
 */
 #pragma once
-#include "scaleup_ctx.hpp"
+#include "base_scaling_ctx.hpp"
 
-namespace native
-{
+namespace native {
 
 class ccl_gpu_comm;
 class ccl_virtual_gpu_comm;
 
 template <class ctx_impl_t>
-using scale_up_ctx_specific = scaleup_ctx_base<ctx_impl_t, ccl_gpu_comm, ccl_virtual_gpu_comm>;
-
-}
+using scale_up_ctx_specific = base_scaling_ctx<ctx_impl_t, ccl_gpu_comm, ccl_virtual_gpu_comm>;
+} // namespace native

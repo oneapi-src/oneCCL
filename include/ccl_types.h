@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +15,7 @@
 */
 #pragma once
 
+#include "stdint.h"
 #include "stdlib.h"
 #include "ccl_config.h"
 
@@ -23,21 +24,19 @@ extern "C" {
 #endif
 
 /** Status values returned by CCL functions. */
-typedef enum
-{
-    ccl_status_success               = 0,
-    ccl_status_out_of_resource       = 1,
-    ccl_status_invalid_arguments     = 2,
-    ccl_status_unimplemented         = 3,
-    ccl_status_runtime_error         = 4,
+typedef enum {
+    ccl_status_success = 0,
+    ccl_status_out_of_resource = 1,
+    ccl_status_invalid_arguments = 2,
+    ccl_status_unimplemented = 3,
+    ccl_status_runtime_error = 4,
     ccl_status_blocked_due_to_resize = 5,
 
     ccl_status_last_value
 } ccl_status_t;
 
 /** API version description. */
-typedef struct
-{
+typedef struct {
     unsigned int major;
     unsigned int minor;
     unsigned int update;
@@ -59,71 +58,104 @@ typedef int ccl_datatype_t;
 #define ccl_dtype_last_value ((ccl_datatype_t)(7))
 
 /** Reduction operations. */
-typedef enum
-{
-    ccl_reduction_sum    = 0,
-    ccl_reduction_prod   = 1,
-    ccl_reduction_min    = 2,
-    ccl_reduction_max    = 3,
+typedef enum {
+    ccl_reduction_sum = 0,
+    ccl_reduction_prod = 1,
+    ccl_reduction_min = 2,
+    ccl_reduction_max = 3,
     ccl_reduction_custom = 4,
 
     ccl_reduction_last_value
 } ccl_reduction_t;
 
 /** Stream types. */
-typedef enum
-{
-    ccl_stream_host  = 0,
-    ccl_stream_cpu   = 1,
-    ccl_stream_gpu   = 2,
+typedef enum {
+    ccl_stream_host = 0,
+    ccl_stream_cpu = 1,
+    ccl_stream_gpu = 2,
 
     ccl_stream_last_value
 } ccl_stream_type_t;
 
 /** Resize action types. */
-typedef enum ccl_resize_action
-{
+typedef enum ccl_resize_action {
     /* Wait additional changes for number of ranks */
-    ccl_ra_wait     = 0,
+    ccl_ra_wait = 0,
     /* Run with current number of ranks */
-    ccl_ra_run      = 1,
+    ccl_ra_run = 1,
     /* Finalize work */
     ccl_ra_finalize = 2,
 } ccl_resize_action_t;
 
-typedef struct
-{
+typedef struct {
     const char* match_id;
     const size_t offset;
 } ccl_fn_context_t;
 
+/* Sparse coalesce modes */
+/* Use this variable to set sparse_allreduce coalescing mode:
+   ccl_sparse_coalesce_regular run regular coalesce funtion;
+   ccl_sparse_coalesce_disable disables coalesce function in sparse_allreduce,
+                               allgathered data is returned;
+   ccl_sparse_coalesce_keep_precision on every local reduce bfp16 data is
+                               converted to fp32, reduced and then converted
+                               back to bfp16.
+*/
+typedef enum ccl_sparse_coalesce_mode {
+    ccl_sparse_coalesce_regular = 0,
+    ccl_sparse_coalesce_disable = 1,
+    ccl_sparse_coalesce_keep_precision = 2
+} ccl_sparse_coalesce_mode_t;
+
 /* comm_size */
-typedef ccl_resize_action_t(*ccl_resize_fn_t)(size_t comm_size);
+typedef ccl_resize_action_t (*ccl_resize_fn_t)(size_t comm_size);
 
 /* in_buf, in_count, in_dtype, out_buf, out_count, out_dtype, context */
-typedef ccl_status_t(*ccl_prologue_fn_t) (const void*, size_t, ccl_datatype_t,
-                                          void**, size_t*, ccl_datatype_t*,
+typedef ccl_status_t (*ccl_prologue_fn_t)(const void*,
+                                          size_t,
+                                          ccl_datatype_t,
+                                          void**,
+                                          size_t*,
+                                          ccl_datatype_t*,
                                           const ccl_fn_context_t*);
 
 /* in_buf, in_count, in_dtype, out_buf, out_count, out_dtype, context */
-typedef ccl_status_t(*ccl_epilogue_fn_t) (const void*, size_t, ccl_datatype_t,
-                                          void*, size_t*, ccl_datatype_t,
+typedef ccl_status_t (*ccl_epilogue_fn_t)(const void*,
+                                          size_t,
+                                          ccl_datatype_t,
+                                          void*,
+                                          size_t*,
+                                          ccl_datatype_t,
                                           const ccl_fn_context_t*);
 
 /* in_buf, in_count, inout_buf, out_count, dtype, context */
-typedef ccl_status_t(*ccl_reduction_fn_t) (const void*, size_t,
-                                           void*, size_t*,
+typedef ccl_status_t (*ccl_reduction_fn_t)(const void*,
+                                           size_t,
+                                           void*,
+                                           size_t*,
                                            ccl_datatype_t,
                                            const ccl_fn_context_t*);
 
-/* idx_buf, idx_count, idx_dtype, val_buf, val_count, val_dtype, fn_context, user_context */
-typedef ccl_status_t(*ccl_sparse_allreduce_completion_fn_t) (const void*, size_t, ccl_datatype_t,
-                                                             const void*, size_t, ccl_datatype_t,
-                                                             const ccl_fn_context_t*, const void*);
+/* idx_buf, idx_count, idx_dtype, val_buf, val_count, val_dtype, fn_context */
+typedef ccl_status_t (*ccl_sparse_allreduce_completion_fn_t)(const void*,
+                                                             size_t,
+                                                             ccl_datatype_t,
+                                                             const void*,
+                                                             size_t,
+                                                             ccl_datatype_t,
+                                                             const void*);
+
+/* idx_count, idx_dtype, val_count, val_dtype, fn_context, out_idx_buf, out_val_buf */
+typedef ccl_status_t (*ccl_sparse_allreduce_alloc_fn_t)(size_t,
+                                                        ccl_datatype_t,
+                                                        size_t,
+                                                        ccl_datatype_t,
+                                                        const void*,
+                                                        void**,
+                                                        void**);
 
 /** Extendable list of collective attributes. */
-typedef struct
-{
+typedef struct {
     /**
      * Callbacks into application code
      * for pre-/post-processing data
@@ -132,10 +164,6 @@ typedef struct
     ccl_prologue_fn_t prologue_fn;
     ccl_epilogue_fn_t epilogue_fn;
     ccl_reduction_fn_t reduction_fn;
-
-    /* Sparse_allreduce */
-    ccl_sparse_allreduce_completion_fn_t sparse_allreduce_completion_fn;
-    const void* sparse_allreduce_completion_ctx;
 
     /* Priority for collective operation */
     size_t priority;
@@ -154,11 +182,17 @@ typedef struct
      * operations with the same @b match_id will be executed in the same order.
      */
     const char* match_id;
+
+    /* Sparse allreduce specific */
+    ccl_sparse_allreduce_completion_fn_t sparse_allreduce_completion_fn;
+    ccl_sparse_allreduce_alloc_fn_t sparse_allreduce_alloc_fn;
+    const void* sparse_allreduce_fn_ctx;
+    ccl_sparse_coalesce_mode_t sparse_coalesce_mode;
+
 } ccl_coll_attr_t;
 
 /** List of host communicator attributes. */
-typedef struct
-{
+typedef struct {
     /**
      * Used to split global communicator into parts. Ranks with identical color
      * will form a new communicator.
@@ -174,8 +208,7 @@ typedef struct
     int local;
 } ccl_comm_attr_t;
 
-typedef struct
-{
+typedef struct {
     ccl_comm_attr_t comm_attr;
     int version;
 } ccl_comm_attr_versioned_t;
@@ -183,8 +216,7 @@ typedef struct
 /** Host attributes
  *
  */
-typedef enum
-{
+typedef enum {
     ccl_host_color,
     ccl_host_version
 
@@ -192,8 +224,7 @@ typedef enum
 
 typedef ccl_comm_attr_versioned_t ccl_host_comm_attr_t;
 
-typedef struct
-{
+typedef struct {
     /* Size of single element */
     size_t size;
 } ccl_datatype_attr_t;
@@ -205,8 +236,8 @@ typedef void* ccl_request_t;
 typedef void* ccl_stream_t;
 
 #ifdef MULTI_GPU_SUPPORT
-    #include "ccl_device_types.h"
+#include "ccl_device_types.h"
 #endif
 #ifdef __cplusplus
-}   /*extern C */
+} /*extern C */
 #endif

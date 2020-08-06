@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,26 +17,20 @@
 
 ccl_status_t coll_entry_helper::build_schedule(ccl_sched* sched,
                                                const ccl_sched* parent_sched,
-                                               const ccl_coll_entry_param& param)
-{
+                                               const ccl_coll_entry_param& param) {
     ccl_status_t res = ccl_status_success;
 
-    if (param.ctype == ccl_coll_allreduce ||
-        param.ctype == ccl_coll_reduce ||
-        param.ctype == ccl_coll_reduce_scatter)
-    {
-        if (sched != parent_sched)
-        {
+    if (param.ctype == ccl_coll_allreduce || param.ctype == ccl_coll_reduce ||
+        param.ctype == ccl_coll_reduce_scatter) {
+        if (sched != parent_sched) {
             sched->coll_attr.reduction_fn = parent_sched->coll_attr.reduction_fn;
             /* required to create ccl_fn_context in reduce/recv_reduce entries */
             sched->coll_attr.match_id = parent_sched->coll_attr.match_id;
         }
     }
 
-    switch (param.ctype)
-    {
-        case ccl_coll_allgatherv:
-        {
+    switch (param.ctype) {
+        case ccl_coll_allgatherv: {
             res = ccl_coll_build_allgatherv(sched,
                                             param.send_buf,
                                             param.send_count,
@@ -46,8 +40,7 @@ ccl_status_t coll_entry_helper::build_schedule(ccl_sched* sched,
                                             param.comm);
             break;
         }
-        case ccl_coll_allreduce:
-        {
+        case ccl_coll_allreduce: {
             res = ccl_coll_build_allreduce(sched,
                                            param.send_buf,
                                            param.recv_buf,
@@ -57,18 +50,12 @@ ccl_status_t coll_entry_helper::build_schedule(ccl_sched* sched,
                                            param.comm);
             break;
         }
-        case ccl_coll_alltoall:
-        {
-            res = ccl_coll_build_alltoall(sched,
-                                          param.send_buf,
-                                          param.recv_buf,
-                                          param.count,
-                                          param.dtype,
-                                          param.comm);
+        case ccl_coll_alltoall: {
+            res = ccl_coll_build_alltoall(
+                sched, param.send_buf, param.recv_buf, param.count, param.dtype, param.comm);
             break;
         }
-        case ccl_coll_alltoallv:
-        {
+        case ccl_coll_alltoallv: {
             res = ccl_coll_build_alltoallv(sched,
                                            param.send_buf,
                                            param.send_counts,
@@ -78,24 +65,16 @@ ccl_status_t coll_entry_helper::build_schedule(ccl_sched* sched,
                                            param.comm);
             break;
         }
-        case ccl_coll_barrier:
-        {
-            res = ccl_coll_build_barrier(sched,
-                                         param.comm);
+        case ccl_coll_barrier: {
+            res = ccl_coll_build_barrier(sched, param.comm);
             break;
         }
-        case ccl_coll_bcast:
-        {
-            res = ccl_coll_build_bcast(sched,
-                                       param.buf,
-                                       param.count,
-                                       param.dtype,
-                                       param.root,
-                                       param.comm);
+        case ccl_coll_bcast: {
+            res = ccl_coll_build_bcast(
+                sched, param.buf, param.count, param.dtype, param.root, param.comm);
             break;
         }
-        case ccl_coll_reduce:
-        {
+        case ccl_coll_reduce: {
             res = ccl_coll_build_reduce(sched,
                                         param.send_buf,
                                         param.recv_buf,
@@ -106,8 +85,7 @@ ccl_status_t coll_entry_helper::build_schedule(ccl_sched* sched,
                                         param.comm);
             break;
         }
-        case ccl_coll_reduce_scatter:
-        {
+        case ccl_coll_reduce_scatter: {
             res = ccl_coll_build_reduce_scatter(sched,
                                                 param.send_buf,
                                                 param.recv_buf,
@@ -117,9 +95,7 @@ ccl_status_t coll_entry_helper::build_schedule(ccl_sched* sched,
                                                 param.comm);
             break;
         }
-        default:
-            CCL_FATAL("not supported type ", param.ctype);
-            break;
+        default: CCL_FATAL("not supported type ", param.ctype); break;
     }
     return res;
 }

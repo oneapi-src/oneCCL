@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,10 +18,10 @@
 #include "exec/thread/worker.hpp"
 #include "fusion/fusion.hpp"
 
-class ccl_service_worker : public ccl_worker
-{
+class ccl_service_worker : public ccl_worker {
 public:
-    ccl_service_worker(size_t idx, std::unique_ptr<ccl_sched_queue> data_queue,
+    ccl_service_worker(size_t idx,
+                       std::unique_ptr<ccl_sched_queue> data_queue,
                        ccl_fusion_manager& fusion_manager);
     ~ccl_service_worker() = default;
 

@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,28 +35,27 @@
 
 void test_finalize(void);
 
-#define PRINT_BY_ROOT(fmt, ...) if (::rank == 0) printf(fmt"\n", ##__VA_ARGS__)
+#define PRINT_BY_ROOT(fmt, ...) \
+    if (::rank == 0) \
+    printf(fmt "\n", ##__VA_ARGS__)
 
-#define ASSERT(cond, fmt, ...)                            \
-  do                                                      \
-  {                                                       \
-      if (!(cond))                                        \
-      {                                                   \
-          printf("FAILED\n");                             \
-          fprintf(stderr, "ASSERT '%s' FAILED " fmt "\n", \
-              #cond, ##__VA_ARGS__);                      \
-          test_finalize();                                \
-          exit(1);                                        \
-      }                                                   \
-  } while (0)
+#define ASSERT(cond, fmt, ...) \
+    do { \
+        if (!(cond)) { \
+            printf("FAILED\n"); \
+            fprintf(stderr, "ASSERT '%s' FAILED " fmt "\n", #cond, ##__VA_ARGS__); \
+            test_finalize(); \
+            exit(1); \
+        } \
+    } while (0)
 
-#define CCL_CALL(expr)                                     \
-  do {                                                     \
-        ccl_status_t status = ccl_status_success;          \
-        status = expr;                                     \
+#define CCL_CALL(expr) \
+    do { \
+        ccl_status_t status = ccl_status_success; \
+        status = expr; \
         ASSERT(status == ccl_status_success, "CCL error"); \
-        (void)status;                                      \
-  } while (0)
+        (void)status; \
+    } while (0)
 
 ccl_coll_attr_t coll_attr;
 ccl_request_t request;
@@ -64,30 +63,25 @@ size_t rank, size;
 double t1, t2, t;
 size_t idx, iter_idx;
 
-double when(void)
-{
+double when(void) {
     struct timeval tv;
     static struct timeval tv_base;
     static int is_first = 1;
 
-    if (gettimeofday(&tv, NULL))
-    {
+    if (gettimeofday(&tv, NULL)) {
         perror("gettimeofday");
         return 0;
     }
 
-    if (is_first)
-    {
+    if (is_first) {
         tv_base = tv;
         is_first = 0;
     }
 
-    return (double)(tv.tv_sec - tv_base.tv_sec) * 1.0e6 +
-           (double)(tv.tv_usec - tv_base.tv_usec);
+    return (double)(tv.tv_sec - tv_base.tv_sec) * 1.0e6 + (double)(tv.tv_usec - tv_base.tv_usec);
 }
 
-void test_init()
-{
+void test_init() {
     CCL_CALL(ccl_init());
 
     CCL_CALL(ccl_get_comm_rank(NULL, &rank));
@@ -103,8 +97,7 @@ void test_init()
     coll_attr.vector_buf = 0;
 }
 
-void test_finalize()
-{
+void test_finalize() {
     CCL_CALL(ccl_finalize());
 }
 

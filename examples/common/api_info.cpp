@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,34 +17,38 @@
 
 #include "base.h"
 
-int main()
-{
+int main() {
     test_init();
 
     ccl_version_t version;
     ccl_status_t ret = ccl_get_version(&version);
-    if(ret != ccl_status_success)
-    {
+    if (ret != ccl_status_success) {
         perror("Cannot get CCL version\n");
         return -1;
     }
 
     printf("CCL library info:\nVersion:\nmajor: %d\nminor: %d\nupdate: %d\n"
-                            "\nProduct: %s\nBuild date: %s\nFull: %s\n",
-                            version.major, version.minor, version.update,
-                            version.product_status, version.build_date, version.full);
+           "\nProduct: %s\nBuild date: %s\nFull: %s\n",
+           version.major,
+           version.minor,
+           version.update,
+           version.product_status,
+           version.build_date,
+           version.full);
 
     printf("\nCCL API info:\nVersion:\nmajor: %d\nminor: %d\nupdate: %d\n"
-                        "\nProduct: %s\nBuild date: %s\nFull: %s\n",
-                        CCL_MAJOR_VERSION, CCL_MINOR_VERSION, CCL_UPDATE_VERSION,
-                        CCL_PRODUCT_STATUS, CCL_PRODUCT_BUILD_DATE, CCL_PRODUCT_FULL);
+           "\nProduct: %s\nBuild date: %s\nFull: %s\n",
+           CCL_MAJOR_VERSION,
+           CCL_MINOR_VERSION,
+           CCL_UPDATE_VERSION,
+           CCL_PRODUCT_STATUS,
+           CCL_PRODUCT_BUILD_DATE,
+           CCL_PRODUCT_FULL);
 
-    if(CCL_MAJOR_VERSION == version.major && CCL_MINOR_VERSION == version.minor)
-    {
+    if (CCL_MAJOR_VERSION == version.major && CCL_MINOR_VERSION == version.minor) {
         printf("API & library versions compatible\n");
     }
-    else
-    {
+    else {
         perror("API & library versions are not compatible!\n");
         return -1;
     }

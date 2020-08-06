@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,8 +17,7 @@
 
 #include "atl/atl.h"
 
-typedef struct
-{
+typedef struct {
     int wait_dst;
 
     size_t src_peer;
@@ -30,7 +29,8 @@ typedef struct
     uint64_t* sync_flags; // pre-computed values (iteration indexes) to be written to dst side
     atl_mr_t* sync_flags_mr;
 
-    volatile uint64_t dst_ready_flag; // dst side will write here '1' to indicate it is ready for write ops
+    volatile uint64_t
+        dst_ready_flag; // dst side will write here '1' to indicate it is ready for write ops
     atl_mr_t* dst_ready_flag_mr;
 
     uint64_t dst_ready_value;

@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,7 +20,6 @@
 
 #define COMPARE_STR(str1, str2, str2_len) (strstr((str1), (str2)) && (strlen(str1) == (str2_len)))
 
-
 typedef struct kvs_store {
     char name[MAX_KVS_NAME_LENGTH];
     char key[MAX_KVS_KEY_LENGTH];
@@ -32,19 +31,16 @@ typedef struct kvs_store_list {
     struct kvs_store_list* next;
 } kvs_store_list_t;
 
-static kvs_store_list_t* head[] = {NULL, NULL};
-static size_t kvs_list_size[] = {0, 0};
+static kvs_store_list_t* head[] = { NULL, NULL };
+static size_t kvs_list_size[] = { 0, 0 };
 
-size_t get_count(const char kvs_name[], storage_type_t st_type)
-{
+size_t get_count(const char kvs_name[], storage_type_t st_type) {
     size_t count_names = 0;
     size_t i;
     kvs_store_list_t* new_key_ptr = head[st_type];
     size_t kvs_name_len = strlen(kvs_name);
-    for (i = 0; i < kvs_list_size[st_type]; i++)
-    {
-        if (COMPARE_STR(new_key_ptr->kvs.name, kvs_name,kvs_name_len))
-        {
+    for (i = 0; i < kvs_list_size[st_type]; i++) {
+        if (COMPARE_STR(new_key_ptr->kvs.name, kvs_name, kvs_name_len)) {
             count_names++;
         }
         new_key_ptr = new_key_ptr->next;
@@ -52,17 +48,14 @@ size_t get_count(const char kvs_name[], storage_type_t st_type)
     return count_names;
 }
 
-size_t get_val(const char kvs_name[], const char kvs_key[], char* kvs_val, storage_type_t st_type)
-{
+size_t get_val(const char kvs_name[], const char kvs_key[], char* kvs_val, storage_type_t st_type) {
     size_t i;
     kvs_store_list_t* new_key_ptr = head[st_type];
     size_t kvs_name_len = strlen(kvs_name);
     size_t kvs_key_len = strlen(kvs_key);
-    for (i = 0; i < kvs_list_size[st_type]; i++)
-    {
+    for (i = 0; i < kvs_list_size[st_type]; i++) {
         if (COMPARE_STR(new_key_ptr->kvs.name, kvs_name, kvs_name_len) &&
-            COMPARE_STR(new_key_ptr->kvs.key,  kvs_key, kvs_key_len))
-        {
+            COMPARE_STR(new_key_ptr->kvs.key, kvs_key, kvs_key_len)) {
             STR_COPY(kvs_val, new_key_ptr->kvs.val, MAX_KVS_VAL_LENGTH);
             return 1;
         }
@@ -71,16 +64,16 @@ size_t get_val(const char kvs_name[], const char kvs_key[], char* kvs_val, stora
     return 0;
 }
 
-size_t get_keys_values(const char *kvs_name, char ***kvs_keys, char ***kvs_values, storage_type_t st_type)
-{
+size_t get_keys_values(const char* kvs_name,
+                       char*** kvs_keys,
+                       char*** kvs_values,
+                       storage_type_t st_type) {
     size_t count = 0;
     size_t i;
     kvs_store_list_t* new_key_ptr = head[st_type];
     size_t kvs_name_len = strlen(kvs_name);
-    for (i = 0; i < kvs_list_size[st_type]; i++)
-    {
-        if (COMPARE_STR(new_key_ptr->kvs.name, kvs_name, kvs_name_len))
-        {
+    for (i = 0; i < kvs_list_size[st_type]; i++) {
+        if (COMPARE_STR(new_key_ptr->kvs.name, kvs_name, kvs_name_len)) {
             count++;
         }
         new_key_ptr = new_key_ptr->next;
@@ -89,30 +82,25 @@ size_t get_keys_values(const char *kvs_name, char ***kvs_keys, char ***kvs_value
     if (count == 0)
         return count;
 
-    if (*kvs_keys != NULL)
-    {
+    if (*kvs_keys != NULL) {
         free(*kvs_keys);
     }
 
-    if (*kvs_values != NULL)
-    {
+    if (*kvs_values != NULL) {
         free(*kvs_values);
     }
 
     *kvs_values = (char**)malloc(sizeof(char*) * count);
     *kvs_keys = (char**)malloc(sizeof(char*) * count);
 
-    for (i = 0; i < count; i++)
-    {
+    for (i = 0; i < count; i++) {
         (*kvs_keys)[i] = (char*)malloc(sizeof(char) * MAX_KVS_KEY_LENGTH);
         (*kvs_values)[i] = (char*)malloc(sizeof(char) * MAX_KVS_VAL_LENGTH);
     }
 
     new_key_ptr = head[st_type];
-    for (i = 0; ((new_key_ptr != NULL) && (i < count)); )
-    {
-        if (COMPARE_STR(new_key_ptr->kvs.name, kvs_name, kvs_name_len))
-        {
+    for (i = 0; ((new_key_ptr != NULL) && (i < count));) {
+        if (COMPARE_STR(new_key_ptr->kvs.name, kvs_name, kvs_name_len)) {
             STR_COPY((*kvs_keys)[i], new_key_ptr->kvs.key, MAX_KVS_KEY_LENGTH);
             STR_COPY((*kvs_values)[i], new_key_ptr->kvs.val, MAX_KVS_VAL_LENGTH);
             i++;
@@ -122,24 +110,19 @@ size_t get_keys_values(const char *kvs_name, char ***kvs_keys, char ***kvs_value
     return count;
 }
 
-size_t remove_val(const char kvs_name[], const char kvs_key[], storage_type_t st_type)
-{
+size_t remove_val(const char kvs_name[], const char kvs_key[], storage_type_t st_type) {
     size_t i;
     kvs_store_list_t* cur_key_ptr = head[st_type];
     kvs_store_list_t* prev_key_ptr = cur_key_ptr;
     size_t kvs_name_len = strlen(kvs_name);
     size_t kvs_key_len = strlen(kvs_key);
-    for (i = 0; i < kvs_list_size[st_type]; i++)
-    {
+    for (i = 0; i < kvs_list_size[st_type]; i++) {
         if (COMPARE_STR(cur_key_ptr->kvs.name, kvs_name, kvs_name_len) &&
-            COMPARE_STR(cur_key_ptr->kvs.key,  kvs_key, kvs_key_len))
-        {
-            if (cur_key_ptr == head[st_type])
-            {
+            COMPARE_STR(cur_key_ptr->kvs.key, kvs_key, kvs_key_len)) {
+            if (cur_key_ptr == head[st_type]) {
                 head[st_type] = head[st_type]->next;
             }
-            else
-            {
+            else {
                 prev_key_ptr->next = cur_key_ptr->next;
             }
             free(cur_key_ptr);
@@ -152,26 +135,24 @@ size_t remove_val(const char kvs_name[], const char kvs_key[], storage_type_t st
     return 1;
 }
 
-void put_key(const char kvs_name[], const char kvs_key[], const char kvs_val[], storage_type_t st_type)
-{
+void put_key(const char kvs_name[],
+             const char kvs_key[],
+             const char kvs_val[],
+             storage_type_t st_type) {
     kvs_store_list_t* tmp_key_ptr = head[st_type];
 
-    if (tmp_key_ptr == NULL)
-    {
+    if (tmp_key_ptr == NULL) {
         head[st_type] = (kvs_store_list_t*)malloc(sizeof(kvs_store_list_t));
         head[st_type]->next = NULL;
         tmp_key_ptr = head[st_type];
     }
-    else
-    {
+    else {
         kvs_store_list_t* prev_key_ptr = tmp_key_ptr;
         size_t kvs_name_len = strlen(kvs_name);
         size_t kvs_key_len = strlen(kvs_key);
-        while (tmp_key_ptr != NULL)
-        {
+        while (tmp_key_ptr != NULL) {
             if (COMPARE_STR(tmp_key_ptr->kvs.name, kvs_name, kvs_name_len) &&
-                COMPARE_STR(tmp_key_ptr->kvs.key, kvs_key, kvs_key_len))
-            {
+                COMPARE_STR(tmp_key_ptr->kvs.key, kvs_key, kvs_key_len)) {
                 goto copy;
             }
 
@@ -180,7 +161,7 @@ void put_key(const char kvs_name[], const char kvs_key[], const char kvs_val[], 
         }
         tmp_key_ptr = prev_key_ptr;
 
-        tmp_key_ptr->next = (kvs_store_list_t*) malloc(sizeof(kvs_store_list_t));
+        tmp_key_ptr->next = (kvs_store_list_t*)malloc(sizeof(kvs_store_list_t));
         tmp_key_ptr = tmp_key_ptr->next;
         tmp_key_ptr->next = NULL;
     }
@@ -190,26 +171,21 @@ copy:
     STR_COPY(tmp_key_ptr->kvs.key, kvs_key, MAX_KVS_KEY_LENGTH);
     STR_COPY(tmp_key_ptr->kvs.val, kvs_val, MAX_KVS_VAL_LENGTH);
 
-    if (strlen(kvs_name) > MAX_KVS_NAME_LENGTH)
-    {
+    if (strlen(kvs_name) > MAX_KVS_NAME_LENGTH) {
         tmp_key_ptr->kvs.name[MAX_KVS_NAME_LENGTH - 1] = NULL_CHAR;
     }
-    if (strlen(kvs_key) > MAX_KVS_KEY_LENGTH)
-    {
+    if (strlen(kvs_key) > MAX_KVS_KEY_LENGTH) {
         tmp_key_ptr->kvs.key[MAX_KVS_KEY_LENGTH - 1] = NULL_CHAR;
     }
-    if (strlen(kvs_val) > MAX_KVS_VAL_LENGTH)
-    {
+    if (strlen(kvs_val) > MAX_KVS_VAL_LENGTH) {
         tmp_key_ptr->kvs.val[MAX_KVS_VAL_LENGTH - 1] = NULL_CHAR;
     }
 }
 
-void kvs_keeper_clear(storage_type_t st_type)
-{
+void kvs_keeper_clear(storage_type_t st_type) {
     kvs_store_list_t* key_ptr;
 
-    while (head[st_type] != NULL)
-    {
+    while (head[st_type] != NULL) {
         key_ptr = head[st_type];
         head[st_type] = head[st_type]->next;
 
@@ -218,12 +194,10 @@ void kvs_keeper_clear(storage_type_t st_type)
     }
 }
 
-size_t cut_head(char* kvs_name, char* kvs_key, char* kvs_val, storage_type_t st_type)
-{
+size_t cut_head(char* kvs_name, char* kvs_key, char* kvs_val, storage_type_t st_type) {
     kvs_store_list_t* key_ptr = head[st_type];
 
-    if (head[st_type] != NULL)
-    {
+    if (head[st_type] != NULL) {
         head[st_type] = head[st_type]->next;
 
         memset(kvs_name, 0, MAX_KVS_NAME_LENGTH);
@@ -240,7 +214,6 @@ size_t cut_head(char* kvs_name, char* kvs_key, char* kvs_val, storage_type_t st_
     return 0;
 }
 
-size_t get_kvs_list_size(storage_type_t st_type)
-{
+size_t get_kvs_list_size(storage_type_t st_type) {
     return kvs_list_size[st_type];
 }

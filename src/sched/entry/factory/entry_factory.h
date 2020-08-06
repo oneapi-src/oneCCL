@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,30 +23,25 @@
 #include <memory>
 
 // declares interface for all entries creations
-namespace entry_factory
-{
-    template<class EntryType, class ...Arguments>
-    EntryType* make_entry(ccl_sched* sched, Arguments &&...args);
+namespace entry_factory {
+template <class EntryType, class... Arguments>
+EntryType* make_entry(ccl_sched* sched, Arguments&&... args);
 
-    namespace detail
-    {
-        template<class EntryType>
-        struct entry_creator
-        {
-            template <class T, class ...U>
-            friend T* make_entry(ccl_sched* sched, U &&...args);
+namespace detail {
+template <class EntryType>
+struct entry_creator {
+    template <class T, class... U>
+    friend T* make_entry(ccl_sched* sched, U&&... args);
 
-            template <class T, ccl_sched_add_mode mode, class ...U>
-            friend T* make_entry(ccl_sched* sched, U &&...args);
+    template <class T, ccl_sched_add_mode mode, class... U>
+    friend T* make_entry(ccl_sched* sched, U&&... args);
 
-            template<ccl_sched_add_mode mode, class ...Arguments>
-            static EntryType* create(ccl_sched* sched, Arguments &&...args)
-            {
-                return static_cast<EntryType*>(sched->add_entry(std::unique_ptr<EntryType> (
-                                                                        new EntryType(sched,
-                                                                        std::forward<Arguments>(args)...)),
-                                                                ccl_sched_base::add_entry_mode_t<mode>()));
-            }
-        };
+    template <ccl_sched_add_mode mode, class... Arguments>
+    static EntryType* create(ccl_sched* sched, Arguments&&... args) {
+        return static_cast<EntryType*>(sched->add_entry(
+            std::unique_ptr<EntryType>(new EntryType(sched, std::forward<Arguments>(args)...)),
+            ccl_sched_base::add_entry_mode_t<mode>()));
     }
-}
+};
+} // namespace detail
+} // namespace entry_factory

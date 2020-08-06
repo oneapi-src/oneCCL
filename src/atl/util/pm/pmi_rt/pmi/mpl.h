@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,7 +39,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
-#define ATTRIBUTE __attribute__
+#define ATTRIBUTE         __attribute__
 #define MPI_MAX_PORT_NAME 256
 
 #define MPL_snprintf(...) snprintf(__VA_ARGS__)
@@ -83,8 +83,7 @@ Output Parameters:
   Module:
   Utility
   @*/
-static inline int MPL_strncpy(char *dest, const char *src, size_t n)
-{
+static inline int MPL_strncpy(char *dest, const char *src, size_t n) {
     char *d_ptr = dest;
     const char *s_ptr = src;
     register int i;
@@ -92,7 +91,7 @@ static inline int MPL_strncpy(char *dest, const char *src, size_t n)
     if (n == 0)
         return 0;
 
-    i = (int) n;
+    i = (int)n;
     while (*s_ptr && i-- > 0) {
         *d_ptr++ = *s_ptr++;
     }
@@ -112,12 +111,9 @@ static inline int MPL_strncpy(char *dest, const char *src, size_t n)
     }
 }
 
-
-static inline void MPL_exit(int exit_code)
-{
+static inline void MPL_exit(int exit_code) {
     exit(exit_code);
 }
-
 
 /*@ MPL_strnapp - Append to a string with a maximum length
 
@@ -137,14 +133,13 @@ Output Parameters:
   Module:
   Utility
   @*/
-static inline int MPL_strnapp(char *dest, const char *src, size_t n)
-{
+static inline int MPL_strnapp(char *dest, const char *src, size_t n) {
     char *d_ptr = dest;
     const char *s_ptr = src;
     register int i;
 
     /* Get to the end of dest */
-    i = (int) n;
+    i = (int)n;
     while (i-- > 0 && *d_ptr)
         d_ptr++;
     if (i <= 0)
@@ -171,9 +166,7 @@ static inline int MPL_strnapp(char *dest, const char *src, size_t n)
     }
 }
 
-
-static inline int MPL_internal_error_printf(const char *str, ...)
-{
+static inline int MPL_internal_error_printf(const char *str, ...) {
     int n;
     va_list list;
     const char *format_str;

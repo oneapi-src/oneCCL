@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,8 +17,7 @@
 
 #include "coll/coll.hpp"
 
-struct ccl_coll_entry_param
-{
+struct ccl_coll_entry_param {
     ccl_coll_type ctype;
     ccl_buffer buf;
     ccl_buffer send_buf;
@@ -32,8 +31,7 @@ struct ccl_coll_entry_param
     size_t root;
     ccl_comm* comm;
 
-    ccl_coll_param to_coll_param() const
-    {
+    ccl_coll_param to_coll_param() const {
         ccl_coll_param param;
         param.ctype = ctype;
         param.buf = buf.get_ptr();

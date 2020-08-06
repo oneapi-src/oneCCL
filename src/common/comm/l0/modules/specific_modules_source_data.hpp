@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,9 +15,8 @@
 */
 #include "coll/coll.hpp"
 #include "common/comm/l0/modules/modules_source_data.hpp"
-namespace native
-{
+namespace native {
 
-using specific_modules_source_data_storage = modules_src_container<ccl_coll_allgatherv,
-                                                                   ccl_coll_allreduce>;
+using specific_modules_source_data_storage =
+    modules_src_container<ccl_coll_allgatherv, ccl_coll_allreduce>;
 }
