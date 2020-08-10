@@ -16,25 +16,28 @@ The ultimate goal of |product_short| is to provide a common API for sparse colle
 
 The ``sparse_allreduce`` function has the following parameters:
 
--	``send_ind_buf`` - a buffer of indices with ``send_ind_count`` elements of ``index_dtype``
--	``send_int_count`` - the number of ``send_ind_buf`` elements of type ``index_type``
--	``send_val_buf`` - a buffer of values with ``send_val_count`` elements of ``value_dtype``
--	``send_val_count`` - the number of ``send_val_buf`` elements of type ``value_type``
--	``recv_ind_buf`` - a buffer to store reduced indices (ignored for now) 
--	``recv_ind_count`` - the number of reduced indices (ignored for now)
--	``recv_val_buf``` - a buffer to store reduced values (ignored for now)
--	``recv_val_count`` - the number of reduced values (ignored for now)
--	``index_dtype`` - index type of elements in ``send_ind_buf`` and ``recv_ind_buf`` buffers
--	``value_dtype`` - data type of elements in ``send_val_buf`` and ``recv_val_buf`` buffers
--	``reduction`` - the type of reduction operation to be applied
--	``attributes`` - attributes that customize operation
--	returns ``ccl::request`` object to track the progress of the operation
+- ``send_ind_buf`` - a buffer of indices with ``send_ind_count`` elements of ``index_dtype``
+- ``send_int_count`` - the number of ``send_ind_buf`` elements of type ``index_type``
+- ``send_val_buf`` - a buffer of values with ``send_val_count`` elements of ``value_dtype``
+- ``send_val_count`` - the number of ``send_val_buf`` elements of type ``value_type``
+- ``recv_ind_buf`` - a buffer to store reduced indices (ignored for now) 
+- ``recv_ind_count`` - the number of reduced indices (ignored for now)
+- ``recv_val_buf``` - a buffer to store reduced values (ignored for now)
+- ``recv_val_count`` - the number of reduced values (ignored for now)
+- ``index_dtype`` - index type of elements in ``send_ind_buf`` and ``recv_ind_buf`` buffers
+- ``value_dtype`` - data type of elements in ``send_val_buf`` and ``recv_val_buf`` buffers
+- ``reduction`` - the type of reduction operation to be applied
+- ``attributes`` - attributes that customize operation
+- returns ``ccl::request`` object to track the progress of the operation
 
-For ``sparse_allreduce``, a completion callback is required to get the results.
+For ``sparse_allreduce``, a completion callback or an allocation callback is required.
+
 Use the following :ref:`Collective Call Attributes` fields:
 
--	``sparse_allreduce_completion_fn`` - a completion callback function pointer (must not be set to ``NULL``)
--	``sparse_allreduce_completion_ctx``- a user context pointer of type ``void*``
+- ``sparse_allreduce_completion_fn`` - a completion callback function pointer
+- ``sparse_allreduce_alloc_fn`` - an allocation callback function pointer
+- ``sparse_allreduce_fn_ctx``- an user context pointer of type ``void*``
+- ``sparse_coalesce_mode``- a coalesce mode
 
 Here is an example of a function definition for ``sparse_allreduce`` completion callback:
 
@@ -53,4 +56,4 @@ Here is an example of a function definition for ``sparse_allreduce`` completion 
       return ccl_status_success;
   }
 
-For more details, refer to `this example <https://github.com/oneapi-src/oneCCL/blob/master/examples/cpu/sparse_test_algo.hpp>`_
+For more details, refer to `this example <https://github.com/oneapi-src/oneCCL/blob/master/examples/cpu/sparse_allreduce.cpp>`_.

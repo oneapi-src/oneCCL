@@ -89,7 +89,7 @@ Use the command:
 ```
 $ source <install_dir>/env/setvars.sh
 $ cd <install_dir>/examples
-$ mpirun -n 2 ./common/benchmark
+$ mpirun -n 2 ./benchmark/benchmark
 ```
 ### Setting workers affinity
 There are two ways to set workers threads affinity - explicit and automatic

@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,11 +19,9 @@
 #include "sched/extra_sched.hpp"
 #include "sched/queue/queue.hpp"
 
-class subsched_entry : public sched_entry
-{
+class subsched_entry : public sched_entry {
 public:
-    static constexpr const char* class_name() noexcept
-    {
+    static constexpr const char* class_name() noexcept {
         return "SUBSCHED";
     }
 
@@ -31,26 +29,22 @@ public:
     subsched_entry(ccl_sched* sched,
                    ccl_op_id_t op_id,
                    std::function<void(ccl_sched*)> fill_fn,
-                   const char* subsched_name = nullptr) :
-        sched_entry(sched),
-        fill_fn(fill_fn),
-        op_id(op_id),
-        subsched_name(subsched_name)
-    {
-        if (subsched_name)
-        {
+                   const char* subsched_name = nullptr)
+            : sched_entry(sched),
+              fill_fn(fill_fn),
+              op_id(op_id),
+              subsched_name(subsched_name) {
+        if (subsched_name) {
             LOG_DEBUG("subsched name: ", subsched_name);
         }
 
-        subsched.reset(new ccl_extra_sched(sched->coll_param,
-                                           sched->sched_id));
+        subsched.reset(new ccl_extra_sched(sched->coll_param, sched->sched_id));
         subsched->coll_param.ctype = ccl_coll_internal;
         subsched->set_op_id(this->op_id);
 
         if (sched->coll_param.ctype == ccl_coll_allreduce ||
             sched->coll_param.ctype == ccl_coll_reduce ||
-            sched->coll_param.ctype == ccl_coll_reduce_scatter)
-        {
+            sched->coll_param.ctype == ccl_coll_reduce_scatter) {
             subsched->coll_attr.reduction_fn = sched->coll_attr.reduction_fn;
             /* required to create ccl_fn_context in reduce/recv_reduce entries */
             subsched->coll_attr.match_id = sched->coll_attr.match_id;
@@ -59,13 +53,11 @@ public:
         fill_fn(subsched.get());
     }
 
-    ~subsched_entry()
-    {
+    ~subsched_entry() {
         subsched.reset();
     }
 
-    void start() override
-    {
+    void start() override {
         subsched->renew();
         subsched->bin = sched->bin;
         subsched->queue = sched->queue;
@@ -73,27 +65,26 @@ public:
         status = ccl_sched_entry_status_started;
     }
 
-    void update() override
-    {
+    void update() override {
         subsched->do_progress();
-        if (subsched->start_idx == subsched->entries.size())
-        {
+        if (subsched->start_idx == subsched->entries.size()) {
             status = ccl_sched_entry_status_complete;
         }
     }
 
-    const char* name() const override
-    {
+    const char* name() const override {
         return !subsched_name.empty() ? subsched_name.c_str() : class_name();
     }
 
+    ccl_sched* get_subsched() {
+        return subsched.get();
+    }
+
 protected:
-    void dump_detail(std::stringstream& str) const override
-    {
+    void dump_detail(std::stringstream& str) const override {
         ccl_logger::format(str, "content:\n");
 
-        for (size_t idx = 0; idx < subsched->entries.size(); ++idx)
-        {
+        for (size_t idx = 0; idx < subsched->entries.size(); ++idx) {
             ccl_logger::format(str, "\t");
             subsched->entries[idx]->dump(str, idx);
         }

@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,8 +16,7 @@
 #include "ccl.h"
 #include "sycl_base.hpp"
 
-int main(int argc, char **argv)
-{
+int main(int argc, char** argv) {
     int i = 0;
     int j = 0;
     size_t size = 0;
@@ -71,9 +70,9 @@ int main(int argc, char **argv)
     /* open sendbuf and modify it on the target device side */
     q.submit([&](cl::sycl::handler& cgh) {
         auto dev_acc_sbuf = sendbuf.get_access<mode::write>(cgh);
-        cgh.parallel_for<class allgatherv_test_sbuf_modify>(range<1>{COUNT}, [=](item<1> id) {
+        cgh.parallel_for<class allgatherv_test_sbuf_modify>(range<1>{ COUNT }, [=](item<1> id) {
             dev_acc_sbuf[id] += 1;
-       });
+        });
     });
 
     handle_exception(q);
@@ -95,11 +94,12 @@ int main(int argc, char **argv)
     q.submit([&](handler& cgh) {
         auto dev_acc_rbuf = recvbuf.get_access<mode::write>(cgh);
         auto expected_acc_buf_dev = expected_buf.get_access<mode::read>(cgh);
-        cgh.parallel_for<class allgatherv_test_rbuf_check>(range<1>{size * COUNT}, [=](item<1> id) {
-            if (dev_acc_rbuf[id] != expected_acc_buf_dev[id]) {
-                dev_acc_rbuf[id] = -1;
-            }
-        });
+        cgh.parallel_for<class allgatherv_test_rbuf_check>(
+            range<1>{ size * COUNT }, [=](item<1> id) {
+                if (dev_acc_rbuf[id] != expected_acc_buf_dev[id]) {
+                    dev_acc_rbuf[id] = -1;
+                }
+            });
     });
 
     handle_exception(q);

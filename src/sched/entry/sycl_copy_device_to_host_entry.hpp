@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,11 +20,9 @@
 
 #include <CL/sycl.hpp>
 
-class sycl_copy_device_to_host_entry : public sched_entry
-{
+class sycl_copy_device_to_host_entry : public sched_entry {
 public:
-    static constexpr const char* class_name() noexcept
-    {
+    static constexpr const char* class_name() noexcept {
         return "SYCL_COPY_D2H";
     }
 
@@ -34,40 +32,45 @@ public:
                                    ccl_buffer out_buf,
                                    size_t cnt,
                                    const ccl_datatype& dtype,
-                                   const ccl_stream* stream) :
-                                   sched_entry(sched), in_buf(in_buf), out_buf(out_buf),
-                                   cnt(cnt), dtype(dtype), stream(stream)
-    {
-    }
+                                   const ccl_stream* stream,
+                                   size_t offset = 0)
+            : sched_entry(sched),
+              in_buf(in_buf),
+              out_buf(out_buf),
+              cnt(cnt),
+              dtype(dtype),
+              stream(stream),
+              offset(offset) {}
 
-    void start() override
-    {
+    void start() override {
         //fill visitor with actual ccl_buffer data
-        auto visitor = make_visitor<cl::sycl::access::mode::read>(dtype, cnt, in_buf, [this](void* sycl_pointer, size_t bytes)
-        {
-            auto comp_status = ccl_comp_copy(sycl_pointer, out_buf.get_ptr(bytes), cnt, dtype);
-            CCL_ASSERT(comp_status == ccl_status_success, "bad status ", comp_status);
-
-        });
+        auto visitor = make_visitor<cl::sycl::access::mode::read>(
+            dtype, cnt, offset, in_buf, [this](void* sycl_pointer, size_t bytes) {
+                auto comp_status = ccl_comp_copy(sycl_pointer, out_buf.get_ptr(bytes), cnt, dtype);
+                CCL_ASSERT(comp_status == ccl_status_success, "bad status ", comp_status);
+            });
 
         ccl_tuple_for_each_indexed<ccl_sycle_buffer_one_dim_types>(visitor);
         status = ccl_sched_entry_status_complete;
     }
 
-    const char* name() const override
-    {
+    const char* name() const override {
         return class_name();
     }
 
 protected:
-    void dump_detail(std::stringstream& str) const override
-    {
+    void dump_detail(std::stringstream& str) const override {
         ccl_logger::format(str,
-                           "  dtype ", global_data.dtypes->name(dtype),
-                           ", cnt ", cnt,
-                           ", in_buf ", in_buf,
-                           ", out_buf ", out_buf,
-                           ", native_stream ", stream->to_string(),
+                           "  dtype ",
+                           ccl::global_data::get().dtypes->name(dtype),
+                           ", cnt ",
+                           cnt,
+                           ", in_buf ",
+                           in_buf,
+                           ", out_buf ",
+                           out_buf,
+                           ", native_stream ",
+                           stream->to_string(),
                            "\n");
     }
 
@@ -77,4 +80,5 @@ private:
     size_t cnt;
     ccl_datatype dtype;
     const ccl_stream* stream;
+    size_t offset;
 };

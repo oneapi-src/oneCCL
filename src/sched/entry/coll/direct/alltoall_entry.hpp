@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,11 +17,9 @@
 
 #include "sched/entry/coll/direct/base_coll_entry.hpp"
 
-class alltoall_entry : public base_coll_entry
-{
+class alltoall_entry : public base_coll_entry {
 public:
-    static constexpr const char* class_name() noexcept
-    {
+    static constexpr const char* class_name() noexcept {
         return "ALLTOALL";
     }
 
@@ -31,17 +29,18 @@ public:
                    ccl_buffer recv_buf,
                    size_t cnt,
                    const ccl_datatype& dtype,
-                   ccl_comm* comm) :
-        base_coll_entry(sched), send_buf(send_buf),
-        recv_buf(recv_buf), cnt(cnt), dtype(dtype),
-        comm(comm)
-    {
+                   ccl_comm* comm)
+            : base_coll_entry(sched),
+              send_buf(send_buf),
+              recv_buf(recv_buf),
+              cnt(cnt),
+              dtype(dtype),
+              comm(comm) {
         //TODO: Add way to using MPI communicator
         CCL_UNUSED(this->comm);
     }
 
-    void start() override
-    {
+    void start() override {
         size_t dt_size = dtype.size();
         bytes = cnt * dt_size;
 
@@ -52,46 +51,47 @@ public:
                                                   bytes,
                                                   &req);
 
-        if (unlikely(atl_status != ATL_STATUS_SUCCESS))
-        {
+        if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("ALLTOALL entry failed. atl_status: ", atl_status_to_str(atl_status));
         }
         else
             status = ccl_sched_entry_status_started;
     }
 
-    void update() override
-    {
+    void update() override {
         int req_status;
         atl_status_t atl_status = atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
 
-        if (unlikely(atl_status != ATL_STATUS_SUCCESS))
-        {
+        if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("ALLTOALL entry failed. atl_status: ", atl_status_to_str(atl_status));
         }
 
-        if (req_status)
-        {
+        if (req_status) {
             status = ccl_sched_entry_status_complete;
         }
     }
 
-    const char* name() const override
-    {
+    const char* name() const override {
         return class_name();
     }
 
 protected:
-    void dump_detail(std::stringstream& str) const override
-    {
+    void dump_detail(std::stringstream& str) const override {
         ccl_logger::format(str,
-                           "dt ", global_data.dtypes->name(dtype),
-                           ", send_buf ", send_buf,
-                           ", recv_buf ", recv_buf,
-                           ", cnt ", cnt,
-                           ", recv_bytes ", bytes,
-                           ", comm_id ", sched->get_comm_id(),
-                           ", req ",&req,
+                           "dt ",
+                           ccl::global_data::get().dtypes->name(dtype),
+                           ", send_buf ",
+                           send_buf,
+                           ", recv_buf ",
+                           recv_buf,
+                           ", cnt ",
+                           cnt,
+                           ", recv_bytes ",
+                           bytes,
+                           ", comm_id ",
+                           sched->get_comm_id(),
+                           ", req ",
+                           &req,
                            "\n");
     }
 

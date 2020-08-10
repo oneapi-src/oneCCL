@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +23,7 @@
 class ccl_comm;
 class ccl_stream;
 
-namespace ccl
-{
+namespace ccl {
 
 class communicator;
 class stream;
@@ -53,8 +52,7 @@ using stream_t = std::unique_ptr<ccl::stream>;
 /**
  * Class @c ccl_host_attr allows to configure host wire-up communicator creation parametes
  */
-class ccl_host_attr
-{
+class ccl_host_attr {
 public:
     friend class ccl_device_attr;
     friend struct communicator_interface_dispatcher;
@@ -66,15 +64,15 @@ public:
      * Set specific value for attribute by @attrId.
      * Previous attibute value would be returned
      */
-    template<ccl_host_attributes attrId,
-             class Value,
-             class = typename std::enable_if<is_attribute_value_supported<attrId, Value>()>::type>
+    template <ccl_host_attributes attrId,
+              class Value,
+              class = typename std::enable_if<is_attribute_value_supported<attrId, Value>()>::type>
     Value set_value(const Value& v);
 
     /**
      * Get specific attribute value by @attrId
      */
-    template<ccl_host_attributes attrId>
+    template <ccl_host_attributes attrId>
     const typename ccl_host_attributes_traits<attrId>::type& get_value() const;
 
 protected:
@@ -82,13 +80,13 @@ protected:
 
 private:
     ccl_host_attr(const ccl_version_t& library_version,
-                  const ccl_host_comm_attr_t &core = ccl_host_comm_attr_t(),
-                  ccl_version_t api_version = ccl_version_t {CCL_MAJOR_VERSION,
+                  const ccl_host_comm_attr_t& core = ccl_host_comm_attr_t(),
+                  ccl_version_t api_version = ccl_version_t{ CCL_MAJOR_VERSION,
                                                              CCL_MINOR_VERSION,
                                                              CCL_UPDATE_VERSION,
                                                              CCL_PRODUCT_STATUS,
                                                              CCL_PRODUCT_BUILD_DATE,
-                                                             CCL_PRODUCT_FULL});
+                                                             CCL_PRODUCT_FULL });
 
     std::unique_ptr<host_attr_impl> pimpl;
 };
@@ -100,8 +98,7 @@ using comm_group_t = std::shared_ptr<comm_group>;
 /**
  * Class @c ccl_device_attr allows to configure device communicator creation parametes
  */
-class ccl_device_attr : public ccl_host_attr
-{
+class ccl_device_attr : public ccl_host_attr {
 public:
     friend class comm_group;
     friend struct communicator_interface_dispatcher;
@@ -113,15 +110,17 @@ public:
      * Set specific value for attribute by @attrId.
      * Previous attibute value would be returned
      */
-    template<ccl_device_attributes attrId,
-             class Value,
-             class = typename std::enable_if<std::is_same<typename ccl_device_attributes_traits<attrId>::type, Value>::value>::type>
+    template <
+        ccl_device_attributes attrId,
+        class Value,
+        class = typename std::enable_if<
+            std::is_same<typename ccl_device_attributes_traits<attrId>::type, Value>::value>::type>
     Value set_value(Value&& v);
 
     /**
      * Get specific attribute value by @attrId
      */
-    template<ccl_device_attributes attrId>
+    template <ccl_device_attributes attrId>
     const typename ccl_device_attributes_traits<attrId>::type& get_value() const;
 
 private:
@@ -135,8 +134,7 @@ using device_comm_attr_t = std::shared_ptr<ccl_device_attr>;
 /**
  * ccl environment singleton
  */
-class environment
-{
+class environment {
 public:
     ~environment();
 
@@ -165,8 +163,8 @@ public:
      * Creates a new ccl stream from @stream_native_type
      * @param native_stream the existing handle of stream
      */
-    template<class stream_native_type,
-             class = typename std::enable_if<is_stream_supported<stream_native_type>()>::type>
+    template <class stream_native_type,
+              class = typename std::enable_if<is_stream_supported<stream_native_type>()>::type>
     stream_t create_stream(stream_native_type& native_stream);
 
     stream_t create_stream() const;
@@ -179,15 +177,17 @@ public:
     /**
      * Created @attr, which used to create host from @environment
      */
-    comm_attr_t create_host_comm_attr(const ccl_host_comm_attr_t& attr = ccl_host_comm_attr_t()) const;
+    comm_attr_t create_host_comm_attr(
+        const ccl_host_comm_attr_t& attr = ccl_host_comm_attr_t()) const;
 
 #ifdef MULTI_GPU_SUPPORT
     /**
      * Creates a new device group, which is entrance point of device communicator creation
      */
-    comm_group_t create_comm_group(size_t current_device_group_size,
-                                   size_t process_device_group_size,
-                                   ccl::shared_communicator_t parent_comm = ccl::shared_communicator_t());
+    comm_group_t create_comm_group(
+        size_t current_device_group_size,
+        size_t process_device_group_size,
+        ccl::shared_communicator_t parent_comm = ccl::shared_communicator_t());
 
 #endif //MULTI_GPU_SUPPORT
 private:
@@ -197,8 +197,7 @@ private:
 /**
  * A request interface that allows the user to track collective operation progress
  */
-class request
-{
+class request {
 public:
     /**
      * Blocking wait for collective operation completion
@@ -227,8 +226,7 @@ size_t datatype_get_size(ccl::datatype dtype);
  * Has no defined public constructor. Use ccl::environment::create_stream
  * for stream objects creation
  */
-class stream
-{
+class stream {
 public:
     /**
      * stream is not copyable
@@ -243,6 +241,7 @@ public:
     stream& operator=(stream&&) = default;
 
     using impl_t = std::shared_ptr<ccl_stream>;
+
 private:
     friend class communicator;
     friend class environment;
@@ -256,10 +255,8 @@ private:
  * Has no defined public constructor. Use ccl::environment::create_communicator or ccl::comm_group
  * for communicator objects creation
  */
-class communicator final
-{
+class communicator final {
 public:
-
     ~communicator();
 
     /**
@@ -295,7 +292,9 @@ public:
      * Retrieves logically determined devices topology based on hardware preferred
      * devices topology. Can be overriden during communicator creation phase
      */
-    ccl::device_topology_type get_topology_type() const;
+    ccl::device_group_split_type get_device_group_split_type() const;
+
+    ccl::device_topology_type get_topology_class() const;
 
     device_comm_attr_t get_device_attr() const;
 #endif
@@ -321,8 +320,10 @@ public:
      * @param attr optional attributes that customize operation
      * @return @ref ccl::communicator::coll_request_t object that can be used to track the progress of the operation
      */
-    coll_request_t allgatherv(const void* send_buf, size_t send_count,
-                              void* recv_buf, const size_t* recv_counts,
+    coll_request_t allgatherv(const void* send_buf,
+                              size_t send_count,
+                              void* recv_buf,
+                              const size_t* recv_counts,
                               ccl::datatype dtype,
                               const ccl::coll_attr* attr = nullptr,
                               const ccl::stream_t& stream = ccl::stream_t());
@@ -339,10 +340,12 @@ public:
      * @param attr optional attributes that customize operation
      * @return @ref ccl::communicator::coll_request_t object that can be used to track the progress of the operation
      */
-    template<class buffer_type,
-             class = typename std::enable_if<ccl::is_native_type_supported<buffer_type>()>::type>
-    coll_request_t allgatherv(const buffer_type* send_buf, size_t send_count,
-                              buffer_type* recv_buf, const size_t* recv_counts,
+    template <class buffer_type,
+              class = typename std::enable_if<ccl::is_native_type_supported<buffer_type>()>::type>
+    coll_request_t allgatherv(const buffer_type* send_buf,
+                              size_t send_count,
+                              buffer_type* recv_buf,
+                              const size_t* recv_counts,
                               const ccl::coll_attr* attr = nullptr,
                               const ccl::stream_t& stream = ccl::stream_t());
     /**
@@ -357,10 +360,13 @@ public:
      * @param attr optional attributes that customize operation
      * @return @ref ccl::request object that can be used to track the progress of the operation
      */
-    template<class buffer_container_type,
-             class = typename std::enable_if<ccl::is_class_supported<buffer_container_type>()>::type>
-    coll_request_t allgatherv(const buffer_container_type& send_buf, size_t send_count,
-                              buffer_container_type& recv_buf, const size_t* recv_counts,
+    template <
+        class buffer_container_type,
+        class = typename std::enable_if<ccl::is_class_supported<buffer_container_type>()>::type>
+    coll_request_t allgatherv(const buffer_container_type& send_buf,
+                              size_t send_count,
+                              buffer_container_type& recv_buf,
+                              const size_t* recv_counts,
                               const ccl::coll_attr* attr = nullptr,
                               const ccl::stream_t& stream = ccl::stream_t());
 
@@ -376,8 +382,10 @@ public:
      * @param attr optional attributes that customize operation
      * @return @ref ccl::communicator::coll_request_t object that can be used to track the progress of the operation
      */
-    coll_request_t allreduce(const void* send_buf, void* recv_buf,
-                             size_t count, ccl::datatype dtype,
+    coll_request_t allreduce(const void* send_buf,
+                             void* recv_buf,
+                             size_t count,
+                             ccl::datatype dtype,
                              ccl::reduction reduction,
                              const ccl::coll_attr* attr = nullptr,
                              const ccl::stream_t& stream = ccl::stream_t());
@@ -394,8 +402,8 @@ public:
      * @param attr optional attributes that customize operation
      * @return @ref ccl::communicator::coll_request_t object that can be used to track the progress of the operation
      */
-    template<class buffer_type,
-             class = typename std::enable_if<ccl::is_native_type_supported<buffer_type>()>::type>
+    template <class buffer_type,
+              class = typename std::enable_if<ccl::is_native_type_supported<buffer_type>()>::type>
     coll_request_t allreduce(const buffer_type* send_buf,
                              buffer_type* recv_buf,
                              size_t count,
@@ -415,8 +423,9 @@ public:
      * @param attr optional attributes that customize operation
      * @return @ref ccl::communicator::coll_request_t object that can be used to track the progress of the operation
      */
-    template<class buffer_container_type,
-             class = typename std::enable_if<ccl::is_class_supported<buffer_container_type>()>::type>
+    template <
+        class buffer_container_type,
+        class = typename std::enable_if<ccl::is_class_supported<buffer_container_type>()>::type>
     coll_request_t allreduce(const buffer_container_type& send_buf,
                              buffer_container_type& recv_buf,
                              size_t count,
@@ -435,8 +444,10 @@ public:
      * @param attr optional attributes that customize operation
      * @return @ref ccl::request object that can be used to track the progress of the operation
      */
-    coll_request_t alltoall(const void* send_buf, void* recv_buf,
-                            size_t count, ccl::datatype dtype,
+    coll_request_t alltoall(const void* send_buf,
+                            void* recv_buf,
+                            size_t count,
+                            ccl::datatype dtype,
                             const ccl::coll_attr* attr = nullptr,
                             const ccl::stream_t& stream = ccl::stream_t());
 
@@ -451,8 +462,8 @@ public:
      * @param attr optional attributes that customize operation
      * @return @ref ccl::request object that can be used to track the progress of the operation
      */
-    template<class buffer_type,
-        class = typename std::enable_if<ccl::is_native_type_supported<buffer_type>()>::type>
+    template <class buffer_type,
+              class = typename std::enable_if<ccl::is_native_type_supported<buffer_type>()>::type>
     coll_request_t alltoall(const buffer_type* send_buf,
                             buffer_type* recv_buf,
                             size_t count,
@@ -470,7 +481,8 @@ public:
      * @param attr optional attributes that customize operation
      * @return @ref ccl::request object that can be used to track the progress of the operation
      */
-    template<class buffer_container_type,
+    template <
+        class buffer_container_type,
         class = typename std::enable_if<ccl::is_class_supported<buffer_container_type>()>::type>
     coll_request_t alltoall(const buffer_container_type& send_buf,
                             buffer_container_type& recv_buf,
@@ -489,8 +501,10 @@ public:
      * @param attr optional attributes that customize operation
      * @return @ref ccl::communicator::coll_request_t object that can be used to track the progress of the operation
      */
-    coll_request_t alltoallv(const void* send_buf, const size_t* send_counts,
-                             void* recv_buf, const size_t* recv_counts,
+    coll_request_t alltoallv(const void* send_buf,
+                             const size_t* send_counts,
+                             void* recv_buf,
+                             const size_t* recv_counts,
                              ccl::datatype dtype,
                              const ccl::coll_attr* attr = nullptr,
                              const ccl::stream_t& stream = ccl::stream_t());
@@ -506,10 +520,12 @@ public:
      * @param attr optional attributes that customize operation
      * @return @ref ccl::communicator::coll_request_t object that can be used to track the progress of the operation
      */
-    template<class buffer_type,
-             class = typename std::enable_if<ccl::is_native_type_supported<buffer_type>()>::type>
-    coll_request_t alltoallv(const buffer_type* send_buf, const size_t* send_counts,
-                             buffer_type* recv_buf, const size_t* recv_counts,
+    template <class buffer_type,
+              class = typename std::enable_if<ccl::is_native_type_supported<buffer_type>()>::type>
+    coll_request_t alltoallv(const buffer_type* send_buf,
+                             const size_t* send_counts,
+                             buffer_type* recv_buf,
+                             const size_t* recv_counts,
                              const ccl::coll_attr* attr = nullptr,
                              const ccl::stream_t& stream = ccl::stream_t());
     /**
@@ -523,10 +539,13 @@ public:
      * @param attr optional attributes that customize operation
      * @return @ref ccl::communicator::coll_request_t object that can be used to track the progress of the operation
      */
-    template<class buffer_container_type,
-             class = typename std::enable_if<ccl::is_class_supported<buffer_container_type>()>::type>
-    coll_request_t alltoallv(const buffer_container_type& send_buf, const size_t* send_counts,
-                             buffer_container_type& recv_buf, const size_t* recv_counts,
+    template <
+        class buffer_container_type,
+        class = typename std::enable_if<ccl::is_class_supported<buffer_container_type>()>::type>
+    coll_request_t alltoallv(const buffer_container_type& send_buf,
+                             const size_t* send_counts,
+                             buffer_container_type& recv_buf,
+                             const size_t* recv_counts,
                              const ccl::coll_attr* attr = nullptr,
                              const ccl::stream_t& stream = ccl::stream_t());
 
@@ -545,7 +564,8 @@ public:
      * @param attr optional attributes that customize operation
      * @return @ref ccl::communicator::coll_request_t object that can be used to track the progress of the operation
      */
-    coll_request_t bcast(void* buf, size_t count,
+    coll_request_t bcast(void* buf,
+                         size_t count,
                          ccl::datatype dtype,
                          size_t root,
                          const ccl::coll_attr* attr = nullptr,
@@ -561,9 +581,10 @@ public:
      * @param attr optional attributes that customize operation
      * @return @ref coll_request_t object that can be used to track the progress of the operation
      */
-    template<class buffer_type,
-             class = typename std::enable_if<ccl::is_native_type_supported<buffer_type>()>::type>
-    coll_request_t bcast(buffer_type* buf, size_t count,
+    template <class buffer_type,
+              class = typename std::enable_if<ccl::is_native_type_supported<buffer_type>()>::type>
+    coll_request_t bcast(buffer_type* buf,
+                         size_t count,
                          size_t root,
                          const ccl::coll_attr* attr = nullptr,
                          const ccl::stream_t& stream = ccl::stream_t());
@@ -578,13 +599,14 @@ public:
      * @param attr optional attributes that customize operation
      * @return @ref coll_request_t object that can be used to track the progress of the operation
      */
-    template<class buffer_container_type,
-             class = typename std::enable_if<ccl::is_class_supported<buffer_container_type>()>::type>
-    coll_request_t bcast(buffer_container_type& buf, size_t count,
+    template <
+        class buffer_container_type,
+        class = typename std::enable_if<ccl::is_class_supported<buffer_container_type>()>::type>
+    coll_request_t bcast(buffer_container_type& buf,
+                         size_t count,
                          size_t root,
                          const ccl::coll_attr* attr = nullptr,
                          const ccl::stream_t& stream = ccl::stream_t());
-
 
     /**
      * Reduces @c buf on all process in the communicator and stores result in @c recv_buf
@@ -599,7 +621,8 @@ public:
      * @param attr optional attributes that customize operation
      * @return @ref coll_request_t object that can be used to track the progress of the operation
      */
-    coll_request_t reduce(const void* send_buf, void* recv_buf,
+    coll_request_t reduce(const void* send_buf,
+                          void* recv_buf,
                           size_t count,
                           ccl::datatype dtype,
                           ccl::reduction reduction,
@@ -620,9 +643,10 @@ public:
      * @param attr optional attributes that customize operation
      * @return @ref ccl::communicator::coll_request_t object that can be used to track the progress of the operation
      */
-    template<class buffer_type,
-             class = typename std::enable_if<ccl::is_native_type_supported<buffer_type>()>::type>
-    coll_request_t reduce(const buffer_type* send_buf, buffer_type* recv_buf,
+    template <class buffer_type,
+              class = typename std::enable_if<ccl::is_native_type_supported<buffer_type>()>::type>
+    coll_request_t reduce(const buffer_type* send_buf,
+                          buffer_type* recv_buf,
                           size_t count,
                           ccl::reduction reduction,
                           size_t root,
@@ -642,15 +666,16 @@ public:
      * @param attr optional attributes that customize operation
      * @return @ref ccl::communicator::coll_request_t object that can be used to track the progress of the operation
      */
-    template<class buffer_container_type,
-             class = typename std::enable_if<ccl::is_class_supported<buffer_container_type>()>::type>
-    coll_request_t reduce(const buffer_container_type& send_buf, buffer_container_type& recv_buf,
+    template <
+        class buffer_container_type,
+        class = typename std::enable_if<ccl::is_class_supported<buffer_container_type>()>::type>
+    coll_request_t reduce(const buffer_container_type& send_buf,
+                          buffer_container_type& recv_buf,
                           size_t count,
                           ccl::reduction reduction,
                           size_t root,
                           const ccl::coll_attr* attr = nullptr,
                           const ccl::stream_t& stream = ccl::stream_t());
-
 
     /**
      * Reduces sparse @c buf on all process in the communicator and stores result in @c recv_buf
@@ -669,10 +694,14 @@ public:
      * @param attr optional attributes that customize operation
      * @return @ref ccl::communicator::coll_request_t object that can be used to track the progress of the operation
      */
-    coll_request_t sparse_allreduce(const void* send_ind_buf, size_t send_ind_count,
-                                    const void* send_val_buf, size_t send_val_count,
-                                    void* recv_ind_buf, size_t recv_ind_count,
-                                    void* recv_val_buf, size_t recv_val_count,
+    coll_request_t sparse_allreduce(const void* send_ind_buf,
+                                    size_t send_ind_count,
+                                    const void* send_val_buf,
+                                    size_t send_val_count,
+                                    void* recv_ind_buf,
+                                    size_t recv_ind_count,
+                                    void* recv_val_buf,
+                                    size_t recv_val_count,
                                     ccl::datatype index_dtype,
                                     ccl::datatype value_dtype,
                                     ccl::reduction reduction,
@@ -695,13 +724,18 @@ public:
      * @param attr optional attributes that customize operation
      * @return @ref ccl::request object that can be used to track the progress of the operation
      */
-    template<class index_buffer_type,
-             class value_buffer_type,
-             class = typename std::enable_if<ccl::is_native_type_supported<value_buffer_type>()>::type>
-    coll_request_t sparse_allreduce(const index_buffer_type* send_ind_buf, size_t send_ind_count,
-                                    const value_buffer_type* send_val_buf, size_t send_val_count,
-                                    index_buffer_type* recv_ind_buf, size_t recv_ind_count,
-                                    value_buffer_type* recv_val_buf, size_t recv_val_count,
+    template <
+        class index_buffer_type,
+        class value_buffer_type,
+        class = typename std::enable_if<ccl::is_native_type_supported<value_buffer_type>()>::type>
+    coll_request_t sparse_allreduce(const index_buffer_type* send_ind_buf,
+                                    size_t send_ind_count,
+                                    const value_buffer_type* send_val_buf,
+                                    size_t send_val_count,
+                                    index_buffer_type* recv_ind_buf,
+                                    size_t recv_ind_count,
+                                    value_buffer_type* recv_val_buf,
+                                    size_t recv_val_count,
                                     ccl::reduction reduction,
                                     const ccl::coll_attr* attr = nullptr,
                                     const ccl::stream_t& stream = ccl::stream_t());
@@ -722,13 +756,18 @@ public:
      * @param attr optional attributes that customize operation
      * @return @ref ccl::request object that can be used to track the progress of the operation
      */
-    template<class index_buffer_container_type,
-             class value_buffer_container_type,
-             class = typename std::enable_if<ccl::is_class_supported<value_buffer_container_type>()>::type>
-    coll_request_t sparse_allreduce(const index_buffer_container_type& send_ind_buf, size_t send_ind_count,
-                                    const value_buffer_container_type& send_val_buf, size_t send_val_count,
-                                    index_buffer_container_type& recv_ind_buf, size_t recv_ind_count,
-                                    value_buffer_container_type& recv_val_buf, size_t recv_val_count,
+    template <class index_buffer_container_type,
+              class value_buffer_container_type,
+              class = typename std::enable_if<
+                  ccl::is_class_supported<value_buffer_container_type>()>::type>
+    coll_request_t sparse_allreduce(const index_buffer_container_type& send_ind_buf,
+                                    size_t send_ind_count,
+                                    const value_buffer_container_type& send_val_buf,
+                                    size_t send_val_count,
+                                    index_buffer_container_type& recv_ind_buf,
+                                    size_t recv_ind_count,
+                                    value_buffer_container_type& recv_val_buf,
+                                    size_t recv_val_count,
                                     ccl::reduction reduction,
                                     const ccl::coll_attr* attr = nullptr,
                                     const ccl::stream_t& stream = ccl::stream_t());
@@ -744,8 +783,8 @@ private:
      */
     std::shared_ptr<communicator_interface> pimpl;
 };
-}
+} // namespace ccl
 #ifdef MULTI_GPU_SUPPORT
-    #include "ccl_gpu_modules.h"
-    #include "gpu_communicator.hpp"
+#include "ccl_gpu_modules.h"
+#include "gpu_communicator.hpp"
 #endif

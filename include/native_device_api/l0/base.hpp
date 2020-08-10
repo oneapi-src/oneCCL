@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,19 +23,17 @@
 #include <ze_api.h>
 
 #ifndef UT
-    #include "ccl_types.hpp"
-    #include "ccl_type_traits.hpp"
+#include "ccl_types.hpp"
+#include "ccl_type_traits.hpp"
 #endif
 
-namespace native
-{
+namespace native {
 /**
  * Base RAII L0 handles wrappper
  * support serialize/deserialize concept
  */
-template<class handle_type, class resource_owner>
-class cl_base
-{
+template <class handle_type, class resource_owner>
+class cl_base {
 public:
     friend resource_owner;
     using self_t = cl_base<handle_type, resource_owner>;
@@ -43,8 +41,8 @@ public:
     using owner_t = resource_owner;
     using owner_ptr_t = std::weak_ptr<resource_owner>;
 
-    cl_base(cl_base &&src) noexcept;
-    cl_base& operator=(cl_base&&src) noexcept;
+    cl_base(cl_base&& src) noexcept;
+    cl_base& operator=(cl_base&& src) noexcept;
     ~cl_base() noexcept;
 
     // getter/setters
@@ -60,22 +58,22 @@ public:
     // serialization/deserialization
     static constexpr size_t get_size_for_serialize();
 
-    template<class ...helpers>
-    size_t serialize(std::vector<uint8_t> &out, size_t from_pos, const helpers& ...args) const;
+    template <class... helpers>
+    size_t serialize(std::vector<uint8_t>& out, size_t from_pos, const helpers&... args) const;
 
-    template<class type, class... helpers>
-    static std::shared_ptr<type> deserialize(const uint8_t** data, size_t& size, helpers& ...args);
+    template <class type, class... helpers>
+    static std::shared_ptr<type> deserialize(const uint8_t** data, size_t& size, helpers&... args);
 
 protected:
     cl_base(handle_t h, owner_ptr_t parent);
 
     handle_t handle;
+
 private:
     owner_ptr_t owner;
 };
 
-
-template<class value_type>
+template <class value_type>
 using indexed_storage = std::multimap<uint32_t, value_type>;
 std::ostream& operator<<(std::ostream& out, const ccl::device_index_type& index);
-}
+} // namespace native

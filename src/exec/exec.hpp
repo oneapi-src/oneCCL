@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +17,6 @@
 
 #include "atl/atl.h"
 #include "coll/coll.hpp"
-#include "common/env/env.hpp"
 #include "common/global/global.hpp"
 #include "common/request/request.hpp"
 #include "exec/thread/listener.hpp"
@@ -31,10 +30,9 @@ class ccl_service_worker;
 class ccl_master_sched;
 class ccl_extra_sched;
 
-
-class alignas(CACHELINE_SIZE) ccl_executor
-{
+class alignas(CACHELINE_SIZE) ccl_executor {
     friend class ccl_listener;
+
 public:
     ccl_executor(const ccl_executor& other) = delete;
     ccl_executor& operator=(const ccl_executor& other) = delete;
@@ -44,28 +42,26 @@ public:
     ccl_executor(const char* main_addr = NULL);
     ~ccl_executor();
 
-    struct worker_guard
-    {
+    struct worker_guard {
         ccl_executor* parent;
-        worker_guard(ccl_executor* e)
-        {
+        worker_guard(ccl_executor* e) {
             parent = e;
             parent->lock_workers();
         }
-        worker_guard(worker_guard &) = delete;
-        worker_guard(worker_guard&& src)
-        {
+        worker_guard(worker_guard&) = delete;
+        worker_guard(worker_guard&& src) {
             parent = src.parent;
             src.parent = nullptr;
         }
-        ~worker_guard()
-        {
+        ~worker_guard() {
             if (parent)
                 parent->unlock_workers();
         }
     };
 
-    worker_guard get_worker_lock() { return worker_guard(this); }
+    worker_guard get_worker_lock() {
+        return worker_guard(this);
+    }
 
     void start(ccl_extra_sched* extra_sched);
     void start(ccl_master_sched* sched);
@@ -81,14 +77,28 @@ public:
     void unlock_workers();
     bool is_locked = false;
 
-    size_t get_global_proc_idx() const { return atl_proc_coord->global_idx; }
-    size_t get_global_proc_count() const { return atl_proc_coord->global_count; }
-    size_t get_local_proc_idx() const { return atl_proc_coord->local_idx; }
-    size_t get_local_proc_count() const { return atl_proc_coord->local_count; }
+    size_t get_global_proc_idx() const {
+        return atl_proc_coord->global_idx;
+    }
+    size_t get_global_proc_count() const {
+        return atl_proc_coord->global_count;
+    }
+    size_t get_local_proc_idx() const {
+        return atl_proc_coord->local_idx;
+    }
+    size_t get_local_proc_count() const {
+        return atl_proc_coord->local_count;
+    }
 
-    atl_ctx_t* get_atl_ctx() const { return atl_ctx; }
-    atl_proc_coord_t* get_proc_coord() const { return atl_proc_coord; }
-    const atl_attr_t& get_atl_attr() const { return atl_attr; }
+    atl_ctx_t* get_atl_ctx() const {
+        return atl_ctx;
+    }
+    atl_proc_coord_t* get_proc_coord() const {
+        return atl_proc_coord;
+    }
+    const atl_attr_t& get_atl_attr() const {
+        return atl_attr;
+    }
 
 private:
     static size_t calculate_atl_ep_count(size_t worker_count);
@@ -99,8 +109,7 @@ private:
     std::unique_ptr<ccl_sched_queue> create_sched_queue(size_t idx, size_t ep_per_worker);
     void do_work();
 
-    atl_attr_t atl_attr =
-    {
+    atl_attr_t atl_attr = {
         1, /* ep_count */
         1, /* enable_shm */
         64, /* tag_bits */
@@ -116,53 +125,46 @@ private:
     std::vector<std::unique_ptr<ccl_worker>> workers;
     std::unique_ptr<ccl_listener> listener;
 
-    typedef size_t(ccl_executor::* get_worker_idx_fn_t) (ccl_sched* sched);
+    typedef size_t (ccl_executor::*get_worker_idx_fn_t)(ccl_sched* sched);
     get_worker_idx_fn_t get_worker_idx_fn;
     size_t rr_worker_idx = 0; /* to distribute work in round-robin */
 };
 
-inline void ccl_release_sched(ccl_master_sched *sched)
-{
-    if (sched->coll_attr.to_cache)
-    {
-        global_data.sched_cache->release(sched);
+inline void ccl_release_sched(ccl_master_sched* sched) {
+    if (sched->coll_attr.to_cache) {
+        ccl::global_data::get().sched_cache->release(sched);
     }
-    else
-    {
+    else {
         delete sched;
     }
 }
 
-inline void ccl_release_sched(ccl_extra_sched *sched)
-{
+inline void ccl_release_sched(ccl_extra_sched* sched) {
     delete sched;
 }
 
-template<class sched_type = ccl_master_sched>
-inline void ccl_wait_impl(ccl_executor* exec, ccl_request* request)
-{
+template <class sched_type = ccl_master_sched>
+inline void ccl_wait_impl(ccl_executor* exec, ccl_request* request) {
     exec->wait(request);
-    if (!exec->is_locked)
-    {
-        LOG_DEBUG("req ", request, " completed, sched ",
+    if (!exec->is_locked) {
+        LOG_DEBUG("req ",
+                  request,
+                  " completed, sched ",
                   ccl_coll_type_to_str(static_cast<sched_type*>(request)->coll_param.ctype));
         ccl_release_sched(static_cast<sched_type*>(request));
     }
 }
 
-template<class sched_type = ccl_master_sched>
-inline bool ccl_test_impl(ccl_executor* exec, ccl_request* request)
-{
+template <class sched_type = ccl_master_sched>
+inline bool ccl_test_impl(ccl_executor* exec, ccl_request* request) {
     bool completed = exec->test(request);
 
-    if (completed)
-    {
+    if (completed) {
         sched_type* sched = static_cast<sched_type*>(request);
-        LOG_DEBUG("req ", request, " completed, sched ",
-                  ccl_coll_type_to_str(sched->coll_param.ctype));
+        LOG_DEBUG(
+            "req ", request, " completed, sched ", ccl_coll_type_to_str(sched->coll_param.ctype));
 
-        if (!exec->is_locked)
-        {
+        if (!exec->is_locked) {
             ccl_release_sched(sched);
         }
     }

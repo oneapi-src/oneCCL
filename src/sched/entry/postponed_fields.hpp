@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +23,7 @@
 #include "common/log/log.hpp"
 #include "common/utils/tuple.hpp"
 
-enum ccl_sched_entry_field_id
-{
+enum ccl_sched_entry_field_id {
     ccl_sched_entry_field_buf,
     ccl_sched_entry_field_send_buf,
     ccl_sched_entry_field_recv_buf,
@@ -38,35 +37,33 @@ enum ccl_sched_entry_field_id
     ccl_sched_entry_field_idx_buf,
     ccl_sched_entry_field_idx_cnt,
     ccl_sched_entry_field_val_buf,
-    ccl_sched_entry_field_val_cnt
+    ccl_sched_entry_field_val_cnt,
+    ccl_sched_entry_field_send_count
 };
 
-typedef ccl_status_t(*ccl_sched_entry_field_function_t) (const void*, void*);
+typedef ccl_status_t (*ccl_sched_entry_field_function_t)(const void*, void*);
 
-template<ccl_sched_entry_field_id id>
+template <ccl_sched_entry_field_id id>
 using field_id_t = std::integral_constant<ccl_sched_entry_field_id, id>;
 
-template<ccl_sched_entry_field_id id>
-class postponed_field
-{
+template <ccl_sched_entry_field_id id>
+class postponed_field {
 public:
     postponed_field() = default;
-    postponed_field(ccl_sched_entry_field_function_t fn,
-                    const void* ctx, bool update_once) :
-        fn(fn), ctx(ctx), update_once(update_once)
-    {}
+    postponed_field(ccl_sched_entry_field_function_t fn, const void* ctx, bool update_once)
+            : fn(fn),
+              ctx(ctx),
+              update_once(update_once) {}
 
-    template<class Entry>
-    void operator()(Entry entry)
-    {
+    template <class Entry>
+    void operator()(Entry entry) {
         CCL_ASSERT(fn);
         fn(ctx, reinterpret_cast<void*>(&(entry->get_field_ref(entry_field_id))));
         if (update_once)
             fn = nullptr;
     }
 
-    bool empty() const noexcept
-    {
+    bool empty() const noexcept {
         return !fn;
     }
 
@@ -76,18 +73,14 @@ public:
     static constexpr field_id_t<id> entry_field_id{};
 };
 
-template<class Entry, ccl_sched_entry_field_id ...ids>
-struct postponed_fields
-{
-    template<class Arg>
-    struct field_functor
-    {
+template <class Entry, ccl_sched_entry_field_id... ids>
+struct postponed_fields {
+    template <class Arg>
+    struct field_functor {
         field_functor(Arg arg, bool& updated) : arg(arg), updated(updated) {}
-        template<typename T>
-        void operator () (T& t) const
-        {
-            if (!t.empty())
-            {
+        template <typename T>
+        void operator()(T& t) const {
+            if (!t.empty()) {
                 t(arg);
                 updated = true;
             }
@@ -98,14 +91,12 @@ struct postponed_fields
 
     using registered_postponed_fields = std::tuple<postponed_field<ids>...>;
 
-    template<ccl_sched_entry_field_id new_id>
+    template <ccl_sched_entry_field_id new_id>
     void set_field_fn(ccl_sched_entry_field_function_t fn,
                       const void* ctx,
-                      bool update_once = true)
-    {
+                      bool update_once = true) {
         auto& field = ccl_tuple_get<postponed_field<new_id>>(fields);
-        CCL_ASSERT(field.empty(),
-                   "duplicated field_id ", new_id);
+        CCL_ASSERT(field.empty(), "duplicated field_id ", new_id);
         field.fn = fn;
         field.ctx = ctx;
         field.update_once = update_once;
@@ -113,11 +104,9 @@ struct postponed_fields
         empty_fields = false;
     }
 
-    bool update_fields()
-    {
+    bool update_fields() {
         bool updated = false;
-        if (!empty_fields)
-        {
+        if (!empty_fields) {
             ccl_tuple_for_each(fields, field_functor<Entry*>(static_cast<Entry*>(this), updated));
         }
         empty_fields = !updated;

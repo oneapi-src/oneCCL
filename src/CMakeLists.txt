@@ -29,6 +29,7 @@ if(MULTI_GPU_SUPPORT)
                     native_device_api/l0/subdevice.cpp
                     native_device_api/l0/driver.cpp
                     native_device_api/l0/platform.cpp
+                    native_device_api/l0/utils.cpp
                     native_device_api/l0/primitives.cpp
                     sched/gpu_sched.cpp
                     sched/gpu_concurrent_sched.cpp
@@ -50,6 +51,7 @@ if(MULTI_GPU_SUPPORT)
                     common/comm/l0/context/device_group_ctx.cpp
                     common/comm/l0/context/device_storage.cpp
 
+                    common/comm/l0/topology/topology_serializer.cpp
                     common/comm/l0/topology/ring/device_group_ring_creator.cpp
                     common/comm/l0/topology/ring/thread_group_ring_creator.cpp
                     common/comm/l0/topology/ring/process_group_ring_creator.cpp
@@ -116,6 +118,7 @@ set(CCL_SRC
     common/global/global.cpp
     common/log/log.cpp
     common/request/host_request.cpp
+    common/request/request.cpp
     common/stream/stream.cpp
     common/utils/spinlock.cpp
     common/utils/yield.cpp
@@ -124,7 +127,9 @@ set(CCL_SRC
 list(APPEND CCL_INC_DIRS
                  ${PROJECT_SOURCE_DIR}/include
                  ${PROJECT_SOURCE_DIR}/src)
-message("CCL_INC_DIRS: ${CCL_INC_DIRS}")
+
+message(STATUS "CCL_INC_DIRS: ${CCL_INC_DIRS}")
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 
@@ -143,7 +148,11 @@ endif()
 add_library(ccl SHARED $<TARGET_OBJECTS:ccl-objects>)
 target_include_directories(ccl PUBLIC ${CCL_INC_DIRS})
 target_link_libraries(ccl PUBLIC dl pthread ${EXTERNAL_LIBS} ${COMPUTE_RUNTIME_TARGET_NAME})
-set_target_properties(ccl PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CCL_BUILD_DIR})
+if (NOT LIB_SO_VERSION AND NOT LIB_MAJOR_VERSION)
+        set_target_properties(ccl PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CCL_BUILD_DIR})
+else()
+        set_target_properties(ccl PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CCL_BUILD_DIR} VERSION ${LIB_SO_VERSION} SOVERSION ${LIB_MAJOR_VERSION})
+endif()
 install(TARGETS ccl LIBRARY DESTINATION ${CCL_INSTALL_LIB})
 install(FILES
     "../cmake/FindOpenCL.cmake"
@@ -163,7 +172,7 @@ install(TARGETS ccl-static ARCHIVE DESTINATION ${CCL_INSTALL_LIB})
 if(MULTI_GPU_SUPPORT)
     message("Turn on L0 multi-gpu unit tests")
     add_library(ccl-ut-static STATIC $<TARGET_OBJECTS:ccl-objects>)
-    set_target_properties(ccl-ut-static PROPERTIES COMPILE_FLAGS "-fvisibility=default")
+    set_target_properties(ccl-ut-static PROPERTIES COMPILE_FLAGS "-fvisibility=default -DUNIT_TESTS")
     set_target_properties(ccl-ut-static PROPERTIES OUTPUT_NAME cclut)
     set_target_properties(ccl-ut-static PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${CCL_BUILD_DIR})
     set_target_properties(ccl-ut-static PROPERTIES INTERFACE_INCLUDE_DIRECTORIES  $<TARGET_PROPERTY:${COMPUTE_RUNTIME_TARGET_NAME},INTERFACE_INCLUDE_DIRECTORIES>)

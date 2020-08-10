@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,31 +51,29 @@
            n.(1+(p-1)/p).gamma
 */
 
-ccl_status_t ccl_coll_build_direct_reduce(ccl_sched *sched,
+ccl_status_t ccl_coll_build_direct_reduce(ccl_sched* sched,
                                           ccl_buffer send_buf,
                                           ccl_buffer recv_buf,
                                           size_t count,
                                           const ccl_datatype& dtype,
                                           ccl_reduction_t reduction,
                                           size_t root,
-                                          ccl_comm* comm)
-{
+                                          ccl_comm* comm) {
     LOG_DEBUG("build direct reduce");
 
-    entry_factory::make_entry<reduce_entry>(sched, send_buf, recv_buf, count,
-                                            dtype, reduction, root, comm);
+    entry_factory::make_entry<reduce_entry>(
+        sched, send_buf, recv_buf, count, dtype, reduction, root, comm);
     return ccl_status_success;
 }
 
-ccl_status_t ccl_coll_build_rabenseifner_reduce(ccl_sched *sched,
+ccl_status_t ccl_coll_build_rabenseifner_reduce(ccl_sched* sched,
                                                 ccl_buffer send_buf,
                                                 ccl_buffer recv_buf,
                                                 size_t count,
                                                 const ccl_datatype& dtype,
                                                 ccl_reduction_t reduction,
                                                 size_t root,
-                                                ccl_comm* comm)
-{
+                                                ccl_comm* comm) {
     LOG_DEBUG("build Rabenseifner's reduce");
 
     ccl_status_t status = ccl_status_success;
@@ -123,7 +121,7 @@ ccl_status_t ccl_coll_build_rabenseifner_reduce(ccl_sched *sched,
      * doesn't matter because all processes must get the result. */
 
     if (rank < 2 * rem) {
-        if (rank % 2 != 0) {    /* odd */
+        if (rank % 2 != 0) { /* odd */
             entry_factory::make_entry<send_entry>(sched, recv_buf, count, dtype, rank - 1, comm);
             sched->add_barrier();
 
@@ -131,21 +129,23 @@ ccl_status_t ccl_coll_build_rabenseifner_reduce(ccl_sched *sched,
              * process does not pariticipate in recursive
              * doubling */
             new_rank = CCL_INVALID_PROC_IDX;
-        } else {        /* even */
+        }
+        else { /* even */
             entry_factory::make_entry<recv_entry>(sched, tmp_buf, count, dtype, rank + 1, comm);
             sched->add_barrier();
 
             /* do the reduction on received data. */
             /* This algorithm is used only for predefined ops
              * and predefined ops are always commutative. */
-            entry_factory::make_entry<reduce_local_entry>(sched, tmp_buf, count,
-                                                          recv_buf, nullptr, dtype, reduction);
+            entry_factory::make_entry<reduce_local_entry>(
+                sched, tmp_buf, count, recv_buf, nullptr, dtype, reduction);
             sched->add_barrier();
 
             /* change the rank */
             new_rank = rank / 2;
         }
-    } else {    /* rank >= 2*rem */
+    }
+    else { /* rank >= 2*rem */
         new_rank = rank - rem;
     }
 
@@ -159,7 +159,7 @@ ccl_status_t ccl_coll_build_rabenseifner_reduce(ccl_sched *sched,
     cnts = static_cast<int*>(CCL_MALLOC(pof2 * sizeof(int), "counts"));
     disps = static_cast<int*>(CCL_MALLOC(pof2 * sizeof(int), "displacements"));
 
-    last_idx = send_idx = 0;    /* suppress spurious compiler warnings */
+    last_idx = send_idx = 0; /* suppress spurious compiler warnings */
 
     if (new_rank != CCL_INVALID_PROC_IDX) {
         for (i = 0; i < (pof2 - 1); i++)
@@ -185,7 +185,8 @@ ccl_status_t ccl_coll_build_rabenseifner_reduce(ccl_sched *sched,
                     send_cnt += cnts[i];
                 for (i = recv_idx; i < send_idx; i++)
                     recv_cnt += cnts[i];
-            } else {
+            }
+            else {
                 recv_idx = send_idx + pof2 / (mask * 2);
                 for (i = send_idx; i < recv_idx; i++)
                     send_cnt += cnts[i];
@@ -194,22 +195,25 @@ ccl_status_t ccl_coll_build_rabenseifner_reduce(ccl_sched *sched,
             }
 
             /* Send data from recv_buf. Recv into tmp_buf */
-            entry_factory::make_entry<send_entry>(sched, (recv_buf + disps[send_idx] * dtype_size),
-                                                  send_cnt, dtype, dst, comm);
+            entry_factory::make_entry<send_entry>(
+                sched, (recv_buf + disps[send_idx] * dtype_size), send_cnt, dtype, dst, comm);
             /* sendrecv, no barrier here */
-            entry_factory::make_entry<recv_entry>(sched, (tmp_buf + disps[recv_idx] * dtype_size),
-                                                  recv_cnt, dtype, dst, comm);
+            entry_factory::make_entry<recv_entry>(
+                sched, (tmp_buf + disps[recv_idx] * dtype_size), recv_cnt, dtype, dst, comm);
             sched->add_barrier();
-
 
             /* tmp_buf contains data received in this step.
              * recv_buf contains data accumulated so far */
 
             /* This algorithm is used only for predefined ops
              * and predefined ops are always commutative. */
-            entry_factory::make_entry<reduce_local_entry>(sched, (tmp_buf + disps[recv_idx] * dtype_size), recv_cnt,
+            entry_factory::make_entry<reduce_local_entry>(sched,
+                                                          (tmp_buf + disps[recv_idx] * dtype_size),
+                                                          recv_cnt,
                                                           (recv_buf + disps[recv_idx] * dtype_size),
-                                                          nullptr, dtype, reduction);
+                                                          nullptr,
+                                                          dtype,
+                                                          reduction);
             sched->add_barrier();
 
             /* update send_idx for next iteration */
@@ -248,16 +252,20 @@ ccl_status_t ccl_coll_build_rabenseifner_reduce(ccl_sched *sched,
                 new_rank = 0;
                 send_idx = 0;
                 last_idx = 2;
-            } else if (new_rank == 0) {  /* send */
-                entry_factory::make_entry<send_entry>(sched, recv_buf, cnts[0], dtype, local_root, comm);
+            }
+            else if (new_rank == 0) { /* send */
+                entry_factory::make_entry<send_entry>(
+                    sched, recv_buf, cnts[0], dtype, local_root, comm);
                 sched->add_barrier();
 
                 new_rank = CCL_INVALID_PROC_IDX;
             }
             newroot = 0;
-        } else
+        }
+        else
             newroot = local_root / 2;
-    } else {
+    }
+    else {
         newroot = local_root - rem;
     }
 
@@ -301,7 +309,8 @@ ccl_status_t ccl_coll_build_rabenseifner_reduce(ccl_sched *sched,
                     send_cnt += cnts[i];
                 for (i = recv_idx; i < last_idx; i++)
                     recv_cnt += cnts[i];
-            } else {
+            }
+            else {
                 recv_idx = send_idx - pof2 / (mask * 2);
                 for (i = send_idx; i < last_idx; i++)
                     send_cnt += cnts[i];
@@ -312,14 +321,15 @@ ccl_status_t ccl_coll_build_rabenseifner_reduce(ccl_sched *sched,
             if (newdst_tree_root == newroot_tree_root) {
                 /* send and exit */
                 /* Send data from recv_buf. Recv into tmp_buf */
-                entry_factory::make_entry<send_entry>(sched, (recv_buf + disps[send_idx] * dtype_size),
-                                                      send_cnt, dtype, dst, comm);
+                entry_factory::make_entry<send_entry>(
+                    sched, (recv_buf + disps[send_idx] * dtype_size), send_cnt, dtype, dst, comm);
                 sched->add_barrier();
                 break;
-            } else {
+            }
+            else {
                 /* recv and continue */
-                entry_factory::make_entry<recv_entry>(sched, (recv_buf + disps[recv_idx] * dtype_size),
-                                                      recv_cnt, dtype, dst, comm);
+                entry_factory::make_entry<recv_entry>(
+                    sched, (recv_buf + disps[recv_idx] * dtype_size), recv_cnt, dtype, dst, comm);
                 sched->add_barrier();
             }
 
@@ -337,15 +347,14 @@ ccl_status_t ccl_coll_build_rabenseifner_reduce(ccl_sched *sched,
     return status;
 }
 
-ccl_status_t ccl_coll_build_binomial_reduce(ccl_sched *sched,
+ccl_status_t ccl_coll_build_binomial_reduce(ccl_sched* sched,
                                             ccl_buffer send_buf,
                                             ccl_buffer recv_buf,
                                             size_t count,
                                             const ccl_datatype& dtype,
                                             ccl_reduction_t reduction,
                                             size_t root,
-                                            ccl_comm* comm)
-{
+                                            ccl_comm* comm) {
     LOG_DEBUG("build binomial reduce");
 
     ccl_status_t status = ccl_status_success;
@@ -420,12 +429,12 @@ ccl_status_t ccl_coll_build_binomial_reduce(ccl_sched *sched,
                 entry_factory::make_entry<recv_entry>(sched, tmp_buf, count, dtype, source, comm);
                 sched->add_barrier();
 
-                entry_factory::make_entry<reduce_local_entry>(sched, tmp_buf, count,
-                                                              recv_buf, nullptr, dtype, reduction);
+                entry_factory::make_entry<reduce_local_entry>(
+                    sched, tmp_buf, count, recv_buf, nullptr, dtype, reduction);
                 sched->add_barrier();
-
             }
-        } else {
+        }
+        else {
             /* I've received all that I'm going to.  Send my result to
              * my parent */
             source = ((relrank & (~mask)) + lroot) % comm_size;

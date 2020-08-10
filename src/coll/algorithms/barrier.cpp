@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,16 +22,14 @@
 #include "coll/algorithms/algorithms.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
 
-ccl_status_t ccl_coll_build_direct_barrier(ccl_sched *sched, ccl_comm* comm)
-{
+ccl_status_t ccl_coll_build_direct_barrier(ccl_sched* sched, ccl_comm* comm) {
     LOG_DEBUG("build direct barrier");
 
     entry_factory::make_entry<barrier_entry>(sched, comm);
     return ccl_status_success;
 }
 
-ccl_status_t ccl_coll_build_dissemination_barrier(ccl_sched *sched, ccl_comm* comm)
-{
+ccl_status_t ccl_coll_build_dissemination_barrier(ccl_sched* sched, ccl_comm* comm) {
     LOG_DEBUG("build dissemination barrier");
 
     ccl_status_t status = ccl_status_success;
@@ -43,8 +41,7 @@ ccl_status_t ccl_coll_build_dissemination_barrier(ccl_sched *sched, ccl_comm* co
         return status;
 
     mask = 0x1;
-    while (mask < size)
-    {
+    while (mask < size) {
         dst = (rank + mask) % size;
         src = (rank - mask + size) % size;
         entry_factory::make_entry<send_entry>(sched, ccl_buffer(), 0, ccl_datatype_char, dst, comm);

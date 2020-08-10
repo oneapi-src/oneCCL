@@ -121,7 +121,7 @@ PMPILIBNAME="pmpi"
 MPICXXLIBNAME="mpicxx"
 
 # MPIVERSION is the version of the Intel(R) MPI Library that mpiicpc is intended for
-MPIVERSION="2021.1-beta07"
+MPIVERSION="2021.1-beta08"
 #
 # Internal variables
 # Show is set to echo to cause the compilation command to be echoed instead

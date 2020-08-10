@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,12 +15,13 @@
 */
 #pragma once
 
+#include <map>
+
 #include <immintrin.h>
 #include <sched.h>
 #include <time.h>
 
-enum ccl_yield_type
-{
+enum ccl_yield_type {
     ccl_yield_none,
     ccl_yield_pause,
     ccl_yield_sleep,
@@ -30,4 +31,5 @@ enum ccl_yield_type
 };
 
 void ccl_yield(ccl_yield_type yield_type);
-const char* ccl_yield_type_to_str(ccl_yield_type type);
+
+extern std::map<ccl_yield_type, std::string> ccl_yield_type_names;

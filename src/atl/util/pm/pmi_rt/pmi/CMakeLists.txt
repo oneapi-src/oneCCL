@@ -31,7 +31,11 @@ target_compile_definitions(pmi-objects PRIVATE HAVE_UNISTD_H HAVE_STDLIB_H HAVE_
 #shared lib
 add_library(pmi SHARED $<TARGET_OBJECTS:pmi-objects>)
 target_include_directories(pmi PUBLIC INTERFACE ${COMMON_PMI_INC_DIRS})
-set_target_properties(pmi PROPERTIES VERSION 1 SOVERSION 1.0)
+if (NOT LIB_PMI_SO_VERSION AND NOT LIB_PMI_MAJOR_VERSION)
+        set_target_properties(pmi PROPERTIES VERSION 1 SOVERSION 1.0)
+else()
+        set_target_properties(pmi PROPERTIES VERSION ${LIB_PMI_SO_VERSION} SOVERSION ${LIB_PMI_MAJOR_VERSION})
+endif()
 set_target_properties(pmi PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CCL_BUILD_DIR})
 
 install(TARGETS pmi LIBRARY DESTINATION ${CCL_INSTALL_LIB})

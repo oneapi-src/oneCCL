@@ -50,7 +50,13 @@ target_include_directories(ccl_atl_ofi PRIVATE ${COMMON_OFI_INC_DIRS})
 target_link_libraries(ccl_atl_ofi PRIVATE pmi)
 target_link_libraries(ccl_atl_ofi PRIVATE resizable_pmi)
 target_link_libraries(ccl_atl_ofi PRIVATE fabric m)
-set_target_properties(ccl_atl_ofi PROPERTIES VERSION 1 SOVERSION 1.0)
+
+if (NOT LIB_ATL_OFI_SO_VERSION AND NOT LIB_ATL_OFI_MAJOR_VERSION)
+        set_target_properties(ccl_atl_ofi PROPERTIES VERSION 1 SOVERSION 1.0)
+else()
+        set_target_properties(ccl_atl_ofi PROPERTIES VERSION ${LIB_ATL_OFI_SO_VERSION} SOVERSION ${LIB_ATL_OFI_MAJOR_VERSION})
+endif()
+
 set_target_properties(ccl_atl_ofi PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CCL_BUILD_DIR})
 install(TARGETS ccl_atl_ofi LIBRARY DESTINATION ${CCL_INSTALL_LIB})
 

@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,11 +21,9 @@ class copy_entry : public sched_entry,
                    public postponed_fields<copy_entry,
                                            ccl_sched_entry_field_in_buf,
                                            ccl_sched_entry_field_cnt,
-                                           ccl_sched_entry_field_dtype>
-{
+                                           ccl_sched_entry_field_dtype> {
 public:
-    static constexpr const char* class_name() noexcept
-    {
+    static constexpr const char* class_name() noexcept {
         return "COPY";
     }
 
@@ -34,14 +32,14 @@ public:
                const ccl_buffer in_buf,
                ccl_buffer out_buf,
                size_t cnt,
-               const ccl_datatype& dtype) :
-        sched_entry(sched), in_buf(in_buf),
-        out_buf(out_buf), cnt(cnt), dtype(dtype)
-    {
-    }
+               const ccl_datatype& dtype)
+            : sched_entry(sched),
+              in_buf(in_buf),
+              out_buf(out_buf),
+              cnt(cnt),
+              dtype(dtype) {}
 
-    void start() override
-    {
+    void start() override {
         update_fields();
 
         size_t bytes = cnt * dtype.size();
@@ -50,34 +48,33 @@ public:
         status = ccl_sched_entry_status_complete;
     }
 
-    const char* name() const override
-    {
+    const char* name() const override {
         return class_name();
     }
 
-    ccl_buffer& get_field_ref(field_id_t<ccl_sched_entry_field_in_buf> id)
-    {
+    ccl_buffer& get_field_ref(field_id_t<ccl_sched_entry_field_in_buf> id) {
         return in_buf;
     }
 
-    size_t& get_field_ref(field_id_t<ccl_sched_entry_field_cnt> id)
-    {
+    size_t& get_field_ref(field_id_t<ccl_sched_entry_field_cnt> id) {
         return cnt;
     }
 
-    ccl_datatype& get_field_ref(field_id_t<ccl_sched_entry_field_dtype> id)
-    {
+    ccl_datatype& get_field_ref(field_id_t<ccl_sched_entry_field_dtype> id) {
         return dtype;
     }
 
 protected:
-    void dump_detail(std::stringstream& str) const override
-    {
+    void dump_detail(std::stringstream& str) const override {
         ccl_logger::format(str,
-                           "dt ", global_data.dtypes->name(dtype),
-                           ", cnt ", cnt,
-                           ", in_buf ", in_buf,
-                           ", out_buf ", out_buf,
+                           "dt ",
+                           ccl::global_data::get().dtypes->name(dtype),
+                           ", cnt ",
+                           cnt,
+                           ", in_buf ",
+                           in_buf,
+                           ", out_buf ",
+                           out_buf,
                            "\n");
     }
 

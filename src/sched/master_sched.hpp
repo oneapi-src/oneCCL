@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,36 +19,30 @@
 class ccl_sched;
 class ccl_sched_key;
 
-class ccl_master_sched : public ccl_sched_base, public ccl_request
-{
+class ccl_master_sched : public ccl_sched_base, public ccl_request {
 public:
-    static constexpr const char* class_name()
-    {
+    static constexpr const char* class_name() {
         return "master_sched";
     }
 
     ccl_master_sched(const ccl_coll_param& coll_param)
-        : ccl_sched_base(coll_param),
-          ccl_request(),
-          partial_scheds()
-    {
+            : ccl_sched_base(coll_param),
+              ccl_request(),
+              partial_scheds() {
 #ifdef ENABLE_DEBUG
-    set_dump_callback([this](std::ostream &out)
-                      {
-                            dump(out);
-                      });
+        set_dump_callback([this](std::ostream& out) {
+            dump(out);
+        });
 #endif
     }
 
-    ccl_master_sched(const ccl_master_sched &src) = delete;
+    ccl_master_sched(const ccl_master_sched& src) = delete;
 
     ~ccl_master_sched() override;
 
-
     void add_partial_sched(ccl_coll_param& param);
     void commit(ccl_parallelizer* parallelizer = nullptr);
-    ccl_request* start(ccl_executor* exec,
-                       bool reset_sched = true);
+    ccl_request* start(ccl_executor* exec, bool reset_sched = true);
 
     /**
      * Reset completion counter of @b req
@@ -66,8 +60,8 @@ public:
 
     //factory method (TODO: wrap into smart-pointer)
     using ccl_master_sched_ptr = ccl_master_sched*;
-    static ccl_master_sched_ptr create(const ccl_coll_param& param,
-                                       const ccl_coll_attr& attr);
+    static ccl_master_sched_ptr create(const ccl_coll_param& param, const ccl_coll_attr& attr);
+
 private:
     void prepare_partial_scheds();
 };

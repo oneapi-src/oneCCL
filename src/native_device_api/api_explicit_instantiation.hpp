@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,12 +13,11 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-namespace native
-{
+namespace native {
 template struct memory<char, ccl_device>;
 template struct memory<int, ccl_device>;
 template struct memory<int64_t, ccl_device>;
 template struct memory<uint64_t, ccl_device>;
 template struct memory<float, ccl_device>;
 template struct memory<double, ccl_device>;
-}
+} // namespace native

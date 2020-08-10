@@ -16,13 +16,10 @@
 #
 
 WORK_DIR="$(cd "$( dirname "${BASH_SOURCE[0]}" )" > /dev/null && pwd)"
+
 export CCL_ROOT="$(cd ${WORK_DIR}/../; pwd -P)"
+export CCL_ATL_TRANSPORT_PATH="${CCL_ROOT}/lib"
 
-if [ -z "${LD_LIBRARY_PATH}" ]
-then
-    LD_LIBRARY_PATH="${CCL_ROOT}/lib"; export LD_LIBRARY_PATH
-else
-    LD_LIBRARY_PATH="${CCL_ROOT}/lib:${LD_LIBRARY_PATH}"; export LD_LIBRARY_PATH
-fi
-
-CCL_ATL_TRANSPORT_PATH="${CCL_ROOT}/lib"; export CCL_ATL_TRANSPORT_PATH
+export CPATH=${CCL_ROOT}/include/${CPATH+:${CPATH}}
+export LIBRARY_PATH=${CCL_ROOT}/lib/${LIBRARY_PATH+:${LIBRARY_PATH}}
+export LD_LIBRARY_PATH=${CCL_ROOT}/lib/${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}

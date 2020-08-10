@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,11 +17,9 @@
 
 #include "sched/entry/coll/direct/base_coll_entry.hpp"
 
-class allgatherv_entry : public base_coll_entry
-{
+class allgatherv_entry : public base_coll_entry {
 public:
-    static constexpr const char* class_name() noexcept
-    {
+    static constexpr const char* class_name() noexcept {
         return "ALLGATHERV";
     }
 
@@ -32,22 +30,25 @@ public:
                      ccl_buffer recv_buf,
                      const size_t* recv_cnts,
                      const ccl_datatype& dtype,
-                     ccl_comm* comm) :
-        base_coll_entry(sched), send_buf(send_buf), send_cnt(send_cnt),
-        recv_buf(recv_buf), recv_cnts(recv_cnts), dtype(dtype), comm(comm),
-        recv_bytes(nullptr), offsets(nullptr), sum_recv_bytes(0)
-    {
-    }
+                     ccl_comm* comm)
+            : base_coll_entry(sched),
+              send_buf(send_buf),
+              send_cnt(send_cnt),
+              recv_buf(recv_buf),
+              recv_cnts(recv_cnts),
+              dtype(dtype),
+              comm(comm),
+              recv_bytes(nullptr),
+              offsets(nullptr),
+              sum_recv_bytes(0) {}
 
-    void start() override
-    {
+    void start() override {
         size_t dt_size = dtype.size();
         size_t send_bytes = send_cnt * dt_size;
         size_t comm_size = comm->size();
         size_t i;
 
-        if (!recv_bytes && !offsets)
-        {
+        if (!recv_bytes && !offsets) {
             recv_bytes = static_cast<int*>(CCL_MALLOC(comm_size * sizeof(int), "recv_bytes"));
             offsets = static_cast<int*>(CCL_MALLOC(comm_size * sizeof(int), "offsets"));
         }
@@ -56,8 +57,7 @@ public:
         offsets[0] = 0;
         sum_recv_bytes = recv_bytes[0];
 
-        for (i = 1; i < comm_size; i++)
-        {
+        for (i = 1; i < comm_size; i++) {
             recv_bytes[i] = recv_cnts[i] * dt_size;
             offsets[i] = offsets[i - 1] + recv_bytes[i - 1]; // treat buffers as char buffers
             sum_recv_bytes += recv_bytes[i];
@@ -65,59 +65,64 @@ public:
 
         LOG_DEBUG("ALLGATHERV entry req ", &req, ", send_bytes ", send_bytes);
         atl_status_t atl_status = atl_ep_allgatherv(sched->bin->get_atl_ep(),
-                                                    send_buf.get_ptr(send_bytes), send_bytes,
-                                                    recv_buf.get_ptr(sum_recv_bytes), recv_bytes,
-                                                    offsets, &req);
+                                                    send_buf.get_ptr(send_bytes),
+                                                    send_bytes,
+                                                    recv_buf.get_ptr(sum_recv_bytes),
+                                                    recv_bytes,
+                                                    offsets,
+                                                    &req);
 
-        if (unlikely(atl_status != ATL_STATUS_SUCCESS))
-        {
+        if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("ALLGATHERV entry failed. atl_status: ", atl_status_to_str(atl_status));
         }
         else
             status = ccl_sched_entry_status_started;
     }
 
-    void update() override
-    {
+    void update() override {
         int req_status;
         atl_status_t atl_status = atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
 
-        if (unlikely(atl_status != ATL_STATUS_SUCCESS))
-        {
+        if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("ALLGATHERV entry failed. atl_status: ", atl_status_to_str(atl_status));
         }
 
-        if (req_status)
-        {
+        if (req_status) {
             status = ccl_sched_entry_status_complete;
         }
     }
 
-    ~allgatherv_entry()
-    {
+    ~allgatherv_entry() {
         CCL_FREE(recv_bytes);
         CCL_FREE(offsets);
     }
 
-    const char* name() const override
-    {
+    const char* name() const override {
         return class_name();
     }
 
 protected:
-    void dump_detail(std::stringstream& str) const override
-    {
+    void dump_detail(std::stringstream& str) const override {
         ccl_logger::format(str,
-                            "dt ", global_data.dtypes->name(dtype),
-                            ", send_cnt ", send_cnt,
-                            ", send_buf ", send_buf,
-                            ", recv_cnt ", recv_cnts,
-                            ", recv_buf ", recv_buf,
-                            ", recv_bytes ", recv_bytes,
-                            ", offsets ", offsets,
-                            ", comm_id ", sched->get_comm_id(),
-                            ", req ",&req,
-                            "\n");
+                           "dt ",
+                           ccl::global_data::get().dtypes->name(dtype),
+                           ", send_cnt ",
+                           send_cnt,
+                           ", send_buf ",
+                           send_buf,
+                           ", recv_cnt ",
+                           recv_cnts,
+                           ", recv_buf ",
+                           recv_buf,
+                           ", recv_bytes ",
+                           recv_bytes,
+                           ", offsets ",
+                           offsets,
+                           ", comm_id ",
+                           sched->get_comm_id(),
+                           ", req ",
+                           &req,
+                           "\n");
     }
 
 private:

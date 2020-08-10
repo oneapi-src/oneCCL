@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,11 +19,16 @@
 #include "common/utils/buffer.hpp"
 #include "sched/sched.hpp"
 
-class ccl_allreduce_2d_builder
-{
+class ccl_allreduce_2d_builder {
 public:
-    ccl_allreduce_2d_builder();
+    ccl_allreduce_2d_builder(size_t base_size, bool switch_dims);
     ~ccl_allreduce_2d_builder();
+
+    ccl_allreduce_2d_builder(const ccl_allreduce_2d_builder&) = delete;
+    ccl_allreduce_2d_builder(ccl_allreduce_2d_builder&&) = delete;
+
+    ccl_allreduce_2d_builder& operator=(const ccl_allreduce_2d_builder&) = delete;
+    ccl_allreduce_2d_builder& operator=(ccl_allreduce_2d_builder&&) = delete;
 
     ccl_status_t build(ccl_sched* sched,
                        ccl_buffer send_buf,
@@ -33,8 +38,12 @@ public:
                        ccl_reduction_t op,
                        ccl_comm* comm);
 
-    ccl_comm* get_first_dim_comm() const { return first_dim_comm.get(); }
-    ccl_comm* get_second_dim_comm() const { return second_dim_comm.get(); }
+    ccl_comm* get_first_dim_comm() const {
+        return first_dim_comm.get();
+    }
+    ccl_comm* get_second_dim_comm() const {
+        return second_dim_comm.get();
+    }
 
 private:
     std::shared_ptr<ccl_comm> first_dim_comm;

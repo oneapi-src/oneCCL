@@ -36,7 +36,13 @@ target_include_directories(ccl_atl_mpi PRIVATE ${COMMON_MPI_INC_DIRS})
 
 # target_link_libraries(ccl_atl_mpi PRIVATE fabric m)
 target_link_libraries(ccl_atl_mpi PRIVATE mpi)
-set_target_properties(ccl_atl_mpi PROPERTIES VERSION 1 SOVERSION 1.0)
+
+if (NOT LIB_ATL_MPI_SO_VERSION AND NOT LIB_ATL_MPI_MAJOR_VERSION)
+        set_target_properties(ccl_atl_mpi PROPERTIES VERSION 1 SOVERSION 1.0)
+else()
+        set_target_properties(ccl_atl_mpi PROPERTIES VERSION ${LIB_ATL_MPI_SO_VERSION} SOVERSION ${LIB_ATL_MPI_MAJOR_VERSION})
+endif()
+
 set_target_properties(ccl_atl_mpi PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CCL_BUILD_DIR})
 install(TARGETS ccl_atl_mpi LIBRARY DESTINATION ${CCL_INSTALL_LIB})
 

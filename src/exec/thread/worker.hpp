@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,18 +25,18 @@
 
 class ccl_executor;
 
-class ccl_worker : public ccl_base_thread
-{
+class ccl_worker : public ccl_base_thread {
 public:
     ccl_worker() = delete;
     ccl_worker(const ccl_worker& other) = delete;
-    ccl_worker& operator= (const ccl_worker& other) = delete;
+    ccl_worker& operator=(const ccl_worker& other) = delete;
     ccl_worker(size_t idx, std::unique_ptr<ccl_sched_queue> queue);
     virtual ~ccl_worker() = default;
-    virtual void* get_this() override { return static_cast<void*>(this); };
+    virtual void* get_this() override {
+        return static_cast<void*>(this);
+    };
 
-    virtual const std::string& name() const override
-    {
+    virtual const std::string& name() const override {
         static const std::string name("worker");
         return name;
     };
@@ -47,8 +47,7 @@ public:
 
     void clear_queue();
 
-    void reset_queue(std::unique_ptr<ccl_sched_queue>&& queue)
-    {
+    void reset_queue(std::unique_ptr<ccl_sched_queue>&& queue) {
         clear_queue();
         sched_queue = std::move(queue);
     }
@@ -57,7 +56,6 @@ public:
     std::atomic<bool> is_locked;
 
 private:
-
     ccl_status_t process_strict_sched_queue();
     ccl_status_t process_sched_queue(size_t& processed_count, bool process_all);
     ccl_status_t process_sched_bin(ccl_sched_bin* bin, size_t& processed_count);

@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,11 +16,10 @@
 #pragma once
 
 #include "native_device_api/l0/driver.hpp"
+#include "native_device_api/l0/utils.hpp"
 
-namespace native
-{
-struct ccl_device_platform : std::enable_shared_from_this<ccl_device_platform>
-{
+namespace native {
+struct ccl_device_platform : std::enable_shared_from_this<ccl_device_platform> {
     using driver_ptr = std::shared_ptr<ccl_device_driver>;
     using const_driver_ptr = std::shared_ptr<ccl_device_driver>;
     using driver_storage_type = std::map<ccl::index_type, driver_ptr>;
@@ -29,8 +28,7 @@ struct ccl_device_platform : std::enable_shared_from_this<ccl_device_platform>
     //void init_drivers(const device_affinity_per_driver& affinities / * = device_affinity_per_driver()* /);
     void init_drivers(const ccl::device_indices_t& indices = ccl::device_indices_t());
 
-    std::shared_ptr<ccl_device_platform> get_ptr()
-    {
+    std::shared_ptr<ccl_device_platform> get_ptr() {
         return this->shared_from_this();
     }
 
@@ -45,17 +43,22 @@ struct ccl_device_platform : std::enable_shared_from_this<ccl_device_platform>
     std::string to_string() const;
     void on_delete(ccl_device_driver::handle_t& driver_handle);
 
-    static std::shared_ptr<ccl_device_platform> create(const ccl::device_indices_t& indices = ccl::device_indices_t());
+    static std::shared_ptr<ccl_device_platform> create(
+        const ccl::device_indices_t& indices = ccl::device_indices_t());
     //static std::shared_ptr<ccl_device_platform> create(const device_affinity_per_driver& affinities);
+
+    details::adjacency_matrix calculate_device_access_metric(
+        const ccl::device_indices_t& indices = ccl::device_indices_t(),
+        details::p2p_rating_function func = details::binary_p2p_rating_calculator) const;
+
 private:
     ccl_device_platform();
 
     driver_storage_type drivers;
 };
 
-
 //extern std::shared_ptr<ccl_device_platform> global_platform;
 ccl_device_platform& get_platform();
 
 ccl_device_platform::driver_ptr get_driver(size_t index = 0);
-}
+} // namespace native

@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,12 +26,9 @@
 #include <string.h>
 #include <stdio.h>
 
-static inline int
-encode(const void *inval, int invallen, char *outval, int outvallen)
-{
-    static unsigned char encodings[] = {
-        '0','1','2','3','4','5','6','7', \
-        '8','9','a','b','c','d','e','f' };
+static inline int encode(const void *inval, int invallen, char *outval, int outvallen) {
+    static unsigned char encodings[] = { '0', '1', '2', '3', '4', '5', '6', '7',
+                                         '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
     int i;
 
     if (invallen * 2 + 1 > outvallen)
@@ -47,16 +44,14 @@ encode(const void *inval, int invallen, char *outval, int outvallen)
     return 0;
 }
 
-static inline int
-decode(const char *inval, void *outval, int outvallen)
-{
+static inline int decode(const char *inval, void *outval, int outvallen) {
     int i;
-    char *ret = (char*) outval;
+    char *ret = (char *)outval;
 
     if (outvallen != strlen(inval) / 2)
         return -1;
 
-    for (i = 0 ; i < outvallen ; ++i) {
+    for (i = 0; i < outvallen; ++i) {
         if (*inval >= '0' && *inval <= '9')
             ret[i] = *inval - '0';
         else

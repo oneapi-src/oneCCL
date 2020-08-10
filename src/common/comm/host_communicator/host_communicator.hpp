@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,9 +16,7 @@
 #pragma once
 #include "common/comm/comm_interface.hpp"
 
-class host_communicator :
-        public ccl::communicator_interface
-{
+class host_communicator : public ccl::communicator_interface {
 public:
     friend class ccl::environment;
     using base_t = ccl::communicator_interface;
@@ -29,23 +27,19 @@ public:
     bool is_ready() const override;
 
     // traits
-    bool is_host() const noexcept override
-    {
+    bool is_host() const noexcept override {
         return traits::is_host();
     }
 
-    bool is_cpu() const noexcept override
-    {
+    bool is_cpu() const noexcept override {
         return traits::is_cpu();
     }
 
-    bool is_gpu() const noexcept override
-    {
+    bool is_gpu() const noexcept override {
         return traits::is_gpu();
     }
 
-    bool is_accelerator() const noexcept override
-    {
+    bool is_accelerator() const noexcept override {
         return traits::is_accelerator();
     }
 
@@ -57,7 +51,8 @@ public:
 
 #ifdef MULTI_GPU_SUPPORT
     void visit(ccl::gpu_comm_attr& comm_attr) override;
-    ccl::device_topology_type get_topology_type() const override;
+    ccl::device_group_split_type get_topology_type() const override;
+    ccl::device_topology_type get_topology_class() const override;
     ccl::device_index_type get_device_path() const override;
     ccl::communicator_interface::native_device_type_ref get_device() override;
     ccl::device_comm_attr_t get_device_attr() const override;
@@ -124,8 +119,7 @@ public:
                                            cl::sycl::buffer<ccl::bfp16 COMMA 1>);
 #endif //CCL_ENABLE_SYCL
 private:
-    host_communicator* get_impl()
-    {
+    host_communicator* get_impl() {
         return this;
     }
     COMM_IMPL_DECLARATION

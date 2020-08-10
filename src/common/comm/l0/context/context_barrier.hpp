@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,12 +17,10 @@
 #include <mutex>
 #include <condition_variable>
 
-namespace native
-{
-struct signal_context
-{
+namespace native {
+struct signal_context {
     std::mutex thread_group_mutex;
     std::condition_variable thread_group_sync_condition;
     bool communicator_ready = false;
 };
-}
+} // namespace native

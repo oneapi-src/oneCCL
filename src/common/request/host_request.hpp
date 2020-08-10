@@ -1,4 +1,4 @@
-/*
+    /*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,10 +18,8 @@
 
 class ccl_request;
 
-namespace ccl
-{
-class host_request_impl final : public request
-{
+namespace ccl {
+class host_request_impl final : public request {
 public:
     explicit host_request_impl(ccl_request* r);
     ~host_request_impl() override;
@@ -33,4 +31,4 @@ private:
     ccl_request* req = nullptr;
     bool completed = false;
 };
-}
+} // namespace ccl
