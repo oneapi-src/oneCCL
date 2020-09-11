@@ -1,8 +1,7 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
@@ -12,28 +11,30 @@
   
 
   
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+
+  
   
   
   
 
   
-  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-        <script type="text/javascript" src="../_static/jquery.js"></script>
-        <script type="text/javascript" src="../_static/underscore.js"></script>
-        <script type="text/javascript" src="../_static/doctools.js"></script>
-        <script type="text/javascript" src="../_static/language_data.js"></script>
-        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <script type="text/javascript" src="../_static/js/theme.js"></script>
 
     
-
-  
-  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link href="../_static/style.css" rel="stylesheet" type="text/css">
@@ -51,7 +52,7 @@
           
 
           
-            <a href="../index.html" class="icon icon-home"> oneCCL Documentation (Beta)
+            <a href="../index.html" class="icon icon-home" alt="Documentation Home"> oneCCL Documentation (Beta)
           
 
           
@@ -74,6 +75,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -258,6 +260,7 @@
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1aa8125c78bac1c8172e54fb08f7be6ed4.html">Enum ccl_host_attributes</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a42085859d35d75cc288367198c003e0d.html">Enum ccl_reduction_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a6f190c608822e4b3feff0e9c709fcc63.html">Enum ccl_resize_action</a></li>
+<li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1ae65096ea29339cb532924c0b6541b10d.html">Enum ccl_sparse_coalesce_mode</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90.html">Enum ccl_status_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a5872dcb7cc3a72fbf94a20d07ce6d63b.html">Enum ccl_stream_type_t</a></li>
 </ul>
@@ -328,7 +331,9 @@
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a0df469be505174d5656a3c5cba27ddd1.html">Typedef ccl_request_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1aa827bd4240d612fa112cc603dda7172f.html">Typedef ccl_resize_action_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a18fa4bbd5cc606204bdada4979625ff4.html">Typedef ccl_resize_fn_t</a></li>
-<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a21fdbaac2bedefc853712b36fab6f4bb.html">Typedef ccl_sparse_allreduce_completion_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1af277d029435f054a28ca3a97f35150c5.html">Typedef ccl_sparse_allreduce_alloc_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a71f5034a71138c438ceec8769fd54b23.html">Typedef ccl_sparse_allreduce_completion_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a90179df89e435769c8ff8b647301832f.html">Typedef ccl_sparse_coalesce_mode_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1ae4f1fe2e25f4a0189765458d8a83def5.html">Typedef ccl_stream_t</a></li>
 </ul>
 </li>
@@ -346,6 +351,7 @@
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -384,7 +390,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="../index.html">Docs</a> &raquo;</li>
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
         
       <li>Program Listing for File ccl_type_traits.hpp</li>
     
@@ -415,46 +421,42 @@
 <span class="cp">#include</span> <span class="cpf">&lt;type_traits&gt;</span><span class="cp"></span>
 
 <span class="cp">#ifdef CCL_ENABLE_SYCL</span>
-    <span class="cp">#include</span> <span class="cpf">&lt;CL/sycl.hpp&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;CL/sycl.hpp&gt;</span><span class="cp"></span>
 <span class="cp">#endif</span>
 
 <span class="cp">#include</span> <span class="cpf">&quot;ccl_types.hpp&quot;</span><span class="cp"></span>
 
-<span class="k">namespace</span> <span class="n">ccl</span>
-<span class="p">{</span>
-<span class="k">template</span><span class="o">&lt;</span><span class="n">ccl_datatype_t</span> <span class="n">ccl_type_id</span><span class="o">&gt;</span>
-<span class="k">struct</span> <span class="n">type_info</span>
-<span class="p">{</span>
+<span class="k">namespace</span> <span class="n">ccl</span> <span class="p">{</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="n">ccl_datatype_t</span> <span class="n">ccl_type_id</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">type_info</span> <span class="p">{</span>
     <span class="k">static</span> <span class="k">constexpr</span> <span class="kt">bool</span> <span class="n">is_supported</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
     <span class="k">static</span> <span class="k">constexpr</span> <span class="kt">bool</span> <span class="n">is_class</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
 <span class="p">};</span>
 
-<span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">type</span><span class="o">&gt;</span>
-<span class="k">struct</span> <span class="n">native_type_info</span>
-<span class="p">{</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span> <span class="nc">type</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">native_type_info</span> <span class="p">{</span>
     <span class="k">static</span> <span class="k">constexpr</span> <span class="kt">bool</span> <span class="n">is_supported</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
     <span class="k">static</span> <span class="k">constexpr</span> <span class="kt">bool</span> <span class="n">is_class</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
 <span class="p">};</span>
 
-<span class="cp">#define CCL_TYPE_TRAITS(ccl_type_id, dtype, dtype_size)                                         \</span>
-<span class="cp">    template&lt;&gt;                                                                                  \</span>
-<span class="cp">    struct type_info&lt;ccl_type_id&gt; :                                                             \</span>
-<span class="cp">            public ccl_type_info_export&lt;dtype,                                                  \</span>
-<span class="cp">                                        dtype_size,                                             \</span>
-<span class="cp">                                        ccl_type_id,                                            \</span>
-<span class="cp">                                        false,                                                  \</span>
-<span class="cp">                                        true&gt;                                                   \</span>
-<span class="cp">    {                                                                                           \</span>
-<span class="cp">        static constexpr const char* name() { return #dtype; }                                  \</span>
-<span class="cp">    };                                                                                          \</span>
-<span class="cp">    template&lt;&gt;                                                                                  \</span>
-<span class="cp">    struct native_type_info&lt;dtype&gt; : public type_info&lt;ccl_type_id&gt;{};</span>
+<span class="cp">#define CCL_TYPE_TRAITS(ccl_type_id, dtype, dtype_size) \</span>
+<span class="cp">    template &lt;&gt; \</span>
+<span class="cp">    struct type_info&lt;ccl_type_id&gt; \</span>
+<span class="cp">            : public ccl_type_info_export&lt;dtype, dtype_size, ccl_type_id, false, true&gt; { \</span>
+<span class="cp">        static constexpr const char* name() { \</span>
+<span class="cp">            return #dtype; \</span>
+<span class="cp">        } \</span>
+<span class="cp">    }; \</span>
+<span class="cp">    template &lt;&gt; \</span>
+<span class="cp">    struct native_type_info&lt;dtype&gt; : public type_info&lt;ccl_type_id&gt; {};</span>
 
-<span class="cp">#define CCL_CLASS_TYPE_TRAITS(ccl_type_id, dtype, sizeof_dtype)                                                                 \</span>
-<span class="cp">    template&lt;&gt;                                                                                                                  \</span>
-<span class="cp">    struct native_type_info&lt;dtype&gt; : public ccl_type_info_export&lt;dtype, sizeof_dtype, ccl_type_id, true, true&gt;                  \</span>
-<span class="cp">    {                                                                                                                           \</span>
-<span class="cp">        static constexpr const char* name() { return #dtype; }                                                                  \</span>
+<span class="cp">#define CCL_CLASS_TYPE_TRAITS(ccl_type_id, dtype, sizeof_dtype) \</span>
+<span class="cp">    template &lt;&gt; \</span>
+<span class="cp">    struct native_type_info&lt;dtype&gt; \</span>
+<span class="cp">            : public ccl_type_info_export&lt;dtype, sizeof_dtype, ccl_type_id, true, true&gt; { \</span>
+<span class="cp">        static constexpr const char* name() { \</span>
+<span class="cp">            return #dtype; \</span>
+<span class="cp">        } \</span>
 <span class="cp">    };</span>
 
 <span class="cp">#define COMMA ,</span>
@@ -466,71 +468,64 @@
 
 <span class="k">using</span> <span class="n">bfp16</span> <span class="o">=</span> <span class="kt">uint16_t</span><span class="p">;</span>
 
-<span class="n">CCL_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_char</span><span class="p">,</span>   <span class="kt">char</span><span class="p">,</span>      <span class="k">sizeof</span><span class="p">(</span><span class="kt">char</span><span class="p">))</span>
-<span class="n">CCL_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_int</span><span class="p">,</span>    <span class="kt">int</span><span class="p">,</span>       <span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">))</span>
-<span class="n">CCL_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_bfp16</span><span class="p">,</span>  <span class="n">bfp16</span><span class="p">,</span>     <span class="k">sizeof</span><span class="p">(</span><span class="n">bfp16</span><span class="p">))</span>
-<span class="n">CCL_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_float</span><span class="p">,</span>  <span class="kt">float</span><span class="p">,</span>     <span class="k">sizeof</span><span class="p">(</span><span class="kt">float</span><span class="p">))</span>
-<span class="n">CCL_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_double</span><span class="p">,</span> <span class="kt">double</span><span class="p">,</span>    <span class="k">sizeof</span><span class="p">(</span><span class="kt">double</span><span class="p">))</span>
-<span class="n">CCL_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_int64</span><span class="p">,</span>  <span class="kt">int64_t</span><span class="p">,</span>   <span class="k">sizeof</span><span class="p">(</span><span class="kt">int64_t</span><span class="p">))</span>
-<span class="n">CCL_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_uint64</span><span class="p">,</span> <span class="kt">uint64_t</span><span class="p">,</span>  <span class="k">sizeof</span><span class="p">(</span><span class="kt">uint64_t</span><span class="p">))</span>
+<span class="n">CCL_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_char</span><span class="p">,</span> <span class="kt">char</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">char</span><span class="p">))</span>
+<span class="n">CCL_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_int</span><span class="p">,</span> <span class="kt">int</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">))</span>
+<span class="n">CCL_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_bfp16</span><span class="p">,</span> <span class="n">bfp16</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">bfp16</span><span class="p">))</span>
+<span class="n">CCL_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_float</span><span class="p">,</span> <span class="kt">float</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">float</span><span class="p">))</span>
+<span class="n">CCL_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_double</span><span class="p">,</span> <span class="kt">double</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">double</span><span class="p">))</span>
+<span class="n">CCL_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_int64</span><span class="p">,</span> <span class="kt">int64_t</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">int64_t</span><span class="p">))</span>
+<span class="n">CCL_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_uint64</span><span class="p">,</span> <span class="kt">uint64_t</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">uint64_t</span><span class="p">))</span>
 
 <span class="cp">#ifdef CCL_ENABLE_SYCL</span>
-    <span class="n">CCL_CLASS_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_char</span><span class="p">,</span>    <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="kt">char</span> <span class="n">COMMA</span> <span class="mi">1</span><span class="o">&gt;</span><span class="p">,</span>     <span class="k">sizeof</span><span class="p">(</span><span class="kt">char</span><span class="p">))</span>
-    <span class="n">CCL_CLASS_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_int</span><span class="p">,</span>     <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="kt">int</span> <span class="n">COMMA</span> <span class="mi">1</span><span class="o">&gt;</span><span class="p">,</span>      <span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">))</span>
-    <span class="n">CCL_CLASS_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_bfp16</span><span class="p">,</span>   <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="n">bfp16</span> <span class="n">COMMA</span> <span class="mi">1</span><span class="o">&gt;</span><span class="p">,</span>    <span class="k">sizeof</span><span class="p">(</span><span class="n">bfp16</span><span class="p">))</span>
-    <span class="n">CCL_CLASS_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_int64</span><span class="p">,</span>   <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="kt">int64_t</span> <span class="n">COMMA</span> <span class="mi">1</span><span class="o">&gt;</span><span class="p">,</span>  <span class="k">sizeof</span><span class="p">(</span><span class="kt">int64_t</span><span class="p">))</span>
-    <span class="n">CCL_CLASS_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_uint64</span><span class="p">,</span>  <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="kt">uint64_t</span> <span class="n">COMMA</span> <span class="mi">1</span><span class="o">&gt;</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">uint64_t</span><span class="p">))</span>
-    <span class="n">CCL_CLASS_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_float</span><span class="p">,</span>   <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="kt">float</span> <span class="n">COMMA</span> <span class="mi">1</span><span class="o">&gt;</span><span class="p">,</span>    <span class="k">sizeof</span><span class="p">(</span><span class="kt">float</span><span class="p">))</span>
-    <span class="n">CCL_CLASS_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_char</span><span class="p">,</span>    <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="kt">double</span> <span class="n">COMMA</span> <span class="mi">1</span><span class="o">&gt;</span><span class="p">,</span>   <span class="k">sizeof</span><span class="p">(</span><span class="kt">double</span><span class="p">))</span>
+<span class="n">CCL_CLASS_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_char</span><span class="p">,</span> <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="kt">char</span> <span class="n">COMMA</span> <span class="mi">1</span><span class="o">&gt;</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">char</span><span class="p">))</span>
+<span class="n">CCL_CLASS_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_int</span><span class="p">,</span> <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="kt">int</span> <span class="n">COMMA</span> <span class="mi">1</span><span class="o">&gt;</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">))</span>
+<span class="n">CCL_CLASS_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_bfp16</span><span class="p">,</span> <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="n">bfp16</span> <span class="n">COMMA</span> <span class="mi">1</span><span class="o">&gt;</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">bfp16</span><span class="p">))</span>
+<span class="n">CCL_CLASS_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_int64</span><span class="p">,</span> <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="kt">int64_t</span> <span class="n">COMMA</span> <span class="mi">1</span><span class="o">&gt;</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">int64_t</span><span class="p">))</span>
+<span class="n">CCL_CLASS_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_uint64</span><span class="p">,</span> <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="kt">uint64_t</span> <span class="n">COMMA</span> <span class="mi">1</span><span class="o">&gt;</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">uint64_t</span><span class="p">))</span>
+<span class="n">CCL_CLASS_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_float</span><span class="p">,</span> <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="kt">float</span> <span class="n">COMMA</span> <span class="mi">1</span><span class="o">&gt;</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">float</span><span class="p">))</span>
+<span class="n">CCL_CLASS_TYPE_TRAITS</span><span class="p">(</span><span class="n">ccl_dtype_double</span><span class="p">,</span> <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">buffer</span><span class="o">&lt;</span><span class="kt">double</span> <span class="n">COMMA</span> <span class="mi">1</span><span class="o">&gt;</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">double</span><span class="p">))</span>
 <span class="cp">#endif </span><span class="c1">//CCL_ENABLE_SYCL</span>
 
-<span class="k">template</span><span class="o">&lt;&gt;</span>
-<span class="k">struct</span> <span class="n">ccl_host_attributes_traits</span><span class="o">&lt;</span><span class="n">ccl_host_color</span><span class="o">&gt;</span>
-<span class="p">{</span>
+<span class="k">template</span> <span class="o">&lt;&gt;</span>
+<span class="k">struct</span> <span class="n">ccl_host_attributes_traits</span><span class="o">&lt;</span><span class="n">ccl_host_color</span><span class="o">&gt;</span> <span class="p">{</span>
     <span class="k">using</span> <span class="n">type</span> <span class="o">=</span> <span class="kt">int</span><span class="p">;</span>
 <span class="p">};</span>
 
-<span class="k">template</span><span class="o">&lt;&gt;</span>
-<span class="k">struct</span> <span class="n">ccl_host_attributes_traits</span><span class="o">&lt;</span><span class="n">ccl_host_version</span><span class="o">&gt;</span>
-<span class="p">{</span>
+<span class="k">template</span> <span class="o">&lt;&gt;</span>
+<span class="k">struct</span> <span class="n">ccl_host_attributes_traits</span><span class="o">&lt;</span><span class="n">ccl_host_version</span><span class="o">&gt;</span> <span class="p">{</span>
     <span class="k">using</span> <span class="n">type</span> <span class="o">=</span> <span class="n">ccl_version_t</span><span class="p">;</span>
 <span class="p">};</span>
 
-<span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">type</span><span class="o">&gt;</span>
-<span class="k">constexpr</span> <span class="kt">bool</span> <span class="n">is_supported</span><span class="p">()</span>
-<span class="p">{</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span> <span class="nc">type</span><span class="o">&gt;</span>
+<span class="k">constexpr</span> <span class="kt">bool</span> <span class="n">is_supported</span><span class="p">()</span> <span class="p">{</span>
     <span class="k">using</span> <span class="n">clear_type</span> <span class="o">=</span> <span class="k">typename</span> <span class="n">std</span><span class="o">::</span><span class="n">remove_pointer</span><span class="o">&lt;</span><span class="n">type</span><span class="o">&gt;::</span><span class="n">type</span><span class="p">;</span>
     <span class="k">static_assert</span><span class="p">(</span><span class="n">native_type_info</span><span class="o">&lt;</span><span class="n">clear_type</span><span class="o">&gt;::</span><span class="n">is_supported</span><span class="p">,</span> <span class="s">&quot;type is not supported by ccl API&quot;</span><span class="p">);</span>
     <span class="k">return</span> <span class="n">native_type_info</span><span class="o">&lt;</span><span class="n">clear_type</span><span class="o">&gt;::</span><span class="n">is_supported</span><span class="p">;</span>
 <span class="p">}</span>
 
-<span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">type</span><span class="o">&gt;</span>
-<span class="k">constexpr</span> <span class="kt">bool</span> <span class="n">is_class</span><span class="p">()</span>
-<span class="p">{</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span> <span class="nc">type</span><span class="o">&gt;</span>
+<span class="k">constexpr</span> <span class="kt">bool</span> <span class="n">is_class</span><span class="p">()</span> <span class="p">{</span>
     <span class="k">using</span> <span class="n">clear_type</span> <span class="o">=</span> <span class="k">typename</span> <span class="n">std</span><span class="o">::</span><span class="n">remove_pointer</span><span class="o">&lt;</span><span class="n">type</span><span class="o">&gt;::</span><span class="n">type</span><span class="p">;</span>
     <span class="k">return</span> <span class="n">native_type_info</span><span class="o">&lt;</span><span class="n">clear_type</span><span class="o">&gt;::</span><span class="n">is_class</span><span class="p">;</span>
 <span class="p">}</span>
 
-<span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">type</span><span class="o">&gt;</span>
-<span class="k">constexpr</span> <span class="kt">bool</span> <span class="n">is_native_type_supported</span><span class="p">()</span>
-<span class="p">{</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span> <span class="nc">type</span><span class="o">&gt;</span>
+<span class="k">constexpr</span> <span class="kt">bool</span> <span class="n">is_native_type_supported</span><span class="p">()</span> <span class="p">{</span>
     <span class="k">return</span> <span class="p">(</span><span class="n">not</span> <span class="n">is_class</span><span class="o">&lt;</span><span class="n">type</span><span class="o">&gt;</span><span class="p">()</span> <span class="n">and</span> <span class="n">is_supported</span><span class="o">&lt;</span><span class="n">type</span><span class="o">&gt;</span><span class="p">());</span>
 <span class="p">}</span>
 
-<span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">type</span><span class="o">&gt;</span>
-<span class="k">constexpr</span> <span class="kt">bool</span> <span class="n">is_class_supported</span><span class="p">()</span>
-<span class="p">{</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span> <span class="nc">type</span><span class="o">&gt;</span>
+<span class="k">constexpr</span> <span class="kt">bool</span> <span class="n">is_class_supported</span><span class="p">()</span> <span class="p">{</span>
     <span class="k">return</span> <span class="p">(</span><span class="n">is_class</span><span class="o">&lt;</span><span class="n">type</span><span class="o">&gt;</span><span class="p">()</span> <span class="n">and</span> <span class="n">is_supported</span><span class="o">&lt;</span><span class="n">type</span><span class="o">&gt;</span><span class="p">());</span>
 <span class="p">}</span>
 
-<span class="k">template</span><span class="o">&lt;</span><span class="n">ccl_host_attributes</span> <span class="n">attr_id</span><span class="p">,</span> <span class="k">class</span> <span class="nc">value</span><span class="o">&gt;</span>
-<span class="k">constexpr</span> <span class="kt">bool</span> <span class="n">is_attribute_value_supported</span><span class="p">()</span>
-<span class="p">{</span>
-    <span class="k">return</span> <span class="n">std</span><span class="o">::</span><span class="n">is_same</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">ccl_host_attributes_traits</span><span class="o">&lt;</span><span class="n">attr_id</span><span class="o">&gt;::</span><span class="n">type</span><span class="p">,</span>
-                        <span class="k">typename</span> <span class="n">std</span><span class="o">::</span><span class="n">remove_cv</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">std</span><span class="o">::</span><span class="n">remove_reference</span><span class="o">&lt;</span><span class="n">value</span><span class="o">&gt;::</span><span class="n">type</span>
-                        <span class="o">&gt;::</span><span class="n">type</span><span class="o">&gt;::</span><span class="n">value</span><span class="p">;</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="n">ccl_host_attributes</span> <span class="n">attr_id</span><span class="p">,</span> <span class="k">class</span> <span class="nc">value</span><span class="o">&gt;</span>
+<span class="k">constexpr</span> <span class="kt">bool</span> <span class="n">is_attribute_value_supported</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">std</span><span class="o">::</span><span class="n">is_same</span><span class="o">&lt;</span>
+        <span class="k">typename</span> <span class="n">ccl_host_attributes_traits</span><span class="o">&lt;</span><span class="n">attr_id</span><span class="o">&gt;::</span><span class="n">type</span><span class="p">,</span>
+        <span class="k">typename</span> <span class="n">std</span><span class="o">::</span><span class="n">remove_cv</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">std</span><span class="o">::</span><span class="n">remove_reference</span><span class="o">&lt;</span><span class="n">value</span><span class="o">&gt;::</span><span class="n">type</span><span class="o">&gt;::</span><span class="n">type</span><span class="o">&gt;::</span><span class="n">value</span><span class="p">;</span>
 <span class="p">}</span>
-<span class="p">}</span>
+<span class="p">}</span> <span class="c1">// namespace ccl</span>
 <span class="cp">#include</span> <span class="cpf">&quot;ccl_device_type_traits.hpp&quot;</span><span class="cp"></span>
 <span class="cp">#endif </span><span class="c1">//TRAITS_H_</span>
 </pre></div>
@@ -548,11 +543,19 @@
 
   <div role="contentinfo">
     <p>
+        
         &copy; Copyright 2019–2020
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
 <br>
 <div>
   <p>
@@ -570,7 +573,6 @@
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

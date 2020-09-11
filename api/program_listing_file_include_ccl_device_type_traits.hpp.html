@@ -1,8 +1,7 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
@@ -12,28 +11,30 @@
   
 
   
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+
+  
   
   
   
 
   
-  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-        <script type="text/javascript" src="../_static/jquery.js"></script>
-        <script type="text/javascript" src="../_static/underscore.js"></script>
-        <script type="text/javascript" src="../_static/doctools.js"></script>
-        <script type="text/javascript" src="../_static/language_data.js"></script>
-        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <script type="text/javascript" src="../_static/js/theme.js"></script>
 
     
-
-  
-  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link href="../_static/style.css" rel="stylesheet" type="text/css">
@@ -51,7 +52,7 @@
           
 
           
-            <a href="../index.html" class="icon icon-home"> oneCCL Documentation (Beta)
+            <a href="../index.html" class="icon icon-home" alt="Documentation Home"> oneCCL Documentation (Beta)
           
 
           
@@ -74,6 +75,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -258,6 +260,7 @@
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1aa8125c78bac1c8172e54fb08f7be6ed4.html">Enum ccl_host_attributes</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a42085859d35d75cc288367198c003e0d.html">Enum ccl_reduction_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a6f190c608822e4b3feff0e9c709fcc63.html">Enum ccl_resize_action</a></li>
+<li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1ae65096ea29339cb532924c0b6541b10d.html">Enum ccl_sparse_coalesce_mode</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90.html">Enum ccl_status_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a5872dcb7cc3a72fbf94a20d07ce6d63b.html">Enum ccl_stream_type_t</a></li>
 </ul>
@@ -328,7 +331,9 @@
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a0df469be505174d5656a3c5cba27ddd1.html">Typedef ccl_request_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1aa827bd4240d612fa112cc603dda7172f.html">Typedef ccl_resize_action_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a18fa4bbd5cc606204bdada4979625ff4.html">Typedef ccl_resize_fn_t</a></li>
-<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a21fdbaac2bedefc853712b36fab6f4bb.html">Typedef ccl_sparse_allreduce_completion_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1af277d029435f054a28ca3a97f35150c5.html">Typedef ccl_sparse_allreduce_alloc_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a71f5034a71138c438ceec8769fd54b23.html">Typedef ccl_sparse_allreduce_completion_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a90179df89e435769c8ff8b647301832f.html">Typedef ccl_sparse_coalesce_mode_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1ae4f1fe2e25f4a0189765458d8a83def5.html">Typedef ccl_stream_t</a></li>
 </ul>
 </li>
@@ -346,6 +351,7 @@
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -384,7 +390,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="../index.html">Docs</a> &raquo;</li>
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
         
       <li>Program Listing for File ccl_device_type_traits.hpp</li>
     
@@ -408,141 +414,136 @@
   <div class="section" id="program-listing-for-file-ccl-device-type-traits-hpp">
 <span id="program-listing-file-include-ccl-device-type-traits-hpp"></span><h1>Program Listing for File ccl_device_type_traits.hpp<a class="headerlink" href="#program-listing-for-file-ccl-device-type-traits-hpp" title="Permalink to this headline">¶</a></h1>
 <p>↰ <a class="reference internal" href="file_include_ccl_device_type_traits.hpp.html#file-include-ccl-device-type-traits-hpp"><span class="std std-ref">Return to documentation for file</span></a> (<code class="docutils literal notranslate"><span class="pre">include\ccl_device_type_traits.hpp</span></code>)</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span>#pragma once
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#pragma once</span>
 
-#ifndef CCL_PRODUCT_FULL
-    #error &quot;Do not include this file directly. Please include &#39;ccl_type_traits.hpp&#39;&quot;
-#endif
+<span class="cp">#ifndef CCL_PRODUCT_FULL</span>
+<span class="cp">#error &quot;Do not include this file directly. Please include &#39;ccl_type_traits.hpp&#39;&quot;</span>
+<span class="cp">#endif</span>
 
-#ifdef MULTI_GPU_SUPPORT
-    #include &lt;ze_api.h&gt;
-#endif
-namespace ccl
-{
+<span class="cp">#ifdef MULTI_GPU_SUPPORT</span>
+<span class="cp">#include</span> <span class="cpf">&lt;ze_api.h&gt;</span><span class="cp"></span>
+<span class="cp">#endif</span>
+<span class="k">namespace</span> <span class="n">ccl</span> <span class="p">{</span>
 
-template&lt;class type&gt;
-struct api_type_info
-{
-    static constexpr bool is_supported() { return false; }
-    static constexpr bool is_class()     { return false; }
-};
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span> <span class="nc">type</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">api_type_info</span> <span class="p">{</span>
+    <span class="k">static</span> <span class="k">constexpr</span> <span class="kt">bool</span> <span class="n">is_supported</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="k">static</span> <span class="k">constexpr</span> <span class="kt">bool</span> <span class="n">is_class</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">};</span>
 
-#define SUPPORTED_KERNEL_NATIVE_DATA_TYPES      char, int, float, ccl::bfp16, double, int64_t, uint64_t
+<span class="cp">#define SUPPORTED_KERNEL_NATIVE_DATA_TYPES char, int, float, ccl::bfp16, double, int64_t, uint64_t</span>
 
-#define API_CLASS_TYPE_INFO(api_type)                                                                           \
-    template&lt;&gt;                                                                                                  \
-    struct api_type_info&lt;api_type&gt;                                                                              \
-    {                                                                                                           \
-        static constexpr bool is_supported() { return true; }                                                   \
-        static constexpr bool is_class()     { return std::is_class&lt;api_type&gt;::value; }                         \
-    };
+<span class="cp">#define API_CLASS_TYPE_INFO(api_type) \</span>
+<span class="cp">    template &lt;&gt; \</span>
+<span class="cp">    struct api_type_info&lt;api_type&gt; { \</span>
+<span class="cp">        static constexpr bool is_supported() { \</span>
+<span class="cp">            return true; \</span>
+<span class="cp">        } \</span>
+<span class="cp">        static constexpr bool is_class() { \</span>
+<span class="cp">            return std::is_class&lt;api_type&gt;::value; \</span>
+<span class="cp">        } \</span>
+<span class="cp">    };</span>
 
-    template &lt;class native_stream&gt;
-    constexpr bool is_stream_supported()
-    {
-        return api_type_info&lt;/*typename std::remove_pointer&lt;typename std::remove_cv&lt;*/native_stream/*&gt;::type&gt;::type*/&gt;::is_supported();
-    }
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span> <span class="nc">native_stream</span><span class="o">&gt;</span>
+<span class="k">constexpr</span> <span class="kt">bool</span> <span class="n">is_stream_supported</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">api_type_info</span><span class="o">&lt;</span><span class="cm">/*typename std::remove_pointer&lt;typename std::remove_cv&lt;*/</span>
+                         <span class="n">native_stream</span> <span class="cm">/*&gt;::type&gt;::type*/</span><span class="o">&gt;::</span><span class="n">is_supported</span><span class="p">();</span>
+<span class="p">}</span>
 
-#ifdef CCL_ENABLE_SYCL
-    API_CLASS_TYPE_INFO(cl::sycl::queue);
-#endif
+<span class="cp">#ifdef CCL_ENABLE_SYCL</span>
+<span class="n">API_CLASS_TYPE_INFO</span><span class="p">(</span><span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">queue</span><span class="p">);</span>
+<span class="cp">#endif</span>
 
-#ifdef MULTI_GPU_SUPPORT
-    API_CLASS_TYPE_INFO(ze_command_queue_handle_t);
+<span class="cp">#ifdef MULTI_GPU_SUPPORT</span>
+<span class="n">API_CLASS_TYPE_INFO</span><span class="p">(</span><span class="n">ze_command_queue_handle_t</span><span class="p">);</span>
 
-template&lt;&gt;
-struct ccl_device_attributes_traits&lt;ccl_device_preferred_topology_class&gt;
-{
-    using type = device_topology_class;
-};
+<span class="k">template</span> <span class="o">&lt;&gt;</span>
+<span class="k">struct</span> <span class="n">ccl_device_attributes_traits</span><span class="o">&lt;</span><span class="n">ccl_device_preferred_topology_class</span><span class="o">&gt;</span> <span class="p">{</span>
+    <span class="k">using</span> <span class="n">type</span> <span class="o">=</span> <span class="n">device_topology_type</span><span class="p">;</span>
+<span class="p">};</span>
 
-template&lt;&gt;
-struct ccl_device_attributes_traits&lt;ccl_device_preferred_group&gt;
-{
-    using type = device_topology_group;
-};
+<span class="k">template</span> <span class="o">&lt;&gt;</span>
+<span class="k">struct</span> <span class="n">ccl_device_attributes_traits</span><span class="o">&lt;</span><span class="n">ccl_device_preferred_group</span><span class="o">&gt;</span> <span class="p">{</span>
+    <span class="k">using</span> <span class="n">type</span> <span class="o">=</span> <span class="n">device_group_split_type</span><span class="p">;</span>
+<span class="p">};</span>
 
+<span class="cp">#ifdef CCL_ENABLE_SYCL</span>
+<span class="k">template</span> <span class="o">&lt;&gt;</span>
+<span class="k">struct</span> <span class="n">generic_device_type</span><span class="o">&lt;</span><span class="n">CCL_ENABLE_SYCL_TRUE</span><span class="o">&gt;</span> <span class="p">{</span>
+    <span class="k">using</span> <span class="n">device_t</span> <span class="o">=</span> <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">device</span><span class="p">;</span>
+    <span class="k">using</span> <span class="n">native_t</span> <span class="o">=</span> <span class="n">device_t</span><span class="p">;</span>
+    <span class="k">using</span> <span class="n">native_pointer_t</span> <span class="o">=</span> <span class="n">native_t</span><span class="o">*</span><span class="p">;</span>
+    <span class="k">using</span> <span class="n">native_reference_t</span> <span class="o">=</span> <span class="n">native_t</span><span class="o">&amp;</span><span class="p">;</span>
 
-#ifdef CCL_ENABLE_SYCL
-template&lt;&gt;
-struct generic_device_type&lt;CCL_ENABLE_SYCL_TRUE&gt;
-{
-    using device_t = cl::sycl::device;
-    using native_t = device_t;
-    using native_pointer_t = native_t*;
-    using native_reference_t = native_t&amp;;
+    <span class="n">generic_device_type</span><span class="p">(</span><span class="n">device_index_type</span> <span class="n">id</span><span class="p">,</span>
+                        <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">info</span><span class="o">::</span><span class="n">device_type</span> <span class="o">=</span> <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">info</span><span class="o">::</span><span class="n">device_type</span><span class="o">::</span><span class="n">gpu</span><span class="p">);</span>
+    <span class="n">generic_device_type</span><span class="p">(</span><span class="k">const</span> <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">device</span><span class="o">&amp;</span> <span class="n">device</span><span class="p">);</span>
+    <span class="n">device_index_type</span> <span class="nf">get_id</span><span class="p">()</span> <span class="k">const</span> <span class="k">noexcept</span><span class="p">;</span>
+    <span class="n">native_reference_t</span> <span class="nf">get</span><span class="p">()</span> <span class="k">noexcept</span><span class="p">;</span>
 
-    generic_device_type(device_index_type id, cl::sycl::info::device_type = cl::sycl::info::device_type::gpu);
-    generic_device_type(const cl::sycl::device &amp;device);
-    device_index_type get_id() const noexcept;
-    native_reference_t get() noexcept;
+    <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">device</span> <span class="n">device</span><span class="p">;</span>
+<span class="p">};</span>
 
-    cl::sycl::device device;
-};
+<span class="k">template</span> <span class="o">&lt;&gt;</span>
+<span class="k">struct</span> <span class="n">generic_device_context_type</span><span class="o">&lt;</span><span class="n">CCL_ENABLE_SYCL_TRUE</span><span class="o">&gt;</span> <span class="p">{</span>
+    <span class="k">using</span> <span class="n">context_t</span> <span class="o">=</span> <span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">context</span><span class="p">;</span>
+    <span class="k">using</span> <span class="n">native_t</span> <span class="o">=</span> <span class="n">context_t</span><span class="p">;</span>
+    <span class="k">using</span> <span class="n">native_pointer_t</span> <span class="o">=</span> <span class="n">native_t</span><span class="o">*</span><span class="p">;</span>
+    <span class="k">using</span> <span class="n">native_reference_t</span> <span class="o">=</span> <span class="n">native_t</span><span class="o">&amp;</span><span class="p">;</span>
+    <span class="k">using</span> <span class="n">native_const_reference_t</span> <span class="o">=</span> <span class="k">const</span> <span class="n">native_t</span><span class="o">&amp;</span><span class="p">;</span>
 
-template&lt;&gt;
-struct generic_device_context_type&lt;CCL_ENABLE_SYCL_TRUE&gt;
-{
-    using context_t = cl::sycl::context;
-    using native_t = context_t;
-    using native_pointer_t = native_t*;
-    using native_reference_t = native_t&amp;;
-    using native_const_reference_t = const native_t&amp;;
+    <span class="n">native_reference_t</span> <span class="nf">get</span><span class="p">()</span> <span class="k">noexcept</span><span class="p">;</span>
+    <span class="n">native_const_reference_t</span> <span class="nf">get</span><span class="p">()</span> <span class="k">const</span> <span class="k">noexcept</span><span class="p">;</span>
+<span class="p">};</span>
+<span class="cp">#else</span>
+<span class="p">}</span>
+<span class="k">namespace</span> <span class="n">native</span> <span class="p">{</span>
+<span class="k">class</span> <span class="nc">ccl_device</span><span class="p">;</span>
+<span class="k">class</span> <span class="nc">ccl_device_platform</span><span class="p">;</span>
+<span class="p">}</span> <span class="c1">// namespace native</span>
 
-    native_reference_t get() noexcept;
-    native_const_reference_t get() const noexcept;
-};
-#else
-}
-namespace native
-{
-    class ccl_device;
-    class ccl_device_platform;
-}
+<span class="k">namespace</span> <span class="n">ccl</span> <span class="p">{</span>
+<span class="k">template</span> <span class="o">&lt;&gt;</span>
+<span class="k">struct</span> <span class="n">generic_device_type</span><span class="o">&lt;</span><span class="n">CCL_ENABLE_SYCL_FALSE</span><span class="o">&gt;</span> <span class="p">{</span>
+    <span class="k">using</span> <span class="n">device_t</span> <span class="o">=</span> <span class="n">device_index_type</span><span class="p">;</span>
+    <span class="k">using</span> <span class="n">native_t</span> <span class="o">=</span> <span class="n">native</span><span class="o">::</span><span class="n">ccl_device</span><span class="p">;</span>
+    <span class="k">using</span> <span class="n">native_pointer_t</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">native</span><span class="o">::</span><span class="n">ccl_device</span><span class="o">&gt;</span><span class="p">;</span>
+    <span class="k">using</span> <span class="n">native_reference_t</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">native</span><span class="o">::</span><span class="n">ccl_device</span><span class="o">&gt;</span><span class="p">;</span>
 
-namespace ccl
-{
-template&lt;&gt;
-struct generic_device_type&lt;CCL_ENABLE_SYCL_FALSE&gt;
-{
-    using device_t = device_index_type;
-    using native_t = native::ccl_device;
-    using native_pointer_t = std::shared_ptr&lt;native::ccl_device&gt;;
-    using native_reference_t = std::shared_ptr&lt;native::ccl_device&gt;;
+    <span class="n">generic_device_type</span><span class="p">(</span><span class="n">device_index_type</span> <span class="n">id</span><span class="p">);</span>
+    <span class="n">device_index_type</span> <span class="nf">get_id</span><span class="p">()</span> <span class="k">const</span> <span class="k">noexcept</span><span class="p">;</span>
+    <span class="n">native_reference_t</span> <span class="nf">get</span><span class="p">()</span> <span class="k">noexcept</span><span class="p">;</span>
 
-    generic_device_type(device_index_type id);
-    device_index_type get_id() const noexcept;
-    native_reference_t get() noexcept;
+    <span class="n">device_index_type</span> <span class="n">device</span><span class="p">;</span>
+<span class="p">};</span>
 
-    device_index_type device;
-};
+<span class="k">template</span> <span class="o">&lt;&gt;</span>
+<span class="k">struct</span> <span class="n">generic_device_context_type</span><span class="o">&lt;</span><span class="n">CCL_ENABLE_SYCL_FALSE</span><span class="o">&gt;</span> <span class="p">{</span>
+    <span class="k">using</span> <span class="n">context_t</span> <span class="o">=</span> <span class="n">native</span><span class="o">::</span><span class="n">ccl_device_platform</span><span class="p">;</span>
+    <span class="k">using</span> <span class="n">native_t</span> <span class="o">=</span> <span class="n">context_t</span><span class="p">;</span>
+    <span class="k">using</span> <span class="n">native_pointer_t</span> <span class="o">=</span> <span class="n">native_t</span><span class="o">*</span><span class="p">;</span>
+    <span class="k">using</span> <span class="n">native_reference_t</span> <span class="o">=</span> <span class="n">native_t</span><span class="o">&amp;</span><span class="p">;</span>
+    <span class="k">using</span> <span class="n">native_const_reference_t</span> <span class="o">=</span> <span class="k">const</span> <span class="n">native_t</span><span class="o">&amp;</span><span class="p">;</span>
 
+    <span class="n">native_reference_t</span> <span class="nf">get</span><span class="p">()</span> <span class="k">noexcept</span><span class="p">;</span>
+    <span class="n">native_const_reference_t</span> <span class="nf">get</span><span class="p">()</span> <span class="k">const</span> <span class="k">noexcept</span><span class="p">;</span>
+<span class="p">};</span>
+<span class="cp">#endif</span>
 
-template&lt;&gt;
-struct generic_device_context_type&lt;CCL_ENABLE_SYCL_FALSE&gt;
-{
-    using context_t = native::ccl_device_platform;
-    using native_t = context_t;
-    using native_pointer_t = native_t*;
-    using native_reference_t = native_t&amp;;
-    using native_const_reference_t = const native_t&amp;;
+<span class="k">using</span> <span class="n">unified_device_type</span> <span class="o">=</span> <span class="n">generic_device_type</span><span class="o">&lt;</span><span class="n">CCL_ENABLE_SYCL_V</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">using</span> <span class="n">unified_device_context_type</span> <span class="o">=</span> <span class="n">generic_device_context_type</span><span class="o">&lt;</span><span class="n">CCL_ENABLE_SYCL_V</span><span class="o">&gt;</span><span class="p">;</span>
 
-    native_reference_t get() noexcept;
-    native_const_reference_t get() const noexcept;
-};
-#endif
-
-using unified_device_type = generic_device_type&lt;CCL_ENABLE_SYCL_V&gt;;
-using unified_device_context_type = generic_device_context_type&lt;CCL_ENABLE_SYCL_V&gt;;
-
-//TMP - matching device index into native device object
-template&lt;class ...Args&gt;
-unified_device_type create_from_index(Args&amp;&amp; ...args)
-{
-    return unified_device_type(std::forward&lt;Args&gt;(args)...);
-}
-#endif /* MULTI_GPU_SUPPORT */
-}
+<span class="c1">//TMP - matching device index into native device object</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="n">class</span><span class="p">...</span> <span class="n">Args</span><span class="o">&gt;</span>
+<span class="n">unified_device_type</span> <span class="n">create_from_index</span><span class="p">(</span><span class="n">Args</span><span class="o">&amp;&amp;</span><span class="p">...</span> <span class="n">args</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">unified_device_type</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">Args</span><span class="o">&gt;</span><span class="p">(</span><span class="n">args</span><span class="p">)...);</span>
+<span class="p">}</span>
+<span class="cp">#endif </span><span class="cm">/* MULTI_GPU_SUPPORT */</span><span class="cp"></span>
+<span class="p">}</span> <span class="c1">// namespace ccl</span>
 </pre></div>
 </div>
 </div>
@@ -558,11 +559,19 @@ unified_device_type create_from_index(Args&amp;&amp; ...args)
 
   <div role="contentinfo">
     <p>
+        
         &copy; Copyright 2019–2020
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
 <br>
 <div>
   <p>
@@ -580,7 +589,6 @@ unified_device_type create_from_index(Args&amp;&amp; ...args)
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

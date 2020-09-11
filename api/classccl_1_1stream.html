@@ -1,8 +1,7 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
@@ -12,28 +11,30 @@
   
 
   
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+
+  
   
   
   
 
   
-  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-        <script type="text/javascript" src="../_static/jquery.js"></script>
-        <script type="text/javascript" src="../_static/underscore.js"></script>
-        <script type="text/javascript" src="../_static/doctools.js"></script>
-        <script type="text/javascript" src="../_static/language_data.js"></script>
-        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <script type="text/javascript" src="../_static/js/theme.js"></script>
 
     
-
-  
-  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Enum datatype" href="enum_ccl__types_8hpp_1a2165d84d3fc1c05a01cb01cec9db1d01.html" />
@@ -53,7 +54,7 @@
           
 
           
-            <a href="../index.html" class="icon icon-home"> oneCCL Documentation (Beta)
+            <a href="../index.html" class="icon icon-home" alt="Documentation Home"> oneCCL Documentation (Beta)
           
 
           
@@ -76,6 +77,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -260,6 +262,7 @@
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1aa8125c78bac1c8172e54fb08f7be6ed4.html">Enum ccl_host_attributes</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a42085859d35d75cc288367198c003e0d.html">Enum ccl_reduction_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a6f190c608822e4b3feff0e9c709fcc63.html">Enum ccl_resize_action</a></li>
+<li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1ae65096ea29339cb532924c0b6541b10d.html">Enum ccl_sparse_coalesce_mode</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90.html">Enum ccl_status_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a5872dcb7cc3a72fbf94a20d07ce6d63b.html">Enum ccl_stream_type_t</a></li>
 </ul>
@@ -330,7 +333,9 @@
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a0df469be505174d5656a3c5cba27ddd1.html">Typedef ccl_request_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1aa827bd4240d612fa112cc603dda7172f.html">Typedef ccl_resize_action_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a18fa4bbd5cc606204bdada4979625ff4.html">Typedef ccl_resize_fn_t</a></li>
-<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a21fdbaac2bedefc853712b36fab6f4bb.html">Typedef ccl_sparse_allreduce_completion_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1af277d029435f054a28ca3a97f35150c5.html">Typedef ccl_sparse_allreduce_alloc_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a71f5034a71138c438ceec8769fd54b23.html">Typedef ccl_sparse_allreduce_completion_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a90179df89e435769c8ff8b647301832f.html">Typedef ccl_sparse_coalesce_mode_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1ae4f1fe2e25f4a0189765458d8a83def5.html">Typedef ccl_stream_t</a></li>
 </ul>
 </li>
@@ -348,6 +353,7 @@
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -386,7 +392,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="../index.html">Docs</a> &raquo;</li>
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
         
           <li><a href="library_root.html">Library API</a> &raquo;</li>
         
@@ -416,13 +422,13 @@
 </ul>
 <div class="section" id="class-documentation">
 <h2>Class Documentation<a class="headerlink" href="#class-documentation" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
+<dl class="cpp class">
 <dt id="_CPPv4N3ccl6streamE">
-<span id="_CPPv3N3ccl6streamE"></span><span id="_CPPv2N3ccl6streamE"></span><span id="ccl::stream"></span><span class="target" id="classccl_1_1stream"></span><em class="property">class </em><code class="sig-name descname">stream</code><a class="headerlink" href="#_CPPv4N3ccl6streamE" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N3ccl6streamE"></span><span id="_CPPv2N3ccl6streamE"></span><span id="ccl::stream"></span><span class="target" id="classccl_1_1stream"></span><em class="property">class </em><code class="sig-prename descclassname">ccl<code class="sig-prename descclassname">::</code></code><code class="sig-name descname">stream</code><a class="headerlink" href="#_CPPv4N3ccl6streamE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>A stream object is an abstraction over CPU/GPU streams Has no defined public constructor. Use <a class="reference internal" href="classccl_1_1environment.html#classccl_1_1environment_1a076e779d81bff991ad183f3c85bc6ef8"><span class="std std-ref">ccl::environment::create_stream</span></a> for stream objects creation </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Types</p>
-<dl class="type">
+<dl class="cpp type">
 <dt id="_CPPv4N3ccl6stream6impl_tE">
 <span id="_CPPv3N3ccl6stream6impl_tE"></span><span id="_CPPv2N3ccl6stream6impl_tE"></span><span class="target" id="classccl_1_1stream_1a3781bbb58a265be4faebe070c26c85d9"></span><em class="property">using </em><code class="sig-name descname">impl_t</code> = std::shared_ptr&lt;ccl_stream&gt;<a class="headerlink" href="#_CPPv4N3ccl6stream6impl_tE" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
@@ -430,26 +436,26 @@
 </div>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Functions</p>
-<dl class="function">
+<dl class="cpp function">
 <dt id="_CPPv4N3ccl6stream6streamERK6stream">
-<span id="_CPPv3N3ccl6stream6streamERK6stream"></span><span id="_CPPv2N3ccl6stream6streamERK6stream"></span><span id="ccl::stream::stream__streamCR"></span><span class="target" id="classccl_1_1stream_1af41d34054d341936a21fb689981b2c89"></span><code class="sig-name descname">stream</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv4N3ccl6stream6streamERK6stream" title="ccl::stream::stream">stream</a>&amp;<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3ccl6stream6streamERK6stream" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N3ccl6stream6streamERK6stream"></span><span id="_CPPv2N3ccl6stream6streamERK6stream"></span><span id="ccl::stream::stream__streamCR"></span><span class="target" id="classccl_1_1stream_1af41d34054d341936a21fb689981b2c89"></span><code class="sig-name descname">stream</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv4N3ccl6stream6streamERK6stream" title="ccl::stream::stream">stream</a>&amp;<span class="sig-paren">)</span> = delete<a class="headerlink" href="#_CPPv4N3ccl6stream6streamERK6stream" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>stream is not copyable </p>
 </dd></dl>
 
-<dl class="function">
+<dl class="cpp function">
 <dt id="_CPPv4N3ccl6streamaSERK6stream">
-<span id="_CPPv3N3ccl6streamaSERK6stream"></span><span id="_CPPv2N3ccl6streamaSERK6stream"></span><span id="ccl::stream::assign-operator__streamCR"></span><span class="target" id="classccl_1_1stream_1a363e6192edd84edcdf93aa1515b9bb69"></span><a class="reference internal" href="#_CPPv4N3ccl6streamE" title="ccl::stream">stream</a> &amp;<code class="sig-name descname">operator=</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv4N3ccl6streamE" title="ccl::stream">stream</a>&amp;<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3ccl6streamaSERK6stream" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N3ccl6streamaSERK6stream"></span><span id="_CPPv2N3ccl6streamaSERK6stream"></span><span id="ccl::stream::assign-operator__streamCR"></span><span class="target" id="classccl_1_1stream_1a363e6192edd84edcdf93aa1515b9bb69"></span><a class="reference internal" href="#_CPPv4N3ccl6streamE" title="ccl::stream">stream</a> &amp;<code class="sig-name descname">operator=</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="#_CPPv4N3ccl6streamE" title="ccl::stream">stream</a>&amp;<span class="sig-paren">)</span> = delete<a class="headerlink" href="#_CPPv4N3ccl6streamaSERK6stream" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
-<dl class="function">
+<dl class="cpp function">
 <dt id="_CPPv4N3ccl6stream6streamERR6stream">
-<span id="_CPPv3N3ccl6stream6streamERR6stream"></span><span id="_CPPv2N3ccl6stream6streamERR6stream"></span><span id="ccl::stream::stream__streamRR"></span><span class="target" id="classccl_1_1stream_1a304216587297eac2a4baeac09d50b55e"></span><code class="sig-name descname">stream</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N3ccl6stream6streamERK6stream" title="ccl::stream::stream">stream</a>&amp;&amp;<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3ccl6stream6streamERR6stream" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N3ccl6stream6streamERR6stream"></span><span id="_CPPv2N3ccl6stream6streamERR6stream"></span><span id="ccl::stream::stream__streamRR"></span><span class="target" id="classccl_1_1stream_1a304216587297eac2a4baeac09d50b55e"></span><code class="sig-name descname">stream</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N3ccl6stream6streamERR6stream" title="ccl::stream::stream">stream</a>&amp;&amp;<span class="sig-paren">)</span> = default<a class="headerlink" href="#_CPPv4N3ccl6stream6streamERR6stream" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>stream is movable </p>
 </dd></dl>
 
-<dl class="function">
+<dl class="cpp function">
 <dt id="_CPPv4N3ccl6streamaSERR6stream">
-<span id="_CPPv3N3ccl6streamaSERR6stream"></span><span id="_CPPv2N3ccl6streamaSERR6stream"></span><span id="ccl::stream::assign-operator__streamRR"></span><span class="target" id="classccl_1_1stream_1a2ba014d4267d94de033c73f400c3e633"></span><a class="reference internal" href="#_CPPv4N3ccl6streamE" title="ccl::stream">stream</a> &amp;<code class="sig-name descname">operator=</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N3ccl6streamE" title="ccl::stream">stream</a>&amp;&amp;<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3ccl6streamaSERR6stream" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N3ccl6streamaSERR6stream"></span><span id="_CPPv2N3ccl6streamaSERR6stream"></span><span id="ccl::stream::assign-operator__streamRR"></span><span class="target" id="classccl_1_1stream_1a2ba014d4267d94de033c73f400c3e633"></span><a class="reference internal" href="#_CPPv4N3ccl6streamE" title="ccl::stream">stream</a> &amp;<code class="sig-name descname">operator=</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N3ccl6streamE" title="ccl::stream">stream</a>&amp;&amp;<span class="sig-paren">)</span> = default<a class="headerlink" href="#_CPPv4N3ccl6streamaSERR6stream" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
 </div>
@@ -478,11 +484,19 @@
 
   <div role="contentinfo">
     <p>
+        
         &copy; Copyright 2019–2020
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
 <br>
 <div>
   <p>
@@ -500,7 +514,6 @@
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

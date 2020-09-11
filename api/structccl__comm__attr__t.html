@@ -1,8 +1,7 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
@@ -12,28 +11,30 @@
   
 
   
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+
+  
   
   
   
 
   
-  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-        <script type="text/javascript" src="../_static/jquery.js"></script>
-        <script type="text/javascript" src="../_static/underscore.js"></script>
-        <script type="text/javascript" src="../_static/doctools.js"></script>
-        <script type="text/javascript" src="../_static/language_data.js"></script>
-        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <script type="text/javascript" src="../_static/js/theme.js"></script>
 
     
-
-  
-  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Struct ccl_comm_attr_versioned_t" href="structccl__comm__attr__versioned__t.html" />
@@ -53,7 +54,7 @@
           
 
           
-            <a href="../index.html" class="icon icon-home"> oneCCL Documentation (Beta)
+            <a href="../index.html" class="icon icon-home" alt="Documentation Home"> oneCCL Documentation (Beta)
           
 
           
@@ -76,6 +77,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -260,6 +262,7 @@
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1aa8125c78bac1c8172e54fb08f7be6ed4.html">Enum ccl_host_attributes</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a42085859d35d75cc288367198c003e0d.html">Enum ccl_reduction_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a6f190c608822e4b3feff0e9c709fcc63.html">Enum ccl_resize_action</a></li>
+<li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1ae65096ea29339cb532924c0b6541b10d.html">Enum ccl_sparse_coalesce_mode</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90.html">Enum ccl_status_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a5872dcb7cc3a72fbf94a20d07ce6d63b.html">Enum ccl_stream_type_t</a></li>
 </ul>
@@ -330,7 +333,9 @@
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a0df469be505174d5656a3c5cba27ddd1.html">Typedef ccl_request_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1aa827bd4240d612fa112cc603dda7172f.html">Typedef ccl_resize_action_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a18fa4bbd5cc606204bdada4979625ff4.html">Typedef ccl_resize_fn_t</a></li>
-<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a21fdbaac2bedefc853712b36fab6f4bb.html">Typedef ccl_sparse_allreduce_completion_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1af277d029435f054a28ca3a97f35150c5.html">Typedef ccl_sparse_allreduce_alloc_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a71f5034a71138c438ceec8769fd54b23.html">Typedef ccl_sparse_allreduce_completion_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a90179df89e435769c8ff8b647301832f.html">Typedef ccl_sparse_coalesce_mode_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1ae4f1fe2e25f4a0189765458d8a83def5.html">Typedef ccl_stream_t</a></li>
 </ul>
 </li>
@@ -348,6 +353,7 @@
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -386,7 +392,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="../index.html">Docs</a> &raquo;</li>
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
         
           <li><a href="library_root.html">Library API</a> &raquo;</li>
         
@@ -416,34 +422,34 @@
 </ul>
 <div class="section" id="struct-documentation">
 <h2>Struct Documentation<a class="headerlink" href="#struct-documentation" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
+<dl class="cpp struct">
 <dt id="_CPPv415ccl_comm_attr_t">
 <span id="_CPPv315ccl_comm_attr_t"></span><span id="_CPPv215ccl_comm_attr_t"></span><span id="ccl_comm_attr_t"></span><span class="target" id="structccl__comm__attr__t"></span><em class="property">struct </em><code class="sig-name descname">ccl_comm_attr_t</code><a class="headerlink" href="#_CPPv415ccl_comm_attr_t" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>List of host communicator attributes. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Members</p>
-<dl class="member">
+<dl class="cpp var">
 <dt id="_CPPv4N15ccl_comm_attr_t5colorE">
 <span id="_CPPv3N15ccl_comm_attr_t5colorE"></span><span id="_CPPv2N15ccl_comm_attr_t5colorE"></span><span id="ccl_comm_attr_t::color__i"></span><span class="target" id="structccl__comm__attr__t_1abe4fd1ba261d1f77b3818fc55b4a7250"></span>int <code class="sig-name descname">color</code><a class="headerlink" href="#_CPPv4N15ccl_comm_attr_t5colorE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Used to split global communicator into parts. Ranks with identical color will form a new communicator. </p>
 </dd></dl>
 
-<dl class="member">
+<dl class="cpp var">
 <dt id="_CPPv4N15ccl_comm_attr_t5ranksE">
 <span id="_CPPv3N15ccl_comm_attr_t5ranksE"></span><span id="_CPPv2N15ccl_comm_attr_t5ranksE"></span><span id="ccl_comm_attr_t::ranks__sP"></span><span class="target" id="structccl__comm__attr__t_1a8666eec414c06f619f40af953c345c55"></span>size_t *<code class="sig-name descname">ranks</code><a class="headerlink" href="#_CPPv4N15ccl_comm_attr_t5ranksE" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
-<dl class="member">
+<dl class="cpp var">
 <dt id="_CPPv4N15ccl_comm_attr_t4sizeE">
 <span id="_CPPv3N15ccl_comm_attr_t4sizeE"></span><span id="_CPPv2N15ccl_comm_attr_t4sizeE"></span><span id="ccl_comm_attr_t::size__s"></span><span class="target" id="structccl__comm__attr__t_1a155909c0b01ed09b0d1d23715194b0ad"></span>size_t <code class="sig-name descname">size</code><a class="headerlink" href="#_CPPv4N15ccl_comm_attr_t4sizeE" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
-<dl class="member">
+<dl class="cpp var">
 <dt id="_CPPv4N15ccl_comm_attr_t8dev_listE">
 <span id="_CPPv3N15ccl_comm_attr_t8dev_listE"></span><span id="_CPPv2N15ccl_comm_attr_t8dev_listE"></span><span id="ccl_comm_attr_t::dev_list__sCP"></span><span class="target" id="structccl__comm__attr__t_1aaa02d944fde1973e304a4c49b320606b"></span><em class="property">const</em> size_t *<code class="sig-name descname">dev_list</code><a class="headerlink" href="#_CPPv4N15ccl_comm_attr_t8dev_listE" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
-<dl class="member">
+<dl class="cpp var">
 <dt id="_CPPv4N15ccl_comm_attr_t5localE">
 <span id="_CPPv3N15ccl_comm_attr_t5localE"></span><span id="_CPPv2N15ccl_comm_attr_t5localE"></span><span id="ccl_comm_attr_t::local__i"></span><span class="target" id="structccl__comm__attr__t_1ae2e978b7b88910b402c6430ac0d82209"></span>int <code class="sig-name descname">local</code><a class="headerlink" href="#_CPPv4N15ccl_comm_attr_t5localE" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
@@ -474,11 +480,19 @@
 
   <div role="contentinfo">
     <p>
+        
         &copy; Copyright 2019–2020
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
 <br>
 <div>
   <p>
@@ -496,7 +510,6 @@
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

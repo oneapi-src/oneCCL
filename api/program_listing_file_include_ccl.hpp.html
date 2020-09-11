@@ -1,8 +1,7 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
@@ -12,28 +11,30 @@
   
 
   
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+
+  
   
   
   
 
   
-  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-        <script type="text/javascript" src="../_static/jquery.js"></script>
-        <script type="text/javascript" src="../_static/underscore.js"></script>
-        <script type="text/javascript" src="../_static/doctools.js"></script>
-        <script type="text/javascript" src="../_static/language_data.js"></script>
-        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <script type="text/javascript" src="../_static/js/theme.js"></script>
 
     
-
-  
-  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link href="../_static/style.css" rel="stylesheet" type="text/css">
@@ -51,7 +52,7 @@
           
 
           
-            <a href="../index.html" class="icon icon-home"> oneCCL Documentation (Beta)
+            <a href="../index.html" class="icon icon-home" alt="Documentation Home"> oneCCL Documentation (Beta)
           
 
           
@@ -74,6 +75,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -258,6 +260,7 @@
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1aa8125c78bac1c8172e54fb08f7be6ed4.html">Enum ccl_host_attributes</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a42085859d35d75cc288367198c003e0d.html">Enum ccl_reduction_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a6f190c608822e4b3feff0e9c709fcc63.html">Enum ccl_resize_action</a></li>
+<li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1ae65096ea29339cb532924c0b6541b10d.html">Enum ccl_sparse_coalesce_mode</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90.html">Enum ccl_status_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a5872dcb7cc3a72fbf94a20d07ce6d63b.html">Enum ccl_stream_type_t</a></li>
 </ul>
@@ -328,7 +331,9 @@
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a0df469be505174d5656a3c5cba27ddd1.html">Typedef ccl_request_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1aa827bd4240d612fa112cc603dda7172f.html">Typedef ccl_resize_action_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a18fa4bbd5cc606204bdada4979625ff4.html">Typedef ccl_resize_fn_t</a></li>
-<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a21fdbaac2bedefc853712b36fab6f4bb.html">Typedef ccl_sparse_allreduce_completion_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1af277d029435f054a28ca3a97f35150c5.html">Typedef ccl_sparse_allreduce_alloc_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a71f5034a71138c438ceec8769fd54b23.html">Typedef ccl_sparse_allreduce_completion_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a90179df89e435769c8ff8b647301832f.html">Typedef ccl_sparse_coalesce_mode_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1ae4f1fe2e25f4a0189765458d8a83def5.html">Typedef ccl_stream_t</a></li>
 </ul>
 </li>
@@ -346,6 +351,7 @@
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -384,7 +390,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="../index.html">Docs</a> &raquo;</li>
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
         
       <li>Program Listing for File ccl.hpp</li>
     
@@ -418,8 +424,7 @@
 class ccl_comm;
 class ccl_stream;
 
-namespace ccl
-{
+namespace ccl {
 
 class communicator;
 class stream;
@@ -440,8 +445,7 @@ using shared_communicator_t = std::shared_ptr&lt;ccl::communicator&gt;;
 
 using stream_t = std::unique_ptr&lt;ccl::stream&gt;;
 
-class ccl_host_attr
-{
+class ccl_host_attr {
 public:
     friend class ccl_device_attr;
     friend struct communicator_interface_dispatcher;
@@ -449,12 +453,12 @@ public:
 
     virtual ~ccl_host_attr() noexcept;
 
-    template&lt;ccl_host_attributes attrId,
-             class Value,
-             class = typename std::enable_if&lt;is_attribute_value_supported&lt;attrId, Value&gt;()&gt;::type&gt;
+    template &lt;ccl_host_attributes attrId,
+              class Value,
+              class = typename std::enable_if&lt;is_attribute_value_supported&lt;attrId, Value&gt;()&gt;::type&gt;
     Value set_value(const Value&amp; v);
 
-    template&lt;ccl_host_attributes attrId&gt;
+    template &lt;ccl_host_attributes attrId&gt;
     const typename ccl_host_attributes_traits&lt;attrId&gt;::type&amp; get_value() const;
 
 protected:
@@ -462,13 +466,13 @@ protected:
 
 private:
     ccl_host_attr(const ccl_version_t&amp; library_version,
-                  const ccl_host_comm_attr_t &amp;core = ccl_host_comm_attr_t(),
-                  ccl_version_t api_version = ccl_version_t {CCL_MAJOR_VERSION,
+                  const ccl_host_comm_attr_t&amp; core = ccl_host_comm_attr_t(),
+                  ccl_version_t api_version = ccl_version_t{ CCL_MAJOR_VERSION,
                                                              CCL_MINOR_VERSION,
                                                              CCL_UPDATE_VERSION,
                                                              CCL_PRODUCT_STATUS,
                                                              CCL_PRODUCT_BUILD_DATE,
-                                                             CCL_PRODUCT_FULL});
+                                                             CCL_PRODUCT_FULL });
 
     std::unique_ptr&lt;host_attr_impl&gt; pimpl;
 };
@@ -477,8 +481,7 @@ using comm_attr_t = std::shared_ptr&lt;ccl_host_attr&gt;;
 
 #ifdef MULTI_GPU_SUPPORT
 using comm_group_t = std::shared_ptr&lt;comm_group&gt;;
-class ccl_device_attr : public ccl_host_attr
-{
+class ccl_device_attr : public ccl_host_attr {
 public:
     friend class comm_group;
     friend struct communicator_interface_dispatcher;
@@ -486,12 +489,14 @@ public:
     using base_t = ccl_host_attr;
     ~ccl_device_attr() noexcept;
 
-    template&lt;ccl_device_attributes attrId,
-             class Value,
-             class = typename std::enable_if&lt;std::is_same&lt;typename ccl_device_attributes_traits&lt;attrId&gt;::type, Value&gt;::value&gt;::type&gt;
+    template &lt;
+        ccl_device_attributes attrId,
+        class Value,
+        class = typename std::enable_if&lt;
+            std::is_same&lt;typename ccl_device_attributes_traits&lt;attrId&gt;::type, Value&gt;::value&gt;::type&gt;
     Value set_value(Value&amp;&amp; v);
 
-    template&lt;ccl_device_attributes attrId&gt;
+    template &lt;ccl_device_attributes attrId&gt;
     const typename ccl_device_attributes_traits&lt;attrId&gt;::type&amp; get_value() const;
 
 private:
@@ -502,8 +507,7 @@ private:
 using device_comm_attr_t = std::shared_ptr&lt;ccl_device_attr&gt;;
 #endif //MULTI_GPU_SUPPORT
 
-class environment
-{
+class environment {
 public:
     ~environment();
 
@@ -513,29 +517,30 @@ public:
 
     communicator_t create_communicator(const ccl::comm_attr_t&amp; attr = ccl::comm_attr_t()) const;
 
-    template&lt;class stream_native_type,
-             class = typename std::enable_if&lt;is_stream_supported&lt;stream_native_type&gt;()&gt;::type&gt;
+    template &lt;class stream_native_type,
+              class = typename std::enable_if&lt;is_stream_supported&lt;stream_native_type&gt;()&gt;::type&gt;
     stream_t create_stream(stream_native_type&amp; native_stream);
 
     stream_t create_stream() const;
 
     ccl_version_t get_version() const;
 
-    comm_attr_t create_host_comm_attr(const ccl_host_comm_attr_t&amp; attr = ccl_host_comm_attr_t()) const;
+    comm_attr_t create_host_comm_attr(
+        const ccl_host_comm_attr_t&amp; attr = ccl_host_comm_attr_t()) const;
 
 #ifdef MULTI_GPU_SUPPORT
 
-    comm_group_t create_comm_group(size_t current_device_group_size,
-                                   size_t process_device_group_size,
-                                   ccl::shared_communicator_t parent_comm = ccl::shared_communicator_t());
+    comm_group_t create_comm_group(
+        size_t current_device_group_size,
+        size_t process_device_group_size,
+        ccl::shared_communicator_t parent_comm = ccl::shared_communicator_t());
 
 #endif //MULTI_GPU_SUPPORT
 private:
     environment();
 };
 
-class request
-{
+class request {
 public:
     virtual void wait() = 0;
 
@@ -548,8 +553,7 @@ ccl::datatype datatype_create(const ccl::datatype_attr* attr);
 void datatype_free(ccl::datatype dtype);
 size_t datatype_get_size(ccl::datatype dtype);
 
-class stream
-{
+class stream {
 public:
     stream(const stream&amp;) = delete;
     stream&amp; operator=(const stream&amp;) = delete;
@@ -558,6 +562,7 @@ public:
     stream&amp; operator=(stream&amp;&amp;) = default;
 
     using impl_t = std::shared_ptr&lt;ccl_stream&gt;;
+
 private:
     friend class communicator;
     friend class environment;
@@ -566,10 +571,8 @@ private:
     impl_t stream_impl;
 };
 
-class communicator final
-{
+class communicator final {
 public:
-
     ~communicator();
 
     using coll_request_t = std::unique_ptr&lt;request&gt;;
@@ -584,7 +587,9 @@ public:
 
     device_native_reference_t get_device();
 
-    ccl::device_topology_type get_topology_type() const;
+    ccl::device_group_split_type get_device_group_split_type() const;
+
+    ccl::device_topology_type get_topology_class() const;
 
     device_comm_attr_t get_device_attr() const;
 #endif
@@ -592,33 +597,42 @@ public:
     comm_attr_t get_host_attr() const;
     bool is_ready() const;
 
-    coll_request_t allgatherv(const void* send_buf, size_t send_count,
-                              void* recv_buf, const size_t* recv_counts,
+    coll_request_t allgatherv(const void* send_buf,
+                              size_t send_count,
+                              void* recv_buf,
+                              const size_t* recv_counts,
                               ccl::datatype dtype,
                               const ccl::coll_attr* attr = nullptr,
                               const ccl::stream_t&amp; stream = ccl::stream_t());
 
-    template&lt;class buffer_type,
-             class = typename std::enable_if&lt;ccl::is_native_type_supported&lt;buffer_type&gt;()&gt;::type&gt;
-    coll_request_t allgatherv(const buffer_type* send_buf, size_t send_count,
-                              buffer_type* recv_buf, const size_t* recv_counts,
+    template &lt;class buffer_type,
+              class = typename std::enable_if&lt;ccl::is_native_type_supported&lt;buffer_type&gt;()&gt;::type&gt;
+    coll_request_t allgatherv(const buffer_type* send_buf,
+                              size_t send_count,
+                              buffer_type* recv_buf,
+                              const size_t* recv_counts,
                               const ccl::coll_attr* attr = nullptr,
                               const ccl::stream_t&amp; stream = ccl::stream_t());
-    template&lt;class buffer_container_type,
-             class = typename std::enable_if&lt;ccl::is_class_supported&lt;buffer_container_type&gt;()&gt;::type&gt;
-    coll_request_t allgatherv(const buffer_container_type&amp; send_buf, size_t send_count,
-                              buffer_container_type&amp; recv_buf, const size_t* recv_counts,
+    template &lt;
+        class buffer_container_type,
+        class = typename std::enable_if&lt;ccl::is_class_supported&lt;buffer_container_type&gt;()&gt;::type&gt;
+    coll_request_t allgatherv(const buffer_container_type&amp; send_buf,
+                              size_t send_count,
+                              buffer_container_type&amp; recv_buf,
+                              const size_t* recv_counts,
                               const ccl::coll_attr* attr = nullptr,
                               const ccl::stream_t&amp; stream = ccl::stream_t());
 
-    coll_request_t allreduce(const void* send_buf, void* recv_buf,
-                             size_t count, ccl::datatype dtype,
+    coll_request_t allreduce(const void* send_buf,
+                             void* recv_buf,
+                             size_t count,
+                             ccl::datatype dtype,
                              ccl::reduction reduction,
                              const ccl::coll_attr* attr = nullptr,
                              const ccl::stream_t&amp; stream = ccl::stream_t());
 
-    template&lt;class buffer_type,
-             class = typename std::enable_if&lt;ccl::is_native_type_supported&lt;buffer_type&gt;()&gt;::type&gt;
+    template &lt;class buffer_type,
+              class = typename std::enable_if&lt;ccl::is_native_type_supported&lt;buffer_type&gt;()&gt;::type&gt;
     coll_request_t allreduce(const buffer_type* send_buf,
                              buffer_type* recv_buf,
                              size_t count,
@@ -626,8 +640,9 @@ public:
                              const ccl::coll_attr* attr = nullptr,
                              const ccl::stream_t&amp; stream = ccl::stream_t());
 
-    template&lt;class buffer_container_type,
-             class = typename std::enable_if&lt;ccl::is_class_supported&lt;buffer_container_type&gt;()&gt;::type&gt;
+    template &lt;
+        class buffer_container_type,
+        class = typename std::enable_if&lt;ccl::is_class_supported&lt;buffer_container_type&gt;()&gt;::type&gt;
     coll_request_t allreduce(const buffer_container_type&amp; send_buf,
                              buffer_container_type&amp; recv_buf,
                              size_t count,
@@ -635,20 +650,23 @@ public:
                              const ccl::coll_attr* attr = nullptr,
                              const ccl::stream_t&amp; stream = ccl::stream_t());
 
-    coll_request_t alltoall(const void* send_buf, void* recv_buf,
-                            size_t count, ccl::datatype dtype,
+    coll_request_t alltoall(const void* send_buf,
+                            void* recv_buf,
+                            size_t count,
+                            ccl::datatype dtype,
                             const ccl::coll_attr* attr = nullptr,
                             const ccl::stream_t&amp; stream = ccl::stream_t());
 
-    template&lt;class buffer_type,
-        class = typename std::enable_if&lt;ccl::is_native_type_supported&lt;buffer_type&gt;()&gt;::type&gt;
+    template &lt;class buffer_type,
+              class = typename std::enable_if&lt;ccl::is_native_type_supported&lt;buffer_type&gt;()&gt;::type&gt;
     coll_request_t alltoall(const buffer_type* send_buf,
                             buffer_type* recv_buf,
                             size_t count,
                             const ccl::coll_attr* attr = nullptr,
                             const ccl::stream_t&amp; stream = ccl::stream_t());
 
-    template&lt;class buffer_container_type,
+    template &lt;
+        class buffer_container_type,
         class = typename std::enable_if&lt;ccl::is_class_supported&lt;buffer_container_type&gt;()&gt;::type&gt;
     coll_request_t alltoall(const buffer_container_type&amp; send_buf,
                             buffer_container_type&amp; recv_buf,
@@ -656,49 +674,60 @@ public:
                             const ccl::coll_attr* attr = nullptr,
                             const ccl::stream_t&amp; stream = ccl::stream_t());
 
-    coll_request_t alltoallv(const void* send_buf, const size_t* send_counts,
-                             void* recv_buf, const size_t* recv_counts,
+    coll_request_t alltoallv(const void* send_buf,
+                             const size_t* send_counts,
+                             void* recv_buf,
+                             const size_t* recv_counts,
                              ccl::datatype dtype,
                              const ccl::coll_attr* attr = nullptr,
                              const ccl::stream_t&amp; stream = ccl::stream_t());
 
-    template&lt;class buffer_type,
-             class = typename std::enable_if&lt;ccl::is_native_type_supported&lt;buffer_type&gt;()&gt;::type&gt;
-    coll_request_t alltoallv(const buffer_type* send_buf, const size_t* send_counts,
-                             buffer_type* recv_buf, const size_t* recv_counts,
+    template &lt;class buffer_type,
+              class = typename std::enable_if&lt;ccl::is_native_type_supported&lt;buffer_type&gt;()&gt;::type&gt;
+    coll_request_t alltoallv(const buffer_type* send_buf,
+                             const size_t* send_counts,
+                             buffer_type* recv_buf,
+                             const size_t* recv_counts,
                              const ccl::coll_attr* attr = nullptr,
                              const ccl::stream_t&amp; stream = ccl::stream_t());
-    template&lt;class buffer_container_type,
-             class = typename std::enable_if&lt;ccl::is_class_supported&lt;buffer_container_type&gt;()&gt;::type&gt;
-    coll_request_t alltoallv(const buffer_container_type&amp; send_buf, const size_t* send_counts,
-                             buffer_container_type&amp; recv_buf, const size_t* recv_counts,
+    template &lt;
+        class buffer_container_type,
+        class = typename std::enable_if&lt;ccl::is_class_supported&lt;buffer_container_type&gt;()&gt;::type&gt;
+    coll_request_t alltoallv(const buffer_container_type&amp; send_buf,
+                             const size_t* send_counts,
+                             buffer_container_type&amp; recv_buf,
+                             const size_t* recv_counts,
                              const ccl::coll_attr* attr = nullptr,
                              const ccl::stream_t&amp; stream = ccl::stream_t());
 
     void barrier(const ccl::stream_t&amp; stream = ccl::stream_t());
 
-    coll_request_t bcast(void* buf, size_t count,
+    coll_request_t bcast(void* buf,
+                         size_t count,
                          ccl::datatype dtype,
                          size_t root,
                          const ccl::coll_attr* attr = nullptr,
                          const ccl::stream_t&amp; stream = ccl::stream_t());
 
-    template&lt;class buffer_type,
-             class = typename std::enable_if&lt;ccl::is_native_type_supported&lt;buffer_type&gt;()&gt;::type&gt;
-    coll_request_t bcast(buffer_type* buf, size_t count,
+    template &lt;class buffer_type,
+              class = typename std::enable_if&lt;ccl::is_native_type_supported&lt;buffer_type&gt;()&gt;::type&gt;
+    coll_request_t bcast(buffer_type* buf,
+                         size_t count,
                          size_t root,
                          const ccl::coll_attr* attr = nullptr,
                          const ccl::stream_t&amp; stream = ccl::stream_t());
 
-    template&lt;class buffer_container_type,
-             class = typename std::enable_if&lt;ccl::is_class_supported&lt;buffer_container_type&gt;()&gt;::type&gt;
-    coll_request_t bcast(buffer_container_type&amp; buf, size_t count,
+    template &lt;
+        class buffer_container_type,
+        class = typename std::enable_if&lt;ccl::is_class_supported&lt;buffer_container_type&gt;()&gt;::type&gt;
+    coll_request_t bcast(buffer_container_type&amp; buf,
+                         size_t count,
                          size_t root,
                          const ccl::coll_attr* attr = nullptr,
                          const ccl::stream_t&amp; stream = ccl::stream_t());
 
-
-    coll_request_t reduce(const void* send_buf, void* recv_buf,
+    coll_request_t reduce(const void* send_buf,
+                          void* recv_buf,
                           size_t count,
                           ccl::datatype dtype,
                           ccl::reduction reduction,
@@ -706,53 +735,69 @@ public:
                           const ccl::coll_attr* attr = nullptr,
                           const ccl::stream_t&amp; stream = ccl::stream_t());
 
-    template&lt;class buffer_type,
-             class = typename std::enable_if&lt;ccl::is_native_type_supported&lt;buffer_type&gt;()&gt;::type&gt;
-    coll_request_t reduce(const buffer_type* send_buf, buffer_type* recv_buf,
+    template &lt;class buffer_type,
+              class = typename std::enable_if&lt;ccl::is_native_type_supported&lt;buffer_type&gt;()&gt;::type&gt;
+    coll_request_t reduce(const buffer_type* send_buf,
+                          buffer_type* recv_buf,
                           size_t count,
                           ccl::reduction reduction,
                           size_t root,
                           const ccl::coll_attr* attr = nullptr,
                           const ccl::stream_t&amp; stream = ccl::stream_t());
 
-    template&lt;class buffer_container_type,
-             class = typename std::enable_if&lt;ccl::is_class_supported&lt;buffer_container_type&gt;()&gt;::type&gt;
-    coll_request_t reduce(const buffer_container_type&amp; send_buf, buffer_container_type&amp; recv_buf,
+    template &lt;
+        class buffer_container_type,
+        class = typename std::enable_if&lt;ccl::is_class_supported&lt;buffer_container_type&gt;()&gt;::type&gt;
+    coll_request_t reduce(const buffer_container_type&amp; send_buf,
+                          buffer_container_type&amp; recv_buf,
                           size_t count,
                           ccl::reduction reduction,
                           size_t root,
                           const ccl::coll_attr* attr = nullptr,
                           const ccl::stream_t&amp; stream = ccl::stream_t());
 
-
-    coll_request_t sparse_allreduce(const void* send_ind_buf, size_t send_ind_count,
-                                    const void* send_val_buf, size_t send_val_count,
-                                    void* recv_ind_buf, size_t recv_ind_count,
-                                    void* recv_val_buf, size_t recv_val_count,
+    coll_request_t sparse_allreduce(const void* send_ind_buf,
+                                    size_t send_ind_count,
+                                    const void* send_val_buf,
+                                    size_t send_val_count,
+                                    void* recv_ind_buf,
+                                    size_t recv_ind_count,
+                                    void* recv_val_buf,
+                                    size_t recv_val_count,
                                     ccl::datatype index_dtype,
                                     ccl::datatype value_dtype,
                                     ccl::reduction reduction,
                                     const ccl::coll_attr* attr = nullptr,
                                     const ccl::stream_t&amp; stream = ccl::stream_t());
 
-    template&lt;class index_buffer_type,
-             class value_buffer_type,
-             class = typename std::enable_if&lt;ccl::is_native_type_supported&lt;value_buffer_type&gt;()&gt;::type&gt;
-    coll_request_t sparse_allreduce(const index_buffer_type* send_ind_buf, size_t send_ind_count,
-                                    const value_buffer_type* send_val_buf, size_t send_val_count,
-                                    index_buffer_type* recv_ind_buf, size_t recv_ind_count,
-                                    value_buffer_type* recv_val_buf, size_t recv_val_count,
+    template &lt;
+        class index_buffer_type,
+        class value_buffer_type,
+        class = typename std::enable_if&lt;ccl::is_native_type_supported&lt;value_buffer_type&gt;()&gt;::type&gt;
+    coll_request_t sparse_allreduce(const index_buffer_type* send_ind_buf,
+                                    size_t send_ind_count,
+                                    const value_buffer_type* send_val_buf,
+                                    size_t send_val_count,
+                                    index_buffer_type* recv_ind_buf,
+                                    size_t recv_ind_count,
+                                    value_buffer_type* recv_val_buf,
+                                    size_t recv_val_count,
                                     ccl::reduction reduction,
                                     const ccl::coll_attr* attr = nullptr,
                                     const ccl::stream_t&amp; stream = ccl::stream_t());
 
-    template&lt;class index_buffer_container_type,
-             class value_buffer_container_type,
-             class = typename std::enable_if&lt;ccl::is_class_supported&lt;value_buffer_container_type&gt;()&gt;::type&gt;
-    coll_request_t sparse_allreduce(const index_buffer_container_type&amp; send_ind_buf, size_t send_ind_count,
-                                    const value_buffer_container_type&amp; send_val_buf, size_t send_val_count,
-                                    index_buffer_container_type&amp; recv_ind_buf, size_t recv_ind_count,
-                                    value_buffer_container_type&amp; recv_val_buf, size_t recv_val_count,
+    template &lt;class index_buffer_container_type,
+              class value_buffer_container_type,
+              class = typename std::enable_if&lt;
+                  ccl::is_class_supported&lt;value_buffer_container_type&gt;()&gt;::type&gt;
+    coll_request_t sparse_allreduce(const index_buffer_container_type&amp; send_ind_buf,
+                                    size_t send_ind_count,
+                                    const value_buffer_container_type&amp; send_val_buf,
+                                    size_t send_val_count,
+                                    index_buffer_container_type&amp; recv_ind_buf,
+                                    size_t recv_ind_count,
+                                    value_buffer_container_type&amp; recv_val_buf,
+                                    size_t recv_val_count,
                                     ccl::reduction reduction,
                                     const ccl::coll_attr* attr = nullptr,
                                     const ccl::stream_t&amp; stream = ccl::stream_t());
@@ -765,10 +810,10 @@ private:
 
     std::shared_ptr&lt;communicator_interface&gt; pimpl;
 };
-}
+} // namespace ccl
 #ifdef MULTI_GPU_SUPPORT
-    #include &quot;ccl_gpu_modules.h&quot;
-    #include &quot;gpu_communicator.hpp&quot;
+#include &quot;ccl_gpu_modules.h&quot;
+#include &quot;gpu_communicator.hpp&quot;
 #endif
 </pre></div>
 </div>
@@ -785,11 +830,19 @@ private:
 
   <div role="contentinfo">
     <p>
+        
         &copy; Copyright 2019–2020
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
 <br>
 <div>
   <p>
@@ -807,7 +860,6 @@ private:
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

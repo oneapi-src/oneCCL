@@ -1,0 +1,13 @@
+.. _exhale_typedef_ccl__types_8h_1a71f5034a71138c438ceec8769fd54b23:
+
+Typedef ccl_sparse_allreduce_completion_fn_t
+============================================
+
+- Defined in :ref:`file_include_ccl_types.h`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: ccl_sparse_allreduce_completion_fn_t

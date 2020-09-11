@@ -1,8 +1,7 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
@@ -12,28 +11,30 @@
   
 
   
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+
+  
   
   
   
 
   
-  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-        <script type="text/javascript" src="../_static/jquery.js"></script>
-        <script type="text/javascript" src="../_static/underscore.js"></script>
-        <script type="text/javascript" src="../_static/doctools.js"></script>
-        <script type="text/javascript" src="../_static/language_data.js"></script>
-        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <script type="text/javascript" src="../_static/js/theme.js"></script>
 
     
-
-  
-  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link href="../_static/style.css" rel="stylesheet" type="text/css">
@@ -51,7 +52,7 @@
           
 
           
-            <a href="../index.html" class="icon icon-home"> oneCCL Documentation (Beta)
+            <a href="../index.html" class="icon icon-home" alt="Documentation Home"> oneCCL Documentation (Beta)
           
 
           
@@ -74,6 +75,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -258,6 +260,7 @@
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1aa8125c78bac1c8172e54fb08f7be6ed4.html">Enum ccl_host_attributes</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a42085859d35d75cc288367198c003e0d.html">Enum ccl_reduction_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a6f190c608822e4b3feff0e9c709fcc63.html">Enum ccl_resize_action</a></li>
+<li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1ae65096ea29339cb532924c0b6541b10d.html">Enum ccl_sparse_coalesce_mode</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90.html">Enum ccl_status_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a5872dcb7cc3a72fbf94a20d07ce6d63b.html">Enum ccl_stream_type_t</a></li>
 </ul>
@@ -328,7 +331,9 @@
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a0df469be505174d5656a3c5cba27ddd1.html">Typedef ccl_request_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1aa827bd4240d612fa112cc603dda7172f.html">Typedef ccl_resize_action_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a18fa4bbd5cc606204bdada4979625ff4.html">Typedef ccl_resize_fn_t</a></li>
-<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a21fdbaac2bedefc853712b36fab6f4bb.html">Typedef ccl_sparse_allreduce_completion_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1af277d029435f054a28ca3a97f35150c5.html">Typedef ccl_sparse_allreduce_alloc_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a71f5034a71138c438ceec8769fd54b23.html">Typedef ccl_sparse_allreduce_completion_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a90179df89e435769c8ff8b647301832f.html">Typedef ccl_sparse_coalesce_mode_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1ae4f1fe2e25f4a0189765458d8a83def5.html">Typedef ccl_stream_t</a></li>
 </ul>
 </li>
@@ -346,6 +351,7 @@
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -384,7 +390,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="../index.html">Docs</a> &raquo;</li>
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
         
       <li>Program Listing for File ccl_types.h</li>
     
@@ -410,6 +416,7 @@
 <p>↰ <a class="reference internal" href="file_include_ccl_types.h.html#file-include-ccl-types-h"><span class="std std-ref">Return to documentation for file</span></a> (<code class="docutils literal notranslate"><span class="pre">include\ccl_types.h</span></code>)</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#pragma once</span>
 
+<span class="cp">#include</span> <span class="cpf">&quot;stdint.h&quot;</span><span class="cp"></span>
 <span class="cp">#include</span> <span class="cpf">&quot;stdlib.h&quot;</span><span class="cp"></span>
 <span class="cp">#include</span> <span class="cpf">&quot;ccl_config.h&quot;</span><span class="cp"></span>
 
@@ -417,20 +424,18 @@
 <span class="k">extern</span> <span class="s">&quot;C&quot;</span> <span class="p">{</span>
 <span class="cp">#endif</span>
 
-<span class="k">typedef</span> <span class="k">enum</span>
-<span class="p">{</span>
-    <span class="n">ccl_status_success</span>               <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-    <span class="n">ccl_status_out_of_resource</span>       <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="n">ccl_status_invalid_arguments</span>     <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
-    <span class="n">ccl_status_unimplemented</span>         <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
-    <span class="n">ccl_status_runtime_error</span>         <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
+<span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
+    <span class="n">ccl_status_success</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">ccl_status_out_of_resource</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">ccl_status_invalid_arguments</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">ccl_status_unimplemented</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="n">ccl_status_runtime_error</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
     <span class="n">ccl_status_blocked_due_to_resize</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
 
     <span class="n">ccl_status_last_value</span>
 <span class="p">}</span> <span class="n">ccl_status_t</span><span class="p">;</span>
 
-<span class="k">typedef</span> <span class="k">struct</span>
-<span class="p">{</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
     <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">major</span><span class="p">;</span>
     <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">minor</span><span class="p">;</span>
     <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">update</span><span class="p">;</span>
@@ -450,75 +455,104 @@
 <span class="cp">#define ccl_dtype_uint64     ((ccl_datatype_t)(6))</span>
 <span class="cp">#define ccl_dtype_last_value ((ccl_datatype_t)(7))</span>
 
-<span class="k">typedef</span> <span class="k">enum</span>
-<span class="p">{</span>
-    <span class="n">ccl_reduction_sum</span>    <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-    <span class="n">ccl_reduction_prod</span>   <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="n">ccl_reduction_min</span>    <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
-    <span class="n">ccl_reduction_max</span>    <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+<span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
+    <span class="n">ccl_reduction_sum</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">ccl_reduction_prod</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">ccl_reduction_min</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">ccl_reduction_max</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
     <span class="n">ccl_reduction_custom</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
 
     <span class="n">ccl_reduction_last_value</span>
 <span class="p">}</span> <span class="n">ccl_reduction_t</span><span class="p">;</span>
 
-<span class="k">typedef</span> <span class="k">enum</span>
-<span class="p">{</span>
-    <span class="n">ccl_stream_host</span>  <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-    <span class="n">ccl_stream_cpu</span>   <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="n">ccl_stream_gpu</span>   <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+<span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
+    <span class="n">ccl_stream_host</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">ccl_stream_cpu</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">ccl_stream_gpu</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
 
     <span class="n">ccl_stream_last_value</span>
 <span class="p">}</span> <span class="n">ccl_stream_type_t</span><span class="p">;</span>
 
-<span class="k">typedef</span> <span class="k">enum</span> <span class="n">ccl_resize_action</span>
-<span class="p">{</span>
+<span class="k">typedef</span> <span class="k">enum</span> <span class="n">ccl_resize_action</span> <span class="p">{</span>
     <span class="cm">/* Wait additional changes for number of ranks */</span>
-    <span class="n">ccl_ra_wait</span>     <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">ccl_ra_wait</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
     <span class="cm">/* Run with current number of ranks */</span>
-    <span class="n">ccl_ra_run</span>      <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">ccl_ra_run</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
     <span class="cm">/* Finalize work */</span>
     <span class="n">ccl_ra_finalize</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
 <span class="p">}</span> <span class="n">ccl_resize_action_t</span><span class="p">;</span>
 
-<span class="k">typedef</span> <span class="k">struct</span>
-<span class="p">{</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
     <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">match_id</span><span class="p">;</span>
     <span class="k">const</span> <span class="kt">size_t</span> <span class="n">offset</span><span class="p">;</span>
 <span class="p">}</span> <span class="n">ccl_fn_context_t</span><span class="p">;</span>
 
+<span class="cm">/* Sparse coalesce modes */</span>
+<span class="cm">/* Use this variable to set sparse_allreduce coalescing mode:</span>
+<span class="cm">   ccl_sparse_coalesce_regular run regular coalesce funtion;</span>
+<span class="cm">   ccl_sparse_coalesce_disable disables coalesce function in sparse_allreduce,</span>
+<span class="cm">                               allgathered data is returned;</span>
+<span class="cm">   ccl_sparse_coalesce_keep_precision on every local reduce bfp16 data is</span>
+<span class="cm">                               converted to fp32, reduced and then converted</span>
+<span class="cm">                               back to bfp16.</span>
+<span class="cm">*/</span>
+<span class="k">typedef</span> <span class="k">enum</span> <span class="n">ccl_sparse_coalesce_mode</span> <span class="p">{</span>
+    <span class="n">ccl_sparse_coalesce_regular</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">ccl_sparse_coalesce_disable</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">ccl_sparse_coalesce_keep_precision</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="p">}</span> <span class="n">ccl_sparse_coalesce_mode_t</span><span class="p">;</span>
+
 <span class="cm">/* comm_size */</span>
-<span class="k">typedef</span> <span class="nf">ccl_resize_action_t</span><span class="p">(</span><span class="o">*</span><span class="n">ccl_resize_fn_t</span><span class="p">)(</span><span class="kt">size_t</span> <span class="n">comm_size</span><span class="p">);</span>
+<span class="k">typedef</span> <span class="nf">ccl_resize_action_t</span> <span class="p">(</span><span class="o">*</span><span class="n">ccl_resize_fn_t</span><span class="p">)(</span><span class="kt">size_t</span> <span class="n">comm_size</span><span class="p">);</span>
 
 <span class="cm">/* in_buf, in_count, in_dtype, out_buf, out_count, out_dtype, context */</span>
-<span class="k">typedef</span> <span class="nf">ccl_status_t</span><span class="p">(</span><span class="o">*</span><span class="n">ccl_prologue_fn_t</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="kt">void</span><span class="o">*</span><span class="p">,</span> <span class="kt">size_t</span><span class="p">,</span> <span class="n">ccl_datatype_t</span><span class="p">,</span>
-                                          <span class="kt">void</span><span class="o">**</span><span class="p">,</span> <span class="kt">size_t</span><span class="o">*</span><span class="p">,</span> <span class="n">ccl_datatype_t</span><span class="o">*</span><span class="p">,</span>
+<span class="k">typedef</span> <span class="nf">ccl_status_t</span> <span class="p">(</span><span class="o">*</span><span class="n">ccl_prologue_fn_t</span><span class="p">)(</span><span class="k">const</span> <span class="kt">void</span><span class="o">*</span><span class="p">,</span>
+                                          <span class="kt">size_t</span><span class="p">,</span>
+                                          <span class="n">ccl_datatype_t</span><span class="p">,</span>
+                                          <span class="kt">void</span><span class="o">**</span><span class="p">,</span>
+                                          <span class="kt">size_t</span><span class="o">*</span><span class="p">,</span>
+                                          <span class="n">ccl_datatype_t</span><span class="o">*</span><span class="p">,</span>
                                           <span class="k">const</span> <span class="n">ccl_fn_context_t</span><span class="o">*</span><span class="p">);</span>
 
 <span class="cm">/* in_buf, in_count, in_dtype, out_buf, out_count, out_dtype, context */</span>
-<span class="k">typedef</span> <span class="nf">ccl_status_t</span><span class="p">(</span><span class="o">*</span><span class="n">ccl_epilogue_fn_t</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="kt">void</span><span class="o">*</span><span class="p">,</span> <span class="kt">size_t</span><span class="p">,</span> <span class="n">ccl_datatype_t</span><span class="p">,</span>
-                                          <span class="kt">void</span><span class="o">*</span><span class="p">,</span> <span class="kt">size_t</span><span class="o">*</span><span class="p">,</span> <span class="n">ccl_datatype_t</span><span class="p">,</span>
+<span class="k">typedef</span> <span class="nf">ccl_status_t</span> <span class="p">(</span><span class="o">*</span><span class="n">ccl_epilogue_fn_t</span><span class="p">)(</span><span class="k">const</span> <span class="kt">void</span><span class="o">*</span><span class="p">,</span>
+                                          <span class="kt">size_t</span><span class="p">,</span>
+                                          <span class="n">ccl_datatype_t</span><span class="p">,</span>
+                                          <span class="kt">void</span><span class="o">*</span><span class="p">,</span>
+                                          <span class="kt">size_t</span><span class="o">*</span><span class="p">,</span>
+                                          <span class="n">ccl_datatype_t</span><span class="p">,</span>
                                           <span class="k">const</span> <span class="n">ccl_fn_context_t</span><span class="o">*</span><span class="p">);</span>
 
 <span class="cm">/* in_buf, in_count, inout_buf, out_count, dtype, context */</span>
-<span class="k">typedef</span> <span class="nf">ccl_status_t</span><span class="p">(</span><span class="o">*</span><span class="n">ccl_reduction_fn_t</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="kt">void</span><span class="o">*</span><span class="p">,</span> <span class="kt">size_t</span><span class="p">,</span>
-                                           <span class="kt">void</span><span class="o">*</span><span class="p">,</span> <span class="kt">size_t</span><span class="o">*</span><span class="p">,</span>
+<span class="k">typedef</span> <span class="nf">ccl_status_t</span> <span class="p">(</span><span class="o">*</span><span class="n">ccl_reduction_fn_t</span><span class="p">)(</span><span class="k">const</span> <span class="kt">void</span><span class="o">*</span><span class="p">,</span>
+                                           <span class="kt">size_t</span><span class="p">,</span>
+                                           <span class="kt">void</span><span class="o">*</span><span class="p">,</span>
+                                           <span class="kt">size_t</span><span class="o">*</span><span class="p">,</span>
                                            <span class="n">ccl_datatype_t</span><span class="p">,</span>
                                            <span class="k">const</span> <span class="n">ccl_fn_context_t</span><span class="o">*</span><span class="p">);</span>
 
-<span class="cm">/* idx_buf, idx_count, idx_dtype, val_buf, val_count, val_dtype, fn_context, user_context */</span>
-<span class="k">typedef</span> <span class="nf">ccl_status_t</span><span class="p">(</span><span class="o">*</span><span class="n">ccl_sparse_allreduce_completion_fn_t</span><span class="p">)</span> <span class="p">(</span><span class="k">const</span> <span class="kt">void</span><span class="o">*</span><span class="p">,</span> <span class="kt">size_t</span><span class="p">,</span> <span class="n">ccl_datatype_t</span><span class="p">,</span>
-                                                             <span class="k">const</span> <span class="kt">void</span><span class="o">*</span><span class="p">,</span> <span class="kt">size_t</span><span class="p">,</span> <span class="n">ccl_datatype_t</span><span class="p">,</span>
-                                                             <span class="k">const</span> <span class="n">ccl_fn_context_t</span><span class="o">*</span><span class="p">,</span> <span class="k">const</span> <span class="kt">void</span><span class="o">*</span><span class="p">);</span>
+<span class="cm">/* idx_buf, idx_count, idx_dtype, val_buf, val_count, val_dtype, fn_context */</span>
+<span class="k">typedef</span> <span class="nf">ccl_status_t</span> <span class="p">(</span><span class="o">*</span><span class="n">ccl_sparse_allreduce_completion_fn_t</span><span class="p">)(</span><span class="k">const</span> <span class="kt">void</span><span class="o">*</span><span class="p">,</span>
+                                                             <span class="kt">size_t</span><span class="p">,</span>
+                                                             <span class="n">ccl_datatype_t</span><span class="p">,</span>
+                                                             <span class="k">const</span> <span class="kt">void</span><span class="o">*</span><span class="p">,</span>
+                                                             <span class="kt">size_t</span><span class="p">,</span>
+                                                             <span class="n">ccl_datatype_t</span><span class="p">,</span>
+                                                             <span class="k">const</span> <span class="kt">void</span><span class="o">*</span><span class="p">);</span>
 
-<span class="k">typedef</span> <span class="k">struct</span>
-<span class="p">{</span>
+<span class="cm">/* idx_count, idx_dtype, val_count, val_dtype, fn_context, out_idx_buf, out_val_buf */</span>
+<span class="k">typedef</span> <span class="nf">ccl_status_t</span> <span class="p">(</span><span class="o">*</span><span class="n">ccl_sparse_allreduce_alloc_fn_t</span><span class="p">)(</span><span class="kt">size_t</span><span class="p">,</span>
+                                                        <span class="n">ccl_datatype_t</span><span class="p">,</span>
+                                                        <span class="kt">size_t</span><span class="p">,</span>
+                                                        <span class="n">ccl_datatype_t</span><span class="p">,</span>
+                                                        <span class="k">const</span> <span class="kt">void</span><span class="o">*</span><span class="p">,</span>
+                                                        <span class="kt">void</span><span class="o">**</span><span class="p">,</span>
+                                                        <span class="kt">void</span><span class="o">**</span><span class="p">);</span>
+
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
     <span class="n">ccl_prologue_fn_t</span> <span class="n">prologue_fn</span><span class="p">;</span>
     <span class="n">ccl_epilogue_fn_t</span> <span class="n">epilogue_fn</span><span class="p">;</span>
     <span class="n">ccl_reduction_fn_t</span> <span class="n">reduction_fn</span><span class="p">;</span>
-
-    <span class="cm">/* Sparse_allreduce */</span>
-    <span class="n">ccl_sparse_allreduce_completion_fn_t</span> <span class="n">sparse_allreduce_completion_fn</span><span class="p">;</span>
-    <span class="k">const</span> <span class="kt">void</span><span class="o">*</span> <span class="n">sparse_allreduce_completion_ctx</span><span class="p">;</span>
 
     <span class="cm">/* Priority for collective operation */</span>
     <span class="kt">size_t</span> <span class="n">priority</span><span class="p">;</span>
@@ -533,10 +567,16 @@
     <span class="kt">int</span> <span class="n">vector_buf</span><span class="p">;</span>
 
     <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">match_id</span><span class="p">;</span>
+
+    <span class="cm">/* Sparse allreduce specific */</span>
+    <span class="n">ccl_sparse_allreduce_completion_fn_t</span> <span class="n">sparse_allreduce_completion_fn</span><span class="p">;</span>
+    <span class="n">ccl_sparse_allreduce_alloc_fn_t</span> <span class="n">sparse_allreduce_alloc_fn</span><span class="p">;</span>
+    <span class="k">const</span> <span class="kt">void</span><span class="o">*</span> <span class="n">sparse_allreduce_fn_ctx</span><span class="p">;</span>
+    <span class="n">ccl_sparse_coalesce_mode_t</span> <span class="n">sparse_coalesce_mode</span><span class="p">;</span>
+
 <span class="p">}</span> <span class="n">ccl_coll_attr_t</span><span class="p">;</span>
 
-<span class="k">typedef</span> <span class="k">struct</span>
-<span class="p">{</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
     <span class="kt">int</span> <span class="n">color</span><span class="p">;</span>
     <span class="cm">/* List of rank ids for current process. Unused */</span>
     <span class="kt">size_t</span><span class="o">*</span> <span class="n">ranks</span><span class="p">;</span>
@@ -548,14 +588,12 @@
     <span class="kt">int</span> <span class="n">local</span><span class="p">;</span>
 <span class="p">}</span> <span class="n">ccl_comm_attr_t</span><span class="p">;</span>
 
-<span class="k">typedef</span> <span class="k">struct</span>
-<span class="p">{</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
     <span class="n">ccl_comm_attr_t</span> <span class="n">comm_attr</span><span class="p">;</span>
     <span class="kt">int</span> <span class="n">version</span><span class="p">;</span>
 <span class="p">}</span> <span class="n">ccl_comm_attr_versioned_t</span><span class="p">;</span>
 
-<span class="k">typedef</span> <span class="k">enum</span>
-<span class="p">{</span>
+<span class="k">typedef</span> <span class="k">enum</span> <span class="p">{</span>
     <span class="n">ccl_host_color</span><span class="p">,</span>
     <span class="n">ccl_host_version</span>
 
@@ -563,8 +601,7 @@
 
 <span class="k">typedef</span> <span class="n">ccl_comm_attr_versioned_t</span> <span class="n">ccl_host_comm_attr_t</span><span class="p">;</span>
 
-<span class="k">typedef</span> <span class="k">struct</span>
-<span class="p">{</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
     <span class="cm">/* Size of single element */</span>
     <span class="kt">size_t</span> <span class="n">size</span><span class="p">;</span>
 <span class="p">}</span> <span class="n">ccl_datatype_attr_t</span><span class="p">;</span>
@@ -576,10 +613,10 @@
 <span class="k">typedef</span> <span class="kt">void</span><span class="o">*</span> <span class="n">ccl_stream_t</span><span class="p">;</span>
 
 <span class="cp">#ifdef MULTI_GPU_SUPPORT</span>
-    <span class="cp">#include</span> <span class="cpf">&quot;ccl_device_types.h&quot;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;ccl_device_types.h&quot;</span><span class="cp"></span>
 <span class="cp">#endif</span>
 <span class="cp">#ifdef __cplusplus</span>
-<span class="p">}</span>   <span class="cm">/*extern C */</span>
+<span class="p">}</span> <span class="cm">/*extern C */</span>
 <span class="cp">#endif</span>
 </pre></div>
 </div>
@@ -596,11 +633,19 @@
 
   <div role="contentinfo">
     <p>
+        
         &copy; Copyright 2019–2020
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
 <br>
 <div>
   <p>
@@ -618,7 +663,6 @@
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

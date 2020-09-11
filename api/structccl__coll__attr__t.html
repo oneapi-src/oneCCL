@@ -1,8 +1,7 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
@@ -12,28 +11,30 @@
   
 
   
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+
+  
   
   
   
 
   
-  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-        <script type="text/javascript" src="../_static/jquery.js"></script>
-        <script type="text/javascript" src="../_static/underscore.js"></script>
-        <script type="text/javascript" src="../_static/doctools.js"></script>
-        <script type="text/javascript" src="../_static/language_data.js"></script>
-        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <script type="text/javascript" src="../_static/js/theme.js"></script>
 
     
-
-  
-  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Struct ccl_comm_attr_t" href="structccl__comm__attr__t.html" />
@@ -53,7 +54,7 @@
           
 
           
-            <a href="../index.html" class="icon icon-home"> oneCCL Documentation (Beta)
+            <a href="../index.html" class="icon icon-home" alt="Documentation Home"> oneCCL Documentation (Beta)
           
 
           
@@ -76,6 +77,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -260,6 +262,7 @@
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1aa8125c78bac1c8172e54fb08f7be6ed4.html">Enum ccl_host_attributes</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a42085859d35d75cc288367198c003e0d.html">Enum ccl_reduction_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a6f190c608822e4b3feff0e9c709fcc63.html">Enum ccl_resize_action</a></li>
+<li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1ae65096ea29339cb532924c0b6541b10d.html">Enum ccl_sparse_coalesce_mode</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90.html">Enum ccl_status_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a5872dcb7cc3a72fbf94a20d07ce6d63b.html">Enum ccl_stream_type_t</a></li>
 </ul>
@@ -330,7 +333,9 @@
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a0df469be505174d5656a3c5cba27ddd1.html">Typedef ccl_request_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1aa827bd4240d612fa112cc603dda7172f.html">Typedef ccl_resize_action_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a18fa4bbd5cc606204bdada4979625ff4.html">Typedef ccl_resize_fn_t</a></li>
-<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a21fdbaac2bedefc853712b36fab6f4bb.html">Typedef ccl_sparse_allreduce_completion_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1af277d029435f054a28ca3a97f35150c5.html">Typedef ccl_sparse_allreduce_alloc_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a71f5034a71138c438ceec8769fd54b23.html">Typedef ccl_sparse_allreduce_completion_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a90179df89e435769c8ff8b647301832f.html">Typedef ccl_sparse_coalesce_mode_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1ae4f1fe2e25f4a0189765458d8a83def5.html">Typedef ccl_stream_t</a></li>
 </ul>
 </li>
@@ -348,6 +353,7 @@
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -386,7 +392,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="../index.html">Docs</a> &raquo;</li>
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
         
           <li><a href="library_root.html">Library API</a> &raquo;</li>
         
@@ -416,63 +422,73 @@
 </ul>
 <div class="section" id="struct-documentation">
 <h2>Struct Documentation<a class="headerlink" href="#struct-documentation" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
+<dl class="cpp struct">
 <dt id="_CPPv415ccl_coll_attr_t">
 <span id="_CPPv315ccl_coll_attr_t"></span><span id="_CPPv215ccl_coll_attr_t"></span><span id="ccl_coll_attr_t"></span><span class="target" id="structccl__coll__attr__t"></span><em class="property">struct </em><code class="sig-name descname">ccl_coll_attr_t</code><a class="headerlink" href="#_CPPv415ccl_coll_attr_t" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Extendable list of collective attributes. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric">Public Members</p>
-<dl class="member">
+<dl class="cpp var">
 <dt id="_CPPv4N15ccl_coll_attr_t11prologue_fnE">
 <span id="_CPPv3N15ccl_coll_attr_t11prologue_fnE"></span><span id="_CPPv2N15ccl_coll_attr_t11prologue_fnE"></span><span id="ccl_coll_attr_t::prologue_fn__ccl_prologue_fn_t"></span><span class="target" id="structccl__coll__attr__t_1aee81f80103ab7d9bb17d4d0d481c11db"></span><a class="reference internal" href="typedef_ccl__types_8h_1af916cb1cffcd5a398e6ff9a079b71ce6.html#_CPPv417ccl_prologue_fn_t" title="ccl_prologue_fn_t">ccl_prologue_fn_t</a> <code class="sig-name descname">prologue_fn</code><a class="headerlink" href="#_CPPv4N15ccl_coll_attr_t11prologue_fnE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Callbacks into application code for pre-/post-processing data and custom reduction operation </p>
 </dd></dl>
 
-<dl class="member">
+<dl class="cpp var">
 <dt id="_CPPv4N15ccl_coll_attr_t11epilogue_fnE">
 <span id="_CPPv3N15ccl_coll_attr_t11epilogue_fnE"></span><span id="_CPPv2N15ccl_coll_attr_t11epilogue_fnE"></span><span id="ccl_coll_attr_t::epilogue_fn__ccl_epilogue_fn_t"></span><span class="target" id="structccl__coll__attr__t_1aad5f1cddef3ec0868c2149acddafec50"></span><a class="reference internal" href="typedef_ccl__types_8h_1a3cd4a42e22d22d20b9e2386e87f2dfab.html#_CPPv417ccl_epilogue_fn_t" title="ccl_epilogue_fn_t">ccl_epilogue_fn_t</a> <code class="sig-name descname">epilogue_fn</code><a class="headerlink" href="#_CPPv4N15ccl_coll_attr_t11epilogue_fnE" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
-<dl class="member">
+<dl class="cpp var">
 <dt id="_CPPv4N15ccl_coll_attr_t12reduction_fnE">
 <span id="_CPPv3N15ccl_coll_attr_t12reduction_fnE"></span><span id="_CPPv2N15ccl_coll_attr_t12reduction_fnE"></span><span id="ccl_coll_attr_t::reduction_fn__ccl_reduction_fn_t"></span><span class="target" id="structccl__coll__attr__t_1a81f3b2efa28a22101be26bf7fe34b1e1"></span><a class="reference internal" href="typedef_ccl__types_8h_1aa3f6ea5d22b45bb11c22b1539654ac50.html#_CPPv418ccl_reduction_fn_t" title="ccl_reduction_fn_t">ccl_reduction_fn_t</a> <code class="sig-name descname">reduction_fn</code><a class="headerlink" href="#_CPPv4N15ccl_coll_attr_t12reduction_fnE" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
-<dl class="member">
-<dt id="_CPPv4N15ccl_coll_attr_t30sparse_allreduce_completion_fnE">
-<span id="_CPPv3N15ccl_coll_attr_t30sparse_allreduce_completion_fnE"></span><span id="_CPPv2N15ccl_coll_attr_t30sparse_allreduce_completion_fnE"></span><span id="ccl_coll_attr_t::sparse_allreduce_completion_fn__ccl_sparse_allreduce_completion_fn_t"></span><span class="target" id="structccl__coll__attr__t_1ae28370aad13d7a38728f0485c87661d3"></span><a class="reference internal" href="typedef_ccl__types_8h_1a21fdbaac2bedefc853712b36fab6f4bb.html#_CPPv436ccl_sparse_allreduce_completion_fn_t" title="ccl_sparse_allreduce_completion_fn_t">ccl_sparse_allreduce_completion_fn_t</a> <code class="sig-name descname">sparse_allreduce_completion_fn</code><a class="headerlink" href="#_CPPv4N15ccl_coll_attr_t30sparse_allreduce_completion_fnE" title="Permalink to this definition">¶</a><br /></dt>
-<dd></dd></dl>
-
-<dl class="member">
-<dt id="_CPPv4N15ccl_coll_attr_t31sparse_allreduce_completion_ctxE">
-<span id="_CPPv3N15ccl_coll_attr_t31sparse_allreduce_completion_ctxE"></span><span id="_CPPv2N15ccl_coll_attr_t31sparse_allreduce_completion_ctxE"></span><span id="ccl_coll_attr_t::sparse_allreduce_completion_ctx__voidCP"></span><span class="target" id="structccl__coll__attr__t_1ac4188283836bf61f73b30adf11dae743"></span><em class="property">const</em> void *<code class="sig-name descname">sparse_allreduce_completion_ctx</code><a class="headerlink" href="#_CPPv4N15ccl_coll_attr_t31sparse_allreduce_completion_ctxE" title="Permalink to this definition">¶</a><br /></dt>
-<dd></dd></dl>
-
-<dl class="member">
+<dl class="cpp var">
 <dt id="_CPPv4N15ccl_coll_attr_t8priorityE">
 <span id="_CPPv3N15ccl_coll_attr_t8priorityE"></span><span id="_CPPv2N15ccl_coll_attr_t8priorityE"></span><span id="ccl_coll_attr_t::priority__s"></span><span class="target" id="structccl__coll__attr__t_1a1c46705e55bcf450586bab05ae27790d"></span>size_t <code class="sig-name descname">priority</code><a class="headerlink" href="#_CPPv4N15ccl_coll_attr_t8priorityE" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
-<dl class="member">
+<dl class="cpp var">
 <dt id="_CPPv4N15ccl_coll_attr_t11synchronousE">
 <span id="_CPPv3N15ccl_coll_attr_t11synchronousE"></span><span id="_CPPv2N15ccl_coll_attr_t11synchronousE"></span><span id="ccl_coll_attr_t::synchronous__i"></span><span class="target" id="structccl__coll__attr__t_1a0bc46de59ffa05e8fe6e74a4711276d1"></span>int <code class="sig-name descname">synchronous</code><a class="headerlink" href="#_CPPv4N15ccl_coll_attr_t11synchronousE" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
-<dl class="member">
+<dl class="cpp var">
 <dt id="_CPPv4N15ccl_coll_attr_t8to_cacheE">
 <span id="_CPPv3N15ccl_coll_attr_t8to_cacheE"></span><span id="_CPPv2N15ccl_coll_attr_t8to_cacheE"></span><span id="ccl_coll_attr_t::to_cache__i"></span><span class="target" id="structccl__coll__attr__t_1a239457e98e34c4ca9d325089b95d52a5"></span>int <code class="sig-name descname">to_cache</code><a class="headerlink" href="#_CPPv4N15ccl_coll_attr_t8to_cacheE" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
-<dl class="member">
+<dl class="cpp var">
 <dt id="_CPPv4N15ccl_coll_attr_t10vector_bufE">
 <span id="_CPPv3N15ccl_coll_attr_t10vector_bufE"></span><span id="_CPPv2N15ccl_coll_attr_t10vector_bufE"></span><span id="ccl_coll_attr_t::vector_buf__i"></span><span class="target" id="structccl__coll__attr__t_1a5a240c8cea6b435673795ed1e35147de"></span>int <code class="sig-name descname">vector_buf</code><a class="headerlink" href="#_CPPv4N15ccl_coll_attr_t10vector_bufE" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
-<dl class="member">
+<dl class="cpp var">
 <dt id="_CPPv4N15ccl_coll_attr_t8match_idE">
 <span id="_CPPv3N15ccl_coll_attr_t8match_idE"></span><span id="_CPPv2N15ccl_coll_attr_t8match_idE"></span><span id="ccl_coll_attr_t::match_id__cCP"></span><span class="target" id="structccl__coll__attr__t_1ad9be1a4b614723b44c20b5185e90b05a"></span><em class="property">const</em> char *<code class="sig-name descname">match_id</code><a class="headerlink" href="#_CPPv4N15ccl_coll_attr_t8match_idE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Id of the operation. If specified, new communicator will be created and collective operations with the same <strong>match_id</strong> will be executed in the same order. </p>
 </dd></dl>
+
+<dl class="cpp var">
+<dt id="_CPPv4N15ccl_coll_attr_t30sparse_allreduce_completion_fnE">
+<span id="_CPPv3N15ccl_coll_attr_t30sparse_allreduce_completion_fnE"></span><span id="_CPPv2N15ccl_coll_attr_t30sparse_allreduce_completion_fnE"></span><span id="ccl_coll_attr_t::sparse_allreduce_completion_fn__ccl_sparse_allreduce_completion_fn_t"></span><span class="target" id="structccl__coll__attr__t_1ae28370aad13d7a38728f0485c87661d3"></span><a class="reference internal" href="typedef_ccl__types_8h_1a71f5034a71138c438ceec8769fd54b23.html#_CPPv436ccl_sparse_allreduce_completion_fn_t" title="ccl_sparse_allreduce_completion_fn_t">ccl_sparse_allreduce_completion_fn_t</a> <code class="sig-name descname">sparse_allreduce_completion_fn</code><a class="headerlink" href="#_CPPv4N15ccl_coll_attr_t30sparse_allreduce_completion_fnE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt id="_CPPv4N15ccl_coll_attr_t25sparse_allreduce_alloc_fnE">
+<span id="_CPPv3N15ccl_coll_attr_t25sparse_allreduce_alloc_fnE"></span><span id="_CPPv2N15ccl_coll_attr_t25sparse_allreduce_alloc_fnE"></span><span id="ccl_coll_attr_t::sparse_allreduce_alloc_fn__ccl_sparse_allreduce_alloc_fn_t"></span><span class="target" id="structccl__coll__attr__t_1a6a810a31ce28aa5b53d244fee5ac22c8"></span><a class="reference internal" href="typedef_ccl__types_8h_1af277d029435f054a28ca3a97f35150c5.html#_CPPv431ccl_sparse_allreduce_alloc_fn_t" title="ccl_sparse_allreduce_alloc_fn_t">ccl_sparse_allreduce_alloc_fn_t</a> <code class="sig-name descname">sparse_allreduce_alloc_fn</code><a class="headerlink" href="#_CPPv4N15ccl_coll_attr_t25sparse_allreduce_alloc_fnE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt id="_CPPv4N15ccl_coll_attr_t23sparse_allreduce_fn_ctxE">
+<span id="_CPPv3N15ccl_coll_attr_t23sparse_allreduce_fn_ctxE"></span><span id="_CPPv2N15ccl_coll_attr_t23sparse_allreduce_fn_ctxE"></span><span id="ccl_coll_attr_t::sparse_allreduce_fn_ctx__voidCP"></span><span class="target" id="structccl__coll__attr__t_1ac3c87cfaac6405166a1ae743d756843f"></span><em class="property">const</em> void *<code class="sig-name descname">sparse_allreduce_fn_ctx</code><a class="headerlink" href="#_CPPv4N15ccl_coll_attr_t23sparse_allreduce_fn_ctxE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp var">
+<dt id="_CPPv4N15ccl_coll_attr_t20sparse_coalesce_modeE">
+<span id="_CPPv3N15ccl_coll_attr_t20sparse_coalesce_modeE"></span><span id="_CPPv2N15ccl_coll_attr_t20sparse_coalesce_modeE"></span><span id="ccl_coll_attr_t::sparse_coalesce_mode__ccl_sparse_coalesce_mode_t"></span><span class="target" id="structccl__coll__attr__t_1ace4f037dc3a8a690d33fb9dce6b27ee5"></span><a class="reference internal" href="typedef_ccl__types_8h_1a90179df89e435769c8ff8b647301832f.html#_CPPv426ccl_sparse_coalesce_mode_t" title="ccl_sparse_coalesce_mode_t">ccl_sparse_coalesce_mode_t</a> <code class="sig-name descname">sparse_coalesce_mode</code><a class="headerlink" href="#_CPPv4N15ccl_coll_attr_t20sparse_coalesce_modeE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
 
 </div>
 </dd></dl>
@@ -500,11 +516,19 @@
 
   <div role="contentinfo">
     <p>
+        
         &copy; Copyright 2019–2020
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
 <br>
 <div>
   <p>
@@ -522,7 +546,6 @@
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

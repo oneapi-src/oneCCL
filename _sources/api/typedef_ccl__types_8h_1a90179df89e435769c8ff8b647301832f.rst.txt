@@ -1,0 +1,13 @@
+.. _exhale_typedef_ccl__types_8h_1a90179df89e435769c8ff8b647301832f:
+
+Typedef ccl_sparse_coalesce_mode_t
+==================================
+
+- Defined in :ref:`file_include_ccl_types.h`
+
+
+Typedef Documentation
+---------------------
+
+
+.. doxygentypedef:: ccl_sparse_coalesce_mode_t

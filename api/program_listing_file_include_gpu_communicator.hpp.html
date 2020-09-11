@@ -1,8 +1,7 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
@@ -12,28 +11,30 @@
   
 
   
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+
+  
   
   
   
 
   
-  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-        <script type="text/javascript" src="../_static/jquery.js"></script>
-        <script type="text/javascript" src="../_static/underscore.js"></script>
-        <script type="text/javascript" src="../_static/doctools.js"></script>
-        <script type="text/javascript" src="../_static/language_data.js"></script>
-        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <script type="text/javascript" src="../_static/js/theme.js"></script>
 
     
-
-  
-  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link href="../_static/style.css" rel="stylesheet" type="text/css">
@@ -51,7 +52,7 @@
           
 
           
-            <a href="../index.html" class="icon icon-home"> oneCCL Documentation (Beta)
+            <a href="../index.html" class="icon icon-home" alt="Documentation Home"> oneCCL Documentation (Beta)
           
 
           
@@ -74,6 +75,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -258,6 +260,7 @@
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1aa8125c78bac1c8172e54fb08f7be6ed4.html">Enum ccl_host_attributes</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a42085859d35d75cc288367198c003e0d.html">Enum ccl_reduction_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a6f190c608822e4b3feff0e9c709fcc63.html">Enum ccl_resize_action</a></li>
+<li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1ae65096ea29339cb532924c0b6541b10d.html">Enum ccl_sparse_coalesce_mode</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90.html">Enum ccl_status_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a5872dcb7cc3a72fbf94a20d07ce6d63b.html">Enum ccl_stream_type_t</a></li>
 </ul>
@@ -328,7 +331,9 @@
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a0df469be505174d5656a3c5cba27ddd1.html">Typedef ccl_request_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1aa827bd4240d612fa112cc603dda7172f.html">Typedef ccl_resize_action_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a18fa4bbd5cc606204bdada4979625ff4.html">Typedef ccl_resize_fn_t</a></li>
-<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a21fdbaac2bedefc853712b36fab6f4bb.html">Typedef ccl_sparse_allreduce_completion_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1af277d029435f054a28ca3a97f35150c5.html">Typedef ccl_sparse_allreduce_alloc_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a71f5034a71138c438ceec8769fd54b23.html">Typedef ccl_sparse_allreduce_completion_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a90179df89e435769c8ff8b647301832f.html">Typedef ccl_sparse_coalesce_mode_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1ae4f1fe2e25f4a0189765458d8a83def5.html">Typedef ccl_stream_t</a></li>
 </ul>
 </li>
@@ -346,6 +351,7 @@
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -384,7 +390,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="../index.html">Docs</a> &raquo;</li>
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
         
       <li>Program Listing for File gpu_communicator.hpp</li>
     
@@ -412,55 +418,60 @@
 
 #ifdef MULTI_GPU_SUPPORT
 #ifndef CCL_PRODUCT_FULL
-    #error &quot;Do not include this file directly. Please include &#39;ccl_types.hpp&#39;&quot;
+#error &quot;Do not include this file directly. Please include &#39;ccl_types.hpp&#39;&quot;
 #endif
 
-namespace ccl
-{
+namespace ccl {
 struct gpu_comm_attr;
 struct communicator_interface;
 
-class comm_group
-{
+class comm_group {
 public:
     friend class environment;
 
-    using device_context_native_reference_t = typename unified_device_context_type::native_reference_t;
-    using device_context_native_const_reference_t = typename unified_device_context_type::native_const_reference_t;
-    template &lt;class DeviceType,
-              typename std::enable_if&lt;std::is_class&lt;typename std::remove_cv&lt;DeviceType&gt;::type&gt;::value,
-                                      int&gt;::type = 0&gt;
+    using device_context_native_reference_t =
+        typename unified_device_context_type::native_reference_t;
+    using device_context_native_const_reference_t =
+        typename unified_device_context_type::native_const_reference_t;
+    template &lt;
+        class DeviceType,
+        typename std::enable_if&lt;std::is_class&lt;typename std::remove_cv&lt;DeviceType&gt;::type&gt;::value,
+                                int&gt;::type = 0&gt;
     communicator_t create_communicator(const DeviceType&amp; device,
                                        device_comm_attr_t attr = device_comm_attr_t());
 
     device_comm_attr_t create_device_comm_attr();
 
-    template &lt;class DeviceType,
-              typename std::enable_if&lt;not std::is_class&lt;typename std::remove_cv&lt;DeviceType&gt;::type&gt;::value,
-                                      int&gt;::type = 0&gt;
+    template &lt;
+        class DeviceType,
+        typename std::enable_if&lt;not std::is_class&lt;typename std::remove_cv&lt;DeviceType&gt;::type&gt;::value,
+                                int&gt;::type = 0&gt;
     communicator_t create_communicator(DeviceType device_id,
                                        device_comm_attr_t attr = device_comm_attr_t());
 
-    template&lt;template&lt;class...&gt; class Container, class Type&gt;
-    std::vector&lt;communicator_t&gt; create_communicators(const Container&lt;Type&gt;&amp; device_ids,
-                                                     device_comm_attr_t attr = device_comm_attr_t());
+    template &lt;template &lt;class...&gt; class Container, class Type&gt;
+    std::vector&lt;communicator_t&gt; create_communicators(
+        const Container&lt;Type&gt;&amp; device_ids,
+        device_comm_attr_t attr = device_comm_attr_t());
 
-    template&lt;class InputIt&gt;
-    std::vector&lt;communicator_t&gt; create_communicators(InputIt first, InputIt last,
-                                                     device_comm_attr_t attr = device_comm_attr_t());
+    template &lt;class InputIt&gt;
+    std::vector&lt;communicator_t&gt; create_communicators(
+        InputIt first,
+        InputIt last,
+        device_comm_attr_t attr = device_comm_attr_t());
 
     device_context_native_const_reference_t get_context() const;
 
 private:
-    comm_group(ccl::shared_communicator_t comm, size_t current_device_group_size, size_t process_device_group_size);
+    comm_group(ccl::shared_communicator_t comm,
+               size_t current_device_group_size,
+               size_t process_device_group_size);
     std::unique_ptr&lt;gpu_comm_attr&gt; pimpl;
 };
 
 #if DEPRECATED
-class communicator final
-{
+class communicator final {
 public:
-
     using device_native_reference_t = typename unified_device_type::native_reference_t;
 
     ~communicator();
@@ -475,10 +486,10 @@ public:
 
     bool is_ready() const;
 
-    ccl::device_topology_type get_topology_type() const;
+    ccl::device_group_split_type get_topology_type() const;
 
-    template&lt;class buffer_type,
-             class = typename std::enable_if&lt;ccl::is_native_type_supported&lt;buffer_type&gt;()&gt;::type&gt;
+    template &lt;class buffer_type,
+              class = typename std::enable_if&lt;ccl::is_native_type_supported&lt;buffer_type&gt;()&gt;::type&gt;
     coll_request_t allreduce(const buffer_type* send_buf,
                              buffer_type* recv_buf,
                              size_t count,
@@ -493,10 +504,9 @@ private:
     explicit communicator(std::shared_ptr&lt;communicator_interface&gt; impl);
 
     std::shared_ptr&lt;communicator_interface&gt; pimpl;
-
 };
 #endif //DEPRECATED
-}
+} // namespace ccl
 
 #endif //MULTI_GPU_SUPPORT
 </pre></div>
@@ -514,11 +524,19 @@ private:
 
   <div role="contentinfo">
     <p>
+        
         &copy; Copyright 2019–2020
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
 <br>
 <div>
   <p>
@@ -536,7 +554,6 @@ private:
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

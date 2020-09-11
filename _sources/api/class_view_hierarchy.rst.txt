@@ -25,6 +25,7 @@ Class Hierarchy
 - :ref:`exhale_enum_ccl__types_8h_1aa8125c78bac1c8172e54fb08f7be6ed4`
 - :ref:`exhale_enum_ccl__types_8h_1a42085859d35d75cc288367198c003e0d`
 - :ref:`exhale_enum_ccl__types_8h_1a6f190c608822e4b3feff0e9c709fcc63`
+- :ref:`exhale_enum_ccl__types_8h_1ae65096ea29339cb532924c0b6541b10d`
 - :ref:`exhale_enum_ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90`
 - :ref:`exhale_enum_ccl__types_8h_1a5872dcb7cc3a72fbf94a20d07ce6d63b`
 
