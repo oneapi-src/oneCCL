@@ -23,6 +23,7 @@ if(MULTI_GPU_SUPPORT)
     list (APPEND EXTENSIONS_SRC
                     ccl_cpp_gpu_api.cpp
                     ccl_gpu_modules.cpp
+                    ccl_utils.cpp
 
                     native_device_api/l0/base.cpp
                     native_device_api/l0/device.cpp

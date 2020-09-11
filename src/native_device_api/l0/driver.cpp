@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -244,7 +244,7 @@ std::string CCL_API ccl_device_driver::to_string(const std::string& prefix) cons
     std::stringstream out;
     out << prefix << "Driver:\n" << prefix << "{\n";
     std::string device_prefix = prefix + "\t";
-    out << prefix << "devices count: " << devices.size() << std::endl;
+    out << device_prefix << "devices count: " << devices.size() << std::endl;
     for (const auto& device_pair : devices) {
         out << device_pair.second->to_string(device_prefix);
     }

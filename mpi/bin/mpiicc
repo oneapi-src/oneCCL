@@ -81,7 +81,7 @@
 #
 # Directory locations: Fixed for any MPI implementation.
 # Set from the directory arguments to configure (e.g., --prefix=/usr/local)
-prefix=/usr/local
+prefix=/p/pdsd/Users/dsazanov/CCL/_OPEN_REP/mpi/
 # The environment variable I_MPI_ROOT may be used to override installation folder path
 if [ -n "$I_MPI_ROOT" ] ; then
     prefix=$I_MPI_ROOT;
@@ -122,7 +122,7 @@ MPILIBNAME="mpi"
 PMPILIBNAME="pmpi"
 
 # MPIVERSION is the version of the MPICH2 library that mpicc is intended for
-MPIVERSION="2021.1-beta08"
+MPIVERSION="2021.1-beta09"
 #
 # Internal variables
 # Show is set to echo to cause the compilation command to be echoed instead
@@ -233,6 +233,9 @@ for arg in "$@" ; do
     addarg=no
     Show=echo
     ;;
+    -show_env)
+    show_env=yes
+    ;;
     -config=*)
     addarg=no
     CCname=`echo A$arg | sed -e 's/A-config=//g'`
@@ -284,6 +287,7 @@ for arg in "$@" ; do
     echo "   -cc=<name>      specify a C compiler name: i.e. -cc=icc"
     echo "   -echo           print the scripts during their execution"
     echo "   -show           show command lines without real calling"
+    echo "   -show_env       show environment variables"
     echo "   -config=<name>  specify a configuration file: i.e. -config=icc for mpicc-icc.conf file"
 #    echo "   -compile-info   show compiler command line"
 #    echo "   -link-info      show linker command line"
@@ -394,6 +398,8 @@ for arg in "$@" ; do
     else
         echo "Warning: the -trace option will be ignored because the profile was set."
     fi
+    # Disable strip to prevent debug symbols into separate dbg file in case of static linking IMPI-1493
+    strip_debug_info=no
     addarg=no
     ;;
     -fast)
@@ -437,22 +443,21 @@ if [ $# -eq 0 ] ; then
     exit 1
 fi
 
-MPILIBDIR_MT="mt"
 if [ -n "$mpilib_override" ] ; then
     case "$mpilib_override" in
     opt ) 
         MPILIBDIR="/release"
-        MPILIBDIR_MT=
         ;;
     opt_mt )
         MPILIBDIR="/release"
+        MPILIBDIR_MT="mt"
         ;;
     dbg )
         MPILIBDIR="/debug"
-        MPILIBDIR_MT=
         ;;
     dbg_mt )
         MPILIBDIR="/debug"
+        MPILIBDIR_MT="mt"
         ;;
     * )
         echo "Warning: incorrect library version specified. Automatically selected library will be used."
@@ -532,6 +537,12 @@ fi
 # accept any argument; we don't need to know if we've seen a source
 # file or an object file.  Instead, we just check for an option that
 # suppressing linking, such as -c or -M.
+
+if [ "${show_env}" = "yes" ]; then
+    env | more
+    exit 0
+fi
+
 if [ "$no_rpath" = "yes" ]; then
     rpath_opt="-Xlinker --enable-new-dtags"
 else

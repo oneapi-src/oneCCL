@@ -1,5 +1,7 @@
 .. |sys_req| replace:: |product_full| System Requirements
 .. _sys_req: https://software.intel.com/en-us/articles/oneapi-collective-communication-library-system-requirements
+.. |tgz_file| replace:: tar.gz file
+.. _tgz_file: https://github.com/oneapi-src/oneCCL/releases
 .. highlight:: bash
 
 Installation
@@ -121,7 +123,7 @@ Binary releases are available on our release page.
 Installation using tar.gz
 *************************
 
-To install |product_short| using the tar.gz file in a user mode, execute the following commands:
+To install |product_short| using the |tgz_file|_ in a user mode, execute the following commands:
 
 .. prompt:: bash
 
