@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,4 +68,10 @@ struct enum_to_str_s : public enum_to_str<Limit> {
         return ret;
     }
 };
+
+template <class enumeration_type>
+constexpr typename std::underlying_type<enumeration_type>::type enum_to_underlying(
+    enumeration_type val) noexcept {
+    return static_cast<typename std::underlying_type<enumeration_type>::type>(val);
+}
 } // namespace utils

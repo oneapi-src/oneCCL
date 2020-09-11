@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,8 +14,6 @@
  limitations under the License.
 */
 #pragma once
-
-#include "ccl.hpp"
 #include "common/comm/comm_id_storage.hpp"
 #include "common/comm/atl_tag.hpp"
 #include "common/log/log.hpp"
@@ -28,8 +26,14 @@
 // index = local_rank, value = global_rank
 using ccl_rank2rank_map = std::vector<size_t>;
 
+namespace ccl {
+class kvs_interface;
+}
+
 class alignas(CACHELINE_SIZE) ccl_comm {
 public:
+    //TODO
+    static void ccl_comm_reset_thread_barrier();
     ccl_comm() = delete;
     ccl_comm(const ccl_comm& other) = delete;
     ccl_comm& operator=(const ccl_comm& other) = delete;
@@ -39,6 +43,21 @@ public:
              size_t size,
              ccl_comm_id_storage::comm_id&& id,
              ccl_rank2rank_map&& ranks);
+
+    //TODO non-implemented
+    //1) cluster_devices_count (devices 1000) -> (processes 10)
+    //2) blocking until all thread -> calls ccl_comm
+    //3) return 'thread_count'
+
+    // ccl_comm( {0,1,2,3...}, 1000, kvs )
+    // from 20 processes from ranks 0,1,2,3. Each rank contains 10 threads
+    // communicator: size in {20} and ranks in {0..19}
+    // communicator: return threads count in process {10}
+    // communicator: return devices counts per thread in process
+    ccl_comm(const std::vector<size_t>& local_thread_device_ranks,
+             size_t cluster_devices_count,
+             std::shared_ptr<ccl::kvs_interface> kvs_instance,
+             ccl_comm_id_storage::comm_id&& id);
 
     ~ccl_comm() = default;
 
@@ -67,6 +86,14 @@ public:
 
     ccl_comm_id_t id() const noexcept {
         return m_id.value();
+    }
+
+    size_t thread_count() const noexcept {
+        return thread_number;
+    }
+
+    size_t on_process_ranks_count() const noexcept {
+        return on_process_ranks_number;
     }
 
     ccl_sched_id_t get_sched_id(bool use_internal_space) {
@@ -132,4 +159,7 @@ private:
     ccl_sched_id_t m_next_sched_id_external;
     ccl_rank2rank_map m_local2global_map{};
     ccl_double_tree m_dtree;
+
+    size_t thread_number;
+    size_t on_process_ranks_number;
 };

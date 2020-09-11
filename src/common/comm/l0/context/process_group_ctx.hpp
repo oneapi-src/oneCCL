@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +20,10 @@
 #include "common/comm/l0/context/scaling_ctx/scale_out_ctx.hpp"
 
 #include "common/comm/l0/topology/topology_declarations.hpp"
+namespace ccl {
+class host_communicator;
+}
+
 namespace native {
 struct device_storage;
 
@@ -48,7 +52,7 @@ struct process_group_context
                                                      SUPPORTED_TOPOLOGY_CLASSES_DECL_LIST>;
     using topologies_storage = std::map<size_t, topologies>;
 
-    process_group_context(std::shared_ptr<ccl::communicator> communicator);
+    process_group_context(std::shared_ptr<ccl::host_communicator> communicator);
     virtual //TODO use stub
         ~process_group_context();
 
@@ -137,9 +141,9 @@ private:
     bool build_cluster_affinity_table(
         const ccl::device_indices_t& process_aggregated_device_indices);
 
-    std::shared_ptr<ccl::communicator> get_communicator();
+    std::shared_ptr<ccl::host_communicator> get_communicator();
 
-    std::shared_ptr<ccl::communicator> ccl_communicator;
+    std::shared_ptr<ccl::host_communicator> ccl_communicator;
     std::shared_ptr<thread_group_context> thread_group_ctx;
     ccl::host_id my_host_name;
     ccl::cluster_aggregated_device_mask_t global_mask;

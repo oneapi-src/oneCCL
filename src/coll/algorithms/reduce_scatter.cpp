@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +24,7 @@ ccl_status_t ccl_coll_build_ring_reduce_scatter(ccl_sched* sched,
                                                 ccl_buffer recv_buf,
                                                 size_t send_count,
                                                 const ccl_datatype& dtype,
-                                                ccl_reduction_t op,
+                                                ccl::reduction op,
                                                 ccl_comm* comm) {
     CCL_THROW_IF_NOT(sched && send_buf && recv_buf,
                      "incorrect values, sched ",

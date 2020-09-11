@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +13,12 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "ccl.h"
+//#include "ccl.h"
 #include "common/comm/comm.hpp"
 #include "common/global/global.hpp"
 #include "sched/sched.hpp"
+#include "oneapi/ccl/ccl_types.hpp"
+#include "oneapi/ccl/ccl_kvs.hpp"
 
 ccl_comm::ccl_comm(size_t rank, size_t size, ccl_comm_id_storage::comm_id&& id)
         : ccl_comm(rank, size, std::move(id), ccl_rank2rank_map{}) {}
@@ -27,32 +29,70 @@ ccl_comm::ccl_comm(size_t rank,
                    ccl_rank2rank_map&& rank_map)
         : m_id(std::move(id)),
           m_local2global_map(std::move(rank_map)),
-          m_dtree(size, rank) {
+          m_dtree(size, rank),
+          thread_number(1),
+          on_process_ranks_number(1) {
     reset(rank, size);
 }
 
+//TODO non-implemented
+//TODO rude simulation of multi-thread barrier
+static std::atomic<size_t> thread_counter{};
+static std::atomic<size_t> thread_ranks_counter{};
+void ccl_comm::ccl_comm_reset_thread_barrier() {
+    // recharge counters again
+    thread_counter.store(0);
+    thread_ranks_counter.store(0);
+}
+
+ccl_comm::ccl_comm(const std::vector<size_t>& local_thread_device_ranks,
+                   size_t cluster_devices_count,
+                   std::shared_ptr<ccl::kvs_interface> kvs_instance,
+                   ccl_comm_id_storage::comm_id&& id)
+        : m_id(std::move(id)),
+          m_local2global_map(),
+          m_dtree(local_thread_device_ranks.size(), cluster_devices_count) {
+    //TODO use multithreaded  atl_init
+    //...
+
+    //TODO rude simulation of multi-thread barrier
+    thread_counter.fetch_add(1); //calc entered threads
+    thread_ranks_counter.fetch_add(
+        local_thread_device_ranks.size()); //calc total thread device ranks
+
+    std::this_thread::sleep_for(std::chrono::seconds(
+        ccl::global_data::get().thread_barrier_wait_timeout_sec)); //simulate barrier
+
+    thread_number = thread_counter.load(); // obtain total thread count
+    on_process_ranks_number = thread_ranks_counter.load(); // obtain total thread ranks
+
+    //WA for single device case
+    if (on_process_ranks_number == 1) {
+        reset(*local_thread_device_ranks.begin(), cluster_devices_count);
+    }
+}
+
 static ccl_status_t ccl_comm_exchange_colors(std::vector<int>& colors) {
-    const size_t exchange_count = 1;
-    std::vector<size_t> recv_counts(colors.size(), exchange_count);
-    ccl_coll_attr_t coll_attr{};
-    coll_attr.to_cache = false;
-    ccl_request_t request;
+    throw ccl::ccl_error("ccl_comm_exchange_colors not implemented yet");
 
-    ccl_status_t status;
+    // const size_t exchange_count = 1;
+    // std::vector<size_t> recv_counts(colors.size(), exchange_count);
+    // ccl_coll_attr_t coll_attr{};
+    // coll_attr.to_cache = false;
+    // ccl_request_t request;
 
-    CCL_CALL(ccl_allgatherv(colors.data(),
-                            exchange_count,
-                            colors.data(),
-                            recv_counts.data(),
-                            ccl_dtype_int,
-                            &coll_attr,
-                            nullptr, /* comm */
-                            nullptr, /* stream */
-                            &request));
+    // ccl_status_t status;
 
-    CCL_CALL(ccl_wait(request));
+    // CCL_CALL(ccl_allgatherv(colors.data(), exchange_count,
+    //                         colors.data(), recv_counts.data(),
+    //                         ccl_dtype_int, &coll_attr,
+    //                         nullptr, /* comm */
+    //                         nullptr, /* stream */
+    //                         &request));
 
-    return status;
+    // CCL_CALL(ccl_wait(request));
+
+    // return status;
 }
 
 ccl_comm* ccl_comm::create_with_color(int color,

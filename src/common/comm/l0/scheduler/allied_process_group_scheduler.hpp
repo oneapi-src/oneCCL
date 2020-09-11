@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,7 +39,7 @@ struct allied_process_group_scheduler : public thread_group_scheduler {
   */
     allied_process_group_scheduler(size_t process_count,
                                    size_t threads_count,
-                                   std::shared_ptr<ccl::communicator> communicator,
+                                   std::shared_ptr<ccl::host_communicator> communicator,
                                    device_storage& node_devices)
             : base(threads_count),
               ccl_communicator(communicator),
@@ -192,7 +192,7 @@ struct allied_process_group_scheduler : public thread_group_scheduler {
     }
 
 private:
-    std::shared_ptr<ccl::communicator> ccl_communicator;
+    std::shared_ptr<ccl::host_communicator> ccl_communicator;
     device_storage& node_total_devices;
 };
 

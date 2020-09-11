@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -118,13 +118,22 @@ std::map<int, const char*> ccl_epilog_type_str = { { ETYPE_NULL, "ETYPE_NULL" },
 };
 
 typedef enum {
+    // DT_CHAR = ccl::datatype::int8,
+    // DT_INT = ccl::datatype::int32,
+    // DT_BFP16 = ccl::datatype::bfloat16,
+    // DT_FLOAT = ccl::datatype::float32,
+    // DT_DOUBLE = ccl::datatype::float64,
+    // // DT_INT64 = ccl::datatype::int64,
+    // // DT_UINT64 = ccl::datatype::uint64,
+
     DT_CHAR = ccl_dtype_char,
     DT_INT = ccl_dtype_int,
     DT_BFP16 = ccl_dtype_bfp16,
     DT_FLOAT = ccl_dtype_float,
     DT_DOUBLE = ccl_dtype_double,
-    // DT_INT64 = ccl_dtype_int64,
-    // DT_UINT64 = ccl_dtype_uint64,
+    // DT_INT64 = ccl::datatype::int64,
+    // DT_UINT64 = ccl::datatype::uint64,
+
     DT_LAST
 } ccl_data_type;
 ccl_data_type first_ccl_data_type = DT_CHAR;
@@ -167,13 +176,13 @@ std::map<int, const char*> ccl_reduction_type_str = {
 #endif
 };
 
-std::map<int, ccl_reduction_t> ccl_reduction_type_values = {
-    { RT_SUM, ccl_reduction_sum },
+std::map<int, ccl::reduction> ccl_reduction_type_values = {
+    { RT_SUM, ccl::reduction::sum },
 #ifdef TEST_CCL_REDUCE
-    { RT_PROD, ccl_reduction_prod },     { RT_MIN, ccl_reduction_min },
-    { RT_MAX, ccl_reduction_max },
+    { RT_PROD, ccl::reduction::prod },     { RT_MIN, ccl::reduction::min },
+    { RT_MAX, ccl::reduction::max },
 #ifdef TEST_CCL_CUSTOM_REDUCE
-    { RT_CUSTOM, ccl_reduction_custom }, { RT_CUSTOM_NULL, ccl_reduction_custom }
+    { RT_CUSTOM, ccl::reduction::custom }, { RT_CUSTOM_NULL, ccl::reduction::custom }
 #endif
 #endif
 };
@@ -251,7 +260,7 @@ size_t get_ccl_buffer_count(ccl_test_conf& test_conf) {
     return ccl_buffer_count_values[test_conf.buffer_count];
 }
 
-ccl_reduction_t get_ccl_lib_reduction_type(const ccl_test_conf& test_conf) {
+ccl::reduction get_ccl_lib_reduction_type(const ccl_test_conf& test_conf) {
     return ccl_reduction_type_values[test_conf.reduction_type];
 }
 

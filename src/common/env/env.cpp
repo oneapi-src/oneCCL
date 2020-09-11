@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +20,8 @@
 #include "common/env/env.hpp"
 #include "common/global/global.hpp"
 #include "common/log/log.hpp"
+
+#include "oneapi/ccl/ccl_environment.hpp"
 
 namespace ccl {
 
@@ -165,10 +167,13 @@ void env_data::print() {
 #endif
     LOG_INFO("build mode : ", build_mode);
 
-    ccl_version_t version;
-    if (ccl_get_version(&version) != ccl_status_success) {
-        throw std::runtime_error("cannot determine CCL version!");
-    }
+    ccl::library_version version;
+    version.major = CCL_MAJOR_VERSION;
+    version.minor = CCL_MINOR_VERSION;
+    version.update = CCL_UPDATE_VERSION;
+    version.product_status = CCL_PRODUCT_STATUS;
+    version.build_date = CCL_PRODUCT_BUILD_DATE;
+    version.full = CCL_PRODUCT_FULL;
 
     LOG_INFO("version : ", version.full);
 

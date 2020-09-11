@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -335,12 +335,17 @@ static void atl_mpi_bfp16_finalize() {
 static MPI_Datatype atl2mpi_dtype(atl_datatype_t dtype) {
     switch (dtype) {
         case ATL_DTYPE_CHAR: return MPI_CHAR;
+        case ATL_DTYPE_UINT8: return MPI_UNSIGNED_CHAR;
+        case ATL_DTYPE_INT16: return MPI_INT16_T;
+        case ATL_DTYPE_UINT16: return MPI_UINT16_T;
         case ATL_DTYPE_INT: return MPI_INT;
-        case ATL_DTYPE_BFP16: return MPI_BFP16;
-        case ATL_DTYPE_FLOAT: return MPI_FLOAT;
-        case ATL_DTYPE_DOUBLE: return MPI_DOUBLE;
+        case ATL_DTYPE_UINT32: return MPI_UINT32_T;
         case ATL_DTYPE_INT64: return MPI_LONG_LONG;
         case ATL_DTYPE_UINT64: return MPI_UNSIGNED_LONG_LONG;
+        case ATL_DTYPE_FLOAT16: printf("unknown datatype: %d\n", dtype); exit(1);
+        case ATL_DTYPE_FLOAT: return MPI_FLOAT;
+        case ATL_DTYPE_DOUBLE: return MPI_DOUBLE;
+        case ATL_DTYPE_BFP16: return MPI_BFP16;
         default: printf("unknown datatype: %d\n", dtype); exit(1);
     }
 }
@@ -603,7 +608,7 @@ static atl_status_t atl_mpi_ep_send(atl_ep_t* ep,
         int flag;
         MPI_Comm_get_info(mpi_ep->mpi_comm, &info_out);
         MPI_Info_get(info_out, EP_IDX_KEY, MPI_MAX_INFO_VAL, buf, &flag);
-        
+
         if (!flag)
         {
             ATL_MPI_PRINT("unexpected ep_idx_key %s", EP_IDX_KEY);
@@ -646,7 +651,7 @@ static atl_status_t atl_mpi_ep_recv(atl_ep_t* ep,
         int flag;
         MPI_Comm_get_info(mpi_ep->mpi_comm, &info_out);
         MPI_Info_get(info_out, EP_IDX_KEY, MPI_MAX_INFO_VAL, buf, &flag);
-        
+
         if (!flag)
         {
             ATL_MPI_PRINT("unexpected ep_idx_key %s", EP_IDX_KEY);
@@ -747,7 +752,7 @@ static atl_status_t atl_mpi_ep_allreduce(atl_ep_t* ep,
         int flag;
         MPI_Comm_get_info(mpi_ep->mpi_comm, &info_out);
         MPI_Info_get(info_out, EP_IDX_KEY, MPI_MAX_INFO_VAL, buf, &flag);
-        
+
         if (!flag)
         {
             ATL_MPI_PRINT("unexpected ep_idx_key %s", EP_IDX_KEY);

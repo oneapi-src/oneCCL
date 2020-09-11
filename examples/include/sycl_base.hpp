@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,10 +22,12 @@
 #include <iostream>
 #include <string>
 
-#include <CL/sycl.hpp>
-#include "ccl.hpp"
+#include <mpi.h>
 
-#define COUNT     (10 * 1024 * 1024)
+#include <CL/sycl.hpp>
+#include "oneapi/ccl.hpp"
+
+#define COUNT     size_t(10 * 1024 * 1024)
 #define COLL_ROOT (0)
 
 using namespace std;

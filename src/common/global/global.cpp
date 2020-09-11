@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,6 +35,9 @@ global_data::global_data() {
     /* create ccl_logger before ccl::global_data
        to ensure static objects construction/destruction rule */
     LOG_INFO("create global_data object");
+
+    //TODO new_api configure thread wait timeout
+    thread_barrier_wait_timeout_sec = 5;
 }
 
 global_data::~global_data() {
@@ -106,8 +109,9 @@ void global_data::init_resize_dependent_objects() {
 
     atl_tag = std::unique_ptr<ccl_atl_tag>(
         new ccl_atl_tag(executor->get_atl_attr().tag_bits, executor->get_atl_attr().max_tag));
-    if (env_object.default_resizable)
-        ccl_set_resize_fn(nullptr);
+    /* TODO: enable back after API update */
+    // if (env_object.default_resizable)
+    //     ccl_set_resize_fn(nullptr);
 
     if (executor->get_global_proc_idx() == 0) {
         atl_tag->print();

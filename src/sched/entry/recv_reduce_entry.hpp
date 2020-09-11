@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,7 +36,7 @@ public:
                       size_t cnt,
                       size_t* out_cnt,
                       const ccl_datatype& dtype,
-                      ccl_reduction_t reduction_op,
+                      ccl::reduction reduction_op,
                       size_t src,
                       ccl_buffer comm_buf,
                       ccl_comm* comm,
@@ -52,7 +52,7 @@ public:
               comm(comm),
               result_buf_type(result_buf_type),
               fn(sched->coll_attr.reduction_fn) {
-        CCL_ASSERT(op != ccl_reduction_custom || fn,
+        CCL_ASSERT(op != ccl::reduction::custom || fn,
                    "custom reduction requires user provided callback");
 
         CCL_ASSERT(
@@ -113,7 +113,7 @@ public:
             size_t bytes = in_cnt * dtype.size();
             size_t offset = inout_buf.get_offset();
 
-            const ccl_fn_context_t context = { sched->coll_attr.match_id.c_str(), offset };
+            const ccl::fn_context context = { sched->coll_attr.match_id.c_str(), offset };
 
             ccl_buffer reduce_in_buf =
                 (result_buf_type == ccl_recv_reduce_local_buf) ? comm_buf : inout_buf;
@@ -175,13 +175,13 @@ private:
     size_t in_cnt;
     size_t* out_cnt;
     ccl_datatype dtype;
-    ccl_reduction_t op;
+    ccl::reduction op;
     size_t src;
     ccl_buffer comm_buf;
     ccl_comm* comm;
     bool own_comm_buff = false;
     ccl_recv_reduce_result_buf_type result_buf_type;
     uint64_t atl_tag = 0;
-    ccl_reduction_fn_t fn;
+    ccl::reduction_fn fn;
     atl_req_t req{};
 };

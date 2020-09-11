@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,7 +20,7 @@
 #include <functional>
 #include <vector>
 
-#include "ccl.hpp"
+#include "oneapi/ccl.hpp"
 #include "ccl_test_conf.hpp"
 #include "utils.hpp"
 
@@ -44,23 +44,26 @@ struct typed_test_param {
 
     std::vector<std::shared_ptr<ccl::request>> reqs;
     std::string match_id;
-    ccl::communicator_t comm;
-    ccl::communicator_t global_comm;
-    ccl::coll_attr coll_attr{};
-    ccl::stream_t stream;
+    ccl::communicator comm;
+    ccl::communicator global_comm;
+    ccl::stream stream;
 
-    typed_test_param(ccl_test_conf tconf) : test_conf(tconf) {
-        init_coll_attr(&coll_attr);
-        elem_count = get_ccl_elem_count(test_conf);
-        buffer_count = get_ccl_buffer_count(test_conf);
-        comm = ccl::environment::instance().create_communicator();
-        global_comm = ccl::environment::instance().create_communicator();
-        process_count = comm->size();
-        process_idx = comm->rank();
+    typed_test_param(ccl_test_conf tconf)
+            : test_conf(tconf),
+              elem_count(get_ccl_elem_count(test_conf)),
+              buffer_count(get_ccl_buffer_count(test_conf)),
+              comm(ccl::environment::instance().create_communicator()),
+              global_comm(ccl::environment::instance().create_communicator()),
+              stream(ccl::default_stream) {
+        process_count = comm.size();
+        process_idx = comm.rank();
         buf_indexes.resize(buffer_count);
     }
 
-    void prepare_coll_attr(size_t idx);
+    void prepare_coll_attr(ccl::allgatherv_attr& coll_attr, size_t idx);
+    template <class coll_attr_type>
+    void prepare_coll_attr(coll_attr_type& coll_attr, size_t idx);
+
     std::string create_match_id(size_t buf_idx);
     bool complete_request(std::shared_ptr<ccl::request> reqs);
     void define_start_order();
@@ -74,7 +77,7 @@ struct typed_test_param {
 
     void print(std::ostream& output);
 
-    ccl::stream_t& get_stream() {
+    ccl::stream& get_stream() {
         return stream;
     }
 
@@ -96,9 +99,9 @@ struct typed_test_param {
 template <typename T>
 class base_test {
 public:
+    ccl::communicator comm;
     size_t global_process_idx;
     size_t global_process_count;
-    ccl::communicator_t comm;
     char err_message[ERR_MESSAGE_MAX_LEN]{};
 
     char* get_err_message() {

@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -79,7 +79,7 @@ static void ccl_allreduce_2d_add_allreduce_allgather(ccl_sched* sched,
                                                      ccl_buffer recv_buf,
                                                      size_t count,
                                                      const ccl_datatype& dtype,
-                                                     ccl_reduction_t op,
+                                                     ccl::reduction op,
                                                      ccl_comm* comm,
                                                      size_t chunk_idx,
                                                      size_t chunk_count) {
@@ -116,7 +116,7 @@ static void ccl_allreduce_2d_add_reduce_scatter_allreduce_allgather(ccl_sched* s
                                                                     ccl_buffer recv_buf,
                                                                     size_t count,
                                                                     const ccl_datatype& dtype,
-                                                                    ccl_reduction_t op,
+                                                                    ccl::reduction op,
                                                                     ccl_comm* comm,
                                                                     size_t chunk_idx,
                                                                     size_t chunk_count) {
@@ -162,7 +162,7 @@ ccl_status_t ccl_allreduce_2d_builder::build(ccl_sched* sched,
                                              ccl_buffer recv_buf,
                                              size_t count,
                                              const ccl_datatype& dtype,
-                                             ccl_reduction_t op,
+                                             ccl::reduction op,
                                              ccl_comm* comm) {
     CCL_THROW_IF_NOT(sched && send_buf && recv_buf && count,
                      "incorrect values, sched ",

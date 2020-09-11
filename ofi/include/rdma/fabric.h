@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -93,7 +93,7 @@ extern "C" {
 
 #define FI_MAJOR_VERSION 1
 #define FI_MINOR_VERSION 10
-#define FI_REVISION_VERSION 1
+#define FI_REVISION_VERSION 0
 
 enum {
 	FI_PATH_MAX		= 256,

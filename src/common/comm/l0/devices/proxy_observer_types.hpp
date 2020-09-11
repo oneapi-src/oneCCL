@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,13 +35,14 @@ public:
     void assign(ctx_reg_t& ctx_to_reg, ctx_t ctx) {
         // context linkage
         ctx.template attach<group_id, class_id>(static_cast<impl*>(this));
-        std::get<group_id>(contexts) = &ctx_to_reg;
+        std::get<utils::enum_to_underlying(group_id)>(contexts) = &ctx_to_reg;
     }
 
     template <ccl::device_group_split_type group_id, ccl::device_topology_type class_id>
     void invoke() {
         //use context to invoke/register proxy jobs
-        std::get<group_id>(contexts).invoke_proxy(static_cast<impl*>(this));
+        std::get<utils::enum_to_underlying(group_id)>(contexts).invoke_proxy(
+            static_cast<impl*>(this));
     }
 };
 

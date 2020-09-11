@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -73,8 +73,8 @@ public:
         if (param.test_conf.place_type == PT_IN) {
             param.recv_buf = param.send_buf;
 
-            /* 
-               Specifying the in-place option indicates that 
+            /*
+               Specifying the in-place option indicates that
                the same amount and type of data is sent and received
                between any two processes in the group of the communicator.
                Different pairs of processes can exchange different amounts of data.
@@ -107,25 +107,23 @@ public:
         void* send_buf;
         void* recv_buf;
         const ccl_test_conf& test_conf = param.get_conf();
-        ccl::coll_attr* attr = &param.coll_attr;
-        ccl::stream_t& stream = param.get_stream();
+        auto attr = ccl::environment::instance().create_operation_attr<ccl::alltoallv_attr>();
         ccl::datatype data_type = static_cast<ccl::datatype>(test_conf.data_type);
 
         for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++) {
             size_t new_idx = param.buf_indexes[buf_idx];
-            param.prepare_coll_attr(param.buf_indexes[buf_idx]);
+            param.prepare_coll_attr(attr, param.buf_indexes[buf_idx]);
 
             send_buf = param.get_send_buf(new_idx);
             recv_buf = param.get_recv_buf(new_idx);
 
             param.reqs[buf_idx] =
-                param.global_comm->alltoallv((test_conf.place_type == PT_IN) ? recv_buf : send_buf,
-                                             send_counts.data(),
-                                             recv_buf,
-                                             recv_counts.data(),
-                                             data_type,
-                                             attr,
-                                             stream);
+                param.global_comm.alltoallv((test_conf.place_type == PT_IN) ? recv_buf : send_buf,
+                                            send_counts,
+                                            recv_buf,
+                                            recv_counts,
+                                            (ccl_datatype_t)data_type,
+                                            attr);
         }
     }
 };

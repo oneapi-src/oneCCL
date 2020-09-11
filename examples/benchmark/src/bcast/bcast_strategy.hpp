@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,16 +21,20 @@ struct bcast_strategy_impl {
         return "bcast";
     }
 
-    template <class Dtype>
-    void start_internal(ccl::communicator& comm,
+    static const ccl::broadcast_attr& get_op_attr(const bench_coll_exec_attr& bench_attr) {
+        return bench_attr.get_attr<ccl::broadcast_attr>();
+    }
+
+    template <class Dtype, class comm_t, class... Args>
+    void start_internal(comm_t& comm,
                         size_t count,
                         Dtype send_buf,
                         Dtype recv_buf,
                         const bench_coll_exec_attr& bench_attr,
-                        ccl::stream_t& stream,
-                        req_list_t& reqs) {
+                        req_list_t& reqs,
+                        Args&&... args) {
         (void)send_buf;
-        reqs.push_back(comm.bcast(recv_buf, count, COLL_ROOT, &bench_attr.coll_attr, stream));
+        reqs.push_back(comm.broadcast(recv_buf, count, COLL_ROOT, std::forward<Args>(args)...));
     }
 };
 

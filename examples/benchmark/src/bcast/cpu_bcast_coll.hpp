@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,12 +27,12 @@ struct cpu_bcast_coll : cpu_base_coll<Dtype, bcast_strategy_impl> {
     using coll_base::comm;
 
     cpu_bcast_coll(bench_coll_init_attr init_attr)
-            : coll_base(init_attr, base_coll::comm->size(), base_coll::comm->size()) {}
+            : coll_base(init_attr, coll_base::comm().size(), coll_base::comm().size()) {}
 
     virtual void prepare(size_t elem_count) override {
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
             for (size_t e_idx = 0; e_idx < elem_count; e_idx++) {
-                if (comm->rank() == COLL_ROOT)
+                if (coll_base::comm().rank() == COLL_ROOT)
                     ((Dtype*)recv_bufs[b_idx])[e_idx] = e_idx;
                 else
                     ((Dtype*)recv_bufs[b_idx])[e_idx] = 0;

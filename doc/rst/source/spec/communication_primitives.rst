@@ -87,7 +87,7 @@ Allreduce includes global reduction operations such as sum, max, min, or user-de
                 void* recv_buf,
                 size_t count,
                 ccl_datatype_t dtype,
-                ccl_reduction_t reduction,
+                ccl::reduction reduction,
                 const ccl_coll_attr_t* attr,
                 ccl_comm_t comm,
                 ccl_stream_t stream,
@@ -284,7 +284,7 @@ Collective communication operation that broadcasts data from one participant of 
         ::
 
             template<class buffer_type>
-            col_request_t communicator::bcast(
+            col_request_t communicator::broadcast(
                                     buffer_type* buf,
                                     size_t count,
                                     size_t root,
@@ -324,7 +324,7 @@ Reduce includes global reduction operations such as sum, max, min, or user-defin
                 void* recv_buf,
                 size_t count,
                 ccl_datatype_t dtype,
-                ccl_reduction_t reduction,
+                ccl::reduction reduction,
                 size_t root,
                 const ccl_coll_attr_t* attr,
                 ccl_comm_t comm,
@@ -368,13 +368,13 @@ req
 
 The following reduction operations are supported for `Allreduce`_ and `Reduce`_ primitives:
 
-ccl_reduction_sum
+ccl::reduction::sum
     elementwise summation
-ccl_reduction_prod
+ccl::reduction::prod
     elementwise multiplication
-ccl_reduction_min
+ccl::reduction::min
     elementwise min
-ccl_reduction_max
+ccl::reduction::max
     elementwise max
-ccl_reduction_custom:
+ccl::reduction::custom
     class of user-defined operations

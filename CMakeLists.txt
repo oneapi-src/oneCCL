@@ -203,7 +203,7 @@ set(CCL_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/src)
 enable_testing()
 
 set (EXTERNAL_LIBS "")
-set(EXAMPLES_INC_DIRS ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/examples/include)
+set(EXAMPLES_INC_DIRS ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/examples/include ${PROJECT_SOURCE_DIR}/mpi/include)
 
 # allow `deprecated`
 set(CMAKE_CLANG_FLAGS "${CMAKE_CLANG_FLAGS}")
@@ -211,7 +211,17 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 if (MULTI_GPU_SUPPORT)
-    message(FATAL_ERROR "MULTI GPU IS NOT SUPPORTED YET")
+    if (NOT ((${COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "ze_loader")
+             OR (${COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "Intel::SYCL")))
+        message( FATAL_ERROR "MULTI_GPU_SUPPORT required COMPUTE_RUNTIME=L0 or DPC++")
+    endif()
+
+    option(CCL_GPU_DEVICES_AFFINITY_ENABLE "Enable L0" ON)
+    if(CCL_GPU_DEVICES_AFFINITY_ENABLE)
+        set(CCL_GPU_DEVICES_AFFINITY_MASK_SIZE 4)
+        message ("Set L0 device mask affinity size: ${CCL_GPU_DEVICES_AFFINITY_MASK_SIZE}")
+    endif()
+
 endif(MULTI_GPU_SUPPORT)
 
 #include other CMakeLists
@@ -220,9 +230,9 @@ add_subdirectory(examples/cpu)
 
 if (CCL_ENABLE_SYCL)
     if (${COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "Intel::SYCL")
-        set (CCL_ENABLCE_SYCL_CHECK_CONTRACT "#if defined(__cplusplus)\n#if !defined(__clang__) || __clang_major__ < 9 || !defined(CL_SYCL_LANGUAGE_VERSION)\n#error This version of CCL configured only for oneAPI DPC++ Compiler\n#endif\n#endif")
+        set (CCL_ENABLCE_SYCL_CHECK_CONTRACT "#if defined(__cplusplus)\n#if !defined(__clang__) || __clang_major__ < 9 || !defined(CL_SYCL_LANGUAGE_VERSION)\n#error This version of CCL configured only for DPC++ compiler\n#endif\n#endif")
     else(${COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "Codeplay::ComputeCpp")
-        set (CCL_ENABLCE_SYCL_CHECK_CONTRACT "#if defined(__cplusplus)\n#if !defined(__clang__) || __clang_major__ < 6\n#error This version of CCL configured only for oneAPI DPC++ Compiler\n#endif\n#endif")
+        set (CCL_ENABLCE_SYCL_CHECK_CONTRACT "#if defined(__cplusplus)\n#if !defined(__clang__) || __clang_major__ < 6\n#error This version of CCL configured only for DPC++ compiler\n#endif\n#endif")
     endif()
     add_subdirectory(examples/sycl)
 endif()
@@ -230,9 +240,9 @@ endif()
 add_subdirectory(examples/benchmark)
 add_subdirectory(examples/common)
 add_subdirectory(tests/functional)
+add_subdirectory(tests/unit)
 if(MULTI_GPU_SUPPORT)
     add_subdirectory(examples/level_zero)
-    add_subdirectory(tests/unit)
 endif()
 
 #generate & install vars.sh
@@ -253,5 +263,5 @@ set(CCL_PRODUCT_STATUS    "beta")
 string(TIMESTAMP CCL_PRODUCT_BUILD_DATE "%Y-%m-%dT %H:%M:%SZ")
 get_vcs_properties("git")
 set(CCL_PRODUCT_FULL "${CCL_PRODUCT_STATUS}-${CCL_MAJOR_VERSION}.${CCL_MINOR_VERSION}.${CCL_UPDATE_VERSION} ${CCL_PRODUCT_BUILD_DATE} ${VCS_INFO}")
-configure_file(${PROJECT_SOURCE_DIR}/include/ccl_config.h.in "${CMAKE_CURRENT_BINARY_DIR}/include/ccl_config.h")
-file(COPY "${CMAKE_CURRENT_BINARY_DIR}/include/ccl_config.h" DESTINATION ${PROJECT_SOURCE_DIR}/include/)
+configure_file(${PROJECT_SOURCE_DIR}/include/oneapi/ccl/ccl_config.h.in "${CMAKE_CURRENT_BINARY_DIR}/include/oneapi/ccl/ccl_config.h")
+file(COPY "${CMAKE_CURRENT_BINARY_DIR}/include/oneapi/ccl/ccl_config.h" DESTINATION ${PROJECT_SOURCE_DIR}/include/oneapi/ccl)

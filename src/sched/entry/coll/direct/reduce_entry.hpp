@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +29,7 @@ public:
                  ccl_buffer recv_buf,
                  size_t cnt,
                  const ccl_datatype& dtype,
-                 ccl_reduction_t reduction,
+                 ccl::reduction reduction,
                  size_t root,
                  ccl_comm* comm)
             : base_coll_entry(sched),
@@ -106,7 +106,7 @@ private:
     ccl_buffer recv_buf;
     size_t cnt;
     ccl_datatype dtype;
-    ccl_reduction_t op;
+    ccl::reduction op;
     size_t root;
     ccl_comm* comm;
     atl_req_t req{};

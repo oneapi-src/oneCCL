@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -129,7 +129,9 @@ public:
             LOG_ERROR(err_str);
             throw ccl::ccl_error(err_str);
         }
-        std::get<class_id>(std::get<group_id>(std::get<module_type>(registered_modules)))
+        std::get<utils::enum_to_underlying(class_id)>(
+            std::get<utils::enum_to_underlying(group_id)>(
+                std::get<module_type>(registered_modules)))
             .reset(new gpu_module_t<module_type, group_id, class_id>(handle));
         return descr;
     }

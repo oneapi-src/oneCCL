@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +29,7 @@ public:
                     ccl_buffer recv_buf,
                     size_t cnt,
                     const ccl_datatype& dtype,
-                    ccl_reduction_t op,
+                    ccl::reduction op,
                     ccl_comm* comm)
             : base_coll_entry(sched),
               send_buf(send_buf),
@@ -43,9 +43,8 @@ public:
     }
 
     void start() override {
-        LOG_DEBUG("ALLREDUCE entry req ", &req, ", cnt ", cnt);
         size_t bytes = cnt * dtype.size();
-
+        LOG_DEBUG("ALLREDUCE entry req: ", &req, ", cnt: ", cnt, ", bytes: ", bytes);
         atl_status_t atl_status = atl_ep_allreduce(sched->bin->get_atl_ep(),
                                                    send_buf.get_ptr(bytes),
                                                    recv_buf.get_ptr(bytes),
@@ -101,7 +100,7 @@ private:
     ccl_buffer recv_buf;
     size_t cnt;
     ccl_datatype dtype;
-    ccl_reduction_t op;
+    ccl::reduction op;
     ccl_comm* comm;
     atl_req_t req{};
 };

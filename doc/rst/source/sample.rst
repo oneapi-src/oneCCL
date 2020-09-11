@@ -61,7 +61,7 @@ The sample code below shows how to use |product_short| API to perform allreduce 
                       &recvbuf,
                       COUNT,
                       ccl_dtype_int,
-                      ccl_reduction_sum,
+                      ccl::reduction::sum,
                       NULL,
                       NULL,
                       stream,

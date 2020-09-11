@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 cmake_minimum_required (VERSION 2.8)
-file(GLOB sources "*.c" "*.cpp")
+file(GLOB sources "*.NOT_ENABLEDc" "*.NOT_ENABLEDcpp")
 
 if (DEFINED ENV{CCL_CONFIGURATION})
     set(CCL_CONFIGURATION "$ENV{CCL_CONFIGURATION}")

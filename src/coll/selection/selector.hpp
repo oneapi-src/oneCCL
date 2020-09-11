@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,8 +46,8 @@ struct ccl_selector_param {
     int vector_buf;
 
     /* tmp fields to avoid selection of algorithms which don't support all coalesce modes or alloc_fn */
-    ccl_sparse_coalesce_mode_t sparse_coalesce_mode;
-    ccl_sparse_allreduce_alloc_fn_t sparse_allreduce_alloc_fn;
+    ccl::sparse_coalesce_mode sparse_coalesce_mode;
+    ccl::sparse_allreduce_alloc_fn sparse_allreduce_alloc_fn;
 };
 
 template <ccl_coll_type coll_id>

@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,11 +19,11 @@
 #include <iterator>
 #include <sstream>
 
-#include "native_device_api/l0/base_impl.hpp"
-#include "native_device_api/l0/device.hpp"
-#include "native_device_api/l0/primitives_impl.hpp"
-#include "native_device_api/l0/driver.hpp"
-#include "native_device_api/l0/platform.hpp"
+#include "oneapi/ccl/native_device_api/l0/base_impl.hpp"
+#include "oneapi/ccl/native_device_api/l0/device.hpp"
+#include "oneapi/ccl/native_device_api/l0/primitives_impl.hpp"
+#include "oneapi/ccl/native_device_api/l0/driver.hpp"
+#include "oneapi/ccl/native_device_api/l0/platform.hpp"
 
 #include "native_device_api/compiler_ccl_wrappers_dispatcher.hpp"
 

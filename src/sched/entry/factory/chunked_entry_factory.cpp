@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,7 +49,7 @@ void make_chunked_recv_reduce_entry(ccl_sched* sched,
                                     size_t cnt,
                                     size_t* out_cnt,
                                     const ccl_datatype& dtype,
-                                    ccl_reduction_t reduction_op,
+                                    ccl::reduction reduction_op,
                                     size_t src,
                                     ccl_buffer comm_buf,
                                     ccl_comm* comm,

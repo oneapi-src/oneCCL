@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,7 +70,7 @@ public:
         const ccl_buffer send_buf,
         ccl_buffer recv_buf,
         size_t cnt,
-        ccl_reduction_t op,
+        ccl::reduction op,
         std::shared_ptr<ccl_stream> device_stream = std::shared_ptr<ccl_stream>())
             : base(sched,
                    comm,
@@ -263,7 +263,7 @@ protected:
             if (cur_index == wait_count /*std::is_same<gpu_comm_impl, ccl_gpu_comm>::value*/) {
                 if (topology == ccl::device_group_split_type::cluster) {
                     auto c = ccl::environment::instance().create_communicator();
-                    if (c->rank() == 0) {
+                    if (c.rank() == 0) {
                         LOG_INFO("L0 Workaround: one device close list!!!",
                                  "WaitCount: ",
                                  wait_count,

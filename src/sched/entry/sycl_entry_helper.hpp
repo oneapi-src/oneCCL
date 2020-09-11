@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +32,7 @@ struct sycl_buffer_visitor {
 
     template <size_t index, class specific_sycl_buffer>
     void invoke() {
-        if (index == requested_dtype.idx()) {
+        if (index == (int)(requested_dtype.idx())) {
             LOG_DEBUG("visitor matched index: ",
                       index,
                       ", ccl: ",

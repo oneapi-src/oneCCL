@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,8 +14,8 @@
  limitations under the License.
 */
 #pragma once
-#include "ccl.hpp"
-#include "ccl_type_traits.hpp"
+#include "oneapi/ccl/ccl_types.hpp"
+#include "oneapi/ccl/ccl_type_traits.hpp"
 #include "common/comm/l0/communicator/typed_base_communicator.hpp"
 #include "common/comm/l0/gpu_comm_attr.hpp"
 #include "common/comm/l0/context/thread_group_ctx.hpp"
@@ -31,17 +31,25 @@ typed_base_communicator<TEMPLATE_DEF_ARG>::typed_base_communicator(
     ccl::unified_device_type&& owned_device,
     size_t thread_idx,
     size_t process_idx,
-    const ccl::device_comm_attr_t& attr)
+    const ccl::device_comm_split_attr& attr)
         : base_communicator(std::move(owned_device),
                             thread_idx,
                             process_idx /*, comm_attr*/,
                             attr) {
-    LOG_INFO("sheduled for create, device id: ",
-             device.get_id(),
-             ", thread_id: ",
-             thread_idx,
-             ", process id:",
-             process_idx);
+    try {
+        LOG_INFO("sheduled for create, device id: ",
+                 device.get_id(),
+                 ", thread_id: ",
+                 thread_idx,
+                 ", process id:",
+                 process_idx);
+    }
+    catch (...) {
+        LOG_INFO("sheduled for create single device communicator , thread_id: ",
+                 thread_idx,
+                 ", process id:",
+                 process_idx);
+    }
 }
 
 template <TEMPLATE_DECL_ARG>

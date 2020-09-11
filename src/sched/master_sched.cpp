@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -176,7 +176,7 @@ ccl_master_sched::ccl_master_sched_ptr ccl_master_sched::create(const ccl_coll_p
             "sparse_allreduce requires completion callback only or allocation callback only");
     }
 
-    CCL_THROW_IF_NOT((param.dtype.idx() != ccl_dtype_bfp16) ||
+    CCL_THROW_IF_NOT((param.dtype.idx() != ccl::datatype::bfloat16) ||
                          (ccl::global_data::get().bfp16_impl_type != ccl_bfp16_none),
                      "BFP16 datatype is requested but not supported");
 

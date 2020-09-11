@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +13,12 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#include "oneapi/ccl/ccl_types.hpp"
 #include "common/global/global.hpp"
 #include "common/log/log.hpp"
 #include "comp/bfp16/bfp16.hpp"
 #include "comp/bfp16/bfp16_intrisics.h"
+#include "common/utils/enums.hpp"
 
 #define CCL_FLOATS_IN_M512 16
 #define CCL_BFP16_SHIFT    16
@@ -27,7 +29,7 @@ void ccl_bfp16_reduce(const void* in_buf,
                       size_t in_cnt,
                       void* inout_buf,
                       size_t* out_cnt,
-                      ccl_reduction_t reduction_op) {
+                      ccl::reduction reduction_op) {
     LOG_DEBUG("BFP16 reduction for %zu elements\n", in_cnt);
 
     if (out_cnt != nullptr) {
@@ -36,11 +38,11 @@ void ccl_bfp16_reduce(const void* in_buf,
 
     ccl_bfp16_reduction_func_ptr op = nullptr;
     switch (reduction_op) {
-        case ccl_reduction_sum: op = &sum_wrap; break;
-        case ccl_reduction_prod: op = &prod_wrap; break;
-        case ccl_reduction_min: op = &min_wrap; break;
-        case ccl_reduction_max: op = &max_wrap; break;
-        default: CCL_FATAL("unexpected value ", reduction_op);
+        case ccl::reduction::sum: op = &sum_wrap; break;
+        case ccl::reduction::prod: op = &prod_wrap; break;
+        case ccl::reduction::min: op = &min_wrap; break;
+        case ccl::reduction::max: op = &max_wrap; break;
+        default: CCL_FATAL("unexpected value ", utils::enum_to_underlying(reduction_op));
     }
 
     ccl_bfp16_reduce_impl(in_buf, inout_buf, in_cnt, op, ccl::global_data::get().bfp16_impl_type);
@@ -114,7 +116,7 @@ void ccl_bfp16_reduce(const void* in_buf,
                       size_t in_cnt,
                       void* inout_buf,
                       size_t* out_cnt,
-                      ccl_reduction_t reduction_op) {
+                      ccl::reduction reduction_op) {
     CCL_FATAL("BFP16 reduction is requested but CCL was compiled w/o BFP16 support");
 }
 

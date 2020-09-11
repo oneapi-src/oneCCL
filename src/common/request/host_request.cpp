@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,5 +44,13 @@ bool host_request_impl::test() {
         completed = ccl_test_impl(ccl::global_data::get().executor.get(), req);
     }
     return completed;
+}
+
+bool host_request_impl::cancel() {
+    throw ccl_error(std::string(__FUNCTION__) + " - is not implemented");
+}
+
+event& host_request_impl::get_event() {
+    throw ccl_error(std::string(__FUNCTION__) + " - is not implemented");
 }
 } // namespace ccl

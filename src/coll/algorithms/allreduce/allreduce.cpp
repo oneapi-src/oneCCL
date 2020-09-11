@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +29,7 @@ ccl_status_t ccl_coll_build_direct_allreduce(ccl_sched* sched,
                                              ccl_buffer recv_buf,
                                              size_t count,
                                              const ccl_datatype& dtype,
-                                             ccl_reduction_t op,
+                                             ccl::reduction op,
                                              ccl_comm* comm) {
     LOG_DEBUG("build direct allreduce");
 
@@ -42,7 +42,7 @@ ccl_status_t ccl_coll_build_rabenseifner_allreduce(ccl_sched* sched,
                                                    ccl_buffer recv_buf,
                                                    size_t count,
                                                    const ccl_datatype& dtype,
-                                                   ccl_reduction_t op,
+                                                   ccl::reduction op,
                                                    ccl_comm* comm) {
     LOG_DEBUG("build Rabenseifner's allreduce");
     CCL_ASSERT(sched != nullptr, "empty sched");
@@ -274,7 +274,7 @@ ccl_status_t ccl_coll_build_recursive_doubling_allreduce(ccl_sched* sched,
                                                          ccl_buffer recv_buf,
                                                          size_t count,
                                                          const ccl_datatype& dtype,
-                                                         ccl_reduction_t op,
+                                                         ccl::reduction op,
                                                          ccl_comm* comm) {
     LOG_DEBUG("build recursive_doubling allreduce");
 
@@ -383,7 +383,7 @@ ccl_status_t ccl_coll_build_starlike_allreduce(ccl_sched* sched,
                                                ccl_buffer recv_buf,
                                                size_t count,
                                                const ccl_datatype& dtype,
-                                               ccl_reduction_t op,
+                                               ccl::reduction op,
                                                ccl_comm* comm) {
     LOG_DEBUG("build starlike allreduce");
 
@@ -463,7 +463,7 @@ ccl_status_t ccl_coll_build_ring_allreduce(ccl_sched* sched,
                                            ccl_buffer recv_buf,
                                            size_t count,
                                            const ccl_datatype& dtype,
-                                           ccl_reduction_t op,
+                                           ccl::reduction op,
                                            ccl_comm* comm) {
     int inplace = (send_buf == recv_buf) ? 1 : 0;
     LOG_DEBUG("build ring allreduce ", inplace ? "in-place" : "out-of-place");

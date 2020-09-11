@@ -68,7 +68,7 @@ Consider a simple ``allreduce`` example for GPU.
                               &recvbuf,
                               COUNT,
                               ccl_dtype_int,
-                              ccl_reduction_sum,
+                              ccl::reduction::sum,
                               NULL, /* attr */
                               NULL, /* comm */
                               stream,

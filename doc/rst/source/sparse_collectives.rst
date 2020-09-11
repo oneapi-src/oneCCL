@@ -46,7 +46,7 @@ Here is an example of a function definition for ``sparse_allreduce`` completion 
   ccl_status_t sparse_allreduce_completion_fn(
       const void* indices_buf, size_t indices_count, ccl_datatype_t indices_datatype,
       const void* values_buf, size_t values_count, ccl_datatype_t values_datatype,
-      const ccl_fn_context_t* fn_ctx, const void* user_ctx)
+      const ccl::fn_context* fn_ctx, const void* user_ctx)
   {
       /* 
         Note that indices_buf and values_buf are temporary buffers.

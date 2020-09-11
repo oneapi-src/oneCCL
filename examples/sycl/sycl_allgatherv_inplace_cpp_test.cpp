@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,38 +16,62 @@
 
 #include "sycl_base.hpp"
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     int i = 0;
     int j = 0;
-    size_t size = 0;
-    size_t rank = 0;
+    int size = 0;
+    int rank = 0;
     size_t sendbuf_count = 0;
     size_t recvbuf_count = 0;
-    size_t* recv_counts;
     ccl_stream_type_t stream_type;
 
     cl::sycl::queue q;
 
-    auto comm = ccl::environment::instance().create_communicator();
+    MPI_Init(NULL, NULL);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    rank = comm->rank();
-    size = comm->size();
+    if (create_sycl_queue(argc, argv, q, stream_type) != 0) {
+        MPI_Finalize();
+        return -1;
+    }
+
+    /* create CCL internal KVS */
+    auto &env = ccl::environment::instance();
+    (void)env;
+    ccl::shared_ptr_class<ccl::kvs> kvs;
+    ccl::kvs::address_type main_addr;
+    if (rank == 0) {
+        kvs = ccl::environment::instance().create_main_kvs();
+        main_addr = kvs->get_address();
+        MPI_Bcast((void *)main_addr.data(), main_addr.size(), MPI_BYTE, 0, MPI_COMM_WORLD);
+    }
+    else {
+        MPI_Bcast((void *)main_addr.data(), main_addr.size(), MPI_BYTE, 0, MPI_COMM_WORLD);
+        kvs = ccl::environment::instance().create_kvs(main_addr);
+    }
+
+    /* create SYCL communicator */
+    auto ctx = q.get_context();
+    auto communcators = ccl::environment::instance().create_device_communicators(
+        size,
+        ccl::vector_class<ccl::pair_class<ccl::rank_t, cl::sycl::device>>{
+            { rank, q.get_device() } },
+        ctx,
+        kvs);
+    auto &comm = *communcators.begin();
+
+    /* create SYCL stream */
+    auto stream = ccl::environment::instance().create_stream(q);
 
     sendbuf_count = COUNT + rank;
     recvbuf_count = COUNT * size + ((size - 1) * size) / 2;
     cl::sycl::buffer<int, 1> sendbuf(sendbuf_count);
     cl::sycl::buffer<int, 1> expected_buf(recvbuf_count);
     cl::sycl::buffer<int, 1> recvbuf(recvbuf_count);
-    if (create_sycl_queue(argc, argv, q, stream_type) != 0) {
-        return -1;
-    }
-    /* create SYCL stream */
-    auto stream = ccl::environment::instance().create_stream(q);
 
-    recv_counts = static_cast<size_t*>(malloc(size * sizeof(size_t)));
-
-    for (size_t idx = 0; idx < size; idx++)
-        recv_counts[idx] = COUNT + idx;
+    std::vector<size_t> recv_counts(size, 0);
+    std::iota(recv_counts.begin(), recv_counts.end(), COUNT);
 
     {
         /* open buffers and initialize them on the CPU side */
@@ -76,7 +100,7 @@ int main(int argc, char** argv) {
     for (int i = 0; i < rank; i++)
         idx_rbuf += recv_counts[i];
 
-    q.submit([&](handler& cgh) {
+    q.submit([&](handler &cgh) {
         auto dev_acc_sbuf = sendbuf.get_access<mode::read>(cgh);
         auto dev_acc_rbuf = recvbuf.get_access<mode::write>(cgh);
         cgh.parallel_for<class allgatherv_test_sbuf_modify>(
@@ -88,16 +112,11 @@ int main(int argc, char** argv) {
     handle_exception(q);
     /* invoke ccl_allgatherv on the CPU side */
     /* request in-place operation by providing recvbuf as input */
-    comm->allgatherv(recvbuf,
-                     sendbuf_count,
-                     recvbuf,
-                     recv_counts,
-                     nullptr, /* attr */
-                     stream)
-        ->wait();
+    auto attr = ccl::environment::instance().create_operation_attr<ccl::allgatherv_attr>();
+    comm.allgatherv(recvbuf, sendbuf_count, recvbuf, recv_counts, stream, attr)->wait();
 
     /* open recvbuf and check its correctness on the target device side */
-    q.submit([&](handler& cgh) {
+    q.submit([&](handler &cgh) {
         auto dev_acc_rbuf = recvbuf.get_access<mode::write>(cgh);
         auto expected_acc_buf_dev = expected_buf.get_access<mode::read>(cgh);
         cgh.parallel_for<class allgatherv_test_rbuf_check>(
@@ -124,7 +143,6 @@ int main(int argc, char** argv) {
         }
     }
 
-    free(recv_counts);
-
+    MPI_Finalize();
     return 0;
 }

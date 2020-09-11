@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,11 +37,11 @@ struct sycl_allgatherv_coll : sycl_base_coll<Dtype, allgatherv_strategy_impl> {
     using coll_base::comm;
 
     sycl_allgatherv_coll(bench_coll_init_attr init_attr)
-            : coll_base(init_attr, 1, base_coll::comm->size(), base_coll::comm->size()) {}
+            : coll_base(init_attr, 1, coll_base::comm().size(), coll_base::comm().size()) {}
 
     virtual void prepare(size_t elem_count) override {
-        size_t local_rank = comm->rank();
-        size_t local_size = comm->size();
+        size_t local_rank = coll_base::comm().rank();
+        size_t local_size = coll_base::comm().size();
 
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
             sycl_queue.submit([&](handler& cgh) {
@@ -62,8 +62,8 @@ struct sycl_allgatherv_coll : sycl_base_coll<Dtype, allgatherv_strategy_impl> {
 
     virtual void finalize(size_t elem_count) override {
         bool unexpected_device_value = false;
-        size_t local_size = comm->size();
-        Dtype sbuf_expected = comm->rank();
+        size_t local_size = coll_base::comm().size();
+        Dtype sbuf_expected = coll_base::comm().rank();
 
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
             sycl_queue.submit([&](handler& cgh) {
@@ -104,7 +104,7 @@ struct sycl_allgatherv_coll : sycl_base_coll<Dtype, allgatherv_strategy_impl> {
                 }
             }
 
-            for (size_t idx = 0; idx < comm->size(); idx++) {
+            for (size_t idx = 0; idx < coll_base::comm().size(); idx++) {
                 Dtype rbuf_expected = idx;
                 for (size_t e_idx = 0; e_idx < elem_count; e_idx++) {
                     value = recv_buf_acc[idx * elem_count + e_idx];
