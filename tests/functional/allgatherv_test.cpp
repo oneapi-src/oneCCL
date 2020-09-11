@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -107,27 +107,24 @@ public:
         void* send_buf;
         void* recv_buf;
         size_t count = recv_counts[param.process_idx];
-        size_t* recv_count = recv_counts.data();
         const ccl_test_conf& test_conf = param.get_conf();
-        ccl::coll_attr* attr = &param.coll_attr;
-        ccl::stream_t& stream = param.get_stream();
+        auto attr = ccl::environment::instance().create_operation_attr<ccl::allgatherv_attr>();
         ccl::datatype data_type = static_cast<ccl::datatype>(test_conf.data_type);
 
         for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++) {
             size_t new_idx = param.buf_indexes[buf_idx];
-            param.prepare_coll_attr(param.buf_indexes[buf_idx]);
+            param.prepare_coll_attr(attr, param.buf_indexes[buf_idx]);
 
             send_buf = param.get_send_buf(new_idx);
             recv_buf = param.get_recv_buf(new_idx);
 
             param.reqs[buf_idx] =
-                param.global_comm->allgatherv((test_conf.place_type == PT_IN) ? recv_buf : send_buf,
-                                              count,
-                                              recv_buf,
-                                              recv_count,
-                                              data_type,
-                                              attr,
-                                              stream);
+                param.global_comm.allgatherv((test_conf.place_type == PT_IN) ? recv_buf : send_buf,
+                                             count,
+                                             recv_buf,
+                                             recv_counts,
+                                             (ccl_datatype_t)data_type,
+                                             attr);
         }
     }
 };

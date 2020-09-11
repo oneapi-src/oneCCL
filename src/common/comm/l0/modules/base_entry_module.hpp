@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,8 +14,9 @@
  limitations under the License.
 */
 #pragma once
-#include "native_device_api/export_api.hpp"
-#include "ccl_type_traits.hpp"
+#include "oneapi/ccl/native_device_api/export_api.hpp"
+#include "oneapi/ccl/ccl_type_traits.hpp"
+#include "supported_topologies.hpp"
 #include "common/comm/l0/modules/kernel_functions.hpp"
 
 namespace native {

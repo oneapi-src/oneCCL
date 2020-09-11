@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +16,7 @@
 #ifndef BASE_HPP
 #define BASE_HPP
 
-#include "ccl.hpp"
+#include "oneapi/ccl.hpp"
 
 #include <chrono>
 #include <cstring>
@@ -42,7 +42,7 @@ using namespace cl::sycl::access;
 #define PRINT(fmt, ...) printf(fmt "\n", ##__VA_ARGS__);
 
 #define PRINT_BY_ROOT(comm, fmt, ...) \
-    if (comm->rank() == 0) { \
+    if (comm.rank() == 0) { \
         printf(fmt "\n", ##__VA_ARGS__); \
     }
 
@@ -73,8 +73,11 @@ using namespace cl::sycl::access;
         try { \
             for (size_t idx = 0; idx < MSG_SIZE_COUNT; ++idx) { \
                 size_t msg_count = msg_counts[idx]; \
-                coll_attr.match_id = msg_match_ids[idx].c_str(); \
-                PRINT_BY_ROOT(comm, "msg_count=%zu, match_id=%s", msg_count, coll_attr.match_id); \
+                coll_attr.set<ccl::operation_attr_id::match_id>(msg_match_ids[idx]); \
+                PRINT_BY_ROOT(comm, \
+                              "msg_count=%zu, match_id=%s", \
+                              msg_count, \
+                              coll_attr.get<ccl::operation_attr_id::match_id>().c_str()); \
                 per_msg_code; \
             } \
         } \

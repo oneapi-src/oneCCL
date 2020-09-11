@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,130 +13,73 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include <algorithm>
-#include <iostream>
-#include <list>
-#include <vector>
+#include "base.hpp"
+#include "mpi.h"
 
-#include "base.h"
-#include <ccl.hpp>
+using namespace oneapi;
 
-using namespace std;
+#define COUNT (1048576 / 256)
 
-ccl_status_t custom_reduce(const void* in_buf,
-                           size_t in_count,
-                           void* inout_buf,
-                           size_t* out_count,
-                           ccl_datatype_t dtype,
-                           const ccl_fn_context_t* context) {
-    size_t dtype_size;
-    ccl_get_datatype_size(dtype, &dtype_size);
+void custom_reduce(const void *in_buf,
+                   size_t in_count,
+                   void *inout_buf,
+                   size_t *out_count,
+                   ccl::datatype dtype,
+                   const ccl::fn_context *context) {
+    auto &env = ccl::environment::instance();
 
-    ASSERT((dtype != ccl_dtype_char) && (dtype != ccl_dtype_int) && (dtype != ccl_dtype_bfp16) &&
-               (dtype != ccl_dtype_float) && (dtype != ccl_dtype_double) &&
-               (dtype != ccl_dtype_int64) && (dtype != ccl_dtype_uint64),
+    size_t dtype_size = env.get_datatype_size(dtype);
+
+    ASSERT(dtype_size != 0, "unexpected datatype size");
+
+    ASSERT((dtype != ccl::datatype::int8) && (dtype != ccl::datatype::uint8) &&
+               (dtype != ccl::datatype::int16) && (dtype != ccl::datatype::uint16) &&
+               (dtype != ccl::datatype::int32) && (dtype != ccl::datatype::uint32) &&
+               (dtype != ccl::datatype::int64) && (dtype != ccl::datatype::uint64) &&
+               (dtype != ccl::datatype::float16) && (dtype != ccl::datatype::float32) &&
+               (dtype != ccl::datatype::float64) && (dtype != ccl::datatype::bfloat16),
            "unexpected datatype %d",
            dtype);
 
     for (size_t idx = 0; idx < in_count; idx++) {
-        ((float*)inout_buf)[idx] += ((float*)in_buf)[idx];
-    }
-
-    return ccl_status_success;
-}
-
-void check_predefined_datatypes() {
-    PRINT_BY_ROOT("check_predefined_datatypes");
-
-    size_t dtype_size, expected_dtype_size;
-
-    for (ccl_datatype_t idx = ccl_dtype_char; idx < ccl_dtype_last_value; idx++) {
-        ccl_get_datatype_size(idx, &dtype_size);
-
-        expected_dtype_size = (idx == ccl_dtype_char)     ? sizeof(char)
-                              : (idx == ccl_dtype_int)    ? sizeof(int)
-                              : (idx == ccl_dtype_bfp16)  ? sizeof(uint16_t)
-                              : (idx == ccl_dtype_float)  ? sizeof(float)
-                              : (idx == ccl_dtype_double) ? sizeof(double)
-                              : (idx == ccl_dtype_int64)  ? sizeof(int64_t)
-                              : (idx == ccl_dtype_uint64) ? sizeof(uint64_t)
-                                                          : 0;
-
-        ASSERT(dtype_size == expected_dtype_size,
-               "unexpected datatype size: got %zu, expected %zu",
-               dtype_size,
-               expected_dtype_size);
+        ((float *)inout_buf)[idx] += ((float *)in_buf)[idx];
     }
 }
 
-void check_create_and_free() {
-    PRINT_BY_ROOT("check_create_and_free");
-
-    ccl_datatype_attr_t attr;
-    size_t dtype_size;
-    const size_t max_dtype_count = 16 * 1024;
-    const size_t iter_count = 16;
-    vector<ccl_datatype_t> dtypes(max_dtype_count);
-
-    for (size_t iter = 0; iter < iter_count; iter++) {
-        dtypes.clear();
-
-        for (size_t idx = 0; idx < max_dtype_count; idx++) {
-            attr.size = idx + 1;
-            ccl_datatype_create(&dtypes[idx], &attr);
-
-            ccl_get_datatype_size(dtypes[idx], &dtype_size);
-
-            if (dtype_size != (idx + 1)) {
-                ASSERT(0, "unexpected datatype size: got %zu, expected %zu", dtype_size, (idx + 1));
-            }
-        }
-
-        for (size_t idx = 0; idx < max_dtype_count; idx++) {
-            ccl_datatype_free(dtypes[idx]);
-        }
-    }
-}
-
-void check_allreduce() {
-    PRINT_BY_ROOT("check_allreduce");
-
-    ccl_datatype_attr_t attr;
+void check_allreduce(ccl::communicator &comm) {
     const size_t max_dtype_count = 1024;
 
-    vector<ccl_datatype_t> dtypes(max_dtype_count);
-    vector<ccl_request_t> reqs(max_dtype_count);
-    vector<vector<float>> send_bufs(max_dtype_count);
-    vector<vector<float>> recv_bufs(max_dtype_count);
+    std::vector<ccl::datatype> dtypes(max_dtype_count);
+    std::vector<ccl::request_t> reqs(max_dtype_count);
+    std::vector<std::vector<float>> send_bufs(max_dtype_count);
+    std::vector<std::vector<float>> recv_bufs(max_dtype_count);
 
-    attr.size = sizeof(float);
+    auto &env = ccl::environment::instance();
+    auto attr = env.create_datatype_attr(ccl::attr_val<ccl::datatype_attr_id::size>(sizeof(float)));
 
     for (size_t idx = 0; idx < max_dtype_count; idx++) {
-        ccl_datatype_create(&dtypes[idx], &attr);
-        send_bufs[idx].resize(COUNT, ::rank + 1);
+        dtypes[idx] = env.register_datatype(attr);
+        send_bufs[idx].resize(COUNT, comm.rank() + 1);
         recv_bufs[idx].resize(COUNT, 0);
     }
 
-    ccl_coll_attr_t coll_attr{};
-    coll_attr.reduction_fn = custom_reduce;
+    auto coll_attr = env.create_operation_attr<ccl::allreduce_attr>();
+    coll_attr.set<ccl::allreduce_attr_id::reduction_fn>((ccl::reduction_fn)custom_reduce);
 
     for (size_t idx = 0; idx < max_dtype_count; idx++) {
-        CCL_CALL(ccl_allreduce(send_bufs[idx].data(),
-                               recv_bufs[idx].data(),
-                               COUNT,
-                               dtypes[idx],
-                               ccl_reduction_custom,
-                               &coll_attr,
-                               nullptr,
-                               nullptr,
-                               &(reqs[idx])));
+        reqs[idx] = comm.allreduce(send_bufs[idx].data(),
+                                   recv_bufs[idx].data(),
+                                   COUNT,
+                                   dtypes[idx],
+                                   ccl::reduction::custom,
+                                   coll_attr);
     }
 
     for (size_t idx = 0; idx < max_dtype_count; idx++) {
-        CCL_CALL(ccl_wait(reqs[idx]));
+        reqs[idx]->wait();
     }
 
-    float expected = (size + 1) * ((float)size / 2);
+    float expected = (comm.size() + 1) * ((float)comm.size() / 2);
 
     for (size_t idx = 0; idx < max_dtype_count; idx++) {
         for (size_t elem_idx = 0; elem_idx < recv_bufs[idx].size(); ++elem_idx) {
@@ -152,42 +95,73 @@ void check_allreduce() {
     }
 
     for (size_t idx = 0; idx < max_dtype_count; idx++) {
-        ccl_datatype_free(dtypes[idx]);
+        env.deregister_datatype(dtypes[idx]);
     }
 }
 
-void check_invalid_actions() {
-    ccl_status_t status;
+void check_create_and_free() {
+    auto &env = ccl::environment::instance();
+    auto attr = env.create_datatype_attr(ccl::attr_val<ccl::datatype_attr_id::size>(1));
 
-    ccl_datatype_t custom_dtype;
-    ccl_datatype_create(&custom_dtype, nullptr);
+    const size_t max_dtype_count = 16 * 1024;
+    const size_t iter_count = 16;
+    std::vector<ccl::datatype> dtypes(max_dtype_count);
 
-    for (ccl_datatype_t idx = ccl_dtype_char; idx < ccl_dtype_last_value; idx++) {
-        status = ccl_datatype_free(idx);
-        ASSERT(status == ccl_status_invalid_arguments, "unexpected status %d", status);
+    for (size_t iter = 0; iter < iter_count; iter++) {
+        dtypes.clear();
+
+        for (size_t idx = 0; idx < max_dtype_count; idx++) {
+            attr.set<ccl::datatype_attr_id::size>(idx + 1);
+            dtypes[idx] = env.register_datatype(attr);
+            size_t dtype_size = env.get_datatype_size(dtypes[idx]);
+
+            if (dtype_size != (idx + 1)) {
+                printf("FAILED\n");
+                throw std::runtime_error("unexpected datatype size: got " +
+                                         std::to_string(dtype_size) + " expected " +
+                                         std::to_string((idx + 1)));
+            }
+        }
+
+        for (size_t idx = 0; idx < max_dtype_count; idx++) {
+            env.deregister_datatype(dtypes[idx]);
+        }
     }
-
-    status = ccl_datatype_free(custom_dtype);
-    ASSERT(status == ccl_status_success, "unexpected status %d", status);
-
-    status = ccl_datatype_free(custom_dtype);
-    ASSERT(status == ccl_status_invalid_arguments, "unexpected status %d", status);
-
-    status = ccl_datatype_free(custom_dtype + 1);
-    ASSERT(status == ccl_status_invalid_arguments, "unexpected status %d", status);
 }
 
 int main() {
-    test_init();
+    MPI_Init(NULL, NULL);
+    int size, rank;
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    check_predefined_datatypes();
+    auto &env = oneapi::ccl::environment::instance();
+    (void)env;
+
+    /* create CCL internal KVS */
+    oneapi::ccl::shared_ptr_class<ccl::kvs> kvs;
+    oneapi::ccl::kvs::address_type main_addr;
+    if (rank == 0) {
+        kvs = env.create_main_kvs();
+        main_addr = kvs->get_address();
+        MPI_Bcast((void *)main_addr.data(), main_addr.size(), MPI_BYTE, 0, MPI_COMM_WORLD);
+    }
+    else {
+        MPI_Bcast((void *)main_addr.data(), main_addr.size(), MPI_BYTE, 0, MPI_COMM_WORLD);
+        kvs = env.create_kvs(main_addr);
+    }
+
+    auto comm = env.create_communicator(size, rank, kvs);
+
+    PRINT_BY_ROOT(comm, "\n- Check register and unregister");
     check_create_and_free();
-    check_allreduce();
-    check_invalid_actions();
+    PRINT_BY_ROOT(comm, "PASSED");
 
-    test_finalize();
+    /* ofi atl is needed for this check */
+    PRINT_BY_ROOT(comm, "\n- Check allreduce with custom datatype");
+    check_allreduce(comm);
+    PRINT_BY_ROOT(comm, "PASSED");
 
-    PRINT_BY_ROOT("PASSED");
-
+    MPI_Finalize();
     return 0;
 }

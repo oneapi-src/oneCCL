@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,25 +17,10 @@
 #include <cassert>
 #include <memory>
 #include <sstream>
-#include "ccl_types.hpp"
+#include "oneapi/ccl/ccl_types.hpp"
 #include "common/utils/enums.hpp"
 #include "common/utils/tuple.hpp"
-
-using device_group_split_type_names = utils::enum_to_str<ccl::device_group_split_type::last_value>;
-inline std::string to_string(ccl::device_group_split_type type) {
-    return device_group_split_type_names({
-                                             "TG",
-                                             "PG",
-                                             "CG",
-                                         })
-        .choose(type, "INVALID_VALUE");
-}
-
-using device_topology_type_names = utils::enum_to_str<ccl::device_topology_type::last_class_value>;
-inline std::string to_string(ccl::device_topology_type class_value) {
-    return device_topology_type_names({ "RING_CLASS", "A2A_CLASS" })
-        .choose(class_value, "INVALID_VALUE");
-}
+#include "supported_topologies.hpp"
 
 template <ccl::device_group_split_type schema_id, ccl::device_topology_type class_id>
 struct topology_addr {
@@ -96,18 +81,21 @@ struct aggregated_topology_addr {
               ccl::device_topology_type class_id,
               class... SchemaArgs>
     bool insert(SchemaArgs&&... args) {
-        if (std::get<class_id>(std::get<schema_id>(web))) {
+        if (std::get<utils::enum_to_underlying(class_id)>(
+                std::get<utils::enum_to_underlying(schema_id)>(web))) {
             assert(false && "Topology is registered already");
             return false;
         }
-        auto& schema_ptr = std::get<class_id>(std::get<schema_id>(web));
+        auto& schema_ptr = std::get<utils::enum_to_underlying(class_id)>(
+            std::get<utils::enum_to_underlying(schema_id)>(web));
         schema_ptr.reset(new topology_addr<schema_id, class_id>(std::forward<SchemaArgs>(args)...));
         return true;
     }
 
     template <ccl::device_group_split_type schema_id, ccl::device_topology_type class_id>
     const topology_addr<schema_id, class_id>& get() const {
-        const auto& schema_ptr = std::get<class_id>(std::get<schema_id>(web));
+        const auto& schema_ptr = std::get<utils::enum_to_underlying(class_id)>(
+            std::get<utils::enum_to_underlying(schema_id)>(web));
         if (!schema_ptr) {
             assert(false && "Topology is not registered");
             throw std::runtime_error("Invalid communication topology");
@@ -118,13 +106,14 @@ struct aggregated_topology_addr {
     template <ccl::device_group_split_type schema_id, ccl::device_topology_type class_id>
     std::string to_string() const {
         details::topology_printer p;
-        p(std::get<schema_id>(web));
+        p(std::get<utils::enum_to_underlying(schema_id)>(web));
         return p.result.str();
     }
 
     template <ccl::device_group_split_type schema_id, ccl::device_topology_type class_id>
     bool is_registered() const {
-        return std::get<class_id>(std::get<schema_id>(web));
+        return std::get<utils::enum_to_underlying(class_id)>(
+            std::get<utils::enum_to_underlying(schema_id)>(web));
     }
 
     std::string to_string() const {

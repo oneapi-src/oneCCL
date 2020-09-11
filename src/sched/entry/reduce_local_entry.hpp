@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +31,7 @@ public:
                        ccl_buffer inout_buf,
                        size_t* out_cnt,
                        const ccl_datatype& dtype,
-                       ccl_reduction_t reduction_op)
+                       ccl::reduction reduction_op)
             : sched_entry(sched),
               in_buf(in_buf),
               in_cnt(in_cnt),
@@ -40,14 +40,14 @@ public:
               dtype(dtype),
               op(reduction_op),
               fn(sched->coll_attr.reduction_fn) {
-        CCL_THROW_IF_NOT(op != ccl_reduction_custom || fn,
+        CCL_THROW_IF_NOT(op != ccl::reduction::custom || fn,
                          "custom reduction requires user provided callback");
     }
 
     void start() override {
         size_t bytes = in_cnt * dtype.size();
         size_t offset = inout_buf.get_offset();
-        const ccl_fn_context_t context = { sched->coll_attr.match_id.c_str(), offset };
+        const ccl::fn_context context = { sched->coll_attr.match_id.c_str(), offset };
         ccl_status_t comp_status = ccl_comp_reduce(in_buf.get_ptr(bytes),
                                                    in_cnt,
                                                    inout_buf.get_ptr(bytes),
@@ -91,6 +91,6 @@ private:
     ccl_buffer inout_buf;
     size_t* out_cnt;
     ccl_datatype dtype;
-    ccl_reduction_t op;
-    ccl_reduction_fn_t fn;
+    ccl::reduction op;
+    ccl::reduction_fn fn;
 };

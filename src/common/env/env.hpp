@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +15,7 @@
 */
 #pragma once
 
-#include "ccl_types.hpp"
+#include "oneapi/ccl/ccl_types.hpp"
 #include "coll/coll.hpp"
 #include "common/utils/utils.hpp"
 #include "common/utils/yield.hpp"

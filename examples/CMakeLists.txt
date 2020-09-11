@@ -85,6 +85,8 @@ if (CCL_BFP16_COMPILER)
 endif()
 
 include_directories(${CCL_ROOT}/include/${CCL_CONFIGURATION})
+include_directories(${CCL_ROOT})
+include_directories(${CCL_ROOT}/mpi/include)
 include_directories(include)
 
 link_directories(${CCL_ROOT}/lib/${CCL_CONFIGURATION})

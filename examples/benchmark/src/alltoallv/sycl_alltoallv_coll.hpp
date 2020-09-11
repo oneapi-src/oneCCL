@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,19 +38,19 @@ struct sycl_alltoallv_coll : sycl_base_coll<Dtype, alltoallv_strategy_impl> {
 
     sycl_alltoallv_coll(bench_coll_init_attr init_attr)
             : coll_base(init_attr,
-                        base_coll::comm->size(),
-                        base_coll::comm->size(),
-                        base_coll::comm->size()) {}
+                        coll_base::comm().size(),
+                        coll_base::comm().size(),
+                        coll_base::comm().size()) {}
 
     virtual void prepare(size_t elem_count) override {
-        size_t local_rank = comm->rank();
+        size_t local_rank = coll_base::comm().rank();
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
             sycl_queue.submit([&](handler& cgh) {
                 auto send_buf = (static_cast<sycl_buffer_t<Dtype>*>(send_bufs[b_idx]));
                 auto recv_buf = (static_cast<sycl_buffer_t<Dtype>*>(recv_bufs[b_idx]));
                 auto send_buf_acc = send_buf->template get_access<mode::write>(cgh);
                 auto recv_buf_acc = recv_buf->template get_access<mode::write>(cgh);
-                cgh.parallel_for<class alltoallv_buf_fill<Dtype>>(range<1>{elem_count*comm->size()}, [=](item<1> e_idx)
+                cgh.parallel_for<class alltoallv_buf_fill<Dtype>>(range<1>{elem_count*coll_base::comm().size()}, [=](item<1> e_idx)
                 {
                     send_buf_acc[e_idx] = local_rank;
                     recv_buf_acc[e_idx] = 0;
@@ -61,8 +61,8 @@ struct sycl_alltoallv_coll : sycl_base_coll<Dtype, alltoallv_strategy_impl> {
 
     virtual void finalize(size_t elem_count) override {
         bool unexpected_device_value = false;
-        Dtype sbuf_expected = comm->rank();
-        size_t comm_size = comm->size();
+        Dtype sbuf_expected = coll_base::comm().rank();
+        size_t comm_size = coll_base::comm().size();
 
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
             sycl_queue.submit([&](handler& cgh) {

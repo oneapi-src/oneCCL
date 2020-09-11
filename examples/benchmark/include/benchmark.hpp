@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,9 +43,10 @@ using namespace cl::sycl::access;
 
 /* specific benchmark variables */
 // TODO: add ccl::bfp16
-constexpr std::initializer_list<ccl::datatype> all_dtypes = { ccl::dt_char,  ccl::dt_int,
-                                                              ccl::dt_float, ccl::dt_double,
-                                                              ccl::dt_int64, ccl::dt_uint64 };
+constexpr std::initializer_list<ccl::datatype> all_dtypes = {
+    ccl::datatype::int8,    ccl::datatype::int32, ccl::datatype::float32,
+    ccl::datatype::float64, ccl::datatype::int64, ccl::datatype::uint64
+};
 
 /* specific benchmark defines */
 // different collectives with duplications
@@ -63,10 +64,12 @@ constexpr std::initializer_list<ccl::datatype> all_dtypes = { ccl::dt_char,  ccl
 
 #define PRINT(fmt, ...) printf(fmt "\n", ##__VA_ARGS__);
 
+#ifndef PRINT_BY_ROOT
 #define PRINT_BY_ROOT(comm, fmt, ...) \
     if (comm->rank() == 0) { \
         printf(fmt "\n", ##__VA_ARGS__); \
     }
+#endif //PRINT_BY_ROOT
 
 #define ASSERT(cond, fmt, ...) \
     do { \
@@ -85,6 +88,7 @@ typedef enum { LOOP_REGULAR, LOOP_UNORDERED } loop_type_t;
 
 std::map<ccl::stream_type, std::string> backend_names = {
     std::make_pair(ccl::stream_type::host, "cpu"),
+    std::make_pair(ccl::stream_type::cpu, "sycl_cpu"),
     std::make_pair(ccl::stream_type::gpu, "sycl") /* TODO: align names */
 };
 
@@ -93,12 +97,12 @@ std::map<loop_type_t, std::string> loop_names = { std::make_pair(LOOP_REGULAR, "
 
 // TODO: add ccl::bfp16
 std::map<ccl::datatype, std::string> dtype_names = {
-    std::make_pair(ccl::datatype::dt_char, "char"),
-    std::make_pair(ccl::datatype::dt_int, "int"),
-    std::make_pair(ccl::datatype::dt_float, "float"),
-    std::make_pair(ccl::datatype::dt_double, "double"),
-    std::make_pair(ccl::datatype::dt_int64, "int64_t"),
-    std::make_pair(ccl::datatype::dt_uint64, "uint64_t"),
+    std::make_pair(ccl::datatype::int8, "char"),
+    std::make_pair(ccl::datatype::int32, "int"),
+    std::make_pair(ccl::datatype::float32, "float"),
+    std::make_pair(ccl::datatype::float64, "double"),
+    std::make_pair(ccl::datatype::int64, "int64_t"),
+    std::make_pair(ccl::datatype::uint64, "uint64_t"),
 };
 
 std::map<ccl::reduction, std::string> reduction_names = {
@@ -288,10 +292,9 @@ void print_timings(ccl::communicator& comm,
     for (idx = 0; idx < comm.size(); idx++)
         recv_counts[idx] = 1;
 
-    ccl::coll_attr attr;
-    memset((void*)&attr, 0, sizeof(ccl_coll_attr_t));
+    auto attr = ccl::environment::instance().create_operation_attr<ccl::allgatherv_attr>();
 
-    comm.allgatherv(&timer, 1, timers.data(), recv_counts.data(), &attr, nullptr)->wait();
+    comm.allgatherv(&timer, 1, timers.data(), recv_counts, attr)->wait();
 
     if (comm.rank() == 0) {
         double avg_timer = 0;
@@ -311,7 +314,7 @@ void print_timings(ccl::communicator& comm,
         stddev_timer = sqrt(sum / comm.size()) / avg_timer * 100;
 
         printf("size %10zu x %5zu bytes, avg %10.2lf us, avg_per_buf %10.2f, stddev %5.1lf %%\n",
-               elem_count * ccl::datatype_get_size(dtype),
+               elem_count * ccl::environment::instance().get_datatype_size(dtype),
                buf_count,
                avg_timer,
                avg_timer_per_buf,
@@ -411,7 +414,7 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
     return 0;
 }
 
-void print_user_options(const user_options_t& options, ccl::communicator* comm) {
+void print_user_options(const user_options_t& options, ccl::communicator& comm) {
     std::stringstream ss;
     ss << "colls:          ";
     std::copy(options.coll_names.begin(),
@@ -441,7 +444,7 @@ void print_user_options(const user_options_t& options, ccl::communicator* comm) 
                   "\n  check:          %d"
                   "\n  v2i_ratio:      %zu"
                   "\n  %s",
-                  comm->size(),
+                  comm.size(),
                   backend_str.c_str(),
                   loop_str.c_str(),
                   options.iters,

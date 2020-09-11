@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +15,7 @@
 */
 #pragma once
 
-#include "ccl.h"
+//#include "ccl.h"
 #include "coll/algorithms/algorithms_enum.hpp"
 #include "comp/bfp16/bfp16_utils.h"
 #include "common/env/env.hpp"
@@ -90,6 +90,9 @@ public:
     static thread_local bool is_worker_thread;
     bool is_ft_enabled;
     ccl_bfp16_impl_type bfp16_impl_type;
+
+    //TODO new_api configure thread wait timeout
+    size_t thread_barrier_wait_timeout_sec = 5;
 
 private:
     global_data();

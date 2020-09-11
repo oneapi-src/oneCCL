@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +17,9 @@
 #define SYCL_SPARSE_ALLREDUCE_COLL_HPP
 
 #ifdef CCL_ENABLE_SYCL
+
+extern cl::sycl::queue sycl_queue;
+
 template <class kernel_value_type, class kernel_index_type>
 struct sparse_allreduce_kernel_name_bufs {};
 template <class kernel_value_type, class kernel_index_type>
@@ -28,15 +31,13 @@ template <class VType,
               sparse_detail::incremental_indices_distributor>
 struct sycl_sparse_allreduce_coll : base_sparse_allreduce_coll<cl::sycl::buffer<VType, 1>,
                                                                cl::sycl::buffer<IType, 1>,
-                                                               IndicesDistributorType> {
+                                                               IndicesDistributorType>,
+                                    device_specific_data {
     using sycl_indices_t = cl::sycl::buffer<IType, 1>;
     using sycl_values_t = cl::sycl::buffer<VType, 1>;
     using coll_base =
         base_sparse_allreduce_coll<sycl_values_t, sycl_indices_t, IndicesDistributorType>;
     using coll_strategy = typename coll_base::coll_strategy;
-
-    using coll_base::stream;
-    using coll_base::comm;
 
     using coll_base::send_ibufs;
     using coll_base::send_vbufs;
@@ -57,7 +58,7 @@ struct sycl_sparse_allreduce_coll : base_sparse_allreduce_coll<cl::sycl::buffer<
     sycl_sparse_allreduce_coll(bench_coll_init_attr init_attr,
                                size_t sbuf_size_modifier = 1,
                                size_t rbuf_size_modifier = 1)
-            : coll_base(init_attr) {
+            : coll_base(init_attr, comm().size()) {
         size_t max_elem_count = base_coll::get_max_elem_count();
         size_t single_buf_max_elem_count = base_coll::get_single_buf_max_elem_count();
 
@@ -66,9 +67,9 @@ struct sycl_sparse_allreduce_coll : base_sparse_allreduce_coll<cl::sycl::buffer<
             send_vbufs[idx] = new sycl_values_t(max_elem_count * sbuf_size_modifier);
 
             recv_ibufs[idx] =
-                new sycl_indices_t(max_elem_count * rbuf_size_modifier * base_coll::comm->size());
+                new sycl_indices_t(max_elem_count * rbuf_size_modifier * comm().size());
             recv_vbufs[idx] =
-                new sycl_values_t(max_elem_count * rbuf_size_modifier * base_coll::comm->size());
+                new sycl_values_t(max_elem_count * rbuf_size_modifier * comm().size());
 
             sycl_queue.submit([&](handler& cgh) {
                 auto send_ibuf = (static_cast<sycl_indices_t*>(send_ibufs[idx]));
@@ -83,7 +84,7 @@ struct sycl_sparse_allreduce_coll : base_sparse_allreduce_coll<cl::sycl::buffer<
                 auto recv_vbuf_acc = recv_vbuf->template get_access<mode::write>(cgh);
 
                 cgh.parallel_for<struct sparse_allreduce_kernel_name_bufs<VType, IType>>
-                        (range<1>{max_elem_count*base_coll::comm->size()}, [=](item<1> e_idx)
+                        (range<1>{max_elem_count*comm().size()}, [=](item<1> e_idx)
                 {
                     if (e_idx.get_linear_id() < max_elem_count) {
                         send_ibuf_acc[e_idx] = 0;
@@ -98,10 +99,10 @@ struct sycl_sparse_allreduce_coll : base_sparse_allreduce_coll<cl::sycl::buffer<
         single_send_ibuf = new sycl_indices_t(single_buf_max_elem_count * sbuf_size_modifier);
         single_send_vbuf = new sycl_values_t(single_buf_max_elem_count * sbuf_size_modifier);
 
-        single_recv_ibuf = new sycl_indices_t(single_buf_max_elem_count * rbuf_size_modifier *
-                                              base_coll::comm->size());
-        single_recv_vbuf = new sycl_values_t(single_buf_max_elem_count * rbuf_size_modifier *
-                                             base_coll::comm->size());
+        single_recv_ibuf =
+            new sycl_indices_t(single_buf_max_elem_count * rbuf_size_modifier * comm().size());
+        single_recv_vbuf =
+            new sycl_values_t(single_buf_max_elem_count * rbuf_size_modifier * comm().size());
 
         sycl_queue.submit([&](handler& cgh) {
             auto send_ibuf = (static_cast<sycl_indices_t*>(single_send_ibuf));
@@ -117,7 +118,7 @@ struct sycl_sparse_allreduce_coll : base_sparse_allreduce_coll<cl::sycl::buffer<
             auto recv_vbuf_acc = recv_vbuf->template get_access<mode::write>(cgh);
 
             cgh.parallel_for<struct sparse_allreduce_kernel_name_single_bufs<VType, IType>>
-                    (range<1>{ single_buf_max_elem_count * base_coll::comm->size() }, [=](item<1> e_idx)
+                    (range<1>{ single_buf_max_elem_count * comm().size() }, [=](item<1> e_idx)
             {
                 if (e_idx.get_linear_id() < single_buf_max_elem_count) {
                     send_ibuf_acc[e_idx] = 0;
@@ -148,7 +149,7 @@ struct sycl_sparse_allreduce_coll : base_sparse_allreduce_coll<cl::sycl::buffer<
                        const bench_coll_exec_attr& attr,
                        req_list_t& reqs) override {
         coll_strategy::start_internal(
-            *comm,
+            comm(),
             *static_cast<const cl::sycl::buffer<IType>*>(send_ibufs[buf_idx]),
             count,
             *reinterpret_cast<const cl::sycl::buffer<VType>*>(send_vbufs[buf_idx]),
@@ -158,16 +159,17 @@ struct sycl_sparse_allreduce_coll : base_sparse_allreduce_coll<cl::sycl::buffer<
             *reinterpret_cast<cl::sycl::buffer<VType>*>(recv_vbufs[buf_idx]),
             recv_vcount[buf_idx],
             attr,
-            stream,
             reqs,
-            fn_ctxs[buf_idx]);
+            fn_ctxs[buf_idx],
+            stream(),
+            coll_strategy::get_op_attr(attr));
     }
 
     virtual void start_single(size_t count,
                               const bench_coll_exec_attr& attr,
                               req_list_t& reqs) override {
         coll_strategy::start_internal(
-            *comm,
+            comm(),
             *static_cast<const cl::sycl::buffer<IType>*>(single_send_ibuf),
             count,
             *reinterpret_cast<const cl::sycl::buffer<VType>*>(single_send_vbuf),
@@ -177,11 +179,26 @@ struct sycl_sparse_allreduce_coll : base_sparse_allreduce_coll<cl::sycl::buffer<
             *reinterpret_cast<cl::sycl::buffer<VType>*>(single_recv_vbuf),
             single_recv_vcount,
             attr,
-            stream,
             reqs,
-            single_fn_ctx);
+            single_fn_ctx,
+            stream(),
+            coll_strategy::get_op_attr(attr));
+    }
+
+    /* global communicator for cpu collectives */
+    static ccl::device_communicator& comm() {
+        if (!device_specific_data::comm_ptr) {
+        }
+        return *device_specific_data::comm_ptr;
+    }
+
+    static ccl::stream& stream() {
+        if (!device_specific_data::stream_ptr) {
+        }
+        return *device_specific_data::stream_ptr;
     }
 };
+
 #endif /* CCL_ENABLE_SYCL */
 
 #endif /* SYCL_SPARSE_ALLREDUCE_COLL_HPP */

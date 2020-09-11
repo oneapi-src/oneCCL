@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,8 @@
 
 namespace native {
 struct device_storage;
-
 struct thread_group_scheduler;
+
 struct thread_group_context : numa_ctx<thread_group_context, SUPPORTED_TOPOLOGY_CLASSES_DECL_LIST> {
     using scaling_context_base =
         numa_ctx<thread_group_context, SUPPORTED_TOPOLOGY_CLASSES_DECL_LIST>;

@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -77,7 +77,9 @@ public:
               ccl::device_group_split_type group_id,
               ccl::device_topology_type class_id>
     std::string create_module_impl(const ze_module_desc_t& module_data) {
-        std::get<class_id>(std::get<group_id>(std::get<module_type>(registered_modules)))
+        std::get<utils::enum_to_underlying(class_id)>(
+            std::get<utils::enum_to_underlying(group_id)>(
+                std::get<module_type>(registered_modules)))
             .reset(new gpu_module_t<module_type, group_id, class_id>(nullptr));
         return { "IPC module storage" };
     }

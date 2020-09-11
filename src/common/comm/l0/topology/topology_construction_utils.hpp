@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,7 +20,7 @@
 #include "common/comm/l0/gpu_device_types.hpp"
 #include "common/comm/l0/topology/topology_creator.hpp"
 #include "common/comm/l0/topology/topology_declarations.hpp"
-#include "native_device_api/l0/utils.hpp"
+#include "oneapi/ccl/native_device_api/l0/utils.hpp"
 
 class device_group_router;
 #define DEVICE_GROUP_WEIGHT  9

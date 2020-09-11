@@ -35,9 +35,9 @@ Collective Call Attributes
 
         /* Sparse allreduce specific */
         ccl_sparse_allreduce_completion_fn_t sparse_allreduce_completion_fn;
-        ccl_sparse_allreduce_alloc_fn_t sparse_allreduce_alloc_fn;
+        ccl::sparse_allreduce_alloc_fn_t sparse_allreduce_alloc_fn;
         const void* sparse_allreduce_fn_ctx;
-        ccl_sparse_coalesce_mode_t sparse_coalesce_mode;
+        ccl::sparse_coalesce_mode sparse_coalesce_mode;
 
     } ccl_coll_attr_t;
 

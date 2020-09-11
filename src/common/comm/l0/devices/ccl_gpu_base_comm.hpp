@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -108,7 +108,8 @@ public:
               class module_impl>
     static std::shared_ptr<module_impl<module_type, group_id, class_id>>& get_gpu_module_unsafe(
         supported_device_modules<module_impl>& modules) {
-        return std::get<class_id>(std::get<group_id>(std::get<module_type>(modules)));
+        return std::get<utils::enum_to_underlying(class_id)>(
+            std::get<utils::enum_to_underlying(group_id)>(std::get<module_type>(modules)));
     }
 
 protected:

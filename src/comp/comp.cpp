@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,38 +13,39 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#include "oneapi/ccl/ccl_types.hpp"
 #include "comp/bfp16/bfp16.hpp"
 #include "comp/comp.hpp"
 #include "common/log/log.hpp"
 #include "common/global/global.hpp"
-#include "common/utils/utils.hpp"
+#include "common/utils/enums.hpp"
 
 #define CCL_REDUCE(type) \
     do { \
         type* in_buf_##type = (type*)in_buf; \
         type* inout_buf_##type = (type*)inout_buf; \
         switch (reduction) { \
-            case ccl_reduction_sum: \
+            case ccl::reduction::sum: \
                 for (i = 0; i < in_count; i++) { \
                     inout_buf_##type[i] += in_buf_##type[i]; \
                 } \
                 break; \
-            case ccl_reduction_prod: \
+            case ccl::reduction::prod: \
                 for (i = 0; i < in_count; i++) { \
                     inout_buf_##type[i] *= in_buf_##type[i]; \
                 } \
                 break; \
-            case ccl_reduction_min: \
+            case ccl::reduction::min: \
                 for (i = 0; i < in_count; i++) { \
                     inout_buf_##type[i] = std::min(in_buf_##type[i], inout_buf_##type[i]); \
                 } \
                 break; \
-            case ccl_reduction_max: \
+            case ccl::reduction::max: \
                 for (i = 0; i < in_count; i++) { \
                     inout_buf_##type[i] = std::max(in_buf_##type[i], inout_buf_##type[i]); \
                 } \
                 break; \
-            default: CCL_FATAL("unexpected value ", reduction); \
+            default: CCL_FATAL("unexpected value ", utils::enum_to_underlying(reduction)); \
         } \
     } while (0)
 
@@ -63,10 +64,10 @@ ccl_status_t ccl_comp_reduce(const void* in_buf,
                              void* inout_buf,
                              size_t* out_count,
                              const ccl_datatype& dtype,
-                             ccl_reduction_t reduction,
-                             ccl_reduction_fn_t reduction_fn,
-                             const ccl_fn_context_t* context) {
-    if (reduction == ccl_reduction_custom) {
+                             ccl::reduction reduction,
+                             ccl::reduction_fn reduction_fn,
+                             const ccl::fn_context* context) {
+    if (reduction == ccl::reduction::custom) {
         CCL_THROW_IF_NOT(reduction_fn, "custom reduction requires user callback");
         reduction_fn(in_buf, in_count, inout_buf, out_count, dtype.idx(), context);
         return ccl_status_success;
@@ -74,17 +75,17 @@ ccl_status_t ccl_comp_reduce(const void* in_buf,
 
     size_t i;
     switch (dtype.idx()) {
-        case ccl_dtype_char: CCL_REDUCE(char); break;
-        case ccl_dtype_int: CCL_REDUCE(int); break;
-        case ccl_dtype_bfp16:
+        case ccl::datatype::int8: CCL_REDUCE(char); break;
+        case ccl::datatype::int32: CCL_REDUCE(int); break;
+        case ccl::datatype::bfloat16:
             if (ccl::global_data::get().bfp16_impl_type == ccl_bfp16_none)
                 CCL_FATAL("CCL doesn't support reductions in BFP16 on this CPU");
             ccl_bfp16_reduce(in_buf, in_count, inout_buf, out_count, reduction);
             break;
-        case ccl_dtype_float: CCL_REDUCE(float); break;
-        case ccl_dtype_double: CCL_REDUCE(double); break;
-        case ccl_dtype_int64: CCL_REDUCE(int64_t); break;
-        case ccl_dtype_uint64: CCL_REDUCE(uint64_t); break;
+        case ccl::datatype::float32: CCL_REDUCE(float); break;
+        case ccl::datatype::float64: CCL_REDUCE(double); break;
+        case ccl::datatype::int64: CCL_REDUCE(int64_t); break;
+        case ccl::datatype::uint64: CCL_REDUCE(uint64_t); break;
         default: CCL_FATAL("unexpected value ", dtype.idx()); break;
     }
     return ccl_status_success;
@@ -96,9 +97,9 @@ ccl_status_t ccl_comp_batch_reduce(const void* in_buf,
                                    void* inout_buf,
                                    size_t* out_count,
                                    const ccl_datatype& dtype,
-                                   ccl_reduction_t reduction,
-                                   ccl_reduction_fn_t reduction_fn,
-                                   const ccl_fn_context_t* context,
+                                   ccl::reduction reduction,
+                                   ccl::reduction_fn reduction_fn,
+                                   const ccl::fn_context* context,
                                    int bfp16_keep_precision_mode,
                                    float* tmp,
                                    float* acc) {
@@ -139,13 +140,13 @@ ccl_status_t ccl_comp_batch_reduce(const void* in_buf,
     return ccl_status_success;
 }
 
-const char* ccl_reduction_to_str(ccl_reduction_t type) {
+const char* ccl_reduction_to_str(ccl::reduction type) {
     switch (type) {
-        case ccl_reduction_sum: return "SUM";
-        case ccl_reduction_prod: return "PROD";
-        case ccl_reduction_min: return "MIN";
-        case ccl_reduction_max: return "MAX";
-        case ccl_reduction_custom: return "CUSTOM";
+        case ccl::reduction::sum: return "SUM";
+        case ccl::reduction::prod: return "PROD";
+        case ccl::reduction::min: return "MIN";
+        case ccl::reduction::max: return "MAX";
+        case ccl::reduction::custom: return "CUSTOM";
         default: return "UNKNOWN";
     }
 }

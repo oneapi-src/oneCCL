@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,7 +46,7 @@ static void reduce_tree(const ccl_bin_tree& tree,
                         ccl_buffer buffer,
                         size_t count,
                         const ccl_datatype& dtype,
-                        ccl_reduction_t reduction,
+                        ccl::reduction reduction,
                         ccl_comm* comm) {
     if (tree.left() != -1) {
         LOG_DEBUG("recv_reduce left ", tree.left());
@@ -87,7 +87,7 @@ static void reduce_bcast_tree(const ccl_bin_tree& tree,
                               ccl_buffer buffer,
                               size_t count,
                               const ccl_datatype& dtype,
-                              ccl_reduction_t reduction,
+                              ccl::reduction reduction,
                               ccl_comm* comm) {
     if (tree.left() != -1) {
         LOG_DEBUG("recv_reduce left ", tree.left());
@@ -149,7 +149,7 @@ ccl_status_t ccl_coll_build_double_tree_op(ccl_sched* sched,
                                            ccl_buffer recv_buf,
                                            size_t count,
                                            const ccl_datatype& dtype,
-                                           ccl_reduction_t op,
+                                           ccl::reduction op,
                                            const ccl_double_tree& dtree,
                                            ccl_comm* comm) {
     ccl_status_t status = ccl_status_success;

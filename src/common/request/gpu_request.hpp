@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,12 +16,12 @@
 #pragma once
 #include <memory>
 
-#include "ccl.hpp"
+#include "oneapi/ccl.hpp"
 
 class ccl_gpu_sched;
 
 namespace ccl {
-
+class event;
 class gpu_request_impl final : public ccl::request {
 public:
     explicit gpu_request_impl(std::unique_ptr<ccl_gpu_sched>&& sched);
@@ -29,6 +29,8 @@ public:
 
     void wait() override;
     bool test() override;
+    bool cancel() override;
+    event& get_event() override;
 
 private:
     std::unique_ptr<ccl_gpu_sched> gpu_sched;
@@ -42,6 +44,8 @@ public:
 
     void wait() override;
     bool test() override;
+    bool cancel() override;
+    event& get_event() override;
 
 private:
     std::shared_ptr<ccl_gpu_sched> gpu_sched;
@@ -55,6 +59,8 @@ public:
 
     void wait() override;
     bool test() override;
+    bool cancel() override;
+    event& get_event() override;
 
 private:
     std::shared_ptr<ccl_gpu_sched> gpu_sched;

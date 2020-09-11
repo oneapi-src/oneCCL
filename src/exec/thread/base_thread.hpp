@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +18,6 @@
 #include <atomic>
 #include <pthread.h>
 
-#include "ccl.h"
 #include "common/log/log.hpp"
 
 #define CCL_UNDEFINED_CPU_ID (-1)

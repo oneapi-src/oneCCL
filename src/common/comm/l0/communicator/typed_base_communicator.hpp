@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,7 +68,7 @@ public:
     typed_base_communicator(ccl::unified_device_type&& device,
                             size_t thread_idx,
                             size_t process_idx,
-                            const ccl::device_comm_attr_t& attr);
+                            const ccl::device_comm_split_attr& attr);
 
     ccl::device_group_split_type get_topology_type() const override;
     ccl::device_topology_type get_topology_class() const override;
@@ -79,63 +79,63 @@ public:
     bool is_ready() const override;
 
     // communicator interfaces implementation
-    COMM_INTERFACE_COLL_DEFINITION__VOID;
-    COMM_INTERFACE_COLL_DEFINITION(char);
-    COMM_INTERFACE_COLL_DEFINITION(int);
-    COMM_INTERFACE_COLL_DEFINITION(int64_t);
-    COMM_INTERFACE_COLL_DEFINITION(uint64_t);
-    COMM_INTERFACE_COLL_DEFINITION(float);
-    COMM_INTERFACE_COLL_DEFINITION(double);
+    DEVICE_COMM_INTERFACE_COLL_DEFINITION__VOID;
+    DEVICE_COMM_INTERFACE_COLL_DEFINITION(char);
+    DEVICE_COMM_INTERFACE_COLL_DEFINITION(int);
+    DEVICE_COMM_INTERFACE_COLL_DEFINITION(int64_t);
+    DEVICE_COMM_INTERFACE_COLL_DEFINITION(uint64_t);
+    DEVICE_COMM_INTERFACE_COLL_DEFINITION(float);
+    DEVICE_COMM_INTERFACE_COLL_DEFINITION(double);
 
 #ifdef CCL_ENABLE_SYCL
-    COMM_INTERFACE_COLL_CLASS_DEFINITION(cl::sycl::buffer<char COMMA 1>);
-    COMM_INTERFACE_COLL_CLASS_DEFINITION(cl::sycl::buffer<int COMMA 1>);
-    COMM_INTERFACE_COLL_CLASS_DEFINITION(cl::sycl::buffer<int64_t COMMA 1>);
-    COMM_INTERFACE_COLL_CLASS_DEFINITION(cl::sycl::buffer<uint64_t COMMA 1>);
-    COMM_INTERFACE_COLL_CLASS_DEFINITION(cl::sycl::buffer<float COMMA 1>);
-    COMM_INTERFACE_COLL_CLASS_DEFINITION(cl::sycl::buffer<double COMMA 1>);
+    DEVICE_COMM_INTERFACE_COLL_CLASS_DEFINITION(cl::sycl::buffer<char COMMA 1>);
+    DEVICE_COMM_INTERFACE_COLL_CLASS_DEFINITION(cl::sycl::buffer<int COMMA 1>);
+    DEVICE_COMM_INTERFACE_COLL_CLASS_DEFINITION(cl::sycl::buffer<int64_t COMMA 1>);
+    DEVICE_COMM_INTERFACE_COLL_CLASS_DEFINITION(cl::sycl::buffer<uint64_t COMMA 1>);
+    DEVICE_COMM_INTERFACE_COLL_CLASS_DEFINITION(cl::sycl::buffer<float COMMA 1>);
+    DEVICE_COMM_INTERFACE_COLL_CLASS_DEFINITION(cl::sycl::buffer<double COMMA 1>);
 #endif //CCL_ENABLE_SYCL
 
-    COMM_INTERFACE_SPARSE_DEFINITION__VOID;
-    COMM_INTERFACE_SPARSE_DEFINITION(char, char);
-    COMM_INTERFACE_SPARSE_DEFINITION(char, int);
-    COMM_INTERFACE_SPARSE_DEFINITION(char, ccl::bfp16);
-    COMM_INTERFACE_SPARSE_DEFINITION(char, float);
-    COMM_INTERFACE_SPARSE_DEFINITION(char, double);
-    COMM_INTERFACE_SPARSE_DEFINITION(char, int64_t);
-    COMM_INTERFACE_SPARSE_DEFINITION(char, uint64_t);
-    COMM_INTERFACE_SPARSE_DEFINITION(int, char);
-    COMM_INTERFACE_SPARSE_DEFINITION(int, int);
-    COMM_INTERFACE_SPARSE_DEFINITION(int, ccl::bfp16);
-    COMM_INTERFACE_SPARSE_DEFINITION(int, float);
-    COMM_INTERFACE_SPARSE_DEFINITION(int, double);
-    COMM_INTERFACE_SPARSE_DEFINITION(int, int64_t);
-    COMM_INTERFACE_SPARSE_DEFINITION(int, uint64_t);
-    COMM_INTERFACE_SPARSE_DEFINITION(int64_t, char);
-    COMM_INTERFACE_SPARSE_DEFINITION(int64_t, int);
-    COMM_INTERFACE_SPARSE_DEFINITION(int64_t, ccl::bfp16);
-    COMM_INTERFACE_SPARSE_DEFINITION(int64_t, float);
-    COMM_INTERFACE_SPARSE_DEFINITION(int64_t, double);
-    COMM_INTERFACE_SPARSE_DEFINITION(int64_t, int64_t);
-    COMM_INTERFACE_SPARSE_DEFINITION(int64_t, uint64_t);
-    COMM_INTERFACE_SPARSE_DEFINITION(uint64_t, char);
-    COMM_INTERFACE_SPARSE_DEFINITION(uint64_t, int);
-    COMM_INTERFACE_SPARSE_DEFINITION(uint64_t, ccl::bfp16);
-    COMM_INTERFACE_SPARSE_DEFINITION(uint64_t, float);
-    COMM_INTERFACE_SPARSE_DEFINITION(uint64_t, double);
-    COMM_INTERFACE_SPARSE_DEFINITION(uint64_t, int64_t);
-    COMM_INTERFACE_SPARSE_DEFINITION(uint64_t, uint64_t);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION__VOID;
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(char, char);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(char, int);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(char, ccl::bfp16);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(char, float);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(char, double);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(char, int64_t);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(char, uint64_t);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(int, char);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(int, int);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(int, ccl::bfp16);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(int, float);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(int, double);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(int, int64_t);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(int, uint64_t);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(int64_t, char);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(int64_t, int);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(int64_t, ccl::bfp16);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(int64_t, float);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(int64_t, double);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(int64_t, int64_t);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(int64_t, uint64_t);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(uint64_t, char);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(uint64_t, int);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(uint64_t, ccl::bfp16);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(uint64_t, float);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(uint64_t, double);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(uint64_t, int64_t);
+    DEVICE_COMM_INTERFACE_SPARSE_DEFINITION(uint64_t, uint64_t);
 
 #ifdef CCL_ENABLE_SYCL
-    COMM_INTERFACE_SPARSE_CLASS_DEFINITION(cl::sycl::buffer<int COMMA 1>,
-                                           cl::sycl::buffer<float COMMA 1>);
-    COMM_INTERFACE_SPARSE_CLASS_DEFINITION(cl::sycl::buffer<int COMMA 1>,
-                                           cl::sycl::buffer<ccl::bfp16 COMMA 1>);
+    DEVICE_COMM_INTERFACE_SPARSE_CLASS_DEFINITION(cl::sycl::buffer<int COMMA 1>,
+                                                  cl::sycl::buffer<float COMMA 1>);
+    DEVICE_COMM_INTERFACE_SPARSE_CLASS_DEFINITION(cl::sycl::buffer<int COMMA 1>,
+                                                  cl::sycl::buffer<ccl::bfp16 COMMA 1>);
 
-    COMM_INTERFACE_SPARSE_CLASS_DEFINITION(cl::sycl::buffer<int64_t COMMA 1>,
-                                           cl::sycl::buffer<float COMMA 1>);
-    COMM_INTERFACE_SPARSE_CLASS_DEFINITION(cl::sycl::buffer<int64_t COMMA 1>,
-                                           cl::sycl::buffer<ccl::bfp16 COMMA 1>);
+    DEVICE_COMM_INTERFACE_SPARSE_CLASS_DEFINITION(cl::sycl::buffer<int64_t COMMA 1>,
+                                                  cl::sycl::buffer<float COMMA 1>);
+    DEVICE_COMM_INTERFACE_SPARSE_CLASS_DEFINITION(cl::sycl::buffer<int64_t COMMA 1>,
+                                                  cl::sycl::buffer<ccl::bfp16 COMMA 1>);
 #endif //CCL_ENABLE_SYCL
 
     // Device community interface

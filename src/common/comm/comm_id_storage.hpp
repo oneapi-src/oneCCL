@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +15,7 @@
 */
 #pragma once
 
-#include "ccl_types.h"
+#include "oneapi/ccl/ccl_types.hpp"
 #include "common/log/log.hpp"
 #include "common/utils/spinlock.hpp"
 
@@ -72,6 +72,13 @@ public:
 
         ccl_comm_id_t value() const noexcept {
             return id;
+        }
+
+        //TODO
+        comm_id clone() {
+            comm_id cloned(id_storage.get(), id);
+            cloned.refuse = true;
+            return cloned;
         }
 
     private:

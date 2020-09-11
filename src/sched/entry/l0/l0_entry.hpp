@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,9 +14,12 @@
  limitations under the License.
 */
 #pragma once
-#include "ccl_types.hpp"
+#include "oneapi/ccl/ccl_types.hpp"
 #include "common/datatype/datatype.hpp"
-#include "ccl_type_traits.hpp"
+#include "oneapi/ccl/ccl_type_traits.hpp"
+
+#include "oneapi/ccl.hpp"
+
 #include "comp/comp.hpp"
 #include "common/comm/l0/devices/devices_declaration.hpp"
 #include "sched/entry/coll/direct/base_coll_entry.hpp"
@@ -64,7 +67,7 @@ public:
                    ccl_buffer recv_buf,
                    size_t cnt,
                    ccl_datatype_t dtype_in,
-                   ccl_reduction_t op,
+                   ccl::reduction op,
                    std::shared_ptr<ccl_stream> &stream)
             : sched_entry(sched),
               parent_communicator(comm),
@@ -256,7 +259,7 @@ public:
                             ccl_ipc_source_gpu_comm<ccl_gpu_comm>::type_idx()) {
                         if (group_id == ccl::device_group_split_type::cluster) {
                             auto c = ccl::environment::instance().create_communicator();
-                            if (c->rank() == 0) {
+                            if (c.rank() == 0) {
                                 throw ccl::ccl_error(
                                     std::string("cannot sync queue from real device, error: ") +
                                     native::to_string(ret));
@@ -333,7 +336,7 @@ protected:
     ccl_buffer recv_buf;
     size_t elem_count;
     ccl_datatype dtype;
-    ccl_reduction_t op;
+    ccl::reduction op;
     atl_req_t req{};
     std::shared_ptr<ccl_stream> device_stream;
 

@@ -25,6 +25,10 @@ else()
 endif()
 
 set(OPENCLROOT "${dpcpp_root_hints}/include/sycl/CL/")
+find_package(OpenCL)
+if(OpenCL_FOUND)
+    set(COMPUTE_RUNTIME_NAME OpenCL::OpenCL)
+endif()
 
 if(MULTI_GPU_SUPPORT)
     find_package(L0 REQUIRED)

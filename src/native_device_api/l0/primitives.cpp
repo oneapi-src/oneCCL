@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,8 +17,8 @@
 #include <cstring>
 #include <sstream>
 
-#include "native_device_api/l0/primitives_impl.hpp"
-#include "native_device_api/l0/device.hpp"
+#include "oneapi/ccl/native_device_api/l0/primitives_impl.hpp"
+#include "oneapi/ccl/native_device_api/l0/device.hpp"
 
 namespace native {
 namespace detail {

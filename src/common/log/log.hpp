@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,7 @@
 #include <mutex>
 #include <sstream>
 
-#include "ccl_types.hpp"
+#include "oneapi/ccl/ccl_types.hpp"
 #include "common/utils/spinlock.hpp"
 #include "common/utils/utils.hpp"
 
@@ -231,56 +231,32 @@ extern ccl_logger logger;
 #define LOG_ERROR(...) \
     { \
         if (logger.get_log_level() >= ccl_log_level::ERROR) { \
-            logger.error("|ERROR| ", \
-                         basedir_static(__FILE__), \
-                         ":", \
-                         __LINE__, \
-                         "  ", \
-                         __FUNCTION__, \
-                         " ", \
-                         ##__VA_ARGS__); \
+            logger.error( \
+                basedir_static(__FILE__), ":", __LINE__, "  ", __FUNCTION__, " ", ##__VA_ARGS__); \
         } \
     }
 
 #define LOG_INFO(...) \
     { \
         if (logger.get_log_level() >= ccl_log_level::INFO) { \
-            logger.info("|INFO| ", \
-                        basedir_static(__FILE__), \
-                        ":", \
-                        __LINE__, \
-                        "  ", \
-                        __FUNCTION__, \
-                        " ", \
-                        ##__VA_ARGS__); \
+            logger.info( \
+                basedir_static(__FILE__), ":", __LINE__, "  ", __FUNCTION__, " ", ##__VA_ARGS__); \
         } \
     }
 
 #define LOG_DEBUG(...) \
     { \
         if (logger.get_log_level() >= ccl_log_level::DEBUG) { \
-            logger.debug("|DEBUG| ", \
-                         basedir_static(__FILE__), \
-                         ":", \
-                         __LINE__, \
-                         "  ", \
-                         __FUNCTION__, \
-                         " ", \
-                         ##__VA_ARGS__); \
+            logger.debug( \
+                basedir_static(__FILE__), ":", __LINE__, "  ", __FUNCTION__, " ", ##__VA_ARGS__); \
         } \
     }
 
 #define LOG_TRACE(...) \
     { \
         if (logger.get_log_level() >= ccl_log_level::TRACE) { \
-            logger.trace("|TRACE| ", \
-                         basedir_static(__FILE__), \
-                         ":", \
-                         __LINE__, \
-                         "  ", \
-                         __FUNCTION__, \
-                         " ", \
-                         ##__VA_ARGS__); \
+            logger.trace( \
+                basedir_static(__FILE__), ":", __LINE__, "  ", __FUNCTION__, " ", ##__VA_ARGS__); \
         } \
     }
 

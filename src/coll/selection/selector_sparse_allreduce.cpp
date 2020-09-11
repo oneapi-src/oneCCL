@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,7 +57,7 @@ bool ccl_algorithm_selector_helper<ccl_coll_sparse_allreduce_algo>::can_use(
         algo != ccl_coll_sparse_allreduce_ring) {
         can_use = false;
     }
-    else if (param.sparse_coalesce_mode == ccl_sparse_coalesce_disable &&
+    else if (param.sparse_coalesce_mode == ccl::sparse_coalesce_mode::disable &&
              algo != ccl_coll_sparse_allreduce_3_allgatherv) {
         can_use = false;
     }

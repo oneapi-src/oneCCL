@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +16,8 @@
 #pragma once
 #include <sstream>
 
-#include "ccl_types.hpp"
+#include "oneapi/ccl/ccl_types.hpp"
+#include "oneapi/ccl/ccl_comm_split_attr_ids.hpp"
 #include "common/comm/l0/device_containers.hpp"
 
 namespace native {

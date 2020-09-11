@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +18,7 @@
 #include <map>
 #include <vector>
 
-#include "native_device_api/l0/utils.hpp"
+#include "oneapi/ccl/native_device_api/l0/utils.hpp"
 
 namespace native {
 namespace details {

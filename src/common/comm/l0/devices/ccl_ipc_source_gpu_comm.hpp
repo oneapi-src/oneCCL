@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -93,7 +93,11 @@ public:
             default: {
                 throw std::runtime_error(
                     std::string("ccl_ipc_source_gpu_comm must be created") +
-                    "for process-based topology, but requested: " + std::to_string(group_id));
+                    "for process-based topology, but requested: " +
+                    std::to_string(
+                        static_cast<
+                            typename std::underlying_type<ccl::device_group_split_type>::type>(
+                            group_id)));
             }
         }
     }

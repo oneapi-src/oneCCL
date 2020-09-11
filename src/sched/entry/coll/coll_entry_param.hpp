@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,7 @@ struct ccl_coll_entry_param {
     const size_t* send_counts;
     const size_t* recv_counts;
     ccl_datatype dtype;
-    ccl_reduction_t reduction;
+    ccl::reduction reduction;
     size_t root;
     ccl_comm* comm;
 
