@@ -1,8 +1,7 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
@@ -12,28 +11,30 @@
   
 
   
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+
+  
   
   
   
 
   
-  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-        <script type="text/javascript" src="../_static/jquery.js"></script>
-        <script type="text/javascript" src="../_static/underscore.js"></script>
-        <script type="text/javascript" src="../_static/doctools.js"></script>
-        <script type="text/javascript" src="../_static/language_data.js"></script>
-        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <script type="text/javascript" src="../_static/js/theme.js"></script>
 
     
-
-  
-  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link href="../_static/style.css" rel="stylesheet" type="text/css">
@@ -51,7 +52,7 @@
           
 
           
-            <a href="../index.html" class="icon icon-home"> oneCCL Documentation (Beta)
+            <a href="../index.html" class="icon icon-home" alt="Documentation Home"> oneCCL Documentation (Beta)
           
 
           
@@ -74,6 +75,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -258,6 +260,7 @@
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1aa8125c78bac1c8172e54fb08f7be6ed4.html">Enum ccl_host_attributes</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a42085859d35d75cc288367198c003e0d.html">Enum ccl_reduction_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a6f190c608822e4b3feff0e9c709fcc63.html">Enum ccl_resize_action</a></li>
+<li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1ae65096ea29339cb532924c0b6541b10d.html">Enum ccl_sparse_coalesce_mode</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90.html">Enum ccl_status_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a5872dcb7cc3a72fbf94a20d07ce6d63b.html">Enum ccl_stream_type_t</a></li>
 </ul>
@@ -328,7 +331,9 @@
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a0df469be505174d5656a3c5cba27ddd1.html">Typedef ccl_request_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1aa827bd4240d612fa112cc603dda7172f.html">Typedef ccl_resize_action_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a18fa4bbd5cc606204bdada4979625ff4.html">Typedef ccl_resize_fn_t</a></li>
-<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a21fdbaac2bedefc853712b36fab6f4bb.html">Typedef ccl_sparse_allreduce_completion_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1af277d029435f054a28ca3a97f35150c5.html">Typedef ccl_sparse_allreduce_alloc_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a71f5034a71138c438ceec8769fd54b23.html">Typedef ccl_sparse_allreduce_completion_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a90179df89e435769c8ff8b647301832f.html">Typedef ccl_sparse_coalesce_mode_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1ae4f1fe2e25f4a0189765458d8a83def5.html">Typedef ccl_stream_t</a></li>
 </ul>
 </li>
@@ -346,6 +351,7 @@
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -384,7 +390,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="../index.html">Docs</a> &raquo;</li>
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
         
       <li>Program Listing for File ccl_device_types.hpp</li>
     
@@ -412,109 +418,36 @@
 
 <span class="cp">#ifdef MULTI_GPU_SUPPORT</span>
 <span class="cp">#ifndef CCL_PRODUCT_FULL</span>
-    <span class="cp">#error &quot;Do not include this file directly. Please include &#39;ccl_types.hpp&#39;&quot;</span>
+<span class="cp">#error &quot;Do not include this file directly. Please include &#39;ccl_types.hpp&#39;&quot;</span>
 <span class="cp">#endif</span>
 
-<span class="k">namespace</span> <span class="n">ccl</span>
-<span class="p">{</span>
+<span class="k">namespace</span> <span class="n">ccl</span> <span class="p">{</span>
 <span class="cm">/* TODO</span>
 <span class="cm"> * Push the following code into something similar with &#39;ccl_device_types.hpp&#39;</span>
 <span class="cm"> */</span>
-<span class="k">enum</span> <span class="n">device_topology_type</span>
-<span class="p">{</span>
-    <span class="n">device_group_ring</span><span class="p">,</span>
-    <span class="n">device_group_torn_apart_ring</span><span class="p">,</span>
-    <span class="n">thread_group_ring</span><span class="p">,</span>
-    <span class="n">thread_group_torn_apart_ring</span><span class="p">,</span>
-    <span class="n">allied_process_group_ring</span><span class="p">,</span>
-    <span class="n">process_group_torn_apart_ring</span><span class="p">,</span>
-    <span class="n">a2a_device_group</span><span class="p">,</span>
-    <span class="n">a2a_thread_group</span><span class="p">,</span>
-    <span class="n">a2a_allied_process_group</span><span class="p">,</span>
+<span class="k">enum</span> <span class="n">device_group_split_type</span> <span class="p">{</span>
+    <span class="kr">thread</span><span class="p">,</span>
+    <span class="n">process</span><span class="p">,</span>
+    <span class="n">cluster</span><span class="p">,</span>
 
     <span class="n">last_value</span>
 <span class="p">};</span>
 
-<span class="cp">#define SUPPORTED_HW_TOPOLOGIES_DECL_LIST       ccl::device_topology_type::device_group_ring,               \</span>
-<span class="cp">                                                ccl::device_topology_type::device_group_torn_apart_ring,    \</span>
-<span class="cp">                                                ccl::device_topology_type::thread_group_ring,               \</span>
-<span class="cp">                                                ccl::device_topology_type::thread_group_torn_apart_ring,    \</span>
-<span class="cp">                                                ccl::device_topology_type::allied_process_group_ring,       \</span>
-<span class="cp">                                                ccl::device_topology_type::process_group_torn_apart_ring,   \</span>
-<span class="cp">                                                ccl::device_topology_type::a2a_device_group,                \</span>
-<span class="cp">                                                ccl::device_topology_type::a2a_thread_group,                \</span>
-<span class="cp">                                                ccl::device_topology_type::a2a_allied_process_group</span>
-
-<span class="cp">#define DEVICE_GROUP_TOPOLOGIES_DECL_LIST       ccl::device_topology_type::device_group_ring,               \</span>
-<span class="cp">                                                ccl::device_topology_type::device_group_torn_apart_ring,    \</span>
-<span class="cp">                                                ccl::device_topology_type::a2a_device_group</span>
-
-<span class="cp">#define THREAD_GROUP_TOPOLOGIES_DECL_LIST       ccl::device_topology_type::thread_group_ring,               \</span>
-<span class="cp">                                                ccl::device_topology_type::thread_group_torn_apart_ring,    \</span>
-<span class="cp">                                                ccl::device_topology_type::a2a_thread_group</span>
-
-<span class="cp">#define PROCESS_GROUP_TOPOLOGIES_DECL_LIST      ccl::device_topology_type::allied_process_group_ring,       \</span>
-<span class="cp">                                                ccl::device_topology_type::process_group_torn_apart_ring,   \</span>
-<span class="cp">                                                ccl::device_topology_type::a2a_allied_process_group</span>
-
-<span class="k">enum</span> <span class="n">device_topology_class</span>
-<span class="p">{</span>
-    <span class="n">ring_class</span> <span class="o">=</span> <span class="n">ring_algo_class</span><span class="p">,</span>
-    <span class="n">a2a_class</span> <span class="o">=</span> <span class="n">a2a_algo_class</span><span class="p">,</span>
+<span class="k">enum</span> <span class="n">device_topology_type</span> <span class="p">{</span>
+    <span class="n">ring</span> <span class="o">=</span> <span class="n">ring_algo_class</span><span class="p">,</span>
+    <span class="n">a2a</span> <span class="o">=</span> <span class="n">a2a_algo_class</span><span class="p">,</span>
 
     <span class="n">last_class_value</span> <span class="o">=</span> <span class="n">ccl_topology_class_last_value</span>
 <span class="p">};</span>
 
-<span class="k">enum</span> <span class="n">device_topology_group</span>
-<span class="p">{</span>
-    <span class="n">dev_group</span> <span class="o">=</span> <span class="n">device_group</span><span class="p">,</span>
-    <span class="n">thread_dev_group</span> <span class="o">=</span> <span class="n">thread_group</span><span class="p">,</span>
-    <span class="n">process_dev_group</span> <span class="o">=</span> <span class="n">process_group</span><span class="p">,</span>
+<span class="cp">#define SUPPORTED_HW_TOPOLOGIES_DECL_LIST \</span>
+<span class="cp">    ccl::device_group_split_type::thread, ccl::device_group_split_type::process, \</span>
+<span class="cp">        ccl::device_group_split_type::cluster</span>
 
-    <span class="n">last_group_value</span> <span class="o">=</span> <span class="n">ccl_topology_group_last_value</span>
-<span class="p">};</span>
+<span class="cp">#define SUPPORTED_TOPOLOGY_CLASSES_DECL_LIST \</span>
+<span class="cp">    ccl::device_topology_type::ring, ccl::device_topology_type::a2a</span>
 
-<span class="k">template</span> <span class="o">&lt;</span><span class="n">device_topology_type</span> <span class="n">topology</span><span class="o">&gt;</span>
-<span class="k">constexpr</span> <span class="n">device_topology_class</span> <span class="n">topology_to_class</span><span class="p">()</span>
-<span class="p">{</span>
-    <span class="k">return</span> <span class="n">std</span><span class="o">::</span><span class="n">tuple_element</span><span class="o">&lt;</span><span class="n">topology</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">tuple</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">integral_constant</span><span class="o">&lt;</span><span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_class</span><span class="p">,</span> <span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_class</span><span class="o">::</span><span class="n">ring_class</span><span class="o">&gt;</span><span class="p">,</span>
-                                                   <span class="n">std</span><span class="o">::</span><span class="n">integral_constant</span><span class="o">&lt;</span><span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_class</span><span class="p">,</span> <span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_class</span><span class="o">::</span><span class="n">ring_class</span><span class="o">&gt;</span><span class="p">,</span>
-                                                   <span class="n">std</span><span class="o">::</span><span class="n">integral_constant</span><span class="o">&lt;</span><span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_class</span><span class="p">,</span> <span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_class</span><span class="o">::</span><span class="n">ring_class</span><span class="o">&gt;</span><span class="p">,</span>
-                                                   <span class="n">std</span><span class="o">::</span><span class="n">integral_constant</span><span class="o">&lt;</span><span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_class</span><span class="p">,</span> <span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_class</span><span class="o">::</span><span class="n">ring_class</span><span class="o">&gt;</span><span class="p">,</span>
-                                                   <span class="n">std</span><span class="o">::</span><span class="n">integral_constant</span><span class="o">&lt;</span><span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_class</span><span class="p">,</span> <span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_class</span><span class="o">::</span><span class="n">ring_class</span><span class="o">&gt;</span><span class="p">,</span>
-                                                   <span class="n">std</span><span class="o">::</span><span class="n">integral_constant</span><span class="o">&lt;</span><span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_class</span><span class="p">,</span> <span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_class</span><span class="o">::</span><span class="n">ring_class</span><span class="o">&gt;</span><span class="p">,</span>
-                                                   <span class="n">std</span><span class="o">::</span><span class="n">integral_constant</span><span class="o">&lt;</span><span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_class</span><span class="p">,</span> <span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_class</span><span class="o">::</span><span class="n">a2a_class</span><span class="o">&gt;</span><span class="p">,</span>
-                                                   <span class="n">std</span><span class="o">::</span><span class="n">integral_constant</span><span class="o">&lt;</span><span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_class</span><span class="p">,</span> <span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_class</span><span class="o">::</span><span class="n">a2a_class</span><span class="o">&gt;</span><span class="p">,</span>
-                                                   <span class="n">std</span><span class="o">::</span><span class="n">integral_constant</span><span class="o">&lt;</span><span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_class</span><span class="p">,</span> <span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_class</span><span class="o">::</span><span class="n">a2a_class</span><span class="o">&gt;&gt;&gt;::</span><span class="n">type</span><span class="o">::</span><span class="n">value</span><span class="p">;</span>
-
-<span class="p">}</span>
-
-<span class="k">template</span> <span class="o">&lt;</span><span class="n">device_topology_type</span> <span class="n">topology</span><span class="o">&gt;</span>
-<span class="k">constexpr</span> <span class="n">device_topology_group</span> <span class="n">topology_to_group</span><span class="p">()</span>
-<span class="p">{</span>
-    <span class="k">return</span> <span class="n">std</span><span class="o">::</span><span class="n">tuple_element</span><span class="o">&lt;</span><span class="n">topology</span><span class="p">,</span>
-                <span class="n">std</span><span class="o">::</span><span class="n">tuple</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">integral_constant</span><span class="o">&lt;</span><span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_group</span><span class="p">,</span>
-                                                  <span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_group</span><span class="o">::</span><span class="n">dev_group</span><span class="o">&gt;</span><span class="p">,</span>
-                           <span class="n">std</span><span class="o">::</span><span class="n">integral_constant</span><span class="o">&lt;</span><span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_group</span><span class="p">,</span>
-                                                  <span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_group</span><span class="o">::</span><span class="n">dev_group</span><span class="o">&gt;</span><span class="p">,</span>
-                           <span class="n">std</span><span class="o">::</span><span class="n">integral_constant</span><span class="o">&lt;</span><span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_group</span><span class="p">,</span>
-                                                  <span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_group</span><span class="o">::</span><span class="n">thread_dev_group</span><span class="o">&gt;</span><span class="p">,</span>
-                           <span class="n">std</span><span class="o">::</span><span class="n">integral_constant</span><span class="o">&lt;</span><span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_group</span><span class="p">,</span>
-                                                  <span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_group</span><span class="o">::</span><span class="n">thread_dev_group</span><span class="o">&gt;</span><span class="p">,</span>
-                           <span class="n">std</span><span class="o">::</span><span class="n">integral_constant</span><span class="o">&lt;</span><span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_group</span><span class="p">,</span>
-                                                  <span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_group</span><span class="o">::</span><span class="n">process_dev_group</span><span class="o">&gt;</span><span class="p">,</span>
-                           <span class="n">std</span><span class="o">::</span><span class="n">integral_constant</span><span class="o">&lt;</span><span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_group</span><span class="p">,</span>
-                                                  <span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_group</span><span class="o">::</span><span class="n">process_dev_group</span><span class="o">&gt;</span><span class="p">,</span>
-                           <span class="n">std</span><span class="o">::</span><span class="n">integral_constant</span><span class="o">&lt;</span><span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_group</span><span class="p">,</span>
-                                                  <span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_group</span><span class="o">::</span><span class="n">dev_group</span><span class="o">&gt;</span><span class="p">,</span>
-                           <span class="n">std</span><span class="o">::</span><span class="n">integral_constant</span><span class="o">&lt;</span><span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_group</span><span class="p">,</span>
-                                                  <span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_group</span><span class="o">::</span><span class="n">thread_dev_group</span><span class="o">&gt;</span><span class="p">,</span>
-                           <span class="n">std</span><span class="o">::</span><span class="n">integral_constant</span><span class="o">&lt;</span><span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_group</span><span class="p">,</span>
-                                                  <span class="n">ccl</span><span class="o">::</span><span class="n">device_topology_group</span><span class="o">::</span><span class="n">process_dev_group</span><span class="o">&gt;</span>
-                           <span class="o">&gt;&gt;::</span><span class="n">type</span><span class="o">::</span><span class="n">value</span><span class="p">;</span>
-
-<span class="p">}</span>
-<span class="k">template</span><span class="o">&lt;</span><span class="n">ccl_device_attributes</span> <span class="n">attrId</span><span class="o">&gt;</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="n">ccl_device_attributes</span> <span class="n">attrId</span><span class="o">&gt;</span>
 <span class="k">struct</span> <span class="n">ccl_device_attributes_traits</span> <span class="p">{};</span>
 
 <span class="k">using</span> <span class="n">process_id</span> <span class="o">=</span> <span class="kt">size_t</span><span class="p">;</span>
@@ -528,12 +461,7 @@
 <span class="k">static</span> <span class="k">constexpr</span> <span class="n">index_type</span> <span class="n">unused_index_value</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">numeric_limits</span><span class="o">&lt;</span><span class="n">index_type</span><span class="o">&gt;::</span><span class="n">max</span><span class="p">();</span> <span class="c1">//TODO</span>
 <span class="c1">//TODO implement class instead</span>
 <span class="k">using</span> <span class="n">device_index_type</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">tuple</span><span class="o">&lt;</span><span class="n">index_type</span><span class="p">,</span> <span class="n">index_type</span><span class="p">,</span> <span class="n">index_type</span><span class="o">&gt;</span><span class="p">;</span>
-<span class="k">enum</span> <span class="n">device_index_enum</span>
-<span class="p">{</span>
-    <span class="n">driver_index_id</span><span class="p">,</span>
-    <span class="n">device_index_id</span><span class="p">,</span>
-    <span class="n">subdevice_index_id</span>
-<span class="p">};</span>
+<span class="k">enum</span> <span class="n">device_index_enum</span> <span class="p">{</span> <span class="n">driver_index_id</span><span class="p">,</span> <span class="n">device_index_id</span><span class="p">,</span> <span class="n">subdevice_index_id</span> <span class="p">};</span>
 <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">to_string</span><span class="p">(</span><span class="k">const</span> <span class="n">device_index_type</span><span class="o">&amp;</span> <span class="n">device_id</span><span class="p">);</span>
 <span class="n">device_index_type</span> <span class="nf">from_string</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">device_id_str</span><span class="p">);</span>
 
@@ -541,12 +469,12 @@
 <span class="k">using</span> <span class="n">process_device_indices_t</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="n">process_id</span><span class="p">,</span> <span class="n">device_indices_t</span><span class="o">&gt;</span><span class="p">;</span>
 <span class="k">using</span> <span class="n">cluster_device_indices_t</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="n">host_id</span><span class="p">,</span> <span class="n">process_device_indices_t</span><span class="o">&gt;</span><span class="p">;</span>
 
-<span class="k">template</span><span class="o">&lt;</span><span class="kt">int</span> <span class="n">sycl_feature_enabled</span><span class="o">&gt;</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="kt">int</span> <span class="n">sycl_feature_enabled</span><span class="o">&gt;</span>
 <span class="k">struct</span> <span class="n">generic_device_type</span> <span class="p">{};</span>
 
-<span class="k">template</span><span class="o">&lt;</span><span class="kt">int</span> <span class="n">sycl_feature_enabled</span><span class="o">&gt;</span>
+<span class="k">template</span> <span class="o">&lt;</span><span class="kt">int</span> <span class="n">sycl_feature_enabled</span><span class="o">&gt;</span>
 <span class="k">struct</span> <span class="n">generic_device_context_type</span> <span class="p">{};</span>
-<span class="p">}</span>
+<span class="p">}</span> <span class="c1">// namespace ccl</span>
 
 <span class="n">std</span><span class="o">::</span><span class="n">ostream</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">&lt;&lt;</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">ostream</span><span class="o">&amp;</span> <span class="n">out</span><span class="p">,</span> <span class="k">const</span> <span class="n">ccl</span><span class="o">::</span><span class="n">device_index_type</span><span class="o">&amp;</span><span class="p">);</span>
 <span class="n">std</span><span class="o">::</span><span class="n">ostream</span><span class="o">&amp;</span> <span class="k">operator</span><span class="o">&gt;&gt;</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">ostream</span><span class="o">&amp;</span> <span class="n">out</span><span class="p">,</span> <span class="k">const</span> <span class="n">ccl</span><span class="o">::</span><span class="n">device_index_type</span><span class="o">&amp;</span><span class="p">);</span>
@@ -567,11 +495,19 @@
 
   <div role="contentinfo">
     <p>
+        
         &copy; Copyright 2019–2020
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
 <br>
 <div>
   <p>
@@ -589,7 +525,6 @@
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

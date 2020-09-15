@@ -1,8 +1,7 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
@@ -12,32 +11,34 @@
   
 
   
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+
+  
   
   
   
 
   
-  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-        <script type="text/javascript" src="../_static/jquery.js"></script>
-        <script type="text/javascript" src="../_static/underscore.js"></script>
-        <script type="text/javascript" src="../_static/doctools.js"></script>
-        <script type="text/javascript" src="../_static/language_data.js"></script>
-        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <script type="text/javascript" src="../_static/js/theme.js"></script>
 
     
-
-  
-  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Enum ccl_stream_type_t" href="enum_ccl__types_8h_1a5872dcb7cc3a72fbf94a20d07ce6d63b.html" />
-    <link rel="prev" title="Enum ccl_resize_action" href="enum_ccl__types_8h_1a6f190c608822e4b3feff0e9c709fcc63.html" />
+    <link rel="prev" title="Enum ccl_sparse_coalesce_mode" href="enum_ccl__types_8h_1ae65096ea29339cb532924c0b6541b10d.html" />
     <link href="../_static/style.css" rel="stylesheet" type="text/css">
 
 </head>
@@ -53,7 +54,7 @@
           
 
           
-            <a href="../index.html" class="icon icon-home"> oneCCL Documentation (Beta)
+            <a href="../index.html" class="icon icon-home" alt="Documentation Home"> oneCCL Documentation (Beta)
           
 
           
@@ -76,6 +77,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -260,6 +262,7 @@
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1aa8125c78bac1c8172e54fb08f7be6ed4.html">Enum ccl_host_attributes</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a42085859d35d75cc288367198c003e0d.html">Enum ccl_reduction_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a6f190c608822e4b3feff0e9c709fcc63.html">Enum ccl_resize_action</a></li>
+<li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1ae65096ea29339cb532924c0b6541b10d.html">Enum ccl_sparse_coalesce_mode</a></li>
 <li class="toctree-l4 current"><a class="current reference internal" href="#">Enum ccl_status_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="enum_ccl__types_8h_1a5872dcb7cc3a72fbf94a20d07ce6d63b.html">Enum ccl_stream_type_t</a></li>
 </ul>
@@ -330,7 +333,9 @@
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a0df469be505174d5656a3c5cba27ddd1.html">Typedef ccl_request_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1aa827bd4240d612fa112cc603dda7172f.html">Typedef ccl_resize_action_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a18fa4bbd5cc606204bdada4979625ff4.html">Typedef ccl_resize_fn_t</a></li>
-<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a21fdbaac2bedefc853712b36fab6f4bb.html">Typedef ccl_sparse_allreduce_completion_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1af277d029435f054a28ca3a97f35150c5.html">Typedef ccl_sparse_allreduce_alloc_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a71f5034a71138c438ceec8769fd54b23.html">Typedef ccl_sparse_allreduce_completion_fn_t</a></li>
+<li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1a90179df89e435769c8ff8b647301832f.html">Typedef ccl_sparse_coalesce_mode_t</a></li>
 <li class="toctree-l4"><a class="reference internal" href="typedef_ccl__types_8h_1ae4f1fe2e25f4a0189765458d8a83def5.html">Typedef ccl_stream_t</a></li>
 </ul>
 </li>
@@ -348,6 +353,7 @@
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -386,7 +392,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="../index.html">Docs</a> &raquo;</li>
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
         
           <li><a href="library_root.html">Library API</a> &raquo;</li>
         
@@ -416,44 +422,44 @@
 </ul>
 <div class="section" id="enum-documentation">
 <h2>Enum Documentation<a class="headerlink" href="#enum-documentation" title="Permalink to this headline">¶</a></h2>
-<dl class="enum">
+<dl class="cpp enum">
 <dt id="_CPPv412ccl_status_t">
 <span id="_CPPv312ccl_status_t"></span><span id="_CPPv212ccl_status_t"></span><span class="target" id="ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90"></span><em class="property">enum </em><code class="sig-name descname">ccl_status_t</code><a class="headerlink" href="#_CPPv412ccl_status_t" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Status values returned by CCL functions. </p>
 <p><em>Values:</em></p>
-<dl class="enumerator">
-<dt id="_CPPv418ccl_status_success">
-<span id="_CPPv318ccl_status_success"></span><span id="_CPPv218ccl_status_success"></span><span class="target" id="ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90a2df8346451fdcbd060a8c6a832e6a204"></span><code class="sig-name descname">ccl_status_success</code> = 0<a class="headerlink" href="#_CPPv418ccl_status_success" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="cpp enumerator">
+<dt id="_CPPv4N12ccl_status_t18ccl_status_successE">
+<span id="_CPPv3N12ccl_status_t18ccl_status_successE"></span><span id="_CPPv2N12ccl_status_t18ccl_status_successE"></span><span class="target" id="ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90a2df8346451fdcbd060a8c6a832e6a204"></span><em class="property">enumerator </em><code class="sig-name descname">ccl_status_success</code> = 0<a class="headerlink" href="#_CPPv4N12ccl_status_t18ccl_status_successE" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
-<dl class="enumerator">
-<dt id="_CPPv426ccl_status_out_of_resource">
-<span id="_CPPv326ccl_status_out_of_resource"></span><span id="_CPPv226ccl_status_out_of_resource"></span><span class="target" id="ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90a741fe272843375c6c848d3957ed983e5"></span><code class="sig-name descname">ccl_status_out_of_resource</code> = 1<a class="headerlink" href="#_CPPv426ccl_status_out_of_resource" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="cpp enumerator">
+<dt id="_CPPv4N12ccl_status_t26ccl_status_out_of_resourceE">
+<span id="_CPPv3N12ccl_status_t26ccl_status_out_of_resourceE"></span><span id="_CPPv2N12ccl_status_t26ccl_status_out_of_resourceE"></span><span class="target" id="ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90a741fe272843375c6c848d3957ed983e5"></span><em class="property">enumerator </em><code class="sig-name descname">ccl_status_out_of_resource</code> = 1<a class="headerlink" href="#_CPPv4N12ccl_status_t26ccl_status_out_of_resourceE" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
-<dl class="enumerator">
-<dt id="_CPPv428ccl_status_invalid_arguments">
-<span id="_CPPv328ccl_status_invalid_arguments"></span><span id="_CPPv228ccl_status_invalid_arguments"></span><span class="target" id="ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90ad0bee8f6cd9ddd7dd977ee7d7326bbfc"></span><code class="sig-name descname">ccl_status_invalid_arguments</code> = 2<a class="headerlink" href="#_CPPv428ccl_status_invalid_arguments" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="cpp enumerator">
+<dt id="_CPPv4N12ccl_status_t28ccl_status_invalid_argumentsE">
+<span id="_CPPv3N12ccl_status_t28ccl_status_invalid_argumentsE"></span><span id="_CPPv2N12ccl_status_t28ccl_status_invalid_argumentsE"></span><span class="target" id="ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90ad0bee8f6cd9ddd7dd977ee7d7326bbfc"></span><em class="property">enumerator </em><code class="sig-name descname">ccl_status_invalid_arguments</code> = 2<a class="headerlink" href="#_CPPv4N12ccl_status_t28ccl_status_invalid_argumentsE" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
-<dl class="enumerator">
-<dt id="_CPPv424ccl_status_unimplemented">
-<span id="_CPPv324ccl_status_unimplemented"></span><span id="_CPPv224ccl_status_unimplemented"></span><span class="target" id="ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90acd85b523216f13d86a9e7c55fa09c7b1"></span><code class="sig-name descname">ccl_status_unimplemented</code> = 3<a class="headerlink" href="#_CPPv424ccl_status_unimplemented" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="cpp enumerator">
+<dt id="_CPPv4N12ccl_status_t24ccl_status_unimplementedE">
+<span id="_CPPv3N12ccl_status_t24ccl_status_unimplementedE"></span><span id="_CPPv2N12ccl_status_t24ccl_status_unimplementedE"></span><span class="target" id="ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90acd85b523216f13d86a9e7c55fa09c7b1"></span><em class="property">enumerator </em><code class="sig-name descname">ccl_status_unimplemented</code> = 3<a class="headerlink" href="#_CPPv4N12ccl_status_t24ccl_status_unimplementedE" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
-<dl class="enumerator">
-<dt id="_CPPv424ccl_status_runtime_error">
-<span id="_CPPv324ccl_status_runtime_error"></span><span id="_CPPv224ccl_status_runtime_error"></span><span class="target" id="ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90ac092a885649a48c1154145a24abf8aae"></span><code class="sig-name descname">ccl_status_runtime_error</code> = 4<a class="headerlink" href="#_CPPv424ccl_status_runtime_error" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="cpp enumerator">
+<dt id="_CPPv4N12ccl_status_t24ccl_status_runtime_errorE">
+<span id="_CPPv3N12ccl_status_t24ccl_status_runtime_errorE"></span><span id="_CPPv2N12ccl_status_t24ccl_status_runtime_errorE"></span><span class="target" id="ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90ac092a885649a48c1154145a24abf8aae"></span><em class="property">enumerator </em><code class="sig-name descname">ccl_status_runtime_error</code> = 4<a class="headerlink" href="#_CPPv4N12ccl_status_t24ccl_status_runtime_errorE" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
-<dl class="enumerator">
-<dt id="_CPPv432ccl_status_blocked_due_to_resize">
-<span id="_CPPv332ccl_status_blocked_due_to_resize"></span><span id="_CPPv232ccl_status_blocked_due_to_resize"></span><span class="target" id="ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90ac432048b7fd4f02eed3bb3aaee1fe40b"></span><code class="sig-name descname">ccl_status_blocked_due_to_resize</code> = 5<a class="headerlink" href="#_CPPv432ccl_status_blocked_due_to_resize" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="cpp enumerator">
+<dt id="_CPPv4N12ccl_status_t32ccl_status_blocked_due_to_resizeE">
+<span id="_CPPv3N12ccl_status_t32ccl_status_blocked_due_to_resizeE"></span><span id="_CPPv2N12ccl_status_t32ccl_status_blocked_due_to_resizeE"></span><span class="target" id="ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90ac432048b7fd4f02eed3bb3aaee1fe40b"></span><em class="property">enumerator </em><code class="sig-name descname">ccl_status_blocked_due_to_resize</code> = 5<a class="headerlink" href="#_CPPv4N12ccl_status_t32ccl_status_blocked_due_to_resizeE" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
-<dl class="enumerator">
-<dt id="_CPPv421ccl_status_last_value">
-<span id="_CPPv321ccl_status_last_value"></span><span id="_CPPv221ccl_status_last_value"></span><span class="target" id="ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90a65508051bfd94b54a00294a2a11d065c"></span><code class="sig-name descname">ccl_status_last_value</code><a class="headerlink" href="#_CPPv421ccl_status_last_value" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="cpp enumerator">
+<dt id="_CPPv4N12ccl_status_t21ccl_status_last_valueE">
+<span id="_CPPv3N12ccl_status_t21ccl_status_last_valueE"></span><span id="_CPPv2N12ccl_status_t21ccl_status_last_valueE"></span><span class="target" id="ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90a65508051bfd94b54a00294a2a11d065c"></span><em class="property">enumerator </em><code class="sig-name descname">ccl_status_last_value</code><a class="headerlink" href="#_CPPv4N12ccl_status_t21ccl_status_last_valueE" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -472,7 +478,7 @@
         <a href="enum_ccl__types_8h_1a5872dcb7cc3a72fbf94a20d07ce6d63b.html" class="btn btn-neutral float-right" title="Enum ccl_stream_type_t" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="enum_ccl__types_8h_1a6f190c608822e4b3feff0e9c709fcc63.html" class="btn btn-neutral float-left" title="Enum ccl_resize_action" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="enum_ccl__types_8h_1ae65096ea29339cb532924c0b6541b10d.html" class="btn btn-neutral float-left" title="Enum ccl_sparse_coalesce_mode" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -481,11 +487,19 @@
 
   <div role="contentinfo">
     <p>
+        
         &copy; Copyright 2019–2020
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
 <br>
 <div>
   <p>
@@ -503,7 +517,6 @@
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

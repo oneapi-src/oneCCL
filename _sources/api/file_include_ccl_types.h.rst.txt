@@ -31,6 +31,8 @@ Includes
 
 - ``ccl_config.h``
 
+- ``stdint.h``
+
 - ``stdlib.h``
 
 
@@ -74,6 +76,8 @@ Enums
 - :ref:`exhale_enum_ccl__types_8h_1a42085859d35d75cc288367198c003e0d`
 
 - :ref:`exhale_enum_ccl__types_8h_1a6f190c608822e4b3feff0e9c709fcc63`
+
+- :ref:`exhale_enum_ccl__types_8h_1ae65096ea29339cb532924c0b6541b10d`
 
 - :ref:`exhale_enum_ccl__types_8h_1a8753f2a133dd18aad81ee86a86f1cc90`
 
@@ -123,7 +127,11 @@ Typedefs
 
 - :ref:`exhale_typedef_ccl__types_8h_1a18fa4bbd5cc606204bdada4979625ff4`
 
-- :ref:`exhale_typedef_ccl__types_8h_1a21fdbaac2bedefc853712b36fab6f4bb`
+- :ref:`exhale_typedef_ccl__types_8h_1af277d029435f054a28ca3a97f35150c5`
+
+- :ref:`exhale_typedef_ccl__types_8h_1a71f5034a71138c438ceec8769fd54b23`
+
+- :ref:`exhale_typedef_ccl__types_8h_1a90179df89e435769c8ff8b647301832f`
 
 - :ref:`exhale_typedef_ccl__types_8h_1ae4f1fe2e25f4a0189765458d8a83def5`
 
