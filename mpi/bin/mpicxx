@@ -49,7 +49,7 @@ fi
 
 if [ x"$opt_args" == x"" ]; then
     case "${compiler_short_name}" in
-    icc|icpc)   $dir/mpiicpc -cxx=$compiler_name "$@" ;;
+    icc|icpc|dpcpp)   $dir/mpiicpc -cxx=$compiler_name "$@" ;;
     *g++*)        $dir/mpigxx -cxx=$compiler_name "$@" ;;
     mpicxx)     $dir/mpigxx "$@" ;;
     *)  
@@ -59,7 +59,7 @@ if [ x"$opt_args" == x"" ]; then
     esac
 else
     case "${compiler_short_name}" in
-    icc|icpc)   $dir/mpiicpc -cxx=$compiler_name "$@" $opt_args ;;
+    icc|icpc|dpcpp)   $dir/mpiicpc -cxx=$compiler_name "$@" $opt_args ;;
     *g++*)        $dir/mpigxx -cxx=$compiler_name "$@" $opt_args ;;
     mpicxx)     $dir/mpigxx "$@" $opt_args ;;
     *)  

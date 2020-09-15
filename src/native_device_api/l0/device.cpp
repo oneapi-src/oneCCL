@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -704,18 +704,25 @@ std::string CCL_API ccl_device::to_string(const std::string& prefix) const {
 
     std::string param_prefix = prefix + "\t";
     std::string inner_param_prefix = std::string("\n\t") + param_prefix;
-    ss << param_prefix << "------DeviceProperties:------\n"
-       << param_prefix << native::to_string(device_properties, inner_param_prefix) << "\n"
-       << param_prefix << "------MemoryProp:------\n";
+    ss << param_prefix << "DeviceProperties:\n"
+       << param_prefix << "{" << param_prefix
+       << native::to_string(device_properties, inner_param_prefix) << "\n"
+       << param_prefix << "}\n"
+       << param_prefix << "MemoryProp:\n"
+       << param_prefix << "{";
 
     for (auto it = memory_properties.begin(); it != memory_properties.end(); ++it) {
         ss << param_prefix << native::to_string(*it, inner_param_prefix) << ",\n";
     }
-
-    ss << param_prefix << "------MemoryAccessProp:--\n"
-       << param_prefix << native::to_string(memory_access_properties, inner_param_prefix) << "\n"
-       << param_prefix << "------ComputeProp:------\n"
-       << param_prefix << native::to_string(compute_properties, inner_param_prefix) << std::endl;
+    ss << param_prefix << "}\n";
+    ss << param_prefix << "MemoryAccessProp:\n"
+       << param_prefix << "{" << param_prefix
+       << native::to_string(memory_access_properties, inner_param_prefix) << "\n"
+       << param_prefix << "}\n"
+       << param_prefix << "ComputeProp:\n"
+       << param_prefix << "{" << param_prefix
+       << native::to_string(compute_properties, inner_param_prefix) << "\n"
+       << param_prefix << "}" << std::endl;
 
     ss << param_prefix << "Subdevices count: " << sub_devices.size() << std::endl;
     for (const auto& tile : sub_devices) {

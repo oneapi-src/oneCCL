@@ -1,4 +1,4 @@
-    /*
+/*
  Copyright 2016-2020 Intel Corporation
  
  Licensed under the Apache License, Version 2.0 (the "License");
@@ -96,7 +96,7 @@ std::string CCL_API to_string(ze_memory_type_t type) {
 std::string CCL_API to_string(const ze_device_properties_t& device_properties,
                               const std::string& prefix) {
     std::stringstream ss;
-    ss << "name: " << device_properties.name << prefix
+    ss << prefix << "name: " << device_properties.name << prefix
        << "type: " << native::to_string(device_properties.type) << prefix
        << "vendor_id: " << device_properties.vendorId << prefix
        << "device_id: " << device_properties.deviceId << prefix
@@ -134,7 +134,8 @@ std::string CCL_API to_string(const ze_device_memory_properties_t& device_mem_pr
 std::string CCL_API to_string(const ze_device_memory_access_properties_t& mem_access_prop,
                               const std::string& prefix) {
     std::stringstream ss;
-    ss << "hostAllocCapabilities: " << native::to_string(mem_access_prop.hostAllocCapabilities)
+    ss << prefix
+       << "hostAllocCapabilities: " << native::to_string(mem_access_prop.hostAllocCapabilities)
        << prefix
        << "deviceAllocCapabilities: " << native::to_string(mem_access_prop.deviceAllocCapabilities)
        << prefix << "sharedSingleDeviceAllocCapabilities: "
