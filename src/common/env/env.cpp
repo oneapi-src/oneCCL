@@ -59,7 +59,7 @@ env_data::env_data() :
     priority_mode(ccl_priority_none),
     spin_count(100),
     yield_type(ccl_yield_pause),
-    max_short_size(4096),
+    max_short_size(0),
     bcast_part_count(CCL_ENV_SIZET_NOT_SPECIFIED),
     cache_key_type(ccl_cache_key_match_id),
     enable_cache_flush(1),

@@ -21,7 +21,7 @@
 #include "sched/entry/coll/coll_entry_helper.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
 
-#define CCL_BCAST_LARGE_MSG_SIZE (1024 * 1024 * 1024)
+#define CCL_ATL_LARGE_MSG_SIZE (1024 * 1024 * 1024)
 
 typedef struct
 {
@@ -144,24 +144,21 @@ ccl_status_t ccl_parallelizer::process(ccl_master_sched* sched)
             if (ccl::global_data::env().bcast_part_count != CCL_ENV_SIZET_NOT_SPECIFIED)
             {
                 part_count = ccl::global_data::env().bcast_part_count;
+                break;
             }
-            else
-            {
-                /* to workaround lack of large msg protocol on ATL level */
-                part_count = (coll_param.count * dtype_size) / CCL_BCAST_LARGE_MSG_SIZE;
-                if (!part_count)
-                    part_count = max_data_partition_count;
-            }
-            break;
         case ccl_coll_reduce:
         case ccl_coll_allreduce:
-            if (coll_param.count * dtype_size <= ccl::global_data::env().max_short_size)
+            if ((coll_param.count * dtype_size <= ccl::global_data::env().max_short_size) ||
+                (coll_param.count < max_data_partition_count))
             {
                 part_count = 1;
             }
             else
             {
-                part_count = max_data_partition_count;
+                /* to workaround lack of large msg protocol on ATL level */
+                part_count = (coll_param.count * dtype_size) / CCL_ATL_LARGE_MSG_SIZE;
+                if (part_count < max_data_partition_count)
+                    part_count = max_data_partition_count;
             }
             break;
         case ccl_coll_alltoall:
