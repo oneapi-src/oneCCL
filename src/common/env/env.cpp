@@ -59,10 +59,11 @@ env_data::env_data() :
     priority_mode(ccl_priority_none),
     spin_count(100),
     yield_type(ccl_yield_pause),
-    max_short_size(4096),
+    max_short_size(0),
     bcast_part_count(CCL_ENV_SIZET_NOT_SPECIFIED),
     cache_key_type(ccl_cache_key_match_id),
     enable_cache_flush(1),
+    enable_strict_order(0),
 
     chunk_count(1),
     min_chunk_size(65536),
@@ -128,6 +129,7 @@ void env_data::parse()
     env_2_type(CCL_BCAST_PART_COUNT, (size_t&)bcast_part_count);
     env_2_enum(CCL_CACHE_KEY, ccl_sched_key::key_type_names, cache_key_type);
     env_2_type(CCL_CACHE_FLUSH, enable_cache_flush);
+    env_2_type(CCL_STRICT_ORDER, enable_strict_order);
 
     env_2_type(CCL_CHUNK_COUNT, chunk_count);
     CCL_THROW_IF_NOT(chunk_count >= 1, "incorrect ",
@@ -230,6 +232,7 @@ void env_data::print()
         std::to_string(bcast_part_count) : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_CACHE_KEY, ": ", str_by_enum(ccl_sched_key::key_type_names, cache_key_type));
     LOG_INFO(CCL_CACHE_FLUSH, ": ", enable_cache_flush);
+    LOG_INFO(CCL_STRICT_ORDER, ": ", enable_strict_order);
 
     LOG_INFO(CCL_CHUNK_COUNT, ": ", chunk_count);
     LOG_INFO(CCL_MIN_CHUNK_SIZE, ": ", min_chunk_size);
