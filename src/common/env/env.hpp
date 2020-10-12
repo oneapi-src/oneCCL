@@ -62,6 +62,7 @@ constexpr const char* CCL_MAX_SHORT_SIZE = "CCL_MAX_SHORT_SIZE";
 constexpr const char* CCL_BCAST_PART_COUNT = "CCL_BCAST_PART_COUNT";
 constexpr const char* CCL_CACHE_KEY = "CCL_CACHE_KEY";
 constexpr const char* CCL_CACHE_FLUSH = "CCL_CACHE_FLUSH";
+constexpr const char* CCL_STRICT_ORDER = "CCL_STRICT_ORDER";
 
 constexpr const char* CCL_CHUNK_COUNT = "CCL_CHUNK_COUNT";
 constexpr const char* CCL_MIN_CHUNK_SIZE = "CCL_MIN_CHUNK_SIZE";
@@ -154,6 +155,7 @@ public:
     ssize_t bcast_part_count;
     ccl_cache_key_type cache_key_type;
     int enable_cache_flush;
+    int enable_strict_order;
 
     size_t chunk_count;
     size_t min_chunk_size;
