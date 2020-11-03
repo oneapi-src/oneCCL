@@ -14,8 +14,9 @@
  limitations under the License.
 */
 #pragma once
-#include "native_device_api/export_api.hpp"
-#include "ccl_type_traits.hpp"
+#include "oneapi/ccl/native_device_api/export_api.hpp"
+#include "oneapi/ccl/ccl_type_traits.hpp"
+#include "supported_topologies.hpp"
 #include "common/comm/l0/modules/kernel_functions.hpp"
 
 namespace native {
@@ -39,12 +40,12 @@ struct gpu_module_base {
 
 //specific type module implementations:
 //1) in-process gpu module
-template <ccl_coll_type type, ccl::device_group_split_type topology, ccl::device_topology_type mode>
+template <ccl_coll_type type, ccl::group_split_type topology, ccl::device_topology_type mode>
 struct device_coll_module : private gpu_module_base {
     static constexpr ccl_coll_type get_coll_type() {
         return type;
     }
-    static constexpr ccl::device_group_split_type get_topology_type() {
+    static constexpr ccl::group_split_type get_topology_type() {
         return topology;
     }
     static constexpr ccl::device_topology_type get_topology_class() {
@@ -55,12 +56,12 @@ struct device_coll_module : private gpu_module_base {
 };
 
 //2) out-of-process gpu module
-template <ccl_coll_type type, ccl::device_group_split_type topology, ccl::device_topology_type mode>
+template <ccl_coll_type type, ccl::group_split_type topology, ccl::device_topology_type mode>
 struct ipc_dst_device_coll_module : private gpu_module_base {
     static constexpr ccl_coll_type get_coll_type() {
         return type;
     }
-    static constexpr ccl::device_group_split_type get_topology_type() {
+    static constexpr ccl::group_split_type get_topology_type() {
         return topology;
     }
     static constexpr ccl::device_topology_type get_topology_class() {
@@ -71,12 +72,12 @@ struct ipc_dst_device_coll_module : private gpu_module_base {
 };
 
 //3) virtual gpu module
-template <ccl_coll_type type, ccl::device_group_split_type topology, ccl::device_topology_type mode>
+template <ccl_coll_type type, ccl::group_split_type topology, ccl::device_topology_type mode>
 struct virtual_device_coll_module {
     static constexpr ccl_coll_type get_coll_type() {
         return type;
     }
-    static constexpr ccl::device_group_split_type get_topology_type() {
+    static constexpr ccl::group_split_type get_topology_type() {
         return topology;
     }
     static constexpr ccl::device_topology_type get_topology_class() {
@@ -90,13 +91,13 @@ struct virtual_device_coll_module {
 };
 
 template <ccl_coll_type type,
-          ccl::device_group_split_type group_id,
+          ccl::group_split_type group_id,
           ccl::device_topology_type class_id>
 struct coll_module_traits {
     static constexpr ccl_coll_type coll_type() {
         return type;
     }
-    static constexpr ccl::device_group_split_type group_type() {
+    static constexpr ccl::group_split_type group_type() {
         return group_id;
     }
     static constexpr ccl::device_topology_type topology_class() {

@@ -68,7 +68,10 @@ size_t property_p2p_rating_calculator(const native::ccl_device& lhs,
                                       const native::ccl_device& rhs,
                                       size_t weight) {
     ze_device_p2p_properties_t p2p = lhs.get_p2p_properties(rhs);
-    return p2p.accessSupported * weight;
+    if (p2p.flags & ZE_DEVICE_P2P_PROPERTY_FLAG_ACCESS)
+        return weight;
+    else
+        return 0;
 }
 
 std::string to_string(const plain_graph& cont) {

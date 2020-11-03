@@ -28,20 +28,21 @@ class proxy_multiple_observer : public proxy_observer<impl> {
     registered_contexts contexts;
 
 public:
-    template <ccl::device_group_split_type group_id,
+    template <ccl::group_split_type group_id,
               ccl::device_topology_type class_id,
               class ctx_reg_t,
               class ctx_t>
     void assign(ctx_reg_t& ctx_to_reg, ctx_t ctx) {
         // context linkage
         ctx.template attach<group_id, class_id>(static_cast<impl*>(this));
-        std::get<group_id>(contexts) = &ctx_to_reg;
+        std::get<utils::enum_to_underlying(group_id)>(contexts) = &ctx_to_reg;
     }
 
-    template <ccl::device_group_split_type group_id, ccl::device_topology_type class_id>
+    template <ccl::group_split_type group_id, ccl::device_topology_type class_id>
     void invoke() {
         //use context to invoke/register proxy jobs
-        std::get<group_id>(contexts).invoke_proxy(static_cast<impl*>(this));
+        std::get<utils::enum_to_underlying(group_id)>(contexts).invoke_proxy(
+            static_cast<impl*>(this));
     }
 };
 

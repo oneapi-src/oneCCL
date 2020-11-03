@@ -16,13 +16,15 @@
 #ifndef BASE_HPP
 #define BASE_HPP
 
-#include "ccl.hpp"
+#include "oneapi/ccl.hpp"
 
+#include <cassert>
 #include <chrono>
 #include <cstring>
 #include <functional>
 #include <iostream>
 #include <math.h>
+#include <mpi.h>
 #include <stdexcept>
 #include <stdio.h>
 #include <sys/time.h>
@@ -42,7 +44,7 @@ using namespace cl::sycl::access;
 #define PRINT(fmt, ...) printf(fmt "\n", ##__VA_ARGS__);
 
 #define PRINT_BY_ROOT(comm, fmt, ...) \
-    if (comm->rank() == 0) { \
+    if (comm.rank() == 0) { \
         printf(fmt "\n", ##__VA_ARGS__); \
     }
 
@@ -73,12 +75,15 @@ using namespace cl::sycl::access;
         try { \
             for (size_t idx = 0; idx < MSG_SIZE_COUNT; ++idx) { \
                 size_t msg_count = msg_counts[idx]; \
-                coll_attr.match_id = msg_match_ids[idx].c_str(); \
-                PRINT_BY_ROOT(comm, "msg_count=%zu, match_id=%s", msg_count, coll_attr.match_id); \
+                attr.set<ccl::operation_attr_id::match_id>(msg_match_ids[idx]); \
+                PRINT_BY_ROOT(comm, \
+                              "msg_count=%zu, match_id=%s", \
+                              msg_count, \
+                              attr.get<ccl::operation_attr_id::match_id>().c_str()); \
                 per_msg_code; \
             } \
         } \
-        catch (ccl::ccl_error & e) { \
+        catch (ccl::exception & e) { \
             printf("FAILED\n"); \
             fprintf(stderr, "ccl exception:\n%s\n", e.what()); \
         } \
@@ -88,5 +93,25 @@ using namespace cl::sycl::access;
         } \
         PRINT_BY_ROOT(comm, "PASSED"); \
     } while (0)
+
+double t1, t2, t;
+
+double when(void) {
+    struct timeval tv;
+    static struct timeval tv_base;
+    static int is_first = 1;
+
+    if (gettimeofday(&tv, NULL)) {
+        perror("gettimeofday");
+        return 0;
+    }
+
+    if (is_first) {
+        tv_base = tv;
+        is_first = 0;
+    }
+
+    return (double)(tv.tv_sec - tv_base.tv_sec) * 1.0e6 + (double)(tv.tv_usec - tv_base.tv_usec);
+}
 
 #endif /* BASE_HPP */

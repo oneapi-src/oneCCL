@@ -15,18 +15,19 @@
 */
 #pragma once
 
-#include "common/comm/comm.hpp"
+#include "sched/extra_sched.hpp"
 #include "sched/master_sched.hpp"
 
 #define CCL_UNORDERED_COLL_COORDINATOR (0)
 
 struct ccl_unordered_coll_ctx;
+class ccl_comm;
 
 class ccl_unordered_coll_manager {
 public:
     ccl_unordered_coll_manager(const ccl_unordered_coll_manager& other) = delete;
     const ccl_unordered_coll_manager& operator=(const ccl_unordered_coll_manager& other) = delete;
-    ccl_unordered_coll_manager();
+    ccl_unordered_coll_manager(ccl_comm& parent_comm);
     ~ccl_unordered_coll_manager();
 
     std::shared_ptr<ccl_comm> get_comm(const std::string& match_id);

@@ -207,7 +207,7 @@ protected:
 
 #define DEFINE_SPECIFIC_GPU_MODULE_CLASS( \
     module_type, base_module_type, coll_type, mode, export_function, export_numa_function) \
-    template <ccl::device_group_split_type topology> \
+    template <ccl::group_split_type topology> \
     struct module_type<coll_type, topology, mode> \
             : public base_module_type<coll_type, export_function, export_numa_function> { \
         using base = base_module_type<coll_type, export_function, export_numa_function>; \
@@ -217,7 +217,7 @@ protected:
         static constexpr ccl_coll_type get_coll_type() { \
             return coll_type; \
         } \
-        static constexpr ccl::device_group_split_type get_topology_type() { \
+        static constexpr ccl::group_split_type get_topology_type() { \
             return topology; \
         } \
         static constexpr ccl::device_topology_type get_topology_class() { \
@@ -229,12 +229,12 @@ protected:
 /*
 
 #define DEFINE_SPECIFIC_GPU_MODULE_CLASS(module_type, base_module_type, export_function, export_numa_function)     \
-template<ccl_coll_type type, ccl::device_group_split_type topology>                                   \
+template<ccl_coll_type type, ccl::group_split_type topology>                                   \
 using module_type = base_module_type<type, topology, export_function, export_numa_function>;
 */
 
 #define DEFINE_VIRTUAL_GPU_MODULE_CLASS(coll_type, mode, export_function, export_numa_function) \
-    template <ccl::device_group_split_type topology> \
+    template <ccl::group_split_type topology> \
     struct virtual_device_coll_module<coll_type, topology, mode> \
             : public virtual_gpu_typed_module<coll_type, export_function, export_numa_function> { \
         using base = virtual_gpu_typed_module<coll_type, export_function, export_numa_function>; \
@@ -245,7 +245,7 @@ using module_type = base_module_type<type, topology, export_function, export_num
         static constexpr ccl_coll_type get_coll_type() { \
             return coll_type; \
         } \
-        static constexpr ccl::device_group_split_type get_topology_type() { \
+        static constexpr ccl::group_split_type get_topology_type() { \
             return topology; \
         } \
         static constexpr ccl::device_topology_type get_topology_class() { \

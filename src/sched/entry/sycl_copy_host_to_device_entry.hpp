@@ -41,13 +41,21 @@ public:
               stream(stream) {}
 
     void start() override {
+
+        LOG_DEBUG(class_name(), "in_buf ", in_buf, ", out_buf ", out_buf, ", cnt ", cnt);
+
         //fill visitor with actual ccl_buffer data
-        auto visitor = make_visitor<cl::sycl::access::mode::write>(
-            dtype, cnt, 0, out_buf, [this](void* sycl_pointer, size_t bytes) {
-                auto comp_status = ccl_comp_copy(in_buf.get_ptr(bytes), sycl_pointer, cnt, dtype);
-                CCL_ASSERT(comp_status == ccl_status_success, "bad status ", comp_status);
+
+
+        auto visitor = make_writer_visitor<cl::sycl::access::mode::write>(
+            dtype, cnt, 0, in_buf, stream->get_native_stream(), std::ref(out_buf), [this](void* sycl_pointer, size_t bytes) {
+                (void)this;
+                (void)sycl_pointer;
+                (void)bytes;
+                // TODO remove fucntion callback
             });
         ccl_tuple_for_each_indexed<ccl_sycle_buffer_one_dim_types>(visitor);
+
 
         status = ccl_sched_entry_status_complete;
     }

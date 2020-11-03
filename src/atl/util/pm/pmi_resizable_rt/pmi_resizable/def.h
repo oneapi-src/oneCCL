@@ -16,6 +16,8 @@
 #ifndef DEF_INCLUDED
 #define DEF_INCLUDED
 
+#include <string.h>
+
 //TODO: change exit to something more useful
 #define SET_STR(dst, size, ...) \
     do { \
@@ -37,7 +39,8 @@
 
 #define DO_RW_OP(op, fd, buf, size) \
     do { \
-        ssize_t res = 0, shift = 0; \
+        ssize_t res = 0; \
+        size_t shift = 0; \
         while (shift != size) { \
             res = op(fd, (char*)buf + shift, size - shift); \
             if (res == -1) { \
@@ -50,6 +53,25 @@
                 shift += res; \
             } \
         } \
+    } while (0)
+
+
+#define DO_RW_OP_1(op, fd, buf, size, res) \
+    do { \
+        size_t shift = 0; \
+        res = 0; \
+        do { \
+            res = op(fd, (char*)buf + shift, size - shift); \
+            if (res == -1) { \
+                if (errno != EINTR) { \
+                    printf("read/write error: %s\n", strerror(errno)); \
+                    exit(EXIT_FAILURE); \
+                } \
+            }\
+            else { \
+                shift += res; \
+            } \
+        } while (shift != size && res != 0); \
     } while (0)
 
 #define BARRIER_NUM_MAX         1024
@@ -95,7 +117,7 @@
 #define INITIAL_RANK_NUM   "0"
 #define MAX_CLEAN_CHECKS   3
 
-#define STR_COPY(dst, src, len) strncpy((dst), (src), (len)-1)
+#define STR_COPY(dst, src, len) { memcpy((dst), (src), (len-1)); dst[len - 1] = '\0'; }
 
 extern char my_hostname[MAX_KVS_VAL_LENGTH];
 

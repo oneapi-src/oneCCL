@@ -13,8 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#ifndef CPU_ALLTOALL_COLL
-#define CPU_ALLTOALL_COLL
+#pragma once
 
 #include "cpu_coll.hpp"
 #include "alltoall_strategy.hpp"
@@ -24,19 +23,17 @@ struct cpu_alltoall_coll : cpu_base_coll<Dtype, alltoall_strategy_impl> {
     using coll_base = cpu_base_coll<Dtype, alltoall_strategy_impl>;
     using coll_base::send_bufs;
     using coll_base::recv_bufs;
-    using coll_base::stream;
     using coll_base::single_send_buf;
     using coll_base::single_recv_buf;
-    using coll_base::comm;
 
-    cpu_alltoall_coll(bench_coll_init_attr init_attr)
-            : coll_base(init_attr, base_coll::comm->size(), base_coll::comm->size()) {}
+    cpu_alltoall_coll(bench_init_attr init_attr)
+            : coll_base(init_attr, coll_base::comm().size(), coll_base::comm().size()) {}
 
     virtual void prepare(size_t elem_count) override {
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
-            for (size_t idx = 0; idx < comm->size(); idx++) {
+            for (size_t idx = 0; idx < coll_base::comm().size(); idx++) {
                 for (size_t e_idx = 0; e_idx < elem_count; e_idx++) {
-                    ((Dtype*)send_bufs[b_idx])[idx * elem_count + e_idx] = comm->rank();
+                    ((Dtype*)send_bufs[b_idx])[idx * elem_count + e_idx] = coll_base::comm().rank();
                     ((Dtype*)recv_bufs[b_idx])[idx * elem_count + e_idx] = 0;
                 }
             }
@@ -44,10 +41,10 @@ struct cpu_alltoall_coll : cpu_base_coll<Dtype, alltoall_strategy_impl> {
     }
 
     virtual void finalize(size_t elem_count) override {
-        Dtype sbuf_expected = comm->rank();
+        Dtype sbuf_expected = coll_base::comm().rank();
         Dtype rbuf_expected;
         Dtype value;
-        size_t comm_size = comm->size();
+        size_t comm_size = coll_base::comm().size();
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
             for (size_t e_idx = 0; e_idx < elem_count * comm_size; e_idx++) {
                 value = ((Dtype*)send_bufs[b_idx])[e_idx];
@@ -70,5 +67,3 @@ struct cpu_alltoall_coll : cpu_base_coll<Dtype, alltoall_strategy_impl> {
         }
     }
 };
-
-#endif /* CPU_ALLTOALL_COLL */

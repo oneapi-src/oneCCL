@@ -16,6 +16,9 @@
 #ifndef KVS_KEEPER_H_INCLUDED
 #define KVS_KEEPER_H_INCLUDED
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 typedef enum storage_type {
     ST_CLIENT = 0,
     ST_SERVER = 1,
@@ -43,4 +46,7 @@ size_t cut_head(char* kvs_name, char* kvs_key, char* kvs_val, storage_type_t st_
 
 size_t get_kvs_list_size(storage_type_t st_type);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

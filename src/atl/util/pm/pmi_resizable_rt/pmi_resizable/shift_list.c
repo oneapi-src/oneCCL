@@ -29,7 +29,7 @@ void shift_list_clean(shift_list_t** list) {
     (*list) = NULL;
 }
 
-void shift_list_add(shift_list_t** list, size_t old, size_t new, change_type_t type) {
+void shift_list_add(shift_list_t** list, size_t old_rank, size_t new_rank, change_type_t type) {
     shift_list_t* cur_list;
     if ((*list) == NULL) {
         (*list) = (shift_list_t*)malloc(sizeof(shift_list_t));
@@ -42,8 +42,8 @@ void shift_list_add(shift_list_t** list, size_t old, size_t new, change_type_t t
         cur_list->next = (shift_list_t*)malloc(sizeof(shift_list_t));
         cur_list = cur_list->next;
     }
-    cur_list->shift.old = old;
-    cur_list->shift.new = new;
+    cur_list->shift.old_rank = old_rank;
+    cur_list->shift.new_rank = new_rank;
     cur_list->shift.type = type;
     cur_list->next = NULL;
 }

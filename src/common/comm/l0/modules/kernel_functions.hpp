@@ -170,6 +170,15 @@ struct execution_kernel : public kernel_data_storage<arg<main_kernel_args::rank_
 
         base::template set_arg<kernel_argument>(new_val);
     }
+
+    template <class... kernel_argument>
+    void set_args(typename kernel_argument::arg_type... new_val) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-value"
+        std::array<bool, sizeof...(kernel_argument)>{ (
+            this->template set_arg<kernel_argument>(new_val), true)... };
+#pragma clang diagnostic pop
+    }
 };
 
 // ipc_kernel - used for GPU data synchronization only

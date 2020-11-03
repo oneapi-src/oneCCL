@@ -79,7 +79,7 @@
 #
 # Directory locations: Fixed for any MPI implementation.
 # Set from the directory arguments to configure (e.g., --prefix=/usr/local)
-prefix=/p/pdsd/Users/dsazanov/CCL/_OPEN_REP/mpi/
+prefix=/usr/local
 # The environment variable I_MPI_ROOT may be used to override installation folder path
 if [ -n "$I_MPI_ROOT" ] ; then
     prefix=$I_MPI_ROOT;
@@ -104,7 +104,7 @@ CFLAGS=""
 CPPFLAGS=""
 LDFLAGS=" -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl "
 LIBS="-lm   -lpthread  -lfabric -lrt "
-MPIVERSION="2021.1-beta09"
+MPIVERSION="2021.1-beta10"
 MPILIBNAME="mpi"                           
 
 

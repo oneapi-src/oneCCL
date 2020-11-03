@@ -14,9 +14,12 @@
  limitations under the License.
 */
 #pragma once
-#include "ccl_types.hpp"
+#include "oneapi/ccl/ccl_types.hpp"
 #include "common/datatype/datatype.hpp"
-#include "ccl_type_traits.hpp"
+#include "oneapi/ccl/ccl_type_traits.hpp"
+
+#include "oneapi/ccl.hpp"
+
 #include "comp/comp.hpp"
 #include "common/comm/l0/devices/devices_declaration.hpp"
 #include "sched/entry/coll/direct/base_coll_entry.hpp"
@@ -31,25 +34,28 @@ static std::mutex global_fence_mutex;
 namespace native {
 template <class native_type,
           class gpu_comm_impl,
-          ccl::device_group_split_type group_id,
-          ccl::device_topology_type class_id>
+          ccl::group_split_type group_id,
+          ccl::device_topology_type class_id,
+          ccl_coll_type type_op>
 class base_gpu_entry : public sched_entry {
 public:
     using gpu_comm = gpu_comm_impl;
     using processing_type = native_type;
-    using kernel_main_typed = ring_allreduce_kernel<processing_type>;
-    using kernel_ipc_typed = ring_allreduce_ipc<native_type>;
+    using kernel_main_typed =
+        typename gpu_comm::template gpu_kernel_t<type_op, group_id, class_id, native_type>;
+    // using kernel_ipc_typed = ring_allreduce_ipc<native_type>;
 
     friend class ccl_gpu_comm;
     friend class ccl_virtual_gpu_comm;
     static constexpr const char *class_name() noexcept {
-        return "L0_ALLREDUCE";
+        return ccl_coll_type_to_str(type_op);
+        ;
     }
     static constexpr ccl_coll_type type() noexcept {
-        return ccl_coll_allreduce;
+        return type_op;
     }
 
-    static constexpr ccl::device_group_split_type get_topology() {
+    static constexpr ccl::group_split_type get_topology() {
         return group_id;
     }
 
@@ -61,43 +67,29 @@ public:
     base_gpu_entry(ccl_sched *sched,
                    std::shared_ptr<gpu_comm> comm,
                    const ccl_buffer send_buf,
-                   ccl_buffer recv_buf,
-                   size_t cnt,
-                   ccl_datatype_t dtype_in,
-                   ccl_reduction_t op,
+                   ccl::datatype dtype_in,
                    std::shared_ptr<ccl_stream> &stream)
             : sched_entry(sched),
               parent_communicator(comm),
               comm_addr(parent_communicator
                             ->template get_comm_data<get_topology(), get_topology_class()>()),
               send_buf(send_buf),
-              recv_buf(recv_buf),
-              elem_count(cnt),
-              dtype(),
-              op(op),
+              dtype(dtype_in),
               device_stream(stream) {
-        dtype = ccl::global_data::get().dtypes->get(dtype_in);
     }
 
     virtual ~base_gpu_entry() {}
 
     virtual void start() override {
-        LOG_DEBUG(class_name(),
-                  " entry req ",
-                  &req,
-                  ", elem_count ",
-                  elem_count,
-                  ", rank: ",
-                  comm_addr.to_string());
+        LOG_DEBUG(class_name(), " entry req ", &req, ", rank: ", comm_addr.to_string());
 
         ccl_device &device = parent_communicator->get_device();
         {
             LOG_DEBUG(class_name(), " entry req ", &req, " - create initial gpu primitives");
-
             //TODO make check, that device_stream belong to the device
             auto queue_prop = ccl_device::get_default_queue_desc();
-            auto &cmd_queue = device.get_cmd_queue(queue_prop);
-            fence = device.create_or_get_fence(cmd_queue);
+            auto &cmd_queue = device.get_cmd_queue(queue_prop, ctx);
+            fence = device.create_or_get_fence(cmd_queue, ctx);
         }
         //else
         //{
@@ -110,15 +102,10 @@ public:
         kernel_main_typed &main_entry_function =
             parent_communicator->template register_entry<native_type, group_id, class_id>(*this);
 
-        auto recv_buf_ptr = reinterpret_cast<native_type *>(recv_buf.get_ptr());
         auto send_buf_ptr = reinterpret_cast<native_type *>(send_buf.get_ptr());
 
-        main_entry_function.template set_arg<typename kernel_main_typed::send_buf_size_arg>(
-            elem_count);
-        main_entry_function.template set_arg<typename kernel_main_typed::send_buf_arg>(
+        main_entry_function.template set_args<typename kernel_main_typed::common_entry_buf_arg>(
             send_buf_ptr);
-        main_entry_function.template set_arg<typename kernel_main_typed::recv_buf_arg>(
-            recv_buf_ptr);
 
         /*ze_result_t result = zeCommandListAppendLaunchKernel(exec_cmd_list->handle, main_entry_function.handle, &launch_args, nullptr, 0, nullptr);
         if(result != ZE_RESULT_SUCCESS)
@@ -146,7 +133,7 @@ public:
             //if(std::is_same<gpu_comm_impl, ccl_gpu_comm>::value)
             if (gpu_comm_impl::type_idx() == ccl_gpu_comm::type_idx() or
                 gpu_comm_impl::type_idx() == ccl_ipc_source_gpu_comm<ccl_gpu_comm>::type_idx()) {
-                if (group_id == ccl::device_group_split_type::cluster) {
+                if (group_id == ccl::group_split_type::cluster) {
                     //auto c = ccl::environment::instance().create_communicator();
                     //(void)c;
                     //if(c->rank() == 0)
@@ -161,7 +148,7 @@ public:
                         queue_prop.ordinal = parent_communicator->get_rank(); //TODO SPECIAL FOR VIRTUAL
                     }
                     queue_prop.mode = ZE_COMMAND_QUEUE_MODE_ASYNCHRONOUS;*/
-                        auto &cmd_queue = device.get_cmd_queue(queue_prop);
+                        auto &cmd_queue = device.get_cmd_queue(queue_prop, ctx);
 
                         LOG_DEBUG(class_name(),
                                   " entry req ",
@@ -173,11 +160,11 @@ public:
                                   ", queue:",
                                   cmd_queue.get(),
                                   ", list: ",
-                                  device.get_cmd_list().get());
+                                  device.get_cmd_list(ctx).get());
                         ze_result_t ret = zeCommandQueueExecuteCommandLists(
-                            cmd_queue.get(), 1, device.get_cmd_list().get_ptr(), fence);
+                            cmd_queue.get(), 1, device.get_cmd_list(ctx).get_ptr(), fence);
                         if (ret != ZE_RESULT_SUCCESS) {
-                            throw ccl::ccl_error(
+                            throw ccl::exception(
                                 std::string("cannot execute command list, error: ") +
                                 std::to_string(ret));
                         }
@@ -194,7 +181,7 @@ public:
                 queue_prop.ordinal = parent_communicator->get_rank(); //TODO SPECIAL FOR VIRTUAL
             }
             queue_prop.mode = ZE_COMMAND_QUEUE_MODE_ASYNCHRONOUS;*/
-                    auto &cmd_queue = device.get_cmd_queue(queue_prop);
+                    auto &cmd_queue = device.get_cmd_queue(queue_prop, ctx);
 
                     LOG_DEBUG(class_name(),
                               " entry req ",
@@ -206,11 +193,11 @@ public:
                               ", queue:",
                               cmd_queue.get(),
                               ", list: ",
-                              device.get_cmd_list().get());
+                              device.get_cmd_list(ctx).get());
                     ze_result_t ret = zeCommandQueueExecuteCommandLists(
-                        cmd_queue.get(), 1, device.get_cmd_list().get_ptr(), fence);
+                        cmd_queue.get(), 1, device.get_cmd_list(ctx).get_ptr(), fence);
                     if (ret != ZE_RESULT_SUCCESS) {
-                        throw ccl::ccl_error(std::string("cannot execute command list, error: ") +
+                        throw ccl::exception(std::string("cannot execute command list, error: ") +
                                              std::to_string(ret));
                     }
                 }
@@ -234,7 +221,7 @@ public:
                 queue_prop.ordinal = parent_communicator->get_rank(); //TODO SPECIAL FOR VIRTUAL
             }*/
             //queue_prop.mode = ZE_COMMAND_QUEUE_MODE_ASYNCHRONOUS;
-            auto &cmd_queue = device.get_cmd_queue(queue_prop);
+            auto &cmd_queue = device.get_cmd_queue(queue_prop, ctx);
 
             LOG_TRACE(class_name(),
                       " entry req ",
@@ -254,23 +241,25 @@ public:
                     if (gpu_comm_impl::type_idx() == ccl_gpu_comm::type_idx() or
                         gpu_comm_impl::type_idx() ==
                             ccl_ipc_source_gpu_comm<ccl_gpu_comm>::type_idx()) {
-                        if (group_id == ccl::device_group_split_type::cluster) {
-                            auto c = ccl::environment::instance().create_communicator();
-                            if (c->rank() == 0) {
-                                throw ccl::ccl_error(
-                                    std::string("cannot sync queue from real device, error: ") +
-                                    native::to_string(ret));
-                            }
+                        if (group_id == ccl::group_split_type::cluster) {
+                            // TODO: implement process communicator case
+                            throw ccl::exception(std::string(__PRETTY_FUNCTION__) + "TODO: implement process communicator case");
+                            // auto c = ccl::environment::instance().create_communicator();
+                            // if (c.rank() == 0) {
+                                // throw ccl::exception(
+                                //     std::string("cannot sync queue from real device, error: ") +
+                                //     native::to_string(ret));
+                            // }
                         }
                         else {
-                            throw ccl::ccl_error(
+                            throw ccl::exception(
                                 std::string("cannot sync queue from real device, error: ") +
                                 native::to_string(ret));
                         }
                     }
                     else {
                         if (ret != ZE_RESULT_ERROR_INVALID_ARGUMENT) {
-                            throw ccl::ccl_error(
+                            throw ccl::exception(
                                 std::string("cannot sync queue from virtual device, error: ") +
                                 native::to_string(ret));
                         }
@@ -311,14 +300,8 @@ protected:
                            class_name(),
                            ", dt ",
                            ccl::global_data::get().dtypes->name(dtype),
-                           ", elem_count ",
-                           elem_count,
                            ", send_buf ",
                            send_buf,
-                           ", recv_buf ",
-                           recv_buf,
-                           ", op ",
-                           ccl_reduction_to_str(op),
                            ", comm_id ",
                            sched->coll_param.comm->id(),
                            ", req ",
@@ -330,13 +313,10 @@ protected:
     std::shared_ptr<gpu_comm> parent_communicator;
     topology_addr<group_id, class_id> comm_addr;
     ccl_buffer send_buf;
-    ccl_buffer recv_buf;
-    size_t elem_count;
-    ccl_datatype dtype;
-    ccl_reduction_t op;
+    ccl::datatype dtype;
     atl_req_t req{};
     std::shared_ptr<ccl_stream> device_stream;
-
+    std::shared_ptr<ccl_context> ctx;
     // GPU
     bool ready_to_exec = false;
 
@@ -474,19 +454,20 @@ protected:
                     exec, right_main_func));
         }
 
-        while (!kernel_router) {
-            //gather data for ipc-GPU
-            auto &map_devices = std::get<ccl_ipc_gpu_comm::type_idx()>(group_devices);
-            auto it = map_devices.find(next_rank);
-            if (it == map_devices.end()) {
-                break; // not ready yet!
-            }
-            std::shared_ptr<ccl_ipc_gpu_comm> gpu = it->second;
-            kernel_ipc_typed &right_main_func =
-                gpu->get_gpu_kernel<type(), get_topology(), get_topology_class(), native_type>();
-            kernel_router.reset(new kernel_connector<kernel_main_typed, executor, kernel_ipc_typed>(
-                exec, right_main_func));
-        }
+        // TODO: check for launching ipc kernel
+        // while (!kernel_router) {
+        //     //gather data for ipc-GPU
+        //     auto &map_devices = std::get<ccl_ipc_gpu_comm::type_idx()>(group_devices);
+        //     auto it = map_devices.find(next_rank);
+        //     if (it == map_devices.end()) {
+        //         break; // not ready yet!
+        //     }
+        //     std::shared_ptr<ccl_ipc_gpu_comm> gpu = it->second;
+        //     kernel_ipc_typed &right_main_func =
+        //         gpu->get_gpu_kernel<type(), get_topology(), get_topology_class(), native_type>();
+        //     kernel_router.reset(new kernel_connector<kernel_main_typed, executor, kernel_ipc_typed>(
+        //         exec, right_main_func));
+        // }
 
         //sanity
         if (!kernel_router) {

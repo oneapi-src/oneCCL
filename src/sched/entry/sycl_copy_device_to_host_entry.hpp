@@ -43,11 +43,18 @@ public:
               offset(offset) {}
 
     void start() override {
+
+        // LOG_DEBUG(class_name(), ": in_buf ", in_buf, ", out_buf ", out_buf, ", cnt ", cnt);
+        // cl::sycl::usm::alloc usm_kind = get_pointer_type(in_buf, stream.get().get_context());
+        // CCL_THROW_IF_NOT(usm_kind == cl::sycl::usm::alloc::shared, "usm_kind should be shared");
+
         //fill visitor with actual ccl_buffer data
-        auto visitor = make_visitor<cl::sycl::access::mode::read>(
-            dtype, cnt, offset, in_buf, [this](void* sycl_pointer, size_t bytes) {
-                auto comp_status = ccl_comp_copy(sycl_pointer, out_buf.get_ptr(bytes), cnt, dtype);
-                CCL_ASSERT(comp_status == ccl_status_success, "bad status ", comp_status);
+        auto visitor = make_reader_visitor<cl::sycl::access::mode::read>(
+            dtype, cnt, offset, in_buf, stream->get_native_stream(), std::ref(out_buf), [this](char* sycl_pointer, size_t bytes) {
+                (void)sycl_pointer;
+                (void)bytes;
+                (void)this;
+                // TODO remove function callback
             });
 
         ccl_tuple_for_each_indexed<ccl_sycle_buffer_one_dim_types>(visitor);

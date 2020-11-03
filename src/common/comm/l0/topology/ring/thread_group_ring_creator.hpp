@@ -27,8 +27,8 @@ class thread_group_ring_topology {
     device_storage& devices_factory;
 
 public:
-    static constexpr ccl::device_group_split_type group_id() {
-        return ccl::device_group_split_type::process;
+    static constexpr ccl::group_split_type group_id() {
+        return ccl::group_split_type::process;
     }
 
     static constexpr const char* name() {

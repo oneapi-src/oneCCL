@@ -1,4 +1,5 @@
-Environment variables
+=====================
+Environment Variables
 =====================
 
 Collective algorithms selection
@@ -49,6 +50,7 @@ Available collective operations (``<coll_name>``):
 -   ``BARRIER``
 -   ``BCAST``
 -   ``REDUCE``
+-   ``REDUCE_SCATTER``
 -   ``SPARSE_ALLREDUCE``
 
 
@@ -88,7 +90,7 @@ Available algorithms for each collective operation (``<algo_name>``):
    * - ``starlike``
      - May be beneficial for imbalanced workloads
    * - ``ring`` 
-     - reduce_scatter+allgather ring.
+     - reduce_scatter + allgather ring.
        Use ``CCL_RS_CHUNK_COUNT`` and ``CCL_RS_MIN_CHUNK_SIZE``
        to control pipelining on reduce_scatter phase.
    * - ``ring_rma``
@@ -98,7 +100,7 @@ Available algorithms for each collective operation (``<algo_name>``):
    * - ``recursive_doubling``
      - Recursive doubling algorithm
    * - ``2d``
-     - 2-dimensional algorithm (reduce_scatter+allreduce+allgather)
+     - 2-dimensional algorithm (reduce_scatter + allreduce + allgather)
 
 
 ``ALLTOALL`` algorithms
@@ -174,6 +176,20 @@ Available algorithms for each collective operation (``<algo_name>``):
      - Double-tree algorithm
 
 
+``REDUCE_SCATTER`` algorithms
++++++++++++++++++++++++++++++
+
+.. list-table:: 
+   :widths: 25 50
+   :align: left
+
+   * - ``direct``
+     - Based on ``MPI_Ireduce_scatter_block``
+   * - ``ring`` 
+     - Use ``CCL_RS_CHUNK_COUNT`` and ``CCL_RS_MIN_CHUNK_SIZE``
+       to control pipelining.
+
+
 ``SPARSE_ALLREDUCE`` algorithms
 +++++++++++++++++++++++++++++++
 
@@ -187,6 +203,9 @@ Available algorithms for each collective operation (``<algo_name>``):
      - Mask matrix based algorithm
    * - ``allgatherv``
      - 3-allgatherv based algorithm
+
+.. note::
+    WARNING: ``ccl::sparse_allreduce`` is experimental and subject to change.
 
 
 CCL_RS_CHUNK_COUNT
@@ -350,188 +369,6 @@ CCL_FUSION_CYCLE_MS
 
 Set this environment variable to specify the frequency of checking for collectives operations to be fused.
 
-PMI
-###
-
-CCL_PM_TYPE
-***********
-**Syntax**
-
-:: 
-
-  CCL_PM_TYPE=<value>
-
-**Arguments**
-
-.. list-table::
-   :widths: 25 50
-   :header-rows: 1
-   :align: left
-
-   * - <value>
-     - Description
-   * - ``simple``
-     - Use PMI (process manager interface) with ``mpirun`` (**default**).
-   * - ``resizable``
-     - Use internal KVS (key-value storage) without ``mpirun``.
-
-**Description**
-
-Set this environment variable to specify the process manager type.
-
-
-CCL_KVS_IP_EXCHANGE
-*******************
-**Syntax**
-
-:: 
-
-  CCL_KVS_IP_EXCHANGE=<value>
-
-**Arguments**
-
-.. list-table::
-   :widths: 25 50
-   :header-rows: 1
-   :align: left
-
-   * - <value>
-     - Description
-   * - ``k8s``
-     - Use K8S for IP exchange (**default**).
-   * - ``env``
-     - Use a specific environment to get the master IP.
-
-**Description**
-
-Set this environment variable to specify the way to IP addresses of ran processes are exchanged.
-
-
-CCL_K8S_API_ADDR
-****************
-**Syntax**
-
-:: 
-
-  CCL_K8S_API_ADDR =<value>
-
-**Arguments**
-
-.. list-table::
-   :widths: 25 50
-   :header-rows: 1
-   :align: left
-
-   * - <value>
-     - Description
-   * - ``IP:PORT``
-     - Set the address and the port of k8s kvs.
-
-**Description**
-
-Set this environment variable to specify k8s kvs address.
-
-
-CCL_K8S_MANAGER_TYPE
-********************
-**Syntax**
-
-:: 
-
-  CCL_K8S_MANAGER_TYPE=<value>
-
-**Arguments**
-
-.. list-table::
-   :widths: 25 50
-   :header-rows: 1
-   :align: left
-
-   * - <value>
-     - Description
-   * - ``none``
-     - Use Pods labels for IP exchange (**default**).
-   * - ``k8s``
-     - Use Statefulset\Deployment labels for IP exchange.
-
-**Description**
-
-Set this environment variable to specify the way of IP exchange.
-
-
-CCL_KVS_IP_PORT
-***************
-**Syntax**
-
-:: 
-
-  CCL_KVS_IP_PORT=<value>
-
-**Arguments**
-
-.. list-table::
-   :widths: 25 50
-   :header-rows: 1
-   :align: left
-
-   * - <value>
-     - Description
-   * - ``IP_PORT``
-     - Set the address and the port of the master kvs server.
-
-**Description**
-
-Set this environment variable to specify the master kvs address.
-
-
-CCL_WORLD_SIZE
-**************
-**Syntax**
-
-:: 
-
-  CCL_WORLD_SIZE=<value>
-
-**Arguments**
-
-.. list-table::
-   :widths: 25 50
-   :header-rows: 1
-   :align: left
-
-   * - <value>
-     - Description
-   * - ``N``
-     - The number of processes to start execution.
-
-**Description**
-
-Set this environment variable to specify the number of |product_short| processes.
-
-
-CCL_JOB_NAME
-************
-**Syntax**
-
-:: 
-
-  CCL_JOB_NAME=<value>
-
-**Arguments**
-
-.. list-table::
-   :widths: 25 50
-   :header-rows: 1
-   :align: left
-
-   * - <value>
-     - Description
-   * - ``job_name``
-     - The name of the job.
-
-**Description**
-
-Set this label on the pods that should be connected with each other.
 
 CCL_ATL_TRANSPORT
 #################
@@ -578,7 +415,7 @@ CCL_UNORDERED_COLL
      - Description
    * - ``1``
      - Enable execution of unordered collectives.
-       You have to additionally specify ``coll_attr.match_id``.
+       You have to additionally specify ``match_id``.
    * - ``0``
      - Disable execution of unordered collectives (**default**).
 
@@ -605,7 +442,7 @@ CCL_PRIORITY
    * - <value> 
      - Description
    * - ``direct``
-     - You have to explicitly specify priority using ``coll_attr.priority``.
+     - You have to explicitly specify priority using ``priority``.
    * - ``lifo``
      - Priority is implicitly increased on each collective call. You do not have to specify priority.
    * - ``none``
@@ -666,3 +503,34 @@ CCL_WORKER_AFFINITY
 **Description**
 
 Set this environment variable to specify cpu affinity for |product_short| worker threads.
+
+
+CCL_LOG_LEVEL
+#############
+**Syntax**
+
+:: 
+
+  CCL_LOG_LEVEL=<value>
+
+**Arguments**
+
+.. list-table:: 
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+   
+   * - <value> 
+     - Description
+   * - ``0``
+     - NONE
+   * - ``1``
+     - INFO
+   * - ``2``
+     - DEBUG
+   * - ``3``
+     - TRACE
+
+**Description**
+
+Set this environment variable to control logging level.

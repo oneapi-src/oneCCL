@@ -35,13 +35,13 @@ public:
     using typename base::comm_rank_t;
     using impl_t = device_t;
     template <ccl_coll_type algo_type,
-              ccl::device_group_split_type group,
+              ccl::group_split_type group,
               ccl::device_topology_type mode>
     using gpu_module_t =
         typename device_t::template gpu_module_t<algo_type, group, mode>; //same as in-process GPU
 
     template <ccl_coll_type algo_type,
-              ccl::device_group_split_type group,
+              ccl::group_split_type group,
               ccl::device_topology_type mode,
               class native_data_type>
     using gpu_kernel_t =
@@ -54,20 +54,20 @@ public:
     ccl_ipc_source_gpu_comm(ccl_device& assigned_device,
                             typename base::comm_rank_t idx,
                             device_t& process_device,
-                            ccl::device_group_split_type group_id,
+                            ccl::group_split_type group_id,
                             ccl::device_topology_type class_id)
             : base(assigned_device, idx),
               inprocess_gpu_comm(process_device) {
         //register in topology
         switch (group_id) {
-            case ccl::device_group_split_type::cluster: {
+            case ccl::group_split_type::cluster: {
                 switch (class_id) {
                     case ccl::device_topology_type::ring: {
                         const auto& original_rank =
                             inprocess_gpu_comm
-                                .template get_comm_data<ccl::device_group_split_type::cluster,
+                                .template get_comm_data<ccl::group_split_type::cluster,
                                                         ccl::device_topology_type::ring>();
-                        base::template reset_rank<ccl::device_group_split_type::cluster,
+                        base::template reset_rank<ccl::group_split_type::cluster,
                                                   ccl::device_topology_type::ring>(
                             original_rank.rank, original_rank.size);
                         break;
@@ -75,9 +75,9 @@ public:
                     case ccl::device_topology_type::a2a: {
                         const auto& original_rank =
                             inprocess_gpu_comm
-                                .template get_comm_data<ccl::device_group_split_type::cluster,
+                                .template get_comm_data<ccl::group_split_type::cluster,
                                                         ccl::device_topology_type::a2a>();
-                        base::template reset_rank<ccl::device_group_split_type::cluster,
+                        base::template reset_rank<ccl::group_split_type::cluster,
                                                   ccl::device_topology_type::a2a>(
                             original_rank.rank, original_rank.size);
                         break;
@@ -93,7 +93,11 @@ public:
             default: {
                 throw std::runtime_error(
                     std::string("ccl_ipc_source_gpu_comm must be created") +
-                    "for process-based topology, but requested: " + std::to_string(group_id));
+                    "for process-based topology, but requested: " +
+                    std::to_string(
+                        static_cast<
+                            typename std::underlying_type<ccl::group_split_type>::type>(
+                            group_id)));
             }
         }
     }
@@ -111,14 +115,14 @@ public:
         return ret;
     }
     /*
-    template<ccl::device_group_split_type group_id>
+    template<ccl::group_split_type group_id>
     topology_addr<group_id> get_comm_data() const
     {
         return inprocess_gpu_comm.template get_comm_data<group_id>();
     }
 */
     template <ccl_coll_type module_type,
-              ccl::device_group_split_type group_id,
+              ccl::group_split_type group_id,
               ccl::device_topology_type class_id,
               class native_data_type>
     gpu_kernel_t<module_type, group_id, class_id, native_data_type>& get_gpu_kernel() {
@@ -128,10 +132,10 @@ public:
 
     template <
         class native_data_type,
-        ccl::device_group_split_type group_id,
+        ccl::group_split_type group_id,
         ccl::device_topology_type class_id,
         class gpu_entry,
-        class = typename std::enable_if<group_id == ccl::device_group_split_type::cluster>::type>
+        class = typename std::enable_if<group_id == ccl::group_split_type::cluster>::type>
     gpu_kernel_t<gpu_entry::type(), group_id, class_id, native_data_type>& register_entry(
         gpu_entry& entry) {
         const topology_addr<group_id, class_id>& comm_addr =

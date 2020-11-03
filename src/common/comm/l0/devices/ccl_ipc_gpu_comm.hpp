@@ -32,12 +32,12 @@ public:
     using base::comm_rank_t;
     using impl_t = ccl_ipc_gpu_comm;
     template <ccl_coll_type algo_type,
-              ccl::device_group_split_type group,
+              ccl::group_split_type group,
               ccl::device_topology_type mode>
     using gpu_module_t = ipc_dst_device_coll_module<algo_type, group, mode>;
 
     template <ccl_coll_type algo_type,
-              ccl::device_group_split_type group,
+              ccl::group_split_type group,
               ccl::device_topology_type mode,
               class native_data_type>
     using gpu_kernel_t =
@@ -52,14 +52,14 @@ public:
     ccl_ipc_gpu_comm(ccl_device& assigned_device,
                      comm_rank_t idx,
                      size_t size,
-                     ccl::device_group_split_type group_id,
+                     ccl::group_split_type group_id,
                      ccl::device_topology_type class_id);
     ~ccl_ipc_gpu_comm() = default;
 
     std::string to_string_impl() const;
 
     template <ccl_coll_type module_type,
-              ccl::device_group_split_type group_id,
+              ccl::group_split_type group_id,
               ccl::device_topology_type class_id,
               class native_data_type>
     gpu_kernel_t<module_type, group_id, class_id, native_data_type>& get_gpu_kernel() {
@@ -74,10 +74,12 @@ public:
     }
 
     template <ccl_coll_type module_type,
-              ccl::device_group_split_type group_id,
+              ccl::group_split_type group_id,
               ccl::device_topology_type class_id>
     std::string create_module_impl(const ze_module_desc_t& module_data) {
-        std::get<class_id>(std::get<group_id>(std::get<module_type>(registered_modules)))
+        std::get<utils::enum_to_underlying(class_id)>(
+            std::get<utils::enum_to_underlying(group_id)>(
+                std::get<module_type>(registered_modules)))
             .reset(new gpu_module_t<module_type, group_id, class_id>(nullptr));
         return { "IPC module storage" };
     }

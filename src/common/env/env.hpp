@@ -15,7 +15,7 @@
 */
 #pragma once
 
-#include "ccl_types.hpp"
+#include "oneapi/ccl/ccl_types.hpp"
 #include "coll/coll.hpp"
 #include "common/utils/utils.hpp"
 #include "common/utils/yield.hpp"
@@ -37,6 +37,8 @@ constexpr const char* I_MPI_AVAILABLE_CORES_ENV = "I_MPI_PIN_INFO";
 
 constexpr const char* CCL_ATL_TRANSPORT = "CCL_ATL_TRANSPORT";
 constexpr const char* CCL_ATL_SHM = "CCL_ATL_SHM";
+constexpr const char* CCL_ATL_SYNC_COLL = "CCL_ATL_SYNC_COLL";
+constexpr const char* CCL_ATL_EXTRA_EP = "CCL_ATL_EXTRA_EP";
 
 constexpr const char* CCL_ALLGATHERV = "CCL_ALLGATHERV";
 constexpr const char* CCL_ALLREDUCE = "CCL_ALLREDUCE";
@@ -45,6 +47,7 @@ constexpr const char* CCL_ALLTOALLV = "CCL_ALLTOALLV";
 constexpr const char* CCL_BARRIER = "CCL_BARRIER";
 constexpr const char* CCL_BCAST = "CCL_BCAST";
 constexpr const char* CCL_REDUCE = "CCL_REDUCE";
+constexpr const char* CCL_REDUCE_SCATTER = "CCL_REDUCE_SCATTER";
 constexpr const char* CCL_SPARSE_ALLREDUCE = "CCL_SPARSE_ALLREDUCE";
 constexpr const char* CCL_UNORDERED_COLL = "CCL_UNORDERED_COLL";
 
@@ -78,6 +81,8 @@ constexpr const char* CCL_ALLTOALL_SCATTER_PLAIN = "CCL_ALLTOALL_SCATTER_PLAIN";
 
 constexpr const char* CCL_DEFAULT_RESIZABLE = "CCL_DEFAULT_RESIZABLE";
 
+constexpr const char* CCL_COLL_KERNELS_PATH = "CCL_COLL_KERNELS_PATH";
+
 enum ccl_priority_mode {
     ccl_priority_none,
     ccl_priority_direct,
@@ -108,6 +113,10 @@ public:
 
     void parse();
     void print();
+    void set_internal_env();
+
+    bool was_printed;
+    ccl_spinlock print_guard{};
 
     int log_level;
     int sched_dump;
@@ -118,6 +127,8 @@ public:
 
     ccl_atl_transport atl_transport;
     int enable_shm;
+    int sync_coll;
+    int extra_ep;
 
     /*
        parsing logic can be quite complex
@@ -164,6 +175,7 @@ public:
     int alltoall_scatter_plain;
 
     size_t default_resizable;
+    std::string kernel_path;
 
     template <class T>
     static int env_2_type(const char* env_name, T& val) {

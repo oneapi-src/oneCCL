@@ -1,11 +1,12 @@
 .. |sys_req| replace:: |product_full| System Requirements
-.. _sys_req: https://software.intel.com/en-us/articles/oneapi-collective-communication-library-system-requirements
+.. _sys_req: https://software.intel.com/content/www/us/en/develop/articles/oneapi-collective-communication-library-system-requirements.html
 .. |tgz_file| replace:: tar.gz file
 .. _tgz_file: https://github.com/oneapi-src/oneCCL/releases
 .. highlight:: bash
 
+============
 Installation
-=============
+============
 
 This page explains how to install and configure the |product_full| (|product_short|).
 

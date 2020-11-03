@@ -148,7 +148,7 @@ bool device_group_ring_topology::build_specific(std::ostream& out,
         devices_factory.reset(comm_addr.thread_idx);      <--- AVOID because affects thread_group
 
         a2a_capable =
-            build_specific_topology<ccl::device_group_split_type::a2a_device_group>(out,
+            build_specific_topology<ccl::group_split_type::a2a_device_group>(out,
                                                                                  comm_addr,
                                                                                  group_device_indices,
                                                                                  graph);
@@ -284,7 +284,7 @@ bool device_group_ring_topology::build_scale_up_specific(
         devices_factory.reset(comm_addr.thread_idx);  <--- AVOID because affects thread_group
 
         a2a_capable =
-            build_scale_up_specific_topology<ccl::device_group_split_type::a2a_device_group>(
+            build_scale_up_specific_topology<ccl::group_split_type::a2a_device_group>(
                                                 out,
                                                 comm_addr,
                                                 group_device_indices,

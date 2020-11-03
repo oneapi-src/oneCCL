@@ -19,8 +19,10 @@
 #include <tuple>
 
 #include "coll/coll.hpp"
-#include "native_device_api/export_api.hpp"
+#include "oneapi/ccl/native_device_api/export_api.hpp"
 #include "common/comm/l0/modules/base_entry_module.hpp"
+#include "oneapi/ccl/native_device_api/l0/context.hpp"
+
 namespace native {
 gpu_module_base::gpu_module_base(handle module_handle) : module(module_handle) {}
 
@@ -45,7 +47,11 @@ gpu_module_base::handle gpu_module_base::get() const {
 }
 
 ze_kernel_handle_t gpu_module_base::import_kernel(const std::string& name) {
-    ze_kernel_desc_t desc = { ZE_KERNEL_DESC_VERSION_CURRENT, ZE_KERNEL_FLAG_NONE };
+    ze_kernel_desc_t desc = {
+        .stype = ZE_STRUCTURE_TYPE_KERNEL_DESC,
+        .pNext = nullptr,
+        .flags = 0,
+    };
     desc.pKernelName = name.c_str();
     ze_kernel_handle_t handle;
 

@@ -13,8 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#ifndef SYCL_REDUCE_COLL_HPP
-#define SYCL_REDUCE_COLL_HPP
+#pragma once
 
 #include "reduce_strategy.hpp"
 
@@ -36,13 +35,13 @@ struct sycl_reduce_coll : sycl_base_coll<Dtype, reduce_strategy_impl> {
     using coll_base::single_recv_buf;
     using coll_base::comm;
 
-    sycl_reduce_coll(bench_coll_init_attr init_attr)
-            : coll_base(init_attr, base_coll::comm->size(), base_coll::comm->size()) {}
+    sycl_reduce_coll(bench_init_attr init_attr)
+            : coll_base(init_attr) {}
 
     virtual void prepare(size_t elem_count) override {
-        size_t local_rank = comm->rank();
+        size_t local_rank = coll_base::comm().rank();
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
-            sycl_queue.submit([&](handler& cgh) {
+            device_data::sycl_queue.submit([&](handler& cgh) {
                 auto send_buf = (static_cast<sycl_buffer_t<Dtype>*>(send_bufs[b_idx]));
                 auto recv_buf = (static_cast<sycl_buffer_t<Dtype>*>(recv_bufs[b_idx]));
                 auto send_buf_acc = send_buf->template get_access<mode::write>(cgh);
@@ -58,12 +57,13 @@ struct sycl_reduce_coll : sycl_base_coll<Dtype, reduce_strategy_impl> {
 
     virtual void finalize(size_t elem_count) override {
         bool unexpected_device_value = false;
-        Dtype sbuf_expected = comm->rank();
-        Dtype rbuf_expected = (comm->size() - 1) * ((float)comm->size() / 2);
-        size_t local_rank = comm->rank();
+        Dtype sbuf_expected = coll_base::comm().rank();
+        Dtype rbuf_expected =
+            (coll_base::comm().size() - 1) * ((float)coll_base::comm().size() / 2);
+        size_t local_rank = coll_base::comm().rank();
 
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
-            sycl_queue.submit([&](handler& cgh) {
+            device_data::sycl_queue.submit([&](handler& cgh) {
                 auto send_buf = (static_cast<sycl_buffer_t<Dtype>*>(send_bufs[b_idx]));
                 auto recv_buf = (static_cast<sycl_buffer_t<Dtype>*>(recv_bufs[b_idx]));
                 auto send_buf_acc = send_buf->template get_access<mode::write>(cgh);
@@ -116,5 +116,3 @@ struct sycl_reduce_coll : sycl_base_coll<Dtype, reduce_strategy_impl> {
     }
 };
 #endif /* CCL_ENABLE_SYCL */
-
-#endif /* SYCL_REDUCE_COLL_HPP */

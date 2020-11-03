@@ -20,19 +20,19 @@
 
 namespace native {
 #define TEMPLATE_DECL_ARG \
-    ccl::device_group_split_type group_id, ccl::device_topology_type... class_id
+    ccl::group_split_type group_id, ccl::device_topology_type... class_id
 #define TEMPLATE_DEF_ARG group_id, class_id...
 
 // community impl
 template <ccl::device_topology_type class_id>
-template <ccl::device_group_split_type group_id>
+template <ccl::group_split_type group_id>
 void device_community_container<class_id>::register_device_by_id(
     const ccl::device_index_type& device_id,
     ccl::context_comm_addr& registered_addr) {
     storage->template register_device_by_id<group_id>(device_id, registered_addr);
 }
 
-template <ccl::device_group_split_type group_id>
+template <ccl::group_split_type group_id>
 void device_community_container<ccl::device_topology_type::ring>::register_device_by_id(
     const ccl::device_index_type& device_id,
     ccl::context_comm_addr& registered_addr) {

@@ -24,7 +24,9 @@
 
 #include "gtest/gtest.h"
 
-#include "ccl.hpp"
+#include "mpi.h"
+
+#include "oneapi/ccl.hpp"
 
 #define sizeofa(arr)   (sizeof(arr) / sizeof(*arr))
 #define DTYPE          float
@@ -74,8 +76,8 @@
 #define OUTPUT_NAME_ARG "--gtest_output="
 #define PATCH_OUTPUT_NAME_ARG(argc, argv) \
     do { \
-        auto comm = ccl::environment::instance().create_communicator(); \
-        if (comm->size() > 1) { \
+        auto& comm = gd.comms[0]; \
+        if (comm.size() > 1) { \
             for (int idx = 1; idx < argc; idx++) { \
                 if (strstr(argv[idx], OUTPUT_NAME_ARG)) { \
                     std::string patchedArg; \
@@ -83,14 +85,14 @@
                     size_t extPos = originArg.find(".xml"); \
                     size_t argLen = strlen(OUTPUT_NAME_ARG); \
                     patchedArg = originArg.substr(argLen, extPos - argLen) + "_" + \
-                                 std::to_string(comm->rank()) + ".xml"; \
+                                 std::to_string(comm.rank()) + ".xml"; \
                     PRINT("originArg %s, extPos %zu, argLen %zu, patchedArg %s", \
                           originArg.c_str(), \
                           extPos, \
                           argLen, \
                           patchedArg.c_str()); \
                     argv[idx][0] = '\0'; \
-                    if (comm->rank()) \
+                    if (comm.rank()) \
                         ::testing::GTEST_FLAG(output) = ""; \
                     else \
                         ::testing::GTEST_FLAG(output) = patchedArg.c_str(); \
@@ -117,14 +119,8 @@
         int result = className.run(typed_param); \
         int result_final = 0; \
         static int glob_idx = 0; \
-        auto comm = ccl::environment::instance().create_communicator(); \
-        auto stream = ccl::environment::instance().create_stream(); \
-        std::shared_ptr<ccl::request> reqs; \
-        ccl::coll_attr coll_attr{}; \
-        init_coll_attr(&coll_attr); \
-        reqs = \
-            comm->allreduce(&result, &result_final, 1, ccl::reduction::sum, &coll_attr, stream); \
-        reqs->wait(); \
+        auto& comm = GlobalData::instance().comms[0]; \
+        ccl::allreduce(&result, &result_final, 1, ccl::reduction::sum, comm).wait(); \
         if (result_final > 0) { \
             print_err_message(className.get_err_message(), output); \
             if (typed_param.process_idx == 0) { \
@@ -166,10 +162,31 @@
 #define MAIN_FUNCTION() \
     int main(int argc, char** argv, char* envs[]) { \
         init_test_params(); \
-        ccl::environment::instance(); \
+        ccl::init(); \
+        int mpi_inited = 0; \
+        MPI_Initialized(&mpi_inited); \
+        if (!mpi_inited) { \
+            MPI_Init(NULL, NULL); \
+        } \
+        int size, rank; \
+        MPI_Comm_size(MPI_COMM_WORLD, &size); \
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank); \
+        ccl::kvs::address_type main_addr; \
+        auto& gd = GlobalData::instance(); \
+        if (rank == 0) { \
+            gd.kvs = ccl::create_main_kvs(); \
+            main_addr = gd.kvs->get_address(); \
+            MPI_Bcast((void*)main_addr.data(), main_addr.size(), MPI_BYTE, 0, MPI_COMM_WORLD); \
+        } \
+        else { \
+            MPI_Bcast((void*)main_addr.data(), main_addr.size(), MPI_BYTE, 0, MPI_COMM_WORLD); \
+            gd.kvs = ccl::create_kvs(main_addr); \
+        } \
+        gd.comms.push_back(ccl::create_communicator(size, rank, gd.kvs)); \
         PATCH_OUTPUT_NAME_ARG(argc, argv); \
         testing::InitGoogleTest(&argc, argv); \
         int res = RUN_ALL_TESTS(); \
+        MPI_Finalize(); \
         return res; \
     }
 
@@ -180,66 +197,43 @@
     } \
     INSTANTIATE_TEST_CASE_P(test_params, MainTest, ::testing::ValuesIn(test_params));
 
-void init_coll_attr(ccl::coll_attr* coll_attr) {
-    coll_attr->prologue_fn = NULL;
-    coll_attr->epilogue_fn = NULL;
-    coll_attr->reduction_fn = NULL;
-    coll_attr->priority = 0;
-    coll_attr->synchronous = 0;
-    coll_attr->match_id = NULL;
-    coll_attr->to_cache = 0;
-    coll_attr->vector_buf = 0;
-}
-
 void print_err_message(char* err_message, std::ostream& output) {
     int message_len = strlen(err_message);
-    auto comm = ccl::environment::instance().create_communicator();
-    auto stream = ccl::environment::instance().create_stream();
-    std::shared_ptr<ccl::request> reqs;
-    ccl::coll_attr coll_attr{};
-    init_coll_attr(&coll_attr);
-    int process_count = comm->size();
-    int process_idx = comm->rank();
-    size_t* arr_message_len = new size_t[process_count];
+    ccl::communicator& comm = GlobalData::instance().comms[0];
+    int process_count = comm.size();
+    int process_idx = comm.rank();
+    std::vector<size_t> arr_message_len(process_count, 0);
     int* arr_message_len_copy = new int[process_count];
-    size_t* displs = new size_t[process_count];
-    displs[0] = 1;
-    std::fill(displs, displs + process_count, 1);
-    reqs = comm->allgatherv(&message_len, 1, arr_message_len_copy, displs, &coll_attr, stream);
-    reqs->wait();
-    std::copy(arr_message_len_copy, arr_message_len_copy + process_count, arr_message_len);
-    int full_message_len = std::accumulate(arr_message_len, arr_message_len + process_count, 0);
+    std::vector<size_t> displs(process_count, 1);
+    ccl::allgatherv(&message_len, 1, arr_message_len_copy, displs, comm).wait();
+    std::copy(arr_message_len_copy, arr_message_len_copy + process_count, arr_message_len.begin());
+    int full_message_len = std::accumulate(arr_message_len.begin(), arr_message_len.end(), 0);
 
     if (full_message_len == 0) {
-        delete[] arr_message_len;
-        delete[] displs;
+        delete[] arr_message_len_copy;
         return;
     }
 
     char* arrerr_message = new char[full_message_len];
-    reqs = comm->allgatherv(
-        err_message, message_len, arrerr_message, arr_message_len, &coll_attr, stream);
-    reqs->wait();
+    ccl::allgatherv(err_message, message_len, arrerr_message, arr_message_len, comm).wait();
 
     if (process_idx == 0) {
         output << arrerr_message;
     }
 
-    delete[] arr_message_len;
     delete[] arr_message_len_copy;
     delete[] arrerr_message;
-    delete[] displs;
 }
 
 std::ostream& operator<<(std::ostream& stream, ccl_test_conf const& test_conf) {
     return stream << "\n"
-                  << ccl_data_type_str[test_conf.data_type] << "\n"
+                  << ccl_data_type_str[test_conf.datatype] << "\n"
                   << ccl_place_type_str[test_conf.place_type] << "\n"
                   << ccl_cache_type_str[test_conf.cache_type] << "\n"
                   << ccl_size_type_str[test_conf.size_type] << "\n"
                   << ccl_completion_type_str[test_conf.completion_type] << "\n"
                   << ccl_sync_type_str[test_conf.sync_type] << "\n"
-                  << ccl_reduction_type_str[test_conf.reduction_type] << "\n"
+                  << ccl_reduction_type_str[test_conf.reduction] << "\n"
                   << ccl_order_type_str[test_conf.complete_order_type] << "\n"
                   << ccl_order_type_str[test_conf.start_order_type] << "\n"
                   << ccl_buffer_count_str[test_conf.buffer_count] << "\n"

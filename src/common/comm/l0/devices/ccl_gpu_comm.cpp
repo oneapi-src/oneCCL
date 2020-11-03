@@ -26,7 +26,8 @@ namespace native {
 ccl_gpu_comm::ccl_gpu_comm(ccl_device& assigned_device, size_t idx) : base(assigned_device, idx) {
     auto queue_prop = ccl_device::get_default_queue_desc();
     queue_prop.ordinal = 0;
-    (void)device.get_cmd_queue(queue_prop); //default -for execution
+    std::shared_ptr<ccl_context> ctx;
+    (void)device.get_cmd_queue(queue_prop, ctx); //default -for execution
 
     //compile and load modules from all sources
     load_modules(specific_modules_source_data_storage::instance());
@@ -47,10 +48,11 @@ std::tuple<bool, ze_module_handle_t, std::string> ccl_gpu_comm::create_module_ha
     const ze_module_desc_t& descr,
     size_t hash) {
     std::tuple<bool, ze_module_handle_t, std::string> ret{ true, nullptr, "" };
+    std::shared_ptr<ccl_context> ctx;
 
     native::ccl_device::device_module_ptr mod;
     try {
-        mod = device.create_module(descr, hash);
+        mod = device.create_module(descr, hash, ctx);
         std::get<1>(ret) = mod->get();
     }
     catch (const std::exception& ex) {

@@ -33,8 +33,8 @@ public:
         return "device_group_ring_creator";
     }
 
-    static constexpr ccl::device_group_split_type group_id() {
-        return ccl::device_group_split_type::thread;
+    static constexpr ccl::group_split_type group_id() {
+        return ccl::group_split_type::thread;
     }
 
     static size_t default_property_p2p_rating_calculator(const ccl_device& lhs,

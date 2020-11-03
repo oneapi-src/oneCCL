@@ -13,74 +13,82 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "base.h"
+#include "base.hpp"
 
-#define RUN_COLLECTIVE(start_cmd, name) \
-    do { \
-        t = 0; \
-        for (iter_idx = 0; iter_idx < ITERS; iter_idx++) { \
-            for (idx = 0; idx < COUNT; idx++) { \
-                send_buf[idx] = 1.0; \
-                recv_buf[idx] = 0.0; \
-            } \
-            t1 = when(); \
-            CCL_CALL(start_cmd); \
-            CCL_CALL(ccl_wait(request)); \
-            t2 = when(); \
-            t += (t2 - t1); \
-        } \
-        ccl_barrier(NULL, NULL); \
-        float expected = size; \
-        for (idx = 0; idx < COUNT; idx++) { \
-            if ((rank == COLL_ROOT) && (recv_buf[idx] != expected)) { \
-                printf("iter %zu, idx %zu, expected %f, got %f\n", \
-                       iter_idx, \
-                       idx, \
-                       expected, \
-                       recv_buf[idx]); \
-                ASSERT(0, "unexpected value"); \
-            } \
-        } \
-        printf("[%zu] avg %s time: %8.2lf us\n", rank, name, t / ITERS); \
-        fflush(stdout); \
-    } while (0)
+void run_collective(const char* cmd_name,
+                    const std::vector<float>& send_buf,
+                    std::vector<float>& recv_buf,
+                    const ccl::communicator& comm,
+                    const ccl::reduce_attr& attr) {
+    std::chrono::system_clock::duration exec_time{ 0 };
+    float expected = (comm.size() - 1) * (static_cast<float>(comm.size()) / 2);
+    float received;
+
+    ccl::barrier(comm);
+
+    for (size_t idx = 0; idx < ITERS; ++idx) {
+        auto start = std::chrono::system_clock::now();
+        ccl::reduce(send_buf.data(),
+                    recv_buf.data(),
+                    recv_buf.size(),
+                    ccl::reduction::sum,
+                    COLL_ROOT,
+                    comm,
+                    attr).wait();
+        exec_time += std::chrono::system_clock::now() - start;
+    }
+
+    for (size_t idx = 0; idx < recv_buf.size(); idx++) {
+        received = recv_buf[idx];
+        if ((comm.rank() == COLL_ROOT) && (received != expected)) {
+            fprintf(stderr, "idx %zu, expected %4.4f, got %4.4f\n", idx, expected, received);
+
+            std::cout << "FAILED" << std::endl;
+            std::terminate();
+        }
+    }
+
+    ccl::barrier(comm);
+
+    std::cout << "avg time of " << cmd_name << ": "
+              << std::chrono::duration_cast<std::chrono::microseconds>(exec_time).count() / ITERS
+              << ", us" << std::endl;
+}
 
 int main() {
-    float send_buf[COUNT];
-    float recv_buf[COUNT];
 
-    test_init();
+    ccl::init();
 
-    coll_attr.to_cache = 1;
-    RUN_COLLECTIVE(ccl_reduce(send_buf,
-                              recv_buf,
-                              COUNT,
-                              ccl_dtype_float,
-                              ccl_reduction_sum,
-                              COLL_ROOT,
-                              &coll_attr,
-                              NULL,
-                              NULL,
-                              &request),
-                   "persistent_reduce");
+    int size, rank;
+    MPI_Init(NULL, NULL);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    coll_attr.to_cache = 0;
-    RUN_COLLECTIVE(ccl_reduce(send_buf,
-                              recv_buf,
-                              COUNT,
-                              ccl_dtype_float,
-                              ccl_reduction_sum,
-                              COLL_ROOT,
-                              &coll_attr,
-                              NULL,
-                              NULL,
-                              &request),
-                   "regular_reduce");
+    ccl::shared_ptr_class<ccl::kvs> kvs;
+    ccl::kvs::address_type main_addr;
+    if (rank == 0) {
+        kvs = ccl::create_main_kvs();
+        main_addr = kvs->get_address();
+        MPI_Bcast((void*)main_addr.data(), main_addr.size(), MPI_BYTE, 0, MPI_COMM_WORLD);
+    }
+    else {
+        MPI_Bcast((void*)main_addr.data(), main_addr.size(), MPI_BYTE, 0, MPI_COMM_WORLD);
+        kvs = ccl::create_kvs(main_addr);
+    }
 
-    test_finalize();
+    auto comm = ccl::create_communicator(size, rank, kvs);
+    auto attr = ccl::create_operation_attr<ccl::reduce_attr>();
 
-    if (rank == 0)
-        printf("PASSED\n");
+    MSG_LOOP(comm, std::vector<float> send_buf(msg_count, static_cast<float>(comm.rank()));
+             std::vector<float> recv_buf(msg_count);
+             attr.set<ccl::operation_attr_id::to_cache>(false);
+             run_collective("warmup_reduce", send_buf, recv_buf, comm, attr);
+             attr.set<ccl::operation_attr_id::to_cache>(true);
+             run_collective("persistent_reduce", send_buf, recv_buf, comm, attr);
+             attr.set<ccl::operation_attr_id::to_cache>(false);
+             run_collective("regular_reduce", send_buf, recv_buf, comm, attr););
+
+    MPI_Finalize();
 
     return 0;
 }

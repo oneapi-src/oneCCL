@@ -15,7 +15,7 @@
 #
 
 set(MPI_SRC
-    atl_mpi.c)
+        atl_mpi.c)
 
 set(COMMON_MPI_INC_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}/../
@@ -34,11 +34,10 @@ link_directories(${PROJECT_SOURCE_DIR}/mpi/lib)
 add_library(ccl_atl_mpi SHARED $<TARGET_OBJECTS:ccl_atl_mpi-objects>)
 target_include_directories(ccl_atl_mpi PRIVATE ${COMMON_MPI_INC_DIRS})
 
-# target_link_libraries(ccl_atl_mpi PRIVATE fabric m)
 target_link_libraries(ccl_atl_mpi PRIVATE mpi)
 
 # link with release_mt libmpi.so for oneAPI Base toolkit
-set_target_properties(ccl_atl_mpi PROPERTIES LINK_FLAGS "-Wl,-rpath,../../../mpi/latest/lib/release_mt/")
+set_target_properties(ccl_atl_mpi PROPERTIES LINK_FLAGS "-Wl,-rpath,../../../../mpi/latest/lib/release_mt/")
 if (NOT LIB_ATL_MPI_SO_VERSION AND NOT LIB_ATL_MPI_MAJOR_VERSION)
         set_target_properties(ccl_atl_mpi PROPERTIES VERSION 1 SOVERSION 1.0)
 else()

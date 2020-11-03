@@ -51,7 +51,13 @@ bool ccl_algorithm_selector_helper<ccl_coll_alltoallv_algo>::can_use(
     ccl_coll_alltoallv_algo algo,
     const ccl_selector_param& param,
     const ccl_selection_table_t<ccl_coll_alltoallv_algo>& table) {
-    return true;
+    bool can_use = true;
+
+    if (algo == ccl_coll_alltoallv_direct &&
+        (ccl::global_data::env().atl_transport == ccl_atl_ofi))
+        can_use = false;
+
+    return can_use;
 }
 
 CCL_SELECTION_DEFINE_HELPER_METHODS(ccl_coll_alltoallv_algo,

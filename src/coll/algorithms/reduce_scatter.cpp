@@ -13,10 +13,155 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+
+/*
+ *
+ *  (C) 2001 by Argonne National Laboratory.
+ *      See COPYRIGHT in top-level directory.
+ */
+
 #include "coll/algorithms/algorithms.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
 
-/* not exposed in CCL API */
+ccl_status_t ccl_coll_build_direct_reduce_scatter(ccl_sched* sched,
+                                                 ccl_buffer send_buf,
+                                                 ccl_buffer recv_buf,
+                                                 size_t recv_count,
+                                                 const ccl_datatype& dtype,
+                                                 ccl::reduction reduction,
+                                                 ccl_comm* comm)
+{
+    LOG_DEBUG("build direct reduce_scatter");
+
+    entry_factory::make_entry<reduce_scatter_entry>(
+        sched, send_buf, recv_buf, recv_count, dtype, reduction, comm);
+    return ccl_status_success;
+}
+
+ccl_status_t ccl_coll_build_ring_reduce_scatter_block(ccl_sched* sched,
+                                                      ccl_buffer send_buf,
+                                                      ccl_buffer recv_buf,
+                                                      size_t recv_count,
+                                                      const ccl_datatype& dtype,
+                                                      ccl::reduction op,
+                                                      ccl_comm* comm)
+{
+    CCL_THROW_IF_NOT(sched && send_buf && recv_buf,
+                     "incorrect values, sched ",
+                     sched,
+                     ", send ",
+                     send_buf,
+                     " recv ",
+                     recv_buf);
+
+    int inplace = (send_buf == recv_buf) ? 1 : 0;
+    LOG_DEBUG("build ring reduce_scatter_block: ",
+              inplace ? "in-place" : "out-of-place");
+
+    ccl_status_t status = ccl_status_success;
+    size_t comm_size, rank, idx;
+    size_t dtype_size = dtype.size();
+
+    size_t src, dst;
+
+    comm_size = comm->size();
+    rank = comm->rank();
+
+    if (recv_count == 0) {
+        return ccl_status_success;
+    }
+
+    if (!inplace) {
+        /* copy local data into recv_buf */
+        entry_factory::make_entry<copy_entry>(
+            sched,
+            send_buf + rank * recv_count * dtype_size,
+            recv_buf,
+            recv_count,
+            dtype);
+    }
+
+    /* allocate temporary buffer to store incoming data */
+    ccl_buffer tmp_buf = sched->alloc_buffer(recv_count * dtype_size);
+
+    for (idx = 1; idx < comm_size; idx++) {
+
+        src = (comm_size + rank - idx) % comm_size;
+        dst = (rank + idx) % comm_size;
+
+        /* send the data that dst needs. recv data that this process
+         * needs from src into tmp_recvbuf */
+        if (!inplace) {
+            entry_factory::make_entry<send_entry>(
+                sched,
+                send_buf + dst * recv_count * dtype_size,
+                recv_count,
+                dtype,
+                dst,
+                comm);
+
+            entry_factory::make_entry<recv_entry>(
+                sched,
+                tmp_buf,
+                recv_count,
+                dtype,
+                src,
+                comm);
+        }
+        else {
+            entry_factory::make_entry<send_entry>(
+                sched,
+                recv_buf + dst * recv_count * dtype_size,
+                recv_count,
+                dtype,
+                dst,
+                comm);
+
+            entry_factory::make_entry<recv_entry>(
+                sched,
+                tmp_buf,
+                recv_count,
+                dtype,
+                src,
+                comm);
+        }
+
+        sched->add_barrier();
+
+        if (!inplace) {
+            entry_factory::make_entry<reduce_local_entry>(
+                sched,
+                tmp_buf,
+                recv_count,
+                recv_buf,
+                nullptr,
+                dtype,
+                op);
+        } else {
+            entry_factory::make_entry<reduce_local_entry>(
+                sched,
+                tmp_buf,
+                recv_count,
+                recv_buf + rank * recv_count * dtype_size,
+                nullptr,
+                dtype,
+                op);
+        }
+    }
+
+    /* if inplace, move output data to the beginning of
+     * recv_buf. already done for rank 0 */
+    if (inplace && (rank != 0)) {
+        entry_factory::make_entry<copy_entry>(
+            sched,
+            recv_buf + rank * recv_count * dtype_size,
+            recv_buf,
+            recv_count,
+            dtype);
+    }
+
+    return status;
+}
 
 /* behaves like reduce_scatter_block but last block may contain more elements */
 ccl_status_t ccl_coll_build_ring_reduce_scatter(ccl_sched* sched,
@@ -24,8 +169,11 @@ ccl_status_t ccl_coll_build_ring_reduce_scatter(ccl_sched* sched,
                                                 ccl_buffer recv_buf,
                                                 size_t send_count,
                                                 const ccl_datatype& dtype,
-                                                ccl_reduction_t op,
+                                                ccl::reduction op,
                                                 ccl_comm* comm) {
+
+    LOG_DEBUG("build ring reduce_scatter");
+
     CCL_THROW_IF_NOT(sched && send_buf && recv_buf,
                      "incorrect values, sched ",
                      sched,
@@ -77,6 +225,7 @@ ccl_status_t ccl_coll_build_ring_reduce_scatter(ccl_sched* sched,
     }
 
     ccl_buffer tmp_buf;
+
     if (inplace) {
         tmp_buf = sched->alloc_buffer(count * dtype_size);
     }

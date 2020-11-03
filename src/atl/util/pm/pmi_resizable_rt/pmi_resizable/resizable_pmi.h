@@ -18,6 +18,9 @@
 
 #include <stdlib.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 #define PMIR_API __attribute__((visibility("default")))
 
 #define PMIR_SUCCESS                0
@@ -36,8 +39,12 @@
 #define PMIR_ERR_INVALID_KEYVALP    12
 #define PMIR_ERR_INVALID_SIZE       13
 
-enum pmir_resize_action;
-typedef enum pmir_resize_action (*pmir_resize_fn_t)(size_t comm_size);
+typedef enum {
+    KVS_RA_WAIT = 0,
+    KVS_RA_RUN = 1,
+    KVS_RA_FINALIZE = 2,
+} kvs_resize_action_t;
+typedef kvs_resize_action_t (*pmir_resize_fn_t)(size_t comm_size);
 
 int PMIR_API PMIR_Main_Addr_Reserv(char* main_addr);
 
@@ -71,4 +78,7 @@ int PMIR_API PMIR_set_resize_function(pmir_resize_fn_t resize_fn);
 
 int PMIR_API PMIR_Wait_notification(void);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

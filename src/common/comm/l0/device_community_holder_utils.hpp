@@ -28,7 +28,7 @@ namespace details {
 /**
  * class for pretty topology printing
  */
-template <ccl::device_group_split_type group_id>
+template <ccl::group_split_type group_id>
 struct device_community_container_print_helper {
     device_community_container_print_helper(std::ostream& out);
 
@@ -55,12 +55,12 @@ namespace details {
  * class for pretty topology printing definition
  */
 
-template <ccl::device_group_split_type group_id>
+template <ccl::group_split_type group_id>
 device_community_container_print_helper<group_id>::device_community_container_print_helper(
     std::ostream& out)
         : output(out) {}
 
-template <ccl::device_group_split_type group_id>
+template <ccl::group_split_type group_id>
 template <ccl::device_topology_type class_id>
 void device_community_container_print_helper<group_id>::operator()(
     const device_community_container<class_id>& topology_container) {
@@ -68,7 +68,7 @@ void device_community_container_print_helper<group_id>::operator()(
            << topology_container.storage->template to_string<group_id>();
 }
 
-template <ccl::device_group_split_type group_id>
+template <ccl::group_split_type group_id>
 void device_community_container_print_helper<group_id>::operator()(
     const device_community_container<ccl::device_topology_type::ring>& topology_container) {
     output << ::to_string(ccl::device_topology_type::ring)

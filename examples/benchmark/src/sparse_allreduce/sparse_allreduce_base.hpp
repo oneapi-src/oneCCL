@@ -13,8 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#ifndef SPARSE_ALLREDUCE_BASE_HPP
-#define SPARSE_ALLREDUCE_BASE_HPP
+#pragma once
 
 #include "sparse_allreduce_strategy.hpp"
 
@@ -27,9 +26,6 @@ struct base_sparse_allreduce_coll
 
     using coll_base = base_coll;
     using coll_strategy = sparse_allreduce_strategy_impl<IType, IndicesDistributorType>;
-
-    using coll_base::stream;
-    using coll_base::comm;
 
     std::vector<ITypeNonMod*> send_ibufs;
     std::vector<VTypeNonMod*> send_vbufs;
@@ -50,9 +46,9 @@ struct base_sparse_allreduce_coll
     size_t single_recv_vcount{};
     sparse_allreduce_fn_ctx_t single_fn_ctx;
 
-    base_sparse_allreduce_coll(bench_coll_init_attr init_attr)
+    base_sparse_allreduce_coll(bench_init_attr init_attr, size_t size)
             : base_coll(init_attr),
-              coll_strategy(init_attr.v2i_ratio, base_coll::comm->size()) {
+              coll_strategy(init_attr.v2i_ratio, size) {
         int result = 0;
 
         result =
@@ -85,5 +81,3 @@ struct base_sparse_allreduce_coll
         return ccl::native_type_info<typename std::remove_pointer<VType>::type>::ccl_datatype_value;
     }
 };
-
-#endif /* SPARSE_ALLREDUCE_BASE_HPP */

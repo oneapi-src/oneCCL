@@ -1,0 +1,58 @@
+/*
+ Copyright 2016-2020 Intel Corporation
+ 
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+ 
+     http://www.apache.org/licenses/LICENSE-2.0
+ 
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+*/
+#pragma once
+#include "oneapi/ccl/ccl_config.h"
+
+#ifdef CCL_ENABLE_SYCL
+    #ifdef MULTI_GPU_SUPPORT
+        #include "sycl_l0/export.hpp"
+       /*
+        #include "oneapi/ccl/native_device_api/l0/base.hpp"
+        #include "oneapi/ccl/native_device_api/l0/base_impl.hpp"
+
+        #include "oneapi/ccl/native_device_api/l0/primitives.hpp"
+        #include "oneapi/ccl/native_device_api/l0/primitives_impl.hpp"
+
+        #include "oneapi/ccl/native_device_api/l0/context.hpp"
+        #include "oneapi/ccl/native_device_api/l0/device.hpp"
+        #include "oneapi/ccl/native_device_api/l0/subdevice.hpp"
+        #include "oneapi/ccl/native_device_api/l0/driver.hpp"
+        #include "oneapi/ccl/native_device_api/l0/platform.hpp"
+        */
+    #else
+        #include "sycl/export.hpp"
+    #endif
+#else
+    #ifdef MULTI_GPU_SUPPORT
+        #include "l0/export.hpp"
+    #else
+        #include "empty/export.hpp"
+    #endif
+#endif
+
+#ifndef CL_BACKEND_TYPE
+#error "Unsupported CL_BACKEND_TYPE. Available backends are: dpcpp_sycl, l0 "
+#endif
+namespace ccl {
+using backend_traits = backend_info<CL_BACKEND_TYPE>;
+using unified_device_type = generic_device_type<CL_BACKEND_TYPE>;
+using unified_device_context_type = generic_device_context_type<CL_BACKEND_TYPE>;
+using unified_platform_type = generic_platform_type<CL_BACKEND_TYPE>;
+using unified_stream_type = generic_stream_type<CL_BACKEND_TYPE>;
+using unified_event_type = generic_event_type<CL_BACKEND_TYPE>;
+}
+
+#include "interop_utils.hpp"

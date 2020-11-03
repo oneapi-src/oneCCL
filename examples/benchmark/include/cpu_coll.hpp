@@ -13,19 +13,17 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#ifndef CPU_COLL_HPP
-#define CPU_COLL_HPP
+#pragma once
 
 #include "coll.hpp"
 
 /* cpu-specific base implementation */
-
 template <class Dtype, class strategy>
-struct cpu_base_coll : base_coll, protected strategy {
+struct cpu_base_coll : base_coll, protected strategy, host_data {
     using coll_strategy = strategy;
 
     template <class... Args>
-    cpu_base_coll(bench_coll_init_attr init_attr,
+    cpu_base_coll(bench_init_attr init_attr,
                   size_t sbuf_multiplier,
                   size_t rbuf_multiplier,
                   Args&&... args)
@@ -54,7 +52,7 @@ struct cpu_base_coll : base_coll, protected strategy {
         (void)result;
     }
 
-    cpu_base_coll(bench_coll_init_attr init_attr) : cpu_base_coll(init_attr, 1, 1) {}
+    cpu_base_coll(bench_init_attr init_attr) : cpu_base_coll(init_attr, 1, 1) {}
 
     virtual ~cpu_base_coll() {
         for (size_t idx = 0; idx < base_coll::get_buf_count(); idx++) {
@@ -71,32 +69,37 @@ struct cpu_base_coll : base_coll, protected strategy {
 
     virtual void start(size_t count,
                        size_t buf_idx,
-                       const bench_coll_exec_attr& attr,
+                       const bench_exec_attr& attr,
                        req_list_t& reqs) override {
-        coll_strategy::start_internal(*comm,
+        coll_strategy::start_internal(comm(),
                                       count,
                                       static_cast<Dtype*>(send_bufs[buf_idx]),
                                       static_cast<Dtype*>(recv_bufs[buf_idx]),
                                       attr,
-                                      stream,
-                                      reqs);
+                                      reqs,
+                                      coll_strategy::get_op_attr(attr));
     }
 
     virtual void start_single(size_t count,
-                              const bench_coll_exec_attr& attr,
+                              const bench_exec_attr& attr,
                               req_list_t& reqs) override {
-        coll_strategy::start_internal(*comm,
+        coll_strategy::start_internal(comm(),
                                       count,
                                       static_cast<Dtype*>(single_send_buf),
                                       static_cast<Dtype*>(single_recv_buf),
                                       attr,
-                                      stream,
-                                      reqs);
+                                      reqs,
+                                      coll_strategy::get_op_attr(attr));
     }
 
     ccl::datatype get_dtype() const override final {
         return ccl::native_type_info<typename std::remove_pointer<Dtype>::type>::ccl_datatype_value;
     }
-};
 
-#endif /* CPU_COLL_HPP */
+    /* global communicator for all cpu collectives */
+    static ccl::communicator& comm() {
+        if (!host_data::comm_ptr) {
+        }
+        return *host_data::comm_ptr;
+    }
+};

@@ -118,13 +118,14 @@ std::map<int, const char*> ccl_epilog_type_str = { { ETYPE_NULL, "ETYPE_NULL" },
 };
 
 typedef enum {
-    DT_CHAR = ccl_dtype_char,
-    DT_INT = ccl_dtype_int,
-    DT_BFP16 = ccl_dtype_bfp16,
-    DT_FLOAT = ccl_dtype_float,
-    DT_DOUBLE = ccl_dtype_double,
-    // DT_INT64 = ccl_dtype_int64,
-    // DT_UINT64 = ccl_dtype_uint64,
+    DT_CHAR = 0,
+    DT_INT,
+    // DT_INT64,
+    // DT_UINT64,
+    DT_FLOAT,
+    DT_DOUBLE,
+    DT_BF16,
+
     DT_LAST
 } ccl_data_type;
 ccl_data_type first_ccl_data_type = DT_CHAR;
@@ -133,11 +134,21 @@ ccl_data_type last_ccl_data_type = DT_LAST;
 std::map<int, const char*> ccl_data_type_str = {
     { DT_CHAR, "DT_CHAR" },
     { DT_INT, "DT_INT" },
-    { DT_BFP16, "DT_BFP16" },
-    { DT_FLOAT, "DT_FLOAT" },
-    { DT_DOUBLE, "DT_DOUBLE" }
     // { DT_INT64, "INT64" },
     // { DT_UINT64, "UINT64" }
+    { DT_FLOAT, "DT_FLOAT" },
+    { DT_DOUBLE, "DT_DOUBLE" },
+    { DT_BF16, "DT_BF16" },
+};
+
+std::map<int, ccl::datatype> ccl_datatype_values = {
+    { DT_CHAR, ccl::datatype::int8 },
+    { DT_INT, ccl::datatype::int32 },
+    // { DT_INT64, ccl::datatype::int64 },
+    // { DT_UINT64, ccl::datatype::uint64 },
+    { DT_FLOAT, ccl::datatype::float32 },
+    { DT_DOUBLE, ccl::datatype::float64 },
+    { DT_BF16, ccl::datatype::bfloat16 },
 };
 
 typedef enum {
@@ -167,13 +178,13 @@ std::map<int, const char*> ccl_reduction_type_str = {
 #endif
 };
 
-std::map<int, ccl_reduction_t> ccl_reduction_type_values = {
-    { RT_SUM, ccl_reduction_sum },
+std::map<int, ccl::reduction> ccl_reduction_values = {
+    { RT_SUM, ccl::reduction::sum },
 #ifdef TEST_CCL_REDUCE
-    { RT_PROD, ccl_reduction_prod },     { RT_MIN, ccl_reduction_min },
-    { RT_MAX, ccl_reduction_max },
+    { RT_PROD, ccl::reduction::prod },     { RT_MIN, ccl::reduction::min },
+    { RT_MAX, ccl::reduction::max },
 #ifdef TEST_CCL_CUSTOM_REDUCE
-    { RT_CUSTOM, ccl_reduction_custom }, { RT_CUSTOM_NULL, ccl_reduction_custom }
+    { RT_CUSTOM, ccl::reduction::custom }, { RT_CUSTOM_NULL, ccl::reduction::custom }
 #endif
 #endif
 };
@@ -234,8 +245,8 @@ struct ccl_test_conf {
     ccl_sync_type sync_type;
     ccl_size_type size_type;
     ccl_completion_type completion_type;
-    ccl_reduction_type reduction_type;
-    ccl_data_type data_type;
+    ccl_reduction_type reduction;
+    ccl_data_type datatype;
     ccl_order_type complete_order_type;
     ccl_order_type start_order_type;
     ccl_buffer_count buffer_count;
@@ -251,13 +262,18 @@ size_t get_ccl_buffer_count(ccl_test_conf& test_conf) {
     return ccl_buffer_count_values[test_conf.buffer_count];
 }
 
-ccl_reduction_t get_ccl_lib_reduction_type(const ccl_test_conf& test_conf) {
-    return ccl_reduction_type_values[test_conf.reduction_type];
+ccl::datatype get_ccl_lib_datatype(const ccl_test_conf& test_conf) {
+    return ccl_datatype_values[test_conf.datatype];
 }
 
+ccl::reduction get_ccl_lib_reduction(const ccl_test_conf& test_conf) {
+    return ccl_reduction_values[test_conf.reduction];
+}
+
+#define max_test_count() (ORDER_LAST * ORDER_LAST * CMPT_LAST * SNCT_LAST * DT_LAST * ST_LAST * RT_LAST * BC_LAST * CT_LAST * PT_LAST * PTYPE_LAST * ETYPE_LAST)
+
 size_t calculate_test_count() {
-    size_t test_count = ORDER_LAST * ORDER_LAST * CMPT_LAST * SNCT_LAST * DT_LAST * ST_LAST *
-                        RT_LAST * BC_LAST * CT_LAST * PT_LAST * PTYPE_LAST * ETYPE_LAST;
+    size_t test_count = max_test_count();
 
     // CCL_TEST_EPILOG_TYPE=0 CCL_TEST_PROLOG_TYPE=0 CCL_TEST_PLACE_TYPE=0 CCL_TEST_CACHE_TYPE=0 CCL_TEST_BUFFER_COUNT=0 CCL_TEST_SIZE_TYPE=0 CCL_TEST_PRIORITY_TYPE=1 CCL_TEST_COMPLETION_TYPE=0 CCL_TEST_SYNC_TYPE=0 CCL_TEST_REDUCTION_TYPE=0 CCL_TEST_DATA_TYPE=0
     char* test_data_type_enabled = getenv("CCL_TEST_DATA_TYPE");
@@ -341,8 +357,8 @@ size_t calculate_test_count() {
     return test_count;
 }
 
-int is_bfp16_enabled() {
-#ifdef CCL_BFP16_COMPILER
+int is_bf16_enabled() {
+#ifdef CCL_BF16_COMPILER
     int is_avx512f_enabled = 0;
     uint32_t reg[4];
 
@@ -358,9 +374,12 @@ int is_bfp16_enabled() {
 #endif
 }
 
-std::vector<ccl_test_conf> test_params(calculate_test_count());
+std::vector<ccl_test_conf> test_params;
 
 void init_test_params() {
+
+    test_params.resize(calculate_test_count());
+
     size_t idx = 0;
     for (ccl_prolog_type prolog_type = first_ccl_prolog_type; prolog_type < last_ccl_prolog_type;
          prolog_type++) {
@@ -384,7 +403,7 @@ void init_test_params() {
                             for (ccl_data_type data_type = first_ccl_data_type;
                                  data_type < last_ccl_data_type;
                                  data_type++) {
-                                if (data_type == DT_BFP16 && !is_bfp16_enabled())
+                                if (data_type == DT_BF16 && !is_bf16_enabled())
                                     continue;
 
                                 for (ccl_completion_type completion_type =
@@ -411,12 +430,12 @@ void init_test_params() {
                                                      buffer_count++) {
                                                     test_params[idx].place_type = place_type;
                                                     test_params[idx].size_type = size_type;
-                                                    test_params[idx].data_type = data_type;
+                                                    test_params[idx].datatype = data_type;
                                                     test_params[idx].cache_type = cache_type;
                                                     test_params[idx].sync_type = sync_type;
                                                     test_params[idx].completion_type =
                                                         completion_type;
-                                                    test_params[idx].reduction_type =
+                                                    test_params[idx].reduction =
                                                         reduction_type;
                                                     test_params[idx].buffer_count = buffer_count;
                                                     test_params[idx].start_order_type =
@@ -438,5 +457,6 @@ void init_test_params() {
             }
         }
     }
+
     test_params.resize(idx);
 }

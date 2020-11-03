@@ -16,7 +16,7 @@
 #pragma once
 #include "sched/queue/queue.hpp"
 #include "sched/sched.hpp"
-#include "native_device_api/export_api.hpp"
+#include "oneapi/ccl/native_device_api/export_api.hpp"
 #include "common/comm/l0/gpu_device_types.hpp"
 
 class ccl_gpu_sched;

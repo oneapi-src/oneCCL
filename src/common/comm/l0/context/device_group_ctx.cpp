@@ -63,7 +63,7 @@ std::shared_ptr<device_group_context> device_group_context::create(
     //A2A
     {
         /* TODO
-        auto a2a_device_topology = std::make_shared<device_community<ccl::device_group_split_type::a2a_device_group>>(context_addr);
+        auto a2a_device_topology = std::make_shared<device_community<ccl::group_split_type::a2a_device_group>>(context_addr);
         device_group_a2a_topology top(*this, plain_gpu_comms, ring_device_topology->get_device_storage_ptr());
         std::stringstream ss;
         auto matrix = top.build_p2p_capability_matrix(ss, group_device_ids);
