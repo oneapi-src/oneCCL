@@ -3,14 +3,6 @@
 ## Intel(R) oneAPI Collective Communications Library modulefile
 ##
 
-set min_tcl_ver 8.4
-if { $tcl_version < $min_tcl_ver } {
-    puts stderr " "
-    puts stderr "ERROR: This modulefile requires tcl $min_tcl_ver or greater."
-    puts stderr "Your system reports that tclsh version $tcl_version is installed."
-    exit 1
-}
-
 # get full pathname for this script file
 set scriptpath "${ModulesCurrentModulefile}"
 
@@ -44,12 +36,12 @@ set oneapiroot "[file dirname "$componentroot"]"
 
 # On load print component name and version being loaded
 if { [ module-info mode load ] } {
-    puts stderr "Loading $modulefilename version $modulefilever"
+    puts stderr "Loading $modulefilename"
 }
 
 # On remove print component name and version being removed
 if { [ module-info mode ] == "unload" || [ module-info mode ] == "remove" } {
-    puts stderr "Removing $modulefilename version $modulefilever"
+    puts stderr "Removing $modulefilename"
 }
 
 
@@ -57,26 +49,11 @@ if { [ module-info mode ] == "unload" || [ module-info mode ] == "remove" } {
 
 module-whatis "Intel(R) oneAPI Collective Communications Library"
 
-set ccl_conf "cpu_gpu_dpcpp"
-
-if { [info exists ::env(CCL_CONFIGURATION) ] } {
-    switch "$::env(CCL_CONFIGURATION)" {
-        "cpu_gpu_dpcpp" -
-        "cpu_icc" {
-            set ccl_conf "$::env(CCL_CONFIGURATION)"
-        }
-        default {
-        }
-    }
-}
-
 set                topdir                               "$componentroot/$modulefilever"
 
 setenv             CCL_ROOT                             "$topdir"
-setenv             CCL_CONFIGURATION                    "$ccl_conf"
-setenv             CCL_ATL_TRANSPORT_PATH               "$topdir/lib/$ccl_conf"
+setenv             CCL_ATL_TRANSPORT_PATH               "$topdir/lib"
 
-prepend-path       LD_LIBRARY_PATH                      "$topdir/lib/$ccl_conf"
-prepend-path       LIBRARY_PATH                         "$topdir/lib/$ccl_conf"
-prepend-path       CPATH                                "$topdir/include/$ccl_conf"
-
+prepend-path       LD_LIBRARY_PATH                      "$topdir/lib"
+prepend-path       LIBRARY_PATH                         "$topdir/lib"
+prepend-path       CPATH                                "$topdir/include"
