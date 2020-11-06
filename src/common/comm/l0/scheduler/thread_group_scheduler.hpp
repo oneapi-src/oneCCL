@@ -17,6 +17,11 @@
 #include "common/utils/spinlock.hpp"
 #include "sched/gpu_concurrent_sched.hpp"
 #include "sched/entry/l0/l0_allreduce_typed_entry.hpp"
+#include "sched/entry/l0/l0_allgatherv_typed_entry.hpp"
+#include "sched/entry/l0/l0_alltoallv_typed_entry.hpp"
+#include "sched/entry/l0/l0_bcast_typed_entry.hpp"
+#include "sched/entry/l0/l0_reduce_typed_entry.hpp"
+#include "sched/entry/l0/l0_allgatherv_typed_entry.hpp"
 //#include "sched/entry/l0/l0_allgather_handles_entry.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
 #include "common/comm/l0/device_community.hpp"
@@ -43,7 +48,7 @@ struct thread_group_scheduler {
 
     template <class EntryType,
               ccl_sched_add_mode mode,
-              ccl::device_group_split_type group_id,
+              ccl::group_split_type group_id,
               ccl::device_topology_type class_id,
               class device_t,
               class... Arguments>

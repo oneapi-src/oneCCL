@@ -14,7 +14,8 @@
  limitations under the License.
 */
 #pragma once
-#include "ccl.hpp"
+#include "oneapi/ccl/ccl_types.hpp"
+#include "oneapi/ccl/ccl_comm_split_attr_ids.hpp"
 #include "common/comm/l0/device_group_routing_schema.hpp"
 #include "common/comm/l0/devices/devices_declaration.hpp"
 #include "common/comm/l0/gpu_device_types.hpp"
@@ -51,7 +52,7 @@ struct device_community {
         return devices ? std::get<device_t::type_idx()>(*devices).size() : 0;
     }
 
-    template <ccl::device_group_split_type group_id>
+    template <ccl::group_split_type group_id>
     void register_device_by_id(const ccl::device_index_type& device_id,
                                ccl::context_comm_addr& registered_addr) {
         if (!get_impl()) {
@@ -106,7 +107,7 @@ struct device_community {
         return community_addr;
     }
 
-    template <ccl::device_group_split_type group_id>
+    template <ccl::group_split_type group_id>
     std::string to_string() const {
         std::stringstream result;
         result << "Topology: " << ::to_string(schema_id) << "\n";

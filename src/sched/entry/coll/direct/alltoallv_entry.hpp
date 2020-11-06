@@ -78,14 +78,14 @@ public:
 
         LOG_DEBUG("alltoallv entry req ", &req, ", sum_send_bytes ", sum_send_bytes);
 
-        atl_status_t atl_status = atl_ep_alltoallv(sched->bin->get_atl_ep(),
-                                                   send_buf.get_ptr(sum_send_bytes),
-                                                   send_bytes,
-                                                   send_offsets,
-                                                   recv_buf.get_ptr(sum_recv_bytes),
-                                                   recv_bytes,
-                                                   recv_offsets,
-                                                   &req);
+        atl_status_t atl_status = comm->atl->atl_ep_alltoallv(sched->bin->get_atl_ep(),
+                                                              send_buf.get_ptr(sum_send_bytes),
+                                                              send_bytes,
+                                                              send_offsets,
+                                                              recv_buf.get_ptr(sum_recv_bytes),
+                                                              recv_bytes,
+                                                              recv_offsets,
+                                                              &req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("alltoallv entry failed. atl_status: ", atl_status_to_str(atl_status));
@@ -96,7 +96,8 @@ public:
 
     void update() override {
         int req_status;
-        atl_status_t atl_status = atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
+        atl_status_t atl_status =
+            comm->atl->atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("alltoallv entry failed. atl_status: ", atl_status_to_str(atl_status));

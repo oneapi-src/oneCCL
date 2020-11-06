@@ -16,6 +16,9 @@
 #ifndef SHIFT_LIST_H_INCLUDED
 #define SHIFT_LIST_H_INCLUDED
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 typedef enum change_type {
     CH_T_SHIFT = 0,
     CH_T_DEAD = 1,
@@ -24,8 +27,8 @@ typedef enum change_type {
 } change_type_t;
 
 typedef struct shift_rank {
-    size_t old;
-    size_t new;
+    size_t old_rank;
+    size_t new_rank;
     change_type_t type;
 } shift_rank_t;
 
@@ -36,6 +39,9 @@ typedef struct shift_list {
 
 void shift_list_clean(shift_list_t** list);
 
-void shift_list_add(shift_list_t** list, size_t old, size_t new, change_type_t type);
+void shift_list_add(shift_list_t** list, size_t old_rank, size_t new_rank, change_type_t type);
 
+#ifdef __cplusplus
+}
+#endif
 #endif

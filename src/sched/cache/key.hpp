@@ -59,18 +59,18 @@ public:
         ccl_coll_type ctype = ccl_coll_internal;
         void* buf1 = nullptr; /* non-data buffer which can be used for caching */
         void* buf2 = nullptr; /* non-data buffer which can be used for caching */
-        ccl_datatype_t dtype = ccl_dtype_char;
-        ccl_datatype_t itype = ccl_dtype_char; /* used in sparse collective to store index type */
-        ccl_reduction_t reduction = ccl_reduction_sum;
+        ccl::datatype dtype = ccl::datatype::int8;
+        ccl::datatype itype = ccl::datatype::int8; /* used in sparse collective to store index type */
+        ccl::reduction reduction = ccl::reduction::sum;
         size_t count1 = 0;
         size_t count2 = 0;
         size_t count3 = 0; /* used in sparse collective to store recv index count */
         size_t count4 = 0; /* used in sparse collective to store recv value count */
         size_t root = 0;
         const ccl_comm* comm = nullptr;
-        ccl_prologue_fn_t prologue_fn = nullptr;
-        ccl_epilogue_fn_t epilogue_fn = nullptr;
-        ccl_reduction_fn_t reduction_fn = nullptr;
+        ccl::prologue_fn prologue_fn = nullptr;
+        ccl::epilogue_fn epilogue_fn = nullptr;
+        ccl::reduction_fn reduction_fn = nullptr;
     };
 
     /* inner structure for bit comparison */

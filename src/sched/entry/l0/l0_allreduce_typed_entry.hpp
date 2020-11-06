@@ -14,35 +14,40 @@
  limitations under the License.
 */
 #pragma once
+
 #include <initializer_list>
+#include <atomic>
 
 #include "sched/entry/l0/l0_entry.hpp"
 
 //TODO L0 Workaround
 static std::mutex global_mutex;
-static size_t exec_count = 0;
+static std::atomic<size_t> exec_count{};
 static thread_local size_t cur_index = 0;
-static size_t wait_count = 0;
+static std::atomic<size_t> wait_count{};
 static std::set<std::thread::id> registered_thread;
 
 namespace native {
-template <class native_type, class gpu_comm_impl, ccl::device_group_split_type topology>
+template <class native_type, class gpu_comm_impl, ccl::group_split_type topology>
 class l0_allreduce_typed_entry : public base_gpu_entry<native_type,
                                                        gpu_comm_impl,
                                                        topology,
-                                                       ccl::device_topology_type::ring> {
+                                                       ccl::device_topology_type::ring,
+                                                       ccl_coll_allreduce> {
 public:
     friend class ccl_gpu_comm;
     friend class ccl_virtual_gpu_comm;
 
-    using base =
-        base_gpu_entry<native_type, gpu_comm_impl, topology, ccl::device_topology_type::ring>;
+    using base = base_gpu_entry<native_type,
+                                gpu_comm_impl,
+                                topology,
+                                ccl::device_topology_type::ring,
+                                ccl_coll_allreduce>;
     using base::parent_communicator;
     using base::comm_addr;
     using base::req;
     using base::status;
     using base::launch_args;
-    using base::elem_count;
     using base::kernel_router;
     using kernel_main_typed = ring_allreduce_kernel<native_type>;
     using kernel_ipc_typed = ring_allreduce_ipc<native_type>;
@@ -70,37 +75,40 @@ public:
         const ccl_buffer send_buf,
         ccl_buffer recv_buf,
         size_t cnt,
-        ccl_reduction_t op,
+        ccl::reduction op,
         std::shared_ptr<ccl_stream> device_stream = std::shared_ptr<ccl_stream>())
             : base(sched,
                    comm,
                    send_buf,
-                   recv_buf,
-                   cnt,
                    ccl::native_type_info<native_type>::ccl_type_value,
-                   op,
                    device_stream),
 
               temp_buffer(parent_communicator->get_device().template alloc_memory<native_type>(
                   cnt,
-                  sizeof(native_type))),
+                  sizeof(native_type), std::shared_ptr<ccl_context> { })),
               income_data_flag(parent_communicator->get_device()
                                    .template alloc_memory<income_data_flag_gpu_type>(
                                        1,
-                                       sizeof(income_data_flag_gpu_type))),
+                                       sizeof(income_data_flag_gpu_type), std::shared_ptr<ccl_context> { })),
               ready_to_recv_flag(parent_communicator->get_device()
                                      .template alloc_memory<ready_to_recv_flag_gpu_type>(
                                          1,
-                                         sizeof(ready_to_recv_flag_gpu_type))),
+                                         sizeof(ready_to_recv_flag_gpu_type), std::shared_ptr<ccl_context> { })),
               local_barrier_flag(parent_communicator->get_device()
                                      .template alloc_memory<local_barrier_flag_gpu_type>(
                                          1,
-                                         sizeof(local_barrier_flag_gpu_type))) {
+                                         sizeof(local_barrier_flag_gpu_type), std::shared_ptr<ccl_context> { })) {
+        recv_buf_typed_entry = recv_buf;
+        op_typed_entry = op;
+        cnt_entry = cnt;
+
         LOG_DEBUG(class_name(),
                   " entry req ",
                   &req,
                   ", cnt ",
-                  elem_count,
+                  cnt_entry,
+                  ", op ",
+                  (int)(op),
                   ", rank: ",
                   comm_addr.to_string());
         size_t next_rank = (comm_addr.rank + 1) % comm_addr.size;
@@ -153,7 +161,7 @@ public:
                   ", rank: ",
                   comm_addr.to_string(),
                   ", cnt ",
-                  elem_count);
+                  cnt_entry);
 
         //Create base primitives
         base::start();
@@ -165,15 +173,22 @@ public:
                                                          ccl::device_topology_type::ring,
                                                          native_type>();
 
+        auto recv_buf_ptr = reinterpret_cast<native_type*>(recv_buf_typed_entry.get_ptr());
+
         //create implementation specified primitives
-        main_entry_function.template set_arg<typename kernel_main_typed::tmp_recv_buf_arg>(
-            temp_buffer.get());
-        main_entry_function.template set_arg<typename kernel_main_typed::income_data_flag_arg>(
-            income_data_flag.get());
-        main_entry_function.template set_arg<typename kernel_main_typed::ready_to_recv_flag_arg>(
-            ready_to_recv_flag.get());
-        main_entry_function.template set_arg<typename kernel_main_typed::local_barrier_flag_arg>(
-            local_barrier_flag.get());
+        main_entry_function
+            .template set_args<typename kernel_main_typed::tmp_recv_buf_arg,
+                               typename kernel_main_typed::income_data_flag_arg,
+                               typename kernel_main_typed::ready_to_recv_flag_arg,
+                               typename kernel_main_typed::local_barrier_flag_arg,
+                               typename kernel_main_typed::recv_buf_arg,
+                               typename kernel_main_typed::common_entry_buf_size_arg>(
+                temp_buffer.get(),
+                income_data_flag.get(),
+                ready_to_recv_flag.get(),
+                local_barrier_flag.get(),
+                recv_buf_ptr,
+                cnt_entry);
 
         /* TRY To APPEND Kernel HERE!!! Not in update
          *
@@ -206,9 +221,9 @@ public:
         //TODO
         std::vector<ccl_device::device_ipc_memory_handle> ret;
         ret.reserve(3);
-        ret.push_back(owned_device.create_ipc_memory_handle(temp_buffer.get()));
-        ret.push_back(owned_device.create_ipc_memory_handle(income_data_flag.get()));
-        ret.push_back(owned_device.create_ipc_memory_handle(ready_to_recv_flag.get()));
+        ret.push_back(owned_device.create_ipc_memory_handle(temp_buffer.get(), ctx));
+        ret.push_back(owned_device.create_ipc_memory_handle(income_data_flag.get(), ctx));
+        ret.push_back(owned_device.create_ipc_memory_handle(ready_to_recv_flag.get(), ctx));
         return ret;
     }
 
@@ -229,7 +244,7 @@ protected:
                 std::unique_lock<std::mutex> lock(global_mutex);
                 exec_count++;
                 cur_index = exec_count;
-                result = zeCommandListAppendLaunchKernel(device.get_cmd_list().get(),
+                result = zeCommandListAppendLaunchKernel(device.get_cmd_list(ctx).get(),
                                                          main_entry_function.handle,
                                                          &launch_args,
                                                          nullptr,
@@ -261,23 +276,25 @@ protected:
                      ", CurIndex: ",
                      cur_index);
             if (cur_index == wait_count /*std::is_same<gpu_comm_impl, ccl_gpu_comm>::value*/) {
-                if (topology == ccl::device_group_split_type::cluster) {
-                    auto c = ccl::environment::instance().create_communicator();
-                    if (c->rank() == 0) {
-                        LOG_INFO("L0 Workaround: one device close list!!!",
-                                 "WaitCount: ",
-                                 wait_count,
-                                 ", ExecCount: ",
-                                 exec_count,
-                                 ", CurIndex: ",
-                                 cur_index);
-                        result = zeCommandListClose(device.get_cmd_list().get());
-                        if (result != ZE_RESULT_SUCCESS) {
-                            LOG_ERROR("zeCommandListClose failed, error: ",
-                                      native::to_string(result));
-                            throw std::runtime_error("zeCommandListClose failed");
-                        }
-                    }
+                if (topology == ccl::group_split_type::cluster) {
+                    // TODO: implement process communicator case
+                    throw ccl::exception(std::string(__PRETTY_FUNCTION__) + "TODO: implement process communicator case");
+                    // auto c = ccl::environment::instance().create_communicator();
+                    // if (c.rank() == 0) {
+                        // LOG_INFO("L0 Workaround: one device close list!!!",
+                        //          "WaitCount: ",
+                        //          wait_count,
+                        //          ", ExecCount: ",
+                        //          exec_count,
+                        //          ", CurIndex: ",
+                        //          cur_index);
+                        // result = zeCommandListClose(device.get_cmd_list().get());
+                        // if (result != ZE_RESULT_SUCCESS) {
+                        //     LOG_ERROR("zeCommandListClose failed, error: ",
+                        //               native::to_string(result));
+                        //     throw std::runtime_error("zeCommandListClose failed");
+                        // }
+                    // }
                 }
                 else {
                     LOG_INFO("L0 Workaround: one device close list!!!",
@@ -287,7 +304,7 @@ protected:
                              exec_count,
                              ", CurIndex: ",
                              cur_index);
-                    result = zeCommandListClose(device.get_cmd_list().get());
+                    result = zeCommandListClose(device.get_cmd_list(ctx).get());
                     if (result != ZE_RESULT_SUCCESS) {
                         LOG_ERROR("zeCommandListClose failed, error: ", native::to_string(result));
                         throw std::runtime_error("zeCommandListClose failed");
@@ -318,11 +335,14 @@ protected:
 
 private:
     bool is_kernel_added = false; //TODO L0 workaround - one dev close list
-
+    std::shared_ptr<ccl_context> ctx;
     ccl_device::device_memory<native_type> temp_buffer;
     ccl_device::device_memory<income_data_flag_gpu_type> income_data_flag;
     ccl_device::device_memory<ready_to_recv_flag_gpu_type> ready_to_recv_flag;
     ccl_device::device_memory<local_barrier_flag_gpu_type> local_barrier_flag;
+    ccl::reduction op_typed_entry;
+    ccl_buffer recv_buf_typed_entry;
+    size_t cnt_entry;
 
 public:
     bool execute(kernel_main_typed& main_entry_function, kernel_main_typed& right_kernel) {
@@ -376,18 +396,17 @@ public:
                       "}\n");
 
             //TODO register argument for current device kernel: use array-version
-            LOG_TRACE("Set right_tmp_recv_buf_arg");
             main_entry_function
-                .template set_arg<typename kernel_main_typed::right_tmp_recv_buf_arg>(
-                    right_tmp_recv_buf_arg.second);
-            LOG_TRACE("Set right_income_data_flag_arg");
-            main_entry_function
-                .template set_arg<typename kernel_main_typed::right_income_data_flag_arg>(
-                    right_income_data_flag_arg.second);
-            LOG_TRACE("Set right_ready_to_recv_flag_arg");
-            main_entry_function
-                .template set_arg<typename kernel_main_typed::right_ready_to_recv_flag_arg>(
+                .template set_args<typename kernel_main_typed::right_tmp_recv_buf_arg,
+                                   typename kernel_main_typed::right_income_data_flag_arg,
+                                   typename kernel_main_typed::right_ready_to_recv_flag_arg>(
+                    right_tmp_recv_buf_arg.second,
+                    right_income_data_flag_arg.second,
                     right_ready_to_recv_flag_arg.second);
+
+            LOG_TRACE("Set right_tmp_recv_buf_arg",
+                      "Set right_income_data_flag_arg",
+                      "Set right_ready_to_recv_flag_arg");
 
             LOG_DEBUG("entry: ",
                       class_name(),
@@ -450,18 +469,18 @@ public:
                       "}\n");
 
             //TODO register argument for current device kernel: user array version
-            LOG_TRACE("Set right_tmp_recv_buf_arg");
+
             main_entry_function
-                .template set_arg<typename kernel_main_typed::right_tmp_recv_buf_arg>(
-                    right_tmp_recv_buf_arg.second);
-            LOG_TRACE("Set right_income_data_flag_arg");
-            main_entry_function
-                .template set_arg<typename kernel_main_typed::right_income_data_flag_arg>(
-                    right_income_data_flag_arg.second);
-            LOG_TRACE("Set right_ready_to_recv_flag_arg");
-            main_entry_function
-                .template set_arg<typename kernel_main_typed::right_ready_to_recv_flag_arg>(
+                .template set_args<typename kernel_main_typed::right_tmp_recv_buf_arg,
+                                   typename kernel_main_typed::right_income_data_flag_arg,
+                                   typename kernel_main_typed::right_ready_to_recv_flag_arg>(
+                    right_tmp_recv_buf_arg.second,
+                    right_income_data_flag_arg.second,
                     right_ready_to_recv_flag_arg.second);
+
+            LOG_TRACE("Set right_tmp_recv_buf_arg",
+                      "Set right_income_data_flag_arg",
+                      "Set right_ready_to_recv_flag_arg");
 
             LOG_DEBUG("entry: ",
                       class_name(),

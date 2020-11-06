@@ -400,12 +400,12 @@ details::global_sorted_plain_graphs
     //std::vector<ccl::communicator::coll_request_t> requests;
     out << "Ask graph lists sizes by process index: " << process_index
         << ", serialized size: " << send_count << std::endl;
-    ccl::communicator::coll_request_t req =
-                comm->allgatherv(&send_count, 1,
+    auto req = ccl::allgatherv(&send_count, 1,
                                  receive_process_graph_sizes.data(),
-                                 recv_process_indices_counts.data());
+                                 recv_process_indices_counts.data(),
+                                 comm);
 
-    req->wait();
+    req.wait();
     size_t global_graph_data_size = std::accumulate(receive_process_graph_sizes.begin(),
                                                     receive_process_graph_sizes.end(),
                                                     0);
@@ -417,10 +417,11 @@ details::global_sorted_plain_graphs
             << ", serialized size: " << send_count << std::endl;
 
         global_serialized_graph.resize(global_graph_data_size);
-        req = comm->allgatherv(reinterpret_cast<char*>(my_serialized_graph.data()), send_count,
+        req = ccl::allgatherv(reinterpret_cast<char*>(my_serialized_graph.data()), send_count,
                                reinterpret_cast<char*>(global_serialized_graph.data()),
-                               receive_process_graph_sizes.data());
-        req->wait();
+                               receive_process_graph_sizes.data(),
+                               comm);
+        req.wait();
     }
     catch(const std::exception& ex)
     {
@@ -472,12 +473,12 @@ details::global_sorted_colored_plain_graphs
     //std::vector<ccl::communicator::coll_request_t> requests;
     out << "Ask graph lists sizes by process index: " << process_index
         << ", serialized size: " << send_count << std::endl;
-    ccl::communicator::coll_request_t req =
-                comm->allgatherv(&send_count, 1,
+    auto req = ccl::allgatherv(&send_count, 1,
                                  receive_process_graph_sizes.data(),
-                                 recv_process_indices_counts.data());
+                                 recv_process_indices_counts.data(),
+                                 comm);
 
-    req->wait();
+    req.wait();
     size_t global_graph_data_size = std::accumulate(receive_process_graph_sizes.begin(),
                                                     receive_process_graph_sizes.end(),
                                                     0);
@@ -489,10 +490,10 @@ details::global_sorted_colored_plain_graphs
             << ", serialized size: " << send_count << std::endl;
 
         global_serialized_graph.resize(global_graph_data_size);
-        req = comm->allgatherv(reinterpret_cast<char*>(my_serialized_graph.data()), send_count,
+        req = ccl::allgatherv(reinterpret_cast<char*>(my_serialized_graph.data()), send_count,
                                reinterpret_cast<char*>(global_serialized_graph.data()),
                                receive_process_graph_sizes.data());
-        req->wait();
+        req.wait();
     }
     catch(const std::exception& ex)
     {
@@ -1092,7 +1093,7 @@ bool allied_process_group_ring_topology::build_specific(std::ostream& out,
                                                         const ccl::process_device_indices_t& per_thread_device_indices,
                                                         const details::plain_graph& id_ring)
 {
-    constexpr ccl::device_group_split_type topology_type = ccl::device_group_split_type::cluster;
+    constexpr ccl::group_split_type topology_type = ccl::group_split_type::cluster;
 
     out << "Start building topology: " << ::to_string(topology_type) << ", for graph:\n";
     for (const auto& id : id_ring)
@@ -1295,7 +1296,7 @@ bool allied_process_group_ring_topology::build_specific_colored(std::ostream& ou
     //continuous ring, without scale-up devices
     //processes connected using IPC devices
     //Rank = Index
-    constexpr ccl::device_group_split_type topology_type = ccl::device_group_split_type::cluster;
+    constexpr ccl::group_split_type topology_type = ccl::group_split_type::cluster;
 
     out << "Start building topology: " << ::to_string(topology_type) << ", for colored graph:\n"
         << details::to_string(id_ring) << std::endl;
@@ -1522,8 +1523,8 @@ bool allied_process_group_ring_topology::build_specific(std::ostream& out,
                                                         const ccl::process_device_indices_t& per_thread_device_indices,
                                                         const details::plain_graph_list& graph_list)
 {
-     constexpr ccl::device_group_split_type topology_type =
-                                        ccl::device_group_split_type::process_group_torn_apart_ring;
+     constexpr ccl::group_split_type topology_type =
+                                        ccl::group_split_type::process_group_torn_apart_ring;
 
     out << "Start building topology: " << ::to_string(topology_type)
         << ", for graphs: " << graph_list.size() << "\n";
@@ -1857,8 +1858,8 @@ bool allied_process_group_ring_topology::build_specific_scale_up(std::ostream& o
                         details::colored_plain_graph_list& graph_list,
                         const std::map<size_t, size_t>& process_device_rank_offset)
 {
-    constexpr ccl::device_group_split_type topology_type =
-                                        ccl::device_group_split_type::process_group_torn_apart_ring;
+    constexpr ccl::group_split_type topology_type =
+                                        ccl::group_split_type::process_group_torn_apart_ring;
 
     out << "Start building topology: " << ::to_string(topology_type)
         << ", for colored graphs: " << graph_list.size() << "\n";

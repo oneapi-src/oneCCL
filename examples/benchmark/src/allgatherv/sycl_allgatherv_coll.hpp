@@ -13,8 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#ifndef SYCL_ALLGATHERV_COLL_HPP
-#define SYCL_ALLGATHERV_COLL_HPP
+#pragma once
 
 #include "allgatherv_strategy.hpp"
 
@@ -36,15 +35,15 @@ struct sycl_allgatherv_coll : sycl_base_coll<Dtype, allgatherv_strategy_impl> {
     using coll_base::single_recv_buf;
     using coll_base::comm;
 
-    sycl_allgatherv_coll(bench_coll_init_attr init_attr)
-            : coll_base(init_attr, 1, base_coll::comm->size(), base_coll::comm->size()) {}
+    sycl_allgatherv_coll(bench_init_attr init_attr)
+            : coll_base(init_attr, 1, coll_base::comm().size(), coll_base::comm().size()) {}
 
     virtual void prepare(size_t elem_count) override {
-        size_t local_rank = comm->rank();
-        size_t local_size = comm->size();
+        size_t local_rank = coll_base::comm().rank();
+        size_t local_size = coll_base::comm().size();
 
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
-            sycl_queue.submit([&](handler& cgh) {
+            device_data::sycl_queue.submit([&](handler& cgh) {
                 auto send_buf = (static_cast<sycl_buffer_t<Dtype>*>(send_bufs[b_idx]));
                 auto recv_buf = (static_cast<sycl_buffer_t<Dtype>*>(recv_bufs[b_idx]));
                 auto send_buf_acc = send_buf->template get_access<mode::write>(cgh);
@@ -62,11 +61,11 @@ struct sycl_allgatherv_coll : sycl_base_coll<Dtype, allgatherv_strategy_impl> {
 
     virtual void finalize(size_t elem_count) override {
         bool unexpected_device_value = false;
-        size_t local_size = comm->size();
-        Dtype sbuf_expected = comm->rank();
+        size_t local_size = coll_base::comm().size();
+        Dtype sbuf_expected = coll_base::comm().rank();
 
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
-            sycl_queue.submit([&](handler& cgh) {
+            device_data::sycl_queue.submit([&](handler& cgh) {
                 auto send_buf = (static_cast<sycl_buffer_t<Dtype>*>(send_bufs[b_idx]));
                 auto recv_buf = (static_cast<sycl_buffer_t<Dtype>*>(recv_bufs[b_idx]));
                 auto send_buf_acc = send_buf->template get_access<mode::write>(cgh);
@@ -104,7 +103,7 @@ struct sycl_allgatherv_coll : sycl_base_coll<Dtype, allgatherv_strategy_impl> {
                 }
             }
 
-            for (size_t idx = 0; idx < comm->size(); idx++) {
+            for (size_t idx = 0; idx < coll_base::comm().size(); idx++) {
                 Dtype rbuf_expected = idx;
                 for (size_t e_idx = 0; e_idx < elem_count; e_idx++) {
                     value = recv_buf_acc[idx * elem_count + e_idx];
@@ -124,5 +123,3 @@ struct sycl_allgatherv_coll : sycl_base_coll<Dtype, allgatherv_strategy_impl> {
 };
 
 #endif /* CCL_ENABLE_SYCL */
-
-#endif /* SYCL_ALLGATHERV_COLL_HPP */

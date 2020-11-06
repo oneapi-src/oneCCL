@@ -48,14 +48,14 @@ public:
         size_t global_dst = comm->get_global_rank(dst);
         size_t global_rank = comm->get_global_rank(comm->rank());
 
-        atl_tag = ccl::global_data::get().atl_tag->create(
+        atl_tag = comm->atl->tag->create(
             sched->get_comm_id(), global_rank, sched->sched_id, sched->get_op_id());
         size_t bytes = cnt * dtype.size();
 
         LOG_DEBUG(
             "SEND entry dst ", global_dst, ", tag ", atl_tag, ", req ", &req, ", bytes ", bytes);
 
-        atl_status_t atl_status = atl_ep_send(
+        atl_status_t atl_status = comm->atl->atl_ep_send(
             sched->bin->get_atl_ep(), buf.get_ptr(bytes), bytes, global_dst, atl_tag, &req);
 
         update_status(atl_status);
@@ -63,7 +63,8 @@ public:
 
     void update() override {
         int req_status;
-        atl_status_t atl_status = atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
+        atl_status_t atl_status =
+            comm->atl->atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("SEND entry failed. atl_status: ", atl_status_to_str(atl_status));

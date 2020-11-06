@@ -81,7 +81,7 @@
 # Set the default values of all variables.
 #
 # Directory locations: Fixed for any MPI implementation
-prefix=/p/pdsd/Users/dsazanov/CCL/_OPEN_REP/mpi/
+prefix=/usr/local
 # The environment variable I_MPI_ROOT may be used to override installation folder path
 if [ -n "$I_MPI_ROOT" ] ; then
     prefix=$I_MPI_ROOT;
@@ -121,7 +121,7 @@ PMPILIBNAME="pmpi"
 MPICXXLIBNAME="mpicxx"
 
 # MPIVERSION is the version of the Intel(R) MPI Library that mpiicpc is intended for
-MPIVERSION="2021.1-beta09"
+MPIVERSION="2021.1-beta10"
 #
 # Internal variables
 # Show is set to echo to cause the compilation command to be echoed instead

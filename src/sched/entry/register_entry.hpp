@@ -26,19 +26,23 @@ public:
     }
 
     register_entry() = delete;
-    register_entry(ccl_sched* sched, size_t size, const ccl_buffer ptr, atl_mr_t** mr)
+    register_entry(ccl_sched* sched,
+                   size_t size,
+                   const ccl_buffer ptr,
+                   atl_mr_t** mr,
+                   ccl_comm* comm)
             : sched_entry(sched, true),
               size(size),
               ptr(ptr),
-              mr(mr) {}
+              mr(mr),
+              comm(comm) {}
 
     void start() override {
         LOG_DEBUG("REGISTER entry size ", size, ", ptr ", ptr);
         CCL_THROW_IF_NOT(
             size > 0 && ptr && mr, "incorrect input, size ", size, ", ptr ", ptr, " mr ", mr);
 
-        atl_status_t atl_status = atl_mr_reg(
-            ccl::global_data::get().executor->get_atl_ctx(), ptr.get_ptr(size), size, mr);
+        atl_status_t atl_status = comm->atl->atl_mr_reg(ptr.get_ptr(size), size, mr);
 
         sched->add_memory_region(*mr);
 
@@ -62,4 +66,5 @@ private:
     size_t size;
     ccl_buffer ptr;
     atl_mr_t** mr;
+    ccl_comm* comm;
 };

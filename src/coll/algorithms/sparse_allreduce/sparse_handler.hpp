@@ -59,7 +59,7 @@ struct ccl_sparse_allreduce_handler {
 
     ccl_datatype value_dtype;
     ccl_datatype index_dtype;
-    ccl_reduction_t op;
+    ccl::reduction op;
 
     std::unique_ptr<idx_offset_map> iv_map;
     ccl_sched* sched;

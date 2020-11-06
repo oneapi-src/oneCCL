@@ -18,6 +18,8 @@
 #include "common/comm/comm_interface.hpp"
 #include "common/comm/l0/context/process_group_ctx.hpp"
 
+#include "common/comm/host_communicator/host_communicator.hpp"
+
 namespace ccl {
 
 std::string context_comm_addr::to_string() const {
@@ -29,16 +31,22 @@ std::string context_comm_addr::to_string() const {
 
 thread_local size_t gpu_comm_attr::thread_id = 0;
 
-gpu_comm_attr::gpu_comm_attr(std::shared_ptr<communicator> parent_comm,
-                             size_t thread_group_size,
-                             size_t process_device_size)
+gpu_comm_attr::gpu_comm_attr(std::shared_ptr<host_communicator> parent_comm,
+                             size_t thread_count,
+                             size_t process_device_size,
+                             group_unique_key id)
         : ccl_communicator(parent_comm),
-          expected_threads_count(process_device_size / thread_group_size),
-          expected_process_device_size(process_device_size) {
+          expected_threads_count(thread_count),
+          expected_process_device_size(process_device_size),
+          unique_id(id) {
     ctx = std::make_shared<native::process_group_context>(ccl_communicator);
 }
 
-std::shared_ptr<communicator> gpu_comm_attr::get_host_communicator() {
+const group_unique_key& gpu_comm_attr::get_unique_id() const {
+    return unique_id;
+}
+
+std::shared_ptr<host_communicator> gpu_comm_attr::get_host_communicator() {
     return ccl_communicator;
 }
 
@@ -57,7 +65,8 @@ bool gpu_comm_attr::sync_group_size(size_t device_group_size) {
     }
 
     // master thread
-    ccl_communicator->barrier();
+    ccl::stream::impl_value_t empty_stream{};
+    ccl_communicator->barrier_impl(empty_stream, ccl::default_barrier_attr, {});
 
     ready = true;
     thread_group_size_cond.notify_all();
@@ -82,7 +91,7 @@ bool gpu_comm_attr::sync_register_communicator(std::shared_ptr<communicator_inte
 }
 
 bool gpu_comm_attr::delegate_sync_register_communicator(
-    std::shared_ptr<communicator_interface>& comm) {
+    std::shared_ptr<communicator_interface> comm) {
     ccl::device_indices_t device_group_indices;
 
     std::unique_lock<std::mutex> lock(barrier.thread_group_mutex);
@@ -102,7 +111,7 @@ bool gpu_comm_attr::delegate_sync_register_communicator(
             LOG_ERROR("Attempt to create communicator by new device id: ",
                       comm->get_device_path(),
                       " in fully formed comm_group is unaccepted!");
-            throw ccl_error("cannot create communicator for requested device");
+            throw ccl::exception("cannot create communicator for requested device");
         }
 
         //set rank & size for duplicated communicator
@@ -112,11 +121,16 @@ bool gpu_comm_attr::delegate_sync_register_communicator(
 
     //group is not formed yet
     thread_communicators.insert({ thread_id, comm });
+    size_t registered = thread_communicators.count(thread_id);
+    size_t expected = thread_device_group_sizes[thread_id];
     LOG_DEBUG("Thread id: ",
               thread_id,
-              " register communicators count: ",
-              thread_communicators.count(thread_id));
-    if (thread_communicators.count(thread_id) != thread_device_group_sizes[thread_id]) {
+              " register communicators count: [",
+              registered,
+              "/",
+              expected,
+              "]");
+    if (registered != expected) {
         return false; //comm group is not reached expected size
     }
 
@@ -127,11 +141,13 @@ bool gpu_comm_attr::delegate_sync_register_communicator(
             it->second->get_device_path()); //.get_device_properties().deviceId);
     }
     {
-        std::stringstream ss;
-        for (const auto& path : device_group_indices) {
-            ss << path << ", ";
-        }
-        LOG_DEBUG("Thread id: ", thread_id, " collected device indices: ", ss.str());
+        /* TODO: enable back */
+        // std::stringstream ss;
+        // for(const auto &path : device_group_indices)
+        // {
+        //     ss << path << ", ";
+        // }
+        // LOG_DEBUG("Thread id: ", thread_id, " collected device indices: ", ss.str());
     }
 
     //bind addr
@@ -146,12 +162,11 @@ bool gpu_comm_attr::delegate_sync_register_communicator(
         });
 
         //flush cache
-        auto ready_count =
-            std::count_if(thread_communicators.begin(),
-                          thread_communicators.end(),
-                          [](const std::pair<size_t, ccl::communicator_interface_ptr>& comm) {
-                              return comm.second->is_ready();
-                          });
+        auto ready_count = std::count_if(thread_communicators.begin(),
+                                         thread_communicators.end(),
+                                         [](const typename thread_comm_storage::value_type& comm) {
+                                             return comm.second->is_ready();
+                                         });
         if ((size_t)ready_count != expected_process_device_size) {
             LOG_ERROR("Thread(SLAVE) id: ",
                       thread_id,
@@ -181,12 +196,17 @@ bool gpu_comm_attr::delegate_sync_register_communicator(
         comm_it->second->visit(*this);
     }
 
-    ccl_communicator->barrier();
+    ccl::stream::impl_value_t empty_stream{};
+    ccl_communicator->barrier_impl(empty_stream, ccl::default_barrier_attr, {});
 
     //notify SLAVES thread ready
     barrier.communicator_ready = true;
     barrier.thread_group_sync_condition.notify_all();
     return true;
+}
+
+const size_t gpu_comm_attr::get_expected_process_device_size() const noexcept {
+    return expected_process_device_size;
 }
 
 std::shared_ptr<native::process_group_context> gpu_comm_attr::get_process_context() {

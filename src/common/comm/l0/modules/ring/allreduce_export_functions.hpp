@@ -39,9 +39,11 @@ struct ring_allreduce_kernel
 
     //own
     using send_buf_size_arg = arg<main_kernel_args::args_start_index, size_t>;
+    using common_entry_buf_size_arg = send_buf_size_arg;
     using send_buf_size_arg_type = typename send_buf_size_arg::arg_type;
 
     using send_buf_arg = arg<main_kernel_args::args_start_index + 1, processing_type*>;
+    using common_entry_buf_arg = send_buf_arg;
     using send_buf_arg_type = typename send_buf_arg::arg_type;
 
     using recv_buf_arg = arg<main_kernel_args::args_start_index + 2, processing_type*>;

@@ -15,6 +15,7 @@
 */
 #include "common/global/global.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
+#include "common/comm/comm.hpp"
 #include "unordered_coll/unordered_coll.hpp"
 
 #include <cstring>
@@ -27,17 +28,19 @@ struct ccl_unordered_coll_ctx {
     ccl_unordered_coll_manager* manager;
 };
 
-ccl_unordered_coll_manager::ccl_unordered_coll_manager() {
-    ccl::global_data& data = ccl::global_data::get();
+ccl_unordered_coll_manager::ccl_unordered_coll_manager(ccl_comm& parent_comm) {
 
-    coordination_comm =
-        std::unique_ptr<ccl_comm>(new ccl_comm(data.executor->get_global_proc_idx(),
-                                               data.executor->get_global_proc_count(),
-                                               data.comm_ids->acquire(true)));
-    CCL_ASSERT(coordination_comm.get(), "coordination_comm is null");
+       coordination_comm =
+           std::unique_ptr<ccl_comm>(new ccl_comm(parent_comm.rank(),
+                                                  parent_comm.size(),
+                                                  ccl::global_data::get().comm_ids->acquire(true/*internal_id_space*/),
+                                                  parent_comm.atl,
+                                                  true/*share_resources*/));
 
-    if (data.executor->get_global_proc_idx() == 0)
-        LOG_INFO("created unordered collectives manager");
+       CCL_ASSERT(coordination_comm.get(), "coordination_comm is null");
+
+       if (parent_comm.rank() == 0)
+           LOG_INFO("created unordered collectives manager");
 }
 
 ccl_unordered_coll_manager::~ccl_unordered_coll_manager() {

@@ -15,6 +15,9 @@
 #
 file(GLOB sources "*.c" "*.cpp")
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 foreach(src ${sources})
     get_filename_component(executable ${src} NAME_WE)
     add_executable(${executable} ${src})
@@ -22,6 +25,8 @@ foreach(src ${sources})
     target_link_libraries(${executable} PUBLIC rt)
     target_link_libraries(${executable} PUBLIC m)
     target_link_libraries(${executable} PRIVATE ccl)
+    target_link_libraries(${executable} PRIVATE m)
+    target_link_libraries(${executable} PUBLIC mpi)
     target_link_libraries(${executable} PRIVATE ${COMPUTE_RUNTIME_TARGET_NAME})
     install(TARGETS ${executable} RUNTIME DESTINATION ${CCL_INSTALL_EXAMPLES}/sycl)
 endforeach()

@@ -78,7 +78,7 @@
 # Set the default values of all variables.
 #
 # Directory locations: Fixed for any MPI implementation
-prefix=/p/pdsd/Users/dsazanov/CCL/_OPEN_REP/mpi/
+prefix=/usr/local
 # The environment variable I_MPI_ROOT may be used to override installation folder path
 if [ -n "$I_MPI_ROOT" ] ; then
     prefix=$I_MPI_ROOT;
@@ -101,7 +101,7 @@ MPICH_VERSION="3.3"
 CXXFLAGS=""
 LDFLAGS=" -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl "
 LIBS="-lm   -lpthread  -lfabric -lrt "
-MPIVERSION="2021.1-beta09"
+MPIVERSION="2021.1-beta10"
 MPILIBNAME="mpi"
 MPICXXLIBNAME="mpicxx"
 

@@ -56,7 +56,7 @@ ccl_status_t ccl_coll_build_direct_reduce(ccl_sched* sched,
                                           ccl_buffer recv_buf,
                                           size_t count,
                                           const ccl_datatype& dtype,
-                                          ccl_reduction_t reduction,
+                                          ccl::reduction reduction,
                                           size_t root,
                                           ccl_comm* comm) {
     LOG_DEBUG("build direct reduce");
@@ -71,7 +71,7 @@ ccl_status_t ccl_coll_build_rabenseifner_reduce(ccl_sched* sched,
                                                 ccl_buffer recv_buf,
                                                 size_t count,
                                                 const ccl_datatype& dtype,
-                                                ccl_reduction_t reduction,
+                                                ccl::reduction reduction,
                                                 size_t root,
                                                 ccl_comm* comm) {
     LOG_DEBUG("build Rabenseifner's reduce");
@@ -352,7 +352,7 @@ ccl_status_t ccl_coll_build_binomial_reduce(ccl_sched* sched,
                                             ccl_buffer recv_buf,
                                             size_t count,
                                             const ccl_datatype& dtype,
-                                            ccl_reduction_t reduction,
+                                            ccl::reduction reduction,
                                             size_t root,
                                             ccl_comm* comm) {
     LOG_DEBUG("build binomial reduce");

@@ -349,12 +349,13 @@ inline bool cluster_group_device_creator::build_impl(
                 devices_factory.thread_gpu_comms.find(thread_id)->second;
             // create device comm wrappers and upgrade last devices in list up to numa type
             details::color_t process;
+            (void)process;
             ccl::device_index_type last_in_graph_index;
             const auto& tmp = *id_ring.rbegin();
             process = tmp.color;
             last_in_graph_index = tmp.index;
             if (per_thread.second.find(last_in_graph_index) != per_thread.second.end()) {
-                assert(process == process_index);
+                CCL_ASSERT(process == process_index);
                 out << "thread: " << thread_id
                     << " wants to create numa-proxy device by idx: " << last_in_graph_index
                     << std::endl;

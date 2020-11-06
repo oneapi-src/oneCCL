@@ -17,8 +17,8 @@
 #include <iterator>
 #include <sstream>
 
-#include "native_device_api/l0/primitives_impl.hpp"
-#include "native_device_api/l0/platform.hpp"
+#include "oneapi/ccl/native_device_api/l0/primitives_impl.hpp"
+#include "oneapi/ccl/native_device_api/l0/platform.hpp"
 
 namespace native {
 struct once_init {
@@ -53,10 +53,12 @@ CCL_API std::shared_ptr<ccl_device_platform> ccl_device_platform::create(const d
 */
 CCL_API ccl_device_platform::ccl_device_platform() {
     // initialize Level-Zero driver
-    ze_result_t ret = zeInit(ZE_INIT_FLAG_NONE);
+    ze_result_t ret = zeInit(ZE_INIT_FLAG_GPU_ONLY);
     if (ret != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error("Cannot initialize L0: " + native::to_string(ret));
+        throw std::runtime_error("Cannot initialize L0: " + native::to_string(ret) +
+                                 ", hint: add user into `video` group");
     }
+    context = std::make_shared<ccl_context_holder>();
 }
 /*
 CCL_API void ccl_device_platform::init_drivers(const device_affinity_per_driver& driver_device_affinities)
@@ -151,8 +153,24 @@ CCL_API void ccl_device_platform::init_drivers(
     }
 }
 
-void CCL_API ccl_device_platform::on_delete(ze_driver_handle_t& sub_device_handle) {
-    //todo
+CCL_API 
+ccl_device_platform::context_storage_type ccl_device_platform::get_platform_contexts() {
+    return context;
+}
+
+std::shared_ptr<ccl_context> ccl_device_platform::create_context(std::shared_ptr<ccl_device_driver> driver) {
+    return driver->create_context();
+}
+
+void CCL_API ccl_device_platform::on_delete(ze_driver_handle_t& sub_device_handle,
+                                            ze_context_handle_t& context) {
+    // status = zeContextDestroy(context);
+    // assert(status == ZE_RESULT_SUCCESS);
+}
+
+void CCL_API ccl_device_platform::on_delete(ze_context_handle_t& handle,
+                                            ze_context_handle_t& context){
+    
 }
 
 CCL_API ccl_device_platform::const_driver_ptr ccl_device_platform::get_driver(
@@ -231,7 +249,7 @@ details::adjacency_matrix ccl_device_platform::calculate_device_access_metric(
         }
     }
     catch (const std::exception& ex) {
-        throw ccl::ccl_error(std::string("Cannot calculate_device_access_metric, error: ") +
+        throw ccl::exception(std::string("Cannot calculate_device_access_metric, error: ") +
                              ex.what() + "\nCurrent platform info:\n" + to_string());
     }
     return result;

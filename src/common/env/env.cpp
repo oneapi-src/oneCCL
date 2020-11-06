@@ -17,9 +17,12 @@
 #include <sstream>
 #include <unistd.h>
 
+#include "coll/selection/selection.hpp"
 #include "common/env/env.hpp"
 #include "common/global/global.hpp"
 #include "common/log/log.hpp"
+#include "exec/exec.hpp"
+#include "oneapi/ccl/ccl_environment.hpp"
 
 namespace ccl {
 
@@ -35,7 +38,9 @@ std::map<ccl_atl_transport, std::string> env_data::atl_transport_names = {
 };
 
 env_data::env_data()
-        : log_level(static_cast<int>(ccl_log_level::ERROR)),
+        : was_printed(false),
+
+          log_level(static_cast<int>(ccl_log_level::ERROR)),
           sched_dump(0),
 
           worker_count(1),
@@ -43,6 +48,8 @@ env_data::env_data()
 
           atl_transport(ccl_atl_mpi),
           enable_shm(0),
+          sync_coll(0),
+          extra_ep(0),
 
           enable_unordered_coll(0),
 
@@ -74,7 +81,8 @@ env_data::env_data()
           alltoall_scatter_max_ops(CCL_ENV_SIZET_NOT_SPECIFIED),
           alltoall_scatter_plain(0),
 
-          default_resizable(0) {}
+          default_resizable(0),
+          kernel_path() {}
 
 void env_data::parse() {
     env_2_type(CCL_LOG_LEVEL, log_level);
@@ -87,6 +95,8 @@ void env_data::parse() {
 
     env_2_enum(CCL_ATL_TRANSPORT, atl_transport_names, atl_transport);
     env_2_type(CCL_ATL_SHM, enable_shm);
+    env_2_type(CCL_ATL_SYNC_COLL, sync_coll);
+    env_2_type(CCL_ATL_EXTRA_EP, extra_ep);
 
     env_2_type(CCL_ALLGATHERV, allgatherv_algo_raw);
     env_2_type(CCL_ALLREDUCE, allreduce_algo_raw);
@@ -95,6 +105,7 @@ void env_data::parse() {
     env_2_type(CCL_BARRIER, barrier_algo_raw);
     env_2_type(CCL_BCAST, bcast_algo_raw);
     env_2_type(CCL_REDUCE, reduce_algo_raw);
+    env_2_type(CCL_REDUCE_SCATTER, reduce_scatter_algo_raw);
     env_2_type(CCL_SPARSE_ALLREDUCE, sparse_allreduce_algo_raw);
     env_2_type(CCL_UNORDERED_COLL, enable_unordered_coll);
     if (enable_unordered_coll && atl_transport != ccl_atl_ofi) {
@@ -155,9 +166,19 @@ void env_data::parse() {
     env_2_type(CCL_DEFAULT_RESIZABLE, default_resizable);
     CCL_THROW_IF_NOT(
         default_resizable <= 2, "incorrect ", CCL_DEFAULT_RESIZABLE, " ", default_resizable);
+
+    env_2_type(CCL_COLL_KERNELS_PATH, kernel_path);
 }
 
 void env_data::print() {
+
+    std::lock_guard<ccl_spinlock> lock{ print_guard };
+
+    if (was_printed)
+        return;
+    else
+        was_printed = true;
+
 #ifdef ENABLE_DEBUG
     const char* build_mode = "debug";
 #else
@@ -165,10 +186,13 @@ void env_data::print() {
 #endif
     LOG_INFO("build mode : ", build_mode);
 
-    ccl_version_t version;
-    if (ccl_get_version(&version) != ccl_status_success) {
-        throw std::runtime_error("cannot determine CCL version!");
-    }
+    ccl::library_version version;
+    version.major = CCL_MAJOR_VERSION;
+    version.minor = CCL_MINOR_VERSION;
+    version.update = CCL_UPDATE_VERSION;
+    version.product_status = CCL_PRODUCT_STATUS;
+    version.build_date = CCL_PRODUCT_BUILD_DATE;
+    version.full = CCL_PRODUCT_FULL;
 
     LOG_INFO("version : ", version.full);
 
@@ -189,6 +213,8 @@ void env_data::print() {
 
     LOG_INFO(CCL_ATL_TRANSPORT, ": ", str_by_enum(atl_transport_names, atl_transport));
     LOG_INFO(CCL_ATL_SHM, ": ", enable_shm);
+    LOG_DEBUG(CCL_ATL_SYNC_COLL, ": ", sync_coll);
+    LOG_DEBUG(CCL_ATL_EXTRA_EP, ": ", extra_ep);
 
     LOG_INFO(CCL_ALLGATHERV,
              ": ",
@@ -209,6 +235,8 @@ void env_data::print() {
         CCL_BCAST, ": ", (bcast_algo_raw.length()) ? bcast_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(
         CCL_REDUCE, ": ", (reduce_algo_raw.length()) ? reduce_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(
+        CCL_REDUCE_SCATTER, ": ", (reduce_scatter_algo_raw.length()) ? reduce_scatter_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_SPARSE_ALLREDUCE,
              ": ",
              (sparse_allreduce_algo_raw.length()) ? sparse_allreduce_algo_raw
@@ -253,6 +281,35 @@ void env_data::print() {
                  ? std::to_string(alltoall_scatter_max_ops)
                  : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_ALLTOALL_SCATTER_PLAIN, ": ", alltoall_scatter_plain);
+
+    LOG_INFO(CCL_COLL_KERNELS_PATH,
+             ": ",
+             (kernel_path.length()) ? kernel_path : CCL_ENV_STR_NOT_SPECIFIED);
+
+    auto& global_data = ccl::global_data::get();
+    global_data.algorithm_selector->print();
+
+    auto bf16_impl_type = global_data.bf16_impl_type;
+
+    if (bf16_impl_type != ccl_bf16_none) {
+        LOG_INFO("\n\nBF16 is enabled through ",
+                 (bf16_impl_type == ccl_bf16_avx512bf) ? "AVX512-BF" : "AVX512-F",
+                "\n");
+    }
+    else {
+#ifdef CCL_BF16_COMPILER
+       LOG_INFO("\n\nBF16 is disabled on HW level\n");
+#else
+       LOG_INFO("\n\nBF16 is disabled on compiler level\n");
+#endif
+    }
+
+}
+
+void env_data::set_internal_env()
+{
+    auto attr = ccl_executor::generate_atl_attr(*this);
+    atl_wrapper::set_internal_env(attr);
 }
 
 int env_data::env_2_worker_affinity_auto(size_t local_proc_idx, size_t workers_per_process) {

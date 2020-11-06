@@ -22,7 +22,7 @@
 #include <limits.h>
 #include <gnu/libc-version.h>
 
-#include "ccl.hpp"
+#include "oneapi/ccl.hpp"
 #include "common/comm/l0/devices/devices_declaration.hpp"
 
 #include "common/comm/l0/context/thread_group_ctx.hpp"
@@ -34,12 +34,13 @@
 #include "common/comm/l0/scheduler/thread_group_scheduler.hpp"
 #include "common/comm/l0/scheduler/allied_process_group_scheduler.hpp"
 
+#include "common/comm/host_communicator/host_communicator.hpp"
 #include "common/comm/l0/context/scaling_ctx/numa_ctx_impl.hpp"
 #include "common/comm/l0/context/scaling_ctx/scale_up_ctx_impl.hpp"
 #include "common/comm/l0/context/scaling_ctx/scale_out_ctx_impl.hpp"
 namespace native {
 
-process_group_context::process_group_context(std::shared_ptr<ccl::communicator> comm)
+process_group_context::process_group_context(std::shared_ptr<ccl::host_communicator> comm)
         : ccl_communicator(comm),
           thread_group_ctx(new thread_group_context),
           gpu_device_storage(new device_storage) {
@@ -176,7 +177,7 @@ std::shared_ptr<process_group_context::ring_topology>& process_group_context::ge
 }
 */
 
-std::shared_ptr<ccl::communicator> process_group_context::get_communicator() {
+std::shared_ptr<ccl::host_communicator> process_group_context::get_communicator() {
     return ccl_communicator;
 }
 
@@ -195,11 +196,13 @@ bool process_group_context::build_cluster_affinity_table(
     std::vector<size_t> recv_process_indices_counts(ccl_communicator->size(), 1);
 
     constexpr size_t hostname_indices_requests_count = 2;
-    std::vector<ccl::communicator::coll_request_t> requests;
+    std::vector<ccl::event> requests;
     requests.reserve(hostname_indices_requests_count);
     {
-        requests.push_back(ccl_communicator->allgatherv(
-            &send_hostname_size, 1, receive_hostname_sizes.data(), recv_counts.data()));
+        ccl::stream::impl_value_t empty_stream{};
+        requests.push_back(ccl_communicator->allgatherv_impl(
+            &send_hostname_size, 1, receive_hostname_sizes.data(), recv_counts,
+            empty_stream, ccl::default_allgatherv_attr, {}));
         LOG_TRACE("Request hostname sizes, process (",
                   ccl_communicator->rank(),
                   "/",
@@ -209,10 +212,13 @@ bool process_group_context::build_cluster_affinity_table(
                   ", size: ",
                   send_hostname_size);
 
-        requests.push_back(ccl_communicator->allgatherv(&send_process_indices_count,
-                                                        1,
-                                                        receive_process_indices_sizes.data(),
-                                                        recv_process_indices_counts.data()));
+        requests.push_back(ccl_communicator->allgatherv_impl(&send_process_indices_count,
+                                                             1,
+                                                             receive_process_indices_sizes.data(),
+                                                             recv_process_indices_counts,
+                                                             empty_stream,
+                                                             ccl::default_allgatherv_attr,
+                                                             {}));
         LOG_TRACE("Request device indices sizes, process (",
                   ccl_communicator->rank(),
                   "/",
@@ -223,7 +229,7 @@ bool process_group_context::build_cluster_affinity_table(
 
     //wait for completion
     for (auto& req : requests) {
-        req->wait();
+        req.wait();
     }
 
     size_t total_hostname_size =
@@ -249,10 +255,10 @@ bool process_group_context::build_cluster_affinity_table(
         requests.clear();
         hostnames.resize(total_hostname_size);
 
-        requests.push_back(ccl_communicator->allgatherv(my_host_name.data(),
-                                                        send_hostname_size,
-                                                        hostnames.data(),
-                                                        receive_hostname_sizes.data()));
+        ccl::stream::impl_value_t empty_stream{};
+        requests.push_back(ccl_communicator->allgatherv_impl(
+            my_host_name.data(), send_hostname_size, hostnames.data(), receive_hostname_sizes,
+            empty_stream, ccl::default_allgatherv_attr, {}));
         LOG_TRACE("Submit request for hostnames. Process (",
                   ccl_communicator->rank(),
                   "/",
@@ -269,11 +275,14 @@ bool process_group_context::build_cluster_affinity_table(
                        receive_process_indices_sizes.end(),
                        receive_process_indices_sizes.begin(),
                        indices_count_to_bytes_converter);
-        requests.push_back(
-            ccl_communicator->allgatherv(reinterpret_cast<const char*>(serialized_indices.data()),
-                                         serialized_indices.size(),
-                                         reinterpret_cast<char*>(affinity_indices.data()),
-                                         receive_process_indices_sizes.data()));
+        requests.push_back(ccl_communicator->allgatherv_impl(
+            reinterpret_cast<const char*>(serialized_indices.data()),
+            serialized_indices.size(),
+            reinterpret_cast<char*>(affinity_indices.data()),
+            receive_process_indices_sizes,
+            empty_stream,
+            ccl::default_allgatherv_attr,
+            {}));
         LOG_TRACE("Submit request for affinity masks. Process (",
                   ccl_communicator->rank(),
                   "/",
@@ -291,7 +300,7 @@ bool process_group_context::build_cluster_affinity_table(
 
     //wait for completion
     for (auto& req : requests) {
-        req->wait();
+        req.wait();
     }
 
     //parse hostnames
@@ -620,9 +629,11 @@ void process_group_context::collect_cluster_colored_plain_graphs(
                   process_idx,
                   ", serialized size: ",
                   send_count);
+        ccl::stream::impl_value_t empty_stream{};
         ccl_communicator
-            ->allgatherv(&send_count, 1, recv_counts_process_graph_sizes.data(), recv_counts.data())
-            ->wait();
+            ->allgatherv_impl(&send_count, 1, recv_counts_process_graph_sizes.data(), recv_counts,
+            empty_stream, ccl::default_allgatherv_attr, {})
+            .wait();
     }
 
     size_t global_graph_data_size = std::accumulate(
@@ -635,12 +646,16 @@ void process_group_context::collect_cluster_colored_plain_graphs(
             "Send graph list by process index: ", process_idx, ", serialized size: ", send_count);
 
         recv_cluster_graphs.resize(global_graph_data_size);
+        ccl::stream::impl_value_t empty_stream{};
         ccl_communicator
-            ->allgatherv(reinterpret_cast<char*>(my_serialized_graph.data()),
-                         send_count,
-                         reinterpret_cast<char*>(recv_cluster_graphs.data()),
-                         recv_counts_process_graph_sizes.data())
-            ->wait();
+            ->allgatherv_impl(reinterpret_cast<char*>(my_serialized_graph.data()),
+                              send_count,
+                              reinterpret_cast<char*>(recv_cluster_graphs.data()),
+                              recv_counts_process_graph_sizes,
+                              empty_stream,
+                              ccl::default_allgatherv_attr,
+                              {})
+            .wait();
     }
     catch (const std::bad_alloc& ex) {
         CCL_THROW_WITH_ERROR("Memory required for global_graph_data_size size: ",

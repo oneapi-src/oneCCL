@@ -13,40 +13,67 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "ccl.hpp"
+#include "common/global/global.hpp"
 #include "common/comm/host_communicator/host_communicator_impl.hpp"
+#include "oneapi/ccl/ccl_comm_split_attr_ids.hpp"
+#include "oneapi/ccl/ccl_comm_split_attr_ids_traits.hpp"
+#include "oneapi/ccl/ccl_comm_split_attr.hpp"
+
+#include "common/request/request.hpp"
+#include "common/event/impls/host_event.hpp"
+#include "coll/coll.hpp"
+#include "coll/coll_common_attributes.hpp"
+#include "coll/ccl_allgather_op_attr.hpp"
+
+#include "util/pm/pmi_resizable_rt/pmi_resizable/kvs/ikvs_wrapper.h"
+#include "atl/atl_wrapper.h"
+
 #include "common/comm/comm.hpp"
 
 #ifdef MULTI_GPU_SUPPORT
-#include "native_device_api/export_api.hpp"
 #include "common/comm/l0/gpu_comm_attr.hpp"
 #endif
 
-using namespace ccl;
+namespace ccl {
 
-host_communicator::host_communicator(const ccl::comm_attr_t& attr) : comm_attr(attr), comm_impl() {
+host_communicator::host_communicator()
+        : comm_attr(ccl::create_comm_split_attr())
+{
+}
+
+host_communicator::host_communicator(size_t size, shared_ptr_class<kvs_interface> kvs)
+        : comm_attr(ccl::create_comm_split_attr()),
+          comm_rank(0),
+          comm_size(size) {
+    if (size <= 0) {
+        throw ccl::exception("Incorrect size value when creating a host communicator");
+    }
+}
+
+host_communicator::host_communicator(size_t size, size_t rank, shared_ptr_class<kvs_interface> kvs)
+        : comm_attr(ccl::create_comm_split_attr()),
+          comm_rank(rank),
+          comm_size(size) {
+
+    if (rank > size || size <= 0) {
+        throw ccl::exception("Incorrect rank or size value when creating a host communicator");
+    }
+
+    LOG_DEBUG("host_communicator ctor");
+
     ccl::global_data& data = ccl::global_data::get();
-
-    // legacy implementation
-    if (!attr) {
-        comm_impl = std::shared_ptr<ccl_comm>(
-            new ccl_comm(data.comm->rank(), data.comm->size(), data.comm_ids->acquire()));
-        comm_attr = ccl::environment::instance().create_host_comm_attr();
-    }
-    else {
-        comm_impl = std::shared_ptr<ccl_comm>(
-            ccl_comm::create_with_color(attr->get_value<ccl_host_attributes::ccl_host_color>(),
-                                        data.comm_ids.get(),
-                                        data.comm.get()));
-    }
-
-    comm_rank = comm_impl->rank();
-    comm_size = comm_impl->size();
+    std::shared_ptr<ikvs_wrapper> kvs_tmp = std::shared_ptr<ikvs_wrapper>(new users_kvs(kvs));
+    std::shared_ptr<atl_wrapper> atl_tmp =
+        std::shared_ptr<atl_wrapper>(new atl_wrapper(size, { rank }, kvs_tmp));
+    comm_impl =
+        std::shared_ptr<ccl_comm>(new ccl_comm(rank, size, data.comm_ids->acquire(), atl_tmp));
 }
 
-bool host_communicator::is_ready() const {
-    return true;
-}
+host_communicator::host_communicator(std::shared_ptr<ccl_comm> impl)
+        : comm_impl(impl),
+          comm_attr(ccl::create_comm_split_attr()),
+          comm_rank(impl->rank()),
+          comm_size(impl->size()) {}
 
 size_t host_communicator::rank() const {
     return comm_rank;
@@ -56,22 +83,11 @@ size_t host_communicator::size() const {
     return comm_size;
 }
 
-ccl::comm_attr_t host_communicator::get_host_attr() const {
-    return comm_attr;
-}
-
 #ifdef MULTI_GPU_SUPPORT
 void host_communicator::visit(ccl::gpu_comm_attr& comm_attr) {
     (void)(comm_attr);
 }
-
-ccl::device_group_split_type host_communicator::get_topology_type() const {
-    throw ccl::ccl_error(std::string(__FUNCTION__) + " is not applicable for " + traits::name());
-}
-
-ccl::device_topology_type host_communicator::get_topology_class() const {
-    throw ccl::ccl_error(std::string(__FUNCTION__) + " is not applicable for " + traits::name());
-}
+#endif
 
 ccl::device_index_type host_communicator::get_device_path() const {
     return ccl::device_index_type{ ccl::unused_index_value,
@@ -79,152 +95,244 @@ ccl::device_index_type host_communicator::get_device_path() const {
                                    ccl::unused_index_value };
 }
 
-ccl::communicator_interface::native_device_type_ref host_communicator::get_device() {
-    throw ccl::ccl_error(std::string(__FUNCTION__) + " is not applicable for " + traits::name());
-#ifdef CCL_ENABLE_SYCL
-    static ccl::communicator_interface::native_device_type empty;
-#else
-    static ccl::communicator_interface::native_device_type_ref empty;
-#endif
+ccl::communicator_interface::device_t host_communicator::get_device() {
+    throw ccl::exception(std::string(__FUNCTION__) + " is not applicable for " + traits::name());
+    static ccl::communicator_interface::device_t empty;
     return empty;
 }
 
-ccl::device_comm_attr_t host_communicator::get_device_attr() const {
-    return std::dynamic_pointer_cast<ccl::ccl_device_attr>(comm_attr);
+ccl::communicator_interface::context_t host_communicator::get_context() {
+    throw ccl::exception(std::string(__FUNCTION__) + " is not applicable for " + traits::name());
+    static ccl::communicator_interface::context_t empty;
+    return empty;
 }
-#endif
 
-void host_communicator::barrier(ccl::stream::impl_t& stream /* = ccl::stream_t()*/) {
-    const ccl_stream* stream_ptr =
-        (stream->get_type() != static_cast<ccl_stream_type_t>(ccl::stream_type::host))
-            ? stream.get()
-            : nullptr;
+void host_communicator::exchange_colors(std::vector<int>& colors) {
+    size_t send_count = 1;
+    vector_class<size_t> recv_counts(colors.size(), send_count);
+    auto attr = create_operation_attr<allgatherv_attr>(
+        attr_val<operation_attr_id::to_cache>(false));
 
-    ccl_barrier_impl(comm_impl.get(), stream_ptr);
+    this->allgatherv_impl(colors.data(),
+                          send_count,
+                          colors.data(),
+                          recv_counts,
+                          {},
+                          attr,
+                          {}).wait();
+}
+
+ccl_comm* host_communicator::create_with_color(int color,
+                                               ccl_comm_id_storage* comm_ids,
+                                               const ccl_comm* parent_comm) {
+    if (ccl::global_data::env().atl_transport == ccl_atl_mpi) {
+        throw ccl::exception(
+            "MPI transport doesn't support creation of communicator with color yet");
+    }
+
+    std::vector<int> colors(this->size());
+    colors[this->rank()] = color;
+    this->exchange_colors(colors);
+
+    // TODO we can replace this func with own
+    return ccl_comm::create_with_colors(colors, comm_ids, parent_comm, true);
+}
+
+ccl::communicator_interface_ptr host_communicator::split(const comm_split_attr& attr) {
+    if (!attr.is_valid<comm_split_attr_id::color>()) {
+        throw ccl::exception(std::string(__FUNCTION__) +
+                        " - 'Color' split attribute for host communicator is not set");
+    }
+
+    ccl::global_data& data = ccl::global_data::get();
+    auto new_comm = this->create_with_color(
+        attr.get<ccl::comm_split_attr_id::color>(), data.comm_ids.get(), comm_impl.get());
+
+    comm_attr = attr;
+
+    return std::shared_ptr<host_communicator>(
+        new host_communicator(std::shared_ptr<ccl_comm>(new_comm)));
+}
+
+host_communicator::coll_request_t host_communicator::barrier(
+    const ccl::stream::impl_value_t& op_stream,
+    const ccl::barrier_attr& attr,
+    const ccl::vector_class<ccl::event>& deps) {
+    return get_impl()->barrier_impl(op_stream, attr, deps);
+}
+
+host_communicator::coll_request_t host_communicator::barrier_impl(
+    const ccl::stream::impl_value_t& op_stream,
+    const ccl::barrier_attr& attr,
+    const ccl::vector_class<ccl::event>& deps) {
+    // TODO what exactly we need to do with 'attr' here?
+
+    ccl_barrier_impl(comm_impl.get(), op_stream.get());
+
+    // TODO what exactly we need to return here? ccl_barrier_impl() is void func
+    ccl_request* req = nullptr;
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
 }
 
 /* allgatherv */
-ccl::communicator::coll_request_t host_communicator::allgatherv_impl(const void* send_buf,
-                                                                     size_t send_count,
-                                                                     void* recv_buf,
-                                                                     const size_t* recv_counts,
-                                                                     ccl_datatype_t dtype,
-                                                                     const ccl::coll_attr* attr,
-                                                                     ccl::stream::impl_t& stream) {
-    // c-api require null stream for host-stream for backward compatibility
-    const ccl_stream* stream_ptr =
-        (stream->get_type() != static_cast<ccl_stream_type_t>(ccl::stream_type::host))
-            ? stream.get()
-            : nullptr;
-
+host_communicator::coll_request_t host_communicator::allgatherv_impl(
+    const void* send_buf,
+    size_t send_count,
+    void* recv_buf,
+    const ccl::vector_class<size_t>& recv_counts,
+    ccl::datatype dtype,
+    const ccl::stream::impl_value_t& stream,
+    const ccl::allgatherv_attr& attr,
+    const ccl::vector_class<ccl::event>& deps) {
     ccl_request* req = ccl_allgatherv_impl(
-        send_buf, send_count, recv_buf, recv_counts, dtype, attr, comm_impl.get(), stream_ptr);
-    return std::unique_ptr<ccl::host_request_impl>(new ccl::host_request_impl(req));
+        send_buf, send_count, recv_buf, recv_counts.data(), dtype, attr, comm_impl.get(), nullptr);
+
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
+}
+
+host_communicator::coll_request_t host_communicator::allgatherv_impl(
+    const void* send_buf,
+    size_t send_count,
+    const ccl::vector_class<void*>& recv_bufs,
+    const ccl::vector_class<size_t>& recv_counts,
+    ccl::datatype dtype,
+    const ccl::stream::impl_value_t& stream,
+    const ccl::allgatherv_attr& attr,
+    const ccl::vector_class<ccl::event>& deps) {
+    // TODO not implemented
+    throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
+    return {};
 }
 
 /* allreduce */
-ccl::communicator::coll_request_t host_communicator::allreduce_impl(const void* send_buf,
-                                                                    void* recv_buf,
-                                                                    size_t count,
-                                                                    ccl_datatype_t dtype,
-                                                                    ccl::reduction reduction,
-                                                                    const ccl::coll_attr* attr,
-                                                                    ccl::stream::impl_t& stream) {
-    const ccl_stream* stream_ptr =
-        (stream->get_type() != static_cast<ccl_stream_type_t>(ccl::stream_type::host))
-            ? stream.get()
-            : nullptr;
+host_communicator::coll_request_t host_communicator::allreduce_impl(
+    const void* send_buf,
+    void* recv_buf,
+    size_t count,
+    ccl::datatype dtype,
+    ccl::reduction reduction,
+    const ccl::stream::impl_value_t& stream,
+    const ccl::allreduce_attr& attr,
+    const ccl::vector_class<ccl::event>& deps) {
+    ccl_request* req =
+        ccl_allreduce_impl(send_buf, recv_buf, count, dtype, reduction, attr, comm_impl.get(), nullptr);
 
-    ccl_request* req = ccl_allreduce_impl(send_buf,
-                                          recv_buf,
-                                          count,
-                                          dtype,
-                                          static_cast<ccl_reduction_t>(reduction),
-                                          attr,
-                                          comm_impl.get(),
-                                          stream_ptr);
-    return std::unique_ptr<ccl::host_request_impl>(new ccl::host_request_impl(req));
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
 }
 
 /* alltoall */
-ccl::communicator::coll_request_t host_communicator::alltoall_impl(const void* send_buf,
-                                                                   void* recv_buf,
-                                                                   size_t count,
-                                                                   ccl_datatype_t dtype,
-                                                                   const ccl::coll_attr* attr,
-                                                                   ccl::stream::impl_t& stream) {
-    const ccl_stream* stream_ptr =
-        (stream->get_type() != static_cast<ccl_stream_type_t>(ccl::stream_type::host))
-            ? stream.get()
-            : nullptr;
-
+host_communicator::coll_request_t host_communicator::alltoall_impl(
+    const void* send_buf,
+    void* recv_buf,
+    size_t count,
+    ccl::datatype dtype,
+    const ccl::stream::impl_value_t& stream,
+    const ccl::alltoall_attr& attr,
+    const ccl::vector_class<ccl::event>& deps) {
     ccl_request* req =
-        ccl_alltoall_impl(send_buf, recv_buf, count, dtype, attr, comm_impl.get(), stream_ptr);
-    return std::unique_ptr<ccl::host_request_impl>(new ccl::host_request_impl(req));
+        ccl_alltoall_impl(send_buf, recv_buf, count, dtype, attr, comm_impl.get(), nullptr);
+
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
+}
+
+host_communicator::coll_request_t host_communicator::alltoall_impl(
+    const ccl::vector_class<void*>& send_buf,
+    const ccl::vector_class<void*>& recv_buf,
+    size_t count,
+    ccl::datatype dtype,
+    const ccl::stream::impl_value_t& stream,
+    const ccl::alltoall_attr& attr,
+    const ccl::vector_class<ccl::event>& deps) {
+    // TODO not implemented
+    throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
+    return {};
 }
 
 /* alltoallv */
-ccl::communicator::coll_request_t host_communicator::alltoallv_impl(const void* send_buf,
-                                                                    const size_t* send_counts,
-                                                                    void* recv_buf,
-                                                                    const size_t* recv_counts,
-                                                                    ccl_datatype_t dtype,
-                                                                    const ccl::coll_attr* attr,
-                                                                    ccl::stream::impl_t& stream) {
-    const ccl_stream* stream_ptr =
-        (stream->get_type() != static_cast<ccl_stream_type_t>(ccl::stream_type::host))
-            ? stream.get()
-            : nullptr;
+host_communicator::coll_request_t host_communicator::alltoallv_impl(
+    const void* send_buf,
+    const ccl::vector_class<size_t>& send_counts,
+    void* recv_buf,
+    const ccl::vector_class<size_t>& recv_counts,
+    ccl::datatype dtype,
+    const ccl::stream::impl_value_t& stream,
+    const ccl::alltoallv_attr& attr,
+    const ccl::vector_class<ccl::event>& deps) {
+    ccl_request* req = ccl_alltoallv_impl(send_buf,
+                                          send_counts.data(),
+                                          recv_buf,
+                                          recv_counts.data(),
+                                          dtype,
+                                          attr,
+                                          comm_impl.get(),
+                                          nullptr);
 
-    ccl_request* req = ccl_alltoallv_impl(
-        send_buf, send_counts, recv_buf, recv_counts, dtype, attr, comm_impl.get(), stream_ptr);
-    return std::unique_ptr<ccl::host_request_impl>(new ccl::host_request_impl(req));
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
+}
+
+host_communicator::coll_request_t host_communicator::alltoallv_impl(
+    const ccl::vector_class<void*>& send_buf,
+    const ccl::vector_class<size_t>& send_counts,
+    ccl::vector_class<void*> recv_buf,
+    const ccl::vector_class<size_t>& recv_counts,
+    ccl::datatype dtype,
+    const ccl::stream::impl_value_t& stream,
+    const ccl::alltoallv_attr& attr,
+    const ccl::vector_class<ccl::event>& dep) {
+    // TODO not implemented
+    throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
+    return {};
 }
 
 /* bcast */
-ccl::communicator::coll_request_t host_communicator::bcast_impl(void* buf,
-                                                                size_t count,
-                                                                ccl_datatype_t dtype,
-                                                                size_t root,
-                                                                const ccl::coll_attr* attr,
-                                                                ccl::stream::impl_t& stream) {
-    const ccl_stream* stream_ptr =
-        (stream->get_type() != static_cast<ccl_stream_type_t>(ccl::stream_type::host))
-            ? stream.get()
-            : nullptr;
+host_communicator::coll_request_t host_communicator::broadcast_impl(
+    void* buf,
+    size_t count,
+    ccl::datatype dtype,
+    size_t root,
+    const ccl::stream::impl_value_t& stream,
+    const ccl::broadcast_attr& attr,
+    const ccl::vector_class<ccl::event>& deps) {
+    ccl_request* req = ccl_broadcast_impl(buf, count, dtype, root, attr, comm_impl.get(), nullptr);
 
-    ccl_request* req = ccl_bcast_impl(buf, count, dtype, root, attr, comm_impl.get(), stream_ptr);
-    return std::unique_ptr<ccl::host_request_impl>(new ccl::host_request_impl(req));
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
 }
 
 /* reduce */
-ccl::communicator::coll_request_t host_communicator::reduce_impl(const void* send_buf,
-                                                                 void* recv_buf,
-                                                                 size_t count,
-                                                                 ccl_datatype_t dtype,
-                                                                 ccl::reduction reduction,
-                                                                 size_t root,
-                                                                 const ccl::coll_attr* attr,
-                                                                 ccl::stream::impl_t& stream) {
-    const ccl_stream* stream_ptr =
-        (stream->get_type() != static_cast<ccl_stream_type_t>(ccl::stream_type::host))
-            ? stream.get()
-            : nullptr;
+host_communicator::coll_request_t host_communicator::reduce_impl(
+    const void* send_buf,
+    void* recv_buf,
+    size_t count,
+    ccl::datatype dtype,
+    ccl::reduction reduction,
+    size_t root,
+    const ccl::stream::impl_value_t& stream,
+    const ccl::reduce_attr& attr,
+    const ccl::vector_class<ccl::event>& deps) {
+    ccl_request* req = ccl_reduce_impl(
+        send_buf, recv_buf, count, dtype, reduction, root, attr, comm_impl.get(), nullptr);
 
-    ccl_request* req = ccl_reduce_impl(send_buf,
-                                       recv_buf,
-                                       count,
-                                       dtype,
-                                       static_cast<ccl_reduction_t>(reduction),
-                                       root,
-                                       attr,
-                                       comm_impl.get(),
-                                       stream_ptr);
-    return std::unique_ptr<ccl::host_request_impl>(new ccl::host_request_impl(req));
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
+}
+
+/* reduce_scatter */
+host_communicator::coll_request_t host_communicator::reduce_scatter_impl(
+    const void* send_buf,
+    void* recv_buf,
+    size_t recv_count,
+    ccl::datatype dtype,
+    ccl::reduction reduction,
+    const ccl::stream::impl_value_t& stream,
+    const ccl::reduce_scatter_attr& attr,
+    const ccl::vector_class<ccl::event>& deps) {
+    ccl_request* req = ccl_reduce_scatter_impl(
+        send_buf, recv_buf, recv_count, dtype, reduction, attr, comm_impl.get(), nullptr);
+
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
 }
 
 /* sparse_allreduce */
-ccl::communicator::coll_request_t host_communicator::sparse_allreduce_impl(
+host_communicator::coll_request_t host_communicator::sparse_allreduce_impl(
     const void* send_ind_buf,
     size_t send_ind_count,
     const void* send_val_buf,
@@ -233,16 +341,12 @@ ccl::communicator::coll_request_t host_communicator::sparse_allreduce_impl(
     size_t recv_ind_count,
     void* recv_val_buf,
     size_t recv_val_count,
-    ccl_datatype_t index_dtype,
-    ccl_datatype_t value_dtype,
+    ccl::datatype index_dtype,
+    ccl::datatype value_dtype,
     ccl::reduction reduction,
-    const ccl::coll_attr* attr,
-    ccl::stream::impl_t& stream) {
-    const ccl_stream* stream_ptr =
-        (stream->get_type() != static_cast<ccl_stream_type_t>(ccl::stream_type::host))
-            ? stream.get()
-            : nullptr;
-
+    const ccl::stream::impl_value_t& stream,
+    const ccl::sparse_allreduce_attr& attr,
+    const ccl::vector_class<ccl::event>& deps) {
     ccl_request* req = ccl_sparse_allreduce_impl(send_ind_buf,
                                                  send_ind_count,
                                                  send_val_buf,
@@ -253,71 +357,146 @@ ccl::communicator::coll_request_t host_communicator::sparse_allreduce_impl(
                                                  recv_val_count,
                                                  index_dtype,
                                                  value_dtype,
-                                                 static_cast<ccl_reduction_t>(reduction),
+                                                 reduction,
                                                  attr,
                                                  comm_impl.get(),
-                                                 stream_ptr);
-    return std::unique_ptr<ccl::host_request_impl>(new ccl::host_request_impl(req));
+                                                 nullptr);
+
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
 }
-/***********************************************************************/
 
-COMM_INTERFACE_COLL_INSTANTIATIONS(host_communicator, char);
-COMM_INTERFACE_COLL_INSTANTIATIONS(host_communicator, int);
-COMM_INTERFACE_COLL_INSTANTIATIONS(host_communicator, int64_t);
-COMM_INTERFACE_COLL_INSTANTIATIONS(host_communicator, uint64_t);
-COMM_INTERFACE_COLL_INSTANTIATIONS(host_communicator, float);
-COMM_INTERFACE_COLL_INSTANTIATIONS(host_communicator, double);
+std::shared_ptr<atl_wrapper> host_communicator::get_atl() {
+    return comm_impl->atl;
+}
 
-#ifdef CCL_ENABLE_SYCL
-COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(host_communicator, cl::sycl::buffer<char COMMA 1>);
-COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(host_communicator, cl::sycl::buffer<int COMMA 1>);
-COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(host_communicator, cl::sycl::buffer<int64_t COMMA 1>);
-COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(host_communicator, cl::sycl::buffer<uint64_t COMMA 1>);
-COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(host_communicator, cl::sycl::buffer<float COMMA 1>);
-COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(host_communicator, cl::sycl::buffer<double COMMA 1>);
-#endif //CCL_ENABLE_SYCL
+std::string host_communicator::to_string() const {
+    return std::string("host communicator, rank (") + std::to_string(rank()) + "/" +
+           std::to_string(size());
+}
 
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, char, char);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, char, int);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, char, ccl::bfp16);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, char, float);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, char, double);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, char, int64_t);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, char, uint64_t);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, int, char);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, int, int);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, int, ccl::bfp16);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, int, float);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, int, double);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, int, int64_t);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, int, uint64_t);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, int64_t, char);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, int64_t, int);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, int64_t, ccl::bfp16);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, int64_t, float);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, int64_t, double);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, int64_t, int64_t);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, int64_t, uint64_t);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, uint64_t, char);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, uint64_t, int);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, uint64_t, ccl::bfp16);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, uint64_t, float);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, uint64_t, double);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, uint64_t, int64_t);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, uint64_t, uint64_t);
+DEVICE_COMM_INTERFACE_COLL_INSTANTIATIONS(host_communicator, char);
+DEVICE_COMM_INTERFACE_COLL_INSTANTIATIONS(host_communicator, int);
+DEVICE_COMM_INTERFACE_COLL_INSTANTIATIONS(host_communicator, int64_t);
+DEVICE_COMM_INTERFACE_COLL_INSTANTIATIONS(host_communicator, uint64_t);
+DEVICE_COMM_INTERFACE_COLL_INSTANTIATIONS(host_communicator, float);
+DEVICE_COMM_INTERFACE_COLL_INSTANTIATIONS(host_communicator, double);
 
 #ifdef CCL_ENABLE_SYCL
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_CLASS_INSTANTIATION(host_communicator,
-                                                             cl::sycl::buffer<int COMMA 1>,
-                                                             cl::sycl::buffer<float COMMA 1>);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_CLASS_INSTANTIATION(host_communicator,
-                                                             cl::sycl::buffer<int COMMA 1>,
-                                                             cl::sycl::buffer<ccl::bfp16 COMMA 1>);
-
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_CLASS_INSTANTIATION(host_communicator,
-                                                             cl::sycl::buffer<int64_t COMMA 1>,
-                                                             cl::sycl::buffer<float COMMA 1>);
-COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_CLASS_INSTANTIATION(host_communicator,
-                                                             cl::sycl::buffer<int64_t COMMA 1>,
-                                                             cl::sycl::buffer<ccl::bfp16 COMMA 1>);
+DEVICE_COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(host_communicator,
+                                                cl::sycl::buffer<char COMMA 1>);
+DEVICE_COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(host_communicator,
+                                                cl::sycl::buffer<int COMMA 1>);
+DEVICE_COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(host_communicator,
+                                                cl::sycl::buffer<int64_t COMMA 1>);
+DEVICE_COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(host_communicator,
+                                                cl::sycl::buffer<uint64_t COMMA 1>);
+DEVICE_COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(host_communicator,
+                                                cl::sycl::buffer<float COMMA 1>);
+DEVICE_COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(host_communicator,
+                                                cl::sycl::buffer<double COMMA 1>);
 #endif //CCL_ENABLE_SYCL
+
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              char,
+                                                              char);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              char,
+                                                              int);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              char,
+                                                              ccl::bf16);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              char,
+                                                              float);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              char,
+                                                              double);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              char,
+                                                              int64_t);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              char,
+                                                              uint64_t);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              int,
+                                                              char);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator, int, int);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              int,
+                                                              ccl::bf16);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              int,
+                                                              float);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              int,
+                                                              double);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              int,
+                                                              int64_t);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              int,
+                                                              uint64_t);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              int64_t,
+                                                              char);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              int64_t,
+                                                              int);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              int64_t,
+                                                              ccl::bf16);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              int64_t,
+                                                              float);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              int64_t,
+                                                              double);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              int64_t,
+                                                              int64_t);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              int64_t,
+                                                              uint64_t);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              uint64_t,
+                                                              char);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              uint64_t,
+                                                              int);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              uint64_t,
+                                                              ccl::bf16);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              uint64_t,
+                                                              float);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              uint64_t,
+                                                              double);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              uint64_t,
+                                                              int64_t);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(host_communicator,
+                                                              uint64_t,
+                                                              uint64_t);
+
+#ifdef CCL_ENABLE_SYCL
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_CLASS_INSTANTIATION(
+    host_communicator,
+    cl::sycl::buffer<int COMMA 1>,
+    cl::sycl::buffer<float COMMA 1>);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_CLASS_INSTANTIATION(
+    host_communicator,
+    cl::sycl::buffer<int COMMA 1>,
+    cl::sycl::buffer<ccl::bf16 COMMA 1>);
+
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_CLASS_INSTANTIATION(
+    host_communicator,
+    cl::sycl::buffer<int64_t COMMA 1>,
+    cl::sycl::buffer<float COMMA 1>);
+DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_CLASS_INSTANTIATION(
+    host_communicator,
+    cl::sycl::buffer<int64_t COMMA 1>,
+    cl::sycl::buffer<ccl::bf16 COMMA 1>);
+#endif //CCL_ENABLE_SYCL
+
+} // namespace ccl

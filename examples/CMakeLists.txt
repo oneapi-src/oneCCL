@@ -15,6 +15,12 @@
 #
 cmake_minimum_required (VERSION 2.8)
 
+set(PROJECT_NAME "oneCCL examples")
+
+project(${PROJECT_NAME})
+
+include(../cmake/helpers.cmake)
+
 if (DEFINED ENV{CCL_CONFIGURATION})
     set(CCL_CONFIGURATION "$ENV{CCL_CONFIGURATION}")
     if(${CCL_CONFIGURATION} STREQUAL "cpu_gpu_dpcpp")
@@ -28,8 +34,16 @@ else()
     message(FATAL_ERROR "Please define CCL_ROOT environment variable")
 endif()
 
+if (DEFINED ENV{I_MPI_ROOT})
+    set(I_MPI_ROOT "$ENV{I_MPI_ROOT}")
+else()
+    message(FATAL_ERROR "Please define I_MPI_ROOT environment variable")
+endif()
+
 message(STATUS "CCL_ROOT: ${CCL_ROOT}")
+message(STATUS "I_MPI_ROOT: ${I_MPI_ROOT}")
 message(STATUS "CCL_CONFIGURATION: ${CCL_CONFIGURATION}")
+message(STATUS "PROJECT_SOURCE_DIR: ${PROJECT_SOURCE_DIR}")
 
 if (NOT DEFINED ${CCL_INSTALL_EXAMPLES})
     set(CCL_INSTALL_EXAMPLES "$ENV{PWD}")
@@ -58,35 +72,37 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if (COMPUTE_RUNTIME)
-    activate_compute_runtime("${CCL_ROOT}/lib;${PROJECT_SOURCE_DIR}/cmake" ${COMPUTE_RUNTIME})
+    activate_compute_runtime("${CCL_ROOT}/lib;${PROJECT_SOURCE_DIR}/../cmake" ${COMPUTE_RUNTIME})
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMPUTE_RUNTIME_FLAGS}")
     list(APPEND CCL_INC_DIRS ${COMPUTE_RUNTIME_INCLUDE_DIRS})
     list(APPEND EXTERNAL_LIBS ${COMPUTE_RUNTIME_LIBRARIES})
 endif()
 
-set(GCC_BFP16_MIN_SUPPORTED "4.9.0")
+set(GCC_BF16_MIN_SUPPORTED "4.9.0")
 
-if (${CMAKE_C_COMPILER_ID} STREQUAL "Intel" OR ${CMAKE_C_COMPILER_ID} STREQUAL "Clang" OR (${CMAKE_C_COMPILER_ID} STREQUAL "GNU" AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${GCC_BFP16_MIN_SUPPORTED}))
-    add_definitions(-DCCL_BFP16_COMPILER)
-    set(CCL_BFP16_COMPILER ON)
-    message(STATUS "BFP16 compiler: yes")
+if (${CMAKE_C_COMPILER_ID} STREQUAL "Intel" OR ${CMAKE_C_COMPILER_ID} STREQUAL "Clang" OR (${CMAKE_C_COMPILER_ID} STREQUAL "GNU" AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${GCC_BF16_MIN_SUPPORTED}))
+    add_definitions(-DCCL_BF16_COMPILER)
+    set(CCL_BF16_COMPILER ON)
+    message(STATUS "BF16 compiler: yes")
 else()
-    set(CCL_BFP16_COMPILER OFF)
-    message(STATUS "BFP16 compiler: no")
+    set(CCL_BF16_COMPILER OFF)
+    message(STATUS "BF16 compiler: no")
 endif()
 
-if (CCL_BFP16_COMPILER)
+if (CCL_BF16_COMPILER)
     if ((${CMAKE_C_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_C_COMPILER_ID} STREQUAL "GNU"))
-        add_definitions(-DCCL_BFP16_TARGET_ATTRIBUTES)
-        message(STATUS "BFP16 target attributes: yes")
+        add_definitions(-DCCL_BF16_TARGET_ATTRIBUTES)
+        message(STATUS "BF16 target attributes: yes")
     else()
-        message(STATUS "BFP16 target attributes: no")
+        message(STATUS "BF16 target attributes: no")
     endif()
 endif()
 
-include_directories(${CCL_ROOT}/include/${CCL_CONFIGURATION})
 include_directories(include)
-
+include_directories(${I_MPI_ROOT}/include/)
+include_directories(${CCL_ROOT}/include/${CCL_CONFIGURATION})
+link_directories(${I_MPI_ROOT}/lib/release_mt)
+link_directories(${I_MPI_ROOT}/libfabric/lib)
 link_directories(${CCL_ROOT}/lib/${CCL_CONFIGURATION})
 
 add_subdirectory(cpu)

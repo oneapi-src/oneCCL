@@ -41,12 +41,6 @@ endif()
 #make build variable case insensitive
 string( TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_CASE_INSENSITIVE)
 
-#show build info
-message(STATUS "Installation directory: ${CMAKE_INSTALL_PREFIX}")
-message(STATUS "Build type: ${CMAKE_BUILD_TYPE_CASE_INSENSITIVE}")
-message(STATUS "C compiler : ${CMAKE_C_COMPILER}")
-message(STATUS "CXX compiler : ${CMAKE_CXX_COMPILER}")
-
 #predefined options
 option(USE_SECURITY_FLAGS "Use security flags" TRUE)
 if (${CMAKE_BUILD_TYPE_CASE_INSENSITIVE} STREQUAL "debug")
@@ -58,9 +52,16 @@ option(WITH_ASAN "Use address sanitizer, can only be used in Debug build" FALSE)
 
 #installation path variables
 include(GNUInstallDirs)
+
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/_install" CACHE PATH "Default install path" FORCE)
 endif()
+
+#show build info
+message(STATUS "Installation directory: ${CMAKE_INSTALL_PREFIX}")
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE_CASE_INSENSITIVE}")
+message(STATUS "C compiler : ${CMAKE_C_COMPILER}")
+message(STATUS "CXX compiler : ${CMAKE_CXX_COMPILER}")
 
 SET(MULTI_GPU_SUPPORT OFF CACHE BOOL "Enable Multi GPU extension support")
 
@@ -76,6 +77,10 @@ set(CCL_INSTALL_LICENSE "${CMAKE_INSTALL_PREFIX}/licensing")
 set(CCL_INSTALL_MODULE "${CMAKE_INSTALL_PREFIX}/modulefiles")
 set(CCL_INSTALL_EXAMPLES "${CMAKE_INSTALL_PREFIX}/examples")
 set(CCL_INSTALL_TESTS "${CMAKE_INSTALL_PREFIX}/tests")
+
+
+set(MPI_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/mpi/include/")
+set(MPI_LIB_DIR "${PROJECT_SOURCE_DIR}/mpi/lib/")
 if ( "${LIBFABRIC_DIR}" STREQUAL "")
     set(LIBFABRIC_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/ofi/include")
     set(LIBFABRIC_LIB_DIR "${PROJECT_SOURCE_DIR}/ofi/lib/")
@@ -83,6 +88,13 @@ else()
     set(LIBFABRIC_INCLUDE_DIR "${LIBFABRIC_DIR}/include/")
     set(LIBFABRIC_LIB_DIR "${LIBFABRIC_DIR}/lib")
 endif()
+include_directories(${MPI_INCLUDE_DIR})
+include_directories(${LIBFABRIC_INCLUDE_DIR})
+link_directories(${MPI_LIB_DIR})
+link_directories(${LIBFABRIC_LIB_DIR})
+
+
+
 set(CCL_INSTALL_UNIT_TESTS "${CMAKE_INSTALL_PREFIX}/tests/unit")
 
 set(CMAKE_SKIP_INSTALL_RPATH TRUE)
@@ -134,7 +146,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if (COMPUTE_RUNTIME)
     activate_compute_runtime("${CMAKE_CURRENT_LIST_DIR}/cmake" ${COMPUTE_RUNTIME})
-
+	set(PARENT_COMPUTE_RUNTIME_TARGET_NAME ${COMPUTE_RUNTIME_TARGET_NAME})
     if (${CCL_ENABLE_SYCL_V} STREQUAL 1)
         option (CCL_ENABLE_SYCL "Enable CCL SYCL runtime" ON)
         message(STATUS "Enable CCL SYCL runtime")
@@ -156,45 +168,45 @@ if(WITH_ASAN AND ${CMAKE_BUILD_TYPE_CASE_INSENSITIVE} STREQUAL "debug")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -lasan")
 endif()
 
-set(GCC_BFP16_MIN_SUPPORTED "4.9.0")
-set(GCC_BFP16_AVX512BF_MIN_SUPPORTED "10.0.0")
-set(ICC_BFP16_AVX512BF_MIN_SUPPORTED "19.1.0")
-set(CLANG_BFP16_MIN_SUPPORTED "9.0.0")
-set(CLANG_BFP16_AVX512BF_MIN_SUPPORTED "10.0.0")
+set(GCC_BF16_MIN_SUPPORTED "4.9.0")
+set(GCC_BF16_AVX512BF_MIN_SUPPORTED "10.0.0")
+set(ICC_BF16_AVX512BF_MIN_SUPPORTED "19.1.0")
+set(CLANG_BF16_MIN_SUPPORTED "9.0.0")
+set(CLANG_BF16_AVX512BF_MIN_SUPPORTED "10.0.0")
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "Intel"
     OR (${CMAKE_C_COMPILER_ID} STREQUAL "Clang"
-        AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${CLANG_BFP16_MIN_SUPPORTED})
+        AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${CLANG_BF16_MIN_SUPPORTED})
     OR (${CMAKE_C_COMPILER_ID} STREQUAL "GNU"
-        AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${GCC_BFP16_MIN_SUPPORTED})
+        AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${GCC_BF16_MIN_SUPPORTED})
     )
-    add_definitions(-DCCL_BFP16_COMPILER)
-    set(CCL_BFP16_COMPILER ON)
-    message(STATUS "BFP16 compiler: yes")
+    add_definitions(-DCCL_BF16_COMPILER)
+    set(CCL_BF16_COMPILER ON)
+    message(STATUS "BF16 compiler: yes")
 else()
-    set(CCL_BFP16_COMPILER OFF)
-    message(STATUS "BFP16 compiler: no")
+    set(CCL_BF16_COMPILER OFF)
+    message(STATUS "BF16 compiler: no")
 endif()
 
 if ((${CMAKE_C_COMPILER_ID} STREQUAL "Intel"
-        AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${ICC_BFP16_AVX512BF_MIN_SUPPORTED})
+        AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${ICC_BF16_AVX512BF_MIN_SUPPORTED})
     OR (${CMAKE_C_COMPILER_ID} STREQUAL "Clang"
-        AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${CLANG_BFP16_AVX512BF_MIN_SUPPORTED})
+        AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${CLANG_BF16_AVX512BF_MIN_SUPPORTED})
     OR (${CMAKE_C_COMPILER_ID} STREQUAL "GNU"
-        AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${GCC_BFP16_AVX512BF_MIN_SUPPORTED})
+        AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${GCC_BF16_AVX512BF_MIN_SUPPORTED})
     )
-    add_definitions(-DCCL_BFP16_AVX512BF_COMPILER)
-    message(STATUS "BFP16 AVX512BF compiler: yes")
+    add_definitions(-DCCL_BF16_AVX512BF_COMPILER)
+    message(STATUS "BF16 AVX512BF compiler: yes")
 else()
-    message(STATUS "BFP16 AVX512BF compiler: no")
+    message(STATUS "BF16 AVX512BF compiler: no")
 endif()
 
-if (CCL_BFP16_COMPILER)
+if (CCL_BF16_COMPILER)
     if ((${CMAKE_C_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_C_COMPILER_ID} STREQUAL "GNU"))
-        add_definitions(-DCCL_BFP16_TARGET_ATTRIBUTES)
-        message(STATUS "BFP16 target attributes: yes")
+        add_definitions(-DCCL_BF16_TARGET_ATTRIBUTES)
+        message(STATUS "BF16 target attributes: yes")
     else()
-        message(STATUS "BFP16 target attributes: no")
+        message(STATUS "BF16 target attributes: no")
     endif()
 endif()
 
@@ -202,47 +214,38 @@ set(CCL_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/src)
 
 enable_testing()
 
-set (EXTERNAL_LIBS "")
-set(EXAMPLES_INC_DIRS ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/examples/include)
+set(EXTERNAL_LIBS "")
+set(EXAMPLES_INC_DIRS ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/examples/include ${PROJECT_SOURCE_DIR}/mpi/include)
 
 # allow `deprecated`
 set(CMAKE_CLANG_FLAGS "${CMAKE_CLANG_FLAGS}")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
-if (MULTI_GPU_SUPPORT)
-    if (NOT ((${COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "ze_loader")
-             OR (${COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "Intel::SYCL")))
-        message( FATAL_ERROR "MULTI_GPU_SUPPORT required COMPUTE_RUNTIME=L0 or DPC++")
+if (COMPUTE_RUNTIME)
+    if ((${COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "ze_loader")
+             OR (${COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "Intel::SYCL"))
+        set(MULTI_GPU_SUPPORT ON)
+		activate_compute_runtime("${CMAKE_CURRENT_LIST_DIR}/cmake" L0)
+		message ("Enable multi GPU support: ${MULTI_GPU_SUPPORT}")
+		message ("COMPUTE_RUNTIME_TARGET_NAME: ${COMPUTE_RUNTIME_TARGET_NAME}")
     endif()
+endif(COMPUTE_RUNTIME)
 
+if (MULTI_GPU_SUPPORT)
     option(CCL_GPU_DEVICES_AFFINITY_ENABLE "Enable L0" ON)
     if(CCL_GPU_DEVICES_AFFINITY_ENABLE)
         set(CCL_GPU_DEVICES_AFFINITY_MASK_SIZE 4)
         message ("Set L0 device mask affinity size: ${CCL_GPU_DEVICES_AFFINITY_MASK_SIZE}")
     endif()
-
 endif(MULTI_GPU_SUPPORT)
 
-#include other CMakeLists
-add_subdirectory(src)
-add_subdirectory(examples/cpu)
-
 if (CCL_ENABLE_SYCL)
-    if (${COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "Intel::SYCL")
-        set (CCL_ENABLCE_SYCL_CHECK_CONTRACT "#if defined(__cplusplus)\n#if !defined(__clang__) || __clang_major__ < 9 || !defined(CL_SYCL_LANGUAGE_VERSION)\n#error This version of CCL configured only for oneAPI DPC++ Compiler\n#endif\n#endif")
-    else(${COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "Codeplay::ComputeCpp")
-        set (CCL_ENABLCE_SYCL_CHECK_CONTRACT "#if defined(__cplusplus)\n#if !defined(__clang__) || __clang_major__ < 6\n#error This version of CCL configured only for oneAPI DPC++ Compiler\n#endif\n#endif")
+    if (${PARENT_COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "Intel::SYCL")
+        set (CCL_ENABLE_SYCL_CHECK_CONTRACT "#if defined(__cplusplus)\n#if !defined(__clang__) || __clang_major__ < 9 || !defined(CL_SYCL_LANGUAGE_VERSION)\n#error This version of CCL configured only for oneAPI DPC++ Compiler\n#endif\n#endif")
+    else(${PARENT_COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "Codeplay::ComputeCpp")
+        set (CCL_ENABLE_SYCL_CHECK_CONTRACT "#if defined(__cplusplus)\n#if !defined(__clang__) || __clang_major__ < 6\n#error This version of CCL configured only for oneAPI DPC++ Compiler\n#endif\n#endif")
     endif()
-    add_subdirectory(examples/sycl)
-endif()
-
-add_subdirectory(examples/benchmark)
-add_subdirectory(examples/common)
-add_subdirectory(tests/functional)
-if(MULTI_GPU_SUPPORT)
-    add_subdirectory(examples/level_zero)
-    add_subdirectory(tests/unit)
 endif()
 
 #generate & install vars.sh
@@ -257,11 +260,26 @@ install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/third-party-programs.txt DESTINATIO
 install(PROGRAMS ${PROJECT_SOURCE_DIR}/LICENSE DESTINATION ${CCL_INSTALL_LICENSE})
 
 set(CCL_MAJOR_VERSION     "0")
-set(CCL_MINOR_VERSION     "9")
+set(CCL_MINOR_VERSION     "10")
 set(CCL_UPDATE_VERSION    "0")
 set(CCL_PRODUCT_STATUS    "beta")
 string(TIMESTAMP CCL_PRODUCT_BUILD_DATE "%Y-%m-%dT %H:%M:%SZ")
 get_vcs_properties("git")
 set(CCL_PRODUCT_FULL "${CCL_PRODUCT_STATUS}-${CCL_MAJOR_VERSION}.${CCL_MINOR_VERSION}.${CCL_UPDATE_VERSION} ${CCL_PRODUCT_BUILD_DATE} ${VCS_INFO}")
-configure_file(${PROJECT_SOURCE_DIR}/include/ccl_config.h.in "${CMAKE_CURRENT_BINARY_DIR}/include/ccl_config.h")
-file(COPY "${CMAKE_CURRENT_BINARY_DIR}/include/ccl_config.h" DESTINATION ${PROJECT_SOURCE_DIR}/include/)
+configure_file(${PROJECT_SOURCE_DIR}/include/oneapi/ccl/ccl_config.h.in "${CMAKE_CURRENT_BINARY_DIR}/include/oneapi/ccl/ccl_config.h")
+file(COPY "${CMAKE_CURRENT_BINARY_DIR}/include/oneapi/ccl/ccl_config.h" DESTINATION ${PROJECT_SOURCE_DIR}/include/oneapi/ccl)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/include)
+
+
+#include other CMakeLists
+
+add_subdirectory(src)
+add_subdirectory(examples/benchmark)
+add_subdirectory(examples/common)
+add_subdirectory(examples/cpu)
+if (CCL_ENABLE_SYCL)
+    add_subdirectory(examples/sycl)
+endif()
+
+add_subdirectory(tests/functional)
+#add_subdirectory(tests/unit)

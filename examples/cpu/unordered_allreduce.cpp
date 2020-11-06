@@ -13,8 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "base.h"
-
 #include <vector>
 #include <list>
 #include <string>
@@ -22,45 +20,54 @@
 #include <thread>
 #include <random>
 
-ccl_request_t start_allreduce_with_tensor_name(const std::string& tensor_name,
-                                               const float* send_buff,
-                                               float* recv_buff) {
-    coll_attr.to_cache = true;
-    coll_attr.match_id = tensor_name.c_str();
-
-    ccl_request_t req = nullptr;
-
-    CCL_CALL(ccl_allreduce(send_buff,
-                           recv_buff,
-                           COUNT,
-                           ccl_dtype_float,
-                           ccl_reduction_sum,
-                           &coll_attr,
-                           nullptr,
-                           nullptr,
-                           &req));
-    return req;
-}
+#include "base.hpp"
 
 int main() {
+
     setenv("CCL_UNORDERED_COLL", "1", 1);
 
-    const size_t iterations_count = 64;
-    std::vector<std::string> tensor_names;
-    // request, operation idx (for example purpose)
-    std::list<std::pair<ccl_request_t, size_t>> started_ops;
-    std::vector<std::vector<float>> allreduce_send_bufs;
-    std::vector<std::vector<float>> allreduce_recv_bufs;
+    const size_t buf_size = 1024;
+    const size_t iter_count = 64;
 
-    test_init();
+    std::vector<std::string> match_ids;
+
+    /* event, operation idx */
+    std::list<std::pair<ccl::event, size_t>> active_ops;
+
+    std::vector<std::vector<float>> send_bufs;
+    std::vector<std::vector<float>> recv_bufs;
+
+    ccl::init();
+
+    int size, rank;
+    MPI_Init(NULL, NULL);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    ccl::shared_ptr_class<ccl::kvs> kvs;
+    ccl::kvs::address_type main_addr;
+    if (rank == 0) {
+        kvs = ccl::create_main_kvs();
+        main_addr = kvs->get_address();
+        MPI_Bcast((void*)main_addr.data(), main_addr.size(), MPI_BYTE, 0, MPI_COMM_WORLD);
+    }
+    else {
+        MPI_Bcast((void*)main_addr.data(), main_addr.size(), MPI_BYTE, 0, MPI_COMM_WORLD);
+        kvs = ccl::create_kvs(main_addr);
+    }
+
+    auto comm = ccl::create_communicator(size, rank, kvs);
+
+    auto attr = ccl::create_operation_attr<ccl::allreduce_attr>();
+    attr.set<ccl::operation_attr_id::to_cache>(true);
 
     std::random_device rand_dev;
     std::uniform_int_distribution<size_t> distribution(0, size - 1);
 
-    for (size_t rank_idx = 0; rank_idx < size; ++rank_idx) {
-        tensor_names.emplace_back("tensor_number_" + std::to_string(rank_idx));
-        allreduce_send_bufs.emplace_back(COUNT, rank_idx + 1);
-        allreduce_recv_bufs.emplace_back(COUNT, 0.0f);
+    for (auto idx = 0; idx < size; idx++) {
+        match_ids.emplace_back("match_id_" + std::to_string(idx));
+        send_bufs.emplace_back(buf_size, idx + 1);
+        recv_bufs.emplace_back(buf_size, 0.0f);
     }
 
     if (rank != 0) {
@@ -68,53 +75,60 @@ int main() {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 
-    for (size_t iteration = 0; iteration < iterations_count; ++iteration) {
-        printf("## starting iteration #%zu\n", iteration);
+    for (size_t iter = 0; iter < iter_count; ++iter) {
+
+        std::cout << "starting iter " << iter << std::endl;
 
         size_t start_idx = distribution(rand_dev);
         size_t rank_idx = start_idx;
-        size_t operations_count = 0;
 
-        for (; operations_count < size; ++operations_count, rank_idx = (rank_idx + 1) % size) {
-            // start allreduce with shift in tensor names
-            printf("   submit allreduce #%zu for tensor %s\n",
-                   rank_idx,
-                   tensor_names[rank_idx].c_str());
-            started_ops.emplace_back(
-                start_allreduce_with_tensor_name(tensor_names[rank_idx],
-                                                 allreduce_send_bufs[rank_idx].data(),
-                                                 allreduce_recv_bufs[rank_idx].data()),
+        for (auto idx = 0; idx < size; idx++) {
+
+            std::cout << "submit allreduce " << rank_idx
+                      << " for match_id " << match_ids[rank_idx] << std::endl;
+
+            attr.set<ccl::operation_attr_id::match_id>(match_ids[rank_idx]);
+
+            active_ops.emplace_back(
+                ccl::allreduce(send_bufs[rank_idx].data(),
+                               recv_bufs[rank_idx].data(),
+                               buf_size,
+                               ccl::reduction::sum,
+                               comm,
+                               attr),
                 rank_idx);
+
+            rank_idx = (rank_idx + 1) % size;
         }
 
-        int test_completed = 0;
+        while (!active_ops.empty()) {
+            for (auto it = active_ops.begin(); it != active_ops.end();) {
 
-        while (!started_ops.empty()) {
-            for (auto it = started_ops.begin(); it != started_ops.end();) {
-                ccl_test(it->first, &test_completed);
-                if (test_completed) {
+                if (it->first.test()) {
+
                     float expected = (it->second + 1) * size;
                     printf(
-                        "   completed allreduce #%zu for tensor %s. Actual %3.2f, expected %3.2f\n",
+                        "completed allreduce %zu for match_id %s. Actual %3.2f, expected %3.2f\n",
                         it->second,
-                        tensor_names[it->second].c_str(),
-                        allreduce_recv_bufs[it->second][0],
+                        match_ids[it->second].c_str(),
+                        recv_bufs[it->second][0],
                         expected);
-                    for (size_t idx = 0; idx < COUNT; ++idx) {
-                        if (allreduce_recv_bufs[it->second][idx] != expected) {
+
+                    for (size_t idx = 0; idx < buf_size; ++idx) {
+                        if (recv_bufs[it->second][idx] != expected) {
                             fprintf(
                                 stderr,
-                                "!! wrong result, rank %zu, result %3.2f, intitial %3.2f, exp %3.f\n",
+                                "unexpected result, rank %zu, result %3.2f, intitial %3.2f, exp %3.f\n",
                                 it->second,
-                                allreduce_recv_bufs[it->second][idx],
-                                allreduce_send_bufs[it->second][idx],
+                                recv_bufs[it->second][idx],
+                                send_bufs[it->second][idx],
                                 expected);
-                            printf("FAILED\n");
+                            std::cout << "FAILED" << std::endl;
                             exit(1);
                         }
                     }
 
-                    it = started_ops.erase(it);
+                    it = active_ops.erase(it);
                 }
                 else {
                     ++it;
@@ -122,13 +136,15 @@ int main() {
             }
         }
 
-        printf("## iteration #%zu has been finished\n", iteration);
+        std::cout << "iter " << iter << " has been finished" << std::endl;
     }
 
-    test_finalize();
+    ccl::barrier(comm);
 
     if (rank == 0)
-        printf("PASSED\n");
+        std::cout << "PASSED" << std::endl << std::flush;
+
+    MPI_Finalize();
 
     return 0;
 }

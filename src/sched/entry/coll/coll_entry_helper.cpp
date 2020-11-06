@@ -89,7 +89,7 @@ ccl_status_t coll_entry_helper::build_schedule(ccl_sched* sched,
             res = ccl_coll_build_reduce_scatter(sched,
                                                 param.send_buf,
                                                 param.recv_buf,
-                                                param.send_count,
+                                                param.count,
                                                 param.dtype,
                                                 param.reduction,
                                                 param.comm);

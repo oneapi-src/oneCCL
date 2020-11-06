@@ -16,10 +16,9 @@
 #include <algorithm>
 #include <sstream>
 
-#include "native_device_api/l0/base_impl.hpp"
+#include "oneapi/ccl/native_device_api/l0/base_impl.hpp"
 
 namespace native {
-
 std::string CCL_API to_string(const ze_result_t result) {
     switch (result) {
         case ZE_RESULT_SUCCESS: return "ZE_RESULT_SUCCESS";
@@ -58,23 +57,19 @@ std::string CCL_API to_string(ze_device_type_t type) {
     return "";
 }
 
-std::string to_string(ze_memory_access_capabilities_t cap) {
+std::string to_string(ze_memory_access_cap_flags_t cap) {
     std::string ret;
-    if (cap & ZE_MEMORY_ACCESS_NONE) {
-        ret += "ZE_MEMORY_ACCESS_NONE";
+    if (cap & ZE_MEMORY_ACCESS_CAP_FLAG_RW) {
+        ret += "ZE_MEMORY_ACCESS_CAP_FLAG_RW";
     }
-    if (cap & ZE_MEMORY_ACCESS) {
-        ret += ret.empty() ? "ZE_MEMORY_ACCESS" : "|ZE_MEMORY_ACCESS";
+    if (cap & ZE_MEMORY_ACCESS_CAP_FLAG_ATOMIC ) {
+        ret += ret.empty() ? "ZE_MEMORY_ACCESS_CAP_FLAG_ATOMIC" : "|ZE_MEMORY_ACCESS_CAP_FLAG_ATOMIC";
     }
-    if (cap & ZE_MEMORY_ATOMIC_ACCESS) {
-        ret += ret.empty() ? "ZE_MEMORY_ATOMIC_ACCESS" : "|ZE_MEMORY_ATOMIC_ACCESS";
+    if (cap & ZE_MEMORY_ACCESS_CAP_FLAG_CONCURRENT) {
+        ret += ret.empty() ? "ZE_MEMORY_ACCESS_CAP_FLAG_CONCURRENT" : "|ZE_MEMORY_ACCESS_CAP_FLAG_CONCURRENT";
     }
-    if (cap & ZE_MEMORY_CONCURRENT_ACCESS) {
-        ret += ret.empty() ? "ZE_MEMORY_CONCURRENT_ACCESS" : "|ZE_MEMORY_CONCURRENT_ACCESS";
-    }
-    if (cap & ZE_MEMORY_CONCURRENT_ATOMIC_ACCESS) {
-        ret += ret.empty() ? "ZE_MEMORY_CONCURRENT_ATOMIC_ACCESS"
-                           : "|ZE_MEMORY_CONCURRENT_ATOMIC_ACCESS";
+    if (cap & ZE_MEMORY_ACCESS_CAP_FLAG_CONCURRENT_ATOMIC) {
+        ret += ret.empty() ? "ZE_MEMORY_ACCESS_CAP_FLAG_CONCURRENT_ATOMIC" : "|ZE_MEMORY_ACCESS_CAP_FLAG_CONCURRENT_ATOMIC";
     }
     return ret;
 }
@@ -100,19 +95,16 @@ std::string CCL_API to_string(const ze_device_properties_t& device_properties,
        << "type: " << native::to_string(device_properties.type) << prefix
        << "vendor_id: " << device_properties.vendorId << prefix
        << "device_id: " << device_properties.deviceId << prefix
-       << "uuid: " << device_properties.uuid.id << prefix
-       << "isSubDevice: " << (bool)device_properties.isSubdevice;
+       << "uuid: " << device_properties.uuid.id << prefix;
 
-    if (device_properties.isSubdevice) {
+    if (device_properties.flags & ZE_DEVICE_PROPERTY_FLAG_SUBDEVICE) {
         ss << prefix << "subdevice_id: " << device_properties.subdeviceId;
     }
 
-    ss << prefix << "unifiedMemorySupported:" << (bool)device_properties.unifiedMemorySupported
-       << prefix << "onDemandPageFaults: " << (bool)device_properties.onDemandPageFaultsSupported
-       << prefix << "coreClockRate: " << device_properties.coreClockRate << prefix
-       << "maxCommandQueues: " << device_properties.maxCommandQueues << prefix
-       << "numAsyncComputeEngines: " << device_properties.numAsyncComputeEngines << prefix
-       << "numAsyncCopyEngines: " << device_properties.numAsyncCopyEngines << prefix
+    // TODO L0: need to_string() for supported flags printing
+    ss << "Supported flags: " << (bool)device_properties.flags << prefix
+       << "coreClockRate: " << device_properties.coreClockRate << prefix
+       // << "maxCommandQueues: " << device_properties.maxCommandQueues << prefix
        << "maxCommandQueuePriority: " << device_properties.maxCommandQueuePriority << prefix
        << "numThreadsPerEU: " << device_properties.numThreadsPerEU << prefix
        << "physicalEUSimdWidth: " << device_properties.physicalEUSimdWidth << prefix
@@ -168,17 +160,15 @@ std::string CCL_API to_string(const ze_device_compute_properties_t& compute_prop
 
 std::string CCL_API to_string(const ze_memory_allocation_properties_t& prop) {
     std::stringstream ss;
-    ss << "version: " << prop.version << ", type: " << to_string(prop.type) <<
-        //", device: " << prop.device <<
-        ", id: " << prop.id;
+    ss << "type: " << to_string(prop.type) << ", id: " << prop.id
+       << ", page size: " << prop.pageSize;
     return ss.str();
 }
 
+// TODO L0: need to_string() for supported flags printing
 std::string CCL_API to_string(const ze_device_p2p_properties_t& properties) {
     std::stringstream ss;
-    ss << "version: " << properties.version
-       << ", accessSupported: " << (bool)properties.accessSupported
-       << ", atomicsSupported: " << (bool)properties.atomicsSupported;
+    ss << "type: " << to_string(properties.stype) << "supported flags: " << (bool)properties.flags;
     return ss.str();
 }
 

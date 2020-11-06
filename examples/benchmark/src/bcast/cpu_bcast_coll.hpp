@@ -13,8 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#ifndef CPU_BCAST_COLL_HPP
-#define CPU_BCAST_COLL_HPP
+#pragma once
 
 #include "cpu_coll.hpp"
 #include "bcast_strategy.hpp"
@@ -26,13 +25,13 @@ struct cpu_bcast_coll : cpu_base_coll<Dtype, bcast_strategy_impl> {
     using coll_base::single_recv_buf;
     using coll_base::comm;
 
-    cpu_bcast_coll(bench_coll_init_attr init_attr)
-            : coll_base(init_attr, base_coll::comm->size(), base_coll::comm->size()) {}
+    cpu_bcast_coll(bench_init_attr init_attr)
+            : coll_base(init_attr) {}
 
     virtual void prepare(size_t elem_count) override {
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
             for (size_t e_idx = 0; e_idx < elem_count; e_idx++) {
-                if (comm->rank() == COLL_ROOT)
+                if (coll_base::comm().rank() == COLL_ROOT)
                     ((Dtype*)recv_bufs[b_idx])[e_idx] = e_idx;
                 else
                     ((Dtype*)recv_bufs[b_idx])[e_idx] = 0;
@@ -54,5 +53,3 @@ struct cpu_bcast_coll : cpu_base_coll<Dtype, bcast_strategy_impl> {
         }
     }
 };
-
-#endif /* CPU_BCAST_COLL_HPP */

@@ -51,7 +51,7 @@ size_t ccl_sched_bin::erase(size_t idx, size_t& next_idx) {
     return size;
 }
 
-ccl_sched_queue::ccl_sched_queue(std::vector<atl_ep_t*> atl_eps) : atl_eps(atl_eps) {
+ccl_sched_queue::ccl_sched_queue(std::vector<size_t> atl_eps) : atl_eps(atl_eps) {
     LOG_DEBUG("created sched_queue, atl_eps count ", atl_eps.size(), ", atl_eps[0] ", atl_eps[0]);
 
     if (ccl::global_data::env().priority_mode != ccl_priority_none) {
@@ -101,7 +101,7 @@ void ccl_sched_queue::add(ccl_sched* sched) {
         bin->add(sched);
     }
     else {
-        atl_ep_t* atl_ep = nullptr;
+        size_t atl_ep = 0;
         if (ccl::global_data::env().priority_mode == ccl_priority_none)
             atl_ep = atl_eps[0];
         else {

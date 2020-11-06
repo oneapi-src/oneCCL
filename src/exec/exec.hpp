@@ -71,63 +71,42 @@ public:
     void start_workers();
     size_t get_worker_count() const;
 
-    ccl_status_t create_listener(ccl_resize_fn_t resize_func);
+    // TODO: Rework to support listener
+    //    ccl_status_t create_listener(ccl_resize_fn_t resize_func);
     void update_workers();
     void lock_workers();
     void unlock_workers();
     bool is_locked = false;
 
-    size_t get_global_proc_idx() const {
-        return atl_proc_coord->global_idx;
-    }
-    size_t get_global_proc_count() const {
-        return atl_proc_coord->global_count;
-    }
+    // TODO: make method to get real local_proc***
     size_t get_local_proc_idx() const {
-        return atl_proc_coord->local_idx;
+        return local_proc_idx;
     }
     size_t get_local_proc_count() const {
-        return atl_proc_coord->local_count;
+        return local_proc_count;
     }
 
-    atl_ctx_t* get_atl_ctx() const {
-        return atl_ctx;
-    }
-    atl_proc_coord_t* get_proc_coord() const {
-        return atl_proc_coord;
-    }
-    const atl_attr_t& get_atl_attr() const {
-        return atl_attr;
-    }
+    static size_t calculate_atl_ep_count(size_t worker_count);
+    static atl_attr_t generate_atl_attr(const ccl::env_data& env);
 
 private:
-    static size_t calculate_atl_ep_count(size_t worker_count);
 
     size_t get_worker_idx_round_robin(ccl_sched* sched);
     size_t get_worker_idx_by_sched_id(ccl_sched* sched);
 
     std::unique_ptr<ccl_sched_queue> create_sched_queue(size_t idx, size_t ep_per_worker);
     void do_work();
-
-    atl_attr_t atl_attr = {
-        1, /* ep_count */
-        1, /* enable_shm */
-        64, /* tag_bits */
-        0xFFFFFFFFFFFFFFFF, /* max_tag */
-        0, /* enable_rma */
-        0 /* max_order_waw_size */
-    };
-
-    atl_proc_coord_t* atl_proc_coord = nullptr;
-    atl_ep_t** atl_eps = nullptr;
-    atl_ctx_t* atl_ctx = nullptr;
+    void set_local_coord();
 
     std::vector<std::unique_ptr<ccl_worker>> workers;
-    std::unique_ptr<ccl_listener> listener;
+    // TODO: Rework to support listener
+    //  std::unique_ptr<ccl_listener> listener;
 
     typedef size_t (ccl_executor::*get_worker_idx_fn_t)(ccl_sched* sched);
     get_worker_idx_fn_t get_worker_idx_fn;
     size_t rr_worker_idx = 0; /* to distribute work in round-robin */
+    size_t local_proc_idx;
+    size_t local_proc_count;
 };
 
 inline void ccl_release_sched(ccl_master_sched* sched) {

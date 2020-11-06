@@ -19,7 +19,8 @@
 #include <memory>
 #include <mutex>
 
-#include "ccl.hpp"
+#include "oneapi/ccl/ccl_types.hpp"
+#include "supported_topologies.hpp"
 #include "common/comm/l0/gpu_comm_attr.hpp"
 #include "common/comm/l0/context/scaling_ctx/numa_ctx.hpp"
 #include "common/comm/l0/device_community_holder_impl.hpp"
@@ -28,18 +29,18 @@ class device_group_router;
 namespace native {
 struct device_storage;
 /*
-template<ccl::device_group_split_type>
+template<ccl::group_split_type>
 struct device_community;
 
-template<ccl::device_group_split_type type>
+template<ccl::group_split_type type>
 using device_community_ptr = std::shared_ptr<device_community<type>>;
 
-template<ccl::device_group_split_type ...types>
+template<ccl::group_split_type ...types>
 using device_community_tuple_t = std::tuple<device_community_ptr<types>...>;
 */
 struct device_group_scheduler;
 /*
-template<ccl::device_group_split_type,
+template<ccl::group_split_type,
          ccl::device_topology_type...>
 struct device_group_community_holder;
 */
@@ -49,11 +50,11 @@ struct device_group_context : numa_ctx<device_group_context, SUPPORTED_TOPOLOGY_
 
     friend class device_group_ring_topology;
 
-    static constexpr ccl::device_group_split_type group_id() {
-        return ccl::device_group_split_type::thread;
+    static constexpr ccl::group_split_type group_id() {
+        return ccl::group_split_type::thread;
     }
 
-    using topologies = device_group_community_holder<ccl::device_group_split_type::thread,
+    using topologies = device_group_community_holder<ccl::group_split_type::thread,
                                                      SUPPORTED_TOPOLOGY_CLASSES_DECL_LIST>;
 
     ccl::device_indices_t device_indices;

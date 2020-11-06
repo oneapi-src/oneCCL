@@ -34,9 +34,9 @@ class allied_process_group_ring_topology
     size_t device_cluster_size;
 
 public:
-    static constexpr ccl::device_group_split_type type()
+    static constexpr ccl::group_split_type type()
     {
-        return ccl::device_group_split_type::cluster;
+        return ccl::group_split_type::cluster;
     }
 
     static constexpr const char* name()

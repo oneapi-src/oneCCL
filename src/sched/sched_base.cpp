@@ -102,7 +102,7 @@ size_t ccl_sched_base::get_priority() const {
 }
 
 ccl_buffer ccl_sched_base::alloc_buffer(size_t bytes) {
-    LOG_TRACE("try to allocate buffer size: ", bytes);
+    LOG_DEBUG("try to allocate buffer size: ", bytes);
     CCL_THROW_IF_NOT(bytes > 0, "incorrect buffer size: ", bytes);
 
     ccl_buffer buffer =
@@ -150,7 +150,7 @@ ccl_buffer ccl_sched_base::update_buffer(ccl_buffer buffer, size_t new_size) {
 ccl_buffer ccl_sched_base::find_and_realloc_buffer(void* in_ptr,
                                                    size_t new_size,
                                                    size_t expected_size) {
-    LOG_TRACE("sched: ", this, ", contains buffer objects: ", memory.buf_list.size());
+    LOG_DEBUG("sched: ", this, ", contains buffer objects: ", memory.buf_list.size());
     for (auto& it : memory.buf_list) {
         if (it.buffer.get_ptr() == in_ptr) {
 #ifdef ENABLE_DEBUG_SPARSE
@@ -226,7 +226,9 @@ void ccl_sched_base::alloc_buffers_for_sycl_copy() {
         return;
 
     LOG_DEBUG("alloc tmp buffers for D2H and H2D copies, coll_type ",
-              ccl_coll_type_to_str(param.ctype));
+              ccl_coll_type_to_str(param.ctype), ", dtype_size ", param.dtype.size(),
+              ", comm_size ", param.comm->size(),
+              ", count ", param.count);
 
     size_t idx, send_count = 0, recv_count = 0;
 
@@ -278,6 +280,12 @@ void ccl_sched_base::alloc_buffers_for_sycl_copy() {
                 param.recv_buf = nullptr;
             }
             break;
+        case ccl_coll_reduce_scatter:
+            param.sycl_send_buf = static_cast<ccl_sycl_buffer_t*>((void*)param.send_buf);
+            param.sycl_recv_buf = static_cast<ccl_sycl_buffer_t*>(param.recv_buf);
+            param.send_buf = alloc_buffer(param.count * param.comm->size() * param.dtype.size()).get_ptr();
+            param.recv_buf = alloc_buffer(param.count * param.dtype.size()).get_ptr();
+            break;
         case ccl_coll_sparse_allreduce:
             CCL_FATAL("SYCL stream is not supported for sparse_allreduce yet");
             CCL_ASSERT(0);
@@ -285,6 +293,10 @@ void ccl_sched_base::alloc_buffers_for_sycl_copy() {
         default: break;
     }
 #endif /* CCL_ENABLE_SYCL */
+}
+
+void ccl_sched_base::update_id() {
+    sched_id = coll_param.comm->get_sched_id(internal_type != ccl_sched_internal_none);
 }
 
 void ccl_sched_base::dump(std::ostream& out, const char* name) const {

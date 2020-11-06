@@ -32,8 +32,8 @@ public:
               comm(comm) {}
 
     void start() override {
-        size_t global_src = ccl::global_data::get().comm->get_global_rank(src);
-        atl_tag = ccl::global_data::get().atl_tag->create(
+        size_t global_src = comm->get_global_rank(src);
+        atl_tag = comm->atl->tag->create(
             sched->get_comm_id(), global_src, sched->sched_id, sched->get_op_id());
         LOG_DEBUG("PROBE entry src ", src, ", tag ", atl_tag);
         status = ccl_sched_entry_status_started;
@@ -46,7 +46,7 @@ public:
         size_t global_src = comm->get_global_rank(src);
 
         atl_status_t atl_status =
-            atl_ep_probe(sched->bin->get_atl_ep(), global_src, atl_tag, &found, &len);
+            comm->atl->atl_ep_probe(sched->bin->get_atl_ep(), global_src, atl_tag, &found, &len);
 
         update_status(atl_status);
 

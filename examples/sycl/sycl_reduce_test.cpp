@@ -13,102 +13,118 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "ccl.h"
 #include "sycl_base.hpp"
 
-int main(int argc, char** argv) {
+using namespace std;
+using namespace sycl;
+
+int main(int argc, char *argv[]) {
+
+    const size_t count = 10 * 1024 * 1024;
+    const size_t root_rank = 0;
+
     int i = 0;
-    size_t size = 0;
-    size_t rank = 0;
+    int size = 0;
+    int rank = 0;
 
-    cl::sycl::queue q;
-    cl::sycl::buffer<int, 1> sendbuf(COUNT);
-    cl::sycl::buffer<int, 1> recvbuf(COUNT);
+    ccl::init();
 
-    ccl_request_t request;
-    ccl_stream_t stream;
-    ccl_stream_type_t stream_type;
-
-    ccl_init();
-    ccl_get_comm_rank(NULL, &rank);
-    ccl_get_comm_size(NULL, &size);
-
-    if (create_sycl_queue(argc, argv, q, stream_type) != 0) {
+    queue q;
+    if (!create_sycl_queue(argc, argv, q)) {
         return -1;
     }
-    /* create SYCL stream */
-    ccl_stream_create(stream_type, &q, &stream);
+
+    /* create kvs */
+    MPI_Init(NULL, NULL);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    ccl::shared_ptr_class<ccl::kvs> kvs;
+    ccl::kvs::address_type main_addr;
+    if (rank == 0) {
+        kvs = ccl::create_main_kvs();
+        main_addr = kvs->get_address();
+        MPI_Bcast((void *)main_addr.data(), main_addr.size(), MPI_BYTE, 0, MPI_COMM_WORLD);
+    }
+    else {
+        MPI_Bcast((void *)main_addr.data(), main_addr.size(), MPI_BYTE, 0, MPI_COMM_WORLD);
+        kvs = ccl::create_kvs(main_addr);
+    }
+
+    /* create communicator */
+    auto dev = ccl::create_device(q.get_device());
+    auto ctx = ccl::create_context(q.get_context());
+    auto comm = ccl::create_communicator(size, rank, dev, ctx, kvs);
+
+    /* create stream */
+    auto stream = ccl::create_stream(q);
+
+    /* create buffers */
+    buffer<int> send_buf(count);
+    buffer<int> recv_buf(count);
 
     {
-        /* open sendbuf and recvbuf and initialize them on the CPU side */
-        auto host_acc_sbuf = sendbuf.get_access<mode::write>();
-        auto host_acc_rbuf = recvbuf.get_access<mode::write>();
+        /* open send_buf and recv_buf and initialize them on the host side */
+        host_accessor send_buf_acc(send_buf, write_only);
+        host_accessor recv_buf_acc(recv_buf, write_only);
 
-        for (i = 0; i < COUNT; i++) {
-            host_acc_sbuf[i] = rank;
-            host_acc_rbuf[i] = 0;
+        for (i = 0; i < count; i++) {
+            send_buf_acc[i] = rank;
+            recv_buf_acc[i] = 0;
         }
     }
 
-    /* open sendbuf and modify it on the target device side */
-    q.submit([&](handler& cgh) {
-        auto dev_acc_sbuf = sendbuf.get_access<mode::write>(cgh);
-        cgh.parallel_for<class allreduce_test_sbuf_modify>(range<1>{ COUNT }, [=](item<1> id) {
-            dev_acc_sbuf[id] += 1;
+    /* open send_buf and modify it on the device side */
+    q.submit([&](auto &h) {
+        accessor send_buf_acc(send_buf, h, write_only);
+        h.parallel_for(count, [=](auto id) {
+            send_buf_acc[id] += 1;
         });
     });
 
-    handle_exception(q);
+    if (!handle_exception(q))
+        return -1;
 
-    /* invoke ccl_reduce on the CPU side */
-    ccl_reduce(&sendbuf,
-               &recvbuf,
-               COUNT,
-               ccl_dtype_int,
-               ccl_reduction_sum,
-               COLL_ROOT,
-               NULL, /* attr */
-               NULL, /* comm */
-               stream,
-               &request);
+    /* invoke reduce */
+    ccl::reduce(send_buf, recv_buf, count, ccl::reduction::sum, root_rank, comm, stream).wait();
 
-    ccl_wait(request);
-
-    /* open recvbuf and check its correctness on the target device side */
-    q.submit([&](handler& cgh) {
-        auto dev_acc_rbuf = recvbuf.get_access<mode::write>(cgh);
-        cgh.parallel_for<class allreduce_test_rbuf_check>(range<1>{ COUNT }, [=](item<1> id) {
-            if (rank == COLL_ROOT) {
-                if (dev_acc_rbuf[id] != size * (size + 1) / 2) {
-                    dev_acc_rbuf[id] = -1;
+    /* open recv_buf and check its correctness on the device side */
+    q.submit([&](auto &h) {
+        accessor recv_buf_acc(recv_buf, h, write_only);
+        h.parallel_for(count, [=](auto id) {
+            if (rank == root_rank) {
+                if (recv_buf_acc[id] != size * (size + 1) / 2) {
+                    recv_buf_acc[id] = -1;
                 }
             }
             else {
-                if (dev_acc_rbuf[id] != 0) {
-                    dev_acc_rbuf[id] = -1;
+                if (recv_buf_acc[id] != 0) {
+                    recv_buf_acc[id] = -1;
                 }
             }
         });
     });
 
-    handle_exception(q);
+    if (!handle_exception(q))
+        return -1;
 
-    /* print out the result of the test on the CPU side */
-    auto host_acc_rbuf_new = recvbuf.get_access<mode::read>();
-    if (rank == COLL_ROOT) {
-        for (i = 0; i < COUNT; i++) {
-            if (host_acc_rbuf_new[i] == -1) {
-                cout << "FAILED for rank: " << rank << std::endl;
-                break;
+    /* print out the result of the test on the host side */
+    {
+        if (rank == root_rank) {
+            host_accessor recv_buf_acc(recv_buf, read_only);
+            for (i = 0; i < count; i++) {
+                if (recv_buf_acc[i] == -1) {
+                    cout << "FAILED for rank: " << rank << "\n";
+                    break;
+                }
+            }
+            if (i == count) {
+                cout << "PASSED\n";
             }
         }
-        if (i == COUNT) {
-            cout << "PASSED" << std::endl;
-        }
     }
-    ccl_stream_free(stream);
 
-    ccl_finalize();
+    MPI_Finalize();
 
     return 0;
 }

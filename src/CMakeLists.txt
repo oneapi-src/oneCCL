@@ -15,31 +15,49 @@
 #
 #builds ccl
 
-add_subdirectory(atl)
-
 set (EXTENSIONS_SRC)
 
-if(MULTI_GPU_SUPPORT)
+if (CCL_ENABLE_SYCL)
     list (APPEND EXTENSIONS_SRC
                     ccl_cpp_gpu_api.cpp
+
+                    native_device_api/l0/utils.cpp
+                    native_device_api/sycl/export.cpp
+                    native_device_api/interop_utils.cpp
+                    #common/comm/l0/comm_context.cpp
+                    #common/comm/l0/comm_context_storage.cpp
+                    common/comm/single_device_communicator/single_device_communicator.cpp
+        )
+endif(CCL_ENABLE_SYCL)
+
+if (MULTI_GPU_SUPPORT)
+list (APPEND EXTENSIONS_SRC
+                    ccl_cpp_gpu_api.cpp
                     ccl_gpu_modules.cpp
-                    ccl_utils.cpp
+                    ccl_cpp_utils.cpp
 
                     native_device_api/l0/base.cpp
                     native_device_api/l0/device.cpp
+                    native_device_api/l0/context.cpp
                     native_device_api/l0/subdevice.cpp
                     native_device_api/l0/driver.cpp
+                    native_device_api/l0/export.cpp
                     native_device_api/l0/platform.cpp
                     native_device_api/l0/utils.cpp
                     native_device_api/l0/primitives.cpp
+                    native_device_api/interop_utils.cpp
                     sched/gpu_sched.cpp
                     sched/gpu_concurrent_sched.cpp
-                    common/request/gpu_request.cpp
+                    common/event/impls/gpu_event.cpp
+
+                    common/comm/l0/comm_context.cpp
+                    common/comm/l0/comm_context_storage.cpp
 
                     common/comm/l0/devices/ccl_gpu_comm.cpp
                     common/comm/l0/devices/ccl_virtual_gpu_comm.cpp
                     common/comm/l0/devices/ccl_ipc_gpu_comm.cpp
 
+                    common/comm/single_device_communicator/single_device_communicator.cpp
                     common/comm/l0/communicator/device_group/device_ring_communicator.cpp
                     common/comm/l0/communicator/device_group/device_a2a_communicator.cpp
                     common/comm/l0/communicator/thread_group/thread_ring_communicator.cpp
@@ -66,7 +84,51 @@ endif(MULTI_GPU_SUPPORT)
 set(CCL_SRC
     ccl.cpp
     ccl_cpp_api.cpp
+    ccl_cpp_communicator.cpp
+    ccl_cpp_environment.cpp
+    ccl_api_functions.cpp
+    ccl_app_api_coll_attr.cpp
+    ccl_app_api_comm_split_attr.cpp
+    ccl_app_api_datatype_attr.cpp
+    ccl_app_api_event.cpp
+    ccl_cpp_kvs.cpp
+    ccl_cpp_device.cpp
+    ccl_cpp_stream.cpp
+    ccl_cpp_context.cpp
+    ccl_cpp_utils.cpp
+    ccl_empty_attr.cpp
+    ccl_empty_coll_attr.cpp
+    ccl_empty_stream.cpp
+    native_device_api/sycl_l0/export.cpp
+    native_device_api/empty/export.cpp
     atl/atl.cpp
+    atl/atl_wrapper.cpp
+    atl/mpi/atl_mpi.cpp
+    atl/ofi/atl_ofi.cpp
+    atl/util/pm/pmi_resizable_rt/pmi_resizable.cpp
+    atl/util/pm/pmi_resizable_rt/pmi_resizable_simple.cpp
+    atl/util/pm/pmi_resizable_rt/pmi_resizable/helper.cpp
+    atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs_keeper.c
+    atl/util/pm/pmi_resizable_rt/pmi_resizable/pmi_listener.cpp
+    atl/util/pm/pmi_resizable_rt/pmi_resizable/rank_list.c
+    atl/util/pm/pmi_resizable_rt/pmi_resizable/request_wrappers_k8s.c
+    atl/util/pm/pmi_resizable_rt/pmi_resizable/resizable_pmi.cpp
+    atl/util/pm/pmi_resizable_rt/pmi_resizable/shift_list.c
+        atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs/internal_kvs.cpp
+    atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs/users_kvs.cpp
+    atl/util/pm/pmi_rt/pmi_simple.cpp
+    atl/util/pm/pmi_rt/pmi/simple_pmi.c
+    atl/util/pm/pmi_rt/pmi/simple_pmiutil.c
+    coll/coll_common_attributes.cpp
+    coll/ccl_allgather_op_attr.cpp
+    coll/ccl_allreduce_op_attr.cpp
+    coll/ccl_alltoall_op_attr.cpp
+    coll/ccl_alltoallv_op_attr.cpp
+    coll/ccl_bcast_op_attr.cpp
+    coll/ccl_reduce_op_attr.cpp
+    coll/ccl_reduce_scatter_op_attr.cpp
+    coll/ccl_sparse_allreduce_op_attr.cpp
+    coll/ccl_barrier_op_attr.cpp
     coll/algorithms/allgatherv.cpp
     coll/algorithms/allreduce/allreduce.cpp
     coll/algorithms/allreduce/allreduce_2d.cpp
@@ -88,9 +150,11 @@ set(CCL_SRC
     coll/selection/selector_reduce.cpp
     coll/selection/selector_reduce_scatter.cpp
     coll/selection/selector_sparse_allreduce.cpp
-    comp/bfp16/bfp16.cpp
+    comp/bf16/bf16.cpp
+    comp/bf16/bf16_intrisics.cpp
     comp/comp.cpp
     sched/sched.cpp
+    sched/extra_sched.cpp
     sched/master_sched.cpp
     sched/sched_base.cpp
     sched/cache/cache.cpp
@@ -111,25 +175,36 @@ set(CCL_SRC
     unordered_coll/unordered_coll.cpp
     common/comm/atl_tag.cpp
     common/comm/comm.cpp
-    common/comm/comm_attributes.cpp
-    common/comm/host_communicator/host_communicator.cpp
     common/comm/comm_interface.cpp
+    common/comm/host_communicator/host_communicator.cpp
+
+    common/context/context.cpp
     common/datatype/datatype.cpp
+    common/device/device.cpp
+    common/event/ccl_event.cpp
+    common/event/event_internal/event_internal.cpp
+    common/stream/stream.cpp
+
     common/env/env.cpp
     common/global/global.cpp
     common/log/log.cpp
-    common/request/host_request.cpp
+    common/event/impls/host_event.cpp
+    common/event/impls/native_event.cpp
     common/request/request.cpp
-    common/stream/stream.cpp
     common/utils/spinlock.cpp
     common/utils/yield.cpp
     ${EXTENSIONS_SRC})
 
 list(APPEND CCL_INC_DIRS
                  ${PROJECT_SOURCE_DIR}/include
-                 ${PROJECT_SOURCE_DIR}/src)
+                 ${PROJECT_SOURCE_DIR}/mpi/include
+                 ${LIBFABRIC_INCLUDE_DIR}
+                 ${PROJECT_SOURCE_DIR}/src
+                 ${PROJECT_SOURCE_DIR}/src/atl)
 
 message(STATUS "CCL_INC_DIRS: ${CCL_INC_DIRS}")
+message(STATUS "oneCCL lib LIBFABRIC_LIB_DIR: ${LIBFABRIC_LIB_DIR}")
+message(STATUS "oneCCL lib LIBFABRIC_INCLUDE_DIR: ${LIBFABRIC_INCLUDE_DIR}")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
@@ -145,10 +220,15 @@ if(COMPUTE_RUNTIME_TARGET_NAME)
     target_include_directories(ccl-objects PRIVATE $<TARGET_PROPERTY:${COMPUTE_RUNTIME_TARGET_NAME},INTERFACE_INCLUDE_DIRECTORIES>)
 endif()
 
+# add library search directory
+link_directories(${PROJECT_SOURCE_DIR}/mpi/lib)
+link_directories(${LIBFABRIC_LIB_DIR})
 #shared library
 add_library(ccl SHARED $<TARGET_OBJECTS:ccl-objects>)
 target_include_directories(ccl PUBLIC ${CCL_INC_DIRS})
-target_link_libraries(ccl PUBLIC dl pthread ${EXTERNAL_LIBS} ${COMPUTE_RUNTIME_TARGET_NAME})
+# link with release_mt libmpi.so for oneAPI Base toolkit
+set_target_properties(ccl PROPERTIES LINK_FLAGS "-Wl,-rpath,../../../../mpi/latest/lib/release_mt/")
+target_link_libraries(ccl PUBLIC dl pthread ${EXTERNAL_LIBS} ${COMPUTE_RUNTIME_TARGET_NAME} fabric mpi)
 if (NOT LIB_SO_VERSION AND NOT LIB_MAJOR_VERSION)
         set_target_properties(ccl PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CCL_BUILD_DIR})
 else()
@@ -173,6 +253,7 @@ install(TARGETS ccl-static ARCHIVE DESTINATION ${CCL_INSTALL_LIB})
 if(MULTI_GPU_SUPPORT)
     message("Turn on L0 multi-gpu unit tests")
     add_library(ccl-ut-static STATIC $<TARGET_OBJECTS:ccl-objects>)
+    target_link_libraries(ccl-ut-static PUBLIC dl pthread ${EXTERNAL_LIBS} ${COMPUTE_RUNTIME_TARGET_NAME} fabric mpi)
     set_target_properties(ccl-ut-static PROPERTIES COMPILE_FLAGS "-fvisibility=default -DUNIT_TESTS")
     set_target_properties(ccl-ut-static PROPERTIES OUTPUT_NAME cclut)
     set_target_properties(ccl-ut-static PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${CCL_BUILD_DIR})

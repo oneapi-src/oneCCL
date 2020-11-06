@@ -13,8 +13,10 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#include "common/datatype/datatype.hpp"
 #include "common/global/global.hpp"
 #include "sched/cache/key.hpp"
+#include "common/utils/enums.hpp"
 
 #include <cstring>
 
@@ -63,6 +65,10 @@ void ccl_sched_key::set(const ccl_coll_param& param, const ccl_coll_attr& attr) 
             f.reduction = param.reduction;
             f.root = param.root;
             break;
+        case ccl_coll_reduce_scatter:
+            f.count1 = param.count;
+            f.reduction = param.reduction;
+            break;
         case ccl_coll_sparse_allreduce:
             f.count1 = param.sparse_param.send_ind_count;
             f.count2 = param.sparse_param.send_val_count;
@@ -97,12 +103,16 @@ bool ccl_sched_key::check(const ccl_coll_param& param, const ccl_coll_attr& attr
             result &=
                 (param.count == f.count1 && param.reduction == f.reduction && param.root == f.root);
             break;
+        case ccl_coll_reduce_scatter:
+            result &= (param.count == f.count1 && param.reduction == f.reduction);
+            break;
         case ccl_coll_sparse_allreduce:
             result &= (param.sparse_param.send_ind_count == f.count1 &&
                        param.sparse_param.send_val_count == f.count2 &&
                        param.sparse_param.recv_ind_count == f.count3 &&
                        param.sparse_param.recv_val_count == f.count4 &&
-                       param.sparse_param.itype.idx() == f.itype && param.reduction == f.reduction);
+                       param.sparse_param.itype.idx() == f.itype &&
+                       param.reduction == f.reduction);
             break;
         default: CCL_THROW("unexpected coll_type ", f.ctype);
     }
@@ -164,10 +174,11 @@ size_t ccl_sched_key_hasher::operator()(const ccl_sched_key& k) const {
 
     size_t hash_value = string_hasher(k.match_id);
     if (ccl::global_data::env().cache_key_type == ccl_cache_key_full) {
-        hash_value += k.f.ctype + k.f.dtype + k.f.itype + k.f.reduction + k.f.count1 + k.f.count2 +
-                      k.f.root + (size_t)k.f.buf1 + (size_t)k.f.buf2 + (size_t)k.f.count3 +
-                      (size_t)k.f.count4 + (size_t)k.f.comm + (size_t)k.f.prologue_fn +
-                      (size_t)k.f.epilogue_fn + (size_t)k.f.reduction_fn;
+        hash_value += k.f.ctype + utils::enum_to_underlying(k.f.dtype) + 
+                      utils::enum_to_underlying(k.f.itype) + utils::enum_to_underlying(k.f.reduction) +
+                      k.f.count1 + k.f.count2 + k.f.root + (size_t)k.f.buf1 + (size_t)k.f.buf2 +
+                      (size_t)k.f.count3 + (size_t)k.f.count4 + (size_t)k.f.comm +
+                      (size_t)k.f.prologue_fn + (size_t)k.f.epilogue_fn + (size_t)k.f.reduction_fn;
     }
 
     const_cast<ccl_sched_key&>(k).set_hasher_result(hash_value);

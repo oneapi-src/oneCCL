@@ -23,7 +23,7 @@
 #include <mutex>
 #include <sstream>
 
-#include "ccl_types.hpp"
+#include "oneapi/ccl/ccl_types.hpp"
 #include "common/utils/spinlock.hpp"
 #include "common/utils/utils.hpp"
 
@@ -294,7 +294,7 @@ extern ccl_logger logger;
     } while (0)
 
 /**
- * Helper macro to throw ccl::ccl_error exception. Must never be used in destructors
+ * Helper macro to throw ccl::exception exception. Must never be used in destructors
  */
 #define CCL_THROW(...) \
     do { \
@@ -307,11 +307,11 @@ extern ccl_logger logger;
                            __LINE__, \
                            ": EXCEPTION: ", \
                            ##__VA_ARGS__); \
-        throw ccl::ccl_error(throw_msg_ss.str()); \
+        throw ccl::exception(throw_msg_ss.str()); \
     } while (0)
 
 /**
- * Helper macro to throw ccl::ccl_error exception. Must never be used in destructors
+ * Helper macro to throw ccl::exception exception. Must never be used in destructors
  */
 #define CCL_THROW_WITH_ERROR(...) \
     do { \
@@ -325,10 +325,10 @@ extern ccl_logger logger;
                            ": EXCEPTION: ", \
                            ##__VA_ARGS__); \
         LOG_ERROR("Error - ", ##__VA_ARGS__); \
-        throw ccl::ccl_error(throw_msg_ss.str()); \
+        throw ccl::exception(throw_msg_ss.str()); \
     } while (0)
 /**
- * Helper macro to throw ccl::ccl_error exception if provided condition is not true.
+ * Helper macro to throw ccl::exception exception if provided condition is not true.
  * Must never be used in destructors
  */
 #define CCL_THROW_IF_NOT(cond, ...) \

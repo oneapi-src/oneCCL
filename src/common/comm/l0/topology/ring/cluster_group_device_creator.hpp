@@ -29,8 +29,8 @@ class cluster_group_device_creator {
     device_storage& devices_factory;
 
 public:
-    static constexpr ccl::device_group_split_type group_id() {
-        return ccl::device_group_split_type::cluster;
+    static constexpr ccl::group_split_type group_id() {
+        return ccl::group_split_type::cluster;
     }
 
     static constexpr const char* name() {

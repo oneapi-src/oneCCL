@@ -16,23 +16,22 @@
 #include <cassert>
 #include <functional>
 
-#include "native_device_api/l0/base_impl.hpp"
-#include "native_device_api/l0/device.hpp"
-#include "native_device_api/l0/subdevice.hpp"
-#include "native_device_api/l0/primitives_impl.hpp"
+#include "oneapi/ccl/native_device_api/l0/base_impl.hpp"
+#include "oneapi/ccl/native_device_api/l0/device.hpp"
+#include "oneapi/ccl/native_device_api/l0/driver.hpp"
+#include "oneapi/ccl/native_device_api/l0/subdevice.hpp"
+#include "oneapi/ccl/native_device_api/l0/primitives_impl.hpp"
 
 namespace native {
 
 uint32_t get_subdevice_properties_from_handle(ccl_device::handle_t handle) {
     ze_device_properties_t device_properties;
-    device_properties.version = ZE_DEVICE_PROPERTIES_VERSION_CURRENT;
     ze_result_t ret = zeDeviceGetProperties(handle, &device_properties);
     if (ret != ZE_RESULT_SUCCESS) {
         throw std::runtime_error(std::string("zeDeviceGetProperties failed, error: ") +
                                  native::to_string(ret));
     }
-
-    if (!device_properties.isSubdevice) {
+    if (!(device_properties.flags & ZE_DEVICE_PROPERTY_FLAG_SUBDEVICE)) {
         throw std::runtime_error(std::string(__PRETTY_FUNCTION__) +
                                  "- invalid device type, got device, but subdevice requested");
     }
@@ -43,8 +42,9 @@ CCL_API
 std::shared_ptr<ccl_subdevice> ccl_subdevice::create(handle_t handle,
                                                      owner_ptr_t&& device,
                                                      base::owner_ptr_t&& driver) {
+    auto ctx = driver.lock()->get_driver_contexts();
     std::shared_ptr<ccl_subdevice> subdevice =
-        std::make_shared<ccl_subdevice>(handle, std::move(device), std::move(driver));
+        std::make_shared<ccl_subdevice>(handle, std::move(device), std::move(driver), std::move(ctx));
     return subdevice;
 }
 
@@ -113,14 +113,15 @@ CCL_API
 ccl_subdevice::ccl_subdevice(handle_t h,
                              owner_ptr_t&& device,
                              base::owner_ptr_t&& driver,
+                             base::context_ptr_t&& ctx,
                              std::false_type)
-        : base(h, std::move(driver), std::false_type{}),
+        : base(h, std::move(driver), std::move(ctx), std::false_type{}),
           parent_device(std::move(device)) {}
 
 CCL_API
-ccl_subdevice::ccl_subdevice(handle_t h, owner_ptr_t&& device, base::owner_ptr_t&& driver)
+ccl_subdevice::ccl_subdevice(handle_t h, owner_ptr_t&& device, base::owner_ptr_t&& driver, base::context_ptr_t&& ctx)
         : //  my_enable_shared_from_this<ccl_subdevice>(),
-          base(h, std::move(driver)),
+          base(h, std::move(driver), std::move(ctx)),
           parent_device(std::move(device)) {
     initialize_subdevice_data();
 }
@@ -130,9 +131,10 @@ ccl_subdevice::~ccl_subdevice() {
     //TODO think about orphant device
 
     std::shared_ptr<ccl_device> device = parent_device.lock();
+    ze_context_handle_t ctxtmp;
     if (device) {
         // no need to notify driver, because ccl_device owns ccl_subdevice
-        device->on_delete(handle);
+        device->on_delete(handle, ctxtmp);
         device->release();
     }
 }
@@ -144,7 +146,7 @@ bool ccl_subdevice::is_subdevice() const noexcept {
 
 CCL_API
 ccl::index_type CCL_API ccl_subdevice::get_device_id() const {
-    assert(device_properties.isSubdevice && "Must be subdevice");
+    assert((device_properties.flags & ZE_DEVICE_PROPERTY_FLAG_SUBDEVICE) && "Must be subdevice");
     return device_properties.subdeviceId;
 }
 

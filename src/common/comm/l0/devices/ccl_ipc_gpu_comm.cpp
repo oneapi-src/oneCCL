@@ -26,7 +26,7 @@ namespace native {
 ccl_ipc_gpu_comm::ccl_ipc_gpu_comm(ccl_device& assigned_device,
                                    size_t idx,
                                    size_t size,
-                                   ccl::device_group_split_type topology_type,
+                                   ccl::group_split_type topology_type,
                                    ccl::device_topology_type class_id)
         : base(assigned_device, idx) {
     /* No queue or other device-related primitives creation
@@ -37,22 +37,21 @@ ccl_ipc_gpu_comm::ccl_ipc_gpu_comm(ccl_device& assigned_device,
 
     //register in topology
     switch (topology_type) {
-        case ccl::device_group_split_type::cluster: {
+        case ccl::group_split_type::cluster: {
             switch (class_id) {
                 case ccl::device_topology_type::ring: {
-                    reset_rank<ccl::device_group_split_type::cluster,
+                    reset_rank<ccl::group_split_type::cluster,
                                ccl::device_topology_type::ring>(idx, size);
                     break;
                 }
                 case ccl::device_topology_type::a2a: {
-                    reset_rank<ccl::device_group_split_type::cluster,
+                    reset_rank<ccl::group_split_type::cluster,
                                ccl::device_topology_type::a2a>(idx, size);
                     break;
                 }
                 default: {
-                    throw std::runtime_error(
-                        std::string("ccl_ipc_gpu_comm must be created") +
-                        " unknown topology class: " + std::to_string(class_id));
+                    throw std::runtime_error(std::string("ccl_ipc_gpu_comm must be created") +
+                                             " unknown topology class: " + ::to_string(class_id));
                 }
             }
 
@@ -61,7 +60,7 @@ ccl_ipc_gpu_comm::ccl_ipc_gpu_comm(ccl_device& assigned_device,
         default: {
             throw std::runtime_error(
                 std::string("ccl_ipc_gpu_comm must be created") +
-                "for process-based topology, but requested: " + std::to_string(topology_type));
+                "for process-based topology, but requested: " + ::to_string(topology_type));
         }
     }
 }

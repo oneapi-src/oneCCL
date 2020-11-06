@@ -18,7 +18,6 @@
 #include <atomic>
 #include <pthread.h>
 
-#include "ccl.h"
 #include "common/log/log.hpp"
 
 #define CCL_UNDEFINED_CPU_ID (-1)
