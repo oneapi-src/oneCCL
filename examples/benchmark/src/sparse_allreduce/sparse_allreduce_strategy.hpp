@@ -13,6 +13,8 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#if 0
+
 #pragma once
 
 template <class type>
@@ -23,7 +25,7 @@ struct type_printer {
 };
 
 template <>
-struct type_printer<ccl::bf16> {
+struct type_printer<ccl::bfloat16> {
     static constexpr const char* sparse_class_name() {
         return "sparse_allreduce_bf16";
     }
@@ -130,7 +132,7 @@ struct sparse_allreduce_strategy_impl {
     using IndicesDistributor = IndicesDistributorType<remove_all_t<IType>>;
 
     size_t v2i_ratio;
-    size_t comm_size;
+    int comm_size;
     const size_t minimal_indices_count = 1;
 
     void init_distributor(const std::pair<size_t, size_t>& elem_range) {
@@ -138,7 +140,7 @@ struct sparse_allreduce_strategy_impl {
         indices_distributor_impl.reset(new IndicesDistributor(elem_range.first, indices_count));
     }
 
-    sparse_allreduce_strategy_impl(size_t v2i_ratio, size_t comm_size)
+    sparse_allreduce_strategy_impl(size_t v2i_ratio, int comm_size)
             : v2i_ratio(v2i_ratio),
               comm_size(comm_size) {}
 
@@ -153,8 +155,8 @@ struct sparse_allreduce_strategy_impl {
         return std::tuple<size_t, size_t>(indices_count, indices_count * vdim_count);
     }
 
-    template <class VType, class comm_t, class... Args>
-    void start_internal(comm_t& comm,
+    template <class VType, class... Args>
+    void start_internal(ccl::communicator& comm,
                         const IType send_ibuf,
                         size_t send_icount,
                         const VType send_vbuf,
@@ -197,3 +199,5 @@ struct sparse_allreduce_strategy_impl {
 
     std::unique_ptr<IndicesDistributor> indices_distributor_impl;
 };
+
+#endif

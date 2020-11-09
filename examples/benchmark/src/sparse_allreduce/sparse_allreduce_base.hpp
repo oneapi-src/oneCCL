@@ -27,24 +27,16 @@ struct base_sparse_allreduce_coll
     using coll_base = base_coll;
     using coll_strategy = sparse_allreduce_strategy_impl<IType, IndicesDistributorType>;
 
-    std::vector<ITypeNonMod*> send_ibufs;
-    std::vector<VTypeNonMod*> send_vbufs;
+    std::vector<std::vector<ITypeNonMod*>> send_ibufs;
+    std::vector<std::vector<VTypeNonMod*>> send_vbufs;
 
     /* buffers from these arrays will be reallocated inside completion callback */
-    std::vector<ITypeNonMod*> recv_ibufs;
-    std::vector<VTypeNonMod*> recv_vbufs;
+    std::vector<std::vector<ITypeNonMod*>> recv_ibufs;
+    std::vector<std::vector<VTypeNonMod*>> recv_vbufs;
 
     size_t* recv_icount = nullptr;
     size_t* recv_vcount = nullptr;
-    std::vector<sparse_allreduce_fn_ctx_t> fn_ctxs;
-
-    ITypeNonMod* single_send_ibuf = nullptr;
-    VTypeNonMod* single_send_vbuf = nullptr;
-    ITypeNonMod* single_recv_ibuf = nullptr;
-    VTypeNonMod* single_recv_vbuf = nullptr;
-    size_t single_recv_icount{};
-    size_t single_recv_vcount{};
-    sparse_allreduce_fn_ctx_t single_fn_ctx;
+    std::vector<std::vector<sparse_allreduce_fn_ctx_t>> fn_ctxs;
 
     base_sparse_allreduce_coll(bench_init_attr init_attr, size_t size)
             : base_coll(init_attr),
@@ -65,6 +57,14 @@ struct base_sparse_allreduce_coll
         send_vbufs.resize(init_attr.buf_count);
         recv_ibufs.resize(init_attr.buf_count);
         recv_vbufs.resize(init_attr.buf_count);
+
+        for (size_t idx = 0; idx < init_attr.buf_count; idx++) {
+            fn_ctxs[idx].resize(init_attr.ranks_per_proc);
+            send_ibufs[idx].resize(init_attr.ranks_per_proc);
+            send_vbufs[idx].resize(init_attr.ranks_per_proc);
+            recv_ibufs[idx].resize(init_attr.ranks_per_proc);
+            recv_vbufs[idx].resize(init_attr.ranks_per_proc);
+        }
     }
 
     virtual ~base_sparse_allreduce_coll() {
@@ -78,6 +78,20 @@ struct base_sparse_allreduce_coll
     }
 
     ccl::datatype get_dtype() const override final {
-        return ccl::native_type_info<typename std::remove_pointer<VType>::type>::ccl_datatype_value;
+        return ccl::native_type_info<typename std::remove_pointer<VType>::type>::dtype;
+    }
+
+    virtual void prepare_internal(size_t elem_count,
+                                  ccl::communicator& comm,
+                                  ccl::stream& stream,
+                                  size_t rank_idx) override {
+        ASSERT(0, "unexpected");
+    }
+
+    virtual void finalize_internal(size_t elem_count,
+                                   ccl::communicator& comm,
+                                   ccl::stream& stream,
+                                   size_t rank_idx) override {
+        ASSERT(0, "unexpected");
     }
 };

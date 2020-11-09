@@ -43,7 +43,7 @@ namespace native {
 template <class gpu_impl, gpu_types type>
 class ccl_gpu_base_comm {
 public:
-    using comm_rank_t = size_t;
+    using comm_rank_t = int;
     using type_idx_t = typename std::underlying_type<gpu_types>::type;
     ccl_gpu_base_comm(ccl_device& assigned_device, comm_rank_t idx)
             : index_in_group(idx),
@@ -124,8 +124,8 @@ protected:
     aggregated_topology_addr device_routing_web;
     ccl_device& device;
 
-    mutable size_t rank; //TODO
-    mutable size_t size; //TODO
+    mutable int rank; //TODO
+    mutable int size; //TODO
 };
 
 } // namespace native

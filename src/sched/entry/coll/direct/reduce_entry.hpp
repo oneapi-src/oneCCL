@@ -30,7 +30,7 @@ public:
                  size_t cnt,
                  const ccl_datatype& dtype,
                  ccl::reduction reduction,
-                 size_t root,
+                 int root,
                  ccl_comm* comm)
             : base_coll_entry(sched),
               send_buf(send_buf),
@@ -108,7 +108,7 @@ private:
     size_t cnt;
     ccl_datatype dtype;
     ccl::reduction op;
-    size_t root;
+    int root;
     ccl_comm* comm;
     atl_req_t req{};
 };

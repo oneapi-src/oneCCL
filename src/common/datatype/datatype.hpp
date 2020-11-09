@@ -19,13 +19,13 @@
 #include <unordered_map>
 #include <utility>
 
-#include "oneapi/ccl/ccl_types.hpp"
+#include "oneapi/ccl/types.hpp"
 #include "common/log/log.hpp"
 #include "common/utils/spinlock.hpp"
-#include "oneapi/ccl/ccl_types_policy.hpp"
-#include "oneapi/ccl/ccl_datatype_attr_ids.hpp"
-#include "oneapi/ccl/ccl_datatype_attr_ids_traits.hpp"
-#include "oneapi/ccl/ccl_datatype_attr.hpp"
+#include "oneapi/ccl/types_policy.hpp"
+#include "oneapi/ccl/datatype_attr_ids.hpp"
+#include "oneapi/ccl/datatype_attr_ids_traits.hpp"
+#include "oneapi/ccl/datatype_attr.hpp"
 
 class ccl_datatype {
 public:
@@ -51,13 +51,11 @@ private:
 };
 
 /* frequently used in multiple places */
-extern ccl_datatype ccl_datatype_char;
+extern ccl_datatype ccl_datatype_int8;
 
-struct ccl_datatype_hasher
-{
+struct ccl_datatype_hasher {
     template <typename T>
-    std::size_t operator()(T t) const
-    {
+    std::size_t operator()(T t) const {
         return static_cast<std::size_t>(t);
     }
 };
@@ -65,9 +63,7 @@ struct ccl_datatype_hasher
 using ccl_datatype_lock_t = ccl_spinlock;
 
 using ccl_datatype_table_t =
-    std::unordered_map<ccl::datatype,
-                       std::pair<ccl_datatype, std::string>,
-                       ccl_datatype_hasher>;
+    std::unordered_map<ccl::datatype, std::pair<ccl_datatype, std::string>, ccl_datatype_hasher>;
 
 class ccl_datatype_storage {
 public:
@@ -98,6 +94,10 @@ private:
     ccl_datatype_table_t predefined_table;
     ccl_datatype_table_t custom_table;
 };
+
+namespace ccl {
+string_class to_string(const datatype& dt);
+}
 
 ccl::datatype& operator++(ccl::datatype& d);
 ccl::datatype operator++(ccl::datatype& d, int);

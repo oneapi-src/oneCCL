@@ -34,7 +34,7 @@ void run_collective(const char* cmd_name,
         std::fill(recv_buf.begin(), recv_buf.end(), 0);
         size_t elem_idx = 0;
 
-        for (size_t rank_idx = 0; rank_idx < comm.size(); rank_idx++) {
+        for (int rank_idx = 0; rank_idx < comm.size(); rank_idx++) {
             for (size_t idx = 0; idx < send_counts[rank_idx]; idx++) {
                 send_buf[elem_idx] = comm.rank();
                 elem_idx++;
@@ -42,19 +42,15 @@ void run_collective(const char* cmd_name,
         }
 
         auto start = std::chrono::system_clock::now();
-        ccl::alltoallv(send_buf.data(),
-                       send_counts,
-                       recv_buf.data(),
-                       recv_counts,
-                       comm,
-                       attr).wait();
+        ccl::alltoallv(send_buf.data(), send_counts, recv_buf.data(), recv_counts, comm, attr)
+            .wait();
         exec_time += std::chrono::system_clock::now() - start;
     }
 
     ccl::barrier(comm);
 
     size_t elem_idx = 0;
-    for (size_t rank_idx = 0; rank_idx < comm.size(); rank_idx++) {
+    for (int rank_idx = 0; rank_idx < comm.size(); rank_idx++) {
         int expected = rank_idx;
         for (size_t idx = 0; idx < recv_counts[rank_idx]; idx++) {
             if (recv_buf[elem_idx] != expected) {
@@ -77,7 +73,6 @@ void run_collective(const char* cmd_name,
 }
 
 int main() {
-
     ccl::init();
 
     int size, rank;
@@ -112,23 +107,20 @@ int main() {
     std::vector<size_t> send_counts(comm.size());
     std::vector<size_t> recv_counts(comm.size());
 
-    for (size_t idx = 0; idx < comm.size(); idx++) {
+    for (int idx = 0; idx < comm.size(); idx++) {
         int is_even_peer = (idx % 2 == 0) ? 1 : 0;
         send_counts[idx] = send_count;
         recv_counts[idx] = (is_even_peer) ? EVEN_RANK_SEND_COUNT : ODD_RANK_SEND_COUNT;
     }
 
-    MSG_LOOP(
-        comm,
-        attr.set<ccl::operation_attr_id::to_cache>(false);
-        run_collective(
-            "warmup alltoallv", send_buf, recv_buf, send_counts, recv_counts, comm, attr);
-        attr.set<ccl::operation_attr_id::to_cache>(true);
-        run_collective(
-            "persistent alltoallv", send_buf, recv_buf, send_counts, recv_counts, comm, attr);
-        attr.set<ccl::operation_attr_id::to_cache>(false);
-        run_collective(
-            "regular alltoallv", send_buf, recv_buf, send_counts, recv_counts, comm, attr););
+    MSG_LOOP(comm, attr.set<ccl::operation_attr_id::to_cache>(false); run_collective(
+                 "warmup alltoallv", send_buf, recv_buf, send_counts, recv_counts, comm, attr);
+             attr.set<ccl::operation_attr_id::to_cache>(true);
+             run_collective(
+                 "persistent alltoallv", send_buf, recv_buf, send_counts, recv_counts, comm, attr);
+             attr.set<ccl::operation_attr_id::to_cache>(false);
+             run_collective(
+                 "regular alltoallv", send_buf, recv_buf, send_counts, recv_counts, comm, attr););
 
     MPI_Finalize();
 

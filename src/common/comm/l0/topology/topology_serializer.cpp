@@ -16,7 +16,7 @@
 #include "common/comm/l0/topology/topology_serializer.hpp"
 
 namespace native {
-namespace details {
+namespace detail {
 namespace serialize {
 device_path_serializable::raw_data_t device_path_serializable::result() {
     return data;
@@ -112,13 +112,13 @@ device_path_serializer::raw_data_t device_path_serializer::serialize_indices_imp
 }
 
 device_path_serializable::raw_data_t device_path_serializer::serialize_indices(
-    const details::plain_graph_list& list,
+    const detail::plain_graph_list& list,
     size_t data_offset) {
     /*
     std::list<raw_data_t> serialized_list;
     size_t list_size = list.size();
     size_t total_size = sizeof(list_size) + data_offset;
-    for (const details::plain_graph& graph : list)
+    for (const detail::plain_graph& graph : list)
     {
         size_t graph_count = graph.size();
         raw_data_t serialized_graph = device_path_serializer::serialize_indices(graph,
@@ -147,7 +147,7 @@ device_path_serializable::raw_data_t device_path_serializer::serialize_indices(
 }
 
 device_path_serializable::raw_data_t device_path_serializer::serialize_indices(
-    const details::global_sorted_plain_graphs& list) {
+    const detail::global_sorted_plain_graphs& list) {
     /*std::list<raw_data_t> serialized_list;
     size_t cluster_size = list.size();
     size_t total_size = sizeof(cluster_size); //preambule size
@@ -181,13 +181,13 @@ device_path_serializable::raw_data_t device_path_serializer::serialize_indices(
 }
 
 device_path_serializable::raw_data_t device_path_serializer::serialize_indices(
-    const details::colored_plain_graph_list& list,
+    const detail::colored_plain_graph_list& list,
     size_t offset) {
     return device_path_serializer::serialize_indices_impl(list, offset);
 }
 
 device_path_serializable::raw_data_t device_path_serializer::serialize_indices(
-    const details::global_sorted_colored_plain_graphs& list) {
+    const detail::global_sorted_colored_plain_graphs& list) {
     return device_path_serializer::serialize_indices_impl(list);
 }
 
@@ -333,13 +333,13 @@ std::map<size_t, T> device_path_deserializer::deserialize_generic_indices_map_im
     return global;
 }
 
-details::plain_graph_list device_path_deserializer::deserialize_graph_list_indices(
+detail::plain_graph_list device_path_deserializer::deserialize_graph_list_indices(
     const raw_data_t& data,
     size_t& deserialized_bytes_count,
     size_t offset) {
     return device_path_deserializer::deserialize_generic_indices_list_impl<
-        typename details::plain_graph_list::value_type>(data, deserialized_bytes_count, offset, 0);
-    /*details::plain_graph_list list;
+        typename detail::plain_graph_list::value_type>(data, deserialized_bytes_count, offset, 0);
+    /*detail::plain_graph_list list;
     size_t list_size = 0;
     // preconditions
     if (data.size() < sizeof(list_size) + offset)
@@ -385,7 +385,7 @@ details::plain_graph_list device_path_deserializer::deserialize_graph_list_indic
                                      ", with offset: " + std::to_string(offset));
         }
         //deserialize graph_data
-        details::plain_graph graph;
+        detail::plain_graph graph;
         graph.reserve(graph_size);
         //deserialize graph portion
         auto data_end_it = data_it;
@@ -409,12 +409,12 @@ details::plain_graph_list device_path_deserializer::deserialize_graph_list_indic
     return list;*/
 }
 
-details::global_sorted_plain_graphs device_path_deserializer::deserialize_global_graph_list_indices(
+detail::global_sorted_plain_graphs device_path_deserializer::deserialize_global_graph_list_indices(
     const raw_data_t& data) {
     return device_path_deserializer::template deserialize_generic_indices_map_impl<
-        typename details::global_sorted_plain_graphs::mapped_type>(data, 0);
+        typename detail::global_sorted_plain_graphs::mapped_type>(data, 0);
     /*
-    details::global_sorted_plain_graphs global;
+    detail::global_sorted_plain_graphs global;
     size_t global_size = 0;
     size_t deserialized_bytes_count = 0;
     // preconditions
@@ -448,7 +448,7 @@ details::global_sorted_plain_graphs device_path_deserializer::deserialize_global
         deserialized_bytes_count += expected_count;
         //get graph_data for process
         size_t process_deserialized_count = 0;
-        details::plain_graph_list process_list =
+        detail::plain_graph_list process_list =
                 device_path_deserializer::deserialize_graph_list_indices(raw_data_t(data_it,
                                                                                     data.end()),
                                                                          process_deserialized_count);
@@ -474,30 +474,30 @@ details::global_sorted_plain_graphs device_path_deserializer::deserialize_global
     */
 }
 
-details::colored_plain_graph_list device_path_deserializer::deserialize_colored_graph_list_indices(
+detail::colored_plain_graph_list device_path_deserializer::deserialize_colored_graph_list_indices(
     const raw_data_t& list,
     size_t& deserialized_bytes_count,
     size_t offset) {
     return device_path_deserializer::deserialize_generic_indices_list_impl<
-        typename details::colored_plain_graph_list::value_type>(
+        typename detail::colored_plain_graph_list::value_type>(
         list,
         deserialized_bytes_count,
         offset,
-        sizeof(details::colored_idx) - sizeof(ccl::device_index_type));
+        sizeof(detail::colored_idx) - sizeof(ccl::device_index_type));
 }
 
-details::global_sorted_colored_plain_graphs
+detail::global_sorted_colored_plain_graphs
 device_path_deserializer::deserialize_global_colored_graph_list_indices(const raw_data_t& list) {
     return device_path_deserializer::deserialize_generic_indices_map_impl<
-        typename details::global_sorted_colored_plain_graphs::mapped_type>(
-        list, sizeof(details::colored_idx) - sizeof(ccl::device_index_type));
+        typename detail::global_sorted_colored_plain_graphs::mapped_type>(
+        list, sizeof(detail::colored_idx) - sizeof(ccl::device_index_type));
 }
 
-details::colored_idx device_path_deserializer::extract_index(raw_data_t::const_iterator it_begin,
-                                                             raw_data_t::const_iterator it_end,
-                                                             std::false_type raw_index) {
-    constexpr size_t color_size = sizeof(details::color_t);
-    constexpr size_t stride = sizeof(details::colored_idx) - sizeof(ccl::device_index_type);
+detail::colored_idx device_path_deserializer::extract_index(raw_data_t::const_iterator it_begin,
+                                                            raw_data_t::const_iterator it_end,
+                                                            std::false_type raw_index) {
+    constexpr size_t color_size = sizeof(detail::color_t);
+    constexpr size_t stride = sizeof(detail::colored_idx) - sizeof(ccl::device_index_type);
     if (std::distance(it_begin, it_end) %
             (device_path_serializable::device_index_size() + stride) !=
         0) {
@@ -508,11 +508,11 @@ details::colored_idx device_path_deserializer::extract_index(raw_data_t::const_i
             std::to_string(device_path_serializable::device_index_size() + stride));
     }
 
-    details::color_t color = 0;
+    detail::color_t color = 0;
     memcpy(&color, &(*it_begin), color_size);
     std::advance(it_begin, stride);
 
-    return details::colored_idx(
+    return detail::colored_idx(
         color, device_path_deserializer::extract_index(it_begin, it_end, std::true_type{}));
 }
 
@@ -551,10 +551,10 @@ ccl::device_index_type device_path_deserializer::extract_index(raw_data_t::const
     return path;
 }
 /*
-ccl::device_indices_t device_path_deserializer::operator()(const std::vector<unsigned char>& raw_data)
+ccl::device_indices_type device_path_deserializer::operator()(const std::vector<unsigned char>& raw_data)
 {
     size_t elem_count = base::get_indices_count(raw_data.size());
-    ccl::device_indices_t data;
+    ccl::device_indices_type data;
     constexpr auto offset = sizeof(ccl::index_type) / sizeof(unsigned char);
     for(auto raw_data_it = raw_data.begin(); raw_data_it != raw_data.end(); )
     {
@@ -575,5 +575,5 @@ ccl::device_indices_t device_path_deserializer::operator()(const std::vector<uns
 }
 */
 } // namespace serialize
-} // namespace details
+} // namespace detail
 } // namespace native

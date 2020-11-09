@@ -23,12 +23,10 @@ template <typename T>
 class reduce_scatter_test : public base_test<T> {
 public:
     int check(typed_test_param<T>& param) {
-
         size_t my_rank = GlobalData::instance().comms[0].rank();
 
         for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++) {
             for (size_t elem_idx = 0; elem_idx < param.elem_count; elem_idx++) {
-
                 size_t real_elem_idx = my_rank * param.elem_count + elem_idx;
 
                 if (param.test_conf.reduction == RT_SUM) {
@@ -86,14 +84,14 @@ public:
             send_buf = param.get_send_buf(new_idx);
             recv_buf = param.get_recv_buf(new_idx);
 
-            param.reqs[buf_idx] = ccl::reduce_scatter(
-                (test_conf.place_type == PT_IN) ? recv_buf : send_buf,
-                recv_buf,
-                count,
-                datatype,
-                reduction,
-                GlobalData::instance().comms[0],
-                attr);
+            param.reqs[buf_idx] =
+                ccl::reduce_scatter((test_conf.place_type == PT_IN) ? recv_buf : send_buf,
+                                    recv_buf,
+                                    count,
+                                    datatype,
+                                    reduction,
+                                    GlobalData::instance().comms[0],
+                                    attr);
         }
     }
 };

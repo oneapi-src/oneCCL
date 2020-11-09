@@ -18,7 +18,7 @@
 void ccl_strict_sched_queue::add(ccl_sched* sched) {
     CCL_ASSERT(sched);
     CCL_ASSERT(!sched->bin, "sched ", sched, ", bin ", sched->bin);
-    CCL_ASSERT(sched->strict_start_order);
+    CCL_ASSERT(sched->strict_order);
 
     std::lock_guard<sched_queue_lock_t> lock{ queue_guard };
     queue.push_back(sched);

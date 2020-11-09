@@ -43,19 +43,19 @@ public:
     atl_status_t atl_ep_send(atl_ep_t* ep,
                              const void* buf,
                              size_t len,
-                             size_t dst_proc_idx,
+                             int dst_proc_idx,
                              uint64_t tag,
                              atl_req_t* req) override;
 
     atl_status_t atl_ep_recv(atl_ep_t* ep,
                              void* buf,
                              size_t len,
-                             size_t src_proc_idx,
+                             int src_proc_idx,
                              uint64_t tag,
                              atl_req_t* req) override;
 
     atl_status_t atl_ep_probe(atl_ep_t* ep,
-                              size_t src_proc_idx,
+                              int src_proc_idx,
                               uint64_t tag,
                               int* found,
                               size_t* recv_len) override;
@@ -96,14 +96,14 @@ public:
     atl_status_t atl_ep_bcast(atl_ep_t* ep,
                               void* buf,
                               size_t len,
-                              size_t root,
+                              int root,
                               atl_req_t* req) override;
 
     atl_status_t atl_ep_reduce(atl_ep_t* ep,
                                const void* send_buf,
                                void* recv_buf,
                                size_t len,
-                               size_t root,
+                               int root,
                                atl_datatype_t dtype,
                                atl_reduction_t op,
                                atl_req_t* req) override;
@@ -122,7 +122,7 @@ public:
                              atl_mr_t* mr,
                              uint64_t addr,
                              uintptr_t remote_key,
-                             size_t dst_proc_idx,
+                             int dst_proc_idx,
                              atl_req_t* req) override;
 
     atl_status_t atl_ep_write(atl_ep_t* ep,
@@ -131,7 +131,7 @@ public:
                               atl_mr_t* mr,
                               uint64_t addr,
                               uintptr_t remote_key,
-                              size_t dst_proc_idx,
+                              int dst_proc_idx,
                               atl_req_t* req) override;
 
     atl_status_t atl_ep_wait(atl_ep_t* ep, atl_req_t* req) override;
@@ -146,14 +146,18 @@ public:
 
     atl_status_t atl_finalize() override;
 
-    size_t get_rank() {
+    int get_rank() {
         return ctx->coord.global_idx;
     }
-    size_t get_size() {
+    int get_size() {
         return ctx->coord.global_count;
+    }
+    bool is_inited() override {
+        return inited;
     }
 
 private:
     atl_ctx_t* ctx = nullptr;
     bool is_finalized{ false };
+    bool inited{ false };
 };

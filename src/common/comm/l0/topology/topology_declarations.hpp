@@ -21,7 +21,7 @@
 #include "oneapi/ccl/native_device_api/l0/utils.hpp"
 
 namespace native {
-namespace details {
+namespace detail {
 struct marked_idx : std::pair<bool, ccl::device_index_type> {
     marked_idx(bool m, ccl::device_index_type i) : std::pair<bool, ccl::device_index_type>(m, i) {}
 };
@@ -101,11 +101,11 @@ std::string to_string(const global_sorted_colored_plain_graphs& cluster);
 std::string to_string(const global_plain_colored_graphs& cluster);
 
 std::ostream& operator<<(std::ostream& out, const colored_idx& idx);
-} // namespace details
+} // namespace detail
 
 template <class payload_type>
 std::ostream& operator<<(std::ostream& out,
-                         const details::colored_indexed_data<payload_type>& data) {
+                         const detail::colored_indexed_data<payload_type>& data) {
     out << data.to_string();
     return out;
 }

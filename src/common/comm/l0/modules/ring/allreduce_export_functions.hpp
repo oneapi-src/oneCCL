@@ -24,9 +24,9 @@ struct ring_allreduce_kernel
               arg<main_kernel_args::args_start_index, size_t>,
               arg<main_kernel_args::args_start_index + 1, native_type*>,
               arg<main_kernel_args::args_start_index + 2, native_type*>,
-              thread_safe_arg<main_kernel_args::args_start_index + 3, native_type*>,
-              thread_safe_arg<main_kernel_args::args_start_index + 4, int*>,
-              thread_safe_arg<main_kernel_args::args_start_index + 5, int*>,
+              thread_safe_uncached_arg<main_kernel_args::args_start_index + 3, native_type*>,
+              thread_safe_uncached_arg<main_kernel_args::args_start_index + 4, int*>,
+              thread_safe_uncached_arg<main_kernel_args::args_start_index + 5, int*>,
               arg<main_kernel_args::args_start_index + 6, int*>,
               thread_safe_arg<main_kernel_args::args_start_index + 7, native_type*>,
               thread_safe_arg<main_kernel_args::args_start_index + 8, int*>,
@@ -50,13 +50,15 @@ struct ring_allreduce_kernel
     using recv_buf_arg_type = typename recv_buf_arg::arg_type;
 
     using tmp_recv_buf_arg =
-        thread_safe_arg<main_kernel_args::args_start_index + 3, processing_type*>;
+        thread_safe_uncached_arg<main_kernel_args::args_start_index + 3, processing_type*>;
     using tmp_recv_buf_arg_type = typename tmp_recv_buf_arg::arg_type;
 
-    using income_data_flag_arg = thread_safe_arg<main_kernel_args::args_start_index + 4, int*>;
+    using income_data_flag_arg =
+        thread_safe_uncached_arg<main_kernel_args::args_start_index + 4, int*>;
     using income_data_flag_arg_type = typename income_data_flag_arg::arg_type;
 
-    using ready_to_recv_flag_arg = thread_safe_arg<main_kernel_args::args_start_index + 5, int*>;
+    using ready_to_recv_flag_arg =
+        thread_safe_uncached_arg<main_kernel_args::args_start_index + 5, int*>;
     using ready_to_recv_flag_arg_type = typename ready_to_recv_flag_arg::arg_type;
 
     using local_barrier_flag_arg = arg<main_kernel_args::args_start_index + 6, int*>;

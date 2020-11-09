@@ -16,7 +16,7 @@
 #pragma once
 
 #include "oneapi/ccl/native_device_api/export_api.hpp"
-#include "oneapi/ccl/ccl_event.hpp"
+#include "oneapi/ccl/event.hpp"
 
 namespace ccl {
 

@@ -17,23 +17,21 @@
 #include "common/context/context.hpp"
 #include "oneapi/ccl/native_device_api/export_api.hpp"
 
-ccl_context_impl::ccl_context_impl(device_context_native_t& ctx, const ccl::library_version& version)
-    : version(version),
-    native_device_context(ctx)
-{
-}
+ccl_context_impl::ccl_context_impl(context_native_t& ctx, const ccl::library_version& version)
+        : version(version),
+          native_context(ctx) {}
 
-ccl_context_impl::ccl_context_impl(device_context_native_t&& ctx, const ccl::library_version& version)
-    : version(version),
-    native_device_context(std::move(ctx))
-{
-}
+ccl_context_impl::ccl_context_impl(const context_native_t& ctx, const ccl::library_version& version)
+        : version(version),
+          native_context(ctx) {}
 
-ccl_context_impl::ccl_context_impl(device_context_native_handle_t ctx_handle,
-                    const ccl::library_version& version)
-    : version(version)
-{
-}
+ccl_context_impl::ccl_context_impl(context_native_t&& ctx, const ccl::library_version& version)
+        : version(version),
+          native_context(std::move(ctx)) {}
+
+ccl_context_impl::ccl_context_impl(context_native_handle_t ctx_handle,
+                                   const ccl::library_version& version)
+        : version(version) {}
 
 void ccl_context_impl::build_from_params() {
     if (!creation_is_postponed) {
@@ -63,21 +61,21 @@ typename ccl_context_impl::version_traits_t::type ccl_context_impl::set_attribut
     return version;
 }
 
-const typename ccl_context_impl::version_traits_t::return_type& ccl_context_impl::get_attribute_value(
-    const version_traits_t& id) const {
+const typename ccl_context_impl::version_traits_t::return_type&
+ccl_context_impl::get_attribute_value(const version_traits_t& id) const {
     return version;
 }
 
-const typename ccl_context_impl::cl_backend_traits_t::return_type& ccl_context_impl::get_attribute_value(
-    const cl_backend_traits_t& id) const {
-
+const typename ccl_context_impl::cl_backend_traits_t::return_type&
+ccl_context_impl::get_attribute_value(const cl_backend_traits_t& id) const {
     //TODO
-    throw ccl::exception("TODO - Get value for 'ccl::device_attr_id::cl_backend_traits_t' is not inmlemented");
-    static constexpr ccl::cl_backend_type ret{ccl::cl_backend_type::empty_backend};
+    throw ccl::exception(
+        "TODO - Get value for 'ccl::device_attr_id::cl_backend_traits_t' is not inmlemented");
+    static constexpr ccl::cl_backend_type ret{ ccl::cl_backend_type::empty_backend };
     return ret;
 }
 
-typename ccl_context_impl::native_handle_traits_t::return_type& ccl_context_impl::get_attribute_value(
-    const native_handle_traits_t& id) {
-    return native_device_context;
+typename ccl_context_impl::native_handle_traits_t::return_type&
+ccl_context_impl::get_attribute_value(const native_handle_traits_t& id) {
+    return native_context;
 }

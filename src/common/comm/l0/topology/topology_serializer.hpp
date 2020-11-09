@@ -16,7 +16,7 @@
 #pragma once
 #include "common/comm/l0/topology/topology_construction_utils.hpp"
 namespace native {
-namespace details {
+namespace detail {
 namespace serialize {
 struct device_path_serializable {
     using raw_data_t = std::vector<unsigned char>;
@@ -62,11 +62,11 @@ struct device_path_serializer : device_path_serializable {
     }
 
     template <template <class...> class container>
-    static raw_data_t serialize_indices(const container<details::colored_idx>& indices,
+    static raw_data_t serialize_indices(const container<detail::colored_idx>& indices,
                                         size_t additional_reserved_bytes = 0) {
-        static_assert(sizeof(details::colored_idx) >= sizeof(ccl::device_index_type),
+        static_assert(sizeof(detail::colored_idx) >= sizeof(ccl::device_index_type),
                       "'stride' must be positive or zero");
-        constexpr size_t stride = sizeof(details::colored_idx) - sizeof(ccl::device_index_type);
+        constexpr size_t stride = sizeof(detail::colored_idx) - sizeof(ccl::device_index_type);
         device_path_serializer consumer(indices.size(), additional_reserved_bytes, stride);
         for (const auto& path : indices) {
             //serialize color
@@ -82,11 +82,11 @@ struct device_path_serializer : device_path_serializable {
         return consumer.result();
     }
 
-    static raw_data_t serialize_indices(const details::plain_graph_list& list, size_t offset = 0);
-    static raw_data_t serialize_indices(const details::global_sorted_plain_graphs& list);
-    static raw_data_t serialize_indices(const details::colored_plain_graph_list& list,
+    static raw_data_t serialize_indices(const detail::plain_graph_list& list, size_t offset = 0);
+    static raw_data_t serialize_indices(const detail::global_sorted_plain_graphs& list);
+    static raw_data_t serialize_indices(const detail::colored_plain_graph_list& list,
                                         size_t offset = 0);
-    static raw_data_t serialize_indices(const details::global_sorted_colored_plain_graphs& list);
+    static raw_data_t serialize_indices(const detail::global_sorted_colored_plain_graphs& list);
 
     template <class index_type>
     void operator()(const index_type& value) {
@@ -153,26 +153,25 @@ struct device_path_deserializer : device_path_serializable {
         return ret;
     }
 
-    static details::plain_graph_list deserialize_graph_list_indices(
-        const raw_data_t& list,
-        size_t& deserialized_bytes_count,
-        size_t offset = 0);
-    static details::global_sorted_plain_graphs deserialize_global_graph_list_indices(
+    static detail::plain_graph_list deserialize_graph_list_indices(const raw_data_t& list,
+                                                                   size_t& deserialized_bytes_count,
+                                                                   size_t offset = 0);
+    static detail::global_sorted_plain_graphs deserialize_global_graph_list_indices(
         const raw_data_t& list);
 
-    static details::colored_plain_graph_list deserialize_colored_graph_list_indices(
+    static detail::colored_plain_graph_list deserialize_colored_graph_list_indices(
         const raw_data_t& list,
         size_t& deserialized_bytes_count,
         size_t offset = 0);
-    static details::global_sorted_colored_plain_graphs
-    deserialize_global_colored_graph_list_indices(const raw_data_t& list);
+    static detail::global_sorted_colored_plain_graphs deserialize_global_colored_graph_list_indices(
+        const raw_data_t& list);
 
     static ccl::device_index_type extract_index(raw_data_t::const_iterator it_begin,
                                                 raw_data_t::const_iterator it_end,
                                                 std::true_type raw_index);
-    static details::colored_idx extract_index(raw_data_t::const_iterator it_begin,
-                                              raw_data_t::const_iterator it_end,
-                                              std::false_type colored_index);
+    static detail::colored_idx extract_index(raw_data_t::const_iterator it_begin,
+                                             raw_data_t::const_iterator it_end,
+                                             std::false_type colored_index);
 
 private:
     template <class T>
@@ -185,5 +184,5 @@ private:
                                                                     size_t stride = 0);
 };
 } // namespace serialize
-} // namespace details
+} // namespace detail
 } // namespace native

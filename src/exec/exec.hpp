@@ -21,6 +21,7 @@
 #include "common/request/request.hpp"
 #include "exec/thread/listener.hpp"
 #include "sched/extra_sched.hpp"
+#include "internal_types.hpp"
 
 #include <memory>
 #include <vector>
@@ -72,7 +73,7 @@ public:
     size_t get_worker_count() const;
 
     // TODO: Rework to support listener
-    //    ccl_status_t create_listener(ccl_resize_fn_t resize_func);
+    //    ccl::status create_listener(ccl_resize_fn_t resize_func);
     void update_workers();
     void lock_workers();
     void unlock_workers();
@@ -90,7 +91,6 @@ public:
     static atl_attr_t generate_atl_attr(const ccl::env_data& env);
 
 private:
-
     size_t get_worker_idx_round_robin(ccl_sched* sched);
     size_t get_worker_idx_by_sched_id(ccl_sched* sched);
 

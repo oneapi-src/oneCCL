@@ -38,9 +38,7 @@ public:
     using impl_t = device_t;
     using proxy_base = proxy_observer_specific<ccl_numa_proxy<device_t>>;
 
-    template <ccl_coll_type algo_type,
-              ccl::group_split_type group,
-              ccl::device_topology_type mode>
+    template <ccl_coll_type algo_type, ccl::group_split_type group, ccl::device_topology_type mode>
     using gpu_module_t =
         typename device_t::template gpu_module_t<algo_type, group, mode>; //same as in-process GPU
 
@@ -82,12 +80,11 @@ public:
             .template get_gpu_kernel<module_type, group_id, class_id, native_data_type>();
     }
 
-    template <
-        class native_data_type,
-        ccl::group_split_type group_id,
-        ccl::device_topology_type class_id,
-        class gpu_entry,
-        class = typename std::enable_if<group_id == ccl::group_split_type::cluster>::type>
+    template <class native_data_type,
+              ccl::group_split_type group_id,
+              ccl::device_topology_type class_id,
+              class gpu_entry,
+              class = typename std::enable_if<group_id == ccl::group_split_type::cluster>::type>
     gpu_kernel_t<gpu_entry::type(), group_id, class_id, native_data_type>& register_entry(
         gpu_entry& entry) {
         const topology_addr<group_id, class_id>& comm_addr =

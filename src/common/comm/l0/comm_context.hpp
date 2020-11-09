@@ -13,33 +13,32 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "oneapi/ccl/ccl_aliases.hpp"
-#include "oneapi/ccl/ccl_device_types.hpp"
-#include "oneapi/ccl/ccl_type_traits.hpp"
-#include "oneapi/ccl/ccl_types_policy.hpp"
-#include "oneapi/ccl/ccl_comm_split_attr_ids.hpp"
-#include "oneapi/ccl/ccl_comm_split_attr_ids_traits.hpp"
-#include "oneapi/ccl/ccl_comm_split_attr.hpp"
+#include "oneapi/ccl/aliases.hpp"
+#include "oneapi/ccl/device_types.hpp"
+#include "oneapi/ccl/type_traits.hpp"
+#include "oneapi/ccl/types_policy.hpp"
+#include "oneapi/ccl/comm_split_attr_ids.hpp"
+#include "oneapi/ccl/comm_split_attr_ids_traits.hpp"
+#include "oneapi/ccl/comm_split_attr.hpp"
 
-#include "oneapi/ccl/ccl_coll_attr_ids.hpp"
-#include "oneapi/ccl/ccl_coll_attr_ids_traits.hpp"
-#include "oneapi/ccl/ccl_coll_attr.hpp"
+#include "oneapi/ccl/coll_attr_ids.hpp"
+#include "oneapi/ccl/coll_attr_ids_traits.hpp"
+#include "oneapi/ccl/coll_attr.hpp"
 
-#include "common/event/event_internal/event_internal_attr_ids.hpp"
-#include "common/event/event_internal/event_internal_attr_ids_traits.hpp"
-#include "common/event/event_internal/event_internal.hpp"
+#include "oneapi/ccl/stream_attr_ids.hpp"
+#include "oneapi/ccl/stream_attr_ids_traits.hpp"
+#include "oneapi/ccl/stream.hpp"
 
-#include "oneapi/ccl/ccl_stream_attr_ids.hpp"
-#include "oneapi/ccl/ccl_stream_attr_ids_traits.hpp"
-#include "oneapi/ccl/ccl_stream.hpp"
-
-#include "oneapi/ccl/ccl_event.hpp"
-#include "oneapi/ccl/ccl_communicator.hpp"
+#include "oneapi/ccl/event.hpp"
+#include "oneapi/ccl/communicator.hpp"
 
 #include "common/comm/l0/comm_context_id.hpp"
 #include "common/comm/comm_interface.hpp"
 
 namespace ccl {
+namespace detail {
+class environment;
+}
 
 class host_communicator;
 struct gpu_comm_attr;
@@ -47,10 +46,10 @@ using shared_communicator_t = std::shared_ptr<host_communicator>;
 
 class comm_group {
 public:
-    friend class environment;
+    friend class ccl::detail::environment;
     friend struct group_context;
 
-    using context_t = typename unified_device_context_type::ccl_native_t;
+    using context_t = typename unified_context_type::ccl_native_t;
 
     ~comm_group();
     /**
@@ -61,9 +60,10 @@ public:
               typename std::enable_if<not std::is_same<typename std::remove_cv<DeviceType>::type,
                                                        ccl::device_index_type>::value,
                                       int>::type = 0>
-    ccl::communicator_interface_ptr create_communicator_from_group(const DeviceType& device,
-                                        ContextType& context,
-                                        const comm_split_attr& attr = ccl_empty_attr());
+    ccl::communicator_interface_ptr create_communicator_from_group(
+        const DeviceType& device,
+        const ContextType& context,
+        const comm_split_attr& attr = ccl_empty_attr());
 
     /**
      * Device Communicator creation API: single communicator creation, based on index @device_id
@@ -73,9 +73,10 @@ public:
               typename std::enable_if<std::is_same<typename std::remove_cv<DeviceType>::type,
                                                    ccl::device_index_type>::value,
                                       int>::type = 0>
-    ccl::communicator_interface_ptr create_communicator_from_group(const DeviceType& device_id,
-                                        ContextType& context,
-                                        const comm_split_attr& attr = ccl_empty_attr());
+    ccl::communicator_interface_ptr create_communicator_from_group(
+        const DeviceType& device_id,
+        const ContextType& context,
+        const comm_split_attr& attr = ccl_empty_attr());
 
     /**
      * Device Communicator creation vectorized API:
@@ -84,7 +85,7 @@ public:
     template <class InputIt, class ContextType>
     std::vector<communicator> create_communicators_group(InputIt first,
                                                          InputIt last,
-                                                         ContextType& context,
+                                                         const ContextType& context,
                                                          comm_split_attr attr = ccl_empty_attr());
 
     /**
@@ -93,13 +94,13 @@ public:
      */
     template <template <class...> class Container, class Type, class ContextType>
     std::vector<communicator> create_communicators_group(const Container<Type>& device_ids,
-                                                         ContextType& context,
+                                                         const ContextType& context,
                                                          comm_split_attr attr = ccl_empty_attr());
 
     /**
      * Return device context allocated during group creation
      */
-    //device_context_native_const_reference_t get_context() const;
+    //context_native_const_reference_t get_context() const;
 
     bool sync_group_size(size_t device_group_size);
     /*

@@ -55,6 +55,7 @@ struct thread_group_scheduler {
     thread_schedule_ptr submit_entry(size_t thread_id,
                                      device_community<class_id>& device_topology,
                                      device_t& device,
+                                     native::ccl_driver_context_ptr ctx,
                                      Arguments&&... args) {
         const topology_addr<group_id, class_id>& comm_data =
             device->template get_comm_data<group_id, class_id>();
@@ -80,6 +81,7 @@ struct thread_group_scheduler {
             entry_factory::make_ordered_entry<EntryType, mode>(current_thread_schedule.get(),
                                                                device,
                                                                device_topology.get_device_storage(),
+                                                               ctx,
                                                                std::forward<Arguments>(args)...);
         LOG_DEBUG("do initial entry progress");
         created_entry->start();

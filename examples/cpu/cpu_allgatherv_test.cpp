@@ -22,7 +22,6 @@
 using namespace std;
 
 int main() {
-
     const size_t count = 128;
 
     size_t i = 0;
@@ -64,11 +63,7 @@ int main() {
     }
 
     /* invoke allgatherv */
-    ccl::allgatherv(send_buf.data(),
-                    count,
-                    recv_buf.data(),
-                    recv_counts,
-                    comm).wait();
+    ccl::allgatherv(send_buf.data(), count, recv_buf.data(), recv_counts, comm).wait();
 
     /* check correctness of recv_buf */
     for (i = 0; i < count; i++) {

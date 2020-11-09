@@ -14,8 +14,8 @@
  limitations under the License.
 */
 #pragma once
-#include "oneapi/ccl/ccl_types.hpp"
-#include "oneapi/ccl/ccl_comm_split_attr_ids_traits.hpp"
+#include "oneapi/ccl/types.hpp"
+#include "oneapi/ccl/comm_split_attr_ids_traits.hpp"
 
 namespace ccl {
 
@@ -50,7 +50,8 @@ public:
     const typename color_traits_t::type& get_attribute_value(
         const traits_t<split_attrs_t, split_attrs_t::color>& id) const {
         if (!is_valid<split_attrs_t::color>()) {
-            throw ccl::exception("Trying to get the value of the attribute 'color' which was not set");
+            throw ccl::exception(
+                "Trying to get the value of the attribute 'color' which was not set");
         }
         return color;
     }
@@ -70,7 +71,8 @@ public:
 
     const typename group_traits_t::type& get_attribute_value(group_traits_t id) const {
         if (!is_valid<split_attrs_t::group>()) {
-            throw ccl::exception("Trying to get the value of the attribute 'group' which was not set");
+            throw ccl::exception(
+                "Trying to get the value of the attribute 'group' which was not set");
         }
         return group;
     }
@@ -130,11 +132,11 @@ protected:
  * Device implementation
  */
 class ccl_comm_split_attr_impl
-        : public ccl_base_comm_split_attr_impl<details::ccl_api_type_attr_traits,
+        : public ccl_base_comm_split_attr_impl<detail::ccl_api_type_attr_traits,
                                                comm_split_attr_id> {
 public:
     using base_t =
-        ccl_base_comm_split_attr_impl<details::ccl_api_type_attr_traits, comm_split_attr_id>;
+        ccl_base_comm_split_attr_impl<detail::ccl_api_type_attr_traits, comm_split_attr_id>;
 
     template <class traits_t>
     const typename traits_t::type& get_attribute_value(const traits_t& id) const {

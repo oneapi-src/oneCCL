@@ -45,7 +45,10 @@ endfunction(get_vcs_properties)
 function(activate_compute_runtime MODULES_PATH COMPUTE_RUNTIME)
 
     string( TOLOWER "${COMPUTE_RUNTIME}" COMPUTE_RUNTIME)
+
     set(CCL_ENABLE_SYCL_V 0 PARENT_SCOPE)
+    set(CCL_ENABLE_SYCL_L0 0 PARENT_SCOPE)
+
     message("Search Compute Runtime by MODULES_PATH: ${MODULES_PATH}")
     list(APPEND CMAKE_MODULE_PATH "${MODULES_PATH}")
 
@@ -54,9 +57,12 @@ function(activate_compute_runtime MODULES_PATH COMPUTE_RUNTIME)
         SET (COMPUTE_RUNTIME_LOAD_MODULE "ComputeCpp"
                 CACHE STRING
              "COMPUTE_RUNTIME=${COMPUTE_RUNTIME} requested. Using ComputeCpp provider")
+
         find_package(${COMPUTE_RUNTIME_LOAD_MODULE} REQUIRED)
 
-        set (CCL_ENABLE_SYCL_V 1 PARENT_SCOPE)
+        if(NOT ComputeCpp_FOUND)
+            message(FATAL_ERROR "Failed to find ComputeCpp")
+        endif()
 
         # remember compilation flags, because flag required for OBJECTS target
         # but if we use `target_link_libraries`, then these flags applied to all compiler options
@@ -74,7 +80,16 @@ function(activate_compute_runtime MODULES_PATH COMPUTE_RUNTIME)
         SET (COMPUTE_RUNTIME_LOAD_MODULE "IntelSYCL"
                 CACHE STRING
              "COMPUTE_RUNTIME=${COMPUTE_RUNTIME} requested. Using DPC++ provider")
+
         find_package(${COMPUTE_RUNTIME_LOAD_MODULE} REQUIRED)
+
+        if(NOT IntelSYCL_FOUND)
+            message(FATAL_ERROR "Failed to find IntelSYCL")
+        endif()
+
+        if(LevelZero_FOUND)
+            set(CCL_ENABLE_SYCL_L0 1 PARENT_SCOPE)
+        endif()
 
         set(CCL_ENABLE_SYCL_V 1 PARENT_SCOPE)
 
@@ -93,7 +108,13 @@ function(activate_compute_runtime MODULES_PATH COMPUTE_RUNTIME)
         SET (COMPUTE_RUNTIME_LOAD_MODULE "L0"
                 CACHE STRING
              "COMPUTE_RUNTIME=${COMPUTE_RUNTIME} requested")
+
         find_package(${COMPUTE_RUNTIME_LOAD_MODULE} REQUIRED)
+
+        if(NOT LevelZero_FOUND)
+            message(STATUS "Can not find level-zero")
+            return()
+        endif()
 
         # No compiler flags
         set (COMPUTE_RUNTIME_CXXFLAGS_LOCAL "")
@@ -101,6 +122,10 @@ function(activate_compute_runtime MODULES_PATH COMPUTE_RUNTIME)
         # remember current target for `target_link_libraries` in ccl
         set (COMPUTE_RUNTIME_TARGET_NAME ze_loader)
         set (COMPUTE_RUNTIME_TARGET_NAME ze_loader PARENT_SCOPE)
+    endif()
+
+    if (NOT COMPUTE_RUNTIME_TARGET_NAME)
+        message(FATAL_ERROR "Failed to find requested compute runtime: ${COMPUTE_RUNTIME}")
     endif()
 
     # extract target properties

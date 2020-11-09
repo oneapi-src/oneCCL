@@ -34,9 +34,6 @@ check_compiler_version()
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
-if (NOT CMAKE_DISABLE_SYCL)
-    set(CMAKE_DISABLE_SYCL 0)
-endif()
 
 #make build variable case insensitive
 string( TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_CASE_INSENSITIVE)
@@ -47,6 +44,7 @@ if (${CMAKE_BUILD_TYPE_CASE_INSENSITIVE} STREQUAL "debug")
     set(USE_SECURITY_FLAGS FALSE)
 endif()
 
+option(BUILD_UT "Build unit tests" TRUE)
 option(USE_CODECOV_FLAGS "Calculate code coverage" FALSE)
 option(WITH_ASAN "Use address sanitizer, can only be used in Debug build" FALSE)
 
@@ -58,6 +56,7 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 
 #show build info
+message(STATUS "Build unit tests: ${BUILD_UT}")
 message(STATUS "Installation directory: ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE_CASE_INSENSITIVE}")
 message(STATUS "C compiler : ${CMAKE_C_COMPILER}")
@@ -92,8 +91,6 @@ include_directories(${MPI_INCLUDE_DIR})
 include_directories(${LIBFABRIC_INCLUDE_DIR})
 link_directories(${MPI_LIB_DIR})
 link_directories(${LIBFABRIC_LIB_DIR})
-
-
 
 set(CCL_INSTALL_UNIT_TESTS "${CMAKE_INSTALL_PREFIX}/tests/unit")
 
@@ -144,14 +141,40 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${CXX_COMP
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(TRY_ENABLE_SYCL_L0 OFF)
+
 if (COMPUTE_RUNTIME)
     activate_compute_runtime("${CMAKE_CURRENT_LIST_DIR}/cmake" ${COMPUTE_RUNTIME})
-	set(PARENT_COMPUTE_RUNTIME_TARGET_NAME ${COMPUTE_RUNTIME_TARGET_NAME})
+    if (NOT COMPUTE_RUNTIME_TARGET_NAME)
+        message(FATAL_ERROR "Failed to find requested compute runtime: ${COMPUTE_RUNTIME}")
+    endif()
+    message(STATUS "COMPUTE_RUNTIME_TARGET_NAME: ${COMPUTE_RUNTIME_TARGET_NAME}")
     if (${CCL_ENABLE_SYCL_V} STREQUAL 1)
         option (CCL_ENABLE_SYCL "Enable CCL SYCL runtime" ON)
         message(STATUS "Enable CCL SYCL runtime")
+        if (${COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "Intel::SYCL")
+            set (CCL_ENABLE_SYCL_CHECK_CONTRACT "#if defined(__cplusplus)\n#if !defined(__clang__) || __clang_major__ < 9 || !defined(SYCL_LANGUAGE_VERSION)\n#error This version of CCL configured only for oneAPI DPC++ Compiler\n#endif\n#endif")
+            execute_process(COMMAND dpcpp -v
+                OUTPUT_VARIABLE DPCPP_VERSION
+                ERROR_VARIABLE DPCPP_VERSION
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_STRIP_TRAILING_WHITESPACE
+            )
+            message(STATUS "DPC++ compiler version:\n" "${DPCPP_VERSION}")
+        else(${COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "Codeplay::ComputeCpp")
+            set (CCL_ENABLE_SYCL_CHECK_CONTRACT "#if defined(__cplusplus)\n#if !defined(__clang__) || __clang_major__ < 6\n#error This version of CCL configured only for oneAPI DPC++ Compiler\n#endif\n#endif")
+        endif()
     endif()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMPUTE_RUNTIME_FLAGS}")
+    if ((${COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "Intel::SYCL") AND
+        ${CCL_ENABLE_SYCL_L0} STREQUAL 1)
+        set(MULTI_GPU_SUPPORT ON)
+    elseif(${COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "ze_loader")
+        set(MULTI_GPU_SUPPORT ON)
+    endif()
+    if (MULTI_GPU_SUPPORT)
+        message(STATUS "Enable multi GPU support using L0")
+    endif()
 endif()
 
 if(${CMAKE_C_COMPILER_ID} STREQUAL "GNU" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
@@ -210,6 +233,9 @@ if (CCL_BF16_COMPILER)
     endif()
 endif()
 
+add_definitions(-DCCL_GPU_BF16_TRUNCATE)
+set(CCL_GPU_BF16_TRUNCATE ON)
+
 set(CCL_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/src)
 
 enable_testing()
@@ -222,32 +248,6 @@ set(CMAKE_CLANG_FLAGS "${CMAKE_CLANG_FLAGS}")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
-if (COMPUTE_RUNTIME)
-    if ((${COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "ze_loader")
-             OR (${COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "Intel::SYCL"))
-        set(MULTI_GPU_SUPPORT ON)
-		activate_compute_runtime("${CMAKE_CURRENT_LIST_DIR}/cmake" L0)
-		message ("Enable multi GPU support: ${MULTI_GPU_SUPPORT}")
-		message ("COMPUTE_RUNTIME_TARGET_NAME: ${COMPUTE_RUNTIME_TARGET_NAME}")
-    endif()
-endif(COMPUTE_RUNTIME)
-
-if (MULTI_GPU_SUPPORT)
-    option(CCL_GPU_DEVICES_AFFINITY_ENABLE "Enable L0" ON)
-    if(CCL_GPU_DEVICES_AFFINITY_ENABLE)
-        set(CCL_GPU_DEVICES_AFFINITY_MASK_SIZE 4)
-        message ("Set L0 device mask affinity size: ${CCL_GPU_DEVICES_AFFINITY_MASK_SIZE}")
-    endif()
-endif(MULTI_GPU_SUPPORT)
-
-if (CCL_ENABLE_SYCL)
-    if (${PARENT_COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "Intel::SYCL")
-        set (CCL_ENABLE_SYCL_CHECK_CONTRACT "#if defined(__cplusplus)\n#if !defined(__clang__) || __clang_major__ < 9 || !defined(CL_SYCL_LANGUAGE_VERSION)\n#error This version of CCL configured only for oneAPI DPC++ Compiler\n#endif\n#endif")
-    else(${PARENT_COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "Codeplay::ComputeCpp")
-        set (CCL_ENABLE_SYCL_CHECK_CONTRACT "#if defined(__cplusplus)\n#if !defined(__clang__) || __clang_major__ < 6\n#error This version of CCL configured only for oneAPI DPC++ Compiler\n#endif\n#endif")
-    endif()
-endif()
-
 #generate & install vars.sh
 configure_file(cmake/vars.sh.in ${CMAKE_CURRENT_BINARY_DIR}/vars.sh @ONLY)
 configure_file(cmake/setvars.sh.in ${CMAKE_CURRENT_BINARY_DIR}/setvars.sh @ONLY)
@@ -259,15 +259,15 @@ install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/ccl DESTINATION ${CCL_INSTALL_MODUL
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/third-party-programs.txt DESTINATION ${CCL_INSTALL_LICENSE})
 install(PROGRAMS ${PROJECT_SOURCE_DIR}/LICENSE DESTINATION ${CCL_INSTALL_LICENSE})
 
-set(CCL_MAJOR_VERSION     "0")
-set(CCL_MINOR_VERSION     "10")
+set(CCL_MAJOR_VERSION     "2021")
+set(CCL_MINOR_VERSION     "1")
 set(CCL_UPDATE_VERSION    "0")
-set(CCL_PRODUCT_STATUS    "beta")
+set(CCL_PRODUCT_STATUS    "Gold")
 string(TIMESTAMP CCL_PRODUCT_BUILD_DATE "%Y-%m-%dT %H:%M:%SZ")
 get_vcs_properties("git")
 set(CCL_PRODUCT_FULL "${CCL_PRODUCT_STATUS}-${CCL_MAJOR_VERSION}.${CCL_MINOR_VERSION}.${CCL_UPDATE_VERSION} ${CCL_PRODUCT_BUILD_DATE} ${VCS_INFO}")
-configure_file(${PROJECT_SOURCE_DIR}/include/oneapi/ccl/ccl_config.h.in "${CMAKE_CURRENT_BINARY_DIR}/include/oneapi/ccl/ccl_config.h")
-file(COPY "${CMAKE_CURRENT_BINARY_DIR}/include/oneapi/ccl/ccl_config.h" DESTINATION ${PROJECT_SOURCE_DIR}/include/oneapi/ccl)
+configure_file(${PROJECT_SOURCE_DIR}/include/oneapi/ccl/config.h.in "${CMAKE_CURRENT_BINARY_DIR}/include/oneapi/ccl/config.h")
+file(COPY "${CMAKE_CURRENT_BINARY_DIR}/include/oneapi/ccl/config.h" DESTINATION ${PROJECT_SOURCE_DIR}/include/oneapi/ccl)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/include)
 
 
@@ -282,4 +282,7 @@ if (CCL_ENABLE_SYCL)
 endif()
 
 add_subdirectory(tests/functional)
-#add_subdirectory(tests/unit)
+
+if (BUILD_UT)
+    #add_subdirectory(tests/unit)
+endif()

@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "oneapi/ccl/ccl_types.hpp"
+#include "oneapi/ccl/types.hpp"
 #include "comp/bf16/bf16.hpp"
 #include "comp/comp.hpp"
 #include "common/log/log.hpp"
@@ -49,60 +49,65 @@
         } \
     } while (0)
 
-ccl_status_t ccl_comp_copy(const void* in_buf,
-                           void* out_buf,
-                           size_t count,
-                           const ccl_datatype& dtype) {
+ccl::status ccl_comp_copy(const void* in_buf,
+                          void* out_buf,
+                          size_t count,
+                          const ccl_datatype& dtype) {
     CCL_ASSERT(in_buf, "in_buf is null");
     CCL_ASSERT(out_buf, "out_buf is null");
     CCL_MEMCPY(out_buf, in_buf, count * dtype.size());
-    return ccl_status_success;
+    return ccl::status::success;
 }
 
-ccl_status_t ccl_comp_reduce(const void* in_buf,
-                             size_t in_count,
-                             void* inout_buf,
-                             size_t* out_count,
-                             const ccl_datatype& dtype,
-                             ccl::reduction reduction,
-                             ccl::reduction_fn reduction_fn,
-                             const ccl::fn_context* context) {
+ccl::status ccl_comp_reduce(const void* in_buf,
+                            size_t in_count,
+                            void* inout_buf,
+                            size_t* out_count,
+                            const ccl_datatype& dtype,
+                            ccl::reduction reduction,
+                            ccl::reduction_fn reduction_fn,
+                            const ccl::fn_context* context) {
     if (reduction == ccl::reduction::custom) {
         CCL_THROW_IF_NOT(reduction_fn, "custom reduction requires user callback");
         reduction_fn(in_buf, in_count, inout_buf, out_count, dtype.idx(), context);
-        return ccl_status_success;
+        return ccl::status::success;
     }
 
     size_t i;
     switch (dtype.idx()) {
-        case ccl::datatype::int8: CCL_REDUCE(char); break;
-        case ccl::datatype::int32: CCL_REDUCE(int); break;
+        case ccl::datatype::int8: CCL_REDUCE(int8_t); break;
+        case ccl::datatype::uint8: CCL_REDUCE(uint8_t); break;
+        case ccl::datatype::int16: CCL_REDUCE(int16_t); break;
+        case ccl::datatype::uint16: CCL_REDUCE(uint16_t); break;
+        case ccl::datatype::int32: CCL_REDUCE(int32_t); break;
+        case ccl::datatype::uint32: CCL_REDUCE(uint32_t); break;
+        case ccl::datatype::int64: CCL_REDUCE(int64_t); break;
+        case ccl::datatype::uint64: CCL_REDUCE(uint64_t); break;
+        case ccl::datatype::float16: CCL_FATAL("FP16 is unsupported yet"); break;
+        case ccl::datatype::float32: CCL_REDUCE(float); break;
+        case ccl::datatype::float64: CCL_REDUCE(double); break;
         case ccl::datatype::bfloat16:
             if (ccl::global_data::get().bf16_impl_type == ccl_bf16_none)
                 CCL_FATAL("CCL doesn't support reductions in BF16 on this CPU");
             ccl_bf16_reduce(in_buf, in_count, inout_buf, out_count, reduction);
             break;
-        case ccl::datatype::float32: CCL_REDUCE(float); break;
-        case ccl::datatype::float64: CCL_REDUCE(double); break;
-        case ccl::datatype::int64: CCL_REDUCE(int64_t); break;
-        case ccl::datatype::uint64: CCL_REDUCE(uint64_t); break;
         default: CCL_FATAL("unexpected value ", dtype.idx()); break;
     }
-    return ccl_status_success;
+    return ccl::status::success;
 }
 
-ccl_status_t ccl_comp_batch_reduce(const void* in_buf,
-                                   const std::vector<size_t>& offsets,
-                                   size_t in_count,
-                                   void* inout_buf,
-                                   size_t* out_count,
-                                   const ccl_datatype& dtype,
-                                   ccl::reduction reduction,
-                                   ccl::reduction_fn reduction_fn,
-                                   const ccl::fn_context* context,
-                                   int bf16_keep_precision_mode,
-                                   float* tmp,
-                                   float* acc) {
+ccl::status ccl_comp_batch_reduce(const void* in_buf,
+                                  const std::vector<size_t>& offsets,
+                                  size_t in_count,
+                                  void* inout_buf,
+                                  size_t* out_count,
+                                  const ccl_datatype& dtype,
+                                  ccl::reduction reduction,
+                                  ccl::reduction_fn reduction_fn,
+                                  const ccl::fn_context* context,
+                                  int bf16_keep_precision_mode,
+                                  float* tmp,
+                                  float* acc) {
     if (bf16_keep_precision_mode) {
         //->acc, tmp fusion_buffer_cache???
 
@@ -137,7 +142,7 @@ ccl_status_t ccl_comp_batch_reduce(const void* in_buf,
         }
     }
 
-    return ccl_status_success;
+    return ccl::status::success;
 }
 
 const char* ccl_reduction_to_str(ccl::reduction type) {

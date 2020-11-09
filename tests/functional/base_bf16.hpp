@@ -23,7 +23,7 @@
 
 #include "base.hpp"
 
-#define FLOATS_IN_M512  16
+#define FLOATS_IN_M512 16
 #define BF16_SHIFT     16
 #define BF16_PRECISION 0.0390625 // 2^-8
 

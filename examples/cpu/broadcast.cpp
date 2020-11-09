@@ -31,11 +31,7 @@ void run_collective(const char* cmd_name,
 
     for (size_t idx = 0; idx < ITERS; ++idx) {
         auto start = std::chrono::system_clock::now();
-        ccl::broadcast(buf.data(),
-                       buf.size(),
-                       COLL_ROOT,
-                       comm,
-                       attr).wait();
+        ccl::broadcast(buf.data(), buf.size(), COLL_ROOT, comm, attr).wait();
         exec_time += std::chrono::system_clock::now() - start;
     }
 
@@ -61,7 +57,6 @@ void run_collective(const char* cmd_name,
 }
 
 int main() {
-
     ccl::init();
 
     int size, rank;

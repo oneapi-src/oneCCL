@@ -20,7 +20,27 @@
 #include "common/utils/enums.hpp"
 #include "exec/exec.hpp"
 
-ccl_datatype ccl_datatype_char;
+namespace ccl {
+using datatype_str_enum =
+    utils::enum_to_str<utils::enum_to_underlying(datatype::last_predefined) + 1>;
+string_class to_string(const datatype& dt) {
+    return datatype_str_enum({ "INT8",
+                               "UINT8",
+                               "INT16",
+                               "UINT16",
+                               "INT32",
+                               "UINT32",
+                               "INT64",
+                               "UINT64",
+                               "FLOAT16",
+                               "FLOAT32",
+                               "FLOAT64",
+                               "BFLOAT16" })
+        .choose(dt, "CUSTOM_TYPE");
+}
+} // namespace ccl
+
+ccl_datatype ccl_datatype_int8;
 
 ccl::datatype& operator++(ccl::datatype& d) {
     using IntType = typename std::underlying_type<ccl::datatype>::type;
@@ -34,6 +54,25 @@ ccl::datatype operator++(ccl::datatype& d, int) {
     return tmp;
 }
 
+std::ostream& operator<<(std::ostream& os, const ccl::datatype& dt) {
+    os << ccl::to_string(dt);
+    return os;
+}
+
+// CCL_API
+// std::string to_string(const bfloat16& v) {
+//     std::stringstream ss;
+//     ss << "bf16::data " << v.data;
+//     return ss.str();
+// }
+
+// CCL_API
+// std::string to_string(const float16& v) {
+//     std::stringstream ss;
+//     ss << "fp16::data " << v.data;
+//     return ss.str();
+// }
+
 ccl_datatype::ccl_datatype(ccl::datatype idx, size_t size) : m_idx(idx), m_size(size) {
     CCL_THROW_IF_NOT(m_size > 0, "unexpected datatype size ", m_size);
 }
@@ -42,14 +81,15 @@ ccl_datatype_storage::ccl_datatype_storage() {
     LOG_DEBUG("create datatype_storage");
 
     using IntType = typename std::underlying_type<ccl::datatype>::type;
-    custom_idx = static_cast<ccl::datatype>(static_cast<IntType>(ccl::datatype::last_predefined) + 1);
+    custom_idx =
+        static_cast<ccl::datatype>(static_cast<IntType>(ccl::datatype::last_predefined) + 1);
 
     size_t size = 0;
     std::string name_str;
 
     for (ccl::datatype idx = ccl::datatype::int8; idx <= ccl::datatype::last_predefined; idx++) {
         /* fill table with predefined datatypes */
-        size = (idx == ccl::datatype::int8)       ? sizeof(char)
+        size = (idx == ccl::datatype::int8)       ? sizeof(int8_t)
                : (idx == ccl::datatype::uint8)    ? sizeof(uint8_t)
                : (idx == ccl::datatype::int16)    ? sizeof(int16_t)
                : (idx == ccl::datatype::uint16)   ? sizeof(uint16_t)
@@ -72,10 +112,10 @@ ccl_datatype_storage::ccl_datatype_storage() {
                    : (idx == ccl::datatype::uint32)   ? "UINT32"
                    : (idx == ccl::datatype::int64)    ? "INT64"
                    : (idx == ccl::datatype::uint64)   ? "UINT64"
-                   : (idx == ccl::datatype::float16)  ? "FLOAT16"
-                   : (idx == ccl::datatype::float32)  ? "FLOAT"
-                   : (idx == ccl::datatype::float64)  ? "DOUBLE"
-                   : (idx == ccl::datatype::bfloat16) ? "BFLOAT16"
+                   : (idx == ccl::datatype::float16)  ? "FP16"
+                   : (idx == ccl::datatype::float32)  ? "FP32"
+                   : (idx == ccl::datatype::float64)  ? "FP64"
+                   : (idx == ccl::datatype::bfloat16) ? "BF16"
                                                       : 0;
 
         create_internal(predefined_table, idx, size, name_str);
@@ -94,7 +134,7 @@ ccl_datatype_storage::ccl_datatype_storage() {
                          name_str);
     }
 
-    ccl_datatype_char = get(ccl::datatype::int8);
+    ccl_datatype_int8 = get(ccl::datatype::int8);
 }
 
 ccl_datatype_storage::~ccl_datatype_storage() {

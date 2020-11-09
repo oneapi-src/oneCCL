@@ -15,33 +15,28 @@
 */
 #include <sstream>
 
-#include "oneapi/ccl/ccl_config.h"
-#include "oneapi/ccl/ccl_types.hpp"
+#include "oneapi/ccl/config.h"
+#include "oneapi/ccl/lp_types.hpp"
+#include "oneapi/ccl/types.hpp"
 #include "common/utils/enums.hpp"
 
 std::ostream& operator<<(std::ostream& out, const ccl::device_index_type& index);
 
 namespace ccl {
 
-using datatype_str_enum =
-    utils::enum_to_str<utils::enum_to_underlying(datatype::last_predefined) + 1>;
-CCL_API string_class to_string(const ccl::datatype& dt) {
-    return datatype_str_enum({ "INT8",
-                               "UINT8",
-                               "INT16",
-                               "UINT16",
-                               "INT32",
-                               "UINT32",
-                               "INT64",
-                               "UINT64",
-                               "FLOAT16",
-                               "FLOAT32",
-                               "FLOAT64",
-                               "BFLOAT16" })
-        .choose(dt, "CUSTOM_TYPE");
+std::string to_string(const bfloat16& v) {
+    std::stringstream ss;
+    ss << "bf16::data " << v.data;
+    return ss.str();
 }
 
-CCL_API
+// std::string to_string(const float16& v) {
+//     std::stringstream ss;
+//     ss << "fp16::data " << v.data;
+//     return ss.str();
+// }
+
+/* CCL_API */
 std::string to_string(const device_index_type& device_id) {
     std::stringstream ss;
     ss << "[" << std::get<ccl::device_index_enum::driver_index_id>(device_id) << ":"

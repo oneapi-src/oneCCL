@@ -28,7 +28,7 @@ struct ccl_device_platform : std::enable_shared_from_this<ccl_device_platform> {
     using context_storage_type = std::shared_ptr<ccl_context_holder>;
 
     //void init_drivers(const device_affinity_per_driver& affinities / * = device_affinity_per_driver()* /);
-    void init_drivers(const ccl::device_indices_t& indices = ccl::device_indices_t());
+    void init_drivers(const ccl::device_indices_type& indices = ccl::device_indices_type());
 
     std::shared_ptr<ccl_device_platform> get_ptr() {
         return this->shared_from_this();
@@ -50,12 +50,12 @@ struct ccl_device_platform : std::enable_shared_from_this<ccl_device_platform> {
     void on_delete(ccl_context::handle_t& context, ze_context_handle_t& ctx);
 
     static std::shared_ptr<ccl_device_platform> create(
-        const ccl::device_indices_t& indices = ccl::device_indices_t());
+        const ccl::device_indices_type& indices = ccl::device_indices_type());
     //static std::shared_ptr<ccl_device_platform> create(const device_affinity_per_driver& affinities);
 
-    details::adjacency_matrix calculate_device_access_metric(
-        const ccl::device_indices_t& indices = ccl::device_indices_t(),
-        details::p2p_rating_function func = details::binary_p2p_rating_calculator) const;
+    detail::adjacency_matrix calculate_device_access_metric(
+        const ccl::device_indices_type& indices = ccl::device_indices_type(),
+        detail::p2p_rating_function func = detail::binary_p2p_rating_calculator) const;
 
 private:
     ccl_device_platform();

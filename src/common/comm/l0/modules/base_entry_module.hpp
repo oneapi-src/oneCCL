@@ -15,7 +15,7 @@
 */
 #pragma once
 #include "oneapi/ccl/native_device_api/export_api.hpp"
-#include "oneapi/ccl/ccl_type_traits.hpp"
+#include "oneapi/ccl/type_traits.hpp"
 #include "supported_topologies.hpp"
 #include "common/comm/l0/modules/kernel_functions.hpp"
 
@@ -90,9 +90,7 @@ struct virtual_device_coll_module {
     std::shared_ptr<device_coll_module<type, topology, mode>> real_module_ref;
 };
 
-template <ccl_coll_type type,
-          ccl::group_split_type group_id,
-          ccl::device_topology_type class_id>
+template <ccl_coll_type type, ccl::group_split_type group_id, ccl::device_topology_type class_id>
 struct coll_module_traits {
     static constexpr ccl_coll_type coll_type() {
         return type;

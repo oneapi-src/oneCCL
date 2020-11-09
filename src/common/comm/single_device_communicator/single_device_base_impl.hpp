@@ -14,8 +14,8 @@
  limitations under the License.
 */
 #pragma once
-#include "oneapi/ccl/ccl_types.hpp"
-#include "oneapi/ccl/ccl_type_traits.hpp"
+#include "oneapi/ccl/types.hpp"
+#include "oneapi/ccl/type_traits.hpp"
 #include "common/comm/single_device_communicator/single_device_base.hpp"
 
 #define TEMPLATE_DECL_ARG class comm_impl, class communicator_traits
@@ -24,11 +24,12 @@
 template <TEMPLATE_DECL_ARG>
 typed_single_device_base_communicator<TEMPLATE_DEF_ARG>::typed_single_device_base_communicator(
     ccl::unified_device_type&& owned_device,
-    ccl::unified_device_context_type&& context,
+    ccl::unified_context_type&& context,
     size_t thread_idx,
     size_t process_idx,
     const ccl::comm_split_attr& attr)
-        : base_communicator(std::move(owned_device), std::move(context),
+        : base_communicator(std::move(owned_device),
+                            std::move(context),
                             thread_idx,
                             process_idx /*, comm_attr*/,
                             attr) {
@@ -54,8 +55,8 @@ bool typed_single_device_base_communicator<TEMPLATE_DEF_ARG>::is_ready() const {
 }
 
 template <TEMPLATE_DECL_ARG>
-ccl::group_split_type
-typed_single_device_base_communicator<TEMPLATE_DEF_ARG>::get_topology_type() const {
+ccl::group_split_type typed_single_device_base_communicator<TEMPLATE_DEF_ARG>::get_topology_type()
+    const {
     return self_t::topology_type();
 }
 

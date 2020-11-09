@@ -182,9 +182,9 @@ static inline void atl_mpi_check_op_params(void* in_buf,
 }
 
 static void INLINE_TARGET_ATTRIBUTE_ALL atl_mpi_bf16_base_op(void* in,
-                                                              void* inout,
-                                                              int* length,
-                                                              ccl_bf16_reduction_func_ptr op) {
+                                                             void* inout,
+                                                             int* length,
+                                                             ccl_bf16_reduction_func_ptr op) {
     unsigned short* in_buf = (unsigned short*)in;
     unsigned short* inout_buf = (unsigned short*)inout;
 
@@ -194,33 +194,33 @@ static void INLINE_TARGET_ATTRIBUTE_ALL atl_mpi_bf16_base_op(void* in,
 
 // MPI BF16 operation definitions
 static void TARGET_ATTRIBUTE_ALL atl_mpi_bf16_sum_op(void* in,
-                                                      void* inout,
-                                                      int* length,
-                                                      MPI_Datatype* datatype) {
+                                                     void* inout,
+                                                     int* length,
+                                                     MPI_Datatype* datatype) {
     atl_mpi_check_op_params(in, inout, length, datatype, __FUNCTION__);
     atl_mpi_bf16_base_op(in, inout, length, &sum_wrap);
 }
 
 static void TARGET_ATTRIBUTE_ALL atl_mpi_bf16_prod_op(void* in,
-                                                       void* inout,
-                                                       int* length,
-                                                       MPI_Datatype* datatype) {
+                                                      void* inout,
+                                                      int* length,
+                                                      MPI_Datatype* datatype) {
     atl_mpi_check_op_params(in, inout, length, datatype, __FUNCTION__);
     atl_mpi_bf16_base_op(in, inout, length, &prod_wrap);
 }
 
 static void TARGET_ATTRIBUTE_ALL atl_mpi_bf16_min_op(void* in,
-                                                      void* inout,
-                                                      int* length,
-                                                      MPI_Datatype* datatype) {
+                                                     void* inout,
+                                                     int* length,
+                                                     MPI_Datatype* datatype) {
     atl_mpi_check_op_params(in, inout, length, datatype, __FUNCTION__);
     atl_mpi_bf16_base_op(in, inout, length, &min_wrap);
 }
 
 static void TARGET_ATTRIBUTE_ALL atl_mpi_bf16_max_op(void* in,
-                                                      void* inout,
-                                                      int* length,
-                                                      MPI_Datatype* datatype) {
+                                                     void* inout,
+                                                     int* length,
+                                                     MPI_Datatype* datatype) {
     atl_mpi_check_op_params(in, inout, length, datatype, __FUNCTION__);
     atl_mpi_bf16_base_op(in, inout, length, &max_wrap);
 }
@@ -509,7 +509,6 @@ atl_mpi_lib_type_t atl_mpi_get_lib_type() {
 }
 
 atl_status_t atl_mpi_set_env(const atl_attr_t& attr) {
-
     char mpi_ep_count_str[EP_IDX_MAX_STR_LEN] = { 0 };
 
     /* we have endpoints on MPI and ATL levels */
@@ -598,7 +597,7 @@ static atl_status_t atl_mpi_mr_dereg(atl_ctx_t* ctx, atl_mr_t* mr) {
 static atl_status_t atl_mpi_ep_send(atl_ep_t* ep,
                                     const void* buf,
                                     size_t len,
-                                    size_t dest_proc_idx,
+                                    int dst_proc_idx,
                                     uint64_t tag,
                                     atl_req_t* req) {
     atl_mpi_ep_t* mpi_ep = container_of(ep, atl_mpi_ep_t, ep);
@@ -606,7 +605,7 @@ static atl_status_t atl_mpi_ep_send(atl_ep_t* ep,
     mpi_req->comp_state = ATL_MPI_COMP_POSTED;
 
     int ret = MPI_Isend(
-        buf, len, MPI_CHAR, dest_proc_idx, (int)tag, mpi_ep->mpi_comm, &mpi_req->native_req);
+        buf, len, MPI_CHAR, dst_proc_idx, (int)tag, mpi_ep->mpi_comm, &mpi_req->native_req);
 
 #if 0
 //#ifdef ENABLE_DEBUG
@@ -641,7 +640,7 @@ static atl_status_t atl_mpi_ep_send(atl_ep_t* ep,
 static atl_status_t atl_mpi_ep_recv(atl_ep_t* ep,
                                     void* buf,
                                     size_t len,
-                                    size_t src_proc_idx,
+                                    int src_proc_idx,
                                     uint64_t tag,
                                     atl_req_t* req) {
     atl_mpi_ep_t* mpi_ep = container_of(ep, atl_mpi_ep_t, ep);
@@ -682,7 +681,7 @@ static atl_status_t atl_mpi_ep_recv(atl_ep_t* ep,
 }
 
 static atl_status_t atl_mpi_ep_probe(atl_ep_t* ep,
-                                     size_t src_proc_idx,
+                                     int src_proc_idx,
                                      uint64_t tag,
                                      int* found,
                                      size_t* recv_len) {
@@ -716,8 +715,7 @@ static atl_status_t atl_mpi_ep_allgatherv(atl_ep_t* ep,
     atl_mpi_ep_t* mpi_ep = container_of(ep, atl_mpi_ep_t, ep);
     atl_mpi_req_t* mpi_req = ((atl_mpi_req_t*)req->internal);
 
-    if (global_data.sync_coll)
-    {
+    if (global_data.sync_coll) {
         ret = MPI_Allgatherv((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
                              send_len,
                              MPI_CHAR,
@@ -729,8 +727,7 @@ static atl_status_t atl_mpi_ep_allgatherv(atl_ep_t* ep,
         mpi_req->comp_state = ATL_MPI_COMP_COMPLETED;
         mpi_req->native_req = MPI_REQUEST_NULL;
     }
-    else
-    {
+    else {
         ret = MPI_Iallgatherv((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
                               send_len,
                               MPI_CHAR,
@@ -761,8 +758,7 @@ static atl_status_t atl_mpi_ep_allreduce(atl_ep_t* ep,
     MPI_Datatype mpi_dtype = atl2mpi_dtype(dtype);
     MPI_Op mpi_op = atl2mpi_op(op, mpi_dtype);
 
-    if (global_data.sync_coll)
-    {
+    if (global_data.sync_coll) {
         ret = MPI_Allreduce((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
                             recv_buf,
                             count,
@@ -772,8 +768,7 @@ static atl_status_t atl_mpi_ep_allreduce(atl_ep_t* ep,
         mpi_req->comp_state = ATL_MPI_COMP_COMPLETED;
         mpi_req->native_req = MPI_REQUEST_NULL;
     }
-    else
-    {
+    else {
         ret = MPI_Iallreduce((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
                              recv_buf,
                              count,
@@ -825,8 +820,7 @@ static atl_status_t atl_mpi_ep_alltoall(atl_ep_t* ep,
     atl_mpi_ep_t* mpi_ep = container_of(ep, atl_mpi_ep_t, ep);
     atl_mpi_req_t* mpi_req = ((atl_mpi_req_t*)req->internal);
 
-    if (global_data.sync_coll)
-    {
+    if (global_data.sync_coll) {
         ret = MPI_Alltoall((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
                            len,
                            MPI_CHAR,
@@ -837,8 +831,7 @@ static atl_status_t atl_mpi_ep_alltoall(atl_ep_t* ep,
         mpi_req->comp_state = ATL_MPI_COMP_COMPLETED;
         mpi_req->native_req = MPI_REQUEST_NULL;
     }
-    else
-    {
+    else {
         ret = MPI_Ialltoall((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
                             len,
                             MPI_CHAR,
@@ -866,8 +859,7 @@ static atl_status_t atl_mpi_ep_alltoallv(atl_ep_t* ep,
     atl_mpi_ep_t* mpi_ep = container_of(ep, atl_mpi_ep_t, ep);
     atl_mpi_req_t* mpi_req = ((atl_mpi_req_t*)req->internal);
 
-    if (global_data.sync_coll)
-    {
+    if (global_data.sync_coll) {
         ret = MPI_Alltoallv((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
                             send_lens,
                             send_offsets,
@@ -880,8 +872,7 @@ static atl_status_t atl_mpi_ep_alltoallv(atl_ep_t* ep,
         mpi_req->comp_state = ATL_MPI_COMP_COMPLETED;
         mpi_req->native_req = MPI_REQUEST_NULL;
     }
-    else
-    {
+    else {
         ret = MPI_Ialltoallv((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
                              send_lens,
                              send_offsets,
@@ -899,20 +890,17 @@ static atl_status_t atl_mpi_ep_alltoallv(atl_ep_t* ep,
 }
 
 static atl_status_t atl_mpi_ep_barrier(atl_ep_t* ep, atl_req_t* req) {
-
     int ret = MPI_SUCCESS;
 
     atl_mpi_ep_t* mpi_ep = container_of(ep, atl_mpi_ep_t, ep);
     atl_mpi_req_t* mpi_req = ((atl_mpi_req_t*)req->internal);
 
-    if (global_data.sync_coll)
-    {
+    if (global_data.sync_coll) {
         ret = MPI_Barrier(mpi_ep->mpi_comm);
         mpi_req->comp_state = ATL_MPI_COMP_COMPLETED;
         mpi_req->native_req = MPI_REQUEST_NULL;
     }
-    else
-    {
+    else {
         ret = MPI_Ibarrier(mpi_ep->mpi_comm, &mpi_req->native_req);
         mpi_req->comp_state = ATL_MPI_COMP_POSTED;
     }
@@ -923,21 +911,19 @@ static atl_status_t atl_mpi_ep_barrier(atl_ep_t* ep, atl_req_t* req) {
 static atl_status_t atl_mpi_ep_bcast(atl_ep_t* ep,
                                      void* buf,
                                      size_t len,
-                                     size_t root,
+                                     int root,
                                      atl_req_t* req) {
     int ret = MPI_SUCCESS;
 
     atl_mpi_ep_t* mpi_ep = container_of(ep, atl_mpi_ep_t, ep);
     atl_mpi_req_t* mpi_req = ((atl_mpi_req_t*)req->internal);
 
-    if (global_data.sync_coll)
-    {
+    if (global_data.sync_coll) {
         ret = MPI_Bcast(buf, len, MPI_CHAR, root, mpi_ep->mpi_comm);
         mpi_req->comp_state = ATL_MPI_COMP_COMPLETED;
         mpi_req->native_req = MPI_REQUEST_NULL;
     }
-    else
-    {
+    else {
         ret = MPI_Ibcast(buf, len, MPI_CHAR, root, mpi_ep->mpi_comm, &mpi_req->native_req);
         mpi_req->comp_state = ATL_MPI_COMP_POSTED;
     }
@@ -949,7 +935,7 @@ static atl_status_t atl_mpi_ep_reduce(atl_ep_t* ep,
                                       const void* send_buf,
                                       void* recv_buf,
                                       size_t count,
-                                      size_t root,
+                                      int root,
                                       atl_datatype_t dtype,
                                       atl_reduction_t op,
                                       atl_req_t* req) {
@@ -958,25 +944,23 @@ static atl_status_t atl_mpi_ep_reduce(atl_ep_t* ep,
     atl_mpi_ep_t* mpi_ep = container_of(ep, atl_mpi_ep_t, ep);
     atl_mpi_req_t* mpi_req = ((atl_mpi_req_t*)req->internal);
 
-    size_t my_proc_idx = ep->ctx->coord.global_idx;
+    int my_proc_idx = ep->ctx->coord.global_idx;
     MPI_Datatype mpi_dtype = atl2mpi_dtype(dtype);
     MPI_Op mpi_op = atl2mpi_op(op, mpi_dtype);
 
-    if (global_data.sync_coll)
-    {
+    if (global_data.sync_coll) {
         ret = MPI_Reduce(
-                (send_buf && (send_buf == recv_buf) && (root == my_proc_idx)) ? MPI_IN_PLACE : send_buf,
-                recv_buf,
-                count,
-                mpi_dtype,
-                mpi_op,
-                root,
-                mpi_ep->mpi_comm);
+            (send_buf && (send_buf == recv_buf) && (root == my_proc_idx)) ? MPI_IN_PLACE : send_buf,
+            recv_buf,
+            count,
+            mpi_dtype,
+            mpi_op,
+            root,
+            mpi_ep->mpi_comm);
         mpi_req->comp_state = ATL_MPI_COMP_COMPLETED;
         mpi_req->native_req = MPI_REQUEST_NULL;
     }
-    else
-    {
+    else {
         ret = MPI_Ireduce(
             (send_buf && (send_buf == recv_buf) && (root == my_proc_idx)) ? MPI_IN_PLACE : send_buf,
             recv_buf,
@@ -1007,20 +991,18 @@ static atl_status_t atl_mpi_ep_reduce_scatter(atl_ep_t* ep,
     MPI_Datatype mpi_dtype = atl2mpi_dtype(dtype);
     MPI_Op mpi_op = atl2mpi_op(op, mpi_dtype);
 
-    if (global_data.sync_coll)
-    {
-        ret = MPI_Reduce_scatter_block(
-            (send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
-            recv_buf,
-            recv_count,
-            mpi_dtype,
-            mpi_op,
-            mpi_ep->mpi_comm);
+    if (global_data.sync_coll) {
+        ret =
+            MPI_Reduce_scatter_block((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
+                                     recv_buf,
+                                     recv_count,
+                                     mpi_dtype,
+                                     mpi_op,
+                                     mpi_ep->mpi_comm);
         mpi_req->comp_state = ATL_MPI_COMP_COMPLETED;
         mpi_req->native_req = MPI_REQUEST_NULL;
     }
-    else
-    {
+    else {
         ret = MPI_Ireduce_scatter_block(
             (send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
             recv_buf,
@@ -1041,7 +1023,7 @@ static atl_status_t atl_mpi_ep_read(atl_ep_t* ep,
                                     atl_mr_t* mr,
                                     uint64_t addr,
                                     uintptr_t r_key,
-                                    size_t dest_proc_idx,
+                                    int dst_proc_idx,
                                     atl_req_t* req) {
     return ATL_STATUS_UNSUPPORTED;
 }
@@ -1052,7 +1034,7 @@ static atl_status_t atl_mpi_ep_write(atl_ep_t* ep,
                                      atl_mr_t* mr,
                                      uint64_t addr,
                                      uintptr_t r_key,
-                                     size_t dest_proc_idx,
+                                     int dst_proc_idx,
                                      atl_req_t* req) {
     return ATL_STATUS_UNSUPPORTED;
 }
@@ -1144,7 +1126,6 @@ static atl_comp_ops_t atl_mpi_ep_comp_ops = { .wait = atl_mpi_ep_wait,
                                               .check = atl_mpi_ep_check };
 
 static atl_status_t atl_mpi_ep_init(atl_mpi_ctx_t* mpi_ctx, size_t idx, atl_ep_t** ep) {
-
     int ret;
     ssize_t mpi_ep_idx = idx;
 
@@ -1160,8 +1141,9 @@ static atl_status_t atl_mpi_ep_init(atl_mpi_ctx_t* mpi_ctx, size_t idx, atl_ep_t
     MPI_Info_create(&info);
 
     char mpi_ep_idx_str[EP_IDX_MAX_STR_LEN];
-    
-    if (global_data.extra_ep) mpi_ep_idx += global_data.extra_ep;
+
+    if (global_data.extra_ep)
+        mpi_ep_idx += global_data.extra_ep;
     memset(mpi_ep_idx_str, 0, EP_IDX_MAX_STR_LEN);
     snprintf(mpi_ep_idx_str, EP_IDX_MAX_STR_LEN, "%zu", mpi_ep_idx);
 
@@ -1235,7 +1217,8 @@ static atl_status_t atl_mpi_init(int* argc,
         ret = MPI_Init_thread(argc, argv, required_thread_level, &provided_thread_level);
         if (provided_thread_level < required_thread_level) {
             ATL_MPI_PRINT("unexpected MPI thread level: requested %d, provided %d",
-                required_thread_level, provided_thread_level);
+                          required_thread_level,
+                          provided_thread_level);
             goto err_init;
         }
     }
@@ -1245,8 +1228,9 @@ static atl_status_t atl_mpi_init(int* argc,
         MPI_Query_thread(&provided_thread_level);
         if (provided_thread_level < required_thread_level) {
             ATL_MPI_PRINT("MPI was initialized externaly but with unexpected thread level: "
-                "requested %d, provided %d",
-                required_thread_level, provided_thread_level);
+                          "requested %d, provided %d",
+                          required_thread_level,
+                          provided_thread_level);
             goto err_init;
         }
     }
@@ -1333,14 +1317,14 @@ err_init:
     return ATL_STATUS_FAILURE;
 }
 
-atl_status_t atl_mpi_main_addr_reserv(char* main_addr) {
+atl_status_t atl_mpi_main_addr_reserve(char* main_addr) {
     return ATL_STATUS_UNSUPPORTED;
 }
 
 ATL_MPI_INI {
     atl_transport->name = "mpi";
     atl_transport->init = atl_mpi_init;
-    atl_transport->main_addr_reserv = atl_mpi_main_addr_reserv;
+    atl_transport->reserve_addr = atl_mpi_main_addr_reserve;
     return ATL_STATUS_SUCCESS;
 }
 #ifdef __cplusplus

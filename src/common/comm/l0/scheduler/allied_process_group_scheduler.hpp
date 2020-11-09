@@ -55,6 +55,7 @@ struct allied_process_group_scheduler : public thread_group_scheduler {
                                      size_t thread_id,
                                      device_community<class_id>& device_topology,
                                      device_t& device,
+                                     native::ccl_driver_context_ptr ctx,
                                      Arguments&&... args) {
         const topology_addr<group_id, class_id>& comm_data =
             device->template get_comm_data<group_id, class_id>();
@@ -88,6 +89,7 @@ struct allied_process_group_scheduler : public thread_group_scheduler {
             entry_factory::make_ordered_entry<EntryType, mode>(current_thread_schedule.get(),
                                                                device,
                                                                device_topology.get_device_storage(),
+                                                               ctx,
                                                                std::forward<Arguments>(args)...);
         LOG_DEBUG("do initial entry progress");
         created_entry->start();
@@ -119,6 +121,7 @@ struct allied_process_group_scheduler : public thread_group_scheduler {
                                          size_t thread_id,
                                          device_community<class_id>& device_topology,
                                          device_t& device,
+                                         native::ccl_driver_context_ptr ctx,
                                          Arguments&&... args) {
         const topology_addr<group_id, class_id>& comm_data =
             device->template get_comm_data<group_id, class_id>();
@@ -155,6 +158,7 @@ struct allied_process_group_scheduler : public thread_group_scheduler {
             entry_factory::make_ordered_entry<EntryType, mode>(current_thread_schedule.get(),
                                                                device,
                                                                device_topology.get_device_storage(),
+                                                               ctx,
                                                                std::forward<Arguments>(args)...);
 
         auto ipc_allgather_entry =
@@ -163,6 +167,7 @@ struct allied_process_group_scheduler : public thread_group_scheduler {
                                                                    device,
                                                                    ccl_communicator,
                                                                    node_total_devices,
+                                                                   ctx,
                                                                    created_entry->get_ipc_data());
 
         LOG_DEBUG("do initial entry progress");
@@ -187,7 +192,7 @@ struct allied_process_group_scheduler : public thread_group_scheduler {
         //if sched is not ready - send NULL
         return thread_schedule_ptr();
         auto req = submit_entry<EntryType, mode, group_id, class_id>(
-            process_id, thread_id, device_topology, device, std::forward<Arguments>(args)...);
+            process_id, thread_id, device_topology, device, ctx, std::forward<Arguments>(args)...);
         return req;
     }
 

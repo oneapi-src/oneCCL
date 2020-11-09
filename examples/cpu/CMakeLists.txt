@@ -27,6 +27,6 @@ foreach(src ${sources})
     target_link_libraries(${executable} PUBLIC stdc++)
     target_link_libraries(${executable} PRIVATE m)
     target_link_libraries(${executable} PUBLIC mpi)
-    install(TARGETS ${executable} RUNTIME DESTINATION ${CCL_INSTALL_EXAMPLES}/cpu)
+    install(TARGETS ${executable} RUNTIME DESTINATION ${CCL_INSTALL_EXAMPLES}/cpu OPTIONAL)
 endforeach()
 

@@ -38,7 +38,7 @@ CCL_API ccl_device_platform& get_platform() {
 }
 
 CCL_API std::shared_ptr<ccl_device_platform> ccl_device_platform::create(
-    const ccl::device_indices_t& indices /* = device_indices_per_driver()*/) {
+    const ccl::device_indices_type& indices /* = device_indices_per_driver()*/) {
     std::shared_ptr<ccl_device_platform> platform(new ccl_device_platform);
     platform->init_drivers(indices);
     return platform;
@@ -88,7 +88,7 @@ CCL_API void ccl_device_platform::init_drivers(const device_affinity_per_driver&
 }
 */
 CCL_API void ccl_device_platform::init_drivers(
-    const ccl::device_indices_t& driver_device_affinities /* = device_indices_per_driver()*/) {
+    const ccl::device_indices_type& driver_device_affinities /* = device_indices_per_driver()*/) {
     /* TODO - do we need that?
 
 #ifdef CCL_ENABLE_SYCL
@@ -127,7 +127,7 @@ CCL_API void ccl_device_platform::init_drivers(
             }
             else {
                 //collect device_index only for drvier specific index
-                ccl::device_indices_t per_driver_index;
+                ccl::device_indices_type per_driver_index;
                 for (const auto& affitinity : driver_device_affinities) {
                     if (std::get<ccl::device_index_enum::driver_index_id>(affitinity) ==
                         val.first) {
@@ -153,12 +153,13 @@ CCL_API void ccl_device_platform::init_drivers(
     }
 }
 
-CCL_API 
+CCL_API
 ccl_device_platform::context_storage_type ccl_device_platform::get_platform_contexts() {
     return context;
 }
 
-std::shared_ptr<ccl_context> ccl_device_platform::create_context(std::shared_ptr<ccl_device_driver> driver) {
+std::shared_ptr<ccl_context> ccl_device_platform::create_context(
+    std::shared_ptr<ccl_device_driver> driver) {
     return driver->create_context();
 }
 
@@ -169,9 +170,7 @@ void CCL_API ccl_device_platform::on_delete(ze_driver_handle_t& sub_device_handl
 }
 
 void CCL_API ccl_device_platform::on_delete(ze_context_handle_t& handle,
-                                            ze_context_handle_t& context){
-    
-}
+                                            ze_context_handle_t& context) {}
 
 CCL_API ccl_device_platform::const_driver_ptr ccl_device_platform::get_driver(
     ccl::index_type index) const {
@@ -192,7 +191,8 @@ CCL_API ccl_device_platform::driver_ptr ccl_device_platform::get_driver(ccl::ind
     return it->second;
 }
 
-const ccl_device_platform::driver_storage_type& ccl_device_platform::get_drivers() const noexcept {
+CCL_API const ccl_device_platform::driver_storage_type& ccl_device_platform::get_drivers()
+    const noexcept {
     return drivers;
 }
 
@@ -226,23 +226,23 @@ std::string CCL_API ccl_device_platform::to_string() const {
     return out.str();
 }
 
-details::adjacency_matrix ccl_device_platform::calculate_device_access_metric(
-    const ccl::device_indices_t& indices,
-    details::p2p_rating_function func) const {
-    details::adjacency_matrix result;
+detail::adjacency_matrix ccl_device_platform::calculate_device_access_metric(
+    const ccl::device_indices_type& indices,
+    detail::p2p_rating_function func) const {
+    detail::adjacency_matrix result;
 
     try {
         // diagonal matrix, assume symmetric cross device access
-        for (typename ccl::device_indices_t::const_iterator lhs_it = indices.begin();
+        for (typename ccl::device_indices_type::const_iterator lhs_it = indices.begin();
              lhs_it != indices.end();
              ++lhs_it) {
-            for (typename ccl::device_indices_t::const_iterator rhs_it = lhs_it;
+            for (typename ccl::device_indices_type::const_iterator rhs_it = lhs_it;
                  rhs_it != indices.end();
                  ++rhs_it) {
                 ccl_device_driver::const_device_ptr lhs_dev = get_device(*lhs_it);
                 ccl_device_driver::const_device_ptr rhs_dev = get_device(*rhs_it);
 
-                details::cross_device_rating rating = func(*lhs_dev, *rhs_dev);
+                detail::cross_device_rating rating = func(*lhs_dev, *rhs_dev);
                 result[*lhs_it][*rhs_it] = rating;
                 result[*rhs_it][*lhs_it] = rating;
             }

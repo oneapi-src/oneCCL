@@ -17,6 +17,7 @@
 
 #include "exec/thread/worker.hpp"
 #include "fusion/fusion.hpp"
+#include "internal_types.hpp"
 
 class ccl_service_worker : public ccl_worker {
 public:
@@ -25,7 +26,7 @@ public:
                        ccl_fusion_manager& fusion_manager);
     ~ccl_service_worker() = default;
 
-    ccl_status_t do_work(size_t& processed_count);
+    ccl::status do_work(size_t& processed_count);
 
 private:
     ccl_fusion_manager& fusion_manager;

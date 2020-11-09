@@ -28,11 +28,13 @@
 #include "unordered_coll/unordered_coll.hpp"
 
 // index = local_rank, value = global_rank
-using ccl_rank2rank_map = std::vector<size_t>;
+using ccl_rank2rank_map = std::vector<int>;
 
 namespace ccl {
+namespace v1 {
 class kvs_interface;
 }
+} // namespace ccl
 
 class alignas(CACHELINE_SIZE) ccl_comm {
 public:
@@ -42,13 +44,13 @@ public:
     ccl_comm(const ccl_comm& other) = delete;
     ccl_comm& operator=(const ccl_comm& other) = delete;
 
-    ccl_comm(size_t rank,
-             size_t size,
+    ccl_comm(int rank,
+             int size,
              ccl_comm_id_storage::comm_id&& id,
              std::shared_ptr<atl_wrapper> atl,
              bool share_resources = false);
-    ccl_comm(size_t rank,
-             size_t size,
+    ccl_comm(int rank,
+             int size,
              ccl_comm_id_storage::comm_id&& id,
              ccl_rank2rank_map&& ranks,
              std::shared_ptr<atl_wrapper> atl,
@@ -64,8 +66,8 @@ public:
     // communicator: size in {20} and ranks in {0..19}
     // communicator: return threads count in process {10}
     // communicator: return devices counts per thread in process
-    ccl_comm(const std::vector<size_t>& local_thread_device_ranks,
-             size_t cluster_devices_count,
+    ccl_comm(const std::vector<int>& local_ranks,
+             int comm_size,
              std::shared_ptr<ccl::kvs_interface> kvs_instance,
              ccl_comm_id_storage::comm_id&& id,
              bool share_resources = false);
@@ -80,15 +82,15 @@ public:
 
     std::shared_ptr<ccl_comm> clone_with_new_id(ccl_comm_id_storage::comm_id&& id);
 
-    size_t rank() const noexcept {
+    int rank() const noexcept {
         return m_rank;
     }
 
-    size_t size() const noexcept {
+    int size() const noexcept {
         return m_size;
     }
 
-    size_t pof2() const noexcept {
+    int pof2() const noexcept {
         return m_pof2;
     }
 
@@ -100,7 +102,7 @@ public:
         return thread_number;
     }
 
-    size_t on_process_ranks_count() const noexcept {
+    size_t ranks_per_process() const noexcept {
         return on_process_ranks_number;
     }
 
@@ -128,7 +130,7 @@ public:
         return id;
     }
 
-    void reset(size_t rank, size_t size) {
+    void reset(int rank, int size) {
         m_rank = rank;
         m_size = size;
         m_pof2 = ccl_pof2(m_size);
@@ -142,7 +144,7 @@ public:
      * @param rank a rank which is part of the current communicator
      * @return number of @c rank in the global communicator
      */
-    size_t get_global_rank(size_t rank) const;
+    int get_global_rank(int rank) const;
 
     const ccl_double_tree& dtree() const {
         return m_dtree;
@@ -162,12 +164,11 @@ public:
     std::unique_ptr<ccl_allreduce_2d_builder> allreduce_2d_builder;
 
 private:
-
     void allocate_resources();
 
-    size_t m_rank;
-    size_t m_size;
-    size_t m_pof2;
+    int m_rank;
+    int m_size;
+    int m_pof2;
 
     ccl_comm_id_storage::comm_id m_id;
     ccl_sched_id_t m_next_sched_id_internal;

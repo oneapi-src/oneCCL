@@ -36,19 +36,19 @@ inline cluster_group_device_creator::cluster_group_device_creator(size_t process
 inline size_t cluster_group_device_creator::default_property_p2p_rating_calculator(
     const ccl_device& lhs,
     const ccl_device& rhs) {
-    return details::property_p2p_rating_calculator(lhs, rhs, PROCESS_GROUP_WEIGHT);
+    return detail::property_p2p_rating_calculator(lhs, rhs, PROCESS_GROUP_WEIGHT);
 }
 
-inline details::adjacency_matrix cluster_group_device_creator::build_p2p_capability_matrix(
+inline detail::adjacency_matrix cluster_group_device_creator::build_p2p_capability_matrix(
     std::ostream& out,
-    const ccl::process_device_indices_t& single_node_device_indices,
-    details::p2p_rating_function ping) {
+    const ccl::process_device_indices_type& single_node_device_indices,
+    detail::p2p_rating_function ping) {
     // Build adjacency matrix with P2P capability:
     // Rows & columnn is a device IDs ( froms 0 to CCL_GPU_DEVICES_AFFINITY_MASK_SIZE)
     // element values - is a weight of P2P activity: 0 means - devices are not connected
     // If values is not 0 - than two devies can be combined together
 
-    details::adjacency_matrix ring_p2p_matrix;
+    detail::adjacency_matrix ring_p2p_matrix;
     if (single_node_device_indices.empty()) {
         out << "No indices nothing to build" << std::endl;
         return ring_p2p_matrix;
@@ -64,14 +64,14 @@ inline details::adjacency_matrix cluster_group_device_creator::build_p2p_capabil
 inline bool cluster_group_device_creator::build_all(
     std::ostream& out,
     const ccl::context_comm_addr& comm_addr,
-    const ccl::process_device_indices_t& cur_process_per_thread_device_indices,
-    const details::adjacency_matrix& single_node_matrix,
-    details::p2p_rating_function ping) {
+    const ccl::process_device_indices_type& cur_process_per_thread_device_indices,
+    const detail::adjacency_matrix& single_node_matrix,
+    detail::p2p_rating_function ping) {
     out << "\n/************* \"" << cluster_group_device_creator::name()
         << "\" for threads: " << context.process_device_topology.size() << "*************/\n"
         << std::endl;
 
-    details::plain_graph_list my_device_graphs = details::graph_list_resolver(
+    detail::plain_graph_list my_device_graphs = detail::graph_list_resolver(
         single_node_matrix, cur_process_per_thread_device_indices, ping);
 
     size_t size = my_device_graphs.size();
@@ -82,26 +82,26 @@ inline bool cluster_group_device_creator::build_all(
     }
 
     out << "Transform graph to colored with process color: " << process_index << "\n";
-    details::colored_plain_graph_list my_colored_graphs =
-        details::create_colored(my_device_graphs, process_index);
+    detail::colored_plain_graph_list my_colored_graphs =
+        detail::create_colored(my_device_graphs, process_index);
 
-    out << "Process graphs:\n" << details::to_string(my_colored_graphs) << std::endl;
+    out << "Process graphs:\n" << detail::to_string(my_colored_graphs) << std::endl;
 
-    details::global_sorted_colored_plain_graphs global_graphs;
+    detail::global_sorted_colored_plain_graphs global_graphs;
     context.collect_cluster_colored_plain_graphs(my_colored_graphs, global_graphs);
 
     //calculate my devicses offset (rank) from cluster devices
     std::map<size_t, size_t> process_device_rank_offset;
     size_t accumulated_offset = 0;
-    for (typename details::global_sorted_colored_plain_graphs::value_type& process_graphs :
+    for (typename detail::global_sorted_colored_plain_graphs::value_type& process_graphs :
          global_graphs) {
         size_t process_num = process_graphs.first;
-        const details::colored_plain_graph_list& proc_graphs = process_graphs.second;
+        const detail::colored_plain_graph_list& proc_graphs = process_graphs.second;
 
         process_device_rank_offset[process_num] = accumulated_offset; //offset for iter process
         out << "Process idx: " << process_num << ", rank_offset: " << accumulated_offset
             << std::endl;
-        for (const details::colored_plain_graph& graph : proc_graphs) {
+        for (const detail::colored_plain_graph& graph : proc_graphs) {
             accumulated_offset += graph.size();
         }
     }
@@ -118,12 +118,12 @@ inline bool cluster_group_device_creator::build_all(
     ipc_devices_on_node.reserve(context.cluster_gpu_indices.size());
     processes_on_node.reserve(context.cluster_gpu_indices.size());
 
-    ccl::device_indices_t ipc_devices_candidates;
+    ccl::device_indices_type ipc_devices_candidates;
     for (const auto& node_conf : context.cluster_gpu_indices) {
         const ccl::host_id& hostname = node_conf.first;
-        const ccl::process_device_indices_t& processes = node_conf.second;
+        const ccl::process_device_indices_type& processes = node_conf.second;
 
-        ccl::device_indices_t node_device_intersection; //shared devics
+        ccl::device_indices_type node_device_intersection; //shared devics
 
         // each node should have the same processes count
         if (!processes_on_node.empty()) {
@@ -138,7 +138,7 @@ inline bool cluster_group_device_creator::build_all(
 
         //find shared devices for processes on node.
         for (auto it = processes.begin(); it != processes.end() && symm_test; ++it) {
-            ccl::device_indices_t result_intersection;
+            ccl::device_indices_type result_intersection;
             std::set_intersection(it->second.begin(),
                                   it->second.end(),
                                   node_device_intersection.begin(),
@@ -175,7 +175,7 @@ inline bool cluster_group_device_creator::build_all(
 
     // additional device types to inject in a final topology
     using thread_idx_t = size_t;
-    using colored_device_per_thread = details::colored_indexed_data<thread_idx_t>;
+    using colored_device_per_thread = detail::colored_indexed_data<thread_idx_t>;
 
     std::vector<colored_device_per_thread> ipc_devices;
     size_t ipc_links_per_proc = 0;
@@ -306,18 +306,18 @@ template <ccl::device_topology_type class_id>
 inline bool cluster_group_device_creator::build_impl(
     std::ostream& out,
     const ccl::context_comm_addr& comm_addr,
-    const ccl::process_device_indices_t& cur_process_per_thread_device_indices,
-    const details::adjacency_matrix& single_node_matrix,
-    const std::vector<std::vector<details::colored_indexed_data<size_t>>>& syntetic_devices,
-    details::colored_plain_graph_list& graph_list,
+    const ccl::process_device_indices_type& cur_process_per_thread_device_indices,
+    const detail::adjacency_matrix& single_node_matrix,
+    const std::vector<std::vector<detail::colored_indexed_data<size_t>>>& syntetic_devices,
+    detail::colored_plain_graph_list& graph_list,
     std::map<size_t, size_t> process_device_rank_offset,
     size_t cluster_device_total_size,
-    details::p2p_rating_function ping /* = default_property_p2p_rating_calculator*/) {
+    detail::p2p_rating_function ping /* = default_property_p2p_rating_calculator*/) {
     size_t ring_index = 0;
     out << "Start building topology: " << ::to_string(class_id)
         << ", for graphs: " << graph_list.size() << "\n"
         << "ring index: " << ring_index << std::endl;
-    out << details::to_string(graph_list);
+    out << detail::to_string(graph_list);
 
     auto& ctx_per_thread_data = context.process_device_topology;
     (void)ctx_per_thread_data;
@@ -348,7 +348,7 @@ inline bool cluster_group_device_creator::build_impl(
             std::shared_ptr<specific_plain_device_storage> non_indexed_plain_devices =
                 devices_factory.thread_gpu_comms.find(thread_id)->second;
             // create device comm wrappers and upgrade last devices in list up to numa type
-            details::color_t process;
+            detail::color_t process;
             (void)process;
             ccl::device_index_type last_in_graph_index;
             const auto& tmp = *id_ring.rbegin();
@@ -367,7 +367,7 @@ inline bool cluster_group_device_creator::build_impl(
                 }
 
                 auto proxy_virt =
-                    details::add_numa_proxy_device<ccl_virtual_gpu_comm, group_id(), class_id>(
+                    detail::add_numa_proxy_device<ccl_virtual_gpu_comm, group_id(), class_id>(
                         *non_indexed_plain_devices, last_in_graph_index, context, devices_factory);
                 if (proxy_virt) {
                     created_cpu_context_indices.insert(last_in_graph_index);
@@ -376,7 +376,7 @@ inline bool cluster_group_device_creator::build_impl(
                 }
                 else {
                     auto proxy_real =
-                        details::add_numa_proxy_device<ccl_gpu_comm, group_id(), class_id>(
+                        detail::add_numa_proxy_device<ccl_gpu_comm, group_id(), class_id>(
                             *non_indexed_plain_devices,
                             last_in_graph_index,
                             context,
@@ -446,7 +446,7 @@ inline bool cluster_group_device_creator::build_impl(
 
             // use graph ids to enumerate thread plain list `thread_gpu_comms` into `out_indexed_devices`
             auto rank_builder =
-                create_device_functor<details::colored_graph_ring_indexer<group_id(), class_id>>(
+                create_device_functor<detail::colored_graph_ring_indexer<group_id(), class_id>>(
                     id_ring,
                     thread_id,
                     process_index,
@@ -458,7 +458,7 @@ inline bool cluster_group_device_creator::build_impl(
             ccl_tuple_for_each(*non_indexed_plain_devices, rank_builder);
 
             // print partial topology enumeration for 'graph' from 'graph_list'
-            details::printer<group_id(), class_id> p;
+            detail::printer<group_id(), class_id> p;
             ccl_tuple_for_each(out_indexed_devices->get_device_storage(), p);
             out << "Indexer result for devices in thread idx (" << thread_id << "/"
                 << ctx_per_thread_data.size() << "):\n"
@@ -498,19 +498,19 @@ inline bool cluster_group_device_creator::build_impl(
 
             //find max device rank in current thread devices
             const auto& curr_real =
-                details::get_device_with_min_rank<ccl_gpu_comm, group_id(), class_id>(
+                detail::get_device_with_min_rank<ccl_gpu_comm, group_id(), class_id>(
                     indexed_devices_for_current_thread, id_ring);
             const auto& curr_virt =
-                details::get_device_with_min_rank<ccl_virtual_gpu_comm, group_id(), class_id>(
+                detail::get_device_with_min_rank<ccl_virtual_gpu_comm, group_id(), class_id>(
                     indexed_devices_for_current_thread, id_ring);
-            const auto& curr_scale_real = details::
+            const auto& curr_scale_real = detail::
                 get_device_with_min_rank<ccl_numa_proxy<ccl_gpu_comm>, group_id(), class_id>(
                     indexed_devices_for_current_thread, id_ring);
             const auto& curr_scale_virt =
-                details::get_device_with_min_rank<ccl_numa_proxy<ccl_virtual_gpu_comm>,
-                                                  group_id(),
-                                                  class_id>(indexed_devices_for_current_thread,
-                                                            id_ring);
+                detail::get_device_with_min_rank<ccl_numa_proxy<ccl_virtual_gpu_comm>,
+                                                 group_id(),
+                                                 class_id>(indexed_devices_for_current_thread,
+                                                           id_ring);
 
             size_t tg_max_rank = std::max({ std::get<0>(curr_real),
                                             std::get<0>(curr_virt),
@@ -547,19 +547,19 @@ inline bool cluster_group_device_creator::build_impl(
                 auto& next_thread_ring_topology = community->get_device_storage();
 
                 const auto& real =
-                    details::get_device_with_max_rank<ccl_gpu_comm, group_id(), class_id>(
+                    detail::get_device_with_max_rank<ccl_gpu_comm, group_id(), class_id>(
                         next_thread_ring_topology, id_ring);
                 const auto& virt =
-                    details::get_device_with_max_rank<ccl_virtual_gpu_comm, group_id(), class_id>(
+                    detail::get_device_with_max_rank<ccl_virtual_gpu_comm, group_id(), class_id>(
                         next_thread_ring_topology, id_ring);
                 const auto& scale_real =
-                    details::get_device_with_max_rank<ccl_numa_proxy<ccl_gpu_comm>,
-                                                      group_id(),
-                                                      class_id>(next_thread_ring_topology, id_ring);
+                    detail::get_device_with_max_rank<ccl_numa_proxy<ccl_gpu_comm>,
+                                                     group_id(),
+                                                     class_id>(next_thread_ring_topology, id_ring);
                 const auto& scale_virt =
-                    details::get_device_with_max_rank<ccl_numa_proxy<ccl_virtual_gpu_comm>,
-                                                      group_id(),
-                                                      class_id>(next_thread_ring_topology, id_ring);
+                    detail::get_device_with_max_rank<ccl_numa_proxy<ccl_virtual_gpu_comm>,
+                                                     group_id(),
+                                                     class_id>(next_thread_ring_topology, id_ring);
                 if (next_rank != std::min({ std::get<0>(real),
                                             std::get<0>(virt),
                                             std::get<0>(scale_real),
@@ -577,7 +577,7 @@ inline bool cluster_group_device_creator::build_impl(
                     << ")" << std::endl;
                 if (next_rank == std::get<0>(real)) {
                     auto locker =
-                        details::add_concurrent_locker_device<ccl_gpu_comm, group_id(), class_id>(
+                        detail::add_concurrent_locker_device<ccl_gpu_comm, group_id(), class_id>(
                             next_rank,
                             index_offset_for_graphs[graph_num],
                             real,
@@ -589,7 +589,7 @@ inline bool cluster_group_device_creator::build_impl(
                         << locker->to_string() << std::endl;
                 }
                 else if (next_rank == std::get<0>(virt)) {
-                    auto locker = details::
+                    auto locker = detail::
                         add_concurrent_locker_device<ccl_virtual_gpu_comm, group_id(), class_id>(
                             next_rank,
                             index_offset_for_graphs[graph_num],
@@ -646,13 +646,13 @@ inline bool cluster_group_device_creator::build_impl(
                     auto& out_indexed_devices = community->get_device_storage();
 
                     size_t inserted_device_type_index =
-                        details::inject_scaleup_device<group_id(),
-                                                       class_id,
-                                                       process_group_context,
-                                                       ccl_gpu_comm,
-                                                       ccl_virtual_gpu_comm,
-                                                       ccl_numa_proxy<ccl_gpu_comm>,
-                                                       ccl_numa_proxy<ccl_virtual_gpu_comm>>(
+                        detail::inject_scaleup_device<group_id(),
+                                                      class_id,
+                                                      process_group_context,
+                                                      ccl_gpu_comm,
+                                                      ccl_virtual_gpu_comm,
+                                                      ccl_numa_proxy<ccl_gpu_comm>,
+                                                      ccl_numa_proxy<ccl_virtual_gpu_comm>>(
                             out_indexed_devices, idx.index, context, devices_factory);
                     if (inserted_device_type_index != std::numeric_limits<size_t>::max()) {
                         out << "Inject scaleUp device by order: " << inserted_device_type_index
@@ -687,7 +687,7 @@ inline bool cluster_group_device_creator::build_impl(
 
                     auto& out_indexed_devices = community->get_device_storage();
 
-                    size_t inserted_device_type_index = details::inject_scaleout_device<
+                    size_t inserted_device_type_index = detail::inject_scaleout_device<
                         group_id(),
                         class_id,
                         process_group_context,
@@ -730,7 +730,7 @@ inline bool cluster_group_device_creator::build_impl(
          ++per_thread_it) {
         size_t thread_id = per_thread_it->first;
 
-        details::printer<group_id(), class_id> p;
+        detail::printer<group_id(), class_id> p;
 
         std::shared_ptr<device_community<class_id>> community;
         if (graph_list.size() == 1) {
