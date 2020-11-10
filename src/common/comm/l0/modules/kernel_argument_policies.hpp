@@ -89,6 +89,13 @@ private:
 };
 
 template <size_t pos, class ArgType, bool must_exist = true>
+struct arg_access_policy_atomic_uncached : arg_access_policy_atomic<pos, ArgType, must_exist> {
+    using base_t = arg_access_policy_atomic<pos, ArgType, must_exist>;
+    using arg_type = typename base_t::arg_type;
+    using return_t = typename base_t::return_t;
+};
+
+template <size_t pos, class ArgType, bool must_exist = true>
 struct arg_access_policy_atomic_move {
     using arg_type = ArgType;
     using return_t = std::pair<bool, arg_type>;

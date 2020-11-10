@@ -25,31 +25,31 @@
 
 #define MIN(a, b) std::min(a, b)
 
-ccl_status_t ccl_coll_build_direct_bcast(ccl_sched* sched,
-                                         ccl_buffer buf,
-                                         size_t count,
-                                         const ccl_datatype& dtype,
-                                         size_t root,
-                                         ccl_comm* comm) {
-    LOG_DEBUG("build direct bcast");
-
-    entry_factory::make_entry<bcast_entry>(sched, buf, count, dtype, root, comm);
-    return ccl_status_success;
-}
-
-ccl_status_t ccl_coll_build_naive_bcast(ccl_sched* sched,
+ccl::status ccl_coll_build_direct_bcast(ccl_sched* sched,
                                         ccl_buffer buf,
                                         size_t count,
                                         const ccl_datatype& dtype,
-                                        size_t root,
+                                        int root,
                                         ccl_comm* comm) {
+    LOG_DEBUG("build direct bcast");
+
+    entry_factory::make_entry<bcast_entry>(sched, buf, count, dtype, root, comm);
+    return ccl::status::success;
+}
+
+ccl::status ccl_coll_build_naive_bcast(ccl_sched* sched,
+                                       ccl_buffer buf,
+                                       size_t count,
+                                       const ccl_datatype& dtype,
+                                       int root,
+                                       ccl_comm* comm) {
     LOG_DEBUG("build naive bcast");
 
-    ccl_status_t status = ccl_status_success;
+    ccl::status status = ccl::status::success;
 
-    size_t rank = comm->rank();
-    size_t comm_size = comm->size();
-    size_t idx;
+    int rank = comm->rank();
+    int comm_size = comm->size();
+    int idx;
 
     if (comm_size == 1)
         goto fn_exit;
@@ -69,14 +69,14 @@ fn_exit:
     return status;
 }
 
-ccl_status_t ccl_coll_build_scatter_for_bcast(ccl_sched* sched,
-                                              ccl_buffer tmp_buf,
-                                              size_t root,
-                                              size_t nbytes,
-                                              ccl_comm* comm) {
+ccl::status ccl_coll_build_scatter_for_bcast(ccl_sched* sched,
+                                             ccl_buffer tmp_buf,
+                                             int root,
+                                             size_t nbytes,
+                                             ccl_comm* comm) {
     LOG_DEBUG("build scatter_for_bcast");
 
-    ccl_status_t status = ccl_status_success;
+    ccl::status status = ccl::status::success;
     int rank, local_root, comm_size, src, dst;
     int relative_rank, mask;
     int scatter_size, curr_size, recv_size, send_size;
@@ -118,7 +118,7 @@ ccl_status_t ccl_coll_build_scatter_for_bcast(ccl_sched* sched,
                 entry_factory::make_entry<recv_entry>(sched,
                                                       tmp_buf + relative_rank * scatter_size,
                                                       recv_size,
-                                                      ccl_datatype_char,
+                                                      ccl_datatype_int8,
                                                       src,
                                                       comm);
                 sched->add_barrier();
@@ -148,7 +148,7 @@ ccl_status_t ccl_coll_build_scatter_for_bcast(ccl_sched* sched,
                     sched,
                     tmp_buf + scatter_size * (relative_rank + mask),
                     send_size,
-                    ccl_datatype_char,
+                    ccl_datatype_int8,
                     dst,
                     comm);
                 sched->add_barrier();
@@ -161,15 +161,15 @@ ccl_status_t ccl_coll_build_scatter_for_bcast(ccl_sched* sched,
     return status;
 }
 
-ccl_status_t ccl_coll_build_scatter_ring_allgather_bcast(ccl_sched* sched,
-                                                         ccl_buffer buf,
-                                                         size_t count,
-                                                         const ccl_datatype& dtype,
-                                                         size_t root,
-                                                         ccl_comm* comm) {
+ccl::status ccl_coll_build_scatter_ring_allgather_bcast(ccl_sched* sched,
+                                                        ccl_buffer buf,
+                                                        size_t count,
+                                                        const ccl_datatype& dtype,
+                                                        int root,
+                                                        ccl_comm* comm) {
     LOG_DEBUG("build scatter_ring_allgather bcast");
 
-    ccl_status_t status = ccl_status_success;
+    ccl::status status = ccl::status::success;
 
     int comm_size, rank, nbytes;
     int scatter_size, curr_size;
@@ -219,10 +219,10 @@ ccl_status_t ccl_coll_build_scatter_ring_allgather_bcast(ccl_sched* sched,
             right_count = 0;
         right_disp = rel_j * scatter_size;
         entry_factory::make_entry<send_entry>(
-            sched, tmp_buf + right_disp, right_count, ccl_datatype_char, right, comm);
+            sched, tmp_buf + right_disp, right_count, ccl_datatype_int8, right, comm);
         /* sendrecv, no barrier here */
         entry_factory::make_entry<recv_entry>(
-            sched, tmp_buf + left_disp, left_count, ccl_datatype_char, left, comm);
+            sched, tmp_buf + left_disp, left_count, ccl_datatype_int8, left, comm);
         sched->add_barrier();
 
         j = jnext;

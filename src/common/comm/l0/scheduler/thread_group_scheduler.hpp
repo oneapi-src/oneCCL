@@ -17,6 +17,11 @@
 #include "common/utils/spinlock.hpp"
 #include "sched/gpu_concurrent_sched.hpp"
 #include "sched/entry/l0/l0_allreduce_typed_entry.hpp"
+#include "sched/entry/l0/l0_allgatherv_typed_entry.hpp"
+#include "sched/entry/l0/l0_alltoallv_typed_entry.hpp"
+#include "sched/entry/l0/l0_bcast_typed_entry.hpp"
+#include "sched/entry/l0/l0_reduce_typed_entry.hpp"
+#include "sched/entry/l0/l0_allgatherv_typed_entry.hpp"
 //#include "sched/entry/l0/l0_allgather_handles_entry.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
 #include "common/comm/l0/device_community.hpp"
@@ -43,13 +48,14 @@ struct thread_group_scheduler {
 
     template <class EntryType,
               ccl_sched_add_mode mode,
-              ccl::device_group_split_type group_id,
+              ccl::group_split_type group_id,
               ccl::device_topology_type class_id,
               class device_t,
               class... Arguments>
     thread_schedule_ptr submit_entry(size_t thread_id,
                                      device_community<class_id>& device_topology,
                                      device_t& device,
+                                     native::ccl_driver_context_ptr ctx,
                                      Arguments&&... args) {
         const topology_addr<group_id, class_id>& comm_data =
             device->template get_comm_data<group_id, class_id>();
@@ -75,6 +81,7 @@ struct thread_group_scheduler {
             entry_factory::make_ordered_entry<EntryType, mode>(current_thread_schedule.get(),
                                                                device,
                                                                device_topology.get_device_storage(),
+                                                               ctx,
                                                                std::forward<Arguments>(args)...);
         LOG_DEBUG("do initial entry progress");
         created_entry->start();

@@ -99,9 +99,9 @@ fi
 CXX="g++"
 MPICH_VERSION="3.3"
 CXXFLAGS=""
-LDFLAGS=" -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl"
-LIBS=" -lpthread  -lfabric -lrt "
-MPIVERSION="2021.1-beta07"
+LDFLAGS=" -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl "
+LIBS="-lm   -lpthread  -lfabric -lrt "
+MPIVERSION="2021.1"
 MPILIBNAME="mpi"
 MPICXXLIBNAME="mpicxx"
 
@@ -401,7 +401,7 @@ for arg in "$@" ; do
     addarg=no
     ;;
     -g)
-    MPILIBDIR="/"
+    MPILIBDIR="/debug"
     ;;
     -static_log)
     static_log=yes
@@ -496,6 +496,41 @@ if [ $# -eq 0 ] ; then
     "$0" -help
     exit 1
 fi
+MPILIBDIR_MT="mt"
+if [ -n "$mpilib_override" ] ; then
+    case "$mpilib_override" in
+       opt )
+           MPILIBDIR="/release"
+           MPILIBDIR_MT=
+           ;;
+       opt_mt )
+           MPILIBDIR="/release"
+           ;;
+       dbg )
+           MPILIBDIR="/debug"
+           MPILIBDIR_MT=
+           ;;
+       dbg_mt )
+           MPILIBDIR="/debug"
+           ;;
+       * )
+           echo "Warning: incorrect library version specified. Automatically selected library will be used."
+           ;;
+    esac
+fi
+
+# -----------------------------------------------------------------------
+case "$MPILIBDIR" in
+    release | /release | debug | /debug)
+    if [ ! -z "$MPILIBDIR_MT" ]; then
+        MPILIBDIR=${MPILIBDIR}_${MPILIBDIR_MT}
+    fi
+    ;;
+    "" )
+    MPILIBDIR=/release
+    ;;
+esac
+# -----------------------------------------------------------------------
 if [ "$static_mpi" = yes ] ; then
     if [ "x$fortran_binding" = "x" ]; then
         mpilibs="${libdir}/libmpifort.a ${libdir}${MPILIBDIR}/lib${MPILIBNAME}.a"
@@ -511,7 +546,11 @@ if [ "$static_mpi" = yes ] ; then
     strip_debug_info=yes
     fi
 else
-    mpilibs="-l$MPILIBNAME"
+    if [ "x$fortran_binding" = "x" ]; then
+        mpilibs="-lmpifort -l$MPILIBNAME"
+    else
+        mpilibs="-l$MPILIBNAME"
+    fi
     I_MPI_OTHERLIBS=" -lrt -lpthread "
     if [ "$ilp64" = yes ]; then
     mpilibs="-lmpi_ilp64 $mpilibs"
@@ -565,11 +604,11 @@ else
 fi
 
 final_cppflags=" "
-final_ldflags="  -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl"
+final_ldflags="  -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl "
 final_libs="-lpthread -lrt "
 if test "no" = "no" -o "${interlib_deps}" = "no" ; then
-    final_ldflags="${final_ldflags}  -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl"
-    final_libs="${final_libs}   -lpthread  -lfabric -lrt "
+    final_ldflags="${final_ldflags}  -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl -L/p/pdsd/scratch/jenkins/artefacts_impi_2019/hcoll/lib"
+    final_libs="${final_libs}  -lm   -lpthread  -lfabric -lrt "
 fi
 
 # A temporary statement to invoke the compiler

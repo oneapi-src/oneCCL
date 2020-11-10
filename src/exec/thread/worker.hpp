@@ -18,6 +18,7 @@
 #include "exec/thread/base_thread.hpp"
 #include "sched/queue/strict_queue.hpp"
 #include "sched/queue/queue.hpp"
+#include "internal_types.hpp"
 
 #include <memory>
 #include <list>
@@ -43,7 +44,7 @@ public:
 
     void add(ccl_sched* sched);
 
-    virtual ccl_status_t do_work(size_t& processed_count);
+    virtual ccl::status do_work(size_t& processed_count);
 
     void clear_queue();
 
@@ -56,9 +57,9 @@ public:
     std::atomic<bool> is_locked;
 
 private:
-    ccl_status_t process_strict_sched_queue();
-    ccl_status_t process_sched_queue(size_t& processed_count, bool process_all);
-    ccl_status_t process_sched_bin(ccl_sched_bin* bin, size_t& processed_count);
+    ccl::status process_strict_sched_queue();
+    ccl::status process_sched_queue(size_t& processed_count, bool process_all);
+    ccl::status process_sched_bin(ccl_sched_bin* bin, size_t& processed_count);
 
     size_t do_work_counter = 0;
 

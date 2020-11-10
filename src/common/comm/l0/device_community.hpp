@@ -14,8 +14,8 @@
  limitations under the License.
 */
 #pragma once
-#include "oneapi/ccl/ccl_types.hpp"
-#include "oneapi/ccl/ccl_comm_split_attr_ids.hpp"
+#include "oneapi/ccl/types.hpp"
+#include "oneapi/ccl/comm_split_attr_ids.hpp"
 #include "common/comm/l0/device_group_routing_schema.hpp"
 #include "common/comm/l0/devices/devices_declaration.hpp"
 #include "common/comm/l0/gpu_device_types.hpp"
@@ -52,7 +52,7 @@ struct device_community {
         return devices ? std::get<device_t::type_idx()>(*devices).size() : 0;
     }
 
-    template <ccl::device_group_split_type group_id>
+    template <ccl::group_split_type group_id>
     void register_device_by_id(const ccl::device_index_type& device_id,
                                ccl::context_comm_addr& registered_addr) {
         if (!get_impl()) {
@@ -93,7 +93,7 @@ struct device_community {
         }
 
         // find device in topology and obtain its rank/sie
-        details::rank_getter<group_id, schema_id> initializer(device_id, registered_device_id);
+        detail::rank_getter<group_id, schema_id> initializer(device_id, registered_device_id);
         ccl_tuple_for_each(get_device_storage(), initializer);
 
         // copy shared data from community addr
@@ -107,11 +107,11 @@ struct device_community {
         return community_addr;
     }
 
-    template <ccl::device_group_split_type group_id>
+    template <ccl::group_split_type group_id>
     std::string to_string() const {
         std::stringstream result;
         result << "Topology: " << ::to_string(schema_id) << "\n";
-        native::details::printer<group_id, schema_id> p;
+        native::detail::printer<group_id, schema_id> p;
         if (devices) {
             ccl_tuple_for_each(*devices, p);
             result << p.to_string();

@@ -23,7 +23,7 @@
 
 #include "pm_rt.h"
 
-#define RESIZABLE_PMI_RT_KEY_FORMAT "%s-%zu"
+#define RESIZABLE_PMI_RT_KEY_FORMAT "%s-%d"
 
 typedef struct resizable_pm_rt_context {
     pm_rt_desc_t pmrt_desc;
@@ -69,7 +69,7 @@ static void resizable_pmirt_barrier(pm_rt_desc_t *pmrt_desc) {
 
 static atl_status_t resizable_pmirt_kvs_put(pm_rt_desc_t *pmrt_desc,
                                             char *kvs_key,
-                                            size_t proc_idx,
+                                            int proc_idx,
                                             const void *kvs_val,
                                             size_t kvs_val_len) {
     int ret;
@@ -109,7 +109,7 @@ static atl_status_t resizable_pmirt_kvs_put(pm_rt_desc_t *pmrt_desc,
 
 static atl_status_t resizable_pmirt_kvs_get(pm_rt_desc_t *pmrt_desc,
                                             char *kvs_key,
-                                            size_t proc_idx,
+                                            int proc_idx,
                                             void *kvs_val,
                                             size_t kvs_val_len) {
     int ret;
@@ -140,7 +140,7 @@ static atl_status_t resizable_pmirt_kvs_get(pm_rt_desc_t *pmrt_desc,
     return ATL_STATUS_SUCCESS;
 }
 
-static atl_status_t resizable_pmirt_update(size_t *proc_idx, size_t *proc_count) {
+static atl_status_t resizable_pmirt_update(int *proc_idx, int *proc_count) {
     int ret;
     ret = PMIR_Update();
     if (ret != PMIR_SUCCESS)
@@ -184,8 +184,8 @@ pm_rt_kvs_ops_t resizable_kvs_ops = {
     .get = resizable_pmirt_kvs_get,
 };
 
-atl_status_t resizable_pmirt_init(size_t *proc_idx,
-                                  size_t *proc_count,
+atl_status_t resizable_pmirt_init(int *proc_idx,
+                                  int *proc_count,
                                   pm_rt_desc_t **pmrt_desc,
                                   const char *main_addr) {
     int ret;
@@ -260,8 +260,8 @@ err_resizable:
     return ATL_STATUS_FAILURE;
 }
 
-atl_status_t resizable_pmirt_main_addr_reserv(char *main_addr) {
-    int ret = PMIR_Main_Addr_Reserv(main_addr);
+atl_status_t resizable_pmirt_main_addr_reserve(char *main_addr) {
+    int ret = PMIR_Main_Addr_Reserve(main_addr);
 
     if (ret)
         return ATL_STATUS_FAILURE;

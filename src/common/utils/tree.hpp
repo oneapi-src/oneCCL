@@ -21,7 +21,7 @@
 
 class ccl_bin_tree {
 public:
-    ccl_bin_tree(size_t comm_size, size_t rank, bool is_main = true)
+    ccl_bin_tree(int comm_size, int rank, bool is_main = true)
             : comm_size(comm_size),
               rank(rank),
               is_main(is_main) {
@@ -34,7 +34,7 @@ public:
                 r = height > 0 ? 1 << (height - 1) : -1;
             }
             else {
-                if (comm_size == 1u << height) {
+                if (comm_size == 1 << height) {
                     r = height > 0 ? (1 << height) - 1 : -1;
                 }
                 else {
@@ -54,26 +54,26 @@ public:
     ccl_bin_tree(const ccl_bin_tree& other) = default;
     ccl_bin_tree& operator=(const ccl_bin_tree& other) = default;
 
-    ssize_t left() const {
+    int left() const {
         return l;
     }
 
-    ssize_t right() const {
+    int right() const {
         return r;
     }
 
-    ssize_t parent() const {
+    int parent() const {
         return p;
     }
 
-    ccl_bin_tree copy_with_new_root(size_t new_root) const {
+    ccl_bin_tree copy_with_new_root(int new_root) const {
         ccl_bin_tree copy(*this);
-        ssize_t root = static_cast<ssize_t>(new_root);
+        int root = static_cast<int>(new_root);
 
         //if current node will become a new root or node was a default root - the tree must be reconstruced
         if (copy.rank == root || copy.rank == default_root) {
             //create part of tree with the default root
-            copy = ccl_bin_tree(static_cast<size_t>(comm_size),
+            copy = ccl_bin_tree(static_cast<int>(comm_size),
                                 copy.rank == default_root ? root : default_root,
                                 is_main);
             copy.rank = root;
@@ -92,13 +92,13 @@ public:
     }
 
 private:
-    void reset_connections(ssize_t new_root) {
+    void reset_connections(int new_root) {
         swap_if_any_of(p, default_root, new_root);
         swap_if_any_of(l, default_root, new_root);
         swap_if_any_of(r, default_root, new_root);
     }
 
-    static void swap_if_any_of(ssize_t& node, ssize_t val1, ssize_t val2) {
+    static void swap_if_any_of(int& node, int val1, int val2) {
         if (node == val1) {
             node = val2;
         }
@@ -109,12 +109,12 @@ private:
 
     void calc_height(bool main_tree) {
         if (main_tree || rank == default_root) {
-            while ((rank & (1u << height)) == 0 && (1u << height) < comm_size) {
+            while ((rank & (1 << height)) == 0 && (1 << height) < comm_size) {
                 ++height;
             }
         }
         else {
-            while ((rank & (1u << height)) != 0 && (1u << height) < comm_size) {
+            while ((rank & (1 << height)) != 0 && (1 << height) < comm_size) {
                 ++height;
             }
         }
@@ -122,7 +122,7 @@ private:
 
     void calc_parent() {
         //find a parent using height, assume that rank is a right child
-        ssize_t possible_parent_as_left = rank + (1 << height);
+        int possible_parent_as_left = rank + (1 << height);
         //right child has a bit `1` a the position `height + 1` due to it is calculated as `parent + 2^(heightP-1)`
         //where heightP is parent's height i.e height + 1
 
@@ -149,7 +149,7 @@ private:
 
     void calc_right() {
         r = rank + (1 << (height - 1));
-        ssize_t limit = comm_size - 1;
+        int limit = comm_size - 1;
 
         if (r > limit) {
             auto height_tmp = height;
@@ -166,20 +166,20 @@ private:
         }
     }
 
-    ssize_t comm_size;
-    ssize_t rank;
-    ssize_t height = 0;
-    ssize_t p = -1;
-    ssize_t l = -1;
-    ssize_t r = -1;
+    int comm_size;
+    int rank;
+    int height = 0;
+    int p = -1;
+    int l = -1;
+    int r = -1;
     bool is_main;
 
-    static const ssize_t default_root = 0;
+    static const int default_root = 0;
 };
 
 class ccl_double_tree {
 public:
-    ccl_double_tree(size_t comm_size, size_t rank)
+    ccl_double_tree(int comm_size, int rank)
             : t1(comm_size, rank, true),
               t2(comm_size, rank, false) {
         //LOG_DEBUG("T1: ", t1);
@@ -204,7 +204,7 @@ public:
         return t2;
     }
 
-    ccl_double_tree copy_with_new_root(size_t new_root) const {
+    ccl_double_tree copy_with_new_root(int new_root) const {
         return ccl_double_tree(t1.copy_with_new_root(new_root), t2.copy_with_new_root(new_root));
     }
 

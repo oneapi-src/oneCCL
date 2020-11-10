@@ -18,11 +18,13 @@
 
 #include "oneapi/ccl.hpp"
 
+#include <cassert>
 #include <chrono>
 #include <cstring>
 #include <functional>
 #include <iostream>
 #include <math.h>
+#include <mpi.h>
 #include <stdexcept>
 #include <stdio.h>
 #include <sys/time.h>
@@ -65,7 +67,7 @@ using namespace cl::sycl::access;
                       START_MSG_SIZE_POWER, \
                       COLL_ROOT); \
         std::vector<size_t> msg_counts(MSG_SIZE_COUNT); \
-        std::vector<std::string> msg_match_ids(MSG_SIZE_COUNT); \
+        std::vector<ccl::string_class> msg_match_ids(MSG_SIZE_COUNT); \
         for (size_t idx = 0; idx < MSG_SIZE_COUNT; ++idx) { \
             msg_counts[idx] = 1u << (START_MSG_SIZE_POWER + idx); \
             msg_match_ids[idx] = std::to_string(msg_counts[idx]); \
@@ -73,15 +75,15 @@ using namespace cl::sycl::access;
         try { \
             for (size_t idx = 0; idx < MSG_SIZE_COUNT; ++idx) { \
                 size_t msg_count = msg_counts[idx]; \
-                coll_attr.set<ccl::operation_attr_id::match_id>(msg_match_ids[idx]); \
+                attr.set<ccl::operation_attr_id::match_id>(msg_match_ids[idx]); \
                 PRINT_BY_ROOT(comm, \
                               "msg_count=%zu, match_id=%s", \
                               msg_count, \
-                              coll_attr.get<ccl::operation_attr_id::match_id>().c_str()); \
+                              attr.get<ccl::operation_attr_id::match_id>().c_str()); \
                 per_msg_code; \
             } \
         } \
-        catch (ccl::ccl_error & e) { \
+        catch (ccl::exception & e) { \
             printf("FAILED\n"); \
             fprintf(stderr, "ccl exception:\n%s\n", e.what()); \
         } \
@@ -91,5 +93,33 @@ using namespace cl::sycl::access;
         } \
         PRINT_BY_ROOT(comm, "PASSED"); \
     } while (0)
+
+double t1, t2, t;
+
+double when(void) {
+    struct timeval tv;
+    static struct timeval tv_base;
+    static int is_first = 1;
+
+    if (gettimeofday(&tv, NULL)) {
+        perror("gettimeofday");
+        return 0;
+    }
+
+    if (is_first) {
+        tv_base = tv;
+        is_first = 0;
+    }
+
+    return (double)(tv.tv_sec - tv_base.tv_sec) * 1.0e6 + (double)(tv.tv_usec - tv_base.tv_usec);
+}
+
+void mpi_finalize() {
+    int is_finalized = 0;
+    MPI_Finalized(&is_finalized);
+
+    if (!is_finalized)
+        MPI_Finalize();
+}
 
 #endif /* BASE_HPP */

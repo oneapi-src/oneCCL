@@ -30,7 +30,7 @@ public:
                  size_t cnt,
                  const ccl_datatype& dtype,
                  ccl::reduction reduction,
-                 size_t root,
+                 int root,
                  ccl_comm* comm)
             : base_coll_entry(sched),
               send_buf(send_buf),
@@ -47,14 +47,14 @@ public:
     void start() override {
         LOG_DEBUG("REDUCE entry req ", &req, ", cnt ", cnt);
         size_t bytes = cnt * dtype.size();
-        atl_status_t atl_status = atl_ep_reduce(sched->bin->get_atl_ep(),
-                                                send_buf.get_ptr(bytes),
-                                                recv_buf.get_ptr(bytes),
-                                                cnt,
-                                                root,
-                                                static_cast<atl_datatype_t>(dtype.idx()),
-                                                static_cast<atl_reduction_t>(op),
-                                                &req);
+        atl_status_t atl_status = comm->atl->atl_ep_reduce(sched->bin->get_atl_ep(),
+                                                           send_buf.get_ptr(bytes),
+                                                           recv_buf.get_ptr(bytes),
+                                                           cnt,
+                                                           root,
+                                                           static_cast<atl_datatype_t>(dtype.idx()),
+                                                           static_cast<atl_reduction_t>(op),
+                                                           &req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("REDUCE entry failed. atl_status: ", atl_status_to_str(atl_status));
@@ -65,7 +65,8 @@ public:
 
     void update() override {
         int req_status;
-        atl_status_t atl_status = atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
+        atl_status_t atl_status =
+            comm->atl->atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("REDUCE entry failed. atl_status: ", atl_status_to_str(atl_status));
@@ -107,7 +108,7 @@ private:
     size_t cnt;
     ccl_datatype dtype;
     ccl::reduction op;
-    size_t root;
+    int root;
     ccl_comm* comm;
     atl_req_t req{};
 };

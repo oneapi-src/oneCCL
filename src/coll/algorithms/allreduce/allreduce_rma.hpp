@@ -20,8 +20,8 @@
 typedef struct {
     int wait_dst;
 
-    size_t src_peer;
-    size_t dst_peer;
+    int src_peer;
+    int dst_peer;
 
     volatile uint64_t sync_flag; // src side will write here the index of iteration it completed
     atl_mr_t* sync_flag_mr;

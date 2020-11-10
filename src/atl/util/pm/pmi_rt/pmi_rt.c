@@ -13,15 +13,15 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "pm_rt_codec.h"
+#include "util/pm/codec/pm_rt_codec.h"
 
 #include <stdlib.h>
 
 #include "pmi/pmi.h"
 
-#include "pm_rt.h"
+#include "util/pm/pm_rt.h"
 
-#define PMI_RT_KEY_FORMAT "%s-%zu"
+#define PMI_RT_KEY_FORMAT "%s-%d"
 
 typedef struct pmi_pm_rt_context {
     pm_rt_desc_t pmrt_desc;
@@ -58,7 +58,7 @@ static void pmirt_finalize(pm_rt_desc_t *pmrt_desc) {
 
 static atl_status_t pmirt_kvs_put(pm_rt_desc_t *pmrt_desc,
                                   char *kvs_key,
-                                  size_t proc_idx,
+                                  int proc_idx,
                                   const void *kvs_val,
                                   size_t kvs_val_len) {
     int ret;
@@ -67,7 +67,7 @@ static atl_status_t pmirt_kvs_put(pm_rt_desc_t *pmrt_desc,
     if (!ctx->pmirt_main.initialized)
         return ATL_STATUS_FAILURE;
 
-    if (kvs_val_len > ctx->pmirt_main.max_vallen)
+    if ((int)kvs_val_len > ctx->pmirt_main.max_vallen)
         return ATL_STATUS_FAILURE;
 
     ret = snprintf(ctx->pmirt_main.key_storage,
@@ -96,7 +96,7 @@ static atl_status_t pmirt_kvs_put(pm_rt_desc_t *pmrt_desc,
 
 static atl_status_t pmirt_kvs_get(pm_rt_desc_t *pmrt_desc,
                                   char *kvs_key,
-                                  size_t proc_idx,
+                                  int proc_idx,
                                   void *kvs_val,
                                   size_t kvs_val_len) {
     int ret;
@@ -137,7 +137,7 @@ static void pmirt_barrier(pm_rt_desc_t *pmrt_desc) {
     (void)PMI_Barrier();
 }
 
-atl_status_t pmirt_update(size_t *proc_idx, size_t *proc_count) {
+atl_status_t pmirt_update(int *proc_idx, int *proc_count) {
     PMI_Get_size((int *)proc_idx);
     PMI_Get_rank((int *)proc_count);
     return ATL_STATUS_SUCCESS;
@@ -159,8 +159,9 @@ pm_rt_kvs_ops_t kvs_ops = {
     .get = pmirt_kvs_get,
 };
 
-atl_status_t pmirt_init(size_t *proc_idx, size_t *proc_count, pm_rt_desc_t **pmrt_desc) {
+atl_status_t pmirt_init(int *proc_idx, int *proc_count, pm_rt_desc_t **pmrt_desc) {
     int ret, spawned, max_kvsnamelen;
+    int proc_idx_tmp, proc_count_tmp;
 
     if (pmi_ctx_singleton.pmirt_main.initialized) {
         PMI_Get_size((int *)proc_idx);
@@ -174,18 +175,20 @@ atl_status_t pmirt_init(size_t *proc_idx, size_t *proc_count, pm_rt_desc_t **pmr
     if (ret != PMI_SUCCESS)
         return ATL_STATUS_FAILURE;
 
-    ret = PMI_Get_size((int *)proc_count);
+    ret = PMI_Get_size(&proc_count_tmp);
     if (ret != PMI_SUCCESS)
         goto err_pmi;
-    ret = PMI_Get_rank((int *)proc_idx);
+    *proc_count = proc_count_tmp;
+    ret = PMI_Get_rank(&proc_idx_tmp);
     if (ret != PMI_SUCCESS)
         goto err_pmi;
+    *proc_idx = proc_idx_tmp;
 
     ret = PMI_KVS_Get_name_length_max(&max_kvsnamelen);
     if (ret != PMI_SUCCESS)
         goto err_pmi;
 
-    pmi_ctx_singleton.pmirt_main.kvsname = calloc(1, max_kvsnamelen);
+    pmi_ctx_singleton.pmirt_main.kvsname = (char *)calloc(1, max_kvsnamelen);
     if (!pmi_ctx_singleton.pmirt_main.kvsname)
         goto err_pmi;
 

@@ -17,7 +17,7 @@
 #include "common/utils/yield.hpp"
 #include "exec/thread/base_thread.hpp"
 
-ccl_status_t ccl_base_thread::start(int affinity) {
+ccl::status ccl_base_thread::start(int affinity) {
     LOG_DEBUG(name(), " ", idx);
 
     start_affinity = affinity;
@@ -34,17 +34,17 @@ ccl_status_t ccl_base_thread::start(int affinity) {
     if (err) {
         LOG_ERROR(
             "error while creating ", name(), " thread #", idx, " pthread_create returns ", err);
-        return ccl_status_runtime_error;
+        return ccl::status::runtime_error;
     }
 
     while (!started.load(std::memory_order_relaxed)) {
         ccl_yield(ccl::global_data::env().yield_type);
     }
 
-    return ccl_status_success;
+    return ccl::status::success;
 }
 
-ccl_status_t ccl_base_thread::stop() {
+ccl::status ccl_base_thread::stop() {
     LOG_DEBUG(name(), " # ", idx);
 
     void* exit_code;
@@ -69,10 +69,10 @@ ccl_status_t ccl_base_thread::stop() {
                   ")");
     }
 
-    return ccl_status_success;
+    return ccl::status::success;
 }
 
-ccl_status_t ccl_base_thread::set_affinity(int affinity) {
+ccl::status ccl_base_thread::set_affinity(int affinity) {
     LOG_DEBUG(name(), " # ", idx, ", affinity ", affinity);
 
     int pthread_err;
@@ -83,15 +83,15 @@ ccl_status_t ccl_base_thread::set_affinity(int affinity) {
 
     if ((pthread_err = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset)) != 0) {
         LOG_ERROR("pthread_setaffinity_np failed, err ", pthread_err);
-        return ccl_status_runtime_error;
+        return ccl::status::runtime_error;
     }
 
     if (get_affinity() != affinity) {
         LOG_ERROR(name(), " ", idx, " is not pinned ", affinity);
-        return ccl_status_runtime_error;
+        return ccl::status::runtime_error;
     }
 
-    return ccl_status_success;
+    return ccl::status::success;
 }
 
 int ccl_base_thread::get_affinity() {

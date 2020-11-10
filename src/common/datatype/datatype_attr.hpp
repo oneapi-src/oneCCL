@@ -14,9 +14,9 @@
  limitations under the License.
 */
 #pragma once
-#include "oneapi/ccl/ccl_types.hpp"
-#include "oneapi/ccl/ccl_types_policy.hpp"
-#include "oneapi/ccl/ccl_datatype_attr_ids_traits.hpp"
+#include "oneapi/ccl/types.hpp"
+#include "oneapi/ccl/types_policy.hpp"
+#include "oneapi/ccl/datatype_attr_ids_traits.hpp"
 
 namespace ccl {
 
@@ -26,7 +26,7 @@ public:
      * `version` operations
      */
     using version_traits_t =
-        details::ccl_api_type_attr_traits<datatype_attr_id, datatype_attr_id::version>;
+        detail::ccl_api_type_attr_traits<datatype_attr_id, datatype_attr_id::version>;
 
     const typename version_traits_t::return_type& get_attribute_value(
         const version_traits_t& id) const {
@@ -36,7 +36,7 @@ public:
     typename version_traits_t::return_type set_attribute_value(typename version_traits_t::type val,
                                                                const version_traits_t& t) {
         (void)t;
-        throw ccl_error("Set value for 'ccl::datatype_attr_id::version' is not allowed");
+        throw ccl::exception("Set value for 'ccl::datatype_attr_id::version' is not allowed");
         return version;
     }
 
@@ -44,7 +44,7 @@ public:
      * `size` operations
      */
     using size_traits_t =
-        details::ccl_api_type_attr_traits<datatype_attr_id, datatype_attr_id::size>;
+        detail::ccl_api_type_attr_traits<datatype_attr_id, datatype_attr_id::size>;
 
     const typename size_traits_t::return_type& get_attribute_value(const size_traits_t& id) const {
         return datatype_size;
@@ -53,7 +53,7 @@ public:
     typename size_traits_t::return_type set_attribute_value(typename size_traits_t::return_type val,
                                                             const size_traits_t& t) {
         if (val <= 0) {
-            throw ccl_error("Size value must be greater than 0");
+            throw ccl::exception("Size value must be greater than 0");
         }
         auto old = datatype_size;
         datatype_size = val;

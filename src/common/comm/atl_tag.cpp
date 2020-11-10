@@ -30,7 +30,7 @@ void ccl_atl_tag::print() {
 }
 
 uint64_t ccl_atl_tag::create(ccl_comm_id_t comm_id,
-                             size_t rank,
+                             int rank,
                              ccl_sched_id_t sched_id,
                              ccl_op_id_t op_id) {
     uint64_t tag = 0;

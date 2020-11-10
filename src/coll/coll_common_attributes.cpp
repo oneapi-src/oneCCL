@@ -26,7 +26,7 @@ typename ccl_operation_attr_impl_t::version_traits_t::return_type
 ccl_operation_attr_impl_t::set_attribute_value(typename version_traits_t::type val,
                                                const version_traits_t& t) {
     (void)t;
-    throw ccl_error("Set value for 'ccl::operation_attr_id::version' is not allowed");
+    throw ccl::exception("Set value for 'ccl::operation_attr_id::version' is not allowed");
     return version;
 }
 
@@ -35,36 +35,36 @@ ccl_operation_attr_impl_t::get_attribute_value(const version_traits_t& id) const
     return version;
 }
 
-/**
- * `prologue_fn` operations definitions
- */
-const typename ccl_operation_attr_impl_t::prologue_fn_traits_t::return_type&
-ccl_operation_attr_impl_t::get_attribute_value(const prologue_fn_traits_t& id) const {
-    return prologue_fn;
-}
+// /**
+//  * `prologue_fn` operations definitions
+//  */
+// const typename ccl_operation_attr_impl_t::prologue_fn_traits_t::return_type&
+// ccl_operation_attr_impl_t::get_attribute_value(const prologue_fn_traits_t& id) const {
+//     return prologue_fn;
+// }
 
-typename ccl_operation_attr_impl_t::prologue_fn_traits_t::return_type
-ccl_operation_attr_impl_t::set_attribute_value(typename prologue_fn_traits_t::type val,
-                                               const prologue_fn_traits_t& t) {
-    auto old = prologue_fn.get();
-    prologue_fn = typename prologue_fn_traits_t::return_type{ val };
-    return typename prologue_fn_traits_t::return_type{ old };
-}
-/**
- * `epilogue_fn` operations definitions
- */
-const typename ccl_operation_attr_impl_t::epilogue_fn_traits_t::return_type&
-ccl_operation_attr_impl_t::get_attribute_value(const epilogue_fn_traits_t& id) const {
-    return epilogue_fn;
-}
+// typename ccl_operation_attr_impl_t::prologue_fn_traits_t::return_type
+// ccl_operation_attr_impl_t::set_attribute_value(typename prologue_fn_traits_t::type val,
+//                                                const prologue_fn_traits_t& t) {
+//     auto old = prologue_fn.get();
+//     prologue_fn = typename prologue_fn_traits_t::return_type{ val };
+//     return typename prologue_fn_traits_t::return_type{ old };
+// }
+// /**
+//  * `epilogue_fn` operations definitions
+//  */
+// const typename ccl_operation_attr_impl_t::epilogue_fn_traits_t::return_type&
+// ccl_operation_attr_impl_t::get_attribute_value(const epilogue_fn_traits_t& id) const {
+//     return epilogue_fn;
+// }
 
-typename ccl_operation_attr_impl_t::epilogue_fn_traits_t::return_type
-ccl_operation_attr_impl_t::set_attribute_value(typename epilogue_fn_traits_t::type val,
-                                               const epilogue_fn_traits_t& t) {
-    auto old = epilogue_fn.get();
-    epilogue_fn = typename epilogue_fn_traits_t::return_type{ val };
-    return typename epilogue_fn_traits_t::return_type{ old };
-}
+// typename ccl_operation_attr_impl_t::epilogue_fn_traits_t::return_type
+// ccl_operation_attr_impl_t::set_attribute_value(typename epilogue_fn_traits_t::type val,
+//                                                const epilogue_fn_traits_t& t) {
+//     auto old = epilogue_fn.get();
+//     epilogue_fn = typename epilogue_fn_traits_t::return_type{ val };
+//     return typename epilogue_fn_traits_t::return_type{ old };
+// }
 
 /**
  * `priority` operations definitions

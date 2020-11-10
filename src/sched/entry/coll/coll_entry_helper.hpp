@@ -47,12 +47,13 @@ public:
                         for direct MPI algo with prologue will use regular coll_entry
                         to simplify work with postponed fields
                     */
-                    sched->strict_start_order = true;
+                    sched->strict_order = true;
                 }
                 else {
                     /* otherwise will place entry directly into schedule due to performance reasons */
                     auto res = coll_entry_helper::build_schedule(sched, sched, param);
-                    CCL_ASSERT(res == ccl_status_success, "error during build_schedule, res ", res);
+                    CCL_ASSERT(
+                        res == ccl::status::success, "error during build_schedule, res ", res);
                     return nullptr; /* coll_entry ptr is required for prologue case only */
                 }
             }
@@ -62,7 +63,7 @@ public:
         return entry_factory::make_entry<coll_entry>(sched, param);
     }
 
-    static ccl_status_t build_schedule(ccl_sched* sched,
-                                       const ccl_sched* parent_sched,
-                                       const ccl_coll_entry_param& param);
+    static ccl::status build_schedule(ccl_sched* sched,
+                                      const ccl_sched* parent_sched,
+                                      const ccl_coll_entry_param& param);
 };

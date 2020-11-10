@@ -41,8 +41,8 @@ public:
                 }
                 else {
                     param.recv_buf[buf_idx][elem_idx] = static_cast<T>(SOME_VALUE);
-                    if (param.test_conf.data_type == DT_BFP16) {
-                        param.recv_buf_bfp16[buf_idx][elem_idx] = static_cast<short>(SOME_VALUE);
+                    if (param.test_conf.datatype == DT_BFLOAT16) {
+                        param.recv_buf_bf16[buf_idx][elem_idx] = static_cast<short>(SOME_VALUE);
                     }
                 }
             }
@@ -57,9 +57,12 @@ public:
     void run_derived(typed_test_param<T>& param) {
         void* recv_buf;
         size_t count = param.elem_count;
+
         const ccl_test_conf& test_conf = param.get_conf();
-        auto attr = ccl::environment::instance().create_operation_attr<ccl::broadcast_attr>();
-        ccl::datatype data_type = static_cast<ccl::datatype>(test_conf.data_type);
+
+        auto attr = ccl::create_operation_attr<ccl::broadcast_attr>();
+
+        ccl::datatype datatype = get_ccl_lib_datatype(test_conf);
 
         for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++) {
             size_t new_idx = param.buf_indexes[buf_idx];
@@ -67,8 +70,8 @@ public:
 
             recv_buf = param.get_recv_buf(new_idx);
 
-            param.reqs[buf_idx] = param.global_comm.bcast(
-                recv_buf, count, (ccl_datatype_t)data_type, ROOT_PROCESS_IDX, attr);
+            param.reqs[buf_idx] = ccl::broadcast(
+                recv_buf, count, datatype, ROOT_PROCESS_IDX, GlobalData::instance().comms[0], attr);
         }
     }
 };

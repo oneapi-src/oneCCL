@@ -39,7 +39,7 @@ size_t get_dtype_size(ccl_datatype_t dtype)
     {
         case ccl_dtype_char: { dtype_size = 1; break; }
         case ccl_dtype_int: { dtype_size = 4; break; }
-        case ccl_dtype_bfp16: { dtype_size = 2; break; }
+        case ccl_dtype_bf16: { dtype_size = 2; break; }
         case ccl_dtype_float: { dtype_size = 4; break; }
         case ccl_dtype_double: { dtype_size = 8; break; }
         case ccl_dtype_int64: { dtype_size = 8; break; }
@@ -50,7 +50,7 @@ size_t get_dtype_size(ccl_datatype_t dtype)
 }
 
 template <typename T>
-ccl_status_t do_prologue_T_2x(const void* in_buf, size_t in_count, ccl_datatype_t in_dtype,
+ccl::status do_prologue_T_2x(const void* in_buf, size_t in_count, ccl_datatype_t in_dtype,
                               void** out_buf, size_t* out_count, ccl_datatype_t* out_dtype,
                               const ccl::fn_context* ctx)
 {
@@ -75,11 +75,11 @@ ccl_status_t do_prologue_T_2x(const void* in_buf, size_t in_count, ccl_datatype_
     {
         ((T*)(*out_buf))[buf_idx] = ((T*)in_buf)[buf_idx] * 2;
     }
-    return ccl_status_success;
+    return ccl::status::success;
 }
 
 template <typename T>
-ccl_status_t do_epilogue_T_2x(const void* in_buf, size_t in_count, ccl_datatype_t in_dtype,
+ccl::status do_epilogue_T_2x(const void* in_buf, size_t in_count, ccl_datatype_t in_dtype,
                               void* out_buf, size_t* out_count, ccl_datatype_t out_dtype,
                               const ccl::fn_context* ctx)
 {
@@ -100,11 +100,11 @@ ccl_status_t do_epilogue_T_2x(const void* in_buf, size_t in_count, ccl_datatype_
         ((T*)out_buf)[buf_idx] = ((T*)in_buf)[buf_idx] * 2;
 
     }
-    return ccl_status_success;
+    return ccl::status::success;
 }
 
 template <typename T>
-ccl_status_t do_prologue_T_to_char(const void* in_buf, size_t in_count, ccl_datatype_t in_dtype,
+ccl::status do_prologue_T_to_char(const void* in_buf, size_t in_count, ccl_datatype_t in_dtype,
                                    void** out_buf, size_t* out_count, ccl_datatype_t* out_dtype,
                                    const ccl::fn_context* ctx)
 {
@@ -131,11 +131,11 @@ ccl_status_t do_prologue_T_to_char(const void* in_buf, size_t in_count, ccl_data
         int ival = (int)fval;
         ((char*)(*out_buf))[buf_idx] = (char)(ival % 256);
     }
-    return ccl_status_success;
+    return ccl::status::success;
 }
 
 template <typename T>
-ccl_status_t do_epilogue_char_to_T(const void* in_buf, size_t in_count, ccl_datatype_t in_dtype,
+ccl::status do_epilogue_char_to_T(const void* in_buf, size_t in_count, ccl_datatype_t in_dtype,
                                    void* out_buf, size_t* out_count, ccl_datatype_t out_dtype,
                                    const ccl::fn_context* ctx)
 {
@@ -161,11 +161,11 @@ ccl_status_t do_epilogue_char_to_T(const void* in_buf, size_t in_count, ccl_data
     {
         free((void*)in_buf);
     }
-    return ccl_status_success;
+    return ccl::status::success;
 }
 
 template <typename T>
-ccl_status_t do_reduction_null(const void* in_buf, size_t in_count, void* inout_buf,
+ccl::status do_reduction_null(const void* in_buf, size_t in_count, void* inout_buf,
                                size_t* out_count, ccl_datatype_t dtype, const ccl::fn_context* ctx)
 {
     size_t buf_idx;
@@ -211,11 +211,11 @@ ccl_status_t do_reduction_null(const void* in_buf, size_t in_count, void* inout_
             ASSERT(0, "unexpected dtype %d", dtype);
             break;
     }
-    return ccl_status_success;
+    return ccl::status::success;
 }
 
 template <typename T>
-ccl_status_t do_reduction_custom(const void* in_buf, size_t in_count, void* inout_buf,
+ccl::status do_reduction_custom(const void* in_buf, size_t in_count, void* inout_buf,
                                  size_t* out_count, ccl_datatype_t dtype, const ccl::fn_context* ctx)
 {
     size_t buf_idx;
@@ -261,13 +261,13 @@ ccl_status_t do_reduction_custom(const void* in_buf, size_t in_count, void* inou
             ASSERT(0, "unexpected dtype %d", dtype);
             break;
     }
-    return ccl_status_success;
+    return ccl::status::success;
 }
 
 template <typename T>
 int set_custom_reduction (ccl::allreduce_attr& coll_attr, typed_test_param<T>& param)
 {
-    ccl_reduction_type customFuncName = param.test_conf.reduction_type;
+    ccl_reduction_type customFuncName = param.test_conf.reduction;
     switch (customFuncName) {
         case RT_CUSTOM:
             coll_attr.set<ccl::allreduce_attr_id::reduction_fn>(do_reduction_custom<T>);
@@ -310,7 +310,7 @@ public:
         {
             for (size_t elem_idx = 0; elem_idx < param.elem_count; elem_idx++)
             {
-                if (param.test_conf.reduction_type == RT_SUM)
+                if (param.test_conf.reduction == RT_SUM)
                 {
                     T expected =
                         ((param.process_count * (param.process_count - 1) / 2) +
@@ -333,7 +333,7 @@ public:
                         return TEST_FAILURE;
                     }
                 }
-                else if (param.test_conf.reduction_type == RT_MAX)
+                else if (param.test_conf.reduction == RT_MAX)
                 {
                     T expected = 0;
 
@@ -356,7 +356,7 @@ public:
                         return TEST_FAILURE;
                     }
                 }
-                else if (param.test_conf.reduction_type == RT_MIN)
+                else if (param.test_conf.reduction == RT_MIN)
                 {
                     T expected = 0;
 
@@ -379,7 +379,7 @@ public:
                         return TEST_FAILURE;
                     }
                 }
-                else if (param.test_conf.reduction_type == RT_PROD)
+                else if (param.test_conf.reduction == RT_PROD)
                 {
                     T expected = 1;
 
@@ -410,7 +410,7 @@ public:
                         return TEST_FAILURE;
                     }
                 }
-                else if (param.test_conf.reduction_type == RT_CUSTOM)
+                else if (param.test_conf.reduction == RT_CUSTOM)
                 {
                     T expected =
                         ((param.process_count * (param.process_count - 1) / 2) +
@@ -433,7 +433,7 @@ public:
                         return TEST_FAILURE;
                     }
                 }
-                else if (param.test_conf.reduction_type == RT_CUSTOM_NULL)
+                else if (param.test_conf.reduction == RT_CUSTOM_NULL)
                 {
                     T expected = 0;
 
@@ -466,7 +466,7 @@ public:
         const ccl_test_conf& test_conf = param.get_conf();
         size_t count = param.elem_count;
         ccl::reduction reduction = (ccl::reduction) get_ccl_lib_reduction_type(test_conf);
-        auto attr = ccl::environment::instance().create_operation_attr<ccl::allreduce_attr>();
+        auto attr = ccl::create_operation_attr<ccl::allreduce_attr>();
 
         for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++)
         {
@@ -507,8 +507,8 @@ public:
 
             COUNT = param.elem_count;
             param.reqs[buf_idx] =
-                param.global_comm.allreduce((test_conf.place_type == PT_IN) ? recv_buf : send_buf,
-                                             recv_buf, count, reduction, attr);
+                ccl::allreduce((test_conf.place_type == PT_IN) ? recv_buf : send_buf,
+                                             recv_buf, count, reduction, param.global_comm, attr);
         }
     }
 
@@ -527,15 +527,15 @@ public:
         const ccl_test_conf& test_conf = param.get_conf();
         glob_match_id.resize(param.buffer_count);
 
-        if (test_conf.data_type == DT_BFP16)
+        if (test_conf.datatype == DT_BFLOAT16)
         {
-            printf("WARNING! BFP16 is not supported for custom reduction, test skipped");
+            printf("WARNING! BF16 is not supported for custom reduction, test skipped");
             return result;
         }
 
             //TODO make coll_attr again from run_derived, bceause we doen't remember it in `param`
             ccl::reduction reduction = (ccl::reduction) get_ccl_lib_reduction_type(test_conf);
-            auto attr = ccl::environment::instance().create_operation_attr<ccl::allreduce_attr>();
+            auto attr = ccl::create_operation_attr<ccl::allreduce_attr>();
             param.prepare_coll_attr(attr, 0);
             if (param.test_conf.prolog_type == PTYPE_T_TO_2X)
             {

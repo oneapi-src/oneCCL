@@ -45,8 +45,13 @@ bool ccl_algorithm_selector_helper<ccl_coll_reduce_algo>::can_use(
     const ccl_selection_table_t<ccl_coll_reduce_algo>& table) {
     bool can_use = true;
 
-    if (algo == ccl_coll_reduce_rabenseifner && param.count < param.comm->pof2())
+    if (algo == ccl_coll_reduce_rabenseifner && (int)param.count < param.comm->pof2())
         can_use = false;
+    else if (algo == ccl_coll_reduce_direct &&
+             (ccl::global_data::env().atl_transport == ccl_atl_ofi))
+        can_use = false;
+
+    return can_use;
 
     return can_use;
 }

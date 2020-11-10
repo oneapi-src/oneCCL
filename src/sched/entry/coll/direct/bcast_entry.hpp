@@ -28,7 +28,7 @@ public:
                 ccl_buffer buf,
                 size_t cnt,
                 const ccl_datatype& dtype,
-                size_t root,
+                int root,
                 ccl_comm* comm)
             : base_coll_entry(sched),
               buf(buf),
@@ -44,8 +44,8 @@ public:
         size_t bytes = cnt * dtype.size();
         LOG_DEBUG("BCAST entry req ", &req, ", bytes ", bytes);
 
-        atl_status_t atl_status =
-            atl_ep_bcast(sched->bin->get_atl_ep(), buf.get_ptr(bytes), bytes, root, &req);
+        atl_status_t atl_status = comm->atl->atl_ep_bcast(
+            sched->bin->get_atl_ep(), buf.get_ptr(bytes), bytes, root, &req);
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("BCAST entry failed. atl_status: ", atl_status_to_str(atl_status));
         }
@@ -55,7 +55,8 @@ public:
 
     void update() override {
         int req_status;
-        atl_status_t atl_status = atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
+        atl_status_t atl_status =
+            comm->atl->atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("BCAST entry failed. atl_status: ", atl_status_to_str(atl_status));
@@ -91,7 +92,7 @@ protected:
 private:
     ccl_buffer buf;
     size_t cnt;
-    size_t root;
+    int root;
     ccl_datatype dtype;
     ccl_comm* comm;
     atl_req_t req{};

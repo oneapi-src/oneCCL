@@ -48,7 +48,7 @@ public:
      * @param op_id local operation ID. Used to generate unique ATL tag when the rest of input parameters do not change
      * @return ATL communication tag
      */
-    uint64_t create(ccl_comm_id_t comm_id, size_t rank, ccl_sched_id_t sched_id, ccl_op_id_t op_id);
+    uint64_t create(ccl_comm_id_t comm_id, int rank, ccl_sched_id_t sched_id, ccl_op_id_t op_id);
 
 private:
     /**********************************************************************************

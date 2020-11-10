@@ -26,7 +26,11 @@ username=`whoami`
 rc=0
 
 if [ -z "$I_MPI_ROOT" -a -z "`uname -m | grep 1om`" ] ; then
-    . ${0%/*}/mpivars.sh ""
+    if [ -f ${0%/*}/mpivars.sh ]; then
+        . ${0%/*}/mpivars.sh ""
+    else
+        . ${0%/*}/../env/vars.sh ""
+    fi
 fi
 
 ##### mpirun detection #####

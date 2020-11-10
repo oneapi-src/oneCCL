@@ -16,12 +16,12 @@
 #pragma once
 
 namespace native {
-namespace details {
+namespace detail {
 
 /**
  *
  */
-template <ccl::device_group_split_type group_id, ccl::device_topology_type class_id>
+template <ccl::group_split_type group_id, ccl::device_topology_type class_id>
 struct rank_getter {
     rank_getter(const ccl::device_index_type& device_idx,
                 std::multiset<ccl::device_index_type>& registered_ids);
@@ -32,14 +32,14 @@ struct rank_getter {
     template <class device_t>
     void operator()(const native::plain_device_container<device_t>& container);
 
-    size_t get_assigned_rank() const;
-    size_t get_assigned_size() const;
+    int get_assigned_rank() const;
+    int get_assigned_size() const;
 
 private:
     ccl::device_index_type device_id;
     std::multiset<ccl::device_index_type>& registered_device_id;
-    size_t rank = 0;
-    size_t size = 0;
+    int rank = 0;
+    int size = 0;
     bool find = false;
     size_t enumerator = 0;
 };
@@ -47,13 +47,13 @@ private:
 /**
  *
  */
-template <ccl::device_group_split_type group_id, ccl::device_topology_type class_id>
+template <ccl::group_split_type group_id, ccl::device_topology_type class_id>
 rank_getter<group_id, class_id>::rank_getter(const ccl::device_index_type& device_idx,
                                              std::multiset<ccl::device_index_type>& registered_ids)
         : device_id(device_idx),
           registered_device_id(registered_ids) {}
 
-template <ccl::device_group_split_type group_id, ccl::device_topology_type class_id>
+template <ccl::group_split_type group_id, ccl::device_topology_type class_id>
 template <class device_t>
 void rank_getter<group_id, class_id>::operator()(
     const native::indexed_device_container<device_t>& container) {
@@ -81,7 +81,7 @@ void rank_getter<group_id, class_id>::operator()(
     }
 }
 
-template <ccl::device_group_split_type group_id, ccl::device_topology_type class_id>
+template <ccl::group_split_type group_id, ccl::device_topology_type class_id>
 template <class device_t>
 void rank_getter<group_id, class_id>::operator()(
     const native::plain_device_container<device_t>& container) {
@@ -108,8 +108,8 @@ void rank_getter<group_id, class_id>::operator()(
     }
 }
 
-template <ccl::device_group_split_type group_id, ccl::device_topology_type class_id>
-size_t rank_getter<group_id, class_id>::get_assigned_rank() const {
+template <ccl::group_split_type group_id, ccl::device_topology_type class_id>
+int rank_getter<group_id, class_id>::get_assigned_rank() const {
     if (!find) {
         throw std::runtime_error(
             std::string(__FUNCTION__) +
@@ -117,5 +117,5 @@ size_t rank_getter<group_id, class_id>::get_assigned_rank() const {
     }
     return rank;
 }
-} // namespace details
+} // namespace detail
 } // namespace native

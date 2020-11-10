@@ -41,7 +41,6 @@ target_include_directories(ccl_atl_ofi-objects PRIVATE $<TARGET_PROPERTY:pmi,INT
 target_include_directories(ccl_atl_ofi-objects PRIVATE $<TARGET_PROPERTY:resizable_pmi,INTERFACE_INCLUDE_DIRECTORIES>)
 
 #add library search directory
-link_directories(${LIBFABRIC_LIB_DIR})
 
 #shared
 add_library(ccl_atl_ofi SHARED $<TARGET_OBJECTS:ccl_atl_ofi-objects>)

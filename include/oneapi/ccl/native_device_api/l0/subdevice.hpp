@@ -14,29 +14,34 @@
  limitations under the License.
 */
 #pragma once
-#include "oneapi/ccl/native_device_api/l0/primitives.hpp"
+#include "oneapi/ccl/native_device_api/l0/device.hpp"
 
 namespace native {
 struct ccl_device_driver;
 struct ccl_device;
+struct ccl_context;
 
 // TODO not thread-safe!!!
 struct ccl_subdevice : public ccl_device {
     using base = ccl_device;
     using handle_t = ccl_device::handle_t;
     using owner_ptr_t = std::weak_ptr<ccl_device>;
+    using context_ptr_t = std::weak_ptr<ccl_context>;
 
     using indexed_handles = indexed_storage<handle_t>;
 
     friend std::ostream& operator<<(std::ostream&, const ccl_subdevice& node);
 
-    ccl_subdevice(handle_t h, owner_ptr_t&& device, base::owner_ptr_t&& driver);
+    ccl_subdevice(handle_t h,
+                  owner_ptr_t&& device,
+                  base::owner_ptr_t&& driver,
+                  base::context_ptr_t&& ctx);
     virtual ~ccl_subdevice();
 
     // factory
     static indexed_handles get_handles(
         const ccl_device& device,
-        const ccl::device_indices_t& requested_indices = ccl::device_indices_t());
+        const ccl::device_indices_type& requested_indices = ccl::device_indices_type());
     static std::shared_ptr<ccl_subdevice> create(handle_t h,
                                                  owner_ptr_t&& device,
                                                  base::owner_ptr_t&& driver);
@@ -62,7 +67,11 @@ struct ccl_subdevice : public ccl_device {
                                                     ccl_device_platform& platform);
 
 private:
-    ccl_subdevice(handle_t h, owner_ptr_t&& device, base::owner_ptr_t&& driver, std::false_type);
+    ccl_subdevice(handle_t h,
+                  owner_ptr_t&& device,
+                  base::owner_ptr_t&& driver,
+                  base::context_ptr_t&& ctx,
+                  std::false_type);
     void initialize_subdevice_data();
     owner_ptr_t parent_device;
 };

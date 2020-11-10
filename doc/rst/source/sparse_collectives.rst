@@ -1,3 +1,4 @@
+============================
 Sparse collective operations
 ============================
 
@@ -14,46 +15,102 @@ The ultimate goal of |product_short| is to provide a common API for sparse colle
 
 |product_short| can work with sparse tensors represented by two tensors: one for indices and one for values.
 
-The ``sparse_allreduce`` function has the following parameters:
 
-- ``send_ind_buf`` - a buffer of indices with ``send_ind_count`` elements of ``index_dtype``
-- ``send_int_count`` - the number of ``send_ind_buf`` elements of type ``index_type``
-- ``send_val_buf`` - a buffer of values with ``send_val_count`` elements of ``value_dtype``
-- ``send_val_count`` - the number of ``send_val_buf`` elements of type ``value_type``
-- ``recv_ind_buf`` - a buffer to store reduced indices (ignored for now) 
-- ``recv_ind_count`` - the number of reduced indices (ignored for now)
-- ``recv_val_buf``` - a buffer to store reduced values (ignored for now)
-- ``recv_val_count`` - the number of reduced values (ignored for now)
-- ``index_dtype`` - index type of elements in ``send_ind_buf`` and ``recv_ind_buf`` buffers
-- ``value_dtype`` - data type of elements in ``send_val_buf`` and ``recv_val_buf`` buffers
-- ``reduction`` - the type of reduction operation to be applied
-- ``attributes`` - attributes that customize operation
-- returns ``ccl::request`` object to track the progress of the operation
+Sparse allreduce is a collective communication operation that makes global reduction operation on sparse buffers from all ranks of communicator and distributes result back to all ranks. Sparse buffers are defined by separate index and value buffers.
+
+.. code:: cpp
+
+    ccl::event sparse_allreduce(const void* send_ind_buf,
+                                size_t send_ind_count,
+                                const void* send_val_buf,
+                                size_t send_val_count,
+                                void* recv_ind_buf,
+                                size_t recv_ind_count,
+                                void* recv_val_buf,
+                                size_t recv_val_count,
+                                ccl::datatype ind_dtype,
+                                ccl::datatype val_dtype,
+                                ccl::reduction rtype,
+                                const ccl::communicator& comm,
+                                const ccl::stream& stream,
+                                const ccl::sparse_allreduce_attr& attr = ccl::default_sparse_allreduce_attr,
+                                const ccl::vector_class<ccl::event>& deps = {});
+
+send_ind_buf
+    the buffer of indices with ``send_ind_count`` elements of type ``ind_dtype``
+send_ind_count
+    the number of elements of type ``ind_type`` in ``send_ind_buf``
+send_val_buf
+    the buffer of values with ``send_val_count`` elements of type ``val_dtype``
+send_val_count
+    the number of elements of type ``val_type`` in  ``send_val_buf``
+recv_ind_buf [out]
+    the buffer to store reduced indices, unused
+recv_ind_count [out]
+    the number of elements in ``recv_ind_buf``, unused
+recv_val_buf [out]
+     the buffer to store reduced values, unused
+recv_val_count [out]
+    the number of elements in ``recv_val_buf``, unused
+ind_dtype
+    the datatype of elements in ``send_ind_buf`` and ``recv_ind_buf``
+val_dtype
+    the the datatype of elements in ``send_val_buf`` and ``recv_val_buf``
+rtype
+    the type of the reduction operation to be applied
+comm
+    the communicator that defines a group of ranks for the operation
+stream
+    an optional stream associated with the operation
+attr
+    optional attributes to customize the operation
+deps
+    an optional vector of the events that the operation should depend on
+return ``event``
+    an object to track the progress of the operation
+
 
 For ``sparse_allreduce``, a completion callback or an allocation callback is required.
 
-Use the following :ref:`Collective Call Attributes` fields:
+Use the following fields in operation attribute:
 
-- ``sparse_allreduce_completion_fn`` - a completion callback function pointer
-- ``sparse_allreduce_alloc_fn`` - an allocation callback function pointer
-- ``sparse_allreduce_fn_ctx``- an user context pointer of type ``void*``
-- ``sparse_coalesce_mode``- a coalesce mode
+- ``completion_fn`` - a completion callback function pointer
+- ``alloc_fn`` - an allocation callback function pointer
+- ``fn_ctx``- an user context pointer of type ``void*``
 
-Here is an example of a function definition for ``sparse_allreduce`` completion callback:
+Completion callback should follow the signature:
 
-::
+.. code:: cpp
 
-  ccl_status_t sparse_allreduce_completion_fn(
-      const void* indices_buf, size_t indices_count, ccl_datatype_t indices_datatype,
-      const void* values_buf, size_t values_count, ccl_datatype_t values_datatype,
-      const ccl::fn_context* fn_ctx, const void* user_ctx)
-  {
-      /* 
-        Note that indices_buf and values_buf are temporary buffers.
-        Thus, the data from these buffers should be copied. Use user_ctx for
-        this purpose. 
-      */
-      return ccl_status_success;
-  }
+        typedef void (*completion_fn)
+        (
+            const void*,   /* idx_buf      */
+            size_t,        /* idx_count    */
+            ccl::datatype, /* idx_dtype    */
+            const void*,   /* val_buf      */
+            size_t,        /* val_count    */
+            ccl::datatype, /* val_dtype    */
+            const void*    /* user_context */
+        );
 
-For more details, refer to `this example <https://github.com/oneapi-src/oneCCL/blob/master/examples/cpu/sparse_allreduce.cpp>`_.
+Note that ``idx_buf`` and ``val_buf`` are temporary buffers.
+Thus, the data from these buffers should be copied. Use ``user_context`` for this purpose.
+
+
+Allocation callback should follow the signature:
+
+.. code:: cpp
+
+        typedef void (*alloc_fn)
+        (
+            size_t,        /* idx_count    */
+            ccl::datatype, /* idx_dtype    */
+            size_t,        /* val_count    */
+            ccl::datatype, /* val_dtype    */
+            const void*,   /* user_context */
+            void**,        /* out_idx_buf  */
+            void**         /* out_val_buf  */
+        );
+
+.. note::
+    WARNING: ``ccl::sparse_allreduce`` is experimental and subject to change.

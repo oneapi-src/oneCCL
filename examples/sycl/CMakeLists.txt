@@ -14,8 +14,10 @@
 # limitations under the License.
 #
 file(GLOB sources "*.c" "*.cpp")
-link_directories(${PROJECT_SOURCE_DIR}/ofi/lib)
-link_directories(${PROJECT_SOURCE_DIR}/mpi/lib)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 foreach(src ${sources})
     get_filename_component(executable ${src} NAME_WE)
     add_executable(${executable} ${src})
@@ -23,8 +25,8 @@ foreach(src ${sources})
     target_link_libraries(${executable} PUBLIC rt)
     target_link_libraries(${executable} PUBLIC m)
     target_link_libraries(${executable} PRIVATE ccl)
-    target_link_libraries(${executable} PRIVATE fabric m)
+    target_link_libraries(${executable} PRIVATE m)
     target_link_libraries(${executable} PUBLIC mpi)
     target_link_libraries(${executable} PRIVATE ${COMPUTE_RUNTIME_TARGET_NAME})
-    install(TARGETS ${executable} RUNTIME DESTINATION ${CCL_INSTALL_EXAMPLES}/sycl)
+    install(TARGETS ${executable} RUNTIME DESTINATION ${CCL_INSTALL_EXAMPLES}/sycl OPTIONAL)
 endforeach()

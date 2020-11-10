@@ -16,6 +16,10 @@ endif()
 
 list(INSERT CMAKE_PREFIX_PATH 0 ${l0_root_hints})
 
+if (TARGET ze_loader)
+    set(LevelZero_FOUND ON)
+endif()
+
 if(NOT TARGET ze_loader)
     find_path(LevelZero_INCLUDE_DIR
       NAMES ze_api.h
@@ -23,8 +27,10 @@ if(NOT TARGET ze_loader)
             ENV ZE_ROOT
             ${l0_root_hints}
       PATH_SUFFIXES
+            include
+            include/level_zero
             local/include
-            local/include/level_zero/
+            local/include/level_zero
       NO_DEFAULT_PATH
     )
 
@@ -35,8 +41,9 @@ if(NOT TARGET ze_loader)
             ${l0_root_hints}
       PATH_SUFFIXES
             lib
+            lib/x86_64-linux-gnu
+            lib/level_zero
             local/lib
-            lib/level_zero/
             local/lib/level_zero
       NO_DEFAULT_PATH
     )
@@ -58,15 +65,14 @@ if(NOT TARGET ze_loader)
             message("L0 is using OpenCL interoperability")
             list(APPEND LevelZero_INCLUDE_DIRS ${OpenCL_INCLUDE_DIRS})
         endif()
+        add_library(ze_loader INTERFACE IMPORTED)
+        set_target_properties(ze_loader
+          PROPERTIES INTERFACE_LINK_LIBRARIES "${LevelZero_LIBRARIES}"
+        )
+        set_target_properties(ze_loader
+          PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${LevelZero_INCLUDE_DIRS}"
+        )
     endif()
-
-    add_library(ze_loader INTERFACE IMPORTED)
-    set_target_properties(ze_loader
-      PROPERTIES INTERFACE_LINK_LIBRARIES "${LevelZero_LIBRARIES}"
-    )
-    set_target_properties(ze_loader
-      PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${LevelZero_INCLUDE_DIRS}"
-    )
 endif()
 
 # Reverting the CMAKE_PREFIX_PATH to its original state

@@ -15,10 +15,10 @@
 */
 #include "sched/entry/coll/coll_entry_helper.hpp"
 
-ccl_status_t coll_entry_helper::build_schedule(ccl_sched* sched,
-                                               const ccl_sched* parent_sched,
-                                               const ccl_coll_entry_param& param) {
-    ccl_status_t res = ccl_status_success;
+ccl::status coll_entry_helper::build_schedule(ccl_sched* sched,
+                                              const ccl_sched* parent_sched,
+                                              const ccl_coll_entry_param& param) {
+    ccl::status res = ccl::status::success;
 
     if (param.ctype == ccl_coll_allreduce || param.ctype == ccl_coll_reduce ||
         param.ctype == ccl_coll_reduce_scatter) {
@@ -89,7 +89,7 @@ ccl_status_t coll_entry_helper::build_schedule(ccl_sched* sched,
             res = ccl_coll_build_reduce_scatter(sched,
                                                 param.send_buf,
                                                 param.recv_buf,
-                                                param.send_count,
+                                                param.count,
                                                 param.dtype,
                                                 param.reduction,
                                                 param.comm);

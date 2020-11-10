@@ -51,6 +51,9 @@ bool ccl_algorithm_selector_helper<ccl_coll_bcast_algo>::can_use(
         /* TODO: stabilize double_tree bcast for unordered_coll case */
         can_use = false;
     }
+    else if (algo == ccl_coll_bcast_direct &&
+             (ccl::global_data::env().atl_transport == ccl_atl_ofi))
+        can_use = false;
 
     return can_use;
 }

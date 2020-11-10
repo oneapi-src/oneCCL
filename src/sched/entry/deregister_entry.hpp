@@ -25,9 +25,10 @@ public:
     }
 
     deregister_entry() = delete;
-    deregister_entry(ccl_sched* sched, std::list<atl_mr_t*>& mr_list)
+    deregister_entry(ccl_sched* sched, std::list<atl_mr_t*>& mr_list, ccl_comm* comm)
             : sched_entry(sched, true),
-              mr_list(mr_list) {}
+              mr_list(mr_list),
+              comm(comm) {}
 
     void start() override {
         LOG_DEBUG("DEREGISTER entry sched ", sched, " mr_count ", mr_list.size());
@@ -35,7 +36,7 @@ public:
         std::list<atl_mr_t*>::iterator it;
         for (it = mr_list.begin(); it != mr_list.end(); it++) {
             LOG_DEBUG("deregister mr ", *it);
-            atl_status = atl_mr_dereg(ccl::global_data::get().executor->get_atl_ctx(), *it);
+            atl_status = comm->atl->atl_mr_dereg(*it);
             if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
                 CCL_THROW("DEREGISTER entry failed. atl_status: ", atl_status_to_str(atl_status));
             }
@@ -55,4 +56,5 @@ protected:
 
 private:
     std::list<atl_mr_t*>& mr_list;
+    ccl_comm* comm;
 };
