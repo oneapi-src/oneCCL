@@ -87,6 +87,7 @@ enum ccl_coll_reduce_algo {
 };
 
 enum ccl_coll_reduce_scatter_algo {
+    ccl_coll_reduce_scatter_direct,
     ccl_coll_reduce_scatter_ring,
 
     ccl_coll_reduce_scatter_last_value
@@ -114,6 +115,13 @@ enum ccl_coll_type {
 
     ccl_coll_last_value
 };
+
+#define CCL_COLL_TYPE_LIST \
+    ccl_coll_type::ccl_coll_allgatherv, ccl_coll_type::ccl_coll_allreduce, \
+        ccl_coll_type::ccl_coll_alltoall, ccl_coll_type::ccl_coll_alltoallv, \
+        ccl_coll_type::ccl_coll_barrier, ccl_coll_type::ccl_coll_bcast, \
+        ccl_coll_type::ccl_coll_reduce, ccl_coll_type::ccl_coll_reduce_scatter, \
+        ccl_coll_type::ccl_coll_sparse_allreduce
 
 inline const char* ccl_coll_type_to_str(ccl_coll_type type) {
     switch (type) {

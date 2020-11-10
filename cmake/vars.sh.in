@@ -1,13 +1,80 @@
+#
+# Copyright 2016-2020 Intel Corporation
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 #!/bin/bash
 
-WORK_DIR="$(cd "$( dirname "${BASH_SOURCE[0]}" )" > /dev/null && pwd)"
-export CCL_ROOT="$(cd ${WORK_DIR}/../; pwd -P)"
+get_script_path() (
+  script="$1"
+  while [ -L "$script" ] ; do
+    # combining next two lines fails in zsh shell
+    script_dir=$(command dirname -- "$script")
+    script_dir=$(cd "$script_dir" && command pwd -P)
+    script="$(readlink "$script")"
+    case $script in
+      (/*) ;;
+       (*) script="$script_dir/$script" ;;
+    esac
+  done
+  # combining next two lines fails in zsh shell
+  script_dir=$(command dirname -- "$script")
+  script_dir=$(cd "$script_dir" && command pwd -P)
+  echo "$script_dir"
+)
 
-if [ -z "${LD_LIBRARY_PATH}" ]
-then
-    LD_LIBRARY_PATH="${CCL_ROOT}/lib"; export LD_LIBRARY_PATH
+usage() {
+  printf "%s\n"   "ERROR: This script must be sourced."
+  printf "%s\n"   "Usage: source $1"
+  exit 255
+}
+
+vars_script_name=""
+
+if [ -n "${ZSH_VERSION+x}" ] ; then     # only executed in zsh
+  # echo "   ZSH version = \"$ZSH_VERSION\""
+  case $ZSH_EVAL_CONTEXT in (*:file*) vars_script_name="${(%):-%x}" ;; esac ;
+  if [ -n "$ZSH_EVAL_CONTEXT" ] && [ "" = "$vars_script_name" ] ; then
+    usage "${(%):-%x}" ;
+  fi
+elif [ -n "${KSH_VERSION+x}" ] ; then   # only executed in ksh
+  # echo "   KSH version = \"$KSH_VERSION\""
+  if [ "$(cd "$(dirname -- "$0")" && pwd -P)/$(basename -- "$0")" \
+    != "$(cd "$(dirname -- "${.sh.file}")" && pwd -P)/$(basename -- "${.sh.file}")" ] ; then
+      vars_script_name="${.sh.file}" || usage "$0" ;
+  fi
+elif [ -n "${BASH_VERSION+x}" ] ; then  # only executed in bash
+  # echo "   BASH version = \"$BASH_VERSION\""
+  # shellcheck disable=2128,2015
+  (return 0 2>/dev/null) && vars_script_name="${BASH_SOURCE}" || usage "${BASH_SOURCE}"
 else
-    LD_LIBRARY_PATH="${CCL_ROOT}/lib:${LD_LIBRARY_PATH}"; export LD_LIBRARY_PATH
+  case ${0##*/} in (sh|dash) vars_script_name="" ;; esac
+  # echo "   Shell version = \"unknown\""
 fi
 
+if [ "" = "$vars_script_name" ] ; then
+  >&2 echo ":: ERROR: Unable to proceed: no support for sourcing from '[dash|sh]' shell." ;
+  >&2 echo "   This script must be sourced. Did you execute or source this script?" ;
+  >&2 echo "   Can be caused by sourcing from inside a \"shebang-less\" script." ;
+  >&2 echo "   Can also be caused by sourcing from ZSH version 4.x or older." ;
+  return 1 2>/dev/null || exit 1
+fi
+
+WORK_DIR=$(get_script_path "$vars_script_name")
+
+CCL_ROOT="$(cd "${WORK_DIR}"/../; pwd -P)"; export CCL_ROOT
 CCL_ATL_TRANSPORT_PATH="${CCL_ROOT}/lib"; export CCL_ATL_TRANSPORT_PATH
+
+CPATH="${CCL_ROOT}/include/${CPATH+:${CPATH}}"; export CPATH
+LIBRARY_PATH="${CCL_ROOT}/lib/${LIBRARY_PATH+:${LIBRARY_PATH}}"; export LIBRARY_PATH
+LD_LIBRARY_PATH="${CCL_ROOT}/lib/${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}"; export LD_LIBRARY_PATH

@@ -16,13 +16,13 @@
 #pragma once
 #include <sstream>
 
-#include "oneapi/ccl/ccl_types.hpp"
-#include "oneapi/ccl/ccl_comm_split_attr_ids.hpp"
+#include "oneapi/ccl/types.hpp"
+#include "oneapi/ccl/comm_split_attr_ids.hpp"
 #include "common/comm/l0/device_containers.hpp"
 
 namespace native {
 
-namespace details {
+namespace detail {
 /*
 struct splice_devices
 {
@@ -42,7 +42,7 @@ struct splice_devices
 };
 */
 
-template <ccl::device_group_split_type group_id, ccl::device_topology_type class_id>
+template <ccl::group_split_type group_id, ccl::device_topology_type class_id>
 struct printer {
     template <class device_t>
     void operator()(const native::indexed_device_container<device_t>& container) {
@@ -89,6 +89,6 @@ struct printer {
     }
     std::map<size_t, std::string> device_rank_descr;
 };
-} // namespace details
+} // namespace detail
 
 } // namespace native

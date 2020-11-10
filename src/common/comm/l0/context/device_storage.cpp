@@ -20,7 +20,7 @@ namespace native {
 
 std::shared_ptr<specific_plain_device_storage> device_storage::create_devices_by_indices(
     size_t thread_id,
-    const ccl::device_indices_t& indices) {
+    const ccl::device_indices_type& indices) {
     std::shared_ptr<specific_plain_device_storage> out_devices =
         std::make_shared<specific_plain_device_storage>();
     size_t index_in_group = 0;
@@ -67,7 +67,7 @@ std::shared_ptr<specific_plain_device_storage> device_storage::create_devices_by
 }
 
 size_t device_storage::get_storage_size() const {
-    return details::get_aggregated_size<specific_device_storage, SUPPORTED_DEVICES_DECL_LIST>(
+    return detail::get_aggregated_size<specific_device_storage, SUPPORTED_DEVICES_DECL_LIST>(
         gpu_device_storage); /*
         return get_size<ccl_gpu_comm>() +
                get_size<ccl_ipc_gpu_comm>() +
@@ -83,7 +83,7 @@ size_t device_storage::get_storage_size() const {
     template<class DeviceType, class ...Types>
     size_t get_aggregated_size() const
     {
-        return get_size<DeviceType>() + details::get_aggregated_size_helper<Types...>(gpu_device_storage);
+        return get_size<DeviceType>() + detail::get_aggregated_size_helper<Types...>(gpu_device_storage);
     }
 */
 } // namespace native

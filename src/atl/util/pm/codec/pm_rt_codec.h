@@ -48,7 +48,7 @@ static inline int decode(const char *inval, void *outval, int outvallen) {
     int i;
     char *ret = (char *)outval;
 
-    if (outvallen != strlen(inval) / 2)
+    if (outvallen != (int)strlen(inval) / 2)
         return -1;
 
     for (i = 0; i < outvallen; ++i) {

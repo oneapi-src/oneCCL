@@ -58,6 +58,9 @@ bool ccl_algorithm_selector_helper<ccl_coll_allgatherv_algo>::can_use(
     else if (ccl::global_data::env().atl_transport == ccl_atl_mpi &&
              algo == ccl_coll_allgatherv_multi_bcast)
         can_use = false;
+    else if (algo == ccl_coll_allgatherv_direct &&
+             (ccl::global_data::env().atl_transport == ccl_atl_ofi))
+        can_use = false;
 
     return can_use;
 }
@@ -68,7 +71,7 @@ CCL_SELECTION_DEFINE_HELPER_METHODS(ccl_coll_allgatherv_algo,
                                     ({
                                         CCL_ASSERT(param.recv_counts);
                                         size_t count = 0;
-                                        for (size_t idx = 0; idx < param.comm->size(); idx++) {
+                                        for (int idx = 0; idx < param.comm->size(); idx++) {
                                             count += param.recv_counts[idx];
                                         }
                                         count /= param.comm->size();

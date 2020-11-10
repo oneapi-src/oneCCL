@@ -32,31 +32,36 @@ inline std::ostream& operator<<(std::ostream& out, const ccl::device_index_type&
  * Base RAII L0 handles wrappper
  * support serialize/deserialize concept
  */
-#define TEMPLATE_DECL_ARG class handle_type, class resource_owner
-#define TEMPLATE_DEF_ARG  handle_type, resource_owner
+#define TEMPLATE_DECL_ARG class handle_type, class resource_owner, class cl_context
+#define TEMPLATE_DEF_ARG  handle_type, resource_owner, cl_context
 
 template <TEMPLATE_DECL_ARG>
-cl_base<TEMPLATE_DEF_ARG>::cl_base(handle_t h, owner_ptr_t parent)
+cl_base<TEMPLATE_DEF_ARG>::cl_base(handle_t h, owner_ptr_t parent, context_ptr_t ctx)
         : handle(h),
-          owner(std::move(parent)) {}
+          owner(std::move(parent)),
+          context(std::move(ctx)) {}
 
 template <TEMPLATE_DECL_ARG>
 cl_base<TEMPLATE_DEF_ARG>::cl_base(cl_base&& src) noexcept
         : handle(std::move(src.handle)),
-          owner(std::move(src.owner)) {}
+          owner(std::move(src.owner)),
+          context(std::move(src.context)) {}
 
 template <TEMPLATE_DECL_ARG>
 cl_base<TEMPLATE_DEF_ARG>& cl_base<TEMPLATE_DEF_ARG>::operator=(cl_base&& src) noexcept {
     handle = std::move(src.handle);
     owner = std::move(src.owner);
+    context = std::move(src.context);
     return *this;
 }
 
 template <TEMPLATE_DECL_ARG>
 cl_base<TEMPLATE_DEF_ARG>::~cl_base() noexcept {
     auto lock = owner.lock();
+    // auto ctx = context.lock(); ctx->get();
+    ze_context_handle_t ctxtmp = nullptr;
     if (lock) {
-        lock->on_delete(handle);
+        lock->on_delete(handle, ctxtmp);
     }
 }
 
@@ -70,6 +75,7 @@ typename cl_base<TEMPLATE_DEF_ARG>::handle_t cl_base<TEMPLATE_DEF_ARG>::release(
     handle_t ret;
 
     owner.reset();
+    context.reset();
 
     std::swap(ret, handle);
     return ret;
@@ -99,6 +105,11 @@ const typename cl_base<TEMPLATE_DEF_ARG>::handle_t* cl_base<TEMPLATE_DEF_ARG>::g
 template <TEMPLATE_DECL_ARG>
 const typename cl_base<TEMPLATE_DEF_ARG>::owner_ptr_t cl_base<TEMPLATE_DEF_ARG>::get_owner() const {
     return owner;
+}
+
+template <TEMPLATE_DECL_ARG>
+const typename cl_base<TEMPLATE_DEF_ARG>::context_ptr_t cl_base<TEMPLATE_DEF_ARG>::get_ctx() const {
+    return context;
 }
 
 template <TEMPLATE_DECL_ARG>
@@ -152,7 +163,8 @@ std::shared_ptr<type> cl_base<TEMPLATE_DEF_ARG>::deserialize(const uint8_t** dat
     handle_t h = *(reinterpret_cast<const handle_t*>(*data));
     *data += expected_bytes;
     size -= expected_bytes;
-    return std::shared_ptr<type>{ new type(h, owner) };
+    std::shared_ptr<cl_context> ctx;
+    return std::shared_ptr<type>{ new type(h, owner, ctx) };
 }
 
 #undef TEMPLATE_DEF_ARG
@@ -214,7 +226,7 @@ indexed_storage<value_type> merge_indexed_values(const IndexedContainer& indexes
 }
 
 template <ccl::device_index_enum index_id, class value_type, class value_type_index_extractor>
-indexed_storage<value_type> collect_indexed_data(const ccl::device_indices_t& indexes,
+indexed_storage<value_type> collect_indexed_data(const ccl::device_indices_type& indexes,
                                                  std::vector<value_type>& collected_values,
                                                  value_type_index_extractor functor) {
     indexed_storage<value_type> ret;

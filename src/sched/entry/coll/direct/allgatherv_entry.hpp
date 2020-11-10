@@ -45,8 +45,8 @@ public:
     void start() override {
         size_t dt_size = dtype.size();
         size_t send_bytes = send_cnt * dt_size;
-        size_t comm_size = comm->size();
-        size_t i;
+        int comm_size = comm->size();
+        int i;
 
         if (!recv_bytes && !offsets) {
             recv_bytes = static_cast<int*>(CCL_MALLOC(comm_size * sizeof(int), "recv_bytes"));
@@ -64,13 +64,13 @@ public:
         }
 
         LOG_DEBUG("ALLGATHERV entry req ", &req, ", send_bytes ", send_bytes);
-        atl_status_t atl_status = atl_ep_allgatherv(sched->bin->get_atl_ep(),
-                                                    send_buf.get_ptr(send_bytes),
-                                                    send_bytes,
-                                                    recv_buf.get_ptr(sum_recv_bytes),
-                                                    recv_bytes,
-                                                    offsets,
-                                                    &req);
+        atl_status_t atl_status = comm->atl->atl_ep_allgatherv(sched->bin->get_atl_ep(),
+                                                               send_buf.get_ptr(send_bytes),
+                                                               send_bytes,
+                                                               recv_buf.get_ptr(sum_recv_bytes),
+                                                               recv_bytes,
+                                                               offsets,
+                                                               &req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("ALLGATHERV entry failed. atl_status: ", atl_status_to_str(atl_status));
@@ -81,7 +81,8 @@ public:
 
     void update() override {
         int req_status;
-        atl_status_t atl_status = atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
+        atl_status_t atl_status =
+            comm->atl->atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("ALLGATHERV entry failed. atl_status: ", atl_status_to_str(atl_status));

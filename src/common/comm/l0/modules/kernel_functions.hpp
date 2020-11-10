@@ -60,7 +60,7 @@ struct kernel_data_storage {
     std::string to_string() const {
         std::stringstream ss;
         ss << "handle: " << handle << "\n{\n";
-        details::args_printer func(ss);
+        detail::args_printer func(ss);
         ccl_tuple_for_each(args, func);
         ss << "}" << std::endl;
         return ss.str();
@@ -72,17 +72,17 @@ enum main_kernel_args { rank_index = 0, size_index = 1, args_start_index };
 
 //main kernel - used for GPU program execution
 template <class Impl, class... arguments>
-struct execution_kernel : public kernel_data_storage<arg<main_kernel_args::rank_index, size_t>,
-                                                     arg<main_kernel_args::size_index, size_t>,
+struct execution_kernel : public kernel_data_storage<arg<main_kernel_args::rank_index, int>,
+                                                     arg<main_kernel_args::size_index, int>,
                                                      arguments...> {
-    using base = kernel_data_storage<arg<main_kernel_args::rank_index, size_t>,
-                                     arg<main_kernel_args::size_index, size_t>,
+    using base = kernel_data_storage<arg<main_kernel_args::rank_index, int>,
+                                     arg<main_kernel_args::size_index, int>,
                                      arguments...>;
     using base::args;
     using base::handle;
 
-    using rank_type = size_t;
-    using size_type = size_t;
+    using rank_type = int;
+    using size_type = int;
 
     static constexpr const char* name() {
         return Impl::specific_name();
@@ -170,15 +170,22 @@ struct execution_kernel : public kernel_data_storage<arg<main_kernel_args::rank_
 
         base::template set_arg<kernel_argument>(new_val);
     }
+
+    template <class... kernel_argument>
+    void set_args(typename kernel_argument::arg_type... new_val) {
+        std::array<bool, sizeof...(kernel_argument)> expander{ (
+            this->template set_arg<kernel_argument>(new_val), true)... };
+        (void)expander;
+    }
 };
 
 // ipc_kernel - used for GPU data synchronization only
 template <class Impl, class... arguments>
-struct ipc_kernel : public kernel_data_storage<arg<main_kernel_args::rank_index, size_t>,
-                                               arg<main_kernel_args::size_index, size_t>,
+struct ipc_kernel : public kernel_data_storage<arg<main_kernel_args::rank_index, int>,
+                                               arg<main_kernel_args::size_index, int>,
                                                arguments...> {
-    using base = kernel_data_storage<arg<main_kernel_args::rank_index, size_t>,
-                                     arg<main_kernel_args::size_index, size_t>,
+    using base = kernel_data_storage<arg<main_kernel_args::rank_index, int>,
+                                     arg<main_kernel_args::size_index, int>,
                                      arguments...>;
     using base::args;
     using base::handle;

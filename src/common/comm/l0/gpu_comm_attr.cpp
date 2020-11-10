@@ -65,7 +65,8 @@ bool gpu_comm_attr::sync_group_size(size_t device_group_size) {
     }
 
     // master thread
-    ccl_communicator->barrier_impl();
+    ccl::stream::impl_value_t empty_stream{};
+    ccl_communicator->barrier_impl(empty_stream, ccl::default_barrier_attr, {});
 
     ready = true;
     thread_group_size_cond.notify_all();
@@ -91,7 +92,7 @@ bool gpu_comm_attr::sync_register_communicator(std::shared_ptr<communicator_inte
 
 bool gpu_comm_attr::delegate_sync_register_communicator(
     std::shared_ptr<communicator_interface> comm) {
-    ccl::device_indices_t device_group_indices;
+    ccl::device_indices_type device_group_indices;
 
     std::unique_lock<std::mutex> lock(barrier.thread_group_mutex);
 
@@ -110,7 +111,7 @@ bool gpu_comm_attr::delegate_sync_register_communicator(
             LOG_ERROR("Attempt to create communicator by new device id: ",
                       comm->get_device_path(),
                       " in fully formed comm_group is unaccepted!");
-            throw ccl_error("cannot create communicator for requested device");
+            throw ccl::exception("cannot create communicator for requested device");
         }
 
         //set rank & size for duplicated communicator
@@ -195,7 +196,8 @@ bool gpu_comm_attr::delegate_sync_register_communicator(
         comm_it->second->visit(*this);
     }
 
-    ccl_communicator->barrier_impl();
+    ccl::stream::impl_value_t empty_stream{};
+    ccl_communicator->barrier_impl(empty_stream, ccl::default_barrier_attr, {});
 
     //notify SLAVES thread ready
     barrier.communicator_ready = true;

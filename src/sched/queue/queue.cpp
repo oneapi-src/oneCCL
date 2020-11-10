@@ -16,6 +16,10 @@
 #include "common/global/global.hpp"
 #include "sched/queue/queue.hpp"
 
+size_t ccl_sched_queue::get_idx() const {
+    return idx;
+}
+
 void ccl_sched_bin::add(ccl_sched* sched) {
     if (ccl::global_data::env().priority_mode != ccl_priority_none) {
         CCL_ASSERT(sched->coll_attr.priority == priority,
@@ -51,8 +55,15 @@ size_t ccl_sched_bin::erase(size_t idx, size_t& next_idx) {
     return size;
 }
 
-ccl_sched_queue::ccl_sched_queue(std::vector<atl_ep_t*> atl_eps) : atl_eps(atl_eps) {
-    LOG_DEBUG("created sched_queue, atl_eps count ", atl_eps.size(), ", atl_eps[0] ", atl_eps[0]);
+ccl_sched_queue::ccl_sched_queue(size_t idx, std::vector<size_t> atl_eps)
+        : idx(idx),
+          atl_eps(atl_eps) {
+    LOG_DEBUG("created sched_queue, idx ",
+              idx,
+              ", atl_eps count ",
+              atl_eps.size(),
+              ", atl_eps[0] ",
+              atl_eps[0]);
 
     if (ccl::global_data::env().priority_mode != ccl_priority_none) {
         CCL_ASSERT(atl_eps.size() == CCL_PRIORITY_BUCKET_COUNT,
@@ -101,7 +112,7 @@ void ccl_sched_queue::add(ccl_sched* sched) {
         bin->add(sched);
     }
     else {
-        atl_ep_t* atl_ep = nullptr;
+        size_t atl_ep = 0;
         if (ccl::global_data::env().priority_mode == ccl_priority_none)
             atl_ep = atl_eps[0];
         else {

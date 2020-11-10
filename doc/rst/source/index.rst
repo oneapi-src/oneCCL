@@ -1,5 +1,6 @@
-.. _mpi: https://software.intel.com/en-us/mpi-library
+.. _mpi: https://software.intel.com/content/www/us/en/develop/tools/mpi-library.html
 
+=======================================================
 |product_full|
 =======================================================
    
@@ -11,7 +12,7 @@
 - Optimized to drive scalability of communication patterns by allowing to easily trade-off compute for communication performance.
 - Enables a set of DL-specific optimizations, such as prioritization, persistent operations, or out-of-order execution.
 - Works across various interconnects: Intel(R) Omni-Path Architecture, InfiniBand*, and Ethernet.
-- Provides common API sufficient to support communication workflows within Deep Learning frameworks (such as Caffe*, nGraph*, or Horovod*).
+- Provides common API sufficient to support communication workflows within Deep Learning / distributed frameworks (such as PyTorch*, Horovod*).
 
 |product_short| package comprises the |product_short| Software Development Kit (SDK) and the Intel(R) MPI Library Runtime components.
 
@@ -30,19 +31,16 @@ Contents:
    :maxdepth: 1
    :caption: Programming Model
 
-   spec/main_objects.rst
-   spec/collective_communication.rst
-   spec/error_handling.rst
-
-   spec/generic_workflow.rst
-   spec/gpu_support.rst
-   spec/cpu_support.rst
+   specification.rst
+   host_communication.rst
+   device_communication.rst
+   limitations.rst
 
 .. toctree::
    :maxdepth: 1
    :caption: General Configuration
 
-   collectives_execution.rst
+   operation_execution.rst
    transport_selection.rst
    
 .. toctree::
@@ -50,12 +48,11 @@ Contents:
    :caption: Advanced Configuration
 
    collective_algorithms_selection.rst
-   collectives_caching.rst
-   collectives_prioritization.rst
-   collectives_fusion.rst
-   sparse_collectives.rst
+   operation_caching.rst
+   operation_prioritization.rst
+   operation_fusion.rst
    unordered_collectives.rst
-   elasticity.rst
+   sparse_collectives.rst
 
 .. toctree::
    :maxdepth: 1

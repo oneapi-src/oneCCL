@@ -19,6 +19,7 @@
 #include <pthread.h>
 
 #include "common/log/log.hpp"
+#include "internal_types.hpp"
 
 #define CCL_UNDEFINED_CPU_ID (-1)
 
@@ -38,8 +39,8 @@ public:
     ccl_base_thread& operator=(const ccl_base_thread&) = delete;
     ccl_base_thread& operator=(ccl_base_thread&&) = delete;
 
-    ccl_status_t start(int affinity);
-    ccl_status_t stop();
+    ccl::status start(int affinity);
+    ccl::status stop();
 
     size_t get_idx() {
         return idx;
@@ -62,7 +63,7 @@ public:
     std::atomic<bool> started{ false };
 
 private:
-    ccl_status_t set_affinity(int affinity);
+    ccl::status set_affinity(int affinity);
 
     const size_t idx;
 

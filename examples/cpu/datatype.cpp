@@ -14,9 +14,6 @@
  limitations under the License.
 */
 #include "base.hpp"
-#include "mpi.h"
-
-using namespace oneapi;
 
 #define COUNT (1048576 / 256)
 
@@ -26,9 +23,7 @@ void custom_reduce(const void *in_buf,
                    size_t *out_count,
                    ccl::datatype dtype,
                    const ccl::fn_context *context) {
-    auto &env = ccl::environment::instance();
-
-    size_t dtype_size = env.get_datatype_size(dtype);
+    size_t dtype_size = ccl::get_datatype_size(dtype);
 
     ASSERT(dtype_size != 0, "unexpected datatype size");
 
@@ -39,44 +34,45 @@ void custom_reduce(const void *in_buf,
                (dtype != ccl::datatype::float16) && (dtype != ccl::datatype::float32) &&
                (dtype != ccl::datatype::float64) && (dtype != ccl::datatype::bfloat16),
            "unexpected datatype %d",
-           dtype);
+           static_cast<int>(dtype));
 
     for (size_t idx = 0; idx < in_count; idx++) {
         ((float *)inout_buf)[idx] += ((float *)in_buf)[idx];
     }
 }
 
-void check_allreduce(ccl::communicator &comm) {
+void check_allreduce(const ccl::communicator &comm) {
     const size_t max_dtype_count = 1024;
 
     std::vector<ccl::datatype> dtypes(max_dtype_count);
-    std::vector<ccl::request_t> reqs(max_dtype_count);
+    std::vector<ccl::event> reqs(max_dtype_count);
     std::vector<std::vector<float>> send_bufs(max_dtype_count);
     std::vector<std::vector<float>> recv_bufs(max_dtype_count);
 
-    auto &env = ccl::environment::instance();
-    auto attr = env.create_datatype_attr(ccl::attr_val<ccl::datatype_attr_id::size>(sizeof(float)));
+    auto dt_attr =
+        ccl::create_datatype_attr(ccl::attr_val<ccl::datatype_attr_id::size>(sizeof(float)));
 
     for (size_t idx = 0; idx < max_dtype_count; idx++) {
-        dtypes[idx] = env.register_datatype(attr);
+        dtypes[idx] = ccl::register_datatype(dt_attr);
         send_bufs[idx].resize(COUNT, comm.rank() + 1);
         recv_bufs[idx].resize(COUNT, 0);
     }
 
-    auto coll_attr = env.create_operation_attr<ccl::allreduce_attr>();
-    coll_attr.set<ccl::allreduce_attr_id::reduction_fn>((ccl::reduction_fn)custom_reduce);
+    auto attr = ccl::create_operation_attr<ccl::allreduce_attr>();
+    attr.set<ccl::allreduce_attr_id::reduction_fn>((ccl::reduction_fn)custom_reduce);
 
     for (size_t idx = 0; idx < max_dtype_count; idx++) {
-        reqs[idx] = comm.allreduce(send_bufs[idx].data(),
+        reqs[idx] = ccl::allreduce(send_bufs[idx].data(),
                                    recv_bufs[idx].data(),
                                    COUNT,
                                    dtypes[idx],
                                    ccl::reduction::custom,
-                                   coll_attr);
+                                   comm,
+                                   attr);
     }
 
     for (size_t idx = 0; idx < max_dtype_count; idx++) {
-        reqs[idx]->wait();
+        reqs[idx].wait();
     }
 
     float expected = (comm.size() + 1) * ((float)comm.size() / 2);
@@ -95,13 +91,12 @@ void check_allreduce(ccl::communicator &comm) {
     }
 
     for (size_t idx = 0; idx < max_dtype_count; idx++) {
-        env.deregister_datatype(dtypes[idx]);
+        ccl::deregister_datatype(dtypes[idx]);
     }
 }
 
 void check_create_and_free() {
-    auto &env = ccl::environment::instance();
-    auto attr = env.create_datatype_attr(ccl::attr_val<ccl::datatype_attr_id::size>(1));
+    auto attr = ccl::create_datatype_attr(ccl::attr_val<ccl::datatype_attr_id::size>(1));
 
     const size_t max_dtype_count = 16 * 1024;
     const size_t iter_count = 16;
@@ -112,8 +107,8 @@ void check_create_and_free() {
 
         for (size_t idx = 0; idx < max_dtype_count; idx++) {
             attr.set<ccl::datatype_attr_id::size>(idx + 1);
-            dtypes[idx] = env.register_datatype(attr);
-            size_t dtype_size = env.get_datatype_size(dtypes[idx]);
+            dtypes[idx] = ccl::register_datatype(attr);
+            size_t dtype_size = ccl::get_datatype_size(dtypes[idx]);
 
             if (dtype_size != (idx + 1)) {
                 printf("FAILED\n");
@@ -124,34 +119,37 @@ void check_create_and_free() {
         }
 
         for (size_t idx = 0; idx < max_dtype_count; idx++) {
-            env.deregister_datatype(dtypes[idx]);
+            ccl::deregister_datatype(dtypes[idx]);
         }
     }
 }
 
 int main() {
-    MPI_Init(NULL, NULL);
+    /**
+     * The example only works with CCL_ATL_TRANSPORT=ofi
+     */
+    setenv("CCL_ATL_TRANSPORT", "ofi", 0);
+
+    ccl::init();
+
     int size, rank;
+    MPI_Init(NULL, NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    auto &env = oneapi::ccl::environment::instance();
-    (void)env;
-
-    /* create CCL internal KVS */
-    oneapi::ccl::shared_ptr_class<ccl::kvs> kvs;
-    oneapi::ccl::kvs::address_type main_addr;
+    ccl::shared_ptr_class<ccl::kvs> kvs;
+    ccl::kvs::address_type main_addr;
     if (rank == 0) {
-        kvs = env.create_main_kvs();
+        kvs = ccl::create_main_kvs();
         main_addr = kvs->get_address();
         MPI_Bcast((void *)main_addr.data(), main_addr.size(), MPI_BYTE, 0, MPI_COMM_WORLD);
     }
     else {
         MPI_Bcast((void *)main_addr.data(), main_addr.size(), MPI_BYTE, 0, MPI_COMM_WORLD);
-        kvs = env.create_kvs(main_addr);
+        kvs = ccl::create_kvs(main_addr);
     }
 
-    auto comm = env.create_communicator(size, rank, kvs);
+    auto comm = ccl::create_communicator(size, rank, kvs);
 
     PRINT_BY_ROOT(comm, "\n- Check register and unregister");
     check_create_and_free();
@@ -163,5 +161,6 @@ int main() {
     PRINT_BY_ROOT(comm, "PASSED");
 
     MPI_Finalize();
+
     return 0;
 }

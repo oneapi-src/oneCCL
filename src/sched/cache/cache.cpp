@@ -34,7 +34,7 @@ void ccl_sched_cache::recache(const ccl_sched_key& old_key, ccl_sched_key&& new_
         if (it == table.end()) {
             std::string error_message = "old_key wasn't found";
             CCL_ASSERT(false, error_message, old_key.match_id);
-            throw ccl::ccl_error(error_message + old_key.match_id);
+            throw ccl::exception(error_message + old_key.match_id);
         }
         ccl_master_sched* sched = it->second;
         table.erase(it);

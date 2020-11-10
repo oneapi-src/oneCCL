@@ -13,14 +13,13 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#ifndef DEF_INCLUDED
-#define DEF_INCLUDED
+#pragma once
 
 //TODO: change exit to something more useful
 #define SET_STR(dst, size, ...) \
     do { \
         if (snprintf(dst, size, __VA_ARGS__) > size) { \
-            printf("Line so big (must be low %d)\n", size); \
+            printf("line too long (must be shorter %d)\n", size); \
             printf(__VA_ARGS__); \
             exit(1); \
         } \
@@ -35,21 +34,65 @@
         } \
     } while (0)
 
-#define DO_RW_OP(op, fd, buf, size) \
+#define DO_RW_OP(op, fd, buf, size, memory_mutex, msg) \
     do { \
-        ssize_t res = 0, shift = 0; \
-        while (shift != size) { \
+        { \
+            if (!fd) { \
+                printf("" #msg ": " #op ": fd is closed, size %zu\n", size); \
+                break; \
+            } \
+            std::lock_guard<std::mutex> lock(memory_mutex); \
+            ssize_t res = 0; \
+            size_t shift = 0; \
+            while (shift != size) { \
+                res = op(fd, (char*)buf + shift, size - shift); \
+                if (res == -1) { \
+                    if (errno != EINTR) { \
+                        printf("" #msg ": " #op ": error: buf %p, size %zu, shift %zu\n", \
+                               buf, \
+                               size, \
+                               shift); \
+                        perror("read/write error"); \
+                        exit(EXIT_FAILURE); \
+                    } \
+                } \
+                else if (res == 0) { \
+                    printf("" #msg ": " #op ": can not process all data, size %zu, shift %zu\n", \
+                           size, \
+                           shift); \
+                    exit(EXIT_FAILURE); \
+                } \
+                else { \
+                    shift += res; \
+                } \
+            } \
+        } \
+    } while (0)
+
+#define DO_RW_OP_1(op, fd, buf, size, res, msg) \
+    do { \
+        if (!fd) { \
+            printf("" #msg ": " #op ": fd is closed, size %zu\n", size); \
+            break; \
+        } \
+        size_t shift = 0; \
+        res = 0; \
+        do { \
             res = op(fd, (char*)buf + shift, size - shift); \
             if (res == -1) { \
                 if (errno != EINTR) { \
-                    printf("read/write error: %s\n", strerror(errno)); \
+                    printf("" #msg ": " #op ": error: buf %p, size %zu, shift %zu\n", \
+                           buf, \
+                           size, \
+                           shift); \
+                    perror("read/write error"); \
                     exit(EXIT_FAILURE); \
                 } \
             } \
             else { \
                 shift += res; \
             } \
-        } \
+        } while ((shift != size) && (res != 0)); \
     } while (0)
 
 #define BARRIER_NUM_MAX         1024
@@ -70,10 +113,12 @@
 #define GREP_TEMPLATE               "| grep \"%s\""
 #define GREP_COUNT_TEMPLATE         "| grep -c \"%s\""
 #define CONCAT_TWO_COMMAND_TEMPLATE "%s %s"
+#define RANK_TEMPLATE               "%d"
 #define SIZE_T_TEMPLATE             "%zu"
 
-#define KVS_NAME    "CCL_POD_ADDR"
-#define KVS_BARRIER "CCL_BARRIER"
+#define KVS_NAME         "CCL_POD_ADDR"
+#define KVS_BARRIER      "CCL_BARRIER"
+#define KVS_BARRIER_FULL "CCL_BARRIER_FULL"
 
 #define KVS_IDX               "IDX"
 #define KVS_UP                "CCL_UP"
@@ -87,7 +132,7 @@
 
 #define CCL_IP_LEN 128
 
-#define CHECKER_IP         "hostname -I"
+#define GET_IP_CMD         "hostname -I"
 #define READ_ONLY          "r"
 #define NULL_CHAR          '\0'
 #define MAX_UP_IDX         2048
@@ -95,8 +140,4 @@
 #define INITIAL_RANK_NUM   "0"
 #define MAX_CLEAN_CHECKS   3
 
-#define STR_COPY(dst, src, len) strncpy((dst), (src), (len)-1)
-
 extern char my_hostname[MAX_KVS_VAL_LENGTH];
-
-#endif

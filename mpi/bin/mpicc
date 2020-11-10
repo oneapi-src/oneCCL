@@ -49,8 +49,8 @@ fi
 
 if [ x"$opt_args" == x"" ]; then
     case "${compiler_short_name}" in
-    icc)    $dir/mpiicc -cc=$compiler_name "$@" ;;
-    cc|*gcc*) $dir/mpigcc -cc=$compiler_name "$@" ;;
+    icc|icx)    $dir/mpiicc -cc=$compiler_name "$@" ;;
+    cc|*gcc*|clang*) $dir/mpigcc -cc=$compiler_name "$@" ;;
     mpicc)  $dir/mpigcc "$@" ;;    
     *)  
             echo "Error: unsupported compiler name '$compiler_name'."
@@ -59,8 +59,8 @@ if [ x"$opt_args" == x"" ]; then
     esac
 else
     case "${compiler_short_name}" in
-    icc)    $dir/mpiicc -cc=$compiler_name "$@" $opt_args ;;
-    cc|*gcc*) $dir/mpigcc -cc=$compiler_name "$@" $opt_args ;;
+    icc|icx)    $dir/mpiicc -cc=$compiler_name "$@" $opt_args ;;
+    cc|*gcc*|clang*) $dir/mpigcc -cc=$compiler_name "$@" $opt_args ;;
     mpicc)  $dir/mpigcc "$@" $opt_args ;;    
     *)  
             echo "Error: unsupported compiler name '$compiler_name'."

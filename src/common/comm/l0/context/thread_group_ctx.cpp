@@ -25,7 +25,7 @@ namespace native {
 
 thread_group_context::~thread_group_context() {}
 
-bool thread_group_context::sync_barrier(const ccl::device_indices_t& device_indices_t,
+bool thread_group_context::sync_barrier(const ccl::device_indices_type& device_indices_t,
                                         ccl::context_comm_addr& comm_addr,
                                         device_storage& devices) {
     std::shared_ptr<specific_plain_device_storage> thread_device_list;
@@ -35,12 +35,23 @@ bool thread_group_context::sync_barrier(const ccl::device_indices_t& device_indi
     //comm_addr.thread_idx = thread_device_group_ctx.size();
     aggregate_device_indices(comm_addr.thread_idx, device_indices_t);
 
-    //check on group creation final condition
-    device_group_ctx_ptr group_ctx =
-        device_group_context::create(comm_addr, device_indices_t, devices);
-    if (false == thread_device_group_ctx.insert({ comm_addr.thread_idx, group_ctx }).second) {
-        LOG_ERROR("cannot register devices group ctx for thread idx: ", comm_addr.thread_idx);
-        abort();
+    //TODO refactore device_group_creation...(Each Device Group should have REAL device independently)
+    {
+        thread_local device_storage tls_device_storage;
+        //check on group creation final condition
+        device_group_ctx_ptr group_ctx =
+            device_group_context::create(comm_addr, device_indices_t, tls_device_storage);
+        if (false == thread_device_group_ctx.insert({ comm_addr.thread_idx, group_ctx }).second) {
+            LOG_ERROR("cannot register devices group ctx for thread idx: ", comm_addr.thread_idx);
+            abort();
+        }
+    }
+    //TODO refactore device_group_creation(Each Thread Group should have unique REAL device)
+    {
+        //check on group creation final condition
+        device_group_ctx_ptr group_ctx =
+            device_group_context::create(comm_addr, device_indices_t, devices);
+        (void)group_ctx;
     }
 
     LOG_DEBUG("Thread ", comm_addr.to_string(), " reached thread group communicator barrier");
@@ -95,20 +106,21 @@ bool thread_group_context::sync_barrier(const ccl::device_indices_t& device_indi
 }
 
 void thread_group_context::aggregate_device_indices(size_t thread_id,
-                                                    const ccl::device_indices_t& new_indices) {
+                                                    const ccl::device_indices_type& new_indices) {
     per_thread_indices.insert({ thread_id, new_indices });
 }
 
-const ccl::process_device_indices_t& thread_group_context::get_thread_group_device_indices() const {
+const ccl::process_device_indices_type& thread_group_context::get_thread_group_device_indices()
+    const {
     return per_thread_indices;
 }
 
-const ccl::device_indices_t& thread_group_context::get_device_group_indices(
+const ccl::device_indices_type& thread_group_context::get_device_group_indices(
     size_t thread_id) const {
     auto it = per_thread_indices.find(thread_id);
     if (it == per_thread_indices.end()) {
         LOG_ERROR("Cannot find device group for thread: ", thread_id, ". Empty indices");
-        static const ccl::device_indices_t empty;
+        static const ccl::device_indices_type empty;
         return empty;
     }
     return it->second;

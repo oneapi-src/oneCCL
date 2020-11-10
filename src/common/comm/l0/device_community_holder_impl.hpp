@@ -19,20 +19,19 @@
 #include "common/comm/l0/device_community_holder_utils.hpp"
 
 namespace native {
-#define TEMPLATE_DECL_ARG \
-    ccl::device_group_split_type group_id, ccl::device_topology_type... class_id
-#define TEMPLATE_DEF_ARG group_id, class_id...
+#define TEMPLATE_DECL_ARG ccl::group_split_type group_id, ccl::device_topology_type... class_id
+#define TEMPLATE_DEF_ARG  group_id, class_id...
 
 // community impl
 template <ccl::device_topology_type class_id>
-template <ccl::device_group_split_type group_id>
+template <ccl::group_split_type group_id>
 void device_community_container<class_id>::register_device_by_id(
     const ccl::device_index_type& device_id,
     ccl::context_comm_addr& registered_addr) {
     storage->template register_device_by_id<group_id>(device_id, registered_addr);
 }
 
-template <ccl::device_group_split_type group_id>
+template <ccl::group_split_type group_id>
 void device_community_container<ccl::device_topology_type::ring>::register_device_by_id(
     const ccl::device_index_type& device_id,
     ccl::context_comm_addr& registered_addr) {
@@ -63,7 +62,7 @@ device_group_community_holder<TEMPLATE_DEF_ARG>::get_community() {
 template <TEMPLATE_DECL_ARG>
 std::string device_group_community_holder<TEMPLATE_DEF_ARG>::to_string() const {
     std::stringstream ss;
-    details::device_community_container_print_helper<group_id> p(ss);
+    detail::device_community_container_print_helper<group_id> p(ss);
     ccl_tuple_for_each(typed_communities, p);
     return ss.str();
 }

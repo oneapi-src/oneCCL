@@ -17,7 +17,7 @@
 
 #include <initializer_list>
 #include <iterator>
-#include "oneapi/ccl/ccl_types.hpp"
+#include "oneapi/ccl/types.hpp"
 #include "common/datatype/datatype.hpp"
 #include "comp/comp.hpp"
 #include "common/comm/l0/devices/devices_declaration.hpp"
@@ -48,7 +48,7 @@ public:
         return dependent_entry::type();
     }
 
-    static constexpr ccl::device_group_split_type dependent_topology() {
+    static constexpr ccl::group_split_type dependent_topology() {
         return dependent_entry::get_topology();
     }
 
@@ -62,6 +62,7 @@ public:
                                std::shared_ptr<gpu_comm> comm,
                                std::shared_ptr<ccl::host_communicator> ccl_comm,
                                device_storage& global_device_storage,
+                               ccl_driver_context_ptr in_ctx,
                                std::vector<ccl_device::device_ipc_memory_handle>&& send_data)
             : base_coll_entry(sched),
               comm_addr(
@@ -73,7 +74,7 @@ public:
     }
 
     void start() override {
-        size_t comm_size = ccl_communicator->size();
+        int comm_size = ccl_communicator->size();
         LOG_INFO(class_name(), " entry req ", &req, ", rank: ", comm_addr.to_string());
 
         // serialize data for native allgather algo
@@ -115,15 +116,21 @@ public:
                  ", waiting recv_bytes: ",
                  plain_recv_data.size());
 
-        request = ccl_communicator->allgatherv_impl(
-            (char*)plain_send_data.data(), send_bytes, (char*)plain_recv_data.data(), recv_bytes);
+        ccl::stream::impl_value_t empty{};
+        event = ccl_communicator->allgatherv_impl((int8_t*)plain_send_data.data(),
+                                                  send_bytes,
+                                                  (int8_t*)plain_recv_data.data(),
+                                                  recv_bytes,
+                                                  empty,
+                                                  ccl::default_allgatherv_attr,
+                                                  {});
         status = ccl_sched_entry_status_started;
 
         //TODO prepare foreign_device_ipc_mem_storage handles array
     }
 
     void update() override {
-        if (request->test()) {
+        if (event.test()) {
             LOG_DEBUG(class_name(),
                       " entry req ",
                       &req,
@@ -195,8 +202,11 @@ public:
                               native::to_string(recv_ip_handle->get()));
 
                     // create IPC memory object & remember in shared storage
+
+                    // TODO: resolve issue to provide ctx correctly
+                    std::shared_ptr<ccl_context> ctx;
                     foreign_device_ipc_mem_storage[ipc_mem_owner].push_back(
-                        ipc_mem_owner->get_device().get_ipc_memory(std::move(recv_ip_handle)));
+                        ipc_mem_owner->get_device().get_ipc_memory(std::move(recv_ip_handle), ctx));
 
                     num_handles++;
                 }
@@ -292,7 +302,7 @@ private:
     size_t cnt;
     ccl_datatype dtype;
 
-    ccl::communicator::coll_request_t request;
+    ccl::event event;
     atl_req_t req{};
 };
 } // namespace native

@@ -13,29 +13,34 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#ifndef ALLREDUCE_STRATEGY_HPP
-#define ALLREDUCE_STRATEGY_HPP
+#pragma once
 
 struct allreduce_strategy_impl {
     static constexpr const char* class_name() {
         return "allreduce";
     }
 
-    static const ccl::allreduce_attr& get_op_attr(const bench_coll_exec_attr& bench_attr) {
+    size_t get_send_multiplier() {
+        return 1;
+    }
+
+    size_t get_recv_multiplier() {
+        return 1;
+    }
+
+    static const ccl::allreduce_attr& get_op_attr(const bench_exec_attr& bench_attr) {
         return bench_attr.get_attr<ccl::allreduce_attr>();
     }
 
-    template <class Dtype, class comm_t, class... Args>
-    void start_internal(comm_t& comm,
+    template <class Dtype, class... Args>
+    void start_internal(ccl::communicator& comm,
                         size_t count,
                         const Dtype send_buf,
                         Dtype recv_buf,
-                        const bench_coll_exec_attr& bench_attr,
+                        const bench_exec_attr& bench_attr,
                         req_list_t& reqs,
                         Args&&... args) {
-        reqs.push_back(comm.allreduce(
-            send_buf, recv_buf, count, bench_attr.reduction, std::forward<Args>(args)...));
+        reqs.push_back(ccl::allreduce(
+            send_buf, recv_buf, count, bench_attr.reduction, comm, std::forward<Args>(args)...));
     }
 };
-
-#endif /* ALLREDUCE_STRATEGY_HPP */

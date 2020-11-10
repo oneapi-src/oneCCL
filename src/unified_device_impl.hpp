@@ -15,16 +15,18 @@
 */
 #pragma once
 
-#include "oneapi/ccl/ccl_type_traits.hpp"
+#include "oneapi/ccl/types.hpp"
+#include "oneapi/ccl/type_traits.hpp"
 #include "common/log/log.hpp"
 #include "native_device_api/compiler_ccl_wrappers_dispatcher.hpp"
 
 namespace ccl {
 
 #ifdef CCL_ENABLE_SYCL
-CCL_API generic_device_type<CCL_ENABLE_SYCL_TRUE>::generic_device_type(
+/*
+CCL_API generic_device_type<cl_backend_type::dpcpp_sycl>::generic_device_type(
     device_index_type id,
-    cl::sycl::info::device_type type /* = info::device_type::gpu*/)
+    cl::sycl::info::device_type type)
         : device() {
     LOG_DEBUG("Try to find SYCL device by index: ",
               id,
@@ -37,7 +39,7 @@ CCL_API generic_device_type<CCL_ENABLE_SYCL_TRUE>::generic_device_type(
         std::find_if(platforms.begin(), platforms.end(), [](const cl::sycl::platform& pl) {
             return pl.get_info<cl::sycl::info::platform::name>().find("Level-Zero") !=
                    std::string::npos;
-            //or platform.get_backend() == cl::sycl::backend::level0
+            //or platform.get_backend() == cl::sycl::backend::level_zero
         });
     if (platform_it == platforms.end()) {
         std::stringstream ss;
@@ -89,10 +91,10 @@ CCL_API generic_device_type<CCL_ENABLE_SYCL_TRUE>::generic_device_type(
     device = *it;
 }
 
-generic_device_type<CCL_ENABLE_SYCL_TRUE>::generic_device_type(const cl::sycl::device& in_device)
+generic_device_type<cl_backend_type::dpcpp_sycl>::generic_device_type(const cl::sycl::device& in_device)
         : device(in_device) {}
 
-device_index_type generic_device_type<CCL_ENABLE_SYCL_TRUE>::get_id() const {
+device_index_type generic_device_type<cl_backend_type::dpcpp_sycl>::get_id() const {
     //TODO -S-
 #ifdef MULTI_GPU_SUPPORT
     return native::get_runtime_device(device)->get_device_path();
@@ -100,25 +102,15 @@ device_index_type generic_device_type<CCL_ENABLE_SYCL_TRUE>::get_id() const {
     return device_index_type{};
 }
 
-typename generic_device_type<CCL_ENABLE_SYCL_TRUE>::ccl_native_t&
-generic_device_type<CCL_ENABLE_SYCL_TRUE>::get() noexcept {
+typename generic_device_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
+generic_device_type<cl_backend_type::dpcpp_sycl>::get() noexcept {
     return device;
 }
-
+*/
 #else
-
 #ifdef MULTI_GPU_SUPPORT
-generic_device_type<CCL_ENABLE_SYCL_FALSE>::generic_device_type(device_index_type id)
-        : device(id) {}
-
-device_index_type generic_device_type<CCL_ENABLE_SYCL_FALSE>::get_id() const noexcept {
-    return device;
-}
-
-typename generic_device_type<CCL_ENABLE_SYCL_FALSE>::ccl_native_t
-generic_device_type<CCL_ENABLE_SYCL_FALSE>::get() noexcept {
-    return native::get_runtime_device(device);
-}
-#endif //MULTI_GPU_SUPPORT
+// #else
+// #error "No compute runtime is configured"
+#endif
 #endif
 } // namespace ccl

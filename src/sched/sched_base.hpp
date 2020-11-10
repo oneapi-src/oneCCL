@@ -14,14 +14,17 @@
  limitations under the License.
 */
 #pragma once
-#include "atl/atl.h"
-#include "coll/coll.hpp"
-#include "sched/entry/entry.hpp"
-#include "common/request/request.hpp"
 
 #include <deque>
 #include <list>
 #include <memory>
+
+#include "atl/atl.h"
+#include "common/comm/atl_tag.hpp"
+#include "coll/coll_param.hpp"
+#include "common/request/request.hpp"
+#include "common/utils/buffer.hpp"
+#include "sched/entry/entry.hpp"
 
 class ccl_sched_queue;
 class ccl_sched_bin;
@@ -65,9 +68,10 @@ struct ccl_sched_base {
     using add_entry_front_t = add_entry_mode_t<ccl_sched_add_front>;
     using add_entry_back_t = add_entry_mode_t<ccl_sched_add_back>;
 
-    void set_coll_attr(const ccl_coll_attr& attr);
+    void set_coll_attr(const struct ccl_coll_attr& attr);
 
-    void update_coll_param_and_attr(const ccl_coll_param& param, const ccl_coll_attr& attr);
+    void update_coll_param_and_attr(const struct ccl_coll_param& param,
+                                    const struct ccl_coll_attr& attr);
 
     size_t get_priority() const;
 
@@ -89,9 +93,7 @@ struct ccl_sched_base {
     }
 
     ccl_coll_param coll_param{};
-
     ccl_coll_attr coll_attr{};
-
     ccl_coll_param_copy coll_param_copy{};
 
     /* sequence number of the schedule in the communicator */
@@ -109,9 +111,7 @@ protected:
 
     ccl_sched_base(const ccl_coll_param& coll_param) : coll_param(coll_param) {}
 
-    void update_id() {
-        sched_id = coll_param.comm->get_sched_id(internal_type != ccl_sched_internal_none);
-    }
+    void update_id();
 
     void dump(std::ostream& out, const char* name) const;
 

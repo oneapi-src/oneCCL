@@ -31,13 +31,11 @@ public:
     using base = ccl_gpu_base_comm<ccl_ipc_gpu_comm, gpu_types::IPC_DESTINATION_GPU>;
     using base::comm_rank_t;
     using impl_t = ccl_ipc_gpu_comm;
-    template <ccl_coll_type algo_type,
-              ccl::device_group_split_type group,
-              ccl::device_topology_type mode>
+    template <ccl_coll_type algo_type, ccl::group_split_type group, ccl::device_topology_type mode>
     using gpu_module_t = ipc_dst_device_coll_module<algo_type, group, mode>;
 
     template <ccl_coll_type algo_type,
-              ccl::device_group_split_type group,
+              ccl::group_split_type group,
               ccl::device_topology_type mode,
               class native_data_type>
     using gpu_kernel_t =
@@ -51,15 +49,15 @@ public:
 
     ccl_ipc_gpu_comm(ccl_device& assigned_device,
                      comm_rank_t idx,
-                     size_t size,
-                     ccl::device_group_split_type group_id,
+                     int size,
+                     ccl::group_split_type group_id,
                      ccl::device_topology_type class_id);
     ~ccl_ipc_gpu_comm() = default;
 
     std::string to_string_impl() const;
 
     template <ccl_coll_type module_type,
-              ccl::device_group_split_type group_id,
+              ccl::group_split_type group_id,
               ccl::device_topology_type class_id,
               class native_data_type>
     gpu_kernel_t<module_type, group_id, class_id, native_data_type>& get_gpu_kernel() {
@@ -67,14 +65,11 @@ public:
             base::template get_gpu_module_unsafe<module_type, group_id, class_id, gpu_module_t>(
                 registered_modules);
         assert(ptr);
-        if (not std::is_same<native_data_type, float>::value) {
-            throw std::runtime_error(std::string(__PRETTY_FUNCTION__) + "Only float is supported");
-        }
         return ptr->template get_main_function<native_data_type>();
     }
 
     template <ccl_coll_type module_type,
-              ccl::device_group_split_type group_id,
+              ccl::group_split_type group_id,
               ccl::device_topology_type class_id>
     std::string create_module_impl(const ze_module_desc_t& module_data) {
         std::get<utils::enum_to_underlying(class_id)>(

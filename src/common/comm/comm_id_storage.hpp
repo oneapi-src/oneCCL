@@ -15,7 +15,7 @@
 */
 #pragma once
 
-#include "oneapi/ccl/ccl_types.hpp"
+#include "oneapi/ccl/types.hpp"
 #include "common/log/log.hpp"
 #include "common/utils/spinlock.hpp"
 
@@ -98,7 +98,6 @@ public:
         return comm_id(*this, internal);
     }
 
-    //[[deprecated]]
     ccl_comm_id_t acquire_id(bool internal = false) {
         std::lock_guard<ccl_spinlock> lock(sync_guard);
         ccl_comm_id_t &last_used_ref = internal ? last_used_id_internal : last_used_id_external;
@@ -130,6 +129,7 @@ private:
                                   ccl_comm_id_t upper_bound) {
         //search from the current position till the end
         LOG_DEBUG("last ", last_used, ", low ", lower_bound, " up ", upper_bound);
+
         for (ccl_comm_id_t id = last_used; id < upper_bound; ++id) {
             if (free_ids[id]) {
                 free_ids[id] = false;
@@ -148,7 +148,7 @@ private:
             }
         }
 
-        throw ccl::ccl_error("no free comm id was found");
+        throw ccl::exception("no free comm id was found");
     }
 
     void release_id(ccl_comm_id_t id) {

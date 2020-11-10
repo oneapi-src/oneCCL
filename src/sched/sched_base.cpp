@@ -48,12 +48,12 @@ void ccl_sched_base::update_coll_param_and_attr(const ccl_coll_param& param,
 
     if (coll_param.ctype == ccl_coll_allgatherv) {
         coll_param.recv_counts = param.recv_counts;
-        CCL_THROW_IF_NOT(coll_param_copy.ag_recv_counts.size() == coll_param.comm->size());
+        CCL_THROW_IF_NOT((int)coll_param_copy.ag_recv_counts.size() == coll_param.comm->size());
         coll_param_copy.ag_recv_counts.assign((size_t*)param.recv_counts,
                                               (size_t*)param.recv_counts + coll_param.comm->size());
 
         if (coll_attr.vector_buf) {
-            CCL_THROW_IF_NOT(coll_param_copy.ag_recv_bufs.size() == coll_param.comm->size());
+            CCL_THROW_IF_NOT((int)coll_param_copy.ag_recv_bufs.size() == coll_param.comm->size());
             coll_param_copy.ag_recv_bufs.assign((void**)param.recv_buf,
                                                 (void**)param.recv_buf + coll_param.comm->size());
         }
@@ -63,8 +63,8 @@ void ccl_sched_base::update_coll_param_and_attr(const ccl_coll_param& param,
         coll_param.send_counts = param.send_counts;
         coll_param.recv_counts = param.recv_counts;
 
-        CCL_THROW_IF_NOT(coll_param_copy.a2av_send_counts.size() == coll_param.comm->size());
-        CCL_THROW_IF_NOT(coll_param_copy.a2av_recv_counts.size() == coll_param.comm->size());
+        CCL_THROW_IF_NOT((int)coll_param_copy.a2av_send_counts.size() == coll_param.comm->size());
+        CCL_THROW_IF_NOT((int)coll_param_copy.a2av_recv_counts.size() == coll_param.comm->size());
 
         coll_param_copy.a2av_send_counts.assign(
             (size_t*)param.send_counts, (size_t*)param.send_counts + coll_param.comm->size());
@@ -226,7 +226,13 @@ void ccl_sched_base::alloc_buffers_for_sycl_copy() {
         return;
 
     LOG_DEBUG("alloc tmp buffers for D2H and H2D copies, coll_type ",
-              ccl_coll_type_to_str(param.ctype));
+              ccl_coll_type_to_str(param.ctype),
+              ", dtype_size ",
+              param.dtype.size(),
+              ", comm_size ",
+              param.comm->size(),
+              ", count ",
+              param.count);
 
     size_t idx, send_count = 0, recv_count = 0;
 
@@ -278,6 +284,13 @@ void ccl_sched_base::alloc_buffers_for_sycl_copy() {
                 param.recv_buf = nullptr;
             }
             break;
+        case ccl_coll_reduce_scatter:
+            param.sycl_send_buf = static_cast<ccl_sycl_buffer_t*>((void*)param.send_buf);
+            param.sycl_recv_buf = static_cast<ccl_sycl_buffer_t*>(param.recv_buf);
+            param.send_buf =
+                alloc_buffer(param.count * param.comm->size() * param.dtype.size()).get_ptr();
+            param.recv_buf = alloc_buffer(param.count * param.dtype.size()).get_ptr();
+            break;
         case ccl_coll_sparse_allreduce:
             CCL_FATAL("SYCL stream is not supported for sparse_allreduce yet");
             CCL_ASSERT(0);
@@ -285,6 +298,10 @@ void ccl_sched_base::alloc_buffers_for_sycl_copy() {
         default: break;
     }
 #endif /* CCL_ENABLE_SYCL */
+}
+
+void ccl_sched_base::update_id() {
+    sched_id = coll_param.comm->get_sched_id(internal_type != ccl_sched_internal_none);
 }
 
 void ccl_sched_base::dump(std::ostream& out, const char* name) const {

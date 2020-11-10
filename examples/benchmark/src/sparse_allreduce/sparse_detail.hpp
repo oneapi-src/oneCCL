@@ -13,8 +13,9 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#ifndef SPARSE_COLL_HPP
-#define SPARSE_COLL_HPP
+#if 0
+
+#pragma once
 
 #include <algorithm>
 #include <atomic>
@@ -90,14 +91,14 @@ void fill_sparse_data(const std::tuple<size_t, size_t>& expected_recv_counts,
     std::fill(recv_vbuf, recv_vbuf + recv_vbuf_count, ValueType{ 0 });
 }
 
-// override for ccl::bfp16
+// override for ccl::bfloat16
 template <class IndexType, class IndicesDistributorType>
 void fill_sparse_data(const std::tuple<size_t, size_t>& expected_recv_counts,
                       IndicesDistributorType& generator,
                       size_t elem_count,
                       IndexType* send_ibuf,
-                      ccl::bfp16* send_vbuf,
-                      ccl::bfp16* recv_vbuf,
+                      ccl::bfloat16* send_vbuf,
+                      ccl::bfloat16* recv_vbuf,
                       size_t recv_vbuf_count,
                       size_t& recv_icount,
                       size_t& recv_vcount,
@@ -118,10 +119,10 @@ void fill_sparse_data(const std::tuple<size_t, size_t>& expected_recv_counts,
         }
     }
 
-    std::fill(recv_vbuf, recv_vbuf + recv_vbuf_count, ccl::bfp16{ 0 });
+    std::fill(recv_vbuf, recv_vbuf + recv_vbuf_count, ccl::bfloat16{ 0 });
 
-    // convert send_vbuf from float to send_vbuf in bfp16
-    convert_fp32_to_bfp16_arrays(send_vbuf_from.data(), send_vbuf, elem_count);
+    // convert send_vbuf from float to send_vbuf in bf16
+    convert_fp32_to_bf16_arrays(send_vbuf_from.data(), send_vbuf, elem_count);
 }
 
 template <class ValueType, class IndexType>
@@ -133,8 +134,8 @@ void check_sparse_result(const std::tuple<size_t, size_t>& expected_recv_counts,
                          const ValueType* recv_vbuf,
                          size_t recv_icount,
                          size_t recv_vcount,
-                         size_t comm_size,
-                         size_t comm_rank) {
+                         int comm_size,
+                         int comm_rank) {
     size_t indices_count, vdim_count;
     std::tie(indices_count, vdim_count) = expected_recv_counts;
     vdim_count = vdim_count / indices_count;
@@ -151,7 +152,7 @@ void check_sparse_result(const std::tuple<size_t, size_t>& expected_recv_counts,
                    base_send_data.begin(),
                    std::bind(std::minus<ValueType>(), std::placeholders::_1, comm_rank));
 
-    for (size_t rank_index = 0; rank_index < comm_size; rank_index++) {
+    for (int rank_index = 0; rank_index < comm_size; rank_index++) {
         std::copy(send_ibuf, send_ibuf + indices_count, std::back_inserter(aggregated_indices));
 
         std::transform(base_send_data.begin(),
@@ -249,18 +250,18 @@ void check_sparse_result(const std::tuple<size_t, size_t>& expected_recv_counts,
     }
 }
 
-// override for ccl::bfp16
+// override for ccl::bfloat16
 template <class IndexType>
 void check_sparse_result(const std::tuple<size_t, size_t>& expected_recv_counts,
                          size_t elem_count,
                          const IndexType* send_ibuf,
-                         const ccl::bfp16* send_vbuf,
+                         const ccl::bfloat16* send_vbuf,
                          const IndexType* recv_ibuf,
-                         const ccl::bfp16* recv_vbuf,
+                         const ccl::bfloat16* recv_vbuf,
                          size_t recv_icount,
                          size_t recv_vcount,
-                         size_t comm_size,
-                         size_t comm_rank) {
+                         int comm_size,
+                         int comm_rank) {
     size_t indices_count, vdim_count;
     std::tie(indices_count, vdim_count) = expected_recv_counts;
     vdim_count = vdim_count / indices_count;
@@ -271,7 +272,7 @@ void check_sparse_result(const std::tuple<size_t, size_t>& expected_recv_counts,
     std::vector<float> aggregated_values;
     aggregated_values.reserve(indices_count * vdim_count * comm_size);
 
-    for (size_t rank_index = 0; rank_index < comm_size; rank_index++) {
+    for (int rank_index = 0; rank_index < comm_size; rank_index++) {
         std::copy(send_ibuf, send_ibuf + indices_count, std::back_inserter(aggregated_indices));
 
         for (size_t i_idx = 0; i_idx < indices_count; i_idx++) {
@@ -313,14 +314,14 @@ void check_sparse_result(const std::tuple<size_t, size_t>& expected_recv_counts,
 
     // check received values
     std::vector<float> recv_vbuf_float(recv_vcount, float{ 0 });
-    convert_bfp16_to_fp32_arrays(reinterpret_cast<void*>(const_cast<ccl::bfp16*>(recv_vbuf)),
+    convert_bf16_to_fp32_arrays(reinterpret_cast<void*>(const_cast<ccl::bfloat16*>(recv_vbuf)),
                                  recv_vbuf_float.data(),
                                  recv_vcount);
 
     /* https://www.mcs.anl.gov/papers/P4093-0713_1.pdf */
-    /* added conversion error float->bfp16 for comm_size == 1*/
+    /* added conversion error float->bf16 for comm_size == 1*/
     double log_base2 = log(comm_size != 1 ? comm_size : 2) / log(2);
-    double g = (log_base2 * BFP16_PRECISION) / (1 - (log_base2 * BFP16_PRECISION));
+    double g = (log_base2 * BF16_PRECISION) / (1 - (log_base2 * BF16_PRECISION));
 
     for (size_t index_pos = 0; index_pos < recv_icount; index_pos++) {
         IndexType recv_index_value = recv_ibuf[index_pos];
@@ -328,7 +329,7 @@ void check_sparse_result(const std::tuple<size_t, size_t>& expected_recv_counts,
         if (expected_it == expected.end()) {
             throw std::runtime_error(
                 std::string(__FUNCTION__) +
-                "_bfp16 - incorrect index received: " + std::to_string(recv_index_value));
+                "_bf16 - incorrect index received: " + std::to_string(recv_index_value));
         }
 
         const float* from = recv_vbuf_float.data() + index_pos * vdim_count;
@@ -336,7 +337,7 @@ void check_sparse_result(const std::tuple<size_t, size_t>& expected_recv_counts,
         const values_array& expected_values = expected_it->second;
         if (vdim_count != expected_values.size()) {
             throw std::runtime_error(std::string(__FUNCTION__) +
-                                     "_bfp16 - incorrect recv_vbuf count, got: " +
+                                     "_bf16 - incorrect recv_vbuf count, got: " +
                                      std::to_string(std::distance(from, to)) +
                                      ", expected: " + std::to_string(expected_values.size()));
         }
@@ -382,11 +383,11 @@ void check_sparse_result(const std::tuple<size_t, size_t>& expected_recv_counts,
                           std::ostream_iterator<float>(ss, ","));
 
                 throw std::runtime_error(std::string(__FUNCTION__) +
-                                         "_bfp16 - incorrect values received!\n" + ss.str());
+                                         "_bf16 - incorrect values received!\n" + ss.str());
             }
         }
     }
 }
 } /* namespace sparse_detail */
 
-#endif /* SPARSE_COLL_HPP */
+#endif

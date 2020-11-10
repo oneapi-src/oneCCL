@@ -17,37 +17,37 @@
 #include "sched/entry/factory/chunked_entry_factory.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
 
-ccl_status_t ccl_coll_build_direct_allgatherv(ccl_sched* sched,
-                                              ccl_buffer send_buf,
-                                              size_t send_count,
-                                              ccl_buffer recv_buf,
-                                              const size_t* recv_counts,
-                                              const ccl_datatype& dtype,
-                                              ccl_comm* comm) {
-    LOG_DEBUG("build direct allgatherv");
-
-    entry_factory::make_entry<allgatherv_entry>(
-        sched, send_buf, send_count, recv_buf, recv_counts, dtype, comm);
-    return ccl_status_success;
-}
-
-ccl_status_t ccl_coll_build_naive_allgatherv(ccl_sched* sched,
+ccl::status ccl_coll_build_direct_allgatherv(ccl_sched* sched,
                                              ccl_buffer send_buf,
                                              size_t send_count,
                                              ccl_buffer recv_buf,
                                              const size_t* recv_counts,
                                              const ccl_datatype& dtype,
                                              ccl_comm* comm) {
+    LOG_DEBUG("build direct allgatherv");
+
+    entry_factory::make_entry<allgatherv_entry>(
+        sched, send_buf, send_count, recv_buf, recv_counts, dtype, comm);
+    return ccl::status::success;
+}
+
+ccl::status ccl_coll_build_naive_allgatherv(ccl_sched* sched,
+                                            ccl_buffer send_buf,
+                                            size_t send_count,
+                                            ccl_buffer recv_buf,
+                                            const size_t* recv_counts,
+                                            const ccl_datatype& dtype,
+                                            ccl_comm* comm) {
     LOG_DEBUG("build naive allgatherv");
 
-    size_t comm_size = comm->size();
-    size_t this_rank = comm->rank();
+    int comm_size = comm->size();
+    int this_rank = comm->rank();
     size_t dtype_size = dtype.size();
     size_t* offsets = static_cast<size_t*>(CCL_MALLOC(comm_size * sizeof(size_t), "offsets"));
-    ccl_status_t status = ccl_status_success;
+    ccl::status status = ccl::status::success;
 
     offsets[0] = 0;
-    for (size_t rank_idx = 1; rank_idx < comm_size; ++rank_idx) {
+    for (int rank_idx = 1; rank_idx < comm_size; ++rank_idx) {
         offsets[rank_idx] = offsets[rank_idx - 1] + recv_counts[rank_idx - 1] * dtype_size;
     }
 
@@ -57,7 +57,7 @@ ccl_status_t ccl_coll_build_naive_allgatherv(ccl_sched* sched,
             sched, send_buf, recv_buf + offsets[this_rank], send_count, dtype);
     }
 
-    for (size_t rank_idx = 0; rank_idx < comm_size; ++rank_idx) {
+    for (int rank_idx = 0; rank_idx < comm_size; ++rank_idx) {
         if (rank_idx != this_rank) {
             // send own buffer to other ranks
             entry_factory::make_chunked_send_entry(
@@ -72,27 +72,26 @@ ccl_status_t ccl_coll_build_naive_allgatherv(ccl_sched* sched,
     return status;
 }
 
-ccl_status_t ccl_coll_build_ring_allgatherv(ccl_sched* sched,
-                                            ccl_buffer send_buf,
-                                            size_t send_count,
-                                            ccl_buffer recv_buf,
-                                            const size_t* recv_counts,
-                                            const ccl_datatype& dtype,
-                                            ccl_comm* comm) {
+ccl::status ccl_coll_build_ring_allgatherv(ccl_sched* sched,
+                                           ccl_buffer send_buf,
+                                           size_t send_count,
+                                           ccl_buffer recv_buf,
+                                           const size_t* recv_counts,
+                                           const ccl_datatype& dtype,
+                                           ccl_comm* comm) {
     LOG_DEBUG("build ring allgatherv, send_count ", send_count);
 
-    ccl_status_t status = ccl_status_success;
-    size_t comm_size, rank;
+    ccl::status status = ccl::status::success;
+    int comm_size, rank;
     size_t dtype_size = dtype.size();
-    size_t idx = 0;
-    size_t src, dst;
+    int src, dst;
 
     comm_size = comm->size();
     rank = comm->rank();
 
     size_t* offsets = static_cast<size_t*>(CCL_MALLOC(comm_size * sizeof(size_t), "offsets"));
     offsets[0] = 0;
-    for (size_t rank_idx = 1; rank_idx < comm_size; ++rank_idx) {
+    for (int rank_idx = 1; rank_idx < comm_size; ++rank_idx) {
         offsets[rank_idx] = offsets[rank_idx - 1] + recv_counts[rank_idx - 1] * dtype_size;
     }
 
@@ -112,7 +111,7 @@ ccl_status_t ccl_coll_build_ring_allgatherv(ccl_sched* sched,
     size_t send_block_count, recv_block_count;
     size_t send_block_offset, recv_block_offset;
 
-    for (idx = 0; idx < (comm_size - 1); idx++) {
+    for (int idx = 0; idx < (comm_size - 1); idx++) {
         send_block_idx = block_idx;
         recv_block_idx = (comm_size + block_idx - 1) % comm_size;
         send_block_count = recv_counts[send_block_idx];

@@ -59,16 +59,17 @@ bool ccl_algorithm_selector_helper<ccl_coll_allreduce_algo>::can_use(
     const ccl_selection_table_t<ccl_coll_allreduce_algo>& table) {
     bool can_use = true;
 
-    if (algo == ccl_coll_allreduce_rabenseifner && param.count < param.comm->pof2())
+    if (algo == ccl_coll_allreduce_rabenseifner && (int)param.count < param.comm->pof2())
         can_use = false;
-    else if (algo == ccl_coll_allreduce_ring_rma &&
-             !ccl::global_data::get().executor->get_atl_attr().enable_rma)
+    else if (algo == ccl_coll_allreduce_ring_rma && !atl_wrapper::attr.enable_rma)
         can_use = false;
     else if (algo == ccl_coll_allreduce_starlike && !(param.count / param.comm->size()))
         can_use = false;
     else if (algo == ccl_coll_allreduce_2d &&
-             (ccl::global_data::env().atl_transport == ccl_atl_mpi ||
-              param.comm->size() != ccl::global_data::get().comm->size()))
+             (ccl::global_data::env().atl_transport == ccl_atl_mpi))
+        can_use = false;
+    else if (algo == ccl_coll_allreduce_direct &&
+             (ccl::global_data::env().atl_transport == ccl_atl_ofi))
         can_use = false;
 
     return can_use;

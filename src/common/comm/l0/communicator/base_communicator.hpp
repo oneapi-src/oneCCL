@@ -24,10 +24,12 @@ struct base_communicator : public ccl::communicator_interface {
     //TODO using group_comm_storage = native::specific_indexed_device_storage;
 
     base_communicator(ccl::unified_device_type&& owned_device,
+                      ccl::unified_context_type&& owned_ctx,
                       size_t thread_idx,
                       size_t process_idx,
-                      const ccl::device_comm_split_attr& attr)
+                      const ccl::comm_split_attr& attr)
             : device(std::move(owned_device)),
+              context(std::move(owned_ctx)),
               thread_id(thread_idx),
               process_id(process_idx),
               comm_attr(attr),
@@ -39,11 +41,11 @@ struct base_communicator : public ccl::communicator_interface {
 
     virtual ~base_communicator() = default;
 
-    size_t rank() const override {
+    int rank() const override {
         return comm_rank;
     }
 
-    size_t size() const override {
+    int size() const override {
         return comm_size;
     }
 
@@ -51,17 +53,15 @@ struct base_communicator : public ccl::communicator_interface {
         return device.get_id();
     }
 
-    ccl::communicator_interface::device_t get_device() override {
+    ccl::communicator_interface::device_t get_device() const override {
         return device.get();
     }
 
-    ccl::communicator_interface::context_t get_context() override {
-        //TODO not implemented
-        throw std::runtime_error(std::string(__PRETTY_FUNCTION__) + " - not implemented");
-        return context_t{};
+    ccl::communicator_interface::context_t get_context() const override {
+        return context.get();
     }
 
-    const ccl::device_comm_split_attr& get_comm_split_attr() const override {
+    const ccl::comm_split_attr& get_comm_split_attr() const override {
         return comm_attr;
     }
 
@@ -84,13 +84,14 @@ struct base_communicator : public ccl::communicator_interface {
     }
 */
     ccl::unified_device_type device;
+    ccl::unified_context_type context;
     size_t thread_id;
     size_t process_id;
-    const ccl::device_comm_split_attr comm_attr;
+    const ccl::comm_split_attr comm_attr;
 
     //TODO add context_comm_addr to aggregate device_id,thread_id, process_id & ranks
-    size_t comm_rank;
-    size_t comm_size;
+    int comm_rank;
+    int comm_size;
 
     mutable ccl_spinlock ready_mutex;
 

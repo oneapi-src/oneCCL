@@ -15,69 +15,158 @@
 */
 #pragma once
 
+#include "common/datatype/datatype.hpp"
+#include "common/global/global.hpp"
+#include "common/utils/buffer.hpp"
+#include "common/utils/enums.hpp"
 #include "common/utils/tuple.hpp"
+#include "oneapi/ccl/native_device_api/interop_utils.hpp"
 
-template <class Func, cl::sycl::access::mode access_mode>
-struct sycl_buffer_visitor {
-    sycl_buffer_visitor(const ccl_datatype& dtype,
-                        size_t cnt,
-                        size_t offset,
-                        const ccl_buffer& buf,
-                        Func f)
-            : requested_dtype(dtype),
-              requested_cnt(cnt),
-              requested_offset(offset),
-              requested_buf(buf),
-              callback(f) {}
+enum class sycl_copy_direction { d2h, h2d };
+
+std::string to_string(sycl_copy_direction val);
+
+#ifdef CCL_ENABLE_SYCL
+
+template <sycl_copy_direction direction>
+struct sycl_copier {
+    sycl_copier(ccl_buffer in_buf,
+                ccl_buffer out_buf,
+                size_t count,
+                const ccl_datatype& dtype,
+                size_t in_buf_offset)
+            : in_buf(in_buf),
+              out_buf(out_buf),
+              count(count),
+              dtype(dtype),
+              in_buf_offset(in_buf_offset) {}
+
+    bool is_completed() {
+        return (e.get_info<sycl::info::event::command_execution_status>() ==
+                sycl::info::event_command_status::complete)
+                   ? true
+                   : false;
+    }
+
+    void set_queue(sycl::queue external_q) {
+        q = external_q;
+    }
 
     template <size_t index, class specific_sycl_buffer>
     void invoke() {
-        if (index == (int)(requested_dtype.idx())) {
+        if (index == (int)(dtype.idx())) {
             LOG_DEBUG("visitor matched index: ",
                       index,
                       ", ccl: ",
-                      ccl::global_data::get().dtypes->name(requested_dtype),
+                      ccl::global_data::get().dtypes->name(dtype),
                       ", in: ",
                       __PRETTY_FUNCTION__);
 
-            size_t bytes = requested_cnt * requested_dtype.size();
-            auto out_buf_acc = static_cast<specific_sycl_buffer*>(requested_buf.get_ptr(bytes))
-                                   ->template get_access<access_mode>();
-            CCL_ASSERT(requested_cnt <= out_buf_acc.get_count());
-            void* out_pointer = out_buf_acc.get_pointer();
-            LOG_DEBUG("requested_cnt: ",
-                      requested_cnt,
-                      ", requested_dtype.size(): ",
-                      requested_dtype.size(),
-                      ", requested_offset: ",
-                      requested_offset,
+            size_t bytes = count * dtype.size();
+
+            void* in_buf_ptr = in_buf.get_ptr(bytes);
+            void* out_buf_ptr = out_buf.get_ptr(bytes);
+
+            void* void_device_ptr =
+                (direction == sycl_copy_direction::h2d) ? out_buf_ptr : in_buf_ptr;
+
+            /*
+              don't print this pointer through CCL logger
+              as in case of char/int8_t it will be interpreted as string
+              and logger will try access device memory
+              use void_device_ptr instead
+            */
+            typename specific_sycl_buffer::value_type* device_ptr =
+                static_cast<typename specific_sycl_buffer::value_type*>(void_device_ptr);
+
+            auto device_ptr_type = cl::sycl::get_pointer_type(device_ptr, q.get_context());
+
+            CCL_THROW_IF_NOT((device_ptr_type == cl::sycl::usm::alloc::device ||
+                              device_ptr_type == cl::sycl::usm::alloc::unknown),
+                             "unexpected USM type ",
+                             native::detail::usm_to_string(device_ptr_type),
+                             " for device_ptr ",
+                             device_ptr);
+
+            specific_sycl_buffer* device_buf_ptr = nullptr;
+
+            if (device_ptr_type == cl::sycl::usm::alloc::device) {
+                /* do nothing, provided device USM pointer can be used as is in copy kernel */
+            }
+            else {
+                /* cast pointer into SYCL buffer */
+                device_buf_ptr = static_cast<specific_sycl_buffer*>(void_device_ptr);
+            }
+
+            LOG_DEBUG("count: ",
+                      count,
+                      ", in_buf_offset: ",
+                      in_buf_offset,
+                      ", dtype_size: ",
+                      dtype.size(),
                       ", bytes: ",
                       bytes,
-                      ", out_buf_acc.get_count(): ",
-                      out_buf_acc.get_count());
-            callback((char*)out_pointer + requested_offset, bytes);
+                      ", direction: ",
+                      to_string(direction),
+                      ", in_buf_ptr: ",
+                      in_buf_ptr,
+                      ", out_buf_ptr: ",
+                      out_buf_ptr,
+                      ", device_ptr: ",
+                      void_device_ptr,
+                      ", is_device_usm: ",
+                      (device_buf_ptr) ? "no" : "yes",
+                      ", device_ptr usm_type: ",
+                      native::detail::usm_to_string(device_ptr_type));
+
+            size_t offset = in_buf_offset;
+
+            if (device_buf_ptr) {
+                specific_sycl_buffer host_buf(
+                    static_cast<typename specific_sycl_buffer::value_type*>(
+                        (direction == sycl_copy_direction::h2d) ? in_buf_ptr : out_buf_ptr),
+                    count,
+                    cl::sycl::property::buffer::use_host_ptr{});
+
+                e = q.submit([&](cl::sycl::handler& h) {
+                    auto& src_buf =
+                        (direction == sycl_copy_direction::h2d) ? host_buf : *device_buf_ptr;
+                    auto& dst_buf =
+                        (direction == sycl_copy_direction::h2d) ? *device_buf_ptr : host_buf;
+                    auto src_buf_acc =
+                        src_buf.template get_access<cl::sycl::access::mode::read>(h, count, offset);
+                    auto dst_buf_acc =
+                        dst_buf.template get_access<cl::sycl::access::mode::write>(h);
+                    h.copy(src_buf_acc, dst_buf_acc);
+                });
+            }
+            else {
+                e = q.memcpy(
+                    out_buf_ptr,
+                    static_cast<typename specific_sycl_buffer::value_type*>(in_buf_ptr) + offset,
+                    count * dtype.size());
+
+                /* TODO: remove explicit wait */
+                e.wait();
+            }
         }
         else {
             LOG_TRACE("visitor skipped index: ",
                       index,
                       ", ccl: ",
-                      ccl::global_data::get().dtypes->name(requested_dtype),
+                      ccl::global_data::get().dtypes->name(dtype),
                       ", in: ",
                       __PRETTY_FUNCTION__);
         }
     }
-    const ccl_datatype& requested_dtype;
-    size_t requested_cnt;
-    size_t requested_offset;
-    const ccl_buffer& requested_buf;
-    Func callback;
+
+    ccl_buffer in_buf;
+    ccl_buffer out_buf;
+    size_t count;
+    const ccl_datatype& dtype;
+    cl::sycl::queue q;
+    size_t in_buf_offset;
+    sycl::event e;
 };
 
-template <cl::sycl::access::mode access_mode, class Func>
-sycl_buffer_visitor<Func, access_mode> make_visitor(const ccl_datatype& dtype,
-                                                    size_t cnt,
-                                                    size_t offset,
-                                                    const ccl_buffer& buf,
-                                                    Func f) {
-    return sycl_buffer_visitor<Func, access_mode>(dtype, cnt, offset, buf, f);
-}
+#endif /* CCL_ENABLE_SYCL */

@@ -21,7 +21,7 @@ class base_coll_entry : public sched_entry {
 public:
     base_coll_entry() = delete;
     base_coll_entry(ccl_sched* sched) : sched_entry(sched) {
-        sched->strict_start_order = true;
+        sched->strict_order = true;
     }
 
     bool is_strict_order_satisfied() override {

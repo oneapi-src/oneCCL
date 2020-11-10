@@ -15,13 +15,28 @@
 */
 #include <sstream>
 
-#include "oneapi/ccl/ccl_config.h"
-#include "oneapi/ccl/ccl_types.hpp"
+#include "oneapi/ccl/config.h"
+#include "oneapi/ccl/lp_types.hpp"
+#include "oneapi/ccl/types.hpp"
+#include "common/utils/enums.hpp"
 
 std::ostream& operator<<(std::ostream& out, const ccl::device_index_type& index);
 
 namespace ccl {
-CCL_API
+
+std::string to_string(const bfloat16& v) {
+    std::stringstream ss;
+    ss << "bf16::data " << v.data;
+    return ss.str();
+}
+
+// std::string to_string(const float16& v) {
+//     std::stringstream ss;
+//     ss << "fp16::data " << v.data;
+//     return ss.str();
+// }
+
+/* CCL_API */
 std::string to_string(const device_index_type& device_id) {
     std::stringstream ss;
     ss << "[" << std::get<ccl::device_index_enum::driver_index_id>(device_id) << ":"

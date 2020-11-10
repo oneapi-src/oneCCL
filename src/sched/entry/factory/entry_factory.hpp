@@ -41,10 +41,10 @@
 #include "sched/entry/coll/direct/barrier_entry.hpp"
 #include "sched/entry/coll/direct/bcast_entry.hpp"
 #include "sched/entry/coll/direct/reduce_entry.hpp"
+#include "sched/entry/coll/direct/reduce_scatter_entry.hpp"
 
 #ifdef CCL_ENABLE_SYCL
-#include "sched/entry/sycl_copy_device_to_host_entry.hpp"
-#include "sched/entry/sycl_copy_host_to_device_entry.hpp"
+#include "sched/entry/sycl_copy_entry.hpp"
 #endif /* CCL_ENABLE_SYCL */
 
 #include "sched/sched.hpp"
