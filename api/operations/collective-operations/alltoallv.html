@@ -1,0 +1,449 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Alltoallv &mdash; oneCCL Documentation (Beta) 2.0 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/sphinx_tabs/semantic-ui-2.4.1/segment.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/sphinx_tabs/semantic-ui-2.4.1/menu.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/sphinx_tabs/semantic-ui-2.4.1/tab.min.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/sphinx_tabs/tabs.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+        <script src="../../../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="Barrier" href="barrier.html" />
+    <link rel="prev" title="Alltoall" href="alltoall.html" />
+    <link href="../../../_static/style.css" rel="stylesheet" type="text/css">
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home" alt="Documentation Home"> oneCCL Documentation (Beta)
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../prerequisites.html">Prerequisites</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../installation.html#installation-using-command-line-interface">Installation using Command Line Interface</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../installation.html#custom-installation">Custom Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../installation.html#installation-using-tar-gz">Installation using tar.gz</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../installation.html#installation-using-rpm">Installation using RPM</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../sample.html">Sample Application</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../sample.html#build-details">Build details</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sample.html#run-the-sample">Run the sample</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Programming Model</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../specification.html">Specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../host_communication.html">Host Communication</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../host_communication.html#example">Example</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../device_communication.html">Device Communication</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../device_communication.html#example">Example</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">General Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../operation_execution.html">Execution of Communication Operations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../operation_execution.html#explicit-setup">Explicit setup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../operation_execution.html#example">Example</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../operation_execution.html#automatic-setup">Automatic setup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../operation_execution.html#id1">Example</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../transport_selection.html">Transport selection</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Advanced Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../collective_algorithms_selection.html">Selection of Collective Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../operation_caching.html">Caching of Communication Operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../operation_prioritization.html">Prioritization of Communication Operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../operation_fusion.html">Fusion of Communication Operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../unordered_collectives.html">Unordered collectives support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../sparse_collectives.html">Sparse collective operations</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Reference Materials</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../env_variables.html">Environment Variables</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../env_variables.html#collective-algorithms-selection">Collective algorithms selection</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../env_variables.html#ccl-coll-name">CCL_&lt;coll_name&gt;</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../env_variables.html#example">Example</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../../env_variables.html#available-collectives">Available collectives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../env_variables.html#available-algorithms">Available algorithms</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../env_variables.html#allgatherv-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLGATHERV</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../env_variables.html#allreduce-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLREDUCE</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../env_variables.html#alltoall-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLTOALL</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../env_variables.html#alltoallv-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLTOALLV</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../env_variables.html#barrier-algorithms"><code class="docutils literal notranslate"><span class="pre">BARRIER</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../env_variables.html#bcast-algorithms"><code class="docutils literal notranslate"><span class="pre">BCAST</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../env_variables.html#reduce-algorithms"><code class="docutils literal notranslate"><span class="pre">REDUCE</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../env_variables.html#reduce-scatter-algorithms"><code class="docutils literal notranslate"><span class="pre">REDUCE_SCATTER</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../env_variables.html#sparse-allreduce-algorithms"><code class="docutils literal notranslate"><span class="pre">SPARSE_ALLREDUCE</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../env_variables.html#ccl-rs-chunk-count">CCL_RS_CHUNK_COUNT</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../env_variables.html#ccl-rs-min-chunk-size">CCL_RS_MIN_CHUNK_SIZE</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../env_variables.html#fusion">Fusion</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../env_variables.html#ccl-fusion">CCL_FUSION</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../env_variables.html#ccl-fusion-bytes-threshold">CCL_FUSION_BYTES_THRESHOLD</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../env_variables.html#ccl-fusion-count-threshold">CCL_FUSION_COUNT_THRESHOLD</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../env_variables.html#ccl-fusion-cycle-ms">CCL_FUSION_CYCLE_MS</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../env_variables.html#ccl-atl-transport">CCL_ATL_TRANSPORT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../env_variables.html#ccl-unordered-coll">CCL_UNORDERED_COLL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../env_variables.html#ccl-priority">CCL_PRIORITY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../env_variables.html#ccl-worker-count">CCL_WORKER_COUNT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../env_variables.html#ccl-worker-affinity">CCL_WORKER_AFFINITY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../env_variables.html#ccl-log-level">CCL_LOG_LEVEL</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../../api.html">Library API</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../../initialization.html">Initialization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../concepts.html">oneCCL Concepts</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../concepts/communicator.html">Communicator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../concepts/context.html">Context</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../concepts/device.html">Device</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../concepts/event.html">Event</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../concepts/kvs.html">Key-value Store</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../concepts/stream.html">Stream</a></li>
+</ul>
+</li>
+<li class="toctree-l2 current"><a class="reference internal" href="../../operations.html">Communication operations</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../datatypes.html">Datatypes</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="../collective-operations.html">Collective Operations</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="allgatherv.html">Allgatherv</a></li>
+<li class="toctree-l4"><a class="reference internal" href="allreduce.html">Allreduce</a></li>
+<li class="toctree-l4"><a class="reference internal" href="alltoall.html">Alltoall</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">Alltoallv</a></li>
+<li class="toctree-l4"><a class="reference internal" href="barrier.html">Barrier</a></li>
+<li class="toctree-l4"><a class="reference internal" href="broadcast.html">Broadcast</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reduce.html">Reduce</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reduce-scatter.html">ReduceScatter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="sparse-allreduce.html">SparseAllreduce</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../collective-operations.html#operation-attributes">Operation Attributes</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Notices and Disclaimers</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../legal.html">Notices and Disclaimers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../optimization_notice.html">Optimization Notice</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">oneCCL Documentation (Beta)</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../../../api.html">Library API</a> &raquo;</li>
+        
+          <li><a href="../../operations.html">Communication operations</a> &raquo;</li>
+        
+          <li><a href="../collective-operations.html">Collective Operations</a> &raquo;</li>
+        
+      <li>Alltoallv</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../../../_sources/api/operations/collective-operations/alltoallv.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="alltoallv">
+<h1>Alltoallv<a class="headerlink" href="#alltoallv" title="Permalink to this headline">¶</a></h1>
+<dl class="cpp function">
+<dt>
+event <code class="sig-name descname">alltoall</code><span class="sig-paren">(</span><em class="property">const</em> void *<em>send_buf</em>, void *<em>recv_buf</em>, size_t <em>count</em>, datatype <em>dtype</em>, <em class="property">const</em> communicator &amp;<em>comm</em>, <em class="property">const</em> <a class="reference internal" href="alltoall.html#_CPPv48alltoallPKvPv6size_t8datatypeRK12communicatorRK6streamRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::stream">stream</a> &amp;<em>stream</em>, <em class="property">const</em> alltoall_attr &amp;<em>attr</em> = default_alltoall_attr, <em class="property">const</em> vector_class&lt;event&gt; &amp;<em>deps</em> = {}<span class="sig-paren">)</span><br /></dt>
+<dd><p>Alltoall is a collective communication operation in which each rank sends distinct equal-sized blocks of data to each rank. The j-th block of <code class="docutils literal notranslate"><span class="pre">send_buf</span></code> sent from the i-th rank is received by the j-th rank and is placed in the i-th block of <code class="docutils literal notranslate"><span class="pre">recvbuf</span></code>. </p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>ccl::event an object to track the progress of the operation </p>
+</dd>
+<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">send_buf</span></code>: the buffer with <code class="docutils literal notranslate"><span class="pre">count</span></code> elements of <code class="docutils literal notranslate"><span class="pre">dtype</span></code> that stores local data to be sent </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">recv_buf</span></code>: [out] the buffer to store received result, should be large enough to hold values from all ranks, i.e. at least <code class="docutils literal notranslate"><span class="pre">comm_size</span></code> * <code class="docutils literal notranslate"><span class="pre">count</span></code> </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">send_bufs</span></code>: array of buffers with local data to be sent, one buffer per each rank </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">recv_bufs</span></code>: [out] array of buffers to store received result, one buffer per each rank </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">count</span></code>: the number of elements of type <code class="docutils literal notranslate"><span class="pre">dtype</span></code> to be send to or to received from each rank </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dtype</span></code>: the datatype of elements in <code class="docutils literal notranslate"><span class="pre">send_buf</span></code> and <code class="docutils literal notranslate"><span class="pre">recv_buf</span></code> </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">comm</span></code>: the communicator for which the operation will be performed </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">stream</span></code>: an optional stream associated with the operation </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">attr</span></code>: optional attributes to customize operation </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">deps</span></code>: an optional vector of the events that the operation should depend on </p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt>
+event <code class="sig-name descname">alltoall</code><span class="sig-paren">(</span><em class="property">const</em> void *<em>send_buf</em>, void *<em>recv_buf</em>, size_t <em>count</em>, datatype <em>dtype</em>, <em class="property">const</em> communicator &amp;<em>comm</em>, <em class="property">const</em> alltoall_attr &amp;<em>attr</em> = default_alltoall_attr, <em class="property">const</em> vector_class&lt;event&gt; &amp;<em>deps</em> = {}<span class="sig-paren">)</span><br /></dt>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt>
+event <code class="sig-name descname">alltoall</code><span class="sig-paren">(</span><em class="property">const</em> vector_class&lt;void*&gt; &amp;<em>send_buf</em>, <em class="property">const</em> vector_class&lt;void*&gt; &amp;<em>recv_buf</em>, size_t <em>count</em>, datatype <em>dtype</em>, <em class="property">const</em> communicator &amp;<em>comm</em>, <em class="property">const</em> <a class="reference internal" href="alltoall.html#_CPPv48alltoallRK12vector_classIPvERK12vector_classIPvE6size_t8datatypeRK12communicatorRK6streamRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::stream">stream</a> &amp;<em>stream</em>, <em class="property">const</em> alltoall_attr &amp;<em>attr</em> = default_alltoall_attr, <em class="property">const</em> vector_class&lt;event&gt; &amp;<em>deps</em> = {}<span class="sig-paren">)</span><br /></dt>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt>
+event <code class="sig-name descname">alltoall</code><span class="sig-paren">(</span><em class="property">const</em> vector_class&lt;void*&gt; &amp;<em>send_buf</em>, <em class="property">const</em> vector_class&lt;void*&gt; &amp;<em>recv_buf</em>, size_t <em>count</em>, datatype <em>dtype</em>, <em class="property">const</em> communicator &amp;<em>comm</em>, <em class="property">const</em> alltoall_attr &amp;<em>attr</em> = default_alltoall_attr, <em class="property">const</em> vector_class&lt;event&gt; &amp;<em>deps</em> = {}<span class="sig-paren">)</span><br /></dt>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt>
+template&lt;class <code class="sig-name descname">BufferType</code>, class = <em class="property">typename</em> std::enable_if&lt;is_native_type_supported&lt;<a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventPK10BufferTypeP10BufferType6size_tRK12communicatorRK6streamRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferType">BufferType</a>&gt;<span class="sig-paren">(</span><span class="sig-paren">)</span>, event&gt;::type&gt;<br />event <code class="sig-name descname">alltoall</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventPK10BufferTypeP10BufferType6size_tRK12communicatorRK6streamRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferType">BufferType</a> *<em>send_buf</em>, <a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventPK10BufferTypeP10BufferType6size_tRK12communicatorRK6streamRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferType">BufferType</a> *<em>recv_buf</em>, size_t <em>count</em>, <em class="property">const</em> communicator &amp;<em>comm</em>, <em class="property">const</em> <a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventPK10BufferTypeP10BufferType6size_tRK12communicatorRK6streamRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::stream">stream</a> &amp;<em>stream</em>, <em class="property">const</em> alltoall_attr &amp;<em>attr</em> = default_alltoall_attr, <em class="property">const</em> vector_class&lt;event&gt; &amp;<em>deps</em> = {}<span class="sig-paren">)</span><br /></dt>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt>
+template&lt;class <code class="sig-name descname">BufferType</code>, class = <em class="property">typename</em> std::enable_if&lt;is_native_type_supported&lt;<a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventPK10BufferTypeP10BufferType6size_tRK12communicatorRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferType">BufferType</a>&gt;<span class="sig-paren">(</span><span class="sig-paren">)</span>, event&gt;::type&gt;<br />event <code class="sig-name descname">alltoall</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventPK10BufferTypeP10BufferType6size_tRK12communicatorRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferType">BufferType</a> *<em>send_buf</em>, <a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventPK10BufferTypeP10BufferType6size_tRK12communicatorRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferType">BufferType</a> *<em>recv_buf</em>, size_t <em>count</em>, <em class="property">const</em> communicator &amp;<em>comm</em>, <em class="property">const</em> alltoall_attr &amp;<em>attr</em> = default_alltoall_attr, <em class="property">const</em> vector_class&lt;event&gt; &amp;<em>deps</em> = {}<span class="sig-paren">)</span><br /></dt>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt>
+template&lt;class <code class="sig-name descname">BufferType</code>, class = <em class="property">typename</em> std::enable_if&lt;is_native_type_supported&lt;<a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventRK12vector_classIP10BufferTypeERK12vector_classIP10BufferTypeE6size_tRK12communicatorRK6streamRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferType">BufferType</a>&gt;<span class="sig-paren">(</span><span class="sig-paren">)</span>, event&gt;::type&gt;<br />event <code class="sig-name descname">alltoall</code><span class="sig-paren">(</span><em class="property">const</em> vector_class&lt;<a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventRK12vector_classIP10BufferTypeERK12vector_classIP10BufferTypeE6size_tRK12communicatorRK6streamRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferType">BufferType</a>*&gt; &amp;<em>send_buf</em>, <em class="property">const</em> vector_class&lt;<a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventRK12vector_classIP10BufferTypeERK12vector_classIP10BufferTypeE6size_tRK12communicatorRK6streamRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferType">BufferType</a>*&gt; &amp;<em>recv_buf</em>, size_t <em>count</em>, <em class="property">const</em> communicator &amp;<em>comm</em>, <em class="property">const</em> <a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventRK12vector_classIP10BufferTypeERK12vector_classIP10BufferTypeE6size_tRK12communicatorRK6streamRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::stream">stream</a> &amp;<em>stream</em>, <em class="property">const</em> alltoall_attr &amp;<em>attr</em> = default_alltoall_attr, <em class="property">const</em> vector_class&lt;event&gt; &amp;<em>deps</em> = {}<span class="sig-paren">)</span><br /></dt>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt>
+template&lt;class <code class="sig-name descname">BufferType</code>, class = <em class="property">typename</em> std::enable_if&lt;is_native_type_supported&lt;<a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventRK12vector_classIP10BufferTypeERK12vector_classIP10BufferTypeE6size_tRK12communicatorRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferType">BufferType</a>&gt;<span class="sig-paren">(</span><span class="sig-paren">)</span>, event&gt;::type&gt;<br />event <code class="sig-name descname">alltoall</code><span class="sig-paren">(</span><em class="property">const</em> vector_class&lt;<a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventRK12vector_classIP10BufferTypeERK12vector_classIP10BufferTypeE6size_tRK12communicatorRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferType">BufferType</a>*&gt; &amp;<em>send_buf</em>, <em class="property">const</em> vector_class&lt;<a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventRK12vector_classIP10BufferTypeERK12vector_classIP10BufferTypeE6size_tRK12communicatorRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferType">BufferType</a>*&gt; &amp;<em>recv_buf</em>, size_t <em>count</em>, <em class="property">const</em> communicator &amp;<em>comm</em>, <em class="property">const</em> alltoall_attr &amp;<em>attr</em> = default_alltoall_attr, <em class="property">const</em> vector_class&lt;event&gt; &amp;<em>deps</em> = {}<span class="sig-paren">)</span><br /></dt>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt>
+template&lt;class <code class="sig-name descname">BufferObjectType</code>, class = <em class="property">typename</em> std::enable_if&lt;is_class_supported&lt;<a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventRK16BufferObjectTypeR16BufferObjectType6size_tRK12communicatorRK6streamRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferObjectType">BufferObjectType</a>&gt;<span class="sig-paren">(</span><span class="sig-paren">)</span>, event&gt;::type&gt;<br />event <code class="sig-name descname">alltoall</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventRK16BufferObjectTypeR16BufferObjectType6size_tRK12communicatorRK6streamRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferObjectType">BufferObjectType</a> &amp;<em>send_buf</em>, <a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventRK16BufferObjectTypeR16BufferObjectType6size_tRK12communicatorRK6streamRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferObjectType">BufferObjectType</a> &amp;<em>recv_buf</em>, size_t <em>count</em>, <em class="property">const</em> communicator &amp;<em>comm</em>, <em class="property">const</em> <a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventRK16BufferObjectTypeR16BufferObjectType6size_tRK12communicatorRK6streamRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::stream">stream</a> &amp;<em>stream</em>, <em class="property">const</em> alltoall_attr &amp;<em>attr</em> = default_alltoall_attr, <em class="property">const</em> vector_class&lt;event&gt; &amp;<em>deps</em> = {}<span class="sig-paren">)</span><br /></dt>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt>
+template&lt;class <code class="sig-name descname">BufferObjectType</code>, class = <em class="property">typename</em> std::enable_if&lt;is_class_supported&lt;<a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventRK16BufferObjectTypeR16BufferObjectType6size_tRK12communicatorRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferObjectType">BufferObjectType</a>&gt;<span class="sig-paren">(</span><span class="sig-paren">)</span>, event&gt;::type&gt;<br />event <code class="sig-name descname">alltoall</code><span class="sig-paren">(</span><em class="property">const</em> <a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventRK16BufferObjectTypeR16BufferObjectType6size_tRK12communicatorRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferObjectType">BufferObjectType</a> &amp;<em>send_buf</em>, <a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventRK16BufferObjectTypeR16BufferObjectType6size_tRK12communicatorRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferObjectType">BufferObjectType</a> &amp;<em>recv_buf</em>, size_t <em>count</em>, <em class="property">const</em> communicator &amp;<em>comm</em>, <em class="property">const</em> alltoall_attr &amp;<em>attr</em> = default_alltoall_attr, <em class="property">const</em> vector_class&lt;event&gt; &amp;<em>deps</em> = {}<span class="sig-paren">)</span><br /></dt>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt>
+template&lt;class <code class="sig-name descname">BufferObjectType</code>, class = <em class="property">typename</em> std::enable_if&lt;is_class_supported&lt;<a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventRK12vector_classI23reference_wrapper_classI16BufferObjectTypeEERK12vector_classI23reference_wrapper_classI16BufferObjectTypeEE6size_tRK12communicatorRK6streamRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferObjectType">BufferObjectType</a>&gt;<span class="sig-paren">(</span><span class="sig-paren">)</span>, event&gt;::type&gt;<br />event <code class="sig-name descname">alltoall</code><span class="sig-paren">(</span><em class="property">const</em> vector_class&lt;reference_wrapper_class&lt;<a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventRK12vector_classI23reference_wrapper_classI16BufferObjectTypeEERK12vector_classI23reference_wrapper_classI16BufferObjectTypeEE6size_tRK12communicatorRK6streamRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferObjectType">BufferObjectType</a>&gt;&gt; &amp;<em>send_buf</em>, <em class="property">const</em> vector_class&lt;reference_wrapper_class&lt;<a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventRK12vector_classI23reference_wrapper_classI16BufferObjectTypeEERK12vector_classI23reference_wrapper_classI16BufferObjectTypeEE6size_tRK12communicatorRK6streamRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferObjectType">BufferObjectType</a>&gt;&gt; &amp;<em>recv_buf</em>, size_t <em>count</em>, <em class="property">const</em> communicator &amp;<em>comm</em>, <em class="property">const</em> <a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventRK12vector_classI23reference_wrapper_classI16BufferObjectTypeEERK12vector_classI23reference_wrapper_classI16BufferObjectTypeEE6size_tRK12communicatorRK6streamRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::stream">stream</a> &amp;<em>stream</em>, <em class="property">const</em> alltoall_attr &amp;<em>attr</em> = default_alltoall_attr, <em class="property">const</em> vector_class&lt;event&gt; &amp;<em>deps</em> = {}<span class="sig-paren">)</span><br /></dt>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt>
+template&lt;class <code class="sig-name descname">BufferObjectType</code>, class = <em class="property">typename</em> std::enable_if&lt;is_class_supported&lt;<a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventRK12vector_classI23reference_wrapper_classI16BufferObjectTypeEERK12vector_classI23reference_wrapper_classI16BufferObjectTypeEE6size_tRK12communicatorRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferObjectType">BufferObjectType</a>&gt;<span class="sig-paren">(</span><span class="sig-paren">)</span>, event&gt;::type&gt;<br />event <code class="sig-name descname">alltoall</code><span class="sig-paren">(</span><em class="property">const</em> vector_class&lt;reference_wrapper_class&lt;<a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventRK12vector_classI23reference_wrapper_classI16BufferObjectTypeEERK12vector_classI23reference_wrapper_classI16BufferObjectTypeEE6size_tRK12communicatorRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferObjectType">BufferObjectType</a>&gt;&gt; &amp;<em>send_buf</em>, <em class="property">const</em> vector_class&lt;reference_wrapper_class&lt;<a class="reference internal" href="alltoall.html#_CPPv4I00E8alltoall5eventRK12vector_classI23reference_wrapper_classI16BufferObjectTypeEERK12vector_classI23reference_wrapper_classI16BufferObjectTypeEE6size_tRK12communicatorRK13alltoall_attrRK12vector_classI5eventE" title="alltoall::BufferObjectType">BufferObjectType</a>&gt;&gt; &amp;<em>recv_buf</em>, size_t <em>count</em>, <em class="property">const</em> communicator &amp;<em>comm</em>, <em class="property">const</em> alltoall_attr &amp;<em>attr</em> = default_alltoall_attr, <em class="property">const</em> vector_class&lt;event&gt; &amp;<em>deps</em> = {}<span class="sig-paren">)</span><br /></dt>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</dd></dl>
+
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="barrier.html" class="btn btn-neutral float-right" title="Barrier" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="alltoall.html" class="btn btn-neutral float-left" title="Alltoall" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2019–2020
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+<br>
+<div>
+  <p>
+      For more complete information about compiler optimizations, see our <a href="../../../optimization_notice.html">Optimization Notice</a>.
+  </p>  
+</div>
+
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
