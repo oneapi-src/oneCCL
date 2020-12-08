@@ -84,13 +84,13 @@ Completion callback should follow the signature:
 
         typedef void (*completion_fn)
         (
-            const void*,   // idx_buf
-            size_t,        // idx_count
-            ccl::datatype, // idx_dtype
-            const void*,   // val_buf
-            size_t,        // val_count
-            ccl::datatype, // val_dtype
-            const void*    // user_context
+            const void*,   /* idx_buf      */
+            size_t,        /* idx_count    */
+            ccl::datatype, /* idx_dtype    */
+            const void*,   /* val_buf      */
+            size_t,        /* val_count    */
+            ccl::datatype, /* val_dtype    */
+            const void*    /* user_context */
         );
 
 Note that ``idx_buf`` and ``val_buf`` are temporary buffers.
@@ -103,18 +103,14 @@ Allocation callback should follow the signature:
 
         typedef void (*alloc_fn)
         (
-            size_t,        // idx_count
-            ccl::datatype, // idx_dtype
-            size_t,        // val_count
-            ccl::datatype, // val_dtype
-            const void*,   // user_context
-            void**,        // out_idx_buf
-            void**         // out_val_buf
+            size_t,        /* idx_count    */
+            ccl::datatype, /* idx_dtype    */
+            size_t,        /* val_count    */
+            ccl::datatype, /* val_dtype    */
+            const void*,   /* user_context */
+            void**,        /* out_idx_buf  */
+            void**         /* out_val_buf  */
         );
-
-
-For more details, refer to `this example <https://github.com/oneapi-src/oneCCL/blob/master/examples/cpu/sparse_allreduce.cpp>`_.
-
 
 .. note::
     WARNING: ``ccl::sparse_allreduce`` is experimental and subject to change.

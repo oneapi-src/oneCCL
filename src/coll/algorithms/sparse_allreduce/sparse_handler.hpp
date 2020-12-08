@@ -24,9 +24,9 @@ struct ccl_sparse_allreduce_handler {
     size_t recv_buf_count;
     size_t itype_size;
     size_t vtype_size;
-    size_t comm_size;
+    int comm_size;
     size_t buf_size;
-    size_t recv_from;
+    int recv_from;
     size_t iter; /*iteration within ring algorithm*/
 
     size_t send_count[2];

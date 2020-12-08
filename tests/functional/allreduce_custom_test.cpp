@@ -50,7 +50,7 @@ size_t get_dtype_size(ccl_datatype_t dtype)
 }
 
 template <typename T>
-ccl_status_t do_prologue_T_2x(const void* in_buf, size_t in_count, ccl_datatype_t in_dtype,
+ccl::status do_prologue_T_2x(const void* in_buf, size_t in_count, ccl_datatype_t in_dtype,
                               void** out_buf, size_t* out_count, ccl_datatype_t* out_dtype,
                               const ccl::fn_context* ctx)
 {
@@ -75,11 +75,11 @@ ccl_status_t do_prologue_T_2x(const void* in_buf, size_t in_count, ccl_datatype_
     {
         ((T*)(*out_buf))[buf_idx] = ((T*)in_buf)[buf_idx] * 2;
     }
-    return ccl_status_success;
+    return ccl::status::success;
 }
 
 template <typename T>
-ccl_status_t do_epilogue_T_2x(const void* in_buf, size_t in_count, ccl_datatype_t in_dtype,
+ccl::status do_epilogue_T_2x(const void* in_buf, size_t in_count, ccl_datatype_t in_dtype,
                               void* out_buf, size_t* out_count, ccl_datatype_t out_dtype,
                               const ccl::fn_context* ctx)
 {
@@ -100,11 +100,11 @@ ccl_status_t do_epilogue_T_2x(const void* in_buf, size_t in_count, ccl_datatype_
         ((T*)out_buf)[buf_idx] = ((T*)in_buf)[buf_idx] * 2;
 
     }
-    return ccl_status_success;
+    return ccl::status::success;
 }
 
 template <typename T>
-ccl_status_t do_prologue_T_to_char(const void* in_buf, size_t in_count, ccl_datatype_t in_dtype,
+ccl::status do_prologue_T_to_char(const void* in_buf, size_t in_count, ccl_datatype_t in_dtype,
                                    void** out_buf, size_t* out_count, ccl_datatype_t* out_dtype,
                                    const ccl::fn_context* ctx)
 {
@@ -131,11 +131,11 @@ ccl_status_t do_prologue_T_to_char(const void* in_buf, size_t in_count, ccl_data
         int ival = (int)fval;
         ((char*)(*out_buf))[buf_idx] = (char)(ival % 256);
     }
-    return ccl_status_success;
+    return ccl::status::success;
 }
 
 template <typename T>
-ccl_status_t do_epilogue_char_to_T(const void* in_buf, size_t in_count, ccl_datatype_t in_dtype,
+ccl::status do_epilogue_char_to_T(const void* in_buf, size_t in_count, ccl_datatype_t in_dtype,
                                    void* out_buf, size_t* out_count, ccl_datatype_t out_dtype,
                                    const ccl::fn_context* ctx)
 {
@@ -161,11 +161,11 @@ ccl_status_t do_epilogue_char_to_T(const void* in_buf, size_t in_count, ccl_data
     {
         free((void*)in_buf);
     }
-    return ccl_status_success;
+    return ccl::status::success;
 }
 
 template <typename T>
-ccl_status_t do_reduction_null(const void* in_buf, size_t in_count, void* inout_buf,
+ccl::status do_reduction_null(const void* in_buf, size_t in_count, void* inout_buf,
                                size_t* out_count, ccl_datatype_t dtype, const ccl::fn_context* ctx)
 {
     size_t buf_idx;
@@ -211,11 +211,11 @@ ccl_status_t do_reduction_null(const void* in_buf, size_t in_count, void* inout_
             ASSERT(0, "unexpected dtype %d", dtype);
             break;
     }
-    return ccl_status_success;
+    return ccl::status::success;
 }
 
 template <typename T>
-ccl_status_t do_reduction_custom(const void* in_buf, size_t in_count, void* inout_buf,
+ccl::status do_reduction_custom(const void* in_buf, size_t in_count, void* inout_buf,
                                  size_t* out_count, ccl_datatype_t dtype, const ccl::fn_context* ctx)
 {
     size_t buf_idx;
@@ -261,7 +261,7 @@ ccl_status_t do_reduction_custom(const void* in_buf, size_t in_count, void* inou
             ASSERT(0, "unexpected dtype %d", dtype);
             break;
     }
-    return ccl_status_success;
+    return ccl::status::success;
 }
 
 template <typename T>
@@ -527,7 +527,7 @@ public:
         const ccl_test_conf& test_conf = param.get_conf();
         glob_match_id.resize(param.buffer_count);
 
-        if (test_conf.datatype == DT_BF16)
+        if (test_conf.datatype == DT_BFLOAT16)
         {
             printf("WARNING! BF16 is not supported for custom reduction, test skipped");
             return result;

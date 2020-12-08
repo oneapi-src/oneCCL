@@ -41,7 +41,7 @@ public:
                 }
                 else {
                     param.recv_buf[buf_idx][elem_idx] = static_cast<T>(SOME_VALUE);
-                    if (param.test_conf.datatype == DT_BF16) {
+                    if (param.test_conf.datatype == DT_BFLOAT16) {
                         param.recv_buf_bf16[buf_idx][elem_idx] = static_cast<short>(SOME_VALUE);
                     }
                 }

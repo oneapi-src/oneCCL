@@ -14,8 +14,8 @@
  limitations under the License.
 */
 #pragma once
-#include "oneapi/ccl/ccl_types.hpp"
-#include "oneapi/ccl/ccl_event.hpp"
+#include "oneapi/ccl/types.hpp"
+#include "oneapi/ccl/event.hpp"
 #include "common/utils/tuple.hpp"
 #include "common/event/impls/event_impl.hpp"
 
@@ -98,14 +98,13 @@ private:
     impl_t impl;
 };
 
-namespace details {
+namespace detail {
 template <class event_impl_t, class... scoped_args>
 std::unique_ptr<scoped_event_impl<event_impl_t, scoped_args...>> make_unique_scoped_event(
     ccl_request* r,
     scoped_args&&... args) {
     return std::unique_ptr<scoped_event_impl<event_impl_t, scoped_args...>>(
-        new scoped_event_impl<event_impl_t, scoped_args...>(
-            r, std::forward<scoped_args>(args)...));
+        new scoped_event_impl<event_impl_t, scoped_args...>(r, std::forward<scoped_args>(args)...));
 }
 
 template <class event_impl_t, class... scoped_args>
@@ -118,15 +117,14 @@ std::unique_ptr<scoped_event_impl<event_impl_t, scoped_args...>> make_unique_sco
 }
 
 template <class event_impl_t, class operation, class... scoped_args, class... non_scoped_args>
-std::unique_ptr<chargeable_event> make_and_charge_scoped_event(
-    operation op,
-    std::tuple<scoped_args...>&& args,
-    non_scoped_args&&... elapsed_args) {
+std::unique_ptr<chargeable_event> make_and_charge_scoped_event(operation op,
+                                                               std::tuple<scoped_args...>&& args,
+                                                               non_scoped_args&&... elapsed_args) {
     auto typed_arg = make_unique_scoped_event<event_impl_t>(
         nullptr, std::forward<std::tuple<scoped_args...>>(args));
     typed_arg->charge_by_op(op, std::forward<non_scoped_args>(elapsed_args)...);
     return typed_arg;
 }
 
-} // namespace details
+} // namespace detail
 } // namespace ccl

@@ -16,7 +16,7 @@
 #include "atl/util/pm/pmi_resizable_rt/pmi_resizable.h"
 #include "util/pm/pmi_resizable_rt/pmi_resizable/kvs/internal_kvs.h"
 
-static size_t root_rank = 0;
+static int root_rank = 0;
 static size_t is_new_root = 0;
 static size_t ask_only_framework = 0;
 static size_t finalized = 0;
@@ -31,9 +31,9 @@ void Call_Hard_finilize(int sig) {
     pmi_object->Hard_finilize(sig);
 }
 
-kvs_resize_action_t pmi_resizable::default_checker(size_t comm_size) {
+kvs_resize_action_t pmi_resizable::default_checker(int comm_size) {
     char* comm_size_to_start_env;
-    size_t comm_size_to_start;
+    int comm_size_to_start;
 
     comm_size_to_start_env = getenv(CCL_WORLD_SIZE_ENV);
 
@@ -47,7 +47,7 @@ kvs_resize_action_t pmi_resizable::default_checker(size_t comm_size) {
     return KVS_RA_WAIT;
 }
 
-kvs_resize_action_t pmi_resizable::call_resize_fn(size_t comm_size) {
+kvs_resize_action_t pmi_resizable::call_resize_fn(int comm_size) {
     if (resize_function != nullptr)
         return resize_function(comm_size);
 
@@ -56,8 +56,8 @@ kvs_resize_action_t pmi_resizable::call_resize_fn(size_t comm_size) {
 
 int pmi_resizable::PMIR_Update(void) {
     char up_idx_str[MAX_KVS_VAL_LENGTH];
-    size_t prev_new_ranks_count = 0;
-    size_t prev_killed_ranks_count = 0;
+    int prev_new_ranks_count = 0;
+    int prev_killed_ranks_count = 0;
     int prev_idx = -1;
     kvs_resize_action_t answer;
     rank_list_t* dead_up_idx = NULL;
@@ -100,7 +100,7 @@ int pmi_resizable::PMIR_Update(void) {
 
                     //                    while (int_list_is_contained(killed_ranks, root_rank) == 1)
                     {
-                        size_t old_root = root_rank;
+                        int old_root = root_rank;
                         h->get_new_root(&root_rank);
 
                         if (my_rank == root_rank && old_root != root_rank)
@@ -151,7 +151,8 @@ int pmi_resizable::PMIR_Update(void) {
             if (!is_first_collect || ask_only_framework == 1)
                 answer = call_resize_fn(count_pods - killed_ranks_count + new_ranks_count);
             else {
-                if (h->get_replica_size() != count_pods - killed_ranks_count + new_ranks_count)
+                if ((int)(h->get_replica_size()) !=
+                    count_pods - killed_ranks_count + new_ranks_count)
                     answer = KVS_RA_WAIT;
                 else
                     answer = KVS_RA_RUN;
@@ -202,7 +203,7 @@ int pmi_resizable::PMIR_Update(void) {
 void pmi_resizable::Hard_finilize(int sig) {
     char rank_str[INT_STR_SIZE];
 
-    SET_STR(rank_str, INT_STR_SIZE, SIZE_T_TEMPLATE, my_rank);
+    SET_STR(rank_str, INT_STR_SIZE, RANK_TEMPLATE, my_rank);
 
     h->set_value(KVS_DEAD_POD, my_hostname, rank_str);
 
@@ -214,7 +215,7 @@ void pmi_resizable::Hard_finilize(int sig) {
         old_act.sa_handler(sig);
 }
 
-int pmi_resizable::PMIR_Main_Addr_Reserv(char* main_addr) {
+int pmi_resizable::PMIR_Main_Addr_Reserve(char* main_addr) {
     h->main_server_address_reserve(main_addr);
     return 0;
 }
@@ -272,7 +273,7 @@ int pmi_resizable::PMIR_Finalize(void) {
 
     applied = 0;
 
-    SET_STR(rank_str, INT_STR_SIZE, SIZE_T_TEMPLATE, my_rank);
+    SET_STR(rank_str, INT_STR_SIZE, RANK_TEMPLATE, my_rank);
 
     h->remove_name_key(KVS_POD_NUM, rank_str);
 
@@ -313,18 +314,18 @@ int pmi_resizable::PMIR_Barrier(void) {
     return 0;
 }
 
-int pmi_resizable::PMIR_Get_size(size_t* size) {
+int pmi_resizable::PMIR_Get_size(int* size) {
     *size = count_pods;
     return 0;
 }
 
-int pmi_resizable::PMIR_Get_rank(size_t* rank) {
+int pmi_resizable::PMIR_Get_rank(int* rank) {
     *rank = my_rank;
     return 0;
 }
 
 int pmi_resizable::PMIR_KVS_Get_my_name(char* kvs_name, size_t length) {
-    STR_COPY(kvs_name, KVS_NAME, length);
+    kvs_str_copy(kvs_name, KVS_NAME, length);
     return 0;
 }
 
@@ -372,15 +373,15 @@ int pmi_resizable::PMIR_Wait_notification(void) {
     return listener.run_listener(h);
 }
 
-size_t pmi_resizable::get_rank() {
+int pmi_resizable::get_rank() {
     return rank;
 }
 
-size_t pmi_resizable::get_size() {
+int pmi_resizable::get_size() {
     return size;
 }
 
-size_t pmi_resizable::get_thread() {
+size_t pmi_resizable::get_local_thread_idx() {
     return 0;
 }
 size_t pmi_resizable::get_local_kvs_id() {

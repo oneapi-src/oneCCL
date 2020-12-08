@@ -14,7 +14,7 @@
  limitations under the License.
 */
 #pragma once
-#include "oneapi/ccl/ccl_types.hpp"
+#include "oneapi/ccl/types.hpp"
 
 #define CL_BACKEND_TYPE ccl::cl_backend_type::empty_backend
 
@@ -23,16 +23,16 @@
 #include "oneapi/ccl/native_device_api/empty/platform.hpp"
 #include "oneapi/ccl/native_device_api/empty/primitives.hpp"
 
-
-namespace ccl
-{
+namespace ccl {
 
 template <>
 struct backend_info<CL_BACKEND_TYPE> {
     CCL_API static constexpr ccl::cl_backend_type type() {
-        return CL_BACKEND_TYPE; }
+        return CL_BACKEND_TYPE;
+    }
     CCL_API static constexpr const char* name() {
-        return "CL_BACKEND_UNAVAILABLE"; }
+        return "CL_BACKEND_UNAVAILABLE";
+    }
 };
 
 template <>
@@ -41,20 +41,25 @@ struct generic_device_type<CL_BACKEND_TYPE> {
     using impl_t = native::ccl_device;
     using ccl_native_t = std::shared_ptr<impl_t>;
 
-    template<class T>
-    generic_device_type(T&& not_used) {(void)not_used;};
+    template <class T>
+    generic_device_type(T&& not_used) {
+        (void)not_used;
+    };
     void get_id() const noexcept;
-    ccl_native_t get() noexcept;
+    ccl_native_t& get() noexcept;
+    const ccl_native_t& get() const noexcept;
 };
 
 template <>
-struct generic_device_context_type<CL_BACKEND_TYPE> {
+struct generic_context_type<CL_BACKEND_TYPE> {
     using handle_t = empty_t;
     using impl_t = native::ccl_context;
     using ccl_native_t = std::shared_ptr<impl_t>;
 
-    template<class T>
-    generic_device_context_type(T&& not_used) {(void)not_used;};
+    template <class T>
+    generic_context_type(T&& not_used) {
+        (void)not_used;
+    };
     ccl_native_t get() noexcept;
     const ccl_native_t& get() const noexcept;
 
@@ -92,4 +97,4 @@ struct generic_event_type<CL_BACKEND_TYPE> {
     ccl_native_t get() noexcept;
     const ccl_native_t& get() const noexcept;
 };
-}
+} // namespace ccl

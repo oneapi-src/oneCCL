@@ -193,12 +193,14 @@ private:
 
 class ccl_sched_queue {
 public:
-    ccl_sched_queue(std::vector<size_t> atl_eps);
+    ccl_sched_queue(size_t idx, std::vector<size_t> atl_eps);
 
     ccl_sched_queue() = delete;
     ccl_sched_queue(const ccl_sched_queue& other) = delete;
     ccl_sched_queue& operator=(const ccl_sched_queue& other) = delete;
     ~ccl_sched_queue();
+
+    size_t get_idx() const;
 
     void add(ccl_sched* sched);
     size_t erase(ccl_sched_bin* bin, size_t idx);
@@ -230,6 +232,7 @@ public:
 private:
     mutable sched_queue_lock_t bins_guard{};
 
+    size_t idx;
     std::vector<size_t> atl_eps;
     sched_bin_list_t bins{ CCL_SCHED_QUEUE_INITIAL_BIN_COUNT };
     size_t max_priority = 0;

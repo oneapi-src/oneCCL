@@ -18,29 +18,29 @@
 #include "coll/algorithms/algorithms_enum.hpp"
 #include "common/datatype/datatype.hpp"
 
-#include "oneapi/ccl/ccl_type_traits.hpp"
-#include "oneapi/ccl/ccl_stream_attr_ids.hpp"
-#include "oneapi/ccl/ccl_stream_attr_ids_traits.hpp"
-#include "oneapi/ccl/ccl_stream.hpp"
-#include "oneapi/ccl/ccl_coll_attr_ids.hpp"
-#include "oneapi/ccl/ccl_coll_attr_ids_traits.hpp"
-#include "oneapi/ccl/ccl_coll_attr.hpp"
+#include "oneapi/ccl/type_traits.hpp"
+#include "oneapi/ccl/stream_attr_ids.hpp"
+#include "oneapi/ccl/stream_attr_ids_traits.hpp"
+#include "oneapi/ccl/stream.hpp"
+#include "oneapi/ccl/coll_attr_ids.hpp"
+#include "oneapi/ccl/coll_attr_ids_traits.hpp"
+#include "oneapi/ccl/coll_attr.hpp"
 
 class ccl_comm;
 
 #ifdef CCL_ENABLE_SYCL
 #include <CL/sycl.hpp>
-typedef cl::sycl::buffer<char, 1> ccl_sycl_buffer_t;
+typedef cl::sycl::buffer<int8_t, 1> ccl_sycl_buffer_t;
 
 template <class native_type>
 using ccl_sycl_typed_buffer_t = cl::sycl::buffer<native_type, 1>;
 
 /* ordering should be aligned with ccl::datatype */
-using ccl_sycle_buffer_one_dim_types = std::tuple<ccl_sycl_typed_buffer_t<char>,
-                                                  ccl_sycl_typed_buffer_t<unsigned char>,
+using ccl_sycle_buffer_one_dim_types = std::tuple<ccl_sycl_typed_buffer_t<int8_t>,
+                                                  ccl_sycl_typed_buffer_t<uint8_t>,
                                                   ccl_sycl_typed_buffer_t<int16_t>,
                                                   ccl_sycl_typed_buffer_t<uint16_t>,
-                                                  ccl_sycl_typed_buffer_t<int>,
+                                                  ccl_sycl_typed_buffer_t<int32_t>,
                                                   ccl_sycl_typed_buffer_t<uint32_t>,
                                                   ccl_sycl_typed_buffer_t<int64_t>,
                                                   ccl_sycl_typed_buffer_t<uint64_t>,
@@ -56,8 +56,6 @@ struct ccl_coll_attr {
     ccl_coll_attr() = default;
     ccl_coll_attr(const ccl_coll_attr&) = default;
     ccl_coll_attr& operator=(const ccl_coll_attr&) = default;
-    ccl_coll_attr(const ccl_coll_attr_t* attr);
-    ccl_coll_attr& operator=(const ccl_coll_attr_t* attr);
 
     //TODO temporary solution for type convertation, ccl_coll_attr would be depreacated
     ccl_coll_attr(const ccl::allgatherv_attr& attr);
@@ -112,7 +110,7 @@ struct ccl_coll_param {
     const size_t* recv_counts;
     ccl_datatype dtype;
     ccl::reduction reduction;
-    size_t root;
+    int root;
     const ccl_stream* stream;
     ccl_comm* comm;
     ccl_coll_sparse_param sparse_param;

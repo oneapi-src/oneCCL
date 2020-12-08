@@ -16,23 +16,24 @@
 #include <unistd.h>
 
 #include "util/pm/pmi_resizable_rt/pmi_resizable/def.h"
-#include "util/pm/pmi_resizable_rt/pmi_resizable/kvs_keeper.h"
+#include "util/pm/pmi_resizable_rt/pmi_resizable/kvs_keeper.hpp"
 #include "pmi_resizable_simple.h"
 #include "util/pm/codec/pm_rt_codec.h"
 
-#define RESIZABLE_PMI_RT_KEY_FORMAT "%s-%zu"
-#define DEVICES_PER_THREAD          "DEVICES_PER_THREAD"
+#define RESIZABLE_PMI_RT_KEY_FORMAT "%s-%d"
+#define RANKS_PER_THREAD            "RANKS_PER_THREAD"
 #define PROCESS_THREAD_NAME         "PROCESS_THREAD_NAME"
-#define REQUESTED_RANK_TO_NAME      "REQUESTED_RANK_TO_NAME"
-#define GLOBAL_NAME_TO_RANK         "GLOBAL_NAME_TO_RANK"
-#define GLOBAL_RANK_TO_NAME         "GLOBAL_RANK_TO_NAME"
-#define LOCAL_KVS_ID                "LOCAL_KVS_ID"
 
-pmi_resizable_simple::pmi_resizable_simple(size_t size,
-                                           const std::vector<size_t>& ranks,
+#define REQUESTED_RANK_TO_NAME "REQUESTED_RANK_TO_NAME"
+#define GLOBAL_NAME_TO_RANK    "GLOBAL_NAME_TO_RANK"
+#define GLOBAL_RANK_TO_NAME    "GLOBAL_RANK_TO_NAME"
+#define LOCAL_KVS_ID           "LOCAL_KVS_ID"
+
+pmi_resizable_simple::pmi_resizable_simple(int size,
+                                           const std::vector<int>& ranks,
                                            std::shared_ptr<ikvs_wrapper> k,
                                            const char* main_addr)
-        : dev_count(size),
+        : total_rank_count(size),
           ranks(ranks),
           k(k) {
     max_keylen = MAX_KVS_KEY_LENGTH;
@@ -47,14 +48,14 @@ int pmi_resizable_simple::is_pm_resize_enabled() {
 atl_status_t pmi_resizable_simple::pmrt_init(const char* main_addr) {
     (void)main_addr;
     char* connection_timeout_str = getenv("CCL_KVS_GET_TIMEOUT");
-    if (connection_timeout_str)
-    {
+    if (connection_timeout_str) {
         connection_timeout = atoi(connection_timeout_str);
     }
     local_id = 0;
     val_storage = (char*)calloc(1, max_vallen);
     if (!val_storage)
         return ATL_STATUS_FAILURE;
+    /*TODO: add sort, ranks should increase continiusly*/
     if (ranks[0] == 0) {
         size_t tmp_local_id = get_local_kvs_id();
         tmp_local_id++;
@@ -68,18 +69,18 @@ atl_status_t pmi_resizable_simple::pmrt_init(const char* main_addr) {
 }
 
 void pmi_resizable_simple::make_requested_info() {
-    register_my_first_rank_and_dev_count();
-    get_requested_thread_num_and_threads_count();
+    register_first_rank_idx_and_rank_count();
+    assign_thread_idx_and_fill_ranks_per_thread_map();
 
     local_id = get_local_kvs_id();
     register_my_proc_name();
-    get_my_proc_num_and_proc_count();
-    get_local_thread_num();
+    get_my_proc_idx_and_proc_count();
+    calculate_local_thread_idx();
     remove_initial_data();
-    pmrt_barrier();
+    pmrt_barrier_full();
 }
 
-atl_status_t pmi_resizable_simple::pmrt_main_addr_reserv(char* main_addr) {
+atl_status_t pmi_resizable_simple::pmrt_main_addr_reserve(char* main_addr) {
     return ATL_STATUS_UNSUPPORTED;
 }
 
@@ -99,9 +100,9 @@ void pmi_resizable_simple::pmrt_finalize() {
     is_finalized = true;
     free(val_storage);
 
-    if (getenv("CCL_PMI_FORCE_FINALIZE"))
-    {
-        printf("skip pmi_resizable_simple::pmrt_finalize\n"); fflush(stdout);
+    if (getenv("CCL_PMI_FORCE_FINALIZE")) {
+        printf("skip pmi_resizable_simple::pmrt_finalize\n");
+        fflush(stdout);
         return;
     }
 
@@ -120,7 +121,7 @@ void pmi_resizable_simple::pmrt_barrier() {
 
     SET_STR(barrier_num_str, INT_STR_SIZE, SIZE_T_TEMPLATE, barrier_num);
 
-    kvs_set_value(KVS_BARRIER, std::to_string(requested_rank_num).c_str(), barrier_num_str);
+    kvs_set_value(KVS_BARRIER, std::to_string(assigned_proc_idx).c_str(), barrier_num_str);
 
     min_barrier_num = get_barrier_idx();
     while (min_barrier_num != barrier_num) {
@@ -131,9 +132,44 @@ void pmi_resizable_simple::pmrt_barrier() {
     if (barrier_num > BARRIER_NUM_MAX)
         barrier_num = 0;
 }
+void pmi_resizable_simple::pmrt_barrier_full() {
+    size_t min_barrier_num;
+    char barrier_num_str[INT_STR_SIZE];
 
+    SET_STR(barrier_num_str, INT_STR_SIZE, SIZE_T_TEMPLATE, barrier_num_full);
+
+    kvs_set_value(KVS_BARRIER_FULL, std::to_string(assigned_thread_idx).c_str(), barrier_num_str);
+
+    min_barrier_num = get_barrier_full_idx();
+    while (min_barrier_num != barrier_num) {
+        min_barrier_num = get_barrier_idx();
+    }
+
+    barrier_num_full++;
+    if (barrier_num_full > BARRIER_NUM_MAX)
+        barrier_num_full = 0;
+}
+
+size_t pmi_resizable_simple::get_barrier_full_idx() {
+    size_t thread_count = ranks_per_thread_map.size();
+
+    kvs_get_value(KVS_BARRIER_FULL, std::to_string(0).c_str(), val_storage);
+
+    size_t min_barrier_idx = atoi(val_storage);
+    size_t barrier_idx;
+    for (size_t i = 1; i < thread_count; i++) {
+        kvs_get_value(KVS_BARRIER_FULL, std::to_string(i).c_str(), val_storage);
+
+        barrier_idx = atoi(val_storage);
+
+        if (min_barrier_idx > barrier_idx)
+            min_barrier_idx = barrier_idx;
+    }
+
+    return min_barrier_idx;
+}
 atl_status_t pmi_resizable_simple::pmrt_kvs_put(char* kvs_key,
-                                                size_t proc_idx,
+                                                int proc_idx,
                                                 const void* kvs_val,
                                                 size_t kvs_val_len) {
     int ret;
@@ -155,7 +191,7 @@ atl_status_t pmi_resizable_simple::pmrt_kvs_put(char* kvs_key,
 }
 
 atl_status_t pmi_resizable_simple::pmrt_kvs_get(char* kvs_key,
-                                                size_t proc_idx,
+                                                int proc_idx,
                                                 void* kvs_val,
                                                 size_t kvs_val_len) {
     int ret;
@@ -174,16 +210,16 @@ atl_status_t pmi_resizable_simple::pmrt_kvs_get(char* kvs_key,
     return ATL_STATUS_SUCCESS;
 }
 
-size_t pmi_resizable_simple::get_size() {
-    return threads_per_rank.size();
+int pmi_resizable_simple::get_size() {
+    return threads_per_proc.size();
 }
 
-size_t pmi_resizable_simple::get_rank() {
-    return requested_rank_num;
+int pmi_resizable_simple::get_rank() {
+    return assigned_proc_idx;
 }
 
-size_t pmi_resizable_simple::get_thread() {
-    return local_thread_num;
+size_t pmi_resizable_simple::get_local_thread_idx() {
+    return local_thread_idx;
 }
 
 int pmi_resizable_simple::kvs_set_value(const char* kvs_name, const char* key, const char* value) {
@@ -199,12 +235,15 @@ int pmi_resizable_simple::kvs_get_value(const char* kvs_name, const char* key, c
     size_t connection_time = 0;
     start_time = time(NULL);
     while (k->kvs_get_value_by_name_key(result_kvs_name.c_str(), key, value) == 0 &&
-        connection_time < connection_timeout) {
+           connection_time < connection_timeout) {
         connection_time = time(NULL) - start_time;
     }
     if (connection_time >= connection_timeout) {
         printf("KVS get error: timeout limit (%zu > %zu), prefix: %s, key %s\n",
-            connection_time, connection_timeout, result_kvs_name.c_str(), key);
+               connection_time,
+               connection_timeout,
+               result_kvs_name.c_str(),
+               key);
         exit(1);
     }
 
@@ -214,10 +253,9 @@ int pmi_resizable_simple::kvs_get_value(const char* kvs_name, const char* key, c
 int pmi_resizable_simple::kvs_iget_value(const char* kvs_name, const char* key, char* value) {
     std::string result_kvs_name = std::string(kvs_name) + std::to_string(local_id);
     return k->kvs_get_value_by_name_key(result_kvs_name.c_str(), key, value);
-    ;
 }
 size_t pmi_resizable_simple::get_barrier_idx() {
-    size_t proc_count = threads_per_rank.size();
+    size_t proc_count = threads_per_proc.size();
 
     kvs_get_value(KVS_BARRIER, std::to_string(0).c_str(), val_storage);
 
@@ -235,23 +273,23 @@ size_t pmi_resizable_simple::get_barrier_idx() {
     return min_barrier_idx;
 }
 
-void pmi_resizable_simple::register_my_first_rank_and_dev_count() {
+void pmi_resizable_simple::register_first_rank_idx_and_rank_count() {
     kvs_set_value(
-        DEVICES_PER_THREAD, std::to_string(ranks[0]).c_str(), std::to_string(ranks.size()).c_str());
+        RANKS_PER_THREAD, std::to_string(ranks[0]).c_str(), std::to_string(ranks.size()).c_str());
 }
 
-void pmi_resizable_simple::get_requested_thread_num_and_threads_count() {
-    size_t total_dev_count = 0;
-    size_t devises;
-    while (total_dev_count < dev_count) {
-        if (total_dev_count == ranks[0]) {
-            requested_thread_num = devises_per_thread.size();
+void pmi_resizable_simple::assign_thread_idx_and_fill_ranks_per_thread_map() {
+    int rank_count = 0;
+    int ranks_per_thread;
+    while (rank_count < total_rank_count) {
+        if (rank_count == ranks[0]) {
+            assigned_thread_idx = ranks_per_thread_map.size();
         }
-        kvs_get_value(DEVICES_PER_THREAD, std::to_string(total_dev_count).c_str(), val_storage);
+        kvs_get_value(RANKS_PER_THREAD, std::to_string(rank_count).c_str(), val_storage);
 
-        devises = atoi(val_storage);
-        devises_per_thread.push_back(devises);
-        total_dev_count += devises;
+        ranks_per_thread = atoi(val_storage);
+        ranks_per_thread_map.push_back(ranks_per_thread);
+        rank_count += ranks_per_thread;
     }
 }
 
@@ -266,46 +304,45 @@ void pmi_resizable_simple::register_my_proc_name() {
     }
     my_proccess_name = std::string(hostname) + std::to_string(my_pid);
 
-    kvs_set_value(PROCESS_THREAD_NAME,
-                  std::to_string(requested_thread_num).c_str(),
-                  my_proccess_name.c_str());
+    kvs_set_value(
+        PROCESS_THREAD_NAME, std::to_string(assigned_thread_idx).c_str(), my_proccess_name.c_str());
 }
 
-void pmi_resizable_simple::get_my_proc_num_and_proc_count() {
-    std::map<std::string, size_t> proc_name_to_rank;
-    std::map<std::string, size_t>::iterator it;
-    size_t rank;
-    for (size_t i = 0; i < devises_per_thread.size(); i++) {
+void pmi_resizable_simple::get_my_proc_idx_and_proc_count() {
+    std::map<std::string, int> proc_name_to_rank;
+    std::map<std::string, int>::iterator it;
+    int rank;
+    for (size_t i = 0; i < ranks_per_thread_map.size(); i++) {
         kvs_get_value(PROCESS_THREAD_NAME, std::to_string(i).c_str(), val_storage);
 
         it = proc_name_to_rank.find(val_storage);
         if (it == proc_name_to_rank.end()) {
-            rank = threads_per_rank.size();
+            rank = threads_per_proc.size();
             if (!my_proccess_name.compare(val_storage)) {
-                requested_rank_num = rank;
-                if (requested_thread_num == i) {
+                assigned_proc_idx = rank;
+                if (assigned_thread_idx == i) {
                     kvs_set_value(REQUESTED_RANK_TO_NAME,
-                                  std::to_string(requested_rank_num).c_str(),
+                                  std::to_string(assigned_proc_idx).c_str(),
                                   my_proccess_name.c_str());
                 }
             }
             proc_name_to_rank[val_storage] = rank;
-            threads_per_rank[rank].push_back(i);
+            threads_per_proc[rank].push_back(i);
         }
         else {
-            threads_per_rank[it->second].push_back(i);
+            threads_per_proc[it->second].push_back(i);
         }
     }
 }
 
-void pmi_resizable_simple::get_local_thread_num() {
-    local_thread_num = 0;
-    for (auto it = threads_per_rank[requested_rank_num].begin();
-         it != threads_per_rank[requested_rank_num].end();
+void pmi_resizable_simple::calculate_local_thread_idx() {
+    local_thread_idx = 0;
+    for (auto it = threads_per_proc[assigned_proc_idx].begin();
+         it != threads_per_proc[assigned_proc_idx].end();
          it++) {
-        if (requested_thread_num == *it)
+        if (assigned_thread_idx == *it)
             break;
-        local_thread_num++;
+        local_thread_idx++;
     }
 }
 
@@ -314,7 +351,7 @@ void pmi_resizable_simple::make_map_requested2global() {
     char process_name[MAX_KVS_VAL_LENGTH];
     size_t size = get_size();
     requested2global.resize(size);
-    pmrt_barrier();
+    pmrt_barrier_full();
     for (size_t i = 0; i < size; i++) {
         kvs_get_value(REQUESTED_RANK_TO_NAME, std::to_string(i).c_str(), process_name);
         if (kvs_iget_value(GLOBAL_NAME_TO_RANK, process_name, global_rank_str) == 0) {
@@ -336,7 +373,7 @@ void pmi_resizable_simple::make_map_requested2global() {
         }
         requested2global[i] = atoi(global_rank_str);
     }
-    pmrt_barrier();
+    pmrt_barrier_full();
 }
 
 size_t pmi_resizable_simple::get_local_kvs_id() {
@@ -357,7 +394,7 @@ pmi_resizable_simple::~pmi_resizable_simple() {
         pmrt_finalize();
 }
 void pmi_resizable_simple::remove_initial_data() {
-    std::string result_kvs_name = std::string(DEVICES_PER_THREAD) + std::to_string(0);
+    std::string result_kvs_name = std::string(RANKS_PER_THREAD) + std::to_string(0);
     remove_val(result_kvs_name.c_str(), std::to_string(ranks[0]).c_str(), ST_CLIENT);
     k->kvs_remove_name_key(result_kvs_name.c_str(), std::to_string(ranks[0]).c_str());
 }

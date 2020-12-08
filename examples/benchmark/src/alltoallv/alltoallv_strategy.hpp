@@ -16,13 +16,12 @@
 #pragma once
 
 struct alltoallv_strategy_impl {
-    size_t comm_size = 0;
     std::vector<size_t> send_counts;
     std::vector<size_t> recv_counts;
 
-    alltoallv_strategy_impl(size_t size) : comm_size(size) {
-        send_counts.resize(comm_size);
-        recv_counts.resize(comm_size);
+    alltoallv_strategy_impl() {
+        send_counts.resize(transport_data::get_comm_size());
+        recv_counts.resize(transport_data::get_comm_size());
     }
 
     alltoallv_strategy_impl(const alltoallv_strategy_impl&) = delete;
@@ -34,19 +33,27 @@ struct alltoallv_strategy_impl {
         return "alltoallv";
     }
 
+    size_t get_send_multiplier() {
+        return transport_data::get_comm_size();
+    }
+
+    size_t get_recv_multiplier() {
+        return transport_data::get_comm_size();
+    }
+
     static const ccl::alltoallv_attr& get_op_attr(const bench_exec_attr& bench_attr) {
         return bench_attr.get_attr<ccl::alltoallv_attr>();
     }
 
-    template <class Dtype, class comm_t, class... Args>
-    void start_internal(comm_t& comm,
+    template <class Dtype, class... Args>
+    void start_internal(ccl::communicator& comm,
                         size_t count,
                         const Dtype send_buf,
                         Dtype recv_buf,
                         const bench_exec_attr& bench_attr,
                         req_list_t& reqs,
                         Args&&... args) {
-        for (size_t idx = 0; idx < comm_size; idx++) {
+        for (int idx = 0; idx < comm.size(); idx++) {
             send_counts[idx] = count;
             recv_counts[idx] = count;
         }

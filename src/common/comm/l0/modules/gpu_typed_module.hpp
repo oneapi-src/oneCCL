@@ -46,13 +46,13 @@ struct real_gpu_typed_module : private gpu_module_base {
                   ", modules handle: ",
                   (void*)module);
         ccl_tuple_for_each(kernel_main_functions,
-                           detail::kernel_entry_initializer(
+                           detail::kernel_entry_initializer<type>(
                                [this](const std::string& name) -> gpu_module_base::kernel_handle {
                                    return this->import_kernel(name);
                                }));
 
         ccl_tuple_for_each(kernel_numa_functions,
-                           detail::kernel_entry_initializer(
+                           detail::kernel_entry_initializer<type>(
                                [this](const std::string& name) -> gpu_module_base::kernel_handle {
                                    return this->import_kernel(name);
                                }));
@@ -110,7 +110,7 @@ struct ipc_gpu_typed_module : private gpu_module_base {
     ipc_gpu_typed_module(handle module_handle) : gpu_module_base(nullptr) {
         LOG_DEBUG("Remote gpu module created: ", ccl_coll_type_to_str(type));
         ccl_tuple_for_each(kernel_main_functions,
-                           detail::kernel_entry_initializer(
+                           detail::kernel_entry_initializer<type>(
                                [](const std::string& name) -> gpu_module_base::kernel_handle {
                                    return nullptr;
                                }));
@@ -164,12 +164,12 @@ struct virtual_gpu_typed_module : private gpu_module_base {
               real_module_ref(real_module) {
         LOG_DEBUG("Virtual gpu module created:", ccl_coll_type_to_str(type));
         ccl_tuple_for_each(kernel_main_functions,
-                           detail::kernel_entry_initializer(
+                           detail::kernel_entry_initializer<type>(
                                [this](const std::string& name) -> gpu_module_base::kernel_handle {
                                    return this->import_kernel(name);
                                }));
         ccl_tuple_for_each(kernel_numa_functions,
-                           detail::kernel_entry_initializer(
+                           detail::kernel_entry_initializer<type>(
                                [this](const std::string& name) -> gpu_module_base::kernel_handle {
                                    return this->import_kernel(name);
                                }));

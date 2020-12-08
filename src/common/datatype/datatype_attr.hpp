@@ -14,9 +14,9 @@
  limitations under the License.
 */
 #pragma once
-#include "oneapi/ccl/ccl_types.hpp"
-#include "oneapi/ccl/ccl_types_policy.hpp"
-#include "oneapi/ccl/ccl_datatype_attr_ids_traits.hpp"
+#include "oneapi/ccl/types.hpp"
+#include "oneapi/ccl/types_policy.hpp"
+#include "oneapi/ccl/datatype_attr_ids_traits.hpp"
 
 namespace ccl {
 
@@ -26,7 +26,7 @@ public:
      * `version` operations
      */
     using version_traits_t =
-        details::ccl_api_type_attr_traits<datatype_attr_id, datatype_attr_id::version>;
+        detail::ccl_api_type_attr_traits<datatype_attr_id, datatype_attr_id::version>;
 
     const typename version_traits_t::return_type& get_attribute_value(
         const version_traits_t& id) const {
@@ -44,7 +44,7 @@ public:
      * `size` operations
      */
     using size_traits_t =
-        details::ccl_api_type_attr_traits<datatype_attr_id, datatype_attr_id::size>;
+        detail::ccl_api_type_attr_traits<datatype_attr_id, datatype_attr_id::size>;
 
     const typename size_traits_t::return_type& get_attribute_value(const size_traits_t& id) const {
         return datatype_size;

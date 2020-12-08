@@ -14,25 +14,27 @@
  limitations under the License.
 */
 #pragma once
-#include "oneapi/ccl/ccl_types_policy.hpp"
-#include "oneapi/ccl/ccl_types.hpp"
-#include "oneapi/ccl/ccl_type_traits.hpp"
-#include "common/event/event_internal/event_internal_attr_ids.hpp"
-#include "common/event/event_internal/event_internal_attr_ids_traits.hpp"
+#include "oneapi/ccl/types_policy.hpp"
+#include "oneapi/ccl/types.hpp"
+#include "oneapi/ccl/type_traits.hpp"
+#include "common/event/ccl_event_attr_ids.hpp"
+#include "common/event/ccl_event_attr_ids_traits.hpp"
 #include "common/utils/utils.hpp"
 
 namespace ccl {
-class environment; //friend-zone
+namespace detail {
+class environment;
 }
+} // namespace ccl
 
 class alignas(CACHELINE_SIZE) ccl_event {
 public:
-    friend class ccl::environment;
+    friend class ccl::detail::environment;
     using event_native_handle_t = typename ccl::unified_event_type::handle_t;
     using event_native_t = typename ccl::unified_event_type::ccl_native_t;
 
-    using event_native_context_handle_t = typename ccl::unified_device_context_type::handle_t;
-    using event_native_context_t = typename ccl::unified_device_context_type::ccl_native_t;
+    using event_native_context_handle_t = typename ccl::unified_context_type::handle_t;
+    using event_native_context_t = typename ccl::unified_context_type::ccl_native_t;
 
     ccl_event() = delete;
     ccl_event(const ccl_event& other) = delete;
@@ -46,7 +48,7 @@ public:
 
     //Export Attributes
     using version_traits_t =
-        ccl::details::ccl_api_type_attr_traits<ccl::event_attr_id, ccl::event_attr_id::version>;
+        ccl::detail::ccl_api_type_attr_traits<ccl::event_attr_id, ccl::event_attr_id::version>;
     typename version_traits_t::type set_attribute_value(typename version_traits_t::type val,
                                                         const version_traits_t& t);
 
@@ -54,18 +56,17 @@ public:
         const version_traits_t& id) const;
 
     using native_handle_traits_t =
-        ccl::details::ccl_api_type_attr_traits<ccl::event_attr_id,
-                                               ccl::event_attr_id::native_handle>;
+        ccl::detail::ccl_api_type_attr_traits<ccl::event_attr_id,
+                                              ccl::event_attr_id::native_handle>;
     typename native_handle_traits_t::return_type& get_attribute_value(
         const native_handle_traits_t& id);
 
     using context_traits_t =
-        ccl::details::ccl_api_type_attr_traits<ccl::event_attr_id, ccl::event_attr_id::context>;
+        ccl::detail::ccl_api_type_attr_traits<ccl::event_attr_id, ccl::event_attr_id::context>;
     typename context_traits_t::return_type& get_attribute_value(const context_traits_t& id);
 
     using command_type_traits_t =
-        ccl::details::ccl_api_type_attr_traits<ccl::event_attr_id,
-                                               ccl::event_attr_id::command_type>;
+        ccl::detail::ccl_api_type_attr_traits<ccl::event_attr_id, ccl::event_attr_id::command_type>;
     typename command_type_traits_t::return_type set_attribute_value(
         typename command_type_traits_t::type val,
         const command_type_traits_t& t);
@@ -74,8 +75,8 @@ public:
         const command_type_traits_t& id) const;
 
     using command_execution_status_traits_t =
-        ccl::details::ccl_api_type_attr_traits<ccl::event_attr_id,
-                                               ccl::event_attr_id::command_execution_status>;
+        ccl::detail::ccl_api_type_attr_traits<ccl::event_attr_id,
+                                              ccl::event_attr_id::command_execution_status>;
     typename command_execution_status_traits_t::return_type set_attribute_value(
         typename command_execution_status_traits_t::type val,
         const command_execution_status_traits_t& t);

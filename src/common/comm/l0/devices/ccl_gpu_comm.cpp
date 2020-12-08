@@ -23,7 +23,8 @@
 
 namespace native {
 
-ccl_gpu_comm::ccl_gpu_comm(ccl_device& assigned_device, size_t idx) : base(assigned_device, idx) {
+ccl_gpu_comm::ccl_gpu_comm(ccl_device& assigned_device, comm_rank_t idx)
+        : base(assigned_device, idx) {
     auto queue_prop = ccl_device::get_default_queue_desc();
     queue_prop.ordinal = 0;
     std::shared_ptr<ccl_context> ctx;
@@ -35,7 +36,7 @@ ccl_gpu_comm::ccl_gpu_comm(ccl_device& assigned_device, size_t idx) : base(assig
 
 std::string ccl_gpu_comm::to_string_impl() const {
     std::string ret(name());
-    ret = ret + ", comm: " + comm_to_str() +
+    ret = ret + ", comm:\n" + comm_to_str() +
           ", virtual count: " + std::to_string(get_virtual_gpu_count());
     return ret;
 }

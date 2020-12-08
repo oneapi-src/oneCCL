@@ -40,6 +40,7 @@ struct device_group_scheduler {
               class... Arguments>
     schedule_ptr submit_entry(device_community<class_id>& device_topology,
                               device_t& device,
+                              native::ccl_driver_context_ptr ctx,
                               Arguments&&... args) {
         //create schedule
         size_t group_size =
@@ -56,6 +57,7 @@ struct device_group_scheduler {
             entry_factory::make_ordered_entry<EntryType, mode>(current_schedule.get(),
                                                                device,
                                                                device_topology.get_device_storage(),
+                                                               ctx,
                                                                std::forward<Arguments>(args)...);
         LOG_DEBUG("do initial progress");
 

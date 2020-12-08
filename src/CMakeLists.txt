@@ -19,8 +19,6 @@ set (EXTENSIONS_SRC)
 
 if (CCL_ENABLE_SYCL)
     list (APPEND EXTENSIONS_SRC
-                    ccl_cpp_gpu_api.cpp
-
                     native_device_api/l0/utils.cpp
                     native_device_api/sycl/export.cpp
                     native_device_api/interop_utils.cpp
@@ -32,7 +30,6 @@ endif(CCL_ENABLE_SYCL)
 
 if (MULTI_GPU_SUPPORT)
 list (APPEND EXTENSIONS_SRC
-                    ccl_cpp_gpu_api.cpp
                     ccl_gpu_modules.cpp
                     ccl_cpp_utils.cpp
 
@@ -82,15 +79,16 @@ list (APPEND EXTENSIONS_SRC
 endif(MULTI_GPU_SUPPORT)
 
 set(CCL_SRC
-    ccl.cpp
-    ccl_cpp_api.cpp
     ccl_cpp_communicator.cpp
     ccl_cpp_environment.cpp
     ccl_api_functions.cpp
     ccl_app_api_coll_attr.cpp
+    ccl_app_api_comm_attr.cpp
     ccl_app_api_comm_split_attr.cpp
     ccl_app_api_datatype_attr.cpp
+    ccl_app_api_kvs_attr.cpp
     ccl_app_api_event.cpp
+    ccl_app_api_init_attr.cpp
     ccl_cpp_kvs.cpp
     ccl_cpp_device.cpp
     ccl_cpp_stream.cpp
@@ -98,6 +96,10 @@ set(CCL_SRC
     ccl_cpp_utils.cpp
     ccl_empty_attr.cpp
     ccl_empty_coll_attr.cpp
+    ccl_empty_comm_attr.cpp
+    ccl_empty_init_attr.cpp
+    ccl_empty_comm_split_attr.cpp
+    ccl_empty_kvs_attr.cpp
     ccl_empty_stream.cpp
     native_device_api/sycl_l0/export.cpp
     native_device_api/empty/export.cpp
@@ -108,12 +110,12 @@ set(CCL_SRC
     atl/util/pm/pmi_resizable_rt/pmi_resizable.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable_simple.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable/helper.cpp
-    atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs_keeper.c
+    atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs_keeper.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable/pmi_listener.cpp
-    atl/util/pm/pmi_resizable_rt/pmi_resizable/rank_list.c
-    atl/util/pm/pmi_resizable_rt/pmi_resizable/request_wrappers_k8s.c
+    atl/util/pm/pmi_resizable_rt/pmi_resizable/rank_list.cpp
+    atl/util/pm/pmi_resizable_rt/pmi_resizable/request_wrappers_k8s.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable/resizable_pmi.cpp
-    atl/util/pm/pmi_resizable_rt/pmi_resizable/shift_list.c
+    atl/util/pm/pmi_resizable_rt/pmi_resizable/shift_list.cpp
         atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs/internal_kvs.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs/users_kvs.cpp
     atl/util/pm/pmi_rt/pmi_simple.cpp
@@ -165,6 +167,7 @@ set(CCL_SRC
     sched/entry/coll/coll_entry_helper.cpp
     sched/entry/entry.cpp
     sched/entry/factory/chunked_entry_factory.cpp
+    sched/entry/sycl_entry_helper.cpp
     exec/exec.cpp
     exec/thread/base_thread.cpp
     exec/thread/listener.cpp
@@ -173,6 +176,7 @@ set(CCL_SRC
     fusion/fusion.cpp
     parallelizer/parallelizer.cpp
     unordered_coll/unordered_coll.cpp
+
     common/comm/atl_tag.cpp
     common/comm/comm.cpp
     common/comm/comm_interface.cpp
@@ -182,7 +186,6 @@ set(CCL_SRC
     common/datatype/datatype.cpp
     common/device/device.cpp
     common/event/ccl_event.cpp
-    common/event/event_internal/event_internal.cpp
     common/stream/stream.cpp
 
     common/env/env.cpp
@@ -192,7 +195,9 @@ set(CCL_SRC
     common/event/impls/native_event.cpp
     common/request/request.cpp
     common/utils/spinlock.cpp
+    common/utils/version.cpp
     common/utils/yield.cpp
+
     ${EXTENSIONS_SRC})
 
 list(APPEND CCL_INC_DIRS
@@ -248,7 +253,7 @@ install(FILES
 add_library(ccl-static STATIC $<TARGET_OBJECTS:ccl-objects>)
 set_target_properties(ccl-static PROPERTIES OUTPUT_NAME ccl)
 set_target_properties(ccl-static PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${CCL_BUILD_DIR})
-install(TARGETS ccl-static ARCHIVE DESTINATION ${CCL_INSTALL_LIB})
+install(TARGETS ccl-static ARCHIVE DESTINATION ${CCL_INSTALL_LIB} OPTIONAL)
 
 if(MULTI_GPU_SUPPORT)
     message("Turn on L0 multi-gpu unit tests")

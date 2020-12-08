@@ -16,6 +16,5 @@
 #pragma once
 
 namespace native {
-struct ccl_context {
-};
-}
+struct ccl_context {};
+} // namespace native

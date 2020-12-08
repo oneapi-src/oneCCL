@@ -19,7 +19,6 @@ using namespace std;
 using namespace sycl;
 
 int main(int argc, char *argv[]) {
-
     const size_t count = 10 * 1024 * 1024;
     const size_t root_rank = 0;
 
@@ -29,16 +28,18 @@ int main(int argc, char *argv[]) {
 
     ccl::init();
 
-    queue q;
-    if (!create_sycl_queue(argc, argv, q)) {
-        return -1;
-    }
-
-    /* create kvs */
     MPI_Init(NULL, NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+    atexit(mpi_finalize);
+
+    queue q;
+    if (!create_sycl_queue(argc, argv, rank, q)) {
+        return -1;
+    }
+
+    /* create kvs */
     ccl::shared_ptr_class<ccl::kvs> kvs;
     ccl::kvs::address_type main_addr;
     if (rank == 0) {
@@ -67,7 +68,7 @@ int main(int argc, char *argv[]) {
         host_accessor send_buf_acc(buf, write_only);
         for (i = 0; i < count; i++) {
             if (rank == root_rank)
-                send_buf_acc[i] = rank;
+                send_buf_acc[i] = rank + 10;
             else
                 send_buf_acc[i] = 0;
         }
@@ -91,7 +92,7 @@ int main(int argc, char *argv[]) {
     q.submit([&](auto &h) {
         accessor recv_buf_acc(buf, h, write_only);
         h.parallel_for(count, [=](auto id) {
-            if (recv_buf_acc[id] != root_rank + 1) {
+            if (recv_buf_acc[id] != root_rank + 11) {
                 recv_buf_acc[id] = -1;
             }
         });
@@ -101,20 +102,16 @@ int main(int argc, char *argv[]) {
         return -1;
 
     /* print out the result of the test on the host side */
-    if (rank == root_rank) {
-        host_accessor recv_buf_acc(buf, read_only);
-        for (i = 0; i < count; i++) {
-            if (recv_buf_acc[i] == -1) {
-                cout << "FAILED\n";
-                break;
-            }
-        }
-        if (i == count) {
-            cout << "PASSED\n";
+    host_accessor recv_buf_acc(buf, read_only);
+    for (i = 0; i < count; i++) {
+        if (recv_buf_acc[i] == -1) {
+            cout << "FAILED\n";
+            break;
         }
     }
-
-    MPI_Finalize();
+    if (i == count) {
+        cout << "PASSED\n";
+    }
 
     return 0;
 }

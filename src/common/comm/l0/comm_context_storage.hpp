@@ -19,11 +19,15 @@
 
 #include "common/utils/spinlock.hpp"
 #include "common/comm/atl_tag.hpp"
+#include "atl/atl_wrapper.h"
 
 namespace ccl {
+namespace v1 {
+class kvs_interface;
+}
+
 class host_communicator;
 class comm_group;
-class kvs_interface;
 
 struct group_context {
     /* TODO
@@ -41,10 +45,10 @@ struct group_context {
     std::map<group_unique_key, comm_group_t> communicator_group_map;
     ccl_spinlock mutex;
 
-    comm_group_t group_by_kvs(const std::vector<size_t>& local_thread_device_group_ranks,
-                              size_t cluster_device_group_size,
+    comm_group_t group_by_kvs(const std::vector<int>& local_thread_device_group_ranks,
+                              int cluster_device_group_size,
                               std::shared_ptr<kvs_interface> kvs);
-    comm_group_t group_by_comm(std::shared_ptr<host_communicator> host_comm);
+    comm_group_t group_by_comm(std::shared_ptr<atl_wrapper> atl);
     comm_group_t get_existing_group_by_id(const group_unique_key& id);
     static group_context& instance();
 

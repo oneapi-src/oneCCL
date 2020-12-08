@@ -21,7 +21,7 @@
 
 #include "util/pm/pm_rt.h"
 
-#define PMI_RT_KEY_FORMAT "%s-%zu"
+#define PMI_RT_KEY_FORMAT "%s-%d"
 
 typedef struct pmi_pm_rt_context {
     pm_rt_desc_t pmrt_desc;
@@ -58,7 +58,7 @@ static void pmirt_finalize(pm_rt_desc_t *pmrt_desc) {
 
 static atl_status_t pmirt_kvs_put(pm_rt_desc_t *pmrt_desc,
                                   char *kvs_key,
-                                  size_t proc_idx,
+                                  int proc_idx,
                                   const void *kvs_val,
                                   size_t kvs_val_len) {
     int ret;
@@ -96,7 +96,7 @@ static atl_status_t pmirt_kvs_put(pm_rt_desc_t *pmrt_desc,
 
 static atl_status_t pmirt_kvs_get(pm_rt_desc_t *pmrt_desc,
                                   char *kvs_key,
-                                  size_t proc_idx,
+                                  int proc_idx,
                                   void *kvs_val,
                                   size_t kvs_val_len) {
     int ret;
@@ -137,7 +137,7 @@ static void pmirt_barrier(pm_rt_desc_t *pmrt_desc) {
     (void)PMI_Barrier();
 }
 
-atl_status_t pmirt_update(size_t *proc_idx, size_t *proc_count) {
+atl_status_t pmirt_update(int *proc_idx, int *proc_count) {
     PMI_Get_size((int *)proc_idx);
     PMI_Get_rank((int *)proc_count);
     return ATL_STATUS_SUCCESS;
@@ -159,7 +159,7 @@ pm_rt_kvs_ops_t kvs_ops = {
     .get = pmirt_kvs_get,
 };
 
-atl_status_t pmirt_init(size_t *proc_idx, size_t *proc_count, pm_rt_desc_t **pmrt_desc) {
+atl_status_t pmirt_init(int *proc_idx, int *proc_count, pm_rt_desc_t **pmrt_desc) {
     int ret, spawned, max_kvsnamelen;
     int proc_idx_tmp, proc_count_tmp;
 

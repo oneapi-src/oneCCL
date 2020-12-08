@@ -33,7 +33,7 @@ public:
                ccl_buffer buf,
                size_t cnt,
                const ccl_datatype& dtype,
-               size_t src,
+               int src,
                ccl_comm* comm)
             : sched_entry(sched),
               buf(buf),
@@ -53,7 +53,7 @@ public:
     void start() override {
         update_fields();
 
-        size_t global_src = comm->get_global_rank(src);
+        int global_src = comm->get_global_rank(src);
         atl_tag = comm->atl->tag->create(
             sched->get_comm_id(), global_src, sched->sched_id, sched->get_op_id());
         size_t bytes = cnt * dtype.size();
@@ -118,7 +118,7 @@ private:
     ccl_buffer buf;
     size_t cnt;
     ccl_datatype dtype;
-    size_t src;
+    int src;
     ccl_comm* comm;
     uint64_t atl_tag = 0;
     atl_req_t req{};

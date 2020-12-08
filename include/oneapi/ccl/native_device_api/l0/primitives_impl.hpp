@@ -34,7 +34,10 @@ void copy_memory_to_device_sync_unsafe(void* dst,
 }
 
 template <TEMPLATE_DECL_ARG>
-memory<TEMPLATE_DEF_ARG>::memory(elem_t* h, size_t count, std::weak_ptr<resource_owner>&& owner, std::weak_ptr<cl_context>&& context)
+memory<TEMPLATE_DEF_ARG>::memory(elem_t* h,
+                                 size_t count,
+                                 std::weak_ptr<resource_owner>&& owner,
+                                 std::weak_ptr<cl_context>&& context)
         : base(h, std::move(owner), std::move(context)),
           elem_count(count) {}
 
@@ -117,6 +120,7 @@ void memory<TEMPLATE_DEF_ARG>::enqueue_write_sync(const std::array<elem_t, N>& s
         throw std::runtime_error(std::string(__PRETTY_FUNCTION__) + "\n" + ex.what());
     }
 }
+
 template <TEMPLATE_DECL_ARG>
 void memory<TEMPLATE_DEF_ARG>::enqueue_write_sync(const elem_t* src, size_t src_elem_count) {
     if (!src) {
@@ -140,6 +144,12 @@ void memory<TEMPLATE_DEF_ARG>::enqueue_write_sync(const elem_t* src, size_t src_
     catch (const std::exception& ex) {
         throw std::runtime_error(std::string(__PRETTY_FUNCTION__) + "\n" + ex.what());
     }
+}
+
+template <TEMPLATE_DECL_ARG>
+void memory<TEMPLATE_DEF_ARG>::enqueue_write_sync(const elem_t* src, int src_elem_count) {
+    size_t elem_count = src_elem_count;
+    enqueue_write_sync(src, elem_count);
 }
 
 template <TEMPLATE_DECL_ARG>

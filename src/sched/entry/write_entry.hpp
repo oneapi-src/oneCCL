@@ -33,7 +33,7 @@ public:
                 atl_mr_t* src_mr,
                 size_t cnt,
                 const ccl_datatype& dtype,
-                size_t dst,
+                int dst,
                 atl_mr_t* dst_mr,
                 size_t dst_buf_off,
                 ccl_comm* comm)
@@ -66,7 +66,7 @@ public:
             return;
         }
 
-        size_t global_dst = comm->get_global_rank(dst);
+        int global_dst = comm->get_global_rank(dst);
 
         size_t bytes = cnt * dtype.size();
         atl_status_t atl_status = comm->atl->atl_ep_write(sched->bin->get_atl_ep(),
@@ -136,7 +136,7 @@ private:
     atl_mr_t* src_mr;
     size_t cnt;
     ccl_datatype dtype;
-    size_t dst;
+    int dst;
     atl_mr_t* dst_mr;
     size_t dst_buf_off;
     ccl_comm* comm;

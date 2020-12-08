@@ -35,8 +35,7 @@ atl_attr_t atl_wrapper::attr = {
     0 /* extra_ep */
 };
 
-void atl_wrapper::set_internal_env(const atl_attr_t& attr)
-{
+void atl_wrapper::set_internal_env(const atl_attr_t& attr) {
     auto transport_type = ccl::global_data::env().atl_transport;
 
     if (transport_type == ccl_atl_mpi)
@@ -46,12 +45,10 @@ void atl_wrapper::set_internal_env(const atl_attr_t& attr)
 }
 
 atl_wrapper::atl_wrapper() {
-
     auto transport_type = ccl::global_data::env().atl_transport;
 
     char* pm_type_str;
-    switch (transport_type)
-    {
+    switch (transport_type) {
         case ccl_atl_ofi:
             pm_type_str = getenv(PM_TYPE);
             if (pm_type_str) {
@@ -71,24 +68,18 @@ atl_wrapper::atl_wrapper() {
             }
             transport = std::shared_ptr<iatl>(new atl_ofi());
             break;
-        case ccl_atl_mpi:
-            transport = std::shared_ptr<iatl>(new atl_mpi());
-            break;
-        default:
-            LOG_ERROR("Unsupported yet");
-            break;
+        case ccl_atl_mpi: transport = std::shared_ptr<iatl>(new atl_mpi()); break;
+        default: LOG_ERROR("Unsupported yet"); break;
     }
 
     init_transport();
 }
 
 atl_wrapper::atl_wrapper(std::shared_ptr<ikvs_wrapper> k) {
-
     auto transport_type = ccl::global_data::env().atl_transport;
 
     char* pm_type_str;
-    switch (transport_type)
-    {
+    switch (transport_type) {
         case ccl_atl_ofi:
             pm_type_str = getenv(PM_TYPE);
             if (pm_type_str) {
@@ -107,70 +98,67 @@ atl_wrapper::atl_wrapper(std::shared_ptr<ikvs_wrapper> k) {
             }
             transport = std::shared_ptr<iatl>(new atl_ofi());
             break;
-        case ccl_atl_mpi:
-            transport = std::shared_ptr<iatl>(new atl_mpi());
-            break;
-        default:
-            LOG_ERROR("Unsupported yet");
-            break;
+        case ccl_atl_mpi: transport = std::shared_ptr<iatl>(new atl_mpi()); break;
+        default: LOG_ERROR("Unsupported yet"); break;
     }
 
     init_transport();
 }
 
-atl_wrapper::atl_wrapper(size_t dev_count,
-                         const std::vector<size_t> &ranks,
+atl_wrapper::atl_wrapper(int total_rank_count,
+                         const std::vector<int>& ranks,
                          std::shared_ptr<ikvs_wrapper> k) {
     auto transport_type = ccl::global_data::env().atl_transport;
 
-    switch (transport_type)
-    {
-        case ccl_atl_ofi:
-            pmi = std::unique_ptr<ipmi>(new pmi_resizable_simple(dev_count, ranks, k));
+    switch (transport_type) {
+        case ccl_atl_ofi: {
+            size_t transorts_count = transports.size();
+            pmi = std::unique_ptr<ipmi>(new pmi_resizable_simple(total_rank_count, ranks, k));
 
-            if (pmi->get_thread() == 0) {
+            if (pmi->get_local_thread_idx() == 0) {
                 transports.push_back(std::shared_ptr<iatl>(new atl_ofi()));
             }
-            pmi->pmrt_barrier();
+            //TODO: Rework it on barrier
+            while (transorts_count == transports.size()) {
+                ccl_yield(ccl::global_data::env().yield_type);
+            }
             static std::mutex memory_mutex;
             {
                 std::lock_guard<std::mutex> lock(memory_mutex);
                 transport = transports.back();
             }
-            break;
-        case ccl_atl_mpi:
-             transport = std::shared_ptr<iatl>(new atl_mpi());
-             break;
-        default:
-            LOG_ERROR("Unsupported yet");
-            break;
+        } break;
+        case ccl_atl_mpi: transport = std::shared_ptr<iatl>(new atl_mpi()); break;
+        default: LOG_ERROR("Unsupported yet"); break;
     }
 
     init_transport();
 }
 void atl_wrapper::init_transport() {
-
     LOG_INFO("init ATL, requested ep_count ", attr.ep_count);
-
-    transport->atl_init(nullptr, nullptr, &attr, nullptr, pmi);
+    static std::mutex memory_mutex;
+    {
+        std::lock_guard<std::mutex> lock(memory_mutex);
+        if (!transport->is_inited())
+            transport->atl_init(nullptr, nullptr, &attr, nullptr, pmi);
+    }
     eps = transport->atl_get_eps();
     tag = std::unique_ptr<ccl_atl_tag>(new ccl_atl_tag(attr.tag_bits, attr.max_tag));
 
     if (pmi) {
-        threads_count = pmi->get_threads_count();
-        devices_per_rank_count = pmi->get_devices_per_rank_count();
+        threads_per_process = pmi->get_threads_per_process();
+        ranks_per_process = pmi->get_ranks_per_process();
         rank = pmi->get_rank();
         size = pmi->get_size();
     }
     else {
-        threads_count = 1;
-        devices_per_rank_count = 1;
-        rank = static_cast<atl_mpi *>(transport.get())->get_rank();
-        size = static_cast<atl_mpi *>(transport.get())->get_size();
+        threads_per_process = 1;
+        ranks_per_process = 1;
+        rank = static_cast<atl_mpi*>(transport.get())->get_rank();
+        size = static_cast<atl_mpi*>(transport.get())->get_size();
     }
 
-    if (rank == 0)
-    {
+    if (rank == 0) {
         tag->print();
 
         LOG_INFO("\n",

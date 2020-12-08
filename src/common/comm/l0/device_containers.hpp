@@ -50,7 +50,7 @@ struct indexed_device_container<ccl_thread_comm<ccl_virtual_gpu_comm>> : std::ma
 template <class... device_t>
 using indexed_device_storage = std::tuple<indexed_device_container<device_t>...>;
 
-namespace details {
+namespace detail {
 //TODO - use traits
 template <class device_t, class... total_devices_t>
 inline size_t get_size(const native::device_storage_t<total_devices_t...>& gpu_device_storage) {
@@ -79,5 +79,5 @@ inline size_t get_aggregated_size(const Container& gpu_device_storage) {
            get_aggregated_size<Container, Types...>(gpu_device_storage);
 }
 
-} // namespace details
+} // namespace detail
 } // namespace native

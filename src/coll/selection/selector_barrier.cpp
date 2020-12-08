@@ -43,8 +43,7 @@ bool ccl_algorithm_selector_helper<ccl_coll_barrier_algo>::can_use(
     const ccl_selection_table_t<ccl_coll_barrier_algo>& table) {
     bool can_use = true;
 
-    if (algo == ccl_coll_barrier_direct &&
-        (ccl::global_data::env().atl_transport == ccl_atl_ofi))
+    if (algo == ccl_coll_barrier_direct && (ccl::global_data::env().atl_transport == ccl_atl_ofi))
         can_use = false;
 
     return can_use;

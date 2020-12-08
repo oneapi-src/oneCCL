@@ -21,6 +21,12 @@
 #include "sched/queue/queue.hpp"
 #include "sched/sched.hpp"
 
+ccl_sched::ccl_sched(const ccl_coll_param& coll_param, ccl_request* master_request)
+        : ccl_sched_base(coll_param) {
+    req = master_request;
+    strict_order = ccl::global_data::env().enable_strict_order;
+}
+
 ccl_sched::~ccl_sched() {
     if (in_bin_status == ccl_sched_in_bin_added)
         LOG_DEBUG("in_bin_status == ccl_sched_in_bin_added");

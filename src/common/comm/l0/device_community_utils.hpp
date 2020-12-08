@@ -16,7 +16,7 @@
 #pragma once
 
 namespace native {
-namespace details {
+namespace detail {
 
 /**
  *
@@ -32,14 +32,14 @@ struct rank_getter {
     template <class device_t>
     void operator()(const native::plain_device_container<device_t>& container);
 
-    size_t get_assigned_rank() const;
-    size_t get_assigned_size() const;
+    int get_assigned_rank() const;
+    int get_assigned_size() const;
 
 private:
     ccl::device_index_type device_id;
     std::multiset<ccl::device_index_type>& registered_device_id;
-    size_t rank = 0;
-    size_t size = 0;
+    int rank = 0;
+    int size = 0;
     bool find = false;
     size_t enumerator = 0;
 };
@@ -109,7 +109,7 @@ void rank_getter<group_id, class_id>::operator()(
 }
 
 template <ccl::group_split_type group_id, ccl::device_topology_type class_id>
-size_t rank_getter<group_id, class_id>::get_assigned_rank() const {
+int rank_getter<group_id, class_id>::get_assigned_rank() const {
     if (!find) {
         throw std::runtime_error(
             std::string(__FUNCTION__) +
@@ -117,5 +117,5 @@ size_t rank_getter<group_id, class_id>::get_assigned_rank() const {
     }
     return rank;
 }
-} // namespace details
+} // namespace detail
 } // namespace native

@@ -182,7 +182,7 @@
             MPI_Bcast((void*)main_addr.data(), main_addr.size(), MPI_BYTE, 0, MPI_COMM_WORLD); \
             gd.kvs = ccl::create_kvs(main_addr); \
         } \
-        gd.comms.push_back(ccl::create_communicator(size, rank, gd.kvs)); \
+        gd.comms.emplace_back(ccl::create_communicator(size, rank, gd.kvs)); \
         PATCH_OUTPUT_NAME_ARG(argc, argv); \
         testing::InitGoogleTest(&argc, argv); \
         int res = RUN_ALL_TESTS(); \
@@ -215,7 +215,9 @@ void print_err_message(char* err_message, std::ostream& output) {
     }
 
     char* arrerr_message = new char[full_message_len];
-    ccl::allgatherv(err_message, message_len, arrerr_message, arr_message_len, comm).wait();
+    ccl::allgatherv(
+        err_message, message_len, arrerr_message, arr_message_len, ccl::datatype::int8, comm)
+        .wait();
 
     if (process_idx == 0) {
         output << arrerr_message;

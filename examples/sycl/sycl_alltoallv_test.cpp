@@ -19,7 +19,6 @@ using namespace std;
 using namespace sycl;
 
 int main(int argc, char *argv[]) {
-
     const size_t count = 10 * 1024 * 1024;
 
     int i = 0;
@@ -29,16 +28,18 @@ int main(int argc, char *argv[]) {
 
     ccl::init();
 
-    queue q;
-    if (!create_sycl_queue(argc, argv, q)) {
-        return -1;
-    }
-
-    /* create kvs */
     MPI_Init(NULL, NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+    atexit(mpi_finalize);
+
+    queue q;
+    if (!create_sycl_queue(argc, argv, rank, q)) {
+        return -1;
+    }
+
+    /* create kvs */
     ccl::shared_ptr_class<ccl::kvs> kvs;
     ccl::kvs::address_type main_addr;
     if (rank == 0) {
@@ -82,10 +83,9 @@ int main(int argc, char *argv[]) {
     /* open send_buf and modify it on the device side */
     q.submit([&](auto &h) {
         accessor send_buf_acc(send_buf, h, write_only);
-        h.parallel_for(count * size,
-                                                           [=](auto id) {
-                                                               send_buf_acc[id] += 1;
-                                                           });
+        h.parallel_for(count * size, [=](auto id) {
+            send_buf_acc[id] += 1;
+        });
     });
 
     if (!handle_exception(q))
@@ -97,12 +97,11 @@ int main(int argc, char *argv[]) {
     /* open recv_buf and check its correctness on the device side */
     q.submit([&](auto &h) {
         accessor recv_buf_acc(recv_buf, h, write_only);
-        h.parallel_for(count * size,
-                                                          [=](auto id) {
-                                                              if (recv_buf_acc[id] != rank + 1) {
-                                                                  recv_buf_acc[id] = -1;
-                                                              }
-                                                          });
+        h.parallel_for(count * size, [=](auto id) {
+            if (recv_buf_acc[id] != rank + 1) {
+                recv_buf_acc[id] = -1;
+            }
+        });
     });
 
     if (!handle_exception(q))
@@ -121,8 +120,6 @@ int main(int argc, char *argv[]) {
             cout << "PASSED\n";
         }
     }
-
-    MPI_Finalize();
 
     return 0;
 }

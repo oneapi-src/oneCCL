@@ -67,7 +67,7 @@ using namespace cl::sycl::access;
                       START_MSG_SIZE_POWER, \
                       COLL_ROOT); \
         std::vector<size_t> msg_counts(MSG_SIZE_COUNT); \
-        std::vector<std::string> msg_match_ids(MSG_SIZE_COUNT); \
+        std::vector<ccl::string_class> msg_match_ids(MSG_SIZE_COUNT); \
         for (size_t idx = 0; idx < MSG_SIZE_COUNT; ++idx) { \
             msg_counts[idx] = 1u << (START_MSG_SIZE_POWER + idx); \
             msg_match_ids[idx] = std::to_string(msg_counts[idx]); \
@@ -112,6 +112,14 @@ double when(void) {
     }
 
     return (double)(tv.tv_sec - tv_base.tv_sec) * 1.0e6 + (double)(tv.tv_usec - tv_base.tv_usec);
+}
+
+void mpi_finalize() {
+    int is_finalized = 0;
+    MPI_Finalized(&is_finalized);
+
+    if (!is_finalized)
+        MPI_Finalize();
 }
 
 #endif /* BASE_HPP */

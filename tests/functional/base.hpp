@@ -61,7 +61,7 @@ struct typed_test_param {
     std::vector<std::vector<short>> recv_buf_bf16;
 
     std::vector<ccl::event> reqs;
-    std::string match_id;
+    ccl::string_class match_id;
 
     typed_test_param(ccl_test_conf tconf)
             : test_conf(tconf),
@@ -89,14 +89,14 @@ struct typed_test_param {
     void print(std::ostream& output);
 
     void* get_send_buf(size_t buf_idx) {
-        if (test_conf.datatype == DT_BF16)
+        if (test_conf.datatype == DT_BFLOAT16)
             return static_cast<void*>(send_buf_bf16[buf_idx].data());
         else
             return static_cast<void*>(send_buf[buf_idx].data());
     }
 
     void* get_recv_buf(size_t buf_idx) {
-        if (test_conf.datatype == DT_BF16)
+        if (test_conf.datatype == DT_BFLOAT16)
             return static_cast<void*>(recv_buf_bf16[buf_idx].data());
         else
             return static_cast<void*>(recv_buf[buf_idx].data());
@@ -138,21 +138,23 @@ class MainTest : public ::testing ::TestWithParam<ccl_test_conf> {
 public:
     int test(ccl_test_conf& param) {
         switch (param.datatype) {
-            case DT_CHAR: return run<char>(param);
-            case DT_INT:
-                return run<int>(param);
-                //TODO: add additional type to testing
+            case DT_INT8: return run<int8_t>(param);
+            /*case DT_UINT8: return run<uint8_t>(param);*/
+            case DT_INT16: return run<int16_t>(param);
+            /*case DT_UINT16: return run<uint16_t>(param);*/
+            case DT_INT32: return run<int32_t>(param);
+            /*case DT_UINT32: return run<uint32_t>(param);
+            case DT_INT64: return run<int64_t>(param);
+            case DT_UINT64: return run<uint64_t>(param);
+            case DT_FLOAT16: return TEST_SUCCESS;*/
+            case DT_FLOAT32:
+                return run<float>(param);
+                /*case DT_FLOAT64: return run<double>(param);*/
 #ifdef CCL_BF16_COMPILER
-            case DT_BF16: return run<float>(param);
+            case DT_BFLOAT16: return run<float>(param);
 #endif
-            case DT_FLOAT: return run<float>(param);
-            case DT_DOUBLE: return run<double>(param);
-            // case DT_INT64:
-            // return TEST_SUCCESS;
-            // case DT_UINT64:
-            // return TEST_SUCCESS;
             default:
-                EXPECT_TRUE(false) << "Unknown data type: " << param.datatype;
+                EXPECT_TRUE(false) << "Unexpected data type: " << param.datatype;
                 return TEST_FAILURE;
         }
     }

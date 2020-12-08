@@ -70,7 +70,8 @@ struct ccl_sched_base {
 
     void set_coll_attr(const struct ccl_coll_attr& attr);
 
-    void update_coll_param_and_attr(const struct ccl_coll_param& param, const struct ccl_coll_attr& attr);
+    void update_coll_param_and_attr(const struct ccl_coll_param& param,
+                                    const struct ccl_coll_attr& attr);
 
     size_t get_priority() const;
 

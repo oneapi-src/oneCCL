@@ -34,9 +34,7 @@ public:
     using typename base::comm_rank_t;
     using impl_t = device_t;
 
-    template <ccl_coll_type algo_type,
-              ccl::group_split_type group,
-              ccl::device_topology_type mode>
+    template <ccl_coll_type algo_type, ccl::group_split_type group, ccl::device_topology_type mode>
     using gpu_module_t =
         typename device_t::template gpu_module_t<algo_type, group, mode>; //same as in-process GPU
 

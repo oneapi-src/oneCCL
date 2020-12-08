@@ -18,7 +18,7 @@
 #include "atl/atl_def.h"
 #include "atl/util/pm/pm_rt.h"
 #include "atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs/ikvs_wrapper.h"
-#include "atl/util/pm/pmi_resizable_rt/pmi_resizable/helper.h"
+#include "atl/util/pm/pmi_resizable_rt/pmi_resizable/helper.hpp"
 #include "atl/util/pm/pmi_resizable_rt/pmi_resizable/pmi_listener.hpp"
 
 #define PMIR_SUCCESS                0
@@ -42,7 +42,7 @@ typedef enum {
     KVS_RA_RUN = 1,
     KVS_RA_FINALIZE = 2,
 } kvs_resize_action_t;
-typedef kvs_resize_action_t (*pmir_resize_fn_t)(size_t comm_size);
+typedef kvs_resize_action_t (*pmir_resize_fn_t)(int comm_size);
 
 class helper;
 class pmi_resizable final : public ipmi {
@@ -58,7 +58,7 @@ public:
 
     int is_pm_resize_enabled() override;
 
-    atl_status_t pmrt_main_addr_reserv(char* main_addr) override;
+    atl_status_t pmrt_main_addr_reserve(char* main_addr) override;
 
     atl_status_t pmrt_set_resize_function(atl_resize_fn_t resize_fn) override;
 
@@ -69,32 +69,32 @@ public:
     void pmrt_barrier() override;
 
     atl_status_t pmrt_kvs_put(char* kvs_key,
-                              size_t proc_idx,
+                              int proc_idx,
                               const void* kvs_val,
                               size_t kvs_val_len) override;
 
     atl_status_t pmrt_kvs_get(char* kvs_key,
-                              size_t proc_idx,
+                              int proc_idx,
                               void* kvs_val,
                               size_t kvs_val_len) override;
 
     void Hard_finilize(int sig);
 
-    size_t get_rank() override;
+    int get_rank() override;
 
-    size_t get_size() override;
+    int get_size() override;
 
-    size_t get_thread() override;
+    size_t get_local_thread_idx() override;
 
     size_t get_local_kvs_id() override;
 
     void set_local_kvs_id(size_t local_kvs_id) override;
 
-    size_t get_threads_count() override {
+    size_t get_threads_per_process() override {
         return 1;
     }
 
-    size_t get_devices_per_rank_count() override {
+    size_t get_ranks_per_process() override {
         return 1;
     }
     void pmrt_finalize() override;
@@ -103,15 +103,15 @@ private:
     bool is_finalized{ false };
     atl_status_t pmrt_init(const char* main_addr = nullptr);
     /*Was in API ->*/
-    int PMIR_Main_Addr_Reserv(char* main_addr);
+    int PMIR_Main_Addr_Reserve(char* main_addr);
 
     int PMIR_Init(const char* main_addr);
 
     int PMIR_Finalize(void);
 
-    int PMIR_Get_size(size_t* size);
+    int PMIR_Get_size(int* size);
 
-    int PMIR_Get_rank(size_t* rank);
+    int PMIR_Get_rank(int* rank);
 
     int PMIR_KVS_Get_my_name(char* kvs_name, size_t length);
 
@@ -135,10 +135,11 @@ private:
 
     int PMIR_Wait_notification(void);
     /* <- Was in API*/
-    kvs_resize_action_t default_checker(size_t comm_size);
-    kvs_resize_action_t call_resize_fn(size_t comm_size);
-    size_t rank;
-    size_t size;
+    kvs_resize_action_t default_checker(int comm_size);
+    kvs_resize_action_t call_resize_fn(int comm_size);
+
+    int rank;
+    int size;
 
     pmir_resize_fn_t resize_function = nullptr;
     std::shared_ptr<helper> h;

@@ -16,7 +16,7 @@
 #ifndef LISTENER_H_INCLUDED
 #define LISTENER_H_INCLUDED
 
-#include "helper.h"
+#include "helper.hpp"
 
 class pmi_listener {
 public:

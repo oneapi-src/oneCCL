@@ -29,18 +29,17 @@ struct ccl_unordered_coll_ctx {
 };
 
 ccl_unordered_coll_manager::ccl_unordered_coll_manager(ccl_comm& parent_comm) {
+    coordination_comm = std::unique_ptr<ccl_comm>(
+        new ccl_comm(parent_comm.rank(),
+                     parent_comm.size(),
+                     ccl::global_data::get().comm_ids->acquire(true /*internal_id_space*/),
+                     parent_comm.atl,
+                     true /*share_resources*/));
 
-       coordination_comm =
-           std::unique_ptr<ccl_comm>(new ccl_comm(parent_comm.rank(),
-                                                  parent_comm.size(),
-                                                  ccl::global_data::get().comm_ids->acquire(true/*internal_id_space*/),
-                                                  parent_comm.atl,
-                                                  true/*share_resources*/));
+    CCL_ASSERT(coordination_comm.get(), "coordination_comm is null");
 
-       CCL_ASSERT(coordination_comm.get(), "coordination_comm is null");
-
-       if (parent_comm.rank() == 0)
-           LOG_INFO("created unordered collectives manager");
+    if (parent_comm.rank() == 0)
+        LOG_INFO("created unordered collectives manager");
 }
 
 ccl_unordered_coll_manager::~ccl_unordered_coll_manager() {
@@ -159,7 +158,7 @@ void ccl_unordered_coll_manager::start_coordination(const std::string& match_id)
 
     ccl_coll_param coll_param{};
     coll_param.ctype = ccl_coll_internal;
-    coll_param.dtype = ccl_datatype_char;
+    coll_param.dtype = ccl_datatype_int8;
     coll_param.comm = coordination_comm.get();
 
     std::unique_ptr<ccl_extra_sched> service_sched(
@@ -200,7 +199,7 @@ void ccl_unordered_coll_manager::start_coordination(const std::string& match_id)
     match_id_size_param.ctype = ccl_coll_bcast;
     match_id_size_param.buf = ccl_buffer(&ctx->match_id_size, sizeof(size_t));
     match_id_size_param.count = sizeof(size_t);
-    match_id_size_param.dtype = ccl_datatype_char;
+    match_id_size_param.dtype = ccl_datatype_int8;
     match_id_size_param.root = CCL_UNORDERED_COLL_COORDINATOR;
     match_id_size_param.comm = coll_param.comm;
     entry_factory::make_entry<coll_entry>(service_sched.get(), match_id_size_param);
@@ -212,7 +211,7 @@ void ccl_unordered_coll_manager::start_coordination(const std::string& match_id)
     match_id_val_param.ctype = ccl_coll_bcast;
     match_id_val_param.buf = ccl_buffer();
     match_id_val_param.count = 0;
-    match_id_val_param.dtype = ccl_datatype_char;
+    match_id_val_param.dtype = ccl_datatype_int8;
     match_id_val_param.root = CCL_UNORDERED_COLL_COORDINATOR;
     match_id_val_param.comm = coll_param.comm;
     auto entry = entry_factory::make_entry<coll_entry>(service_sched.get(), match_id_val_param);
@@ -227,16 +226,16 @@ void ccl_unordered_coll_manager::start_coordination(const std::string& match_id)
             }
             ccl_buffer* buf_ptr = (ccl_buffer*)field_ptr;
             buf_ptr->set(ctx->match_id_value, ctx->match_id_size);
-            return ccl_status_success;
+            return ccl::status::success;
         },
         ctx);
 
     entry->set_field_fn<ccl_sched_entry_field_cnt>(
-        [](const void* fn_ctx, void* field_ptr) -> ccl_status_t {
+        [](const void* fn_ctx, void* field_ptr) -> ccl::status {
             auto ctx = static_cast<ccl_unordered_coll_ctx*>(const_cast<void*>(fn_ctx));
             auto count_ptr = static_cast<size_t*>(field_ptr);
             *count_ptr = ctx->match_id_size;
-            return ccl_status_success;
+            return ccl::status::success;
         },
         ctx);
 
@@ -247,7 +246,7 @@ void ccl_unordered_coll_manager::start_coordination(const std::string& match_id)
     reserved_comm_id_param.ctype = ccl_coll_bcast;
     reserved_comm_id_param.buf = ccl_buffer(&ctx->reserved_comm_id, sizeof(ccl_comm_id_t));
     reserved_comm_id_param.count = sizeof(ccl_comm_id_t);
-    reserved_comm_id_param.dtype = ccl_datatype_char;
+    reserved_comm_id_param.dtype = ccl_datatype_int8;
     reserved_comm_id_param.root = CCL_UNORDERED_COLL_COORDINATOR;
     reserved_comm_id_param.comm = coll_param.comm;
     entry_factory::make_entry<coll_entry>(service_sched.get(), reserved_comm_id_param);
@@ -257,10 +256,10 @@ void ccl_unordered_coll_manager::start_coordination(const std::string& match_id)
     /* 4. start post actions (create communicator and start postponed schedules) */
     entry_factory::make_entry<function_entry>(
         service_sched.get(),
-        [](const void* func_ctx) -> ccl_status_t {
+        [](const void* func_ctx) -> ccl::status {
             auto ctx = static_cast<ccl_unordered_coll_ctx*>(const_cast<void*>(func_ctx));
             ctx->manager->start_post_coordination_actions(ctx);
-            return ccl_status_success;
+            return ccl::status::success;
         },
         ctx);
 

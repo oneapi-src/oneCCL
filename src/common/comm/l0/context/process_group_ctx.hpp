@@ -56,7 +56,7 @@ struct process_group_context
     virtual //TODO use stub
         ~process_group_context();
 
-    bool sync_barrier(const ccl::device_indices_t& thread_device_indices,
+    bool sync_barrier(const ccl::device_indices_type& thread_device_indices,
                       ccl::context_comm_addr& comm_addr);
     bool sync_barrier(const ccl::device_mask_t& thread_device_mask,
                       ccl::context_comm_addr& comm_addr);
@@ -82,24 +82,25 @@ struct process_group_context
     }
 
     const ccl::cluster_aggregated_device_mask_t& get_afinity_mask() const;
-    const ccl::cluster_device_indices_t& get_affinity_indices() const;
+    const ccl::cluster_device_indices_type& get_affinity_indices() const;
 
     const ccl::process_aggregated_device_mask_t& get_node_afinity_mask(
         const ccl::host_id& host) const;
-    const ccl::process_device_indices_t& get_node_afinity_indices(const ccl::host_id& host) const;
+    const ccl::process_device_indices_type& get_node_afinity_indices(
+        const ccl::host_id& host) const;
 
     void set_node_afinity_indices(const ccl::host_id& host,
-                                  size_t rank_id,
-                                  const ccl::device_indices_t& indices);
+                                  int rank_id,
+                                  const ccl::device_indices_type& indices);
 
     const ccl::host_id get_host_id() const;
 
     std::string to_string() const;
     device_storage& get_device_storage();
-    std::vector<ccl::device_indices_t> get_ipc_device_indices() const;
-    static std::vector<ccl::device_indices_t> get_ipc_device_indices_for_id(
+    std::vector<ccl::device_indices_type> get_ipc_device_indices() const;
+    static std::vector<ccl::device_indices_type> get_ipc_device_indices_for_id(
         size_t process_idx,
-        ccl::process_device_indices_t node_indices);
+        ccl::process_device_indices_type node_indices);
 
     static void dump_cluster_affinity_mask(const ccl::cluster_aggregated_device_mask_t& mask,
                                            std::ostream& out);
@@ -110,13 +111,13 @@ struct process_group_context
                                   const ccl::device_mask_t& mask,
                                   std::ostream& out);
 
-    static void dump_cluster_affinity_indices(const ccl::cluster_device_indices_t& mask,
+    static void dump_cluster_affinity_indices(const ccl::cluster_device_indices_type& mask,
                                               std::ostream& out);
     static void dump_node_aggregated_indices(const std::string& node_name,
-                                             const ccl::process_device_indices_t& mask,
+                                             const ccl::process_device_indices_type& mask,
                                              std::ostream& out);
     static void dump_process_indices(size_t process_id,
-                                     const ccl::device_indices_t& mask,
+                                     const ccl::device_indices_type& mask,
                                      std::ostream& out);
 
     void dump_process_topologies(std::ostream& out) const;
@@ -132,14 +133,14 @@ struct process_group_context
     virtual /*TODO use stub*/
         void
         collect_cluster_colored_plain_graphs(
-            const details::colored_plain_graph_list& send_graph,
-            details::global_sorted_colored_plain_graphs& received_graphs);
+            const detail::colored_plain_graph_list& send_graph,
+            detail::global_sorted_colored_plain_graphs& received_graphs);
 
 private:
-    bool delegate_sync(const ccl::device_indices_t& thread_device_indices,
+    bool delegate_sync(const ccl::device_indices_type& thread_device_indices,
                        ccl::context_comm_addr& comm_addr);
     bool build_cluster_affinity_table(
-        const ccl::device_indices_t& process_aggregated_device_indices);
+        const ccl::device_indices_type& process_aggregated_device_indices);
 
     std::shared_ptr<ccl::host_communicator> get_communicator();
 
@@ -147,7 +148,7 @@ private:
     std::shared_ptr<thread_group_context> thread_group_ctx;
     ccl::host_id my_host_name;
     ccl::cluster_aggregated_device_mask_t global_mask;
-    ccl::cluster_device_indices_t cluster_gpu_indices;
+    ccl::cluster_device_indices_type cluster_gpu_indices;
 
     std::unique_ptr<device_storage> gpu_device_storage;
     topologies_storage process_device_topology;

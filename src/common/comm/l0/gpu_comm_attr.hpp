@@ -19,7 +19,7 @@
 #include <mutex>
 #include <condition_variable>
 
-#include "oneapi/ccl/ccl_types.hpp"
+#include "oneapi/ccl/types.hpp"
 #include "common/comm/l0/device_group_routing_schema.hpp"
 #include "common/comm/l0/context/context_barrier.hpp"
 
@@ -31,14 +31,16 @@ struct thread_group_context;
 } // namespace native
 
 namespace ccl {
-class host_communicator;
+namespace v1 {
 class communicator;
+}
+class host_communicator;
 struct communicator_interface;
 struct context_comm_addr {
     size_t thread_idx = 0;
     size_t thread_count = 0;
-    size_t comm_rank = 0;
-    size_t comm_size = 0;
+    int comm_rank = 0;
+    int comm_size = 0;
 
     std::string to_string() const;
 };

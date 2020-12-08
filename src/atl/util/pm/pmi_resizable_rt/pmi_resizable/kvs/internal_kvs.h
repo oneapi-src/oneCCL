@@ -13,11 +13,11 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#ifndef KVS
-#define KVS
+#pragma once
 
 #include <stddef.h>
 #include "ikvs_wrapper.h"
+
 class internal_kvs final : public ikvs_wrapper {
 public:
     size_t kvs_set_value(const char* kvs_name, const char* kvs_key, const char* kvs_val) override;
@@ -47,4 +47,3 @@ public:
 private:
     bool is_inited{ false };
 };
-#endif

@@ -61,86 +61,13 @@ void check_max_comm_number(const ccl::communicator& comm,
     } while (true);
 
     PRINT_BY_ROOT(comm, "created %zu communicators", user_comms);
-    // PRINT_BY_ROOT(comm, "try to create one more communicator, it should fail");
-
-    // try
-    // {
-    //     auto comm = ccl::environment::instance().create_communicator();
-    //     printf("FAILED\n");
-    //     throw std::runtime_error("extra communicator has been created");
-    // }
-    // catch(...)
-    // {}
-
-    // PRINT_BY_ROOT(comm, "free one comm, try to create again");
-    // size_t comm_idx = user_comms / 2;
-
-    // try
-    // {
-    //     communicators[comm_idx].reset();
-    // }
-    // catch (...)
-    // {
-    //     printf("FAILED\n");
-    //     throw std::runtime_error("can't free communicator");
-    // }
-
-    // try
-    // {
-    //     communicators[comm_idx] = ccl::environment::instance().create_communicator();
-    // }
-    // catch (...)
-    // {
-    //     printf("FAILED\n");
-    //     throw std::runtime_error("can't create communicator after free");
-    // }
 }
-
-// void check_comm_create_identical_color()
-// {
-//     size_t comm_size{};
-//     size_t comm_rank{};
-
-//     PRINT_BY_ROOT(global_comm,
-//         "create comm as a copy of the global one by settings identical colors");
-
-//     ccl::comm_attr_t comm_attr = ccl::environment::instance().create_host_comm_attr();
-//     comm_attr->set_value<ccl_host_color>(123);
-//     auto comm = ccl::environment::instance().create_communicator(comm_attr);
-
-//     comm_size = comm->size();
-//     comm_rank = comm->rank();
-
-//     if (comm_size != global_comm->size())
-//     {
-//         printf("FAILED\n");
-//         throw std::runtime_error("mismatch in size, expected " +
-//             to_string(global_comm->size()) +
-//             " received " + to_string(comm_size));
-//     }
-
-//     if (comm_rank != global_comm->rank())
-//     {
-//         printf("FAILED\n");
-//         throw std::runtime_error("mismatch in rank, expected " +
-//             to_string(global_comm->rank()) +
-//             " received " + to_string(comm_rank));
-//     }
-
-//     PRINT_BY_ROOT(global_comm,
-//         "global comm: rank = %zu, size = %zu; "
-//         "new comm: rank = %zu, size = %zu",
-//         global_comm->rank(), global_comm->size(),
-//         comm_rank, comm_size);
-
-//     check_allreduce_on_comm(comm);
-// }
 
 bool isPowerOfTwo(unsigned int x) {
     return x && !(x & (x - 1));
 }
 
-void check_comm_split_by_color(ccl::communicator& comm, int mpi_size, int mpi_rank) {
+void check_comm_split_by_color(ccl::communicator& comm) {
     if (!isPowerOfTwo(comm.size())) {
         PRINT_BY_ROOT(
             comm,
@@ -148,18 +75,18 @@ void check_comm_split_by_color(ccl::communicator& comm, int mpi_size, int mpi_ra
         return;
     }
 
-    for (size_t split_by = 2; split_by <= comm.size(); split_by *= 2) {
+    for (int split_by = 2; split_by <= comm.size(); split_by *= 2) {
         int color = comm.rank() % split_by;
-        auto attr =
-            ccl::create_comm_split_attr(ccl::attr_val<ccl::comm_split_attr_id::color>(color));
+        auto attr = ccl::preview::create_comm_split_attr(
+            ccl::attr_val<ccl::comm_split_attr_id::color>(color));
         auto new_comm = comm.split(attr);
 
-        size_t comm_size = comm.size();
-        size_t new_comm_size = new_comm.size();
-        size_t comm_rank = comm.rank();
-        size_t new_comm_rank = new_comm.rank();
+        int comm_size = comm.size();
+        int new_comm_size = new_comm.size();
+        int comm_rank = comm.rank();
+        int new_comm_rank = new_comm.rank();
 
-        size_t expected_new_comm_size = comm_size / split_by;
+        int expected_new_comm_size = comm_size / split_by;
 
         if (new_comm_size != expected_new_comm_size) {
             printf("FAILED (split)\n");
@@ -170,18 +97,97 @@ void check_comm_split_by_color(ccl::communicator& comm, int mpi_size, int mpi_ra
         }
 
         PRINT_BY_ROOT(comm,
-                      "base comm: rank = %zu, size = %zu; "
-                      "new comm: rank = %zu, size = %zu",
+                      "base comm: rank = %d, size = %d; "
+                      "new comm: rank = %d, size = %d",
                       comm_rank,
                       comm_size,
                       new_comm_rank,
                       new_comm_size);
 
+        PRINT_BY_ROOT(comm, " - allreduce test on a new communicator");
         check_allreduce_on_comm(new_comm);
     }
 }
 
+void check_comm_split_identical(ccl::communicator& comm) {
+    if (!isPowerOfTwo(comm.size())) {
+        PRINT_BY_ROOT(
+            comm,
+            "split comm by color: number of processes should be a power of 2 for test purpose");
+        return;
+    }
+
+    for (int split_by = 2; split_by <= comm.size(); split_by *= 2) {
+        int color = comm.rank() % split_by;
+        auto attr = ccl::preview::create_comm_split_attr(
+            ccl::attr_val<ccl::comm_split_attr_id::color>(color));
+        auto new_comm1 = comm.split(attr);
+        auto new_comm2 = comm.split(attr);
+
+        if (new_comm1.size() != new_comm2.size()) {
+            printf("FAILED (split)\n");
+
+            throw std::runtime_error("the sizes of new communicators are not equal. Comm #1 size " +
+                                     std::to_string(new_comm1.size()) + " Comm #2 size " +
+                                     std::to_string(new_comm2.size()));
+        }
+
+        if (new_comm1.rank() != new_comm2.rank()) {
+            printf("FAILED (split)\n");
+
+            throw std::runtime_error("the sizes of new communicators are not equal. Comm #1 rank " +
+                                     std::to_string(new_comm1.rank()) + " Comm #2 rank " +
+                                     std::to_string(new_comm2.rank()));
+        }
+
+        PRINT_BY_ROOT(comm,
+                      "comm #1: rank = %d, size = %d; "
+                      "comm #2: rank = %d, size = %d",
+                      new_comm1.rank(),
+                      new_comm1.size(),
+                      new_comm2.rank(),
+                      new_comm2.size());
+    }
+}
+
+void check_comm_split_identical_color(ccl::communicator& comm) {
+    auto attr =
+        ccl::preview::create_comm_split_attr(ccl::attr_val<ccl::comm_split_attr_id::color>(123));
+    auto new_comm = comm.split(attr);
+
+    if (new_comm.size() != comm.size()) {
+        printf("FAILED (split)\n");
+
+        throw std::runtime_error(
+            "the sizes of new communicator and base communicator are not equal. New comm size " +
+            std::to_string(new_comm.size()) + " Base comm size " + std::to_string(comm.size()));
+    }
+
+    if (new_comm.rank() != comm.rank()) {
+        printf("FAILED (split)\n");
+
+        throw std::runtime_error(
+            "the sizes of new communicator and base communicator are not equal. New comm rank " +
+            std::to_string(new_comm.rank()) + " Base comm rank " + std::to_string(comm.rank()));
+    }
+
+    PRINT_BY_ROOT(comm,
+                  "base comm: rank = %d, size = %d; "
+                  "new comm: rank = %d, size = %d",
+                  comm.rank(),
+                  new_comm.size(),
+                  comm.rank(),
+                  new_comm.size());
+
+    PRINT_BY_ROOT(comm, " - allreduce test on a new communicator");
+    check_allreduce_on_comm(new_comm);
+}
+
 int main() {
+    /**
+     * The example only works with CCL_ATL_TRANSPORT=ofi
+     */
+    setenv("CCL_ATL_TRANSPORT", "ofi", 0);
 
     ccl::init();
 
@@ -213,10 +219,16 @@ int main() {
     // PRINT_BY_ROOT(comm, "PASSED");
 
     PRINT_BY_ROOT(comm, "\n- Communicator split test");
-    check_comm_split_by_color(comm, mpi_size, mpi_rank);
+    check_comm_split_by_color(comm);
     PRINT_BY_ROOT(comm, "PASSED");
 
-    // check_comm_create_identical_color();
+    PRINT_BY_ROOT(comm, "\n- Communicator identical split test");
+    check_comm_split_identical(comm);
+    PRINT_BY_ROOT(comm, "PASSED");
+
+    PRINT_BY_ROOT(comm, "\n- Communicator identical color split test");
+    check_comm_split_identical_color(comm);
+    PRINT_BY_ROOT(comm, "PASSED");
 
     MPI_Finalize();
 

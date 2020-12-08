@@ -19,10 +19,11 @@
 #include "common/datatype/datatype.hpp"
 #include "common/utils/utils.hpp"
 #include "sched/entry/postponed_fields.hpp"
+#include "internal_types.hpp"
 #include <chrono>
 #include <memory>
 
-typedef ccl_status_t (*ccl_sched_entry_function_t)(const void*);
+typedef ccl::status (*ccl_sched_entry_function_t)(const void*);
 
 class ccl_sched;
 

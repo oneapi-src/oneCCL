@@ -21,7 +21,7 @@
 using namespace ccl;
 
 process_ring_communicator::process_ring_communicator(ccl::unified_device_type&& device,
-                                                     ccl::unified_device_context_type&& ctx,
+                                                     ccl::unified_context_type&& ctx,
                                                      size_t thread_idx,
                                                      size_t process_idx,
                                                      const ccl::comm_split_attr& attr)
@@ -47,135 +47,125 @@ size_t process_ring_communicator::group_size() const
 }
 */
 
-process_ring_communicator::coll_request_t process_ring_communicator::barrier(
-    const ccl::stream::impl_value_t& stream,
-    const ccl::barrier_attr& attr,
-    const ccl::vector_class<ccl::event>& deps) {
+ccl::event process_ring_communicator::barrier(const ccl::stream::impl_value_t& stream,
+                                              const ccl::barrier_attr& attr,
+                                              const ccl::vector_class<ccl::event>& deps) {
     throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented yet");
 }
 
 /* allgatherv */
-process_ring_communicator::coll_request_t process_ring_communicator::allgatherv_impl(
-    const void* send_buf,
-    size_t send_count,
-    void* recv_buf,
-    const ccl::vector_class<size_t>& recv_counts,
-    ccl::datatype dtype,
-    const ccl::stream::impl_value_t& stream,
-    const ccl::allgatherv_attr& attr,
-    const ccl::vector_class<ccl::event>& deps) {
+ccl::event process_ring_communicator::allgatherv_impl(const void* send_buf,
+                                                      size_t send_count,
+                                                      void* recv_buf,
+                                                      const ccl::vector_class<size_t>& recv_counts,
+                                                      ccl::datatype dtype,
+                                                      const ccl::stream::impl_value_t& stream,
+                                                      const ccl::allgatherv_attr& attr,
+                                                      const ccl::vector_class<ccl::event>& deps) {
     throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
     return {};
 }
-process_ring_communicator::coll_request_t process_ring_communicator::allgatherv_impl(
-    const void* send_buf,
-    size_t send_count,
-    const ccl::vector_class<void*>& recv_bufs,
-    const ccl::vector_class<size_t>& recv_counts,
-    ccl::datatype dtype,
-    const ccl::stream::impl_value_t& stream,
-    const ccl::allgatherv_attr& attr,
+ccl::event process_ring_communicator::allgatherv_impl(const void* send_buf,
+                                                      size_t send_count,
+                                                      const ccl::vector_class<void*>& recv_bufs,
+                                                      const ccl::vector_class<size_t>& recv_counts,
+                                                      ccl::datatype dtype,
+                                                      const ccl::stream::impl_value_t& stream,
+                                                      const ccl::allgatherv_attr& attr,
 
-    const ccl::vector_class<ccl::event>& deps) {
+                                                      const ccl::vector_class<ccl::event>& deps) {
     throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
     return {};
 }
 
 /* allreduce */
-process_ring_communicator::coll_request_t process_ring_communicator::allreduce_impl(
-    const void* send_buf,
-    void* recv_buf,
-    size_t count,
-    ccl::datatype dtype,
-    ccl::reduction reduction,
-    const ccl::stream::impl_value_t& stream,
-    const ccl::allreduce_attr& attr,
-    const ccl::vector_class<ccl::event>& deps) {
+ccl::event process_ring_communicator::allreduce_impl(const void* send_buf,
+                                                     void* recv_buf,
+                                                     size_t count,
+                                                     ccl::datatype dtype,
+                                                     ccl::reduction reduction,
+                                                     const ccl::stream::impl_value_t& stream,
+                                                     const ccl::allreduce_attr& attr,
+                                                     const ccl::vector_class<ccl::event>& deps) {
     throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
     return {};
 }
 
 /* alltoall */
-process_ring_communicator::coll_request_t process_ring_communicator::alltoall_impl(
-    const void* send_buf,
-    void* recv_buf,
-    size_t count,
-    ccl::datatype dtype,
-    const ccl::stream::impl_value_t& stream,
-    const ccl::alltoall_attr& attr,
-    const ccl::vector_class<ccl::event>& deps) {
+ccl::event process_ring_communicator::alltoall_impl(const void* send_buf,
+                                                    void* recv_buf,
+                                                    size_t count,
+                                                    ccl::datatype dtype,
+                                                    const ccl::stream::impl_value_t& stream,
+                                                    const ccl::alltoall_attr& attr,
+                                                    const ccl::vector_class<ccl::event>& deps) {
     throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
     return {};
 }
-process_ring_communicator::coll_request_t process_ring_communicator::alltoall_impl(
-    const ccl::vector_class<void*>& send_buf,
-    const ccl::vector_class<void*>& recv_buf,
-    size_t count,
-    ccl::datatype dtype,
-    const ccl::stream::impl_value_t& stream,
-    const ccl::alltoall_attr& attr,
-    const ccl::vector_class<ccl::event>& deps) {
+ccl::event process_ring_communicator::alltoall_impl(const ccl::vector_class<void*>& send_buf,
+                                                    const ccl::vector_class<void*>& recv_buf,
+                                                    size_t count,
+                                                    ccl::datatype dtype,
+                                                    const ccl::stream::impl_value_t& stream,
+                                                    const ccl::alltoall_attr& attr,
+                                                    const ccl::vector_class<ccl::event>& deps) {
     throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
     return {};
 }
 
 /* alltoallv */
-process_ring_communicator::coll_request_t process_ring_communicator::alltoallv_impl(
-    const void* send_buf,
-    const ccl::vector_class<size_t>& send_counts,
-    void* recv_buf,
-    const ccl::vector_class<size_t>& recv_counts,
-    ccl::datatype dtype,
-    const ccl::stream::impl_value_t& stream,
-    const ccl::alltoallv_attr& attr,
-    const ccl::vector_class<ccl::event>& deps) {
+ccl::event process_ring_communicator::alltoallv_impl(const void* send_buf,
+                                                     const ccl::vector_class<size_t>& send_counts,
+                                                     void* recv_buf,
+                                                     const ccl::vector_class<size_t>& recv_counts,
+                                                     ccl::datatype dtype,
+                                                     const ccl::stream::impl_value_t& stream,
+                                                     const ccl::alltoallv_attr& attr,
+                                                     const ccl::vector_class<ccl::event>& deps) {
     throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
     return {};
 }
-process_ring_communicator::coll_request_t process_ring_communicator::alltoallv_impl(
-    const ccl::vector_class<void*>& send_buf,
-    const ccl::vector_class<size_t>& send_counts,
-    ccl::vector_class<void*> recv_buf,
-    const ccl::vector_class<size_t>& recv_counts,
-    ccl::datatype dtype,
-    const ccl::stream::impl_value_t& stream,
-    const ccl::alltoallv_attr& attr,
+ccl::event process_ring_communicator::alltoallv_impl(const ccl::vector_class<void*>& send_buf,
+                                                     const ccl::vector_class<size_t>& send_counts,
+                                                     ccl::vector_class<void*> recv_buf,
+                                                     const ccl::vector_class<size_t>& recv_counts,
+                                                     ccl::datatype dtype,
+                                                     const ccl::stream::impl_value_t& stream,
+                                                     const ccl::alltoallv_attr& attr,
 
-    const ccl::vector_class<ccl::event>& dep) {
+                                                     const ccl::vector_class<ccl::event>& dep) {
     throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
     return {};
 }
 
 /* bcast */
-process_ring_communicator::coll_request_t process_ring_communicator::broadcast_impl(
-    void* buf,
-    size_t count,
-    ccl::datatype dtype,
-    size_t root,
-    const ccl::stream::impl_value_t& stream,
-    const ccl::broadcast_attr& attr,
-    const ccl::vector_class<ccl::event>& deps) {
+ccl::event process_ring_communicator::broadcast_impl(void* buf,
+                                                     size_t count,
+                                                     ccl::datatype dtype,
+                                                     int root,
+                                                     const ccl::stream::impl_value_t& stream,
+                                                     const ccl::broadcast_attr& attr,
+                                                     const ccl::vector_class<ccl::event>& deps) {
     throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
     return {};
 }
 
 /* reduce */
-process_ring_communicator::coll_request_t process_ring_communicator::reduce_impl(
-    const void* send_buf,
-    void* recv_buf,
-    size_t count,
-    ccl::datatype dtype,
-    ccl::reduction reduction,
-    size_t root,
-    const ccl::stream::impl_value_t& stream,
-    const ccl::reduce_attr& attr,
-    const ccl::vector_class<ccl::event>& deps) {
+ccl::event process_ring_communicator::reduce_impl(const void* send_buf,
+                                                  void* recv_buf,
+                                                  size_t count,
+                                                  ccl::datatype dtype,
+                                                  ccl::reduction reduction,
+                                                  int root,
+                                                  const ccl::stream::impl_value_t& stream,
+                                                  const ccl::reduce_attr& attr,
+                                                  const ccl::vector_class<ccl::event>& deps) {
     throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
     return {};
 }
 
 /* reduce_scatter */
-process_ring_communicator::coll_request_t process_ring_communicator::reduce_scatter_impl(
+ccl::event process_ring_communicator::reduce_scatter_impl(
     const void* send_buf,
     void* recv_buf,
     size_t recv_count,
@@ -189,7 +179,7 @@ process_ring_communicator::coll_request_t process_ring_communicator::reduce_scat
 }
 
 /* sparse_allreduce */
-process_ring_communicator::coll_request_t process_ring_communicator::sparse_allreduce_impl(
+ccl::event process_ring_communicator::sparse_allreduce_impl(
     const void* send_ind_buf,
     size_t send_ind_count,
     const void* send_val_buf,
@@ -208,123 +198,7 @@ process_ring_communicator::coll_request_t process_ring_communicator::sparse_allr
     return {};
 }
 
-DEVICE_COMM_INTERFACE_COLL_INSTANTIATIONS(process_ring_communicator, char);
-DEVICE_COMM_INTERFACE_COLL_INSTANTIATIONS(process_ring_communicator, int);
-DEVICE_COMM_INTERFACE_COLL_INSTANTIATIONS(process_ring_communicator, int64_t);
-DEVICE_COMM_INTERFACE_COLL_INSTANTIATIONS(process_ring_communicator, uint64_t);
-DEVICE_COMM_INTERFACE_COLL_INSTANTIATIONS(process_ring_communicator, float);
-DEVICE_COMM_INTERFACE_COLL_INSTANTIATIONS(process_ring_communicator, double);
-
+COMM_INTERFACE_COLL_INSTANTIATION(process_ring_communicator);
 #ifdef CCL_ENABLE_SYCL
-DEVICE_COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(process_ring_communicator,
-                                                cl::sycl::buffer<char COMMA 1>);
-DEVICE_COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(process_ring_communicator,
-                                                cl::sycl::buffer<int COMMA 1>);
-DEVICE_COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(process_ring_communicator,
-                                                cl::sycl::buffer<int64_t COMMA 1>);
-DEVICE_COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(process_ring_communicator,
-                                                cl::sycl::buffer<uint64_t COMMA 1>);
-DEVICE_COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(process_ring_communicator,
-                                                cl::sycl::buffer<float COMMA 1>);
-DEVICE_COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(process_ring_communicator,
-                                                cl::sycl::buffer<double COMMA 1>);
-#endif //CCL_ENABLE_SYCL
-
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              char,
-                                                              char);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator, char, int);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              char,
-                                                              ccl::bf16);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              char,
-                                                              float);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              char,
-                                                              double);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              char,
-                                                              int64_t);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              char,
-                                                              uint64_t);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator, int, char);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator, int, int);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              int,
-                                                              ccl::bf16);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              int,
-                                                              float);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              int,
-                                                              double);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              int,
-                                                              int64_t);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              int,
-                                                              uint64_t);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              int64_t,
-                                                              char);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              int64_t,
-                                                              int);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              int64_t,
-                                                              ccl::bf16);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              int64_t,
-                                                              float);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              int64_t,
-                                                              double);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              int64_t,
-                                                              int64_t);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              int64_t,
-                                                              uint64_t);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              uint64_t,
-                                                              char);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              uint64_t,
-                                                              int);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              uint64_t,
-                                                              ccl::bf16);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              uint64_t,
-                                                              float);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              uint64_t,
-                                                              double);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              uint64_t,
-                                                              int64_t);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_INSTANTIATION(process_ring_communicator,
-                                                              uint64_t,
-                                                              uint64_t);
-
-#ifdef CCL_ENABLE_SYCL
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_CLASS_INSTANTIATION(
-    process_ring_communicator,
-    cl::sycl::buffer<int COMMA 1>,
-    cl::sycl::buffer<float COMMA 1>);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_CLASS_INSTANTIATION(
-    process_ring_communicator,
-    cl::sycl::buffer<int COMMA 1>,
-    cl::sycl::buffer<ccl::bf16 COMMA 1>);
-
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_CLASS_INSTANTIATION(
-    process_ring_communicator,
-    cl::sycl::buffer<int64_t COMMA 1>,
-    cl::sycl::buffer<float COMMA 1>);
-DEVICE_COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_CLASS_INSTANTIATION(
-    process_ring_communicator,
-    cl::sycl::buffer<int64_t COMMA 1>,
-    cl::sycl::buffer<ccl::bf16 COMMA 1>);
-#endif //CCL_ENABLE_SYCL
+SYCL_COMM_INTERFACE_COLL_INSTANTIATION(process_ring_communicator);
+#endif /* CCL_ENABLE_SYCL */

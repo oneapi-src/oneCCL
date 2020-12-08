@@ -13,19 +13,21 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "oneapi/ccl/ccl_types.hpp"
-#include "oneapi/ccl/ccl_aliases.hpp"
-#include "oneapi/ccl/ccl_types_policy.hpp"
-#include "oneapi/ccl/ccl_type_traits.hpp"
+#include "oneapi/ccl/types.hpp"
+#include "oneapi/ccl/aliases.hpp"
+#include "oneapi/ccl/types_policy.hpp"
+#include "oneapi/ccl/type_traits.hpp"
 
-#include "oneapi/ccl/ccl_stream_attr_ids.hpp"
-#include "oneapi/ccl/ccl_stream_attr_ids_traits.hpp"
-#include "oneapi/ccl/ccl_stream.hpp"
+#include "oneapi/ccl/stream_attr_ids.hpp"
+#include "oneapi/ccl/stream_attr_ids_traits.hpp"
+#include "oneapi/ccl/stream.hpp"
 
 // Core file with PIMPL implementation
 //#include "stream_impl.hpp"
 
 namespace ccl {
+
+namespace v1 {
 
 template <class attr>
 CCL_API attr ccl_empty_attr::create_empty() {
@@ -33,5 +35,7 @@ CCL_API attr ccl_empty_attr::create_empty() {
 }
 
 CCL_API stream default_stream = ccl_empty_attr::create_empty<stream>();
+
+} // namespace v1
 
 } // namespace ccl

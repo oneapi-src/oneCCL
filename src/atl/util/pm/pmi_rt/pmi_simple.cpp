@@ -24,7 +24,7 @@ pmi_simple::pmi_simple() {
     pmirt_init(&rank, &size, &pmrt_desc);
 }
 
-atl_status_t pmi_simple::pmrt_main_addr_reserv(char *main_addr) {
+atl_status_t pmi_simple::pmrt_main_addr_reserve(char *main_addr) {
     printf("Function main_addr_reserv unsupported yet for simple pmi\n");
     return ATL_STATUS_FAILURE;
 }
@@ -54,28 +54,28 @@ void pmi_simple::pmrt_barrier() {
 }
 
 atl_status_t pmi_simple::pmrt_kvs_put(char *kvs_key,
-                                      size_t proc_idx,
+                                      int proc_idx,
                                       const void *kvs_val,
                                       size_t kvs_val_len) {
     return pmirt_kvs_put(pmrt_desc, kvs_key, proc_idx, kvs_val, kvs_val_len);
 }
 
 atl_status_t pmi_simple::pmrt_kvs_get(char *kvs_key,
-                                      size_t proc_idx,
+                                      int proc_idx,
                                       void *kvs_val,
                                       size_t kvs_val_len) {
     return pmirt_kvs_get(pmrt_desc, kvs_key, proc_idx, kvs_val, kvs_val_len);
 }
 
-size_t pmi_simple::get_rank() {
+int pmi_simple::get_rank() {
     return rank;
 }
 
-size_t pmi_simple::get_size() {
+int pmi_simple::get_size() {
     return size;
 }
 
-size_t pmi_simple::get_thread() {
+size_t pmi_simple::get_local_thread_idx() {
     return 0;
 }
 size_t pmi_simple::get_local_kvs_id() {

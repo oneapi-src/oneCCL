@@ -17,7 +17,7 @@
 #include <cassert>
 #include <memory>
 #include <sstream>
-#include "oneapi/ccl/ccl_types.hpp"
+#include "oneapi/ccl/types.hpp"
 #include "common/utils/enums.hpp"
 #include "common/utils/tuple.hpp"
 #include "supported_topologies.hpp"
@@ -50,11 +50,11 @@ using topology_addr_ptr = std::unique_ptr<topology_addr<schema_id, class_id>>;
 template <ccl::group_split_type group_id, ccl::device_topology_type... class_ids>
 using topology_addr_pointers_tuple_t = std::tuple<topology_addr_ptr<group_id, class_ids>...>;
 
-namespace details {
+namespace detail {
 struct topology_printer {
     template <ccl::group_split_type type, ccl::device_topology_type... class_ids>
     void operator()(const topology_addr_pointers_tuple_t<type, class_ids...>& topology) {
-        details::topology_printer p;
+        detail::topology_printer p;
         ccl_tuple_for_each(topology, p);
         result << ::to_string(type) << "\n\t{ ";
         result << p.result.str() << " }";
@@ -74,7 +74,7 @@ struct topology_printer {
 
     std::stringstream result;
 };
-} // namespace details
+} // namespace detail
 
 struct aggregated_topology_addr {
     template <ccl::group_split_type schema_id,
@@ -105,7 +105,7 @@ struct aggregated_topology_addr {
 
     template <ccl::group_split_type schema_id, ccl::device_topology_type class_id>
     std::string to_string() const {
-        details::topology_printer p;
+        detail::topology_printer p;
         p(std::get<utils::enum_to_underlying(schema_id)>(web));
         return p.result.str();
     }
@@ -117,7 +117,7 @@ struct aggregated_topology_addr {
     }
 
     std::string to_string() const {
-        details::topology_printer p;
+        detail::topology_printer p;
         ccl_tuple_for_each(web, p);
         return p.result.str();
     }

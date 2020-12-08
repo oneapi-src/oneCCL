@@ -14,10 +14,10 @@
  limitations under the License.
 */
 #pragma once
-#include "oneapi/ccl/ccl_types.hpp"
-#include "oneapi/ccl/ccl_types_policy.hpp"
-#include "oneapi/ccl/ccl_coll_attr_ids.hpp"
-#include "oneapi/ccl/ccl_coll_attr_ids_traits.hpp"
+#include "oneapi/ccl/types.hpp"
+#include "oneapi/ccl/types_policy.hpp"
+#include "oneapi/ccl/coll_attr_ids.hpp"
+#include "oneapi/ccl/coll_attr_ids_traits.hpp"
 #include "coll/coll_common_attributes.hpp"
 namespace ccl {
 
@@ -26,13 +26,12 @@ public:
     using base_t = ccl_operation_attr_impl_t;
 
     ccl_sparse_allreduce_attr_impl_t(
-        const typename details::ccl_api_type_attr_traits<operation_attr_id,
-                                                         ccl::operation_attr_id::version>::type&
-            version);
+        const typename detail::ccl_api_type_attr_traits<operation_attr_id,
+                                                        operation_attr_id::version>::type& version);
 
     using sparse_allreduce_completion_fn_traits =
-        details::ccl_api_type_attr_traits<sparse_allreduce_attr_id,
-                                          sparse_allreduce_attr_id::completion_fn>;
+        detail::ccl_api_type_attr_traits<sparse_allreduce_attr_id,
+                                         sparse_allreduce_attr_id::completion_fn>;
     typename sparse_allreduce_completion_fn_traits::return_type set_attribute_value(
         typename sparse_allreduce_completion_fn_traits::type val,
         const sparse_allreduce_completion_fn_traits& t);
@@ -40,8 +39,8 @@ public:
         const sparse_allreduce_completion_fn_traits& id) const;
 
     using sparse_allreduce_alloc_fn_traits =
-        details::ccl_api_type_attr_traits<sparse_allreduce_attr_id,
-                                          sparse_allreduce_attr_id::alloc_fn>;
+        detail::ccl_api_type_attr_traits<sparse_allreduce_attr_id,
+                                         sparse_allreduce_attr_id::alloc_fn>;
     typename sparse_allreduce_alloc_fn_traits::return_type set_attribute_value(
         typename sparse_allreduce_alloc_fn_traits::type val,
         const sparse_allreduce_alloc_fn_traits& t);
@@ -49,8 +48,8 @@ public:
         const sparse_allreduce_alloc_fn_traits& id) const;
 
     using sparse_allreduce_fn_ctx_traits =
-        details::ccl_api_type_attr_traits<sparse_allreduce_attr_id,
-                                          sparse_allreduce_attr_id::fn_ctx>;
+        detail::ccl_api_type_attr_traits<sparse_allreduce_attr_id,
+                                         sparse_allreduce_attr_id::fn_ctx>;
     typename sparse_allreduce_fn_ctx_traits::return_type set_attribute_value(
         typename sparse_allreduce_fn_ctx_traits::type val,
         const sparse_allreduce_fn_ctx_traits& t);
@@ -58,8 +57,8 @@ public:
         const sparse_allreduce_fn_ctx_traits& id) const;
 
     using sparse_coalesce_mode_traits =
-        details::ccl_api_type_attr_traits<sparse_allreduce_attr_id,
-                                          sparse_allreduce_attr_id::coalesce_mode>;
+        detail::ccl_api_type_attr_traits<sparse_allreduce_attr_id,
+                                         sparse_allreduce_attr_id::coalesce_mode>;
     typename sparse_coalesce_mode_traits::return_type set_attribute_value(
         typename sparse_coalesce_mode_traits::type val,
         const sparse_coalesce_mode_traits& t);

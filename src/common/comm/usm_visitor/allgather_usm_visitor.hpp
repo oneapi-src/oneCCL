@@ -16,12 +16,11 @@
 #pragma once
 
 #include "oneapi/ccl.hpp"
-#include "oneapi/ccl/ccl_type_traits.hpp"
+#include "oneapi/ccl/type_traits.hpp"
 
 template <class communicator_impl>
 struct allgather_usm_visitor {
     using self_t = communicator_impl;
-    using coll_request_t = ccl::event;
 
     self_t* get_self() {
         return static_cast<self_t*>(this);
@@ -32,7 +31,7 @@ struct allgather_usm_visitor {
     }
 
     template <class... Args>
-    bool visit(coll_request_t& req,
+    bool visit(ccl::event& req,
                ccl::datatype dtype,
                const void* send_buf,
                size_t send_count,
@@ -45,13 +44,17 @@ struct allgather_usm_visitor {
                   ccl::to_string(dtype),
                   " , handle: ",
                   utils::enum_to_underlying(dtype));
+
+        CCL_THROW("unexpected path");
+
         switch (dtype) {
             case ccl::datatype::int8: {
                 using type = char;
-                req = get_self()->template allgatherv_base_impl<type>(static_cast<const type*>(send_buf),
-                                                                 send_count,
-                                                                 static_cast<type*>(recv_buf),
-                                                                 std::forward<Args>(args)...);
+                req = get_self()->template allgatherv_base_impl<type>(
+                    static_cast<const type*>(send_buf),
+                    send_count,
+                    static_cast<type*>(recv_buf),
+                    std::forward<Args>(args)...);
                 processed = true;
                 break;
             }
@@ -75,10 +78,11 @@ struct allgather_usm_visitor {
             }
             case ccl::datatype::int32: {
                 using type = int32_t;
-                req = get_self()->template allgatherv_base_impl<type>(static_cast<const type*>(send_buf),
-                                                                 send_count,
-                                                                 static_cast<type*>(recv_buf),
-                                                                 std::forward<Args>(args)...);
+                req = get_self()->template allgatherv_base_impl<type>(
+                    static_cast<const type*>(send_buf),
+                    send_count,
+                    static_cast<type*>(recv_buf),
+                    std::forward<Args>(args)...);
                 processed = true;
                 break;
             }
@@ -90,19 +94,21 @@ struct allgather_usm_visitor {
             }
             case ccl::datatype::int64: {
                 using type = int64_t;
-                req = get_self()->template allgatherv_base_impl<type>(static_cast<const type*>(send_buf),
-                                                                 send_count,
-                                                                 static_cast<type*>(recv_buf),
-                                                                 std::forward<Args>(args)...);
+                req = get_self()->template allgatherv_base_impl<type>(
+                    static_cast<const type*>(send_buf),
+                    send_count,
+                    static_cast<type*>(recv_buf),
+                    std::forward<Args>(args)...);
                 processed = true;
                 break;
             }
             case ccl::datatype::uint64: {
                 using type = uint64_t;
-                req = get_self()->template allgatherv_base_impl<type>(static_cast<const type*>(send_buf),
-                                                                 send_count,
-                                                                 static_cast<type*>(recv_buf),
-                                                                 std::forward<Args>(args)...);
+                req = get_self()->template allgatherv_base_impl<type>(
+                    static_cast<const type*>(send_buf),
+                    send_count,
+                    static_cast<type*>(recv_buf),
+                    std::forward<Args>(args)...);
                 processed = true;
                 break;
             }
@@ -114,19 +120,21 @@ struct allgather_usm_visitor {
             }
             case ccl::datatype::float32: {
                 using type = float;
-                req = get_self()->template allgatherv_base_impl<type>(static_cast<const type*>(send_buf),
-                                                                 send_count,
-                                                                 static_cast<type*>(recv_buf),
-                                                                 std::forward<Args>(args)...);
+                req = get_self()->template allgatherv_base_impl<type>(
+                    static_cast<const type*>(send_buf),
+                    send_count,
+                    static_cast<type*>(recv_buf),
+                    std::forward<Args>(args)...);
                 processed = true;
                 break;
             }
             case ccl::datatype::float64: {
                 using type = double;
-                req = get_self()->template allgatherv_base_impl<type>(static_cast<const type*>(send_buf),
-                                                                 send_count,
-                                                                 static_cast<type*>(recv_buf),
-                                                                 std::forward<Args>(args)...);
+                req = get_self()->template allgatherv_base_impl<type>(
+                    static_cast<const type*>(send_buf),
+                    send_count,
+                    static_cast<type*>(recv_buf),
+                    std::forward<Args>(args)...);
                 processed = true;
                 break;
             }

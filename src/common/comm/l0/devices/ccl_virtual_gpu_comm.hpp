@@ -27,9 +27,7 @@ public:
 
     using impl_t = ccl_virtual_gpu_comm;
 
-    template <ccl_coll_type algo_type,
-              ccl::group_split_type group,
-              ccl::device_topology_type mode>
+    template <ccl_coll_type algo_type, ccl::group_split_type group, ccl::device_topology_type mode>
     using gpu_module_t = virtual_device_coll_module<algo_type, group, mode>;
 
     template <ccl_coll_type algo_type,
@@ -64,9 +62,6 @@ public:
             base::template get_gpu_module_unsafe<module_type, group_id, class_id, gpu_module_t>(
                 registered_modules);
         assert(ptr);
-        if (not std::is_same<native_data_type, float>::value) {
-            throw std::runtime_error(std::string(__PRETTY_FUNCTION__) + "Only float is supported");
-        }
         return ptr->template get_main_function<native_data_type>();
     }
 

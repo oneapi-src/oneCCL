@@ -13,16 +13,18 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "oneapi/ccl/ccl_types.hpp"
-#include "oneapi/ccl/ccl_aliases.hpp"
-#include "oneapi/ccl/ccl_types_policy.hpp"
-#include "oneapi/ccl/ccl_type_traits.hpp"
+#include "oneapi/ccl/types.hpp"
+#include "oneapi/ccl/aliases.hpp"
+#include "oneapi/ccl/types_policy.hpp"
+#include "oneapi/ccl/type_traits.hpp"
 
-#include "oneapi/ccl/ccl_coll_attr_ids.hpp"
-#include "oneapi/ccl/ccl_coll_attr_ids_traits.hpp"
-#include "oneapi/ccl/ccl_coll_attr.hpp"
+#include "oneapi/ccl/coll_attr_ids.hpp"
+#include "oneapi/ccl/coll_attr_ids_traits.hpp"
+#include "oneapi/ccl/coll_attr.hpp"
 
 namespace ccl {
+
+namespace v1 {
 
 template <class attr>
 CCL_API attr ccl_empty_attr::create_empty() {
@@ -40,5 +42,7 @@ CCL_API reduce_scatter_attr default_reduce_scatter_attr =
     ccl_empty_attr::create_empty<reduce_scatter_attr>();
 CCL_API sparse_allreduce_attr default_sparse_allreduce_attr =
     ccl_empty_attr::create_empty<sparse_allreduce_attr>();
+
+} // namespace v1
 
 } // namespace ccl

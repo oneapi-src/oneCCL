@@ -20,23 +20,23 @@
 
 #define CCL_FUSION_CHECK_SCHEDS_ITERS (1024)
 
-ccl_status_t complete_user_request(const void* ctx) {
+ccl::status complete_user_request(const void* ctx) {
     ccl_master_sched* sched = (ccl_master_sched*)ctx;
     LOG_DEBUG("complete fusion request: ", static_cast<ccl_request*>(sched));
     sched->complete();
-    return ccl_status_success;
+    return ccl::status::success;
 }
 
-ccl_status_t release_fusion_buf(const void* ctx) {
+ccl::status release_fusion_buf(const void* ctx) {
     void* buf = (void*)ctx;
 
     if (ccl::global_data::get().fusion_manager)
         ccl::global_data::get().fusion_manager->release_buffer(buf);
 
-    return ccl_status_success;
+    return ccl::status::success;
 }
 
-ccl_status_t release_fusion_buf_for_cached_sched(ccl_sched* sched, const void* ctx) {
+ccl::status release_fusion_buf_for_cached_sched(ccl_sched* sched, const void* ctx) {
     return release_fusion_buf(ctx);
 }
 
@@ -312,7 +312,7 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
 
 #ifdef CCL_ENABLE_SYCL
             if (stream && stream->is_sycl_device_stream())
-                entry_factory::make_entry<sycl_copy_device_to_host_entry>(
+                entry_factory::make_entry<sycl_copy_entry<sycl_copy_direction::d2h>>(
                     part_scheds[idx].get(),
                     ccl_buffer(&(exec_queue[global_copy_idx]->coll_param.sycl_send_buf),
                                exec_queue[global_copy_idx]->coll_param.count * dtype_size,
@@ -350,7 +350,7 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
 
 #ifdef CCL_ENABLE_SYCL
             if (stream && stream->is_sycl_device_stream())
-                entry_factory::make_entry<sycl_copy_host_to_device_entry>(
+                entry_factory::make_entry<sycl_copy_entry<sycl_copy_direction::h2d>>(
                     part_scheds[idx].get(),
                     ccl_buffer(fusion_buf, buf_cache.get_buf_size(), offset),
                     ccl_buffer(&(exec_queue[global_copy_idx]->coll_param.sycl_recv_buf),

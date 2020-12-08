@@ -54,7 +54,7 @@ typedef enum { ATL_PROGRESS_POLL, ATL_PROGRESS_CHECK } atl_progress_mode_t;
 
 typedef enum { ATL_RA_WAIT, ATL_RA_RUN, ATL_RA_FINALIZE } atl_resize_action_t;
 
-typedef atl_resize_action_t (*atl_resize_fn_t)(size_t size);
+typedef atl_resize_action_t (*atl_resize_fn_t)(int size);
 
 typedef enum {
     ATL_STATUS_SUCCESS,
@@ -116,10 +116,10 @@ typedef struct {
 } atl_mr_t;
 
 typedef struct {
-    size_t global_idx;
-    size_t global_count;
-    size_t local_idx;
-    size_t local_count;
+    int global_idx;
+    int global_count;
+    int local_idx;
+    int local_count;
 } atl_proc_coord_t;
 
 typedef struct {
@@ -132,7 +132,7 @@ typedef struct {
     const char* name;
     atl_status_t (
         *init)(int* argc, char*** argv, atl_attr_t* attr, atl_ctx_t** ctx, const char* main_addr);
-    atl_status_t (*main_addr_reserv)(char* main_addr);
+    atl_status_t (*reserve_addr)(char* main_addr);
 } atl_transport_t;
 
 typedef struct {
@@ -165,17 +165,13 @@ typedef struct {
     atl_status_t (*send)(atl_ep_t* ep,
                          const void* buf,
                          size_t len,
-                         size_t dst_proc_idx,
-                         uint64_t tag,
-                         atl_req_t* req);
-    atl_status_t (*recv)(atl_ep_t* ep,
-                         void* buf,
-                         size_t len,
-                         size_t src_proc_idx,
+                         int dst_proc_idx,
                          uint64_t tag,
                          atl_req_t* req);
     atl_status_t (
-        *probe)(atl_ep_t* ep, size_t src_proc_idx, uint64_t tag, int* found, size_t* recv_len);
+        *recv)(atl_ep_t* ep, void* buf, size_t len, int src_proc_idx, uint64_t tag, atl_req_t* req);
+    atl_status_t (
+        *probe)(atl_ep_t* ep, int src_proc_idx, uint64_t tag, int* found, size_t* recv_len);
 } atl_p2p_ops_t;
 
 typedef struct {
@@ -205,12 +201,12 @@ typedef struct {
                               const int* recv_offsets,
                               atl_req_t* req);
     atl_status_t (*barrier)(atl_ep_t* ep, atl_req_t* req);
-    atl_status_t (*bcast)(atl_ep_t* ep, void* buf, size_t len, size_t root, atl_req_t* req);
+    atl_status_t (*bcast)(atl_ep_t* ep, void* buf, size_t len, int root, atl_req_t* req);
     atl_status_t (*reduce)(atl_ep_t* ep,
                            const void* send_buf,
                            void* recv_buf,
                            size_t count,
-                           size_t root,
+                           int root,
                            atl_datatype_t dtype,
                            atl_reduction_t op,
                            atl_req_t* req);
@@ -230,7 +226,7 @@ typedef struct {
                          atl_mr_t* mr,
                          uint64_t addr,
                          uintptr_t remote_key,
-                         size_t dst_proc_idx,
+                         int dst_proc_idx,
                          atl_req_t* req);
     atl_status_t (*write)(atl_ep_t* ep,
                           const void* buf,
@@ -238,7 +234,7 @@ typedef struct {
                           atl_mr_t* mr,
                           uint64_t addr,
                           uintptr_t remote_key,
-                          size_t dst_proc_idx,
+                          int dst_proc_idx,
                           atl_req_t* req);
 } atl_rma_ops_t;
 

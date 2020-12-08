@@ -51,7 +51,7 @@ env_data& global_data::env() {
     return get().env_object;
 }
 
-ccl_status_t global_data::reset() {
+ccl::status global_data::reset() {
     /*
         executor is resize_dependent object but out of regular reset procedure
         executor is responsible for resize logic and has own multi-step reset
@@ -60,17 +60,17 @@ ccl_status_t global_data::reset() {
     reset_resize_dependent_objects();
     reset_resize_independent_objects();
 
-    return ccl_status_success;
+    return ccl::status::success;
 }
 
-ccl_status_t global_data::init() {
+ccl::status global_data::init() {
     env_object.parse();
     env_object.set_internal_env();
 
     init_resize_dependent_objects();
     init_resize_independent_objects();
 
-    return ccl_status_success;
+    return ccl::status::success;
 }
 
 void global_data::init_resize_dependent_objects() {
@@ -97,9 +97,6 @@ void global_data::init_resize_independent_objects() {
 
     algorithm_selector->init();
 
-    default_coll_attr.reset(new ccl_coll_attr_t{});
-    memset(default_coll_attr.get(), 0, sizeof(ccl_coll_attr_t));
-
     bf16_impl_type = ccl_bf16_get_impl_type();
 }
 
@@ -113,7 +110,6 @@ void global_data::reset_resize_dependent_objects() {
 void global_data::reset_resize_independent_objects() {
     parallelizer.reset();
     algorithm_selector.reset();
-    default_coll_attr.reset();
 }
 
 } /* namespace ccl */

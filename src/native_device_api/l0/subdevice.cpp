@@ -35,7 +35,7 @@ uint32_t get_subdevice_properties_from_handle(ccl_device::handle_t handle) {
         throw std::runtime_error(std::string(__PRETTY_FUNCTION__) +
                                  "- invalid device type, got device, but subdevice requested");
     }
-    return device_properties.deviceId;
+    return device_properties.subdeviceId;
 }
 
 CCL_API
@@ -43,15 +43,15 @@ std::shared_ptr<ccl_subdevice> ccl_subdevice::create(handle_t handle,
                                                      owner_ptr_t&& device,
                                                      base::owner_ptr_t&& driver) {
     auto ctx = driver.lock()->get_driver_contexts();
-    std::shared_ptr<ccl_subdevice> subdevice =
-        std::make_shared<ccl_subdevice>(handle, std::move(device), std::move(driver), std::move(ctx));
+    std::shared_ptr<ccl_subdevice> subdevice = std::make_shared<ccl_subdevice>(
+        handle, std::move(device), std::move(driver), std::move(ctx));
     return subdevice;
 }
 
 CCL_API
 ccl_subdevice::indexed_handles ccl_subdevice::get_handles(
     const ccl_device& device,
-    const ccl::device_indices_t& requested_indices) {
+    const ccl::device_indices_type& requested_indices) {
     uint32_t subdevices_count = 0;
     ze_result_t err = zeDeviceGetSubDevices(device.get(), &subdevices_count, nullptr);
     if (err != ZE_RESULT_SUCCESS) {
@@ -71,7 +71,7 @@ ccl_subdevice::indexed_handles ccl_subdevice::get_handles(
 
     //filter indices
     ccl::device_index_type owner_path = device.get_device_path();
-    ccl::device_indices_t filtered_ids;
+    ccl::device_indices_type filtered_ids;
     if (!requested_indices.empty()) {
         for (const auto& index : requested_indices) {
             if ((std::get<ccl::device_index_enum::driver_index_id>(index) ==
@@ -119,7 +119,10 @@ ccl_subdevice::ccl_subdevice(handle_t h,
           parent_device(std::move(device)) {}
 
 CCL_API
-ccl_subdevice::ccl_subdevice(handle_t h, owner_ptr_t&& device, base::owner_ptr_t&& driver, base::context_ptr_t&& ctx)
+ccl_subdevice::ccl_subdevice(handle_t h,
+                             owner_ptr_t&& device,
+                             base::owner_ptr_t&& driver,
+                             base::context_ptr_t&& ctx)
         : //  my_enable_shared_from_this<ccl_subdevice>(),
           base(h, std::move(driver), std::move(ctx)),
           parent_device(std::move(device)) {

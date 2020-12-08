@@ -71,7 +71,7 @@ CCL_SELECTION_DEFINE_HELPER_METHODS(ccl_coll_allgatherv_algo,
                                     ({
                                         CCL_ASSERT(param.recv_counts);
                                         size_t count = 0;
-                                        for (size_t idx = 0; idx < param.comm->size(); idx++) {
+                                        for (int idx = 0; idx < param.comm->size(); idx++) {
                                             count += param.recv_counts[idx];
                                         }
                                         count /= param.comm->size();

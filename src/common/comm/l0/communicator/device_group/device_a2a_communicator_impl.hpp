@@ -25,7 +25,7 @@
 
 /* allgatherv */
 template <class buffer_type>
-device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::allgatherv_impl(
+ccl::event device_group_a2a_communicator::allgatherv_impl(
     const buffer_type* send_buf,
     size_t send_count,
     buffer_type* recv_buf,
@@ -37,7 +37,7 @@ device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::all
     return {};
 }
 template <class buffer_type>
-device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::allgatherv_impl(
+ccl::event device_group_a2a_communicator::allgatherv_impl(
     const buffer_type* send_buf,
     size_t send_count,
     ccl::vector_class<buffer_type*>& recv_buf,
@@ -50,7 +50,7 @@ device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::all
 }
 
 template <class buffer_type>
-device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::allgatherv_impl(
+ccl::event device_group_a2a_communicator::allgatherv_impl(
     const buffer_type& send_buf,
     size_t send_count,
     buffer_type& recv_buf,
@@ -63,7 +63,7 @@ device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::all
 }
 
 template <class buffer_type>
-device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::allgatherv_impl(
+ccl::event device_group_a2a_communicator::allgatherv_impl(
     const buffer_type& send_buf,
     size_t send_count,
     ccl::vector_class<ccl::reference_wrapper_class<buffer_type>>& recv_buf,
@@ -77,7 +77,7 @@ device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::all
 
 /* allreduce */
 template <class buffer_type>
-device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::allreduce_impl(
+ccl::event device_group_a2a_communicator::allreduce_impl(
     const buffer_type* send_buf,
     buffer_type* recv_buf,
     size_t count,
@@ -94,7 +94,7 @@ device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::all
             "Device communicator for group_id: " + ::to_string(group_id) +
             " is not ready yet. Not all сommunicators are created in group. Please create them before usage"));
     }
-    size_t comm_rank = rank();
+    int comm_rank = rank();
     LOG_DEBUG("communicator for device idx: ", get_device_path(), ", rank idx: ", comm_rank);
 
     //TODO make const!
@@ -157,7 +157,7 @@ device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::all
 }
 
 template <class buffer_type>
-device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::allreduce_impl(
+ccl::event device_group_a2a_communicator::allreduce_impl(
     const buffer_type& send_buf,
     buffer_type& recv_buf,
     size_t count,
@@ -171,18 +171,17 @@ device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::all
 
 /* alltoall */
 template <class buffer_type>
-device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::alltoall_impl(
-    const buffer_type* send_buf,
-    buffer_type* recv_buf,
-    size_t count,
-    const ccl::stream::impl_value_t& stream,
-    const ccl::alltoall_attr& attr,
-    const ccl::vector_class<ccl::event>& deps) {
+ccl::event device_group_a2a_communicator::alltoall_impl(const buffer_type* send_buf,
+                                                        buffer_type* recv_buf,
+                                                        size_t count,
+                                                        const ccl::stream::impl_value_t& stream,
+                                                        const ccl::alltoall_attr& attr,
+                                                        const ccl::vector_class<ccl::event>& deps) {
     throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
     return {};
 }
 template <class buffer_type>
-device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::alltoall_impl(
+ccl::event device_group_a2a_communicator::alltoall_impl(
     const ccl::vector_class<buffer_type*>& send_buf,
     const ccl::vector_class<buffer_type*>& recv_buf,
     size_t count,
@@ -194,18 +193,17 @@ device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::all
 }
 
 template <class buffer_type>
-device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::alltoall_impl(
-    const buffer_type& send_buf,
-    buffer_type& recv_buf,
-    size_t count,
-    const ccl::stream::impl_value_t& stream,
-    const ccl::alltoall_attr& attr,
-    const ccl::vector_class<ccl::event>& deps) {
+ccl::event device_group_a2a_communicator::alltoall_impl(const buffer_type& send_buf,
+                                                        buffer_type& recv_buf,
+                                                        size_t count,
+                                                        const ccl::stream::impl_value_t& stream,
+                                                        const ccl::alltoall_attr& attr,
+                                                        const ccl::vector_class<ccl::event>& deps) {
     throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
     return {};
 }
 template <class buffer_type>
-device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::alltoall_impl(
+ccl::event device_group_a2a_communicator::alltoall_impl(
     const ccl::vector_class<ccl::reference_wrapper_class<buffer_type>>& send_buf,
     const ccl::vector_class<ccl::reference_wrapper_class<buffer_type>>& recv_buf,
     size_t count,
@@ -218,7 +216,7 @@ device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::all
 
 /* alltoallv */
 template <class buffer_type>
-device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::alltoallv_impl(
+ccl::event device_group_a2a_communicator::alltoallv_impl(
     const buffer_type* send_buf,
     const ccl::vector_class<size_t>& send_counts,
     buffer_type* recv_buf,
@@ -230,7 +228,7 @@ device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::all
     return {};
 }
 template <class buffer_type>
-device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::alltoallv_impl(
+ccl::event device_group_a2a_communicator::alltoallv_impl(
     const ccl::vector_class<buffer_type*>& send_buf,
     const ccl::vector_class<size_t>& send_counts,
     const ccl::vector_class<buffer_type*>& recv_buf,
@@ -243,7 +241,7 @@ device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::all
 }
 
 template <class buffer_type>
-device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::alltoallv_impl(
+ccl::event device_group_a2a_communicator::alltoallv_impl(
     const buffer_type& send_buf,
     const ccl::vector_class<size_t>& send_counts,
     buffer_type& recv_buf,
@@ -255,7 +253,7 @@ device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::all
     return {};
 }
 template <class buffer_type>
-device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::alltoallv_impl(
+ccl::event device_group_a2a_communicator::alltoallv_impl(
     const ccl::vector_class<ccl::reference_wrapper_class<buffer_type>>& send_buf,
     const ccl::vector_class<size_t>& send_counts,
     const ccl::vector_class<ccl::reference_wrapper_class<buffer_type>>& recv_buf,
@@ -269,10 +267,10 @@ device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::all
 
 /* bcast */
 template <class buffer_type>
-device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::broadcast_impl(
+ccl::event device_group_a2a_communicator::broadcast_impl(
     buffer_type* buf,
     size_t count,
-    size_t root,
+    int root,
     const ccl::stream::impl_value_t& stream,
     const ccl::broadcast_attr& attr,
     const ccl::vector_class<ccl::event>& deps) {
@@ -281,10 +279,10 @@ device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::bro
 }
 
 template <class buffer_type>
-device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::broadcast_impl(
+ccl::event device_group_a2a_communicator::broadcast_impl(
     buffer_type& buf,
     size_t count,
-    size_t root,
+    int root,
     const ccl::stream::impl_value_t& stream,
     const ccl::broadcast_attr& attr,
     const ccl::vector_class<ccl::event>& deps) {
@@ -294,36 +292,34 @@ device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::bro
 
 /* reduce */
 template <class buffer_type>
-device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::reduce_impl(
-    const buffer_type* send_buf,
-    buffer_type* recv_buf,
-    size_t count,
-    ccl::reduction reduction,
-    size_t root,
-    const ccl::stream::impl_value_t& stream,
-    const ccl::reduce_attr& attr,
-    const ccl::vector_class<ccl::event>& deps) {
+ccl::event device_group_a2a_communicator::reduce_impl(const buffer_type* send_buf,
+                                                      buffer_type* recv_buf,
+                                                      size_t count,
+                                                      ccl::reduction reduction,
+                                                      int root,
+                                                      const ccl::stream::impl_value_t& stream,
+                                                      const ccl::reduce_attr& attr,
+                                                      const ccl::vector_class<ccl::event>& deps) {
     throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
     return {};
 }
 
 template <class buffer_type>
-device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::reduce_impl(
-    const buffer_type& send_buf,
-    buffer_type& recv_buf,
-    size_t count,
-    ccl::reduction reduction,
-    size_t root,
-    const ccl::stream::impl_value_t& stream,
-    const ccl::reduce_attr& attr,
-    const ccl::vector_class<ccl::event>& deps) {
+ccl::event device_group_a2a_communicator::reduce_impl(const buffer_type& send_buf,
+                                                      buffer_type& recv_buf,
+                                                      size_t count,
+                                                      ccl::reduction reduction,
+                                                      int root,
+                                                      const ccl::stream::impl_value_t& stream,
+                                                      const ccl::reduce_attr& attr,
+                                                      const ccl::vector_class<ccl::event>& deps) {
     throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
     return {};
 }
 
 /* reduce_scatter */
 template <class buffer_type>
-device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::reduce_scatter_impl(
+ccl::event device_group_a2a_communicator::reduce_scatter_impl(
     const buffer_type* send_buf,
     buffer_type* recv_buf,
     size_t recv_count,
@@ -335,7 +331,7 @@ device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::red
     return {};
 }
 template <class buffer_type>
-device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::reduce_scatter_impl(
+ccl::event device_group_a2a_communicator::reduce_scatter_impl(
     const buffer_type& send_buf,
     buffer_type& recv_buf,
     size_t recv_count,
@@ -349,7 +345,7 @@ device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::red
 
 /* sparse_allreduce */
 template <class index_buffer_type, class value_buffer_type>
-device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::sparse_allreduce_impl(
+ccl::event device_group_a2a_communicator::sparse_allreduce_impl(
     const index_buffer_type* send_ind_buf,
     size_t send_ind_count,
     const value_buffer_type* send_val_buf,
@@ -367,7 +363,7 @@ device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::spa
 }
 
 template <class index_buffer_container_type, class value_buffer_container_type>
-device_group_a2a_communicator::coll_request_t device_group_a2a_communicator::sparse_allreduce_impl(
+ccl::event device_group_a2a_communicator::sparse_allreduce_impl(
     const index_buffer_container_type& send_ind_buf,
     size_t send_ind_count,
     const value_buffer_container_type& send_val_buf,

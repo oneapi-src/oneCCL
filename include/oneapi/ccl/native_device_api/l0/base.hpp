@@ -23,9 +23,9 @@
 #include <ze_api.h>
 
 #ifndef UT
-//#include "oneapi/ccl/ccl_types.hpp"
-//#include "oneapi/ccl/ccl_type_traits.hpp"
-#include "oneapi/ccl/ccl_types.hpp"
+//#include "oneapi/ccl/types.hpp"
+//#include "oneapi/ccl/type_traits.hpp"
+#include "oneapi/ccl/types.hpp"
 #endif
 
 namespace native {

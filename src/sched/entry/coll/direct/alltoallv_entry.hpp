@@ -47,8 +47,8 @@ public:
 
     void start() override {
         size_t dt_size = dtype.size();
-        size_t comm_size = comm->size();
-        size_t i;
+        int comm_size = comm->size();
+        int i;
         sum_recv_bytes = 0;
         sum_send_bytes = 0;
 
