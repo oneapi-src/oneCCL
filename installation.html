@@ -97,8 +97,6 @@
 <li class="toctree-l3"><a class="reference internal" href="#custom-installation">Custom Installation</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#installation-using-tar-gz">Installation using tar.gz</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#installation-using-rpm">Installation using RPM</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="sample.html">Sample Application</a><ul>
@@ -118,6 +116,7 @@
 <li class="toctree-l2"><a class="reference internal" href="device_communication.html#example">Example</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
 </ul>
 <p class="caption"><span class="caption-text">General Configuration</span></p>
 <ul>
@@ -181,6 +180,7 @@
 <li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-worker-count">CCL_WORKER_COUNT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-worker-affinity">CCL_WORKER_AFFINITY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-log-level">CCL_LOG_LEVEL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-max-short-size">CCL_MAX_SHORT_SIZE</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Library API</a><ul>
@@ -286,12 +286,7 @@
   <div class="section" id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
 <p>This page explains how to install and configure the Intel® oneAPI Collective Communications Library (oneCCL).</p>
-<p>oneCCL supports different installation scenarios:</p>
-<ul class="simple">
-<li><p><a class="reference internal" href="#installation-using-command-line-interface">Installation using command line interface</a></p></li>
-<li><p><a class="reference internal" href="#installation-using-tar-gz">Installation using tar.gz</a></p></li>
-<li><p><a class="reference internal" href="#installation-using-rpm">Installation using RPM</a></p></li>
-</ul>
+<p>oneCCL supports different installation scenarios using command line interface.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Visit <a class="reference external" href="https://software.intel.com/content/www/us/en/develop/articles/oneapi-collective-communication-library-system-requirements.html">Intel® oneAPI Collective Communications Library System Requirements</a> to learn about hardware and software requirements for oneCCL.</p>
@@ -332,83 +327,32 @@
 <p>You can customize CLI-based installation (for example, specify directory, compiler, and build type):</p>
 <ul>
 <li><p>To speciify <strong>installation directory</strong>, modify the <code class="docutils literal notranslate"><span class="pre">cmake</span></code> command:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake .. -DCMAKE_INSTALL_PREFIX<span class="o">=</span>/path/to/installation/directory
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake .. -DCMAKE_INSTALL_PREFIX<span class="o">=</span>&lt;/path/to/installation/directory&gt;
 </pre></div>
 </div>
-<p>If no <code class="docutils literal notranslate"><span class="pre">-DCMAKE_INSTALL_PREFIX</span></code> is specified, oneCCL is installed into the <code class="docutils literal notranslate"><span class="pre">_install</span></code> subdirectory of the current build directory.
-For example, <code class="docutils literal notranslate"><span class="pre">ccl/build/_install</span></code>.</p>
+<p>If no <code class="docutils literal notranslate"><span class="pre">-DCMAKE_INSTALL_PREFIX</span></code> is specified, oneCCL is installed into the <code class="docutils literal notranslate"><span class="pre">_install</span></code> subdirectory of the current build directory. For example, <code class="docutils literal notranslate"><span class="pre">ccl/build/_install</span></code>.</p>
 </li>
 <li><p>To specify <strong>compiler</strong>, modify the <code class="docutils literal notranslate"><span class="pre">cmake</span></code> command:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake .. -DCMAKE_C_COMPILER<span class="o">=</span>your_c_compiler -DCMAKE_CXX_COMPILER<span class="o">=</span>your_cxx_compiler
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake .. -DCMAKE_C_COMPILER<span class="o">=</span>&lt;c_compiler&gt; -DCMAKE_CXX_COMPILER<span class="o">=</span>&lt;cxx_compiler&gt;
 </pre></div>
 </div>
-<p>If <code class="docutils literal notranslate"><span class="pre">CMAKE_CXX_COMPILER</span></code> requires <code class="docutils literal notranslate"><span class="pre">SYCL</span></code> cross-platform abstraction level it should be specified in <code class="docutils literal notranslate"><span class="pre">-DCOMPUTE_RUNTIME</span></code> ( <code class="docutils literal notranslate"><span class="pre">compute++</span></code> and <code class="docutils literal notranslate"><span class="pre">dpcpp</span></code> supported only):</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake .. -DCMAKE_C_COMPILER<span class="o">=</span>your_c_compiler -DCMAKE_CXX_COMPILER<span class="o">=</span>compute++ -DCOMPUTE_RUNTIME<span class="o">=</span>computecpp
-cmake .. -DCMAKE_C_COMPILER<span class="o">=</span>your_c_compiler -DCMAKE_CXX_COMPILER<span class="o">=</span>dpcpp -DCOMPUTE_RUNTIME<span class="o">=</span>dpcpp
-</pre></div>
-</div>
-<p>OpenCL search location path hint can be specified by using standart environment <code class="docutils literal notranslate"><span class="pre">OPENCLROOT</span></code> additionally:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nv">OPENCLROOT</span><span class="o">=</span>your_opencl_location cmake .. -DCMAKE_C_COMPILER<span class="o">=</span>your_c_compiler -DCMAKE_CXX_COMPILER<span class="o">=</span>compute++ -DCOMPUTE_RUNTIME<span class="o">=</span>computecpp
+<p>To enable <code class="docutils literal notranslate"><span class="pre">SYCL</span></code> devices communication support specify <code class="docutils literal notranslate"><span class="pre">SYCL</span></code> compiler and set <code class="docutils literal notranslate"><span class="pre">-DCOMPUTE_RUNTIME</span></code> (DPC++ supported only):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake .. -DCMAKE_C_COMPILER<span class="o">=</span>clang -DCMAKE_CXX_COMPILER<span class="o">=</span>dpcpp -DCOMPUTE_RUNTIME<span class="o">=</span>dpcpp
 </pre></div>
 </div>
 </li>
 <li><p>To specify the <strong>build type</strong>, modify the <code class="docutils literal notranslate"><span class="pre">cmake</span></code> command:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake .. -DCMAKE_BUILD_TYPE<span class="o">=[</span>Debug<span class="p">|</span>Release<span class="p">|</span>RelWithDebInfo<span class="p">|</span>MinSizeRel<span class="o">]</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake .. -DCMAKE_BUILD_TYPE<span class="o">=[</span>Debug<span class="p">|</span>Release<span class="o">]</span>
 </pre></div>
 </div>
 </li>
 <li><p>To enable <code class="docutils literal notranslate"><span class="pre">make</span></code> verbose output to see all parameters used by <code class="docutils literal notranslate"><span class="pre">make</span></code> during compilation and linkage, modify the <code class="docutils literal notranslate"><span class="pre">make</span></code> command as follows:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>make -j <span class="nv">VERBOSE</span><span class="o">=</span><span class="m">1</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>make -j <span class="nv">VERBOSE</span><span class="o">=</span><span class="m">1</span> install
 </pre></div>
-</div>
-</li>
-<li><p>To archive installed files:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>make -j install
-</pre></div>
-</div>
-</li>
-<li><p>To build with Address Sanitizer, modify the <code class="docutils literal notranslate"><span class="pre">cmake</span></code> command as follow:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake .. -DCMAKE_BUILD_TYPE<span class="o">=</span>Debug -DWITH_ASAN<span class="o">=</span><span class="nb">true</span>
-</pre></div>
-</div>
-<p>Make sure that <code class="docutils literal notranslate"><span class="pre">libasan.so</span></code> exists.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Address sanitizer only works in the debug build.</p>
 </div>
 </li>
 </ul>
-<p>Binary releases are available on our release page.</p>
 </div>
-</div>
-<div class="section" id="installation-using-tar-gz">
-<h2>Installation using tar.gz<a class="headerlink" href="#installation-using-tar-gz" title="Permalink to this headline">¶</a></h2>
-<p>To install oneCCL using the <a class="reference external" href="https://github.com/oneapi-src/oneCCL/releases">tar.gz file</a> in a user mode, execute the following commands:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><style type="text/css">
-span.prompt1:before {
-  content: "$ ";
-}
-</style><span class="prompt1">tar zxf l_ccl-devel-64-&lt;version&gt;.&lt;update&gt;.&lt;package#&gt;.tgz</span>
-<span class="prompt1"><span class="nb">cd</span> l_ccl_&lt;version&gt;.&lt;update&gt;.&lt;package#&gt;</span>
-<span class="prompt1">./install.sh</span>
-</pre></div></div><p>There is no uninstall script. To uninstall oneCCL, delete the whole installation directory.</p>
-</div>
-<div class="section" id="installation-using-rpm">
-<h2>Installation using RPM<a class="headerlink" href="#installation-using-rpm" title="Permalink to this headline">¶</a></h2>
-<p>You can get oneCCL through the RPM Package Manager. To install the library in a root mode using RPM, follow these steps:</p>
-<ol class="arabic simple">
-<li><p>Log in as root.</p></li>
-<li><p>Install the following package:</p></li>
-</ol>
-<blockquote>
-<div><div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">rpm -i intel-ccl-devel-64-&lt;version&gt;.&lt;update&gt;-&lt;package#&gt;.x86_64.rpm</span>
-<span class="prompt1"></span>
-<span class="prompt1">where <span class="sb">``</span>&lt;version&gt;.&lt;update&gt;-&lt;package#&gt;<span class="sb">``</span> is a string. For example, <span class="sb">``</span><span class="m">2017</span>.0-009<span class="sb">``</span>.</span>
-</pre></div></div></div></blockquote>
-<p>To uninstall oneCCL using the RPM Package Manager, execute this command:</p>
-<blockquote>
-<div><div class="highlight-default notranslate"><div class="highlight"><pre><span class="prompt1">rpm -e intel-ccl-devel-64-&lt;version&gt;.&lt;update&gt;-&lt;package#&gt;.x86_64</span>
-</pre></div></div></div></blockquote>
 </div>
 </div>
 

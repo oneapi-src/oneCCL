@@ -41,7 +41,7 @@
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Execution of Communication Operations" href="operation_execution.html" />
+    <link rel="next" title="Limitations" href="limitations.html" />
     <link rel="prev" title="Host Communication" href="host_communication.html" />
     <link href="_static/style.css" rel="stylesheet" type="text/css">
 
@@ -97,8 +97,6 @@
 <li class="toctree-l3"><a class="reference internal" href="installation.html#custom-installation">Custom Installation</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#installation-using-tar-gz">Installation using tar.gz</a></li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#installation-using-rpm">Installation using RPM</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="sample.html">Sample Application</a><ul>
@@ -118,6 +116,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#example">Example</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
 </ul>
 <p class="caption"><span class="caption-text">General Configuration</span></p>
 <ul>
@@ -181,6 +180,7 @@
 <li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-worker-count">CCL_WORKER_COUNT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-worker-affinity">CCL_WORKER_AFFINITY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-log-level">CCL_LOG_LEVEL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-max-short-size">CCL_MAX_SHORT_SIZE</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Library API</a><ul>
@@ -293,7 +293,7 @@
 <ol class="arabic simple">
 <li><p>Create oneCCL communicator objects with user-supplied size, rank &lt;-&gt; SYCL device mapping, SYCL context and key-value store:</p></li>
 </ol>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">auto</span> <span class="n">ccl_device_context</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">::</span><span class="n">create_context</span><span class="p">(</span><span class="n">sycl_context</span><span class="p">);</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">auto</span> <span class="n">ccl_context</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">::</span><span class="n">create_context</span><span class="p">(</span><span class="n">sycl_context</span><span class="p">);</span>
 <span class="k">auto</span> <span class="n">ccl_device</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">::</span><span class="n">create_device</span><span class="p">(</span><span class="n">sycl_device</span><span class="p">);</span>
 
 <span class="k">auto</span> <span class="n">comms</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">::</span><span class="n">create_communicators</span><span class="p">(</span>
@@ -331,9 +331,9 @@
 <li><p>For demonstration purposes, modify the <code class="docutils literal notranslate"><span class="pre">send_buf</span></code> on the GPU side:</p></li>
 </ol>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cm">/* using SYCL buffer and accessor */</span>
-<span class="n">sycl_queue</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">handler</span><span class="o">&amp;</span> <span class="n">cgh</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">auto</span> <span class="n">send_buf_dev_acc</span> <span class="o">=</span> <span class="n">send_buf</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">mode</span><span class="o">::</span><span class="n">write</span><span class="o">&gt;</span><span class="p">(</span><span class="n">cgh</span><span class="p">);</span>
-    <span class="n">cgh</span><span class="p">.</span><span class="n">parallel_for</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">allreduce_send_buf_modify</span><span class="o">&gt;</span><span class="p">(</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">{</span><span class="n">elem_count</span><span class="p">},</span> <span class="p">[</span><span class="o">=</span><span class="p">](</span><span class="n">item</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span> <span class="n">idx</span><span class="p">)</span> <span class="p">{</span>
+<span class="n">sycl_queue</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">handler</span><span class="o">&amp;</span> <span class="n">h</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">auto</span> <span class="n">send_buf_dev_acc</span> <span class="o">=</span> <span class="n">send_buf</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">mode</span><span class="o">::</span><span class="n">write</span><span class="o">&gt;</span><span class="p">(</span><span class="n">h</span><span class="p">);</span>
+    <span class="n">h</span><span class="p">.</span><span class="n">parallel_for</span><span class="p">(</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">{</span><span class="n">elem_count</span><span class="p">},</span> <span class="p">[</span><span class="o">=</span><span class="p">](</span><span class="n">item</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span> <span class="n">idx</span><span class="p">)</span> <span class="p">{</span>
         <span class="n">send_buf_dev_acc</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span>
     <span class="p">});</span>
 <span class="p">});</span>
@@ -376,9 +376,9 @@
 <span class="k">auto</span> <span class="n">comm_size</span> <span class="o">=</span> <span class="n">comm</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
 <span class="k">auto</span> <span class="n">expected</span> <span class="o">=</span> <span class="n">comm_size</span> <span class="o">*</span> <span class="p">(</span><span class="n">comm_size</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span>
 
-<span class="n">sycl_queue</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="n">handler</span><span class="o">&amp;</span> <span class="n">cgh</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">auto</span> <span class="n">recv_buf_dev_acc</span> <span class="o">=</span> <span class="n">recv_buf</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">mode</span><span class="o">::</span><span class="n">write</span><span class="o">&gt;</span><span class="p">(</span><span class="n">cgh</span><span class="p">);</span>
-    <span class="n">cgh</span><span class="p">.</span><span class="n">parallel_for</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">allreduce_recv_buf_check</span><span class="o">&gt;</span><span class="p">(</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">{</span><span class="n">elem_count</span><span class="p">},</span> <span class="p">[</span><span class="o">=</span><span class="p">](</span><span class="n">item</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span> <span class="n">idx</span><span class="p">)</span> <span class="p">{</span>
+<span class="n">sycl_queue</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="n">handler</span><span class="o">&amp;</span> <span class="n">h</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">auto</span> <span class="n">recv_buf_dev_acc</span> <span class="o">=</span> <span class="n">recv_buf</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">mode</span><span class="o">::</span><span class="n">write</span><span class="o">&gt;</span><span class="p">(</span><span class="n">h</span><span class="p">);</span>
+    <span class="n">h</span><span class="p">.</span><span class="n">parallel_for</span><span class="p">(</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">{</span><span class="n">elem_count</span><span class="p">},</span> <span class="p">[</span><span class="o">=</span><span class="p">](</span><span class="n">item</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span> <span class="n">idx</span><span class="p">)</span> <span class="p">{</span>
         <span class="k">if</span> <span class="p">(</span><span class="n">recv_buf_dev_acc</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">!=</span> <span class="n">expected</span><span class="p">)</span> <span class="p">{</span>
             <span class="n">recv_buf_dev_acc</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="mi">-1</span><span class="p">;</span>
         <span class="p">}</span>
@@ -420,7 +420,7 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="operation_execution.html" class="btn btn-neutral float-right" title="Execution of Communication Operations" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="limitations.html" class="btn btn-neutral float-right" title="Limitations" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="host_communication.html" class="btn btn-neutral float-left" title="Host Communication" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>

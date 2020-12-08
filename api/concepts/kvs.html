@@ -97,8 +97,6 @@
 <li class="toctree-l3"><a class="reference internal" href="../../installation.html#custom-installation">Custom Installation</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../installation.html#installation-using-tar-gz">Installation using tar.gz</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../installation.html#installation-using-rpm">Installation using RPM</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../sample.html">Sample Application</a><ul>
@@ -118,6 +116,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../device_communication.html#example">Example</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="../../limitations.html">Limitations</a></li>
 </ul>
 <p class="caption"><span class="caption-text">General Configuration</span></p>
 <ul>
@@ -181,6 +180,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-worker-count">CCL_WORKER_COUNT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-worker-affinity">CCL_WORKER_AFFINITY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-log-level">CCL_LOG_LEVEL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-max-short-size">CCL_MAX_SHORT_SIZE</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="reference internal" href="../../api.html">Library API</a><ul class="current">
@@ -291,10 +291,19 @@
 <h1>Key-value Store<a class="headerlink" href="#key-value-store" title="Permalink to this headline">¶</a></h1>
 <dl class="cpp function">
 <dt>
-shared_ptr_class&lt;kvs&gt; <code class="sig-name descname">create_main_kvs</code><span class="sig-paren">(</span><span class="sig-paren">)</span><br /></dt>
-<dd><p>Creates a main key-value store. Its address should be distributed using out of band communication mechanism and be used to create key-value stores on other ranks. </p>
+template&lt;class ...<code class="sig-name descname">attr_val_type</code>&gt;<br />kvs_attr <code class="sig-name descname">create_kvs_attr</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4IDpE15create_kvs_attr8kvs_attrDpRR13attr_val_type" title="create_kvs_attr::attr_val_type">attr_val_type</a>&amp;&amp;... <em>avs</em><span class="sig-paren">)</span><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt>
+shared_ptr_class&lt;kvs&gt; <code class="sig-name descname">create_main_kvs</code><span class="sig-paren">(</span><em class="property">const</em> kvs_attr &amp;<em>attr</em> = default_kvs_attr<span class="sig-paren">)</span><br /></dt>
+<dd><p>Creates a main key-value store. Its address should be distributed using out of band communication mechanism and be used to create key-value stores on other processes. </p>
 <p><dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>kvs object </p>
+</dd>
+<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">attr</span></code>: optional kvs attributes </p></li>
+</ul>
 </dd>
 </dl>
 </p>
@@ -302,13 +311,14 @@ shared_ptr_class&lt;kvs&gt; <code class="sig-name descname">create_main_kvs</cod
 
 <dl class="cpp function">
 <dt>
-shared_ptr_class&lt;kvs&gt; <code class="sig-name descname">create_kvs</code><span class="sig-paren">(</span><em class="property">const</em> kvs::address_type &amp;<em>addr</em><span class="sig-paren">)</span><br /></dt>
+shared_ptr_class&lt;kvs&gt; <code class="sig-name descname">create_kvs</code><span class="sig-paren">(</span><em class="property">const</em> kvs::address_type &amp;<em>addr</em>, <em class="property">const</em> kvs_attr &amp;<em>attr</em> = default_kvs_attr<span class="sig-paren">)</span><br /></dt>
 <dd><p>Creates a new key-value store from main kvs address. </p>
 <p><dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>kvs object </p>
 </dd>
 <dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">addr</span></code>: address of main kvs </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">attr</span></code>: optional kvs attributes </p></li>
 </ul>
 </dd>
 </dl>

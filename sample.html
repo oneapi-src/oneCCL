@@ -97,8 +97,6 @@
 <li class="toctree-l3"><a class="reference internal" href="installation.html#custom-installation">Custom Installation</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#installation-using-tar-gz">Installation using tar.gz</a></li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#installation-using-rpm">Installation using RPM</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Sample Application</a><ul>
@@ -118,6 +116,7 @@
 <li class="toctree-l2"><a class="reference internal" href="device_communication.html#example">Example</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
 </ul>
 <p class="caption"><span class="caption-text">General Configuration</span></p>
 <ul>
@@ -181,6 +180,7 @@
 <li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-worker-count">CCL_WORKER_COUNT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-worker-affinity">CCL_WORKER_AFFINITY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-log-level">CCL_LOG_LEVEL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-max-short-size">CCL_MAX_SHORT_SIZE</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Library API</a><ul>
@@ -305,15 +305,23 @@
     <span class="n">MPI_Comm_size</span><span class="p">(</span><span class="n">MPI_COMM_WORLD</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">size</span><span class="p">);</span>
     <span class="n">MPI_Comm_rank</span><span class="p">(</span><span class="n">MPI_COMM_WORLD</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">rank</span><span class="p">);</span>
 
+    <span class="n">atexit</span><span class="p">(</span><span class="n">mpi_finalize</span><span class="p">);</span>
+
     <span class="n">queue</span> <span class="n">q</span><span class="p">;</span>
-    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">create_sycl_queue</span><span class="p">(</span><span class="n">argc</span><span class="p">,</span> <span class="n">argv</span><span class="p">,</span> <span class="n">q</span><span class="p">))</span> <span class="p">{</span>
-        <span class="n">MPI_Finalize</span><span class="p">();</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">create_sycl_queue</span><span class="p">(</span><span class="n">argc</span><span class="p">,</span> <span class="n">argv</span><span class="p">,</span> <span class="n">rank</span><span class="p">,</span> <span class="n">q</span><span class="p">))</span> <span class="p">{</span>
         <span class="k">return</span> <span class="mi">-1</span><span class="p">;</span>
     <span class="p">}</span>
 
-    <span class="cm">/* allocate USM buffers */</span>
-    <span class="k">auto</span> <span class="n">send_buf</span> <span class="o">=</span> <span class="n">aligned_alloc_shared</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="n">q</span><span class="p">);</span>
-    <span class="k">auto</span> <span class="n">recv_buf</span> <span class="o">=</span> <span class="n">aligned_alloc_shared</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="n">q</span><span class="p">);</span>
+    <span class="n">buf_allocator</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">allocator</span><span class="p">(</span><span class="n">q</span><span class="p">);</span>
+
+    <span class="k">auto</span> <span class="n">usm_alloc_type</span> <span class="o">=</span> <span class="n">usm</span><span class="o">::</span><span class="n">alloc</span><span class="o">::</span><span class="n">shared</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">argc</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">usm_alloc_type</span> <span class="o">=</span> <span class="n">usm_alloc_type_from_string</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">]);</span>
+    <span class="p">}</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">check_sycl_usm</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">usm_alloc_type</span><span class="p">))</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="mi">-1</span><span class="p">;</span>
+    <span class="p">}</span>
 
     <span class="cm">/* create kvs */</span>
     <span class="n">ccl</span><span class="o">::</span><span class="n">shared_ptr_class</span><span class="o">&lt;</span><span class="n">ccl</span><span class="o">::</span><span class="n">kvs</span><span class="o">&gt;</span> <span class="n">kvs</span><span class="p">;</span>
@@ -336,18 +344,15 @@
     <span class="cm">/* create stream */</span>
     <span class="k">auto</span> <span class="n">stream</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">::</span><span class="n">create_stream</span><span class="p">(</span><span class="n">q</span><span class="p">);</span>
 
-    <span class="p">{</span>
-        <span class="cm">/* open buffers and initialize them on the host side */</span>
-        <span class="k">for</span> <span class="p">(</span><span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">count</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-            <span class="n">send_buf</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">rank</span><span class="p">;</span>
-            <span class="n">recv_buf</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">-1</span><span class="p">;</span>
-        <span class="p">}</span>
-    <span class="p">}</span>
+    <span class="cm">/* create buffers */</span>
+    <span class="k">auto</span> <span class="n">send_buf</span> <span class="o">=</span> <span class="n">allocator</span><span class="p">.</span><span class="n">allocate</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="n">usm_alloc_type</span><span class="p">);</span>
+    <span class="k">auto</span> <span class="n">recv_buf</span> <span class="o">=</span> <span class="n">allocator</span><span class="p">.</span><span class="n">allocate</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="n">usm_alloc_type</span><span class="p">);</span>
 
-    <span class="cm">/* open send_buf and modify it on the device side */</span>
-    <span class="n">q</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="k">auto</span> <span class="o">&amp;</span><span class="n">h</span><span class="p">)</span> <span class="p">{</span>
+    <span class="cm">/* open buffers and modify them on the device side */</span>
+    <span class="k">auto</span> <span class="n">e</span> <span class="o">=</span> <span class="n">q</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="k">auto</span> <span class="o">&amp;</span><span class="n">h</span><span class="p">)</span> <span class="p">{</span>
         <span class="n">h</span><span class="p">.</span><span class="n">parallel_for</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="p">[</span><span class="o">=</span><span class="p">](</span><span class="k">auto</span> <span class="n">id</span><span class="p">)</span> <span class="p">{</span>
-            <span class="n">send_buf</span><span class="p">[</span><span class="n">id</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span>
+            <span class="n">send_buf</span><span class="p">[</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">rank</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+            <span class="n">recv_buf</span><span class="p">[</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="mi">-1</span><span class="p">;</span>
         <span class="p">});</span>
     <span class="p">});</span>
 
@@ -385,11 +390,6 @@
         <span class="p">}</span>
     <span class="p">}</span>
 
-    <span class="n">free</span><span class="p">(</span><span class="n">send_buf</span><span class="p">,</span> <span class="n">q</span><span class="p">);</span>
-    <span class="n">free</span><span class="p">(</span><span class="n">recv_buf</span><span class="p">,</span> <span class="n">q</span><span class="p">);</span>
-
-    <span class="n">MPI_Finalize</span><span class="p">();</span>
-
     <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
 <span class="p">}</span>
 </pre></div>
@@ -397,7 +397,7 @@
 <div class="section" id="build-details">
 <h2>Build details<a class="headerlink" href="#build-details" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic">
-<li><p>oneCCL should be built with SYCL* support.</p></li>
+<li><p>oneCCL should be built with <code class="docutils literal notranslate"><span class="pre">SYCL</span></code> support (DPC++ supported only).</p></li>
 <li><p>Set up the library environment (see <a class="reference internal" href="prerequisites.html"><span class="doc">Prerequisites</span></a>).</p></li>
 <li><p>Use <code class="docutils literal notranslate"><span class="pre">clang++</span></code> compiler to build the sample:</p>
 <blockquote>

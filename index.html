@@ -96,8 +96,6 @@
 <li class="toctree-l3"><a class="reference internal" href="installation.html#custom-installation">Custom Installation</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#installation-using-tar-gz">Installation using tar.gz</a></li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#installation-using-rpm">Installation using RPM</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="sample.html">Sample Application</a><ul>
@@ -117,6 +115,7 @@
 <li class="toctree-l2"><a class="reference internal" href="device_communication.html#example">Example</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
 </ul>
 <p class="caption"><span class="caption-text">General Configuration</span></p>
 <ul>
@@ -180,6 +179,7 @@
 <li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-worker-count">CCL_WORKER_COUNT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-worker-affinity">CCL_WORKER_AFFINITY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-log-level">CCL_LOG_LEVEL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-max-short-size">CCL_MAX_SHORT_SIZE</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Library API</a><ul>
@@ -291,7 +291,7 @@
 <li><p>Optimized to drive scalability of communication patterns by allowing to easily trade-off compute for communication performance.</p></li>
 <li><p>Enables a set of DL-specific optimizations, such as prioritization, persistent operations, or out-of-order execution.</p></li>
 <li><p>Works across various interconnects: Intel(R) Omni-Path Architecture, InfiniBand*, and Ethernet.</p></li>
-<li><p>Provides common API sufficient to support communication workflows within Deep Learning frameworks (such as PyTorch*, Horovod*).</p></li>
+<li><p>Provides common API sufficient to support communication workflows within Deep Learning / distributed frameworks (such as PyTorch*, Horovod*).</p></li>
 </ul>
 <p>oneCCL package comprises the oneCCL Software Development Kit (SDK) and the Intel(R) MPI Library Runtime components.</p>
 <div class="section" id="contents">
@@ -310,6 +310,7 @@
 <li class="toctree-l1"><a class="reference internal" href="specification.html">Specification</a></li>
 <li class="toctree-l1"><a class="reference internal" href="host_communication.html">Host Communication</a></li>
 <li class="toctree-l1"><a class="reference internal" href="device_communication.html">Device Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
 </ul>
 </div>
 <div class="toctree-wrapper compound">
@@ -333,8 +334,24 @@
 <div class="toctree-wrapper compound">
 <p class="caption"><span class="caption-text">Reference Materials</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="env_variables.html">Environment Variables</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api.html">Library API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="env_variables.html">Environment Variables</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#collective-algorithms-selection">Collective algorithms selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#fusion">Fusion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-atl-transport">CCL_ATL_TRANSPORT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-unordered-coll">CCL_UNORDERED_COLL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-priority">CCL_PRIORITY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-worker-count">CCL_WORKER_COUNT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-worker-affinity">CCL_WORKER_AFFINITY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-log-level">CCL_LOG_LEVEL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-max-short-size">CCL_MAX_SHORT_SIZE</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Library API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/initialization.html">Initialization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/concepts.html">oneCCL Concepts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/operations.html">Communication operations</a></li>
+</ul>
+</li>
 </ul>
 </div>
 <div class="toctree-wrapper compound">

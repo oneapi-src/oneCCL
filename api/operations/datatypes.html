@@ -97,8 +97,6 @@
 <li class="toctree-l3"><a class="reference internal" href="../../installation.html#custom-installation">Custom Installation</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../installation.html#installation-using-tar-gz">Installation using tar.gz</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../installation.html#installation-using-rpm">Installation using RPM</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../sample.html">Sample Application</a><ul>
@@ -118,6 +116,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../device_communication.html#example">Example</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="../../limitations.html">Limitations</a></li>
 </ul>
 <p class="caption"><span class="caption-text">General Configuration</span></p>
 <ul>
@@ -181,6 +180,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-worker-count">CCL_WORKER_COUNT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-worker-affinity">CCL_WORKER_AFFINITY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-log-level">CCL_LOG_LEVEL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-max-short-size">CCL_MAX_SHORT_SIZE</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="reference internal" href="../../api.html">Library API</a><ul class="current">
@@ -291,8 +291,8 @@
 <h1>Datatypes<a class="headerlink" href="#datatypes" title="Permalink to this headline">¶</a></h1>
 <dl class="cpp function">
 <dt>
-<code class="sig-name descname">template&lt;class... attr_value_pair_t&gt; datatype_attr CCL_API create_datatype_attr (attr_value_pair_t &amp;&amp;... avps)</code></dt>
-<dd><p>Creates a datatype attribute object that may be used to register custom datatype. </p>
+template&lt;class ...<code class="sig-name descname">attr_val_type</code>&gt;<br />datatype_attr <code class="sig-name descname">create_datatype_attr</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4IDpE20create_datatype_attr13datatype_attrDpRR13attr_val_type" title="create_datatype_attr::attr_val_type">attr_val_type</a>&amp;&amp;... <em>avs</em><span class="sig-paren">)</span><br /></dt>
+<dd><p>Creates an attribute object that may be used to register custom datatype. </p>
 <p><dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>an attribute object </p>
 </dd>

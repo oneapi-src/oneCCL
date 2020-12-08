@@ -97,8 +97,6 @@
 <li class="toctree-l3"><a class="reference internal" href="installation.html#custom-installation">Custom Installation</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#installation-using-tar-gz">Installation using tar.gz</a></li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#installation-using-rpm">Installation using RPM</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="sample.html">Sample Application</a><ul>
@@ -118,6 +116,7 @@
 <li class="toctree-l2"><a class="reference internal" href="device_communication.html#example">Example</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
 </ul>
 <p class="caption"><span class="caption-text">General Configuration</span></p>
 <ul>
@@ -181,6 +180,7 @@
 <li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-worker-count">CCL_WORKER_COUNT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-worker-affinity">CCL_WORKER_AFFINITY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-log-level">CCL_LOG_LEVEL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env_variables.html#ccl-max-short-size">CCL_MAX_SHORT_SIZE</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Library API</a><ul>
@@ -356,13 +356,13 @@ The ultimate goal of oneCCL is to provide a common API for sparse collective ope
 <p>Completion callback should follow the signature:</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span> <span class="nf">void</span> <span class="p">(</span><span class="o">*</span><span class="n">completion_fn</span><span class="p">)</span>
 <span class="p">(</span>
-    <span class="k">const</span> <span class="kt">void</span><span class="o">*</span><span class="p">,</span>   <span class="c1">// idx_buf</span>
-    <span class="kt">size_t</span><span class="p">,</span>        <span class="c1">// idx_count</span>
-    <span class="n">ccl</span><span class="o">::</span><span class="n">datatype</span><span class="p">,</span> <span class="c1">// idx_dtype</span>
-    <span class="k">const</span> <span class="kt">void</span><span class="o">*</span><span class="p">,</span>   <span class="c1">// val_buf</span>
-    <span class="kt">size_t</span><span class="p">,</span>        <span class="c1">// val_count</span>
-    <span class="n">ccl</span><span class="o">::</span><span class="n">datatype</span><span class="p">,</span> <span class="c1">// val_dtype</span>
-    <span class="k">const</span> <span class="kt">void</span><span class="o">*</span>    <span class="c1">// user_context</span>
+    <span class="k">const</span> <span class="kt">void</span><span class="o">*</span><span class="p">,</span>   <span class="cm">/* idx_buf      */</span>
+    <span class="kt">size_t</span><span class="p">,</span>        <span class="cm">/* idx_count    */</span>
+    <span class="n">ccl</span><span class="o">::</span><span class="n">datatype</span><span class="p">,</span> <span class="cm">/* idx_dtype    */</span>
+    <span class="k">const</span> <span class="kt">void</span><span class="o">*</span><span class="p">,</span>   <span class="cm">/* val_buf      */</span>
+    <span class="kt">size_t</span><span class="p">,</span>        <span class="cm">/* val_count    */</span>
+    <span class="n">ccl</span><span class="o">::</span><span class="n">datatype</span><span class="p">,</span> <span class="cm">/* val_dtype    */</span>
+    <span class="k">const</span> <span class="kt">void</span><span class="o">*</span>    <span class="cm">/* user_context */</span>
 <span class="p">);</span>
 </pre></div>
 </div>
@@ -371,17 +371,16 @@ Thus, the data from these buffers should be copied. Use <code class="docutils li
 <p>Allocation callback should follow the signature:</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">typedef</span> <span class="nf">void</span> <span class="p">(</span><span class="o">*</span><span class="n">alloc_fn</span><span class="p">)</span>
 <span class="p">(</span>
-    <span class="kt">size_t</span><span class="p">,</span>        <span class="c1">// idx_count</span>
-    <span class="n">ccl</span><span class="o">::</span><span class="n">datatype</span><span class="p">,</span> <span class="c1">// idx_dtype</span>
-    <span class="kt">size_t</span><span class="p">,</span>        <span class="c1">// val_count</span>
-    <span class="n">ccl</span><span class="o">::</span><span class="n">datatype</span><span class="p">,</span> <span class="c1">// val_dtype</span>
-    <span class="k">const</span> <span class="kt">void</span><span class="o">*</span><span class="p">,</span>   <span class="c1">// user_context</span>
-    <span class="kt">void</span><span class="o">**</span><span class="p">,</span>        <span class="c1">// out_idx_buf</span>
-    <span class="kt">void</span><span class="o">**</span>         <span class="c1">// out_val_buf</span>
+    <span class="kt">size_t</span><span class="p">,</span>        <span class="cm">/* idx_count    */</span>
+    <span class="n">ccl</span><span class="o">::</span><span class="n">datatype</span><span class="p">,</span> <span class="cm">/* idx_dtype    */</span>
+    <span class="kt">size_t</span><span class="p">,</span>        <span class="cm">/* val_count    */</span>
+    <span class="n">ccl</span><span class="o">::</span><span class="n">datatype</span><span class="p">,</span> <span class="cm">/* val_dtype    */</span>
+    <span class="k">const</span> <span class="kt">void</span><span class="o">*</span><span class="p">,</span>   <span class="cm">/* user_context */</span>
+    <span class="kt">void</span><span class="o">**</span><span class="p">,</span>        <span class="cm">/* out_idx_buf  */</span>
+    <span class="kt">void</span><span class="o">**</span>         <span class="cm">/* out_val_buf  */</span>
 <span class="p">);</span>
 </pre></div>
 </div>
-<p>For more details, refer to <a class="reference external" href="https://github.com/oneapi-src/oneCCL/blob/master/examples/cpu/sparse_allreduce.cpp">this example</a>.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>WARNING: <code class="docutils literal notranslate"><span class="pre">ccl::sparse_allreduce</span></code> is experimental and subject to change.</p>

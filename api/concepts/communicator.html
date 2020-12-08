@@ -97,8 +97,6 @@
 <li class="toctree-l3"><a class="reference internal" href="../../installation.html#custom-installation">Custom Installation</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../installation.html#installation-using-tar-gz">Installation using tar.gz</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../installation.html#installation-using-rpm">Installation using RPM</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../sample.html">Sample Application</a><ul>
@@ -118,6 +116,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../device_communication.html#example">Example</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="../../limitations.html">Limitations</a></li>
 </ul>
 <p class="caption"><span class="caption-text">General Configuration</span></p>
 <ul>
@@ -181,6 +180,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-worker-count">CCL_WORKER_COUNT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-worker-affinity">CCL_WORKER_AFFINITY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-log-level">CCL_LOG_LEVEL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-max-short-size">CCL_MAX_SHORT_SIZE</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="reference internal" href="../../api.html">Library API</a><ul class="current">
@@ -291,15 +291,112 @@
 <h1>Communicator<a class="headerlink" href="#communicator" title="Permalink to this headline">¶</a></h1>
 <dl class="cpp function">
 <dt>
-template&lt;class ...<code class="sig-name descname">attr_value_pair_t</code>&gt;<br />comm_split_attr <code class="sig-name descname">create_comm_split_attr</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4IDpE22create_comm_split_attr15comm_split_attrDpRR17attr_value_pair_t" title="create_comm_split_attr::attr_value_pair_t">attr_value_pair_t</a>&amp;&amp;... <em>avps</em><span class="sig-paren">)</span><br /></dt>
-<dd></dd></dl>
+template&lt;class ...<code class="sig-name descname">attr_val_type</code>&gt;<br />comm_attr <code class="sig-name descname">create_comm_attr</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4IDpE16create_comm_attr9comm_attrDpRR13attr_val_type" title="create_comm_attr::attr_val_type">attr_val_type</a>&amp;&amp;... <em>avs</em><span class="sig-paren">)</span><br /></dt>
+<dd><p>Creates an attribute object that may be used to control the create_communicator operation. </p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>an attribute object </p>
+</dd>
+</dl>
+</p>
+</dd></dl>
 
 <dl class="cpp function">
 <dt>
-vector_class&lt;communicator&gt; <code class="sig-name descname">split_device_communicators</code><span class="sig-paren">(</span><em class="property">const</em> vector_class&lt;pair_class&lt;communicator, comm_split_attr&gt;&gt; &amp;<em>attrs</em><span class="sig-paren">)</span><br /></dt>
-<dd><p>Splits device communicators according to attributes. </p>
+template&lt;class ...<code class="sig-name descname">attr_val_type</code>&gt;<br />comm_split_attr <code class="sig-name descname">create_comm_split_attr</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4IDpE22create_comm_split_attr15comm_split_attrDpRR13attr_val_type" title="create_comm_split_attr::attr_val_type">attr_val_type</a>&amp;&amp;... <em>avs</em><span class="sig-paren">)</span><br /></dt>
+<dd><p>Creates an attribute object that may be used to control the split_communicator operation. </p>
 <p><dl class="simple">
-<dt><strong>Return</strong></dt><dd><p>vector of device communicators </p>
+<dt><strong>Return</strong></dt><dd><p>an attribute object </p>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt>
+template&lt;class <code class="sig-name descname">DeviceType</code>, class <code class="sig-name descname">ContextType</code>&gt;<br />vector_class&lt;communicator&gt; <code class="sig-name descname">create_communicators</code><span class="sig-paren">(</span>int <em>size</em>, <em class="property">const</em> vector_class&lt;pair_class&lt;int, <a class="reference internal" href="#_CPPv4I00E20create_communicators12vector_classI12communicatorEiRK12vector_classI10pair_classIi10DeviceTypeEERK11ContextType16shared_ptr_classI13kvs_interfaceERK9comm_attr" title="create_communicators::DeviceType">DeviceType</a>&gt;&gt; &amp;<em>devices</em>, <em class="property">const</em> <a class="reference internal" href="#_CPPv4I00E20create_communicators12vector_classI12communicatorEiRK12vector_classI10pair_classIi10DeviceTypeEERK11ContextType16shared_ptr_classI13kvs_interfaceERK9comm_attr" title="create_communicators::ContextType">ContextType</a> &amp;<em>context</em>, shared_ptr_class&lt;kvs_interface&gt; <em>kvs</em>, <em class="property">const</em> comm_attr &amp;<em>attr</em> = default_comm_attr<span class="sig-paren">)</span><br /></dt>
+<dd><p>Creates new communicators with user supplied size, ranks, local device-rank mapping and kvs. </p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>vector of communicators / communicator </p>
+</dd>
+<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">size</span></code>: user-supplied total number of ranks </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">rank</span></code>: user-supplied rank </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">device</span></code>: local device </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">devices</span></code>: user-supplied mapping of local ranks on devices </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">context</span></code>: context containing the devices </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">kvs</span></code>: key-value store for ranks wire-up </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">attr</span></code>: optional communicator attributes </p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt>
+template&lt;class <code class="sig-name descname">DeviceType</code>, class <code class="sig-name descname">ContextType</code>&gt;<br />vector_class&lt;communicator&gt; <code class="sig-name descname">create_communicators</code><span class="sig-paren">(</span>int <em>size</em>, <em class="property">const</em> map_class&lt;int, <a class="reference internal" href="#_CPPv4I00E20create_communicators12vector_classI12communicatorEiRK9map_classIi10DeviceTypeERK11ContextType16shared_ptr_classI13kvs_interfaceERK9comm_attr" title="create_communicators::DeviceType">DeviceType</a>&gt; &amp;<em>devices</em>, <em class="property">const</em> <a class="reference internal" href="#_CPPv4I00E20create_communicators12vector_classI12communicatorEiRK9map_classIi10DeviceTypeERK11ContextType16shared_ptr_classI13kvs_interfaceERK9comm_attr" title="create_communicators::ContextType">ContextType</a> &amp;<em>context</em>, shared_ptr_class&lt;kvs_interface&gt; <em>kvs</em>, <em class="property">const</em> comm_attr &amp;<em>attr</em> = default_comm_attr<span class="sig-paren">)</span><br /></dt>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt>
+template&lt;class <code class="sig-name descname">DeviceType</code>, class <code class="sig-name descname">ContextType</code>&gt;<br />communicator <code class="sig-name descname">create_communicator</code><span class="sig-paren">(</span>int <em>size</em>, int <em>rank</em>, <a class="reference internal" href="#_CPPv4I00E19create_communicator12communicatoriiR10DeviceTypeRK11ContextType16shared_ptr_classI13kvs_interfaceERK9comm_attr" title="create_communicator::DeviceType">DeviceType</a> &amp;<em>device</em>, <em class="property">const</em> <a class="reference internal" href="#_CPPv4I00E19create_communicator12communicatoriiR10DeviceTypeRK11ContextType16shared_ptr_classI13kvs_interfaceERK9comm_attr" title="create_communicator::ContextType">ContextType</a> &amp;<em>context</em>, shared_ptr_class&lt;kvs_interface&gt; <em>kvs</em>, <em class="property">const</em> comm_attr &amp;<em>attr</em> = default_comm_attr<span class="sig-paren">)</span><br /></dt>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt>
+communicator <code class="sig-name descname">create_communicator</code><span class="sig-paren">(</span>int <em>size</em>, int <em>rank</em>, shared_ptr_class&lt;kvs_interface&gt; <em>kvs</em>, <em class="property">const</em> comm_attr &amp;<em>attr</em> = default_comm_attr<span class="sig-paren">)</span><br /></dt>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt>
+template&lt;class <code class="sig-name descname">DeviceType</code>, class <code class="sig-name descname">ContextType</code>&gt;<br />vector_class&lt;communicator&gt; <code class="sig-name descname">create_communicators</code><span class="sig-paren">(</span>int <em>size</em>, <em class="property">const</em> vector_class&lt;<a class="reference internal" href="#_CPPv4I00E20create_communicators12vector_classI12communicatorEiRK12vector_classI10DeviceTypeERK11ContextType16shared_ptr_classI13kvs_interfaceERK9comm_attr" title="create_communicators::DeviceType">DeviceType</a>&gt; &amp;<em>devices</em>, <em class="property">const</em> <a class="reference internal" href="#_CPPv4I00E20create_communicators12vector_classI12communicatorEiRK12vector_classI10DeviceTypeERK11ContextType16shared_ptr_classI13kvs_interfaceERK9comm_attr" title="create_communicators::ContextType">ContextType</a> &amp;<em>context</em>, shared_ptr_class&lt;kvs_interface&gt; <em>kvs</em>, <em class="property">const</em> comm_attr &amp;<em>attr</em> = default_comm_attr<span class="sig-paren">)</span><br /></dt>
+<dd><p>Creates a new communicators with user supplied size, local devices and kvs. Ranks will be assigned automatically. </p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>vector of communicators / communicator </p>
+</dd>
+<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">size</span></code>: user-supplied total number of ranks </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">devices</span></code>: user-supplied device objects for local ranks </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">context</span></code>: context containing the devices </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">kvs</span></code>: key-value store for ranks wire-up </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">attr</span></code>: optional communicator attributes </p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt>
+communicator <code class="sig-name descname">create_communicator</code><span class="sig-paren">(</span>int <em>size</em>, shared_ptr_class&lt;kvs_interface&gt; <em>kvs</em>, <em class="property">const</em> comm_attr &amp;<em>attr</em> = default_comm_attr<span class="sig-paren">)</span><br /></dt>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt>
+communicator <code class="sig-name descname">create_communicator</code><span class="sig-paren">(</span><em class="property">const</em> comm_attr &amp;<em>attr</em> = default_comm_attr<span class="sig-paren">)</span><br /></dt>
+<dd><p>Creates a new communicator with externally provided size, rank and kvs. Implementation is platform specific and non portable. </p>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>communicator </p>
+</dd>
+<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">attr</span></code>: optional communicator attributes </p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt>
+vector_class&lt;communicator&gt; <code class="sig-name descname">split_communicators</code><span class="sig-paren">(</span><em class="property">const</em> vector_class&lt;pair_class&lt;communicator, comm_split_attr&gt;&gt; &amp;<em>attrs</em><span class="sig-paren">)</span><br /></dt>
+<dd><p>Splits communicators according to attributes. </p>
+<p><dl class="simple">
+<dt><strong>Return</strong></dt><dd><p>vector of communicators </p>
 </dd>
 <dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">attrs</span></code>: split attributes for local communicators </p></li>
@@ -308,96 +405,6 @@ vector_class&lt;communicator&gt; <code class="sig-name descname">split_device_co
 </dl>
 </p>
 </dd></dl>
-
-<dl class="cpp function">
-<dt>
-communicator <code class="sig-name descname">create_communicator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><br /></dt>
-<dd><p>Creates a new communicator with externally provided size, rank and kvs. Implementation is platform specific and non portable. </p>
-<p><dl class="simple">
-<dt><strong>Return</strong></dt><dd><p>communicator </p>
-</dd>
-</dl>
-</p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt>
-communicator <code class="sig-name descname">create_communicator</code><span class="sig-paren">(</span>size_t <em>size</em>, shared_ptr_class&lt;kvs_interface&gt; <em>kvs</em><span class="sig-paren">)</span><br /></dt>
-<dd><p>Creates a new communicator with user supplied size and kvs. Rank will be assigned automatically. </p>
-<p><dl class="simple">
-<dt><strong>Return</strong></dt><dd><p>communicator </p>
-</dd>
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">size</span></code>: user-supplied total number of ranks </p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">kvs</span></code>: key-value store for ranks wire-up </p></li>
-</ul>
-</dd>
-</dl>
-</p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt>
-communicator <code class="sig-name descname">create_communicator</code><span class="sig-paren">(</span>size_t <em>size</em>, size_t <em>rank</em>, shared_ptr_class&lt;kvs_interface&gt; <em>kvs</em><span class="sig-paren">)</span><br /></dt>
-<dd><p>Creates a new communicator with user supplied size, rank and kvs. </p>
-<p><dl class="simple">
-<dt><strong>Return</strong></dt><dd><p>communicator </p>
-</dd>
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">size</span></code>: user-supplied total number of ranks </p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">rank</span></code>: user-supplied rank </p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">kvs</span></code>: key-value store for ranks wire-up </p></li>
-</ul>
-</dd>
-</dl>
-</p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt>
-template&lt;class <code class="sig-name descname">DeviceType</code>, class <code class="sig-name descname">ContextType</code>&gt;<br />vector_class&lt;communicator&gt; <code class="sig-name descname">create_communicators</code><span class="sig-paren">(</span>size_t <em>size</em>, <em class="property">const</em> vector_class&lt;<a class="reference internal" href="#_CPPv4I00E20create_communicators12vector_classI12communicatorE6size_tRK12vector_classI10DeviceTypeER11ContextType16shared_ptr_classI13kvs_interfaceE" title="create_communicators::DeviceType">DeviceType</a>&gt; &amp;<em>local_devices</em>, <a class="reference internal" href="#_CPPv4I00E20create_communicators12vector_classI12communicatorE6size_tRK12vector_classI10DeviceTypeER11ContextType16shared_ptr_classI13kvs_interfaceE" title="create_communicators::ContextType">ContextType</a> &amp;<em>context</em>, shared_ptr_class&lt;kvs_interface&gt; <em>kvs</em><span class="sig-paren">)</span><br /></dt>
-<dd><p>Creates a new communicators with user supplied size, locao devices and kvs. Ranks will be assigned automatically. </p>
-<p><dl class="simple">
-<dt><strong>Return</strong></dt><dd><p>vector of communicators </p>
-</dd>
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">size</span></code>: user-supplied total number of ranks </p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">local_devices</span></code>: user-supplied device objects for local ranks </p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">context</span></code>: context containing the devices </p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">kvs</span></code>: key-value store for ranks wire-up </p></li>
-</ul>
-</dd>
-</dl>
-</p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt>
-template&lt;class <code class="sig-name descname">DeviceType</code>, class <code class="sig-name descname">ContextType</code>&gt;<br />vector_class&lt;communicator&gt; <code class="sig-name descname">create_communicators</code><span class="sig-paren">(</span>size_t <em>size</em>, <em class="property">const</em> vector_class&lt;pair_class&lt;rank_t, <a class="reference internal" href="#_CPPv4I00E20create_communicators12vector_classI12communicatorE6size_tRK12vector_classI10pair_classI6rank_t10DeviceTypeEER11ContextType16shared_ptr_classI13kvs_interfaceE" title="create_communicators::DeviceType">DeviceType</a>&gt;&gt; &amp;<em>local_rank_device_map</em>, <a class="reference internal" href="#_CPPv4I00E20create_communicators12vector_classI12communicatorE6size_tRK12vector_classI10pair_classI6rank_t10DeviceTypeEER11ContextType16shared_ptr_classI13kvs_interfaceE" title="create_communicators::ContextType">ContextType</a> &amp;<em>context</em>, shared_ptr_class&lt;kvs_interface&gt; <em>kvs</em><span class="sig-paren">)</span><br /></dt>
-<dd><p>Creates a new communicators with user supplied size, ranks, local device-rank mapping and kvs. </p>
-<p><dl class="simple">
-<dt><strong>Return</strong></dt><dd><p>vector of communicators </p>
-</dd>
-<dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">size</span></code>: user-supplied total number of ranks </p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">local_rank_device_map</span></code>: user-supplied mapping of local ranks on devices </p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">context</span></code>: context containing the devices </p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">kvs</span></code>: key-value store for ranks wire-up </p></li>
-</ul>
-</dd>
-</dl>
-</p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt>
-template&lt;class <code class="sig-name descname">DeviceType</code>, class <code class="sig-name descname">ContextType</code>&gt;<br />vector_class&lt;communicator&gt; <code class="sig-name descname">create_communicators</code><span class="sig-paren">(</span>size_t <em>size</em>, <em class="property">const</em> map_class&lt;rank_t, <a class="reference internal" href="#_CPPv4I00E20create_communicators12vector_classI12communicatorE6size_tRK9map_classI6rank_t10DeviceTypeER11ContextType16shared_ptr_classI13kvs_interfaceE" title="create_communicators::DeviceType">DeviceType</a>&gt; &amp;<em>local_rank_device_map</em>, <a class="reference internal" href="#_CPPv4I00E20create_communicators12vector_classI12communicatorE6size_tRK9map_classI6rank_t10DeviceTypeER11ContextType16shared_ptr_classI13kvs_interfaceE" title="create_communicators::ContextType">ContextType</a> &amp;<em>context</em>, shared_ptr_class&lt;kvs_interface&gt; <em>kvs</em><span class="sig-paren">)</span><br /></dt>
-<dd></dd></dl>
-
-<dl class="cpp function">
-<dt>
-template&lt;class <code class="sig-name descname">DeviceType</code>, class <code class="sig-name descname">ContextType</code>&gt;<br />communicator <code class="sig-name descname">create_communicator</code><span class="sig-paren">(</span>size_t <em>size</em>, rank_t <em>rank</em>, <a class="reference internal" href="#_CPPv4I00E19create_communicator12communicator6size_t6rank_tR10DeviceTypeR11ContextType16shared_ptr_classI13kvs_interfaceE" title="create_communicator::DeviceType">DeviceType</a> &amp;<em>device</em>, <a class="reference internal" href="#_CPPv4I00E19create_communicator12communicator6size_t6rank_tR10DeviceTypeR11ContextType16shared_ptr_classI13kvs_interfaceE" title="create_communicator::ContextType">ContextType</a> &amp;<em>context</em>, shared_ptr_class&lt;kvs_interface&gt; <em>kvs</em><span class="sig-paren">)</span><br /></dt>
-<dd></dd></dl>
 
 </div>
 
