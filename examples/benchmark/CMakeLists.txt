@@ -15,6 +15,11 @@
 #
 file(GLOB sources "./src/*.c" "./src/*.cpp")
 
+if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
+    set(CMAKE_CXX_STANDARD 17)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+endif()
+
 include_directories(include)
 include_directories(src)
 
@@ -29,5 +34,5 @@ foreach(src ${sources})
     target_link_libraries(${executable} PUBLIC dl)
     target_link_libraries(${executable} PRIVATE m)
     target_link_libraries(${executable} PUBLIC mpi)
-    install(TARGETS ${executable} RUNTIME DESTINATION ${CCL_INSTALL_EXAMPLES}/benchmark)
+    install(TARGETS ${executable} RUNTIME DESTINATION ${CCL_INSTALL_EXAMPLES}/benchmark OPTIONAL)
 endforeach()

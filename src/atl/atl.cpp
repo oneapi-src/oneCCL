@@ -26,7 +26,7 @@
 #define ATL_LIB_PREFIX "libccl_atl_"
 
 static int initialized = 0;
-static int is_main_addr_reserv = 0;
+static int should_reserve_addr = 0;
 
 static int atl_lib_filter(const struct dirent* entry) {
     size_t entry_len = strlen(entry->d_name);
@@ -106,8 +106,8 @@ static void atl_ini_dir(const char* transport_name,
                 continue;
             }
 
-            if (is_main_addr_reserv) {
-                ret = transport.main_addr_reserv(const_cast<char*>(main_addr));
+            if (should_reserve_addr) {
+                ret = transport.reserve_addr(const_cast<char*>(main_addr));
             }
             else {
                 ret = transport.init(argc, argv, attr, ctx, main_addr);
@@ -228,8 +228,8 @@ err_dlopen:
     return ATL_STATUS_FAILURE;
 }
 
-void atl_main_addr_reserv(char* main_addr) {
-    is_main_addr_reserv = 1;
+void atl_main_addr_reserve(char* main_addr) {
+    should_reserve_addr = 1;
     atl_init("ofi", NULL, NULL, NULL, NULL, main_addr);
-    is_main_addr_reserv = 0;
+    should_reserve_addr = 0;
 }

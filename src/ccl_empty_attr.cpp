@@ -13,16 +13,20 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "oneapi/ccl/ccl_types.hpp"
+#include "oneapi/ccl/types.hpp"
+#include "common/utils/version.hpp"
 
 namespace ccl {
-ccl::library_version ccl_empty_attr::version{
-    CCL_MAJOR_VERSION,  CCL_MINOR_VERSION,      CCL_UPDATE_VERSION,
-    CCL_PRODUCT_STATUS, CCL_PRODUCT_BUILD_DATE, CCL_PRODUCT_FULL,
-};
+
+namespace v1 {
+
+library_version ccl_empty_attr::version = utils::get_library_version();
 
 template <class attr>
 attr ccl_empty_attr::create_empty() {
     return attr{ ccl_empty_attr::version };
 }
+
+} // namespace v1
+
 } // namespace ccl

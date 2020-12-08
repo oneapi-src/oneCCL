@@ -24,8 +24,8 @@
 namespace native {
 
 ccl_ipc_gpu_comm::ccl_ipc_gpu_comm(ccl_device& assigned_device,
-                                   size_t idx,
-                                   size_t size,
+                                   int idx,
+                                   int size,
                                    ccl::group_split_type topology_type,
                                    ccl::device_topology_type class_id)
         : base(assigned_device, idx) {
@@ -40,13 +40,13 @@ ccl_ipc_gpu_comm::ccl_ipc_gpu_comm(ccl_device& assigned_device,
         case ccl::group_split_type::cluster: {
             switch (class_id) {
                 case ccl::device_topology_type::ring: {
-                    reset_rank<ccl::group_split_type::cluster,
-                               ccl::device_topology_type::ring>(idx, size);
+                    reset_rank<ccl::group_split_type::cluster, ccl::device_topology_type::ring>(
+                        idx, size);
                     break;
                 }
                 case ccl::device_topology_type::a2a: {
-                    reset_rank<ccl::group_split_type::cluster,
-                               ccl::device_topology_type::a2a>(idx, size);
+                    reset_rank<ccl::group_split_type::cluster, ccl::device_topology_type::a2a>(
+                        idx, size);
                     break;
                 }
                 default: {
@@ -67,7 +67,7 @@ ccl_ipc_gpu_comm::ccl_ipc_gpu_comm(ccl_device& assigned_device,
 
 std::string ccl_ipc_gpu_comm::to_string_impl() const {
     std::string ret(name_impl());
-    ret = ret + ", comm: " + comm_to_str();
+    ret = ret + ", comm:\n" + comm_to_str();
     return ret;
 }
 } // namespace native

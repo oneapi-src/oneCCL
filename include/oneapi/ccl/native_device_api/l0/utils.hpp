@@ -16,13 +16,13 @@
 #pragma once
 #include <functional>
 
-#include "oneapi/ccl/ccl_types.hpp"
-//#include "oneapi/ccl/ccl_type_traits.hpp"
+#include "oneapi/ccl/types.hpp"
+//#include "oneapi/ccl/type_traits.hpp"
 
 namespace native {
 
 struct ccl_device;
-namespace details {
+namespace detail {
 
 /*
  * Boolean matrix represents P2P device capable connectivity 'cross_device_rating'
@@ -51,5 +51,19 @@ using p2p_rating_function =
     std::function<cross_device_rating(const ccl_device&, const ccl_device&)>;
 
 cross_device_rating binary_p2p_rating_calculator(const ccl_device& lhs, const ccl_device& rhs);
-} // namespace details
+
+template <class Lock, class Resource>
+struct unique_accessor {
+    unique_accessor(Lock& mutex, Resource& storage) : lock(mutex), inner_data(storage) {}
+    unique_accessor(unique_accessor&& src) = default;
+
+    Resource& get() {
+        return inner_data;
+    }
+
+private:
+    std::unique_lock<Lock> lock;
+    Resource& inner_data;
+};
+} // namespace detail
 } // namespace native

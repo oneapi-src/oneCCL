@@ -13,12 +13,12 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "oneapi/ccl/ccl_config.h"
+#include "oneapi/ccl/config.h"
 
 #if defined(CCL_ENABLE_SYCL) and !defined(MULTI_GPU_SUPPORT)
 
 #include "oneapi/ccl/native_device_api/sycl/export.hpp"
-#include "oneapi/ccl/ccl_type_traits.hpp"
+#include "oneapi/ccl/type_traits.hpp"
 #include "common/log/log.hpp"
 #include "native_device_api/compiler_ccl_wrappers_dispatcher.hpp"
 
@@ -27,18 +27,18 @@ namespace ccl {
 /**
  * Context
  */
-generic_device_context_type<cl_backend_type::dpcpp_sycl>::generic_device_context_type() {}
-generic_device_context_type<cl_backend_type::dpcpp_sycl>::generic_device_context_type(ccl_native_t ctx)
+generic_context_type<cl_backend_type::dpcpp_sycl>::generic_context_type() {}
+generic_context_type<cl_backend_type::dpcpp_sycl>::generic_context_type(ccl_native_t ctx)
         : context(ctx) {}
 
-generic_device_context_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
-generic_device_context_type<cl_backend_type::dpcpp_sycl>::get() noexcept {
-    return const_cast<generic_device_context_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&>(
-        static_cast<const generic_device_context_type<cl_backend_type::dpcpp_sycl>*>(this)->get());
+generic_context_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
+generic_context_type<cl_backend_type::dpcpp_sycl>::get() noexcept {
+    return const_cast<generic_context_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&>(
+        static_cast<const generic_context_type<cl_backend_type::dpcpp_sycl>*>(this)->get());
 }
 
-const generic_device_context_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
-generic_device_context_type<cl_backend_type::dpcpp_sycl>::get() const noexcept {
+const generic_context_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
+generic_context_type<cl_backend_type::dpcpp_sycl>::get() const noexcept {
     return context;
 }
 
@@ -109,7 +109,8 @@ CCL_API generic_device_type<cl_backend_type::dpcpp_sycl>::generic_device_type(
     device = *it;
 }
 
-generic_device_type<cl_backend_type::dpcpp_sycl>::generic_device_type(const cl::sycl::device& in_device)
+generic_device_type<cl_backend_type::dpcpp_sycl>::generic_device_type(
+    const cl::sycl::device& in_device)
         : device(in_device) {}
 
 device_index_type generic_device_type<cl_backend_type::dpcpp_sycl>::get_id() const {
@@ -119,6 +120,11 @@ device_index_type generic_device_type<cl_backend_type::dpcpp_sycl>::get_id() con
 
 typename generic_device_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
 generic_device_type<cl_backend_type::dpcpp_sycl>::get() noexcept {
+    return device;
+}
+
+const typename generic_device_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
+generic_device_type<cl_backend_type::dpcpp_sycl>::get() const noexcept {
     return device;
 }
 
@@ -138,7 +144,6 @@ generic_event_type<cl_backend_type::dpcpp_sycl>::get() const noexcept {
     return event;
 }
 
-
 /**
  * Stream
  */
@@ -154,7 +159,6 @@ const generic_stream_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
 generic_stream_type<cl_backend_type::dpcpp_sycl>::get() const noexcept {
     return queue;
 }
-
 
 /**
  * Platform
@@ -172,5 +176,5 @@ const generic_platform_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
 generic_platform_type<cl_backend_type::dpcpp_sycl>::get() const noexcept {
     return platform;
 }
-}
+} // namespace ccl
 #endif //CCL_ENABLE_SYCL and !defined(MULTI_GPU_SUPPORT)

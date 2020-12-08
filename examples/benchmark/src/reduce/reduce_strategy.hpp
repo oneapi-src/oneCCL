@@ -23,12 +23,20 @@ struct reduce_strategy_impl {
         return "reduce";
     }
 
+    size_t get_send_multiplier() {
+        return 1;
+    }
+
+    size_t get_recv_multiplier() {
+        return 1;
+    }
+
     static const ccl::reduce_attr& get_op_attr(const bench_exec_attr& bench_attr) {
         return bench_attr.get_attr<ccl::reduce_attr>();
     }
 
-    template <class Dtype, class comm_t, class... Args>
-    void start_internal(comm_t& comm,
+    template <class Dtype, class... Args>
+    void start_internal(ccl::communicator& comm,
                         size_t count,
                         const Dtype send_buf,
                         Dtype recv_buf,

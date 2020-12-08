@@ -25,12 +25,12 @@ public:
 
     reduce_scatter_entry() = delete;
     reduce_scatter_entry(ccl_sched* sched,
-                 const ccl_buffer send_buf,
-                 ccl_buffer recv_buf,
-                 size_t recv_cnt,
-                 const ccl_datatype& dtype,
-                 ccl::reduction reduction,
-                 ccl_comm* comm)
+                         const ccl_buffer send_buf,
+                         ccl_buffer recv_buf,
+                         size_t recv_cnt,
+                         const ccl_datatype& dtype,
+                         ccl::reduction reduction,
+                         ccl_comm* comm)
             : base_coll_entry(sched),
               send_buf(send_buf),
               recv_buf(recv_buf),
@@ -50,13 +50,14 @@ public:
         size_t send_bytes = send_cnt * dtype.size();
         size_t recv_bytes = recv_cnt * dtype.size();
 
-        atl_status_t atl_status = comm->atl->atl_ep_reduce_scatter(sched->bin->get_atl_ep(),
-                                                                   send_buf.get_ptr(send_bytes),
-                                                                   recv_buf.get_ptr(recv_bytes),
-                                                                   recv_cnt,
-                                                                   static_cast<atl_datatype_t>(dtype.idx()),
-                                                                   static_cast<atl_reduction_t>(op),
-                                                                   &req);
+        atl_status_t atl_status =
+            comm->atl->atl_ep_reduce_scatter(sched->bin->get_atl_ep(),
+                                             send_buf.get_ptr(send_bytes),
+                                             recv_buf.get_ptr(recv_bytes),
+                                             recv_cnt,
+                                             static_cast<atl_datatype_t>(dtype.idx()),
+                                             static_cast<atl_reduction_t>(op),
+                                             &req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("REDUCE_SCATTER entry failed. atl_status: ", atl_status_to_str(atl_status));

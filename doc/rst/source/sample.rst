@@ -25,15 +25,23 @@ The sample code below shows how to use |product_short| API to perform allreduce 
         MPI_Comm_size(MPI_COMM_WORLD, &size);
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+        atexit(mpi_finalize);
+
         queue q;
-        if (!create_sycl_queue(argc, argv, q)) {
-            MPI_Finalize();
+        if (!create_sycl_queue(argc, argv, rank, q)) {
             return -1;
         }
 
-        /* allocate USM buffers */
-        auto send_buf = aligned_alloc_shared<int>(64, count, q);
-        auto recv_buf = aligned_alloc_shared<int>(64, count, q);
+        buf_allocator<int> allocator(q);
+
+        auto usm_alloc_type = usm::alloc::shared;
+        if (argc > 2) {
+            usm_alloc_type = usm_alloc_type_from_string(argv[2]);
+        }
+
+        if (!check_sycl_usm(q, usm_alloc_type)) {
+            return -1;
+        }
 
         /* create kvs */
         ccl::shared_ptr_class<ccl::kvs> kvs;
@@ -56,18 +64,15 @@ The sample code below shows how to use |product_short| API to perform allreduce 
         /* create stream */
         auto stream = ccl::create_stream(q);
 
-        {
-            /* open buffers and initialize them on the host side */
-            for (i = 0; i < count; i++) {
-                send_buf[i] = rank;
-                recv_buf[i] = -1;
-            }
-        }
+        /* create buffers */
+        auto send_buf = allocator.allocate(count, usm_alloc_type);
+        auto recv_buf = allocator.allocate(count, usm_alloc_type);
 
-        /* open send_buf and modify it on the device side */
-        q.submit([&](auto &h) {
+        /* open buffers and modify them on the device side */
+        auto e = q.submit([&](auto &h) {
             h.parallel_for(count, [=](auto id) {
-                send_buf[id] += 1;
+                send_buf[id] = rank + 1;
+                recv_buf[id] = -1;
             });
         });
 
@@ -105,21 +110,14 @@ The sample code below shows how to use |product_short| API to perform allreduce 
             }
         }
 
-        free(send_buf, q);
-        free(recv_buf, q);
-
-        MPI_Finalize();
-
         return 0;
     }
-
-
 
 
 Build details
 *************
 
-#. |product_short| should be built with SYCL* support.
+#. |product_short| should be built with ``SYCL`` support (DPC++ supported only).
 
 #. Set up the library environment (see :doc:`prerequisites`).
 

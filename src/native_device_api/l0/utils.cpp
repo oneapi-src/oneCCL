@@ -26,7 +26,7 @@
 #endif
 
 namespace native {
-namespace details {
+namespace detail {
 
 adjacency_matrix::adjacency_matrix(std::initializer_list<typename base::value_type> init)
         : base(init) {}
@@ -36,6 +36,6 @@ cross_device_rating binary_p2p_rating_calculator(const native::ccl_device& lhs,
                                                  size_t weight) {
     return property_p2p_rating_calculator(lhs, rhs, 1);
 }
-} // namespace details
+} // namespace detail
 } // namespace native
 #endif //#if defined(MULTI_GPU_SUPPORT)

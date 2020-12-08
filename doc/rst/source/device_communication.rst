@@ -17,7 +17,7 @@ Consider a simple oneCCL ``allreduce`` example for GPU:
 
 .. code:: cpp
 
-    auto ccl_device_context = ccl::create_context(sycl_context);
+    auto ccl_context = ccl::create_context(sycl_context);
     auto ccl_device = ccl::create_device(sycl_device);
 
     auto comms = ccl::create_communicators(
@@ -56,9 +56,9 @@ Consider a simple oneCCL ``allreduce`` example for GPU:
 .. code:: cpp
 
     /* using SYCL buffer and accessor */
-    sycl_queue.submit([&](cl::sycl::handler& cgh) {
-        auto send_buf_dev_acc = send_buf.get_access<mode::write>(cgh);
-        cgh.parallel_for<class allreduce_send_buf_modify>(range<1>{elem_count}, [=](item<1> idx) {
+    sycl_queue.submit([&](cl::sycl::handler& h) {
+        auto send_buf_dev_acc = send_buf.get_access<mode::write>(h);
+        h.parallel_for(range<1>{elem_count}, [=](item<1> idx) {
             send_buf_dev_acc[idx] += 1;
         });
     });
@@ -100,9 +100,9 @@ Consider a simple oneCCL ``allreduce`` example for GPU:
     auto comm_size = comm.size();
     auto expected = comm_size * (comm_size + 1) / 2;
 
-    sycl_queue.submit([&](handler& cgh) {
-        auto recv_buf_dev_acc = recv_buf.get_access<mode::write>(cgh);
-        cgh.parallel_for<class allreduce_recv_buf_check>(range<1>{elem_count}, [=](item<1> idx) {
+    sycl_queue.submit([&](handler& h) {
+        auto recv_buf_dev_acc = recv_buf.get_access<mode::write>(h);
+        h.parallel_for(range<1>{elem_count}, [=](item<1> idx) {
             if (recv_buf_dev_acc[idx] != expected) {
                 recv_buf_dev_acc[idx] = -1;
             }

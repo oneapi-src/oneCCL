@@ -19,7 +19,6 @@ using namespace std;
 using namespace sycl;
 
 int main(int argc, char *argv[]) {
-
     const size_t count = 10 * 1024 * 1024;
     const size_t root_rank = 0;
 
@@ -29,8 +28,14 @@ int main(int argc, char *argv[]) {
 
     ccl::init();
 
+    MPI_Init(NULL, NULL);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    atexit(mpi_finalize);
+
     queue q;
-    if (!create_sycl_queue(argc, argv, q)) {
+    if (!create_sycl_queue(argc, argv, rank, q)) {
         return -1;
     }
 
@@ -46,10 +51,6 @@ int main(int argc, char *argv[]) {
     }
 
     /* create kvs */
-    MPI_Init(NULL, NULL);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
     ccl::shared_ptr_class<ccl::kvs> kvs;
     ccl::kvs::address_type main_addr;
     if (rank == 0) {
@@ -76,8 +77,11 @@ int main(int argc, char *argv[]) {
     /* open buffers and modify them on the device side */
     q.submit([&](auto &h) {
         h.parallel_for(count, [=](auto id) {
-            if (id == root_rank) {
-                buf[id] = root_rank;
+            if (rank == root_rank) {
+                buf[id] = root_rank + 10;
+            }
+            else {
+                buf[id] = 0;
             }
             buf[id] += 1;
         });
@@ -94,7 +98,7 @@ int main(int argc, char *argv[]) {
     q.submit([&](auto &h) {
         accessor check_buf_acc(check_buf, h, write_only);
         h.parallel_for(count, [=](auto id) {
-            if (buf[id] != root_rank + 1) {
+            if (buf[id] != root_rank + 11) {
                 check_buf_acc[id] = -1;
             }
         });
@@ -104,20 +108,16 @@ int main(int argc, char *argv[]) {
         return -1;
 
     /* print out the result of the test on the host side */
-    if (rank == root_rank) {
-        host_accessor check_buf_acc(check_buf, read_only);
-        for (i = 0; i < count; i++) {
-            if (check_buf_acc[i] == -1) {
-                cout << "FAILED\n";
-                break;
-            }
-        }
-        if (i == count) {
-            cout << "PASSED\n";
+    host_accessor check_buf_acc(check_buf, read_only);
+    for (i = 0; i < count; i++) {
+        if (check_buf_acc[i] == -1) {
+            cout << "FAILED\n";
+            break;
         }
     }
-
-    MPI_Finalize();
+    if (i == count) {
+        cout << "PASSED\n";
+    }
 
     return 0;
 }

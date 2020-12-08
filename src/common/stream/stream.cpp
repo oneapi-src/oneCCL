@@ -13,92 +13,143 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#include "common/global/global.hpp"
 #include "common/log/log.hpp"
 #include "common/stream/stream.hpp"
 #include "common/stream/stream_provider_dispatcher_impl.hpp"
 #include "oneapi/ccl/native_device_api/export_api.hpp"
 #include "unified_context_impl.hpp"
 
-#ifdef MULTI_GPU_SUPPORT
+ccl_stream::ccl_stream(stream_type type,
+                       stream_native_t& stream,
+                       const ccl::library_version& version)
+        : type(type),
+          version(version) {
+    native_stream = stream;
+
 #ifdef CCL_ENABLE_SYCL
-template std::unique_ptr<ccl_stream> stream_provider_dispatcher::create(
-    cl::sycl::queue& native_stream,
-    const ccl::library_version& version);
-template std::unique_ptr<ccl_stream> stream_provider_dispatcher::create(
-    cl_command_queue& native_stream_handle,
-    const ccl::library_version& version);
-#else
-template std::unique_ptr<ccl_stream> stream_provider_dispatcher::create(
-    std::shared_ptr<native::ccl_device::device_queue>& native_stream,
-    const ccl::library_version& version);
-template std::unique_ptr<ccl_stream> stream_provider_dispatcher::create(
-    ze_command_queue_handle_t& native_stream_handle,
-    const ccl::library_version& version);
-#endif
-#else
-#ifdef CCL_ENABLE_SYCL
-template std::unique_ptr<ccl_stream> stream_provider_dispatcher::create(
-    cl::sycl::queue& native_stream,
-    const ccl::library_version& version);
-template std::unique_ptr<ccl_stream> stream_provider_dispatcher::create(
-    cl_command_queue& native_stream,
-    const ccl::library_version& version);
-#else
-template std::unique_ptr<ccl_stream> stream_provider_dispatcher::create(
-    typename ccl::unified_stream_type::ccl_native_t& native_stream,
-    const ccl::library_version& version);
-#endif
-#endif
+    native_streams.resize(ccl::global_data::env().worker_count);
+    for (size_t idx = 0; idx < native_streams.size(); idx++) {
+        native_streams[idx] = stream_native_t(stream.get_context(), stream.get_device());
+    }
+#endif /* CCL_ENABLE_SYCL */
+}
+
+ccl_stream::ccl_stream(stream_type type,
+                       stream_native_handle_t handle,
+                       const ccl::library_version& version)
+        : type(type),
+          version(version) {
+    creation_is_postponed = true;
+    (void)handle;
+    throw std::runtime_error(std::string(__PRETTY_FUNCTION__) + " - unsupported ");
+}
+
+ccl_stream::ccl_stream(stream_type type, const ccl::library_version& version)
+        : type(type),
+          version(version) {
+    creation_is_postponed = true;
+    LOG_DEBUG("Scheduled postponed stream creation");
+}
 
 void ccl_stream::build_from_params() {
     if (!creation_is_postponed) {
-        throw ccl::exception("error");
+        throw ccl::exception(std::string(__FUNCTION__) +
+                             " - incorrect usage, stream is not sheduled for postponed creation");
     }
 
-    type = ccl_stream_host;
+    type = stream_type::host;
     try {
 #ifdef CCL_ENABLE_SYCL
-        if (is_context_enabled) {
-            stream_native_t stream_candidate{ native_context, native_device };
+        if (native_context.first) {
+            if (!native_device.first) {
+                throw ccl::exception(
+                    std::string(__FUNCTION__) +
+                    " - incorrect usage, not enough parameters for stream creation: "
+                    " context is available, but device is not. Both required");
+            }
+
+            LOG_DEBUG("create stream from device & context");
+            stream_native_t stream_candidate{ native_context.second, native_device.second };
             std::swap(stream_candidate,
-                      native_stream); //TODO USE attributes fro sycl queue construction
+                      native_stream); //TODO USE attributes from sycl queue construction
+        }
+        else if (native_device.first) {
+            LOG_DEBUG("create stream from device only");
+            stream_native_t stream_candidate{ native_device.second };
+            std::swap(stream_candidate,
+                      native_stream); //TODO USE attributes from sycl queue construction
+
+            native_context.second = native_stream.get_context();
+            native_context.first = true;
         }
         else {
-            stream_native_t stream_candidate{ native_device };
-            std::swap(stream_candidate,
-                      native_stream); //TODO USE attributes fro sycl queue construction
+            throw ccl::exception(std::string(__FUNCTION__) +
+                                 " - incorrect usage, not enough parameters for stream creation: "
+                                 " context is empty and device is empty too.");
         }
 
         //override type
-        if (native_stream.get_device().is_host())
-        {
-            type = ccl_stream_host;
+        if (native_stream.get_device().is_host()) {
+            type = stream_type::host;
         }
-        else if(native_stream.get_device().is_cpu())
-        {
-            type = ccl_stream_cpu;
+        else if (native_stream.get_device().is_cpu()) {
+            type = stream_type::cpu;
         }
-        else if(native_stream.get_device().is_gpu())
-        {
-            type = ccl_stream_gpu;
+        else if (native_stream.get_device().is_gpu()) {
+            type = stream_type::gpu;
         }
-        else
-        {
-            throw ccl::invalid_argument("CORE", "create_stream", std::string("Unsupported SYCL queue's device type for postponed creation:\n") +
-                                        native_stream.get_device().template get_info<cl::sycl::info::device::name>() +
-                                        std::string("Supported types: host, cpu, gpu"));
+        else {
+            throw ccl::invalid_argument(
+                "CORE",
+                "create_stream",
+                std::string("Unsupported SYCL queue's device type for postponed creation:\n") +
+                    native_stream.get_device().template get_info<cl::sycl::info::device::name>() +
+                    std::string("Supported types: host, cpu, gpu"));
         }
-    LOG_INFO("SYCL queue type from postponed creation: ", static_cast<int>(type), " device: ",
-             native_stream.get_device().template get_info<cl::sycl::info::device::name>());
+        LOG_INFO("SYCL queue type from postponed creation: ",
+                 static_cast<int>(type),
+                 " device: ",
+                 native_stream.get_device().template get_info<cl::sycl::info::device::name>());
 #else
-    #ifdef MULTI_GPU_SUPPORT
+#ifdef MULTI_GPU_SUPPORT
         ze_command_queue_desc_t descr =
             stream_native_device_t::element_type::get_default_queue_desc();
 
-        //TODO use attributes
-        native_device->create_cmd_queue(descr);
-        type = ccl_stream_gpu;
-    #endif
+        //TODO use attributes....
+        //Create from device & context
+        if (native_context.first) {
+            if (!native_device.first) {
+                throw ccl::exception(
+                    std::string(__FUNCTION__) +
+                    " - incorrect usage, not enough parameters for stream creation: "
+                    " context is available, but device is not. Both required");
+            }
+
+            LOG_DEBUG("create stream from device & context");
+            auto stream_candidate =
+                native_device.second->create_cmd_queue(native_context.second, descr);
+            native_stream = std::make_shared<typename ccl::unified_stream_type::impl_t>(
+                std::move(stream_candidate));
+        }
+        else if (native_device.first) {
+            LOG_DEBUG("create stream from device only");
+
+            auto stream_candidate = native_device.second->create_cmd_queue({}, descr);
+            native_stream = std::make_shared<typename ccl::unified_stream_type::impl_t>(
+                std::move(stream_candidate));
+
+            native_context.second = native_stream->get_ctx().lock();
+            native_context.first = true;
+        }
+        else {
+            throw ccl::exception(std::string(__FUNCTION__) +
+                                 " - incorrect usage, not enough parameters for stream creation: "
+                                 " context is empty and device is empty too.");
+        }
+
+        type = stream_type::gpu;
+#endif
 #endif
     }
     catch (const std::exception& ex) {
@@ -123,23 +174,27 @@ const typename ccl_stream::version_traits_t::return_type& ccl_stream::get_attrib
 
 typename ccl_stream::native_handle_traits_t::return_type& ccl_stream::get_attribute_value(
     const native_handle_traits_t& id) {
-    /*
-    if (!native_stream_set)
-    {
-        throw  ccl::exception("native stream is not set");
+    if (creation_is_postponed) {
+        throw ccl::exception(std::string(__FUNCTION__) + " - stream is not properly created yet");
     }
-*/
+
     return native_stream;
 }
 
 typename ccl_stream::device_traits_t::return_type& ccl_stream::get_attribute_value(
     const device_traits_t& id) {
-    return native_device;
+    if (!native_device.first) {
+        throw ccl::exception(std::string(__FUNCTION__) + " - stream has no native device");
+    }
+    return native_device.second;
 }
 
 typename ccl_stream::context_traits_t::return_type& ccl_stream::get_attribute_value(
     const context_traits_t& id) {
-    return native_context;
+    if (!native_context.first) {
+        throw ccl::exception(std::string(__FUNCTION__) + " - stream has no native context");
+    }
+    return native_context.second;
 }
 
 typename ccl_stream::context_traits_t::return_type& ccl_stream::set_attribute_value(
@@ -148,20 +203,21 @@ typename ccl_stream::context_traits_t::return_type& ccl_stream::set_attribute_va
     if (!creation_is_postponed) {
         throw ccl::exception("Cannot set 'ccl::stream_attr_id::context'`for constructed stream");
     }
-    std::swap(native_context, val);
-    return native_context;
+    std::swap(native_context.second, val);
+    native_context.first = true;
+    return native_context.second;
 }
-
+/*
 typename ccl_stream::context_traits_t::return_type& ccl_stream::set_attribute_value(
     typename context_traits_t::handle_t val,
     const context_traits_t& t) {
     if (!creation_is_postponed) {
         throw ccl::exception("Cannot set 'ccl::stream_attr_id::context'`for constructed stream");
     }
-    native_context = ccl::unified_device_context_type{ val }.get(); //context_traits_t::type
-    is_context_enabled = true;
-    return native_context;
-}
+    native_context.second = ccl::unified_context_type{ val }.get(); //context_traits_t::type
+    native_context.first = true;
+    return native_context.second;
+}*/
 
 typename ccl_stream::ordinal_traits_t::type ccl_stream::set_attribute_value(
     typename ordinal_traits_t::type val,

@@ -30,7 +30,7 @@ void coll_entry::start() {
         coll_sched->set_op_id(coll_sched_op_id);
 
         auto res = coll_entry_helper::build_schedule(coll_sched.get(), sched, param);
-        CCL_ASSERT(res == ccl_status_success, "error during build_schedule, res ", res);
+        CCL_ASSERT(res == ccl::status::success, "error during build_schedule, res ", res);
     }
 
     LOG_DEBUG("starting COLL entry: ", this, ", subsched: ", coll_sched.get());

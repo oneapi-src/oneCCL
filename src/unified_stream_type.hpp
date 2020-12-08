@@ -15,7 +15,7 @@
 */
 #pragma once
 
-#include "oneapi/ccl/ccl_type_traits.hpp"
+#include "oneapi/ccl/type_traits.hpp"
 #include "common/log/log.hpp"
 
 namespace ccl {
@@ -23,8 +23,7 @@ namespace ccl {
 #else
 #ifdef MULTI_GPU_SUPPORT
 
-
-#else  //MULTI_GPU_SUPPORT
+#else //MULTI_GPU_SUPPORT
 
 #endif
 #endif

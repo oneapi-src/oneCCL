@@ -41,8 +41,8 @@
 class pmi_resizable_simple final : public ipmi {
 public:
     pmi_resizable_simple() = delete;
-    pmi_resizable_simple(size_t dev_count,
-                         const std::vector<size_t>& ranks,
+    pmi_resizable_simple(int total_rank_count,
+                         const std::vector<int>& ranks,
                          std::shared_ptr<ikvs_wrapper> k,
                          const char* main_addr = nullptr);
 
@@ -50,7 +50,7 @@ public:
 
     int is_pm_resize_enabled() override;
 
-    atl_status_t pmrt_main_addr_reserv(char* main_addr) override;
+    atl_status_t pmrt_main_addr_reserve(char* main_addr) override;
 
     atl_status_t pmrt_set_resize_function(atl_resize_fn_t resize_fn) override;
 
@@ -61,68 +61,77 @@ public:
     void pmrt_barrier() override;
 
     atl_status_t pmrt_kvs_put(char* kvs_key,
-                              size_t proc_idx,
+                              int proc_idx,
                               const void* kvs_val,
                               size_t kvs_val_len) override;
 
     atl_status_t pmrt_kvs_get(char* kvs_key,
-                              size_t proc_idx,
+                              int proc_idx,
                               void* kvs_val,
                               size_t kvs_val_len) override;
 
-    size_t get_size() override;
+    int get_size() override;
 
-    size_t get_rank() override;
+    int get_rank() override;
 
-    size_t get_thread() override;
+    size_t get_local_thread_idx() override;
 
     size_t get_local_kvs_id() override;
 
     void set_local_kvs_id(size_t local_kvs_id) override;
 
-    size_t get_threads_count() override {
-        return threads_per_rank[requested_rank_num].size();
+    size_t get_threads_per_process() override {
+        return threads_per_proc[assigned_proc_idx].size();
     }
 
-    size_t get_devices_per_rank_count() override {
+    size_t get_ranks_per_process() override {
         size_t res = 0;
-        std::list<size_t>& threads = threads_per_rank[requested_rank_num];
-        for (auto it = threads.begin(); it != threads.end(); it++) {
-            res += devises_per_thread[*it];
+        std::list<size_t>& thread_idxs = threads_per_proc[assigned_proc_idx];
+        for (auto it = thread_idxs.begin(); it != thread_idxs.end(); it++) {
+            res += ranks_per_thread_map[*it];
         }
         return res;
     }
+
     void pmrt_finalize() override;
 
 private:
     bool is_finalized{ false };
     atl_status_t pmrt_init(const char* main_addr = nullptr);
+
     int kvs_set_value(const char* kvs_name, const char* key, const char* value);
     int kvs_get_value(const char* kvs_name, const char* key, char* value);
     int kvs_iget_value(const char* kvs_name, const char* key, char* value);
+
     size_t get_barrier_idx();
-    void register_my_first_rank_and_dev_count();
-    void get_requested_thread_num_and_threads_count();
+    size_t get_barrier_full_idx();
+
+    void calculate_local_thread_idx();
+    void register_first_rank_idx_and_rank_count();
+    void assign_thread_idx_and_fill_ranks_per_thread_map();
     void register_my_proc_name();
-    void get_my_proc_num_and_proc_count();
-    void get_local_thread_num();
+    void get_my_proc_idx_and_proc_count();
     void make_requested_info();
     void remove_initial_data();
     void make_map_requested2global();
-    size_t dev_count;
-    size_t requested_rank_num;
-    size_t requested_thread_num;
-    size_t local_thread_num;
+    void pmrt_barrier_full();
+
+    int total_rank_count;
+    int assigned_proc_idx;
+
+    size_t assigned_thread_idx;
+    size_t local_thread_idx;
     std::string my_proccess_name;
-    std::vector<size_t> ranks;
-    std::vector<size_t> devises_per_thread;
-    std::map<size_t, std::list<size_t>> threads_per_rank;
+    std::vector<int> ranks;
+    std::vector<size_t> ranks_per_thread_map;
+    std::map<size_t, std::list<size_t>> threads_per_proc;
     std::shared_ptr<ikvs_wrapper> k;
     size_t max_keylen;
     size_t max_vallen;
     char* val_storage = nullptr;
     size_t barrier_num = 0;
-    std::vector<size_t> requested2global;
+    size_t barrier_num_full = 0;
+    std::vector<int> requested2global;
     size_t local_id;
-    size_t connection_timeout = 120;
+    size_t connection_timeout = 120; /* in seconds */
 };

@@ -18,13 +18,12 @@
 
 #include <CL/sycl.hpp>
 #include <iostream>
-#include <string>
-#include <iostream>
 #include <map>
 #include <mpi.h>
 #include <set>
 #include <string>
 
+#include "base.hpp"
 #include "base_utils.hpp"
 
 #include "oneapi/ccl.hpp"
@@ -55,7 +54,6 @@ inline bool has_accelerator() {
 }
 
 inline bool check_sycl_usm(queue& q, usm::alloc alloc_type) {
-
     bool ret = true;
 
     device d = q.get_device();
@@ -73,9 +71,225 @@ inline bool check_sycl_usm(queue& q, usm::alloc alloc_type) {
     return ret;
 }
 
-inline bool create_sycl_queue(int argc,
-                              char* argv[],
-                              queue& q) {
+std::string get_preferred_gpu_platform_name() {
+    std::string backend;
+    std::string result;
+
+    if (getenv("SYCL_BE") == nullptr) {
+        backend = "OpenCL";
+    }
+    else if (getenv("SYCL_BE") != nullptr) {
+        if (std::strcmp(getenv("SYCL_BE"), "PI_LEVEL_ZERO") == 0) {
+            backend = "Level-Zero";
+        }
+        else if (std::strcmp(getenv("SYCL_BE"), "PI_OPENCL") == 0) {
+            backend = "OpenCL";
+        }
+        else {
+            throw std::runtime_error("invalid backend: " + std::string(getenv("SYCL_BE")));
+        }
+    }
+
+    auto plaform_list = sycl::platform::get_platforms();
+
+    for (const auto& platform : plaform_list) {
+        auto platform_name = platform.get_info<sycl::info::platform::name>();
+
+        auto devices = platform.get_devices();
+        auto gpu_dev = std::find_if(devices.begin(), devices.end(), [](const sycl::device& d) {
+            return d.is_gpu();
+        });
+
+        if (gpu_dev == devices.end()) {
+            // cout << "platform [" << platform_name
+            //      << "] does not contain GPU devices, skipping\n";
+            continue;
+        }
+
+        if (platform_name.find(backend) == std::string::npos) {
+            // cout << "platform [" << platform_name
+            //      << "] does not match with requested "
+            //      << backend << ", skipping\n";
+            continue;
+        }
+
+        result = platform_name;
+    }
+
+    if (result.empty())
+        throw std::runtime_error("can not find preferred GPU platform");
+
+    return result;
+}
+
+std::vector<sycl::device> create_sycl_gpu_devices() {
+    constexpr char dev_prefix[] = "-- ";
+    constexpr char sub_dev_prefix[] = "---- ";
+
+    std::vector<sycl::device> result;
+    auto plaform_list = sycl::platform::get_platforms();
+    auto preferred_platform_name = get_preferred_gpu_platform_name();
+
+    cout << "preferred platform: [" << preferred_platform_name << "]\n";
+
+    for (const auto& platform : plaform_list) {
+        auto platform_name = platform.get_info<sycl::info::platform::name>();
+
+        if (platform_name.compare(preferred_platform_name) != 0)
+            continue;
+
+        cout << "platform: [" << platform_name << "]\n";
+
+        auto device_list = platform.get_devices();
+
+        for (const auto& device : device_list) {
+            auto device_name = device.get_info<cl::sycl::info::device::name>();
+
+            if (!device.is_gpu()) {
+                cout << dev_prefix << "device [" << device_name << "] is not GPU, skipping\n";
+                continue;
+            }
+
+            auto part_props = device.get_info<info::device::partition_properties>();
+
+            if (std::find(part_props.begin(),
+                          part_props.end(),
+                          info::partition_property::partition_by_affinity_domain) ==
+                part_props.end()) {
+                cout << dev_prefix << "device [" << device_name
+                     << "] does not support partition by affinity domain"
+                     << ", use root device\n";
+                result.push_back(device);
+                continue;
+            }
+
+            auto part_affinity_domains =
+                device.get_info<info::device::partition_affinity_domains>();
+
+            if (std::find(part_affinity_domains.begin(),
+                          part_affinity_domains.end(),
+                          info::partition_affinity_domain::next_partitionable) ==
+                part_affinity_domains.end()) {
+                cout << dev_prefix << "device [" << device_name
+                     << "] does not support next_partitionable affinity domain"
+                     << ", use root device\n";
+                result.push_back(device);
+                continue;
+            }
+
+            cout << dev_prefix << "device [" << device_name << "] should provide "
+                 << device.template get_info<info::device::partition_max_sub_devices>()
+                 << " sub-devices\n";
+
+            auto sub_devices =
+                device.create_sub_devices<info::partition_property::partition_by_affinity_domain>(
+                    info::partition_affinity_domain::next_partitionable);
+
+            if (sub_devices.empty()) {
+                /* TODO: remove when SYCL/L0 sub-devices will be supported */
+                cout << dev_prefix << "device [" << device_name << "] does not provide sub-devices"
+                     << ", use root device\n";
+                result.push_back(device);
+                continue;
+            }
+
+            cout << dev_prefix << "device [" << device_name << "] provides " << sub_devices.size()
+                 << " sub-devices\n";
+            result.insert(result.end(), sub_devices.begin(), sub_devices.end());
+
+            for (auto idx = 0; idx < sub_devices.size(); idx++) {
+                cout << sub_dev_prefix << "sub-device " << idx << ": ["
+                     << sub_devices[idx].get_info<cl::sycl::info::device::name>() << "]\n";
+            }
+        }
+    }
+
+    if (result.empty()) {
+        throw std::runtime_error("no GPU devices found");
+    }
+
+    cout << "found: " << result.size() << " GPU device(s)\n";
+
+    return result;
+}
+
+std::vector<sycl::queue> create_sycl_queues(const std::string& device_type,
+                                            const std::vector<int>& ranks) {
+    std::vector<sycl::device> devices;
+
+    try {
+        if ((device_type.compare("gpu") == 0) && has_gpu()) {
+            /* special handling to cover multi-tile case */
+            devices = create_sycl_gpu_devices();
+        }
+        else {
+            unique_ptr<device_selector> selector;
+
+            if (device_type.compare("cpu") == 0) {
+                selector.reset(new cpu_selector());
+            }
+            else if (device_type.compare("gpu") == 0) {
+                if (has_accelerator()) {
+                    selector.reset(new host_selector());
+                    cout
+                        << "Accelerator is the first in device list, but unavailable for multiprocessing "
+                        << "host_selector has been created instead of default_selector.\n";
+                }
+                else {
+                    selector.reset(new default_selector());
+                    cout
+                        << "GPU is unavailable, default_selector has been created instead of gpu_selector.\n";
+                }
+            }
+            else if (device_type.compare("host") == 0) {
+                selector.reset(new host_selector());
+            }
+            else if (device_type.compare("default") == 0) {
+                if (!has_accelerator()) {
+                    selector.reset(new default_selector());
+                }
+                else {
+                    selector.reset(new host_selector());
+                    cout
+                        << "Accelerator is the first in device list, but unavailable for multiprocessing "
+                        << " host_selector has been created instead of default_selector.\n";
+                }
+            }
+            else {
+                throw std::runtime_error("Please provide device type: cpu | gpu | host | default");
+            }
+            devices.push_back(sycl::device(*selector));
+        }
+    }
+    catch (...) {
+        throw std::runtime_error("No devices of requested type available");
+    }
+
+    if (devices.empty()) {
+        throw std::runtime_error("No devices of requested type available");
+    }
+
+    std::vector<sycl::device> rank_devices;
+
+    for (size_t idx = 0; idx < ranks.size(); idx++) {
+        rank_devices.push_back(devices[ranks[idx] % devices.size()]);
+    }
+
+    if (rank_devices.empty()) {
+        throw std::runtime_error("No devices of requested type available for specified ranks");
+    }
+
+    sycl::context ctx;
+
+    try {
+        ctx = sycl::context(rank_devices);
+    }
+    catch (sycl::runtime_error&) {
+        size_t preferred_idx = (ranks.back() / ranks.size()) % devices.size();
+        cout << "Can not create context from all rank devices of type: " << device_type
+             << ", create context from single device, idx " << preferred_idx << "\n";
+        ctx = sycl::context(devices[preferred_idx]);
+    }
 
     auto exception_handler = [&](exception_list elist) {
         for (exception_ptr const& e : elist) {
@@ -88,52 +302,41 @@ inline bool create_sycl_queue(int argc,
         }
     };
 
-    unique_ptr<device_selector> selector;
+    auto ctx_devices = ctx.get_devices();
+
+    if (ctx_devices.empty()) {
+        throw std::runtime_error("No devices of requested type available in context");
+    }
+
+    std::vector<sycl::queue> queues;
+
+    cout << "Created context from devices of type: " << device_type << "\n";
+    cout << "Devices [" << ctx_devices.size() << "]:\n";
+
+    for (size_t idx = 0; idx < ctx_devices.size(); idx++) {
+        cout << "[" << idx << "]: [" << ctx_devices[idx].get_info<info::device::name>() << "]\n";
+        queues.push_back(sycl::queue(ctx_devices[idx], exception_handler));
+    }
+
+    return queues;
+}
+
+inline bool create_sycl_queue(int argc, char* argv[], int rank, queue& q) {
     if (argc >= 2) {
-        if (strcmp(argv[1], "cpu") == 0) {
-            selector.reset(new cpu_selector());
+        try {
+            std::vector<int> ranks = { rank };
+            q = create_sycl_queues(argv[1], ranks)[0];
+            return true;
         }
-        else if (strcmp(argv[1], "gpu") == 0) {
-            if (has_gpu()) {
-                selector.reset(new gpu_selector());
-            }
-            else if (has_accelerator()) {
-                selector.reset(new host_selector());
-                cout
-                    << "Accelerator is the first in device list, but unavailable for multiprocessing, host_selector has been created instead of default_selector.\n";
-            }
-            else {
-                selector.reset(new default_selector());
-                cout
-                    << "GPU is unavailable, default_selector has been created instead of gpu_selector.\n";
-            }
-        }
-        else if (strcmp(argv[1], "host") == 0) {
-            selector.reset(new host_selector());
-        }
-        else if (strcmp(argv[1], "default") == 0) {
-            if (!has_accelerator()) {
-                selector.reset(new default_selector());
-            }
-            else {
-                selector.reset(new host_selector());
-                cout
-                    << "Accelerator is the first in device list, but unavailable for multiprocessing, host_selector has been created instead of default_selector.\n";
-            }
-        }
-        else {
-            cerr << "Please provide device type: cpu | gpu | host | default\n";
+        catch (std::exception& e) {
+            cerr << e.what() << "\n";
             return false;
         }
-        q = queue(*selector, exception_handler);
-        cout << "Requested device type: " << argv[1] << "\nRunning on "
-                  << q.get_device().get_info<info::device::name>() << "\n";
     }
     else {
         cerr << "Please provide device type: cpu | gpu | host | default\n";
         return false;
     }
-    return true;
 }
 
 bool handle_exception(queue& q) {
@@ -166,18 +369,27 @@ usm::alloc usm_alloc_type_from_string(const string& str) {
     return it->second;
 }
 
-template <typename  T>
-struct buf_allocator {
+std::pair<usm::alloc, std::string> take_usm_type(const int argc, char* str_type) {
+    std::map<usm::alloc, std::string> map_usm_type;
+    auto usm_alloc_type = usm::alloc::shared;
+    auto str_usm_alloc_type = "shared";
+    if (argc > 1) {
+        str_usm_alloc_type = str_type;
+        usm_alloc_type = usm_alloc_type_from_string(str_usm_alloc_type);
+    }
 
+    return std::make_pair(usm_alloc_type, str_usm_alloc_type);
+}
+
+template <typename T>
+struct buf_allocator {
     const size_t alignment = 64;
 
-    buf_allocator(queue& q)
-        : q(q)
-    {}
+    buf_allocator(queue& q) : q(q) {}
 
     ~buf_allocator() {
         for (auto& ptr : memory_storage) {
-            cl::sycl::free(ptr, q);
+            sycl::free(ptr, q);
         }
     }
 
@@ -186,7 +398,7 @@ struct buf_allocator {
         if (alloc_type == usm::alloc::host)
             ptr = aligned_alloc_host<T>(alignment, count, q);
         else if (alloc_type == usm::alloc::device)
-            ptr =  aligned_alloc_device<T>(alignment, count, q);
+            ptr = aligned_alloc_device<T>(alignment, count, q);
         else if (alloc_type == usm::alloc::shared)
             ptr = aligned_alloc_shared<T>(alignment, count, q);
         else
@@ -195,9 +407,15 @@ struct buf_allocator {
         auto it = memory_storage.find(ptr);
         if (it != memory_storage.end()) {
             throw std::runtime_error(string(__PRETTY_FUNCTION__) +
-                                        " - allocator already owns this pointer");
+                                     " - allocator already owns this pointer");
         }
         memory_storage.insert(ptr);
+
+        auto pointer_type = sycl::get_pointer_type(ptr, q.get_context());
+        if (pointer_type != alloc_type)
+            throw std::runtime_error(
+                string(__PRETTY_FUNCTION__) + "pointer_type " + std::to_string((int)pointer_type) +
+                " doesn't match with requested " + std::to_string((int)alloc_type));
 
         return ptr;
     }
@@ -206,7 +424,7 @@ struct buf_allocator {
         auto it = memory_storage.find(ptr);
         if (it == memory_storage.end()) {
             throw std::runtime_error(string(__PRETTY_FUNCTION__) +
-                                        " - allocator doesn't own this pointer");
+                                     " - allocator doesn't own this pointer");
         }
         free(ptr, q);
         memory_storage.erase(it);

@@ -42,7 +42,7 @@ struct device_storage {
     // Result is a shared vector, which is remembered in per-thread storage
     std::shared_ptr<specific_plain_device_storage> create_devices_by_indices(
         size_t thread_id,
-        const ccl::device_indices_t& indices);
+        const ccl::device_indices_type& indices);
 
     // creation specific device type, determined from 'create_devices_by_indices'
     template <class device_t, class... Args>

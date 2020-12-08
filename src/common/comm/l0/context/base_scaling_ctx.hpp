@@ -53,9 +53,7 @@ public:
         return static_cast<const ctx_impl_t*>(this);
     }
 
-    template <ccl::group_split_type group_id,
-              ccl::device_topology_type class_id,
-              class device_t>
+    template <ccl::group_split_type group_id, ccl::device_topology_type class_id, class device_t>
     void attach(device_t* obj) {
         static_assert(std::is_base_of<proxy_observer<device_t>, device_t>::value,
                       "Only `proxy_observer` derived class can be attached to context");
@@ -69,10 +67,9 @@ public:
         static_assert(std::is_base_of<proxy_observer<device_t>, device_t>::value,
                       "Only `proxy_observer` derived class can invoke context");
 
-        get_this()->invoke_ctx_observer(
-            obj,
-            std::integral_constant<ccl::group_split_type, group_id>{},
-            std::forward<Args>(args)...);
+        get_this()->invoke_ctx_observer(obj,
+                                        std::integral_constant<ccl::group_split_type, group_id>{},
+                                        std::forward<Args>(args)...);
     }
 
     // helpers

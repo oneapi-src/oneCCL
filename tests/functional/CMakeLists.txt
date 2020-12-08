@@ -79,7 +79,7 @@ foreach(src ${sources})
     target_link_libraries(${executable} PUBLIC dl)
     target_link_libraries(${executable} PRIVATE m)
     target_link_libraries(${executable} PUBLIC mpi) 
-    install(TARGETS ${executable} RUNTIME DESTINATION ${CCL_INSTALL_TESTS})
+    install(TARGETS ${executable} RUNTIME DESTINATION ${CCL_INSTALL_TESTS} OPTIONAL)
     # FIXME: enable allreduce_custom for non-direct case only
     if(NOT ${executable} STREQUAL "allreduce_custom_test")
         add_test (NAME ${executable} CONFIGURATIONS Default COMMAND mpiexec.hydra -l -n 2 -ppn 1 ${CCL_INSTALL_TESTS}/${executable} --gtest_output=xml:${CCL_INSTALL_TESTS}/${executable}_default_report.junit.xml)

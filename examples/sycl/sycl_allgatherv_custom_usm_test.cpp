@@ -24,7 +24,6 @@ struct custom_data_type {
 } __attribute__((packed));
 
 int main(int argc, char *argv[]) {
-
     const size_t count = 10 * 1024 * 1024;
 
     int i = 0;
@@ -33,8 +32,14 @@ int main(int argc, char *argv[]) {
 
     ccl::init();
 
+    MPI_Init(NULL, NULL);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    atexit(mpi_finalize);
+
     queue q;
-    if (!create_sycl_queue(argc, argv, q)) {
+    if (!create_sycl_queue(argc, argv, rank, q)) {
         return -1;
     }
 
@@ -50,10 +55,6 @@ int main(int argc, char *argv[]) {
     }
 
     /* create kvs */
-    MPI_Init(NULL, NULL);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
     ccl::shared_ptr_class<ccl::kvs> kvs;
     ccl::kvs::address_type main_addr;
     if (rank == 0) {
@@ -89,17 +90,17 @@ int main(int argc, char *argv[]) {
     auto e = q.submit([&](auto &h) {
         accessor expected_buf_acc(expected_buf, h, write_only);
         h.parallel_for(send_count, [=](auto id) {
-                static_cast<native_dtype *>(send_buf)[id] = rank + 1;
-                for (int i = 0; i < size; i++) {
-                    static_cast<native_dtype *>(recv_buf)[id] = -1;
-                    expected_buf_acc[i * send_count + id] = i + 1;
-                }
-            });
+            static_cast<native_dtype *>(send_buf)[id] = rank + 1;
+            for (int i = 0; i < size; i++) {
+                static_cast<native_dtype *>(recv_buf)[id] = -1;
+                expected_buf_acc[i * send_count + id] = i + 1;
+            }
+        });
     });
 
     /* create dependency vector */
     vector<ccl::event> events;
-    events.push_back(ccl::create_event(e));
+    // events.push_back(ccl::create_event(e));
 
     if (!handle_exception(q))
         return -1;
@@ -122,10 +123,10 @@ int main(int argc, char *argv[]) {
         accessor expected_buf_acc(expected_buf, h, read_only);
         accessor check_buf_acc(check_buf, h, write_only);
         h.parallel_for(size * send_count, [=](auto id) {
-                if (static_cast<native_dtype *>(recv_buf)[id] != expected_buf_acc[id]) {
-                    check_buf_acc[id] = -1;
-                }
-            });
+            if (static_cast<native_dtype *>(recv_buf)[id] != expected_buf_acc[id]) {
+                check_buf_acc[id] = -1;
+            }
+        });
     });
 
     if (!handle_exception(q))
@@ -144,8 +145,6 @@ int main(int argc, char *argv[]) {
             cout << "PASSED\n";
         }
     }
-
-    MPI_Finalize();
 
     return 0;
 }

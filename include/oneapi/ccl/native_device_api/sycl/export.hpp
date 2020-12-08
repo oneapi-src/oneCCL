@@ -14,24 +14,25 @@
  limitations under the License.
 */
 #pragma once
-#include "oneapi/ccl/ccl_types.hpp"
+#include "oneapi/ccl/types.hpp"
 
 #define CL_BACKEND_TYPE ccl::cl_backend_type::dpcpp_sycl
 #include <CL/sycl.hpp>
 
-namespace ccl
-{
+namespace ccl {
 template <>
 struct backend_info<CL_BACKEND_TYPE> {
     CCL_API static constexpr ccl::cl_backend_type type() {
-        return CL_BACKEND_TYPE; }
+        return CL_BACKEND_TYPE;
+    }
     CCL_API static constexpr const char* name() {
-        return "CL_DPCPP_BACKEND"; }
+        return "CL_DPCPP_BACKEND";
+    }
 };
 
 template <>
 struct generic_device_type<CL_BACKEND_TYPE> {
-    using handle_t = cl_device_id;//cl::sycl::device;
+    using handle_t = cl_device_id; //cl::sycl::device;
     using impl_t = cl::sycl::device;
     using ccl_native_t = impl_t;
 
@@ -40,18 +41,19 @@ struct generic_device_type<CL_BACKEND_TYPE> {
     generic_device_type(const cl::sycl::device& device);
     device_index_type get_id() const;
     ccl_native_t& get() noexcept;
+    const ccl_native_t& get() const noexcept;
 
     cl::sycl::device device;
 };
 
 template <>
-struct generic_device_context_type<CL_BACKEND_TYPE> {
+struct generic_context_type<CL_BACKEND_TYPE> {
     using handle_t = cl_context;
     using impl_t = cl::sycl::context;
     using ccl_native_t = impl_t;
 
-    generic_device_context_type();
-    generic_device_context_type(ccl_native_t ctx);
+    generic_context_type();
+    generic_context_type(ccl_native_t ctx);
     ccl_native_t& get() noexcept;
     const ccl_native_t& get() const noexcept;
 
@@ -102,4 +104,4 @@ struct generic_event_type<CL_BACKEND_TYPE> {
 API_CLASS_TYPE_INFO(cl_command_queue);
 API_CLASS_TYPE_INFO(cl_context);
 API_CLASS_TYPE_INFO(cl_event)
-}
+} // namespace ccl

@@ -63,12 +63,12 @@ void check_allreduce(const ccl::communicator &comm) {
 
     for (size_t idx = 0; idx < max_dtype_count; idx++) {
         reqs[idx] = ccl::allreduce(send_bufs[idx].data(),
-                              recv_bufs[idx].data(),
-                              COUNT,
-                              dtypes[idx],
-                              ccl::reduction::custom,
-                              comm,
-                              attr);
+                                   recv_bufs[idx].data(),
+                                   COUNT,
+                                   dtypes[idx],
+                                   ccl::reduction::custom,
+                                   comm,
+                                   attr);
     }
 
     for (size_t idx = 0; idx < max_dtype_count; idx++) {
@@ -125,6 +125,10 @@ void check_create_and_free() {
 }
 
 int main() {
+    /**
+     * The example only works with CCL_ATL_TRANSPORT=ofi
+     */
+    setenv("CCL_ATL_TRANSPORT", "ofi", 0);
 
     ccl::init();
 

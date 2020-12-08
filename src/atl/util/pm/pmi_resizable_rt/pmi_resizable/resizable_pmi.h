@@ -44,17 +44,17 @@ typedef enum {
     KVS_RA_RUN = 1,
     KVS_RA_FINALIZE = 2,
 } kvs_resize_action_t;
-typedef kvs_resize_action_t (*pmir_resize_fn_t)(size_t comm_size);
+typedef kvs_resize_action_t (*pmir_resize_fn_t)(int comm_size);
 
-int PMIR_API PMIR_Main_Addr_Reserv(char* main_addr);
+int PMIR_API PMIR_Main_Addr_Reserve(char* main_addr);
 
 int PMIR_API PMIR_Init(const char* main_addr);
 
 int PMIR_API PMIR_Finalize(void);
 
-int PMIR_API PMIR_Get_size(size_t* size);
+int PMIR_API PMIR_Get_size(int* size);
 
-int PMIR_API PMIR_Get_rank(size_t* rank);
+int PMIR_API PMIR_Get_rank(int* rank);
 
 int PMIR_API PMIR_KVS_Get_my_name(char* kvs_name, size_t length);
 

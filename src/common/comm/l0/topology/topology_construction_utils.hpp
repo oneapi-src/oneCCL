@@ -34,7 +34,7 @@ struct device_group_context;
 struct device_storage;
 struct ccl_device;
 
-namespace details {
+namespace detail {
 
 adjacency_matrix create_adjacency_matrix_for_devices(
     const ccl_device_driver::devices_storage_type& devices,
@@ -57,18 +57,18 @@ void fill_adjacency_matrix_for_single_device_in_devices_by_cond(
         std::function<bool(const ccl::device_index_type&)>());
 
 plain_graph graph_resolver(const adjacency_matrix& matrix,
-                           const ccl::device_indices_t& device_indexes);
+                           const ccl::device_indices_type& device_indexes);
 plain_graph graph_resolver(const adjacency_matrix& matrix,
-                           const ccl::process_device_indices_t& per_process_device_indexes);
+                           const ccl::process_device_indices_type& per_process_device_indexes);
 plain_graph graph_resolver(const adjacency_matrix& matrix,
                            const ccl::process_aggregated_device_mask_t& per_process_device_masks);
 
 plain_graph_list graph_list_resolver(const adjacency_matrix& matrix,
-                                     const ccl::device_indices_t& device_indexes);
+                                     const ccl::device_indices_type& device_indexes);
 plain_graph_list graph_list_resolver(
     const adjacency_matrix& matrix,
-    const ccl::process_device_indices_t& per_process_device_indexes,
-    details::p2p_rating_function ping);
+    const ccl::process_device_indices_type& per_process_device_indexes,
+    detail::p2p_rating_function ping);
 
 plain_graph_list graph_list_resolver(
     const adjacency_matrix& matrix,
@@ -79,15 +79,15 @@ bool check_graph_a2a_capable(const plain_graph& graph,
                              std::ostream& out);
 
 plain_graph_list merge_graph_lists_stable(const std::list<plain_graph_list>& lists,
-                                          details::p2p_rating_function ping,
+                                          detail::p2p_rating_function ping,
                                           bool brake_on_incompatible = false);
 
 colored_plain_graph_list merge_graph_lists_stable(const std::list<colored_plain_graph_list>& lists,
-                                                  details::p2p_rating_function ping,
+                                                  detail::p2p_rating_function ping,
                                                   bool brake_on_incompatible = false);
 colored_plain_graph_list merge_graph_lists_stable_for_process(
     const std::list<colored_plain_graph_list>& lists,
-    details::p2p_rating_function ping,
+    detail::p2p_rating_function ping,
     bool to_right,
     size_t& merged_process_count);
 
@@ -96,7 +96,7 @@ size_t property_p2p_rating_calculator(const native::ccl_device& lhs,
                                       size_t weight);
 
 void reset_color(colored_plain_graph_list& list, color_t new_color);
-} // namespace details
-std::ostream& operator<<(std::ostream& out, const details::adjacency_matrix& matrix);
+} // namespace detail
+std::ostream& operator<<(std::ostream& out, const detail::adjacency_matrix& matrix);
 
 } // namespace native

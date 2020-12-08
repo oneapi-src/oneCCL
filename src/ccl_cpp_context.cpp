@@ -13,10 +13,12 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "oneapi/ccl/ccl_types.hpp"
+#include "oneapi/ccl/types.hpp"
 #include "context_impl.hpp"
 
 namespace ccl {
+
+namespace v1 {
 
 CCL_API context::context(context&& src) : base_t(std::move(src)) {}
 CCL_API context::context(const context& src) : base_t(src) {}
@@ -40,25 +42,37 @@ CCL_API context& context::operator=(const context& src) {
     return *this;
 }
 
+bool CCL_API context::operator==(const context& rhs) const noexcept {
+    return this->get_impl() == rhs.get_impl();
+}
+
+bool CCL_API context::operator!=(const context& rhs) const noexcept {
+    return this->get_impl() != rhs.get_impl();
+}
+
+bool CCL_API context::operator<(const context& rhs) const noexcept {
+    return this->get_impl() < rhs.get_impl();
+}
+
 CCL_API void context::build_from_params() {
     get_impl()->build_from_params();
 }
 
-CCL_API context::native_t& context::get_native()
-{
+CCL_API context::native_t& context::get_native() {
     return const_cast<context::native_t&>(static_cast<const context*>(this)->get_native());
 }
 
-CCL_API const context::native_t& context::get_native() const
-{
+CCL_API const context::native_t& context::get_native() const {
     return get_impl()->get_attribute_value(
-        details::ccl_api_type_attr_traits<ccl::context_attr_id, ccl::context_attr_id::native_handle>{});
+        detail::ccl_api_type_attr_traits<context_attr_id, context_attr_id::native_handle>{});
 }
+
+} // namespace v1
+
 } // namespace ccl
 
+API_CONTEXT_CREATION_FORCE_INSTANTIATION(typename ccl::unified_context_type::ccl_native_t)
 
-API_DEVICE_CONTEXT_CREATION_FORCE_INSTANTIATION(typename ccl::unified_device_context_type::ccl_native_t)
-
-API_DEVICE_CONTEXT_FORCE_INSTANTIATION(ccl::context_attr_id::version, ccl::library_version);
-API_DEVICE_CONTEXT_FORCE_INSTANTIATION_GET(ccl::context_attr_id::cl_backend);
-API_DEVICE_CONTEXT_FORCE_INSTANTIATION_GET(ccl::context_attr_id::native_handle);
+API_CONTEXT_FORCE_INSTANTIATION(ccl::context_attr_id::version, ccl::library_version);
+API_CONTEXT_FORCE_INSTANTIATION_GET(ccl::context_attr_id::cl_backend);
+API_CONTEXT_FORCE_INSTANTIATION_GET(ccl::context_attr_id::native_handle);

@@ -52,7 +52,7 @@ public:
             for (size_t elem_idx = 0; elem_idx < param.buffer_count; elem_idx++) {
                 /* each buffer is different size */
                 param.recv_buf[elem_idx].resize(param.elem_count * param.process_count);
-                if (param.test_conf.datatype == DT_BF16) {
+                if (param.test_conf.datatype == DT_BFLOAT16) {
                     param.recv_buf_bf16[elem_idx].resize(param.elem_count * param.process_count);
                 }
             }
@@ -75,7 +75,7 @@ public:
                     if (param.test_conf.place_type == PT_OOP) {
                         param.recv_buf[buf_idx][offsets[elem_idx] + recv_count_idx] =
                             static_cast<T>(SOME_VALUE);
-                        if (param.test_conf.datatype == DT_BF16) {
+                        if (param.test_conf.datatype == DT_BFLOAT16) {
                             param.recv_buf_bf16[buf_idx][offsets[elem_idx] + recv_count_idx] =
                                 static_cast<short>(SOME_VALUE);
                         }
@@ -121,14 +121,14 @@ public:
             send_buf = param.get_send_buf(new_idx);
             recv_buf = param.get_recv_buf(new_idx);
 
-            param.reqs[buf_idx] = ccl::allgatherv(
-                (test_conf.place_type == PT_IN) ? recv_buf : send_buf,
-                count,
-                recv_buf,
-                recv_counts,
-                datatype,
-                GlobalData::instance().comms[0],
-                attr);
+            param.reqs[buf_idx] =
+                ccl::allgatherv((test_conf.place_type == PT_IN) ? recv_buf : send_buf,
+                                count,
+                                recv_buf,
+                                recv_counts,
+                                datatype,
+                                GlobalData::instance().comms[0],
+                                attr);
         }
     }
 };

@@ -92,7 +92,7 @@ bool gpu_comm_attr::sync_register_communicator(std::shared_ptr<communicator_inte
 
 bool gpu_comm_attr::delegate_sync_register_communicator(
     std::shared_ptr<communicator_interface> comm) {
-    ccl::device_indices_t device_group_indices;
+    ccl::device_indices_type device_group_indices;
 
     std::unique_lock<std::mutex> lock(barrier.thread_group_mutex);
 

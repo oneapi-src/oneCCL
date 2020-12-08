@@ -15,7 +15,7 @@
 */
 #pragma once
 
-#include "oneapi/ccl/ccl_types.hpp"
+#include "oneapi/ccl/types.hpp"
 #include "coll/coll.hpp"
 #include "common/utils/utils.hpp"
 #include "common/utils/yield.hpp"
@@ -65,6 +65,7 @@ constexpr const char* CCL_MAX_SHORT_SIZE = "CCL_MAX_SHORT_SIZE";
 constexpr const char* CCL_BCAST_PART_COUNT = "CCL_BCAST_PART_COUNT";
 constexpr const char* CCL_CACHE_KEY = "CCL_CACHE_KEY";
 constexpr const char* CCL_CACHE_FLUSH = "CCL_CACHE_FLUSH";
+constexpr const char* CCL_STRICT_ORDER = "CCL_STRICT_ORDER";
 
 constexpr const char* CCL_CHUNK_COUNT = "CCL_CHUNK_COUNT";
 constexpr const char* CCL_MIN_CHUNK_SIZE = "CCL_MIN_CHUNK_SIZE";
@@ -160,6 +161,7 @@ public:
     ssize_t bcast_part_count;
     ccl_cache_key_type cache_key_type;
     int enable_cache_flush;
+    int enable_strict_order;
 
     size_t chunk_count;
     size_t min_chunk_size;
@@ -223,10 +225,13 @@ public:
         }
     }
 
+    static bool with_mpirun();
+
     static std::map<ccl_priority_mode, std::string> priority_mode_names;
     static std::map<ccl_atl_transport, std::string> atl_transport_names;
 
     int env_2_worker_affinity(size_t local_proc_idx, size_t local_proc_count);
+    void env_2_atl_transport();
 
 private:
     int env_2_worker_affinity_auto(size_t local_proc_idx, size_t workers_per_process);

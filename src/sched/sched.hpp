@@ -15,6 +15,7 @@
 */
 #pragma once
 #include "sched/sched_base.hpp"
+#include "internal_types.hpp"
 
 //todo: sequence diagram
 //workflow:
@@ -33,7 +34,7 @@ enum ccl_sched_in_bin_status {
     ccl_sched_in_bin_erased
 };
 
-typedef ccl_status_t (*ccl_sched_finalize_fn_t)(ccl_sched*, const void*);
+typedef ccl::status (*ccl_sched_finalize_fn_t)(ccl_sched*, const void*);
 
 class ccl_extra_sched;
 
@@ -43,11 +44,7 @@ public:
         return "worker_sched";
     }
 
-    ccl_sched(const ccl_coll_param& coll_param, ccl_request* master_request)
-            : ccl_sched_base(coll_param) {
-        req = master_request;
-    }
-
+    ccl_sched(const ccl_coll_param& coll_param, ccl_request* master_request);
     ccl_sched() = delete;
     ccl_sched(const ccl_sched& other) = delete;
     ccl_sched& operator=(const ccl_sched& other) = delete;
@@ -158,8 +155,9 @@ public:
     using sched_entry_ptr = std::unique_ptr<sched_entry>;
     std::deque<sched_entry_ptr> entries{};
 
-    /* whether sched should be started in the same order as in user code */
-    bool strict_start_order = false;
+    /* whether sched should be executed in the same order as in user code */
+    /* currently applicable for start phase only */
+    bool strict_order;
 
     void set_finalize_fn(ccl_sched_finalize_fn_t fn, void* ctx) {
         finalize_fn = fn;

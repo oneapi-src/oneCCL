@@ -45,8 +45,8 @@ public:
     void start() override {
         size_t dt_size = dtype.size();
         size_t send_bytes = send_cnt * dt_size;
-        size_t comm_size = comm->size();
-        size_t i;
+        int comm_size = comm->size();
+        int i;
 
         if (!recv_bytes && !offsets) {
             recv_bytes = static_cast<int*>(CCL_MALLOC(comm_size * sizeof(int), "recv_bytes"));

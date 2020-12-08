@@ -60,13 +60,14 @@ public:
         void* buf1 = nullptr; /* non-data buffer which can be used for caching */
         void* buf2 = nullptr; /* non-data buffer which can be used for caching */
         ccl::datatype dtype = ccl::datatype::int8;
-        ccl::datatype itype = ccl::datatype::int8; /* used in sparse collective to store index type */
+        ccl::datatype itype =
+            ccl::datatype::int8; /* used in sparse collective to store index type */
         ccl::reduction reduction = ccl::reduction::sum;
         size_t count1 = 0;
         size_t count2 = 0;
         size_t count3 = 0; /* used in sparse collective to store recv index count */
         size_t count4 = 0; /* used in sparse collective to store recv value count */
-        size_t root = 0;
+        int root = 0;
         const ccl_comm* comm = nullptr;
         ccl::prologue_fn prologue_fn = nullptr;
         ccl::epilogue_fn epilogue_fn = nullptr;

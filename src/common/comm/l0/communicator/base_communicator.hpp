@@ -24,7 +24,7 @@ struct base_communicator : public ccl::communicator_interface {
     //TODO using group_comm_storage = native::specific_indexed_device_storage;
 
     base_communicator(ccl::unified_device_type&& owned_device,
-                      ccl::unified_device_context_type&& owned_ctx,
+                      ccl::unified_context_type&& owned_ctx,
                       size_t thread_idx,
                       size_t process_idx,
                       const ccl::comm_split_attr& attr)
@@ -41,11 +41,11 @@ struct base_communicator : public ccl::communicator_interface {
 
     virtual ~base_communicator() = default;
 
-    size_t rank() const override {
+    int rank() const override {
         return comm_rank;
     }
 
-    size_t size() const override {
+    int size() const override {
         return comm_size;
     }
 
@@ -53,11 +53,11 @@ struct base_communicator : public ccl::communicator_interface {
         return device.get_id();
     }
 
-    ccl::communicator_interface::device_t get_device() override {
+    ccl::communicator_interface::device_t get_device() const override {
         return device.get();
     }
 
-    ccl::communicator_interface::context_t get_context() override {
+    ccl::communicator_interface::context_t get_context() const override {
         return context.get();
     }
 
@@ -84,14 +84,14 @@ struct base_communicator : public ccl::communicator_interface {
     }
 */
     ccl::unified_device_type device;
-    ccl::unified_device_context_type context;
+    ccl::unified_context_type context;
     size_t thread_id;
     size_t process_id;
     const ccl::comm_split_attr comm_attr;
 
     //TODO add context_comm_addr to aggregate device_id,thread_id, process_id & ranks
-    size_t comm_rank;
-    size_t comm_size;
+    int comm_rank;
+    int comm_size;
 
     mutable ccl_spinlock ready_mutex;
 

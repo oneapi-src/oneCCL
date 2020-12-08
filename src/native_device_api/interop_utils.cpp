@@ -14,7 +14,9 @@
  limitations under the License.
 */
 #include "oneapi/ccl/native_device_api/interop_utils.hpp"
+#include "common/log/log.hpp"
 #include "common/utils/enums.hpp"
+
 #if defined(MULTI_GPU_SUPPORT)
 #include "oneapi/ccl/native_device_api/l0/primitives.hpp"
 #endif
@@ -25,7 +27,7 @@
 #endif
 
 namespace native {
-namespace details {
+namespace detail {
 #if defined(MULTI_GPU_SUPPORT) && defined(CCL_ENABLE_SYCL)
 
 size_t get_sycl_device_id(const cl::sycl::device& device) {
@@ -82,8 +84,9 @@ std::string to_string(usm_support_mode val) {
         .choose(val, "UNKNOWN");
 }
 
-int get_platform_type_index(const ccl::unified_device_type::ccl_native_t& device) {
-    int index = 2; //`gpu` for default L0 backend
+size_t get_platform_type_index(const ccl::unified_device_type::ccl_native_t& device) {
+    size_t index = 2; //`gpu` for default L0 backend
+
 #ifdef CCL_ENABLE_SYCL
     if (device.is_host()) {
         index = 0;
@@ -101,41 +104,59 @@ int get_platform_type_index(const ccl::unified_device_type::ccl_native_t& device
         throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - Invalid device type");
     }
 #endif
+
     return index;
 }
 
 #if defined(MULTI_GPU_SUPPORT) || defined(CCL_ENABLE_SYCL)
-assoc_retult check_assoc_device_memory(const void* mem,
+assoc_result check_assoc_device_memory(const void* mem,
                                        const ccl::unified_device_type::ccl_native_t& device,
-                                       const ccl::unified_device_context_type::ccl_native_t& ctx) {
-    assoc_retult ret{ usm_support_mode::direct, mem, "" };
+                                       const ccl::unified_context_type::ccl_native_t& ctx) {
+    assoc_result ret{ usm_support_mode::direct, mem, "" };
+
 #ifdef CCL_ENABLE_SYCL
+
     cl::sycl::usm::alloc pointer_type = cl::sycl::get_pointer_type(mem, ctx);
 
-    using usm_thruth_table =
-        std::array<usm_support_mode, utils::enum_to_underlying(cl::sycl::usm::alloc::unknown)>;
-    constexpr int platform_types_configurations_count = 4; /*host, cpu, gpu, accel*/
-    constexpr std::array<usm_thruth_table, platform_types_configurations_count> usm_target_table{ {
+    using usm_truth_table =
+        std::array<usm_support_mode, utils::enum_to_underlying(cl::sycl::usm::alloc::unknown) + 1>;
+
+    constexpr int platform_config_count = 4; /*host, cpu, gpu, accel*/
+    constexpr std::array<usm_truth_table, platform_config_count> usm_target_table{ {
         { { usm_support_mode::direct,
             usm_support_mode::prohibited,
-            usm_support_mode::shared } }, //host conf:  host, device, shared
+            usm_support_mode::shared,
+            usm_support_mode::direct } }, //host conf:  host, device, shared, unknown
         { { usm_support_mode::direct,
             usm_support_mode::prohibited,
-            usm_support_mode::shared } }, //cpu conf:  host, device, shared
+            usm_support_mode::shared,
+            usm_support_mode::direct } }, //cpu conf:  host, device, shared, unknown
         { { usm_support_mode::prohibited,
             usm_support_mode::need_conversion,
-            usm_support_mode::shared } }, //gpu conf:  host, device, shared
+            usm_support_mode::shared,
+            usm_support_mode::prohibited } }, //gpu conf:  host, device, shared, unknown
         { { usm_support_mode::prohibited,
             usm_support_mode::prohibited,
-            usm_support_mode::shared } } //accel conf:  host, device, shared
+            usm_support_mode::shared,
+            usm_support_mode::prohibited } } //accel conf:  host, device, shared, unknown
     } };
-    int platform_configuration_type_idx = get_platform_type_index(device);
+
+    auto platform_type_index = get_platform_type_index(device);
+
+    auto pointer_type_idx = utils::enum_to_underlying(pointer_type);
+    CCL_THROW_IF_NOT(pointer_type_idx < usm_target_table[platform_type_index].size(),
+                     "usm_type index ",
+                     pointer_type_idx,
+                     " is larger that array size ",
+                     usm_target_table[platform_type_index].size());
+
     std::get<assoc_result_index::SUPPORT_MODE>(ret) =
-        usm_target_table[platform_configuration_type_idx][utils::enum_to_underlying(pointer_type)];
+        usm_target_table[platform_type_index][pointer_type_idx];
+
     if (std::get<assoc_result_index::SUPPORT_MODE>(ret) == usm_support_mode::prohibited) {
         std::stringstream ss;
         ss << "Incompatible USM type requested: " << usm_to_string(pointer_type)
-           << ", for ccl_device: " << std::to_string(platform_configuration_type_idx);
+           << ", for ccl_device: " << std::to_string(platform_type_index);
         std::get<assoc_result_index::ERROR_CAUSE>(ret) = ss.str();
     }
 #else
@@ -144,9 +165,33 @@ assoc_retult check_assoc_device_memory(const void* mem,
     return ret;
 }
 
+usm_support_mode check_assoc_device_memory(const std::vector<void*>& mems,
+                                           const ccl::unified_device_type::ccl_native_t& device,
+                                           const ccl::unified_context_type::ccl_native_t& ctx) {
+    usm_support_mode ret = usm_support_mode::direct;
+    std::string err_msg;
+
+    for (size_t idx = 0; idx < mems.size(); idx++) {
+        usm_support_mode mode;
+        std::tie(mode, std::ignore, err_msg) = check_assoc_device_memory(mems[idx], device, ctx);
+
+        if (idx > 0)
+            CCL_THROW_IF_NOT(mode == ret, "different USM modes between buffers: ", err_msg);
+
+        ret = mode;
+
+        CCL_THROW_IF_NOT((mode == usm_support_mode::direct) || (mode == usm_support_mode::shared) ||
+                             (mode == usm_support_mode::need_conversion),
+                         "unsupported USM configuration: ",
+                         err_msg);
+    }
+
+    return ret;
+}
+
 #endif //defined(MULTI_GPU_SUPPORT) || defined(CCL_ENABLE_SYCL)
 
-std::string to_string(const assoc_retult& res) {
+std::string to_string(const assoc_result& res) {
     std::stringstream ss;
     ss << "Mem: " << std::get<assoc_result_index::POINTER_VALUE>(res)
        << ", is: " << to_string(std::get<assoc_result_index::SUPPORT_MODE>(res));
@@ -156,5 +201,5 @@ std::string to_string(const assoc_retult& res) {
     }
     return ss.str();
 }
-} // namespace details
+} // namespace detail
 } // namespace native

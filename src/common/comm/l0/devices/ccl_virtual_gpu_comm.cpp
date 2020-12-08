@@ -31,7 +31,7 @@ ccl_virtual_gpu_comm::ccl_virtual_gpu_comm(ccl_device& device,
 
 std::string ccl_virtual_gpu_comm::to_string_impl() const {
     std::string ret(name_impl());
-    ret = ret + ", comm: " + comm_to_str();
+    ret = ret + ", comm:\n" + comm_to_str();
     return ret;
 }
 

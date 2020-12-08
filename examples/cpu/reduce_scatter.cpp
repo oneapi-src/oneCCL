@@ -27,12 +27,9 @@ void run_collective(const char* cmd_name,
 
     for (size_t idx = 0; idx < ITERS; ++idx) {
         auto start = std::chrono::system_clock::now();
-        ccl::reduce_scatter(send_buf.data(),
-                            recv_buf.data(),
-                            recv_buf.size(),
-                            ccl::reduction::sum,
-                            comm,
-                            attr).wait();
+        ccl::reduce_scatter(
+            send_buf.data(), recv_buf.data(), recv_buf.size(), ccl::reduction::sum, comm, attr)
+            .wait();
         exec_time += std::chrono::system_clock::now() - start;
     }
 
@@ -53,7 +50,6 @@ void run_collective(const char* cmd_name,
 }
 
 int main() {
-
     ccl::init();
 
     int size, rank;
@@ -76,7 +72,8 @@ int main() {
     auto comm = ccl::create_communicator(size, rank, kvs);
     auto attr = ccl::create_operation_attr<ccl::reduce_scatter_attr>();
 
-    MSG_LOOP(comm, std::vector<float> send_buf(msg_count * comm.size(), static_cast<float>(comm.rank()));
+    MSG_LOOP(comm,
+             std::vector<float> send_buf(msg_count * comm.size(), static_cast<float>(comm.rank()));
              std::vector<float> recv_buf(msg_count);
              attr.set<ccl::operation_attr_id::to_cache>(false);
              run_collective("warmup reduce_scatter", send_buf, recv_buf, comm, attr);

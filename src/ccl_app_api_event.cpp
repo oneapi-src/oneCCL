@@ -13,13 +13,16 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "oneapi/ccl/ccl_types.hpp"
-#include "oneapi/ccl/ccl_types_policy.hpp"
+#include "oneapi/ccl/types.hpp"
+#include "oneapi/ccl/types_policy.hpp"
 #include "common/event/impls/event_impl.hpp"
 #include "common/event/impls/empty_event.hpp"
 #include "common/event/impls/native_event.hpp"
+#include "common/utils/version.hpp"
 
 namespace ccl {
+
+namespace v1 {
 
 CCL_API event::event() noexcept : base_t(impl_value_t(new empty_event_impl())) {}
 CCL_API event::event(event&& src) noexcept : base_t(std::move(src)) {}
@@ -66,17 +69,22 @@ CCL_API const event::native_t& event::get_native() const {
 }
 
 event CCL_API event::create_from_native(native_t& native_event) {
-    library_version version;
-    version.major = CCL_MAJOR_VERSION;
-    version.minor = CCL_MINOR_VERSION;
-    version.update = CCL_UPDATE_VERSION;
-    version.product_status = CCL_PRODUCT_STATUS;
-    version.build_date = CCL_PRODUCT_BUILD_DATE;
-    version.full = CCL_PRODUCT_FULL;
+    auto version = utils::get_library_version();
 
-    return impl_value_t(
-        new native_event_impl(native_event, version)
-    );
+    auto ev = std::unique_ptr<ccl_event>(new ccl_event(native_event, version));
+
+    return impl_value_t(new native_event_impl(std::move(ev)));
 }
+
+event CCL_API event::create_from_native(native_handle_t native_event_handle, context_t context) {
+    auto version = utils::get_library_version();
+
+    auto ev = std::unique_ptr<ccl_event>(new ccl_event(native_event_handle, context, version));
+    ev->build_from_params();
+
+    return impl_value_t(new native_event_impl(std::move(ev)));
+}
+
+} // namespace v1
 
 } // namespace ccl

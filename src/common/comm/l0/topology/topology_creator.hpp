@@ -15,7 +15,7 @@
 */
 #pragma once
 namespace native {
-namespace details {
+namespace detail {
 
 template <class F>
 struct device_group_container_functor {
@@ -33,10 +33,10 @@ struct device_group_container_functor {
 private:
     F operation;
 };
-} // namespace details
+} // namespace detail
 
 template <class F, class... Args>
-details::device_group_container_functor<F> create_device_functor(Args&&... args) {
-    return details::device_group_container_functor<F>(std::forward<Args>(args)...);
+detail::device_group_container_functor<F> create_device_functor(Args&&... args) {
+    return detail::device_group_container_functor<F>(std::forward<Args>(args)...);
 }
 } // namespace native

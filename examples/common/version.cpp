@@ -30,13 +30,14 @@ int main() {
            CCL_PRODUCT_FULL);
 
     printf("\nRuntime CCL library version:\nmajor: %d\nminor: %d\nupdate: %d\n"
-           "Product: %s\nBuild date: %s\nFull: %s\n",
+           "Product: %s\nBuild date: %s\nFull: %s\ncl_backend name: %s\n",
            version.major,
            version.minor,
            version.update,
            version.product_status,
            version.build_date,
-           version.full);
+           version.full,
+           version.cl_backend_name.c_str());
 
     printf("\noneCCL specification version: %s\n", ONECCL_SPEC_VERSION);
 

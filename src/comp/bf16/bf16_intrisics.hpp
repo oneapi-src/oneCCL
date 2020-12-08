@@ -119,10 +119,10 @@ CCL_BF16_REDUCE_FUNC_DEFINITIONS(avx512bf);
 #endif
 
 INLINE_TARGET_ATTRIBUTE_ALL void ccl_bf16_reduce_impl(const void* in_buf,
-                                                       void* inout_buf,
-                                                       size_t in_cnt,
-                                                       ccl_bf16_reduction_func_ptr op,
-                                                       ccl_bf16_impl_type impl_type) {
+                                                      void* inout_buf,
+                                                      size_t in_cnt,
+                                                      ccl_bf16_reduction_func_ptr op,
+                                                      ccl_bf16_impl_type impl_type) {
     if (impl_type == ccl_bf16_avx512f)
         ccl_bf16_reduce_impl_avx512f(in_buf, inout_buf, in_cnt, op);
 #ifdef CCL_BF16_AVX512BF_COMPILER

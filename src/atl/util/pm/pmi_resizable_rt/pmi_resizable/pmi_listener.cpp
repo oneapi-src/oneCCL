@@ -55,7 +55,7 @@ int pmi_listener::collect_sock_addr(std::shared_ptr<helper> h) {
     char my_ip[MAX_KVS_VAL_LENGTH];
     char* point_to_space;
 
-    if ((fp = popen(CHECKER_IP, READ_ONLY)) == NULL) {
+    if ((fp = popen(GET_IP_CMD, READ_ONLY)) == NULL) {
         printf("Can't get host IP\n");
         exit(1);
     }
@@ -92,6 +92,11 @@ int pmi_listener::collect_sock_addr(std::shared_ptr<helper> h) {
     }
 
     server_addresses = (struct sockaddr_in*)malloc((num_listeners) * sizeof(struct sockaddr_in));
+    if (server_addresses == NULL) {
+        printf("\nmemory allocation failed \n");
+        res = -1;
+        goto exit;
+    }
 
     /*get listener addresses*/
     for (i = 0, j = 0; i < num_listeners; i++, j++) {
@@ -107,7 +112,23 @@ int pmi_listener::collect_sock_addr(std::shared_ptr<helper> h) {
             i--;
             continue;
         }
-        server_addresses[i].sin_port = strtol(point_to_port, NULL, 10);
+
+        if ((server_addresses[i].sin_port = strtol(point_to_port, NULL, 10)) == 0) {
+            /* if a conversion error occurred, display a message and exit */
+            if (errno == EINVAL) {
+                printf("\nconversion error occurred from: %hu\n", server_addresses[i].sin_port);
+                res = -1;
+                goto exit;
+            }
+
+            /* if the value provided was out of range, display a warning message */
+            if (errno == ERANGE) {
+                printf("\nthe value provided was out of range, value: %hu\n",
+                       server_addresses[i].sin_port);
+                res = -1;
+                goto exit;
+            }
+        }
         server_addresses[i].sin_family = AF_INET;
 
         if (inet_pton(AF_INET, sock_addr_str[j], &(server_addresses[i].sin_addr)) <= 0) {
@@ -163,8 +184,9 @@ int pmi_listener::run_listener(std::shared_ptr<helper> h) {
         char* point_to_space;
         struct timeval timeout;
         timeout.tv_sec = LISTENER_TIMEOUT;
+        timeout.tv_usec = 0;
 
-        if ((fp = popen(CHECKER_IP, READ_ONLY)) == NULL) {
+        if ((fp = popen(GET_IP_CMD, READ_ONLY)) == NULL) {
             printf("Can't get host IP\n");
             exit(1);
         }

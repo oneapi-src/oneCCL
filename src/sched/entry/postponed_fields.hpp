@@ -19,9 +19,10 @@
 #include <set>
 #include <tuple>
 
-#include "oneapi/ccl/ccl_types.hpp"
+#include "oneapi/ccl/types.hpp"
 #include "common/log/log.hpp"
 #include "common/utils/tuple.hpp"
+#include "internal_types.hpp"
 
 enum ccl_sched_entry_field_id {
     ccl_sched_entry_field_buf,
@@ -41,7 +42,7 @@ enum ccl_sched_entry_field_id {
     ccl_sched_entry_field_send_count
 };
 
-typedef ccl_status_t (*ccl_sched_entry_field_function_t)(const void*, void*);
+typedef ccl::status (*ccl_sched_entry_field_function_t)(const void*, void*);
 
 template <ccl_sched_entry_field_id id>
 using field_id_t = std::integral_constant<ccl_sched_entry_field_id, id>;

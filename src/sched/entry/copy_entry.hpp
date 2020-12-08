@@ -44,7 +44,7 @@ public:
 
         size_t bytes = cnt * dtype.size();
         auto comp_status = ccl_comp_copy(in_buf.get_ptr(bytes), out_buf.get_ptr(bytes), cnt, dtype);
-        CCL_ASSERT(comp_status == ccl_status_success, "bad status ", comp_status);
+        CCL_ASSERT(comp_status == ccl::status::success, "bad status ", comp_status);
         status = ccl_sched_entry_status_complete;
     }
 

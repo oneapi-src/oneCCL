@@ -18,20 +18,18 @@
 
 namespace ccl {
 
-native_event_impl::native_event_impl(event::native_t& native_event, ccl::library_version version)
-    : ev(new ccl_event(native_event, version)) {
-}
+native_event_impl::native_event_impl(std::unique_ptr<ccl_event> ev) : ev(std::move(ev)) {}
 
 void native_event_impl::wait() {
     if (!completed) {
-        #ifdef CCL_ENABLE_SYCL
-            auto native_event = ev->get_attribute_value(
-                                        details::ccl_api_type_attr_traits<ccl::event_attr_id,
-                                        ccl::event_attr_id::native_handle>{});
-            native_event.wait();
-        #else
-            throw ccl::exception(std::string(__FUNCTION__) + " - is not implemented");
-        #endif
+#ifdef CCL_ENABLE_SYCL
+        auto native_event = ev->get_attribute_value(
+            detail::ccl_api_type_attr_traits<ccl::event_attr_id,
+                                             ccl::event_attr_id::native_handle>{});
+        native_event.wait();
+#else
+        throw ccl::exception(std::string(__FUNCTION__) + " - is not implemented");
+#endif
         completed = true;
     }
 }
@@ -49,8 +47,7 @@ bool native_event_impl::cancel() {
 
 event::native_t& native_event_impl::get_native() {
     return ev->get_attribute_value(
-                    details::ccl_api_type_attr_traits<ccl::event_attr_id,
-                    ccl::event_attr_id::native_handle>{});
+        detail::ccl_api_type_attr_traits<ccl::event_attr_id, ccl::event_attr_id::native_handle>{});
 }
 
 } // namespace ccl
