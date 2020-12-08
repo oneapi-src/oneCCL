@@ -97,8 +97,6 @@
 <li class="toctree-l3"><a class="reference internal" href="installation.html#custom-installation">Custom Installation</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#installation-using-tar-gz">Installation using tar.gz</a></li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#installation-using-rpm">Installation using RPM</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="sample.html">Sample Application</a><ul>
@@ -118,6 +116,7 @@
 <li class="toctree-l2"><a class="reference internal" href="device_communication.html#example">Example</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
 </ul>
 <p class="caption"><span class="caption-text">General Configuration</span></p>
 <ul>
@@ -181,6 +180,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#ccl-worker-count">CCL_WORKER_COUNT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#ccl-worker-affinity">CCL_WORKER_AFFINITY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#ccl-log-level">CCL_LOG_LEVEL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ccl-max-short-size">CCL_MAX_SHORT_SIZE</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">Library API</a><ul>
@@ -883,6 +883,32 @@ You have to additionally specify <code class="docutils literal notranslate"><spa
 </table>
 <p><strong>Description</strong></p>
 <p>Set this environment variable to control logging level.</p>
+</div>
+<div class="section" id="ccl-max-short-size">
+<h2>CCL_MAX_SHORT_SIZE<a class="headerlink" href="#ccl-max-short-size" title="Permalink to this headline">¶</a></h2>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_MAX_SHORT_SIZE</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SIZE</span></code></p></td>
+<td><p>Bytes threshold for a collective operation (<code class="docutils literal notranslate"><span class="pre">0</span></code> if not specified). If the size of a communication buffer in bytes is less than or equal to <code class="docutils literal notranslate"><span class="pre">SIZE</span></code>, then oneCCL does not split operation between workers. Applicable for <code class="docutils literal notranslate"><span class="pre">allreduce</span></code>, <code class="docutils literal notranslate"><span class="pre">reduce</span></code> and <code class="docutils literal notranslate"><span class="pre">broadcast</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify the threshold of the number of bytes for a collective operation to be split.</p>
 </div>
 </div>
 

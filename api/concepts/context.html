@@ -97,8 +97,6 @@
 <li class="toctree-l3"><a class="reference internal" href="../../installation.html#custom-installation">Custom Installation</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../installation.html#installation-using-tar-gz">Installation using tar.gz</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../installation.html#installation-using-rpm">Installation using RPM</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../sample.html">Sample Application</a><ul>
@@ -118,6 +116,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../device_communication.html#example">Example</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="../../limitations.html">Limitations</a></li>
 </ul>
 <p class="caption"><span class="caption-text">General Configuration</span></p>
 <ul>
@@ -181,6 +180,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-worker-count">CCL_WORKER_COUNT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-worker-affinity">CCL_WORKER_AFFINITY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-log-level">CCL_LOG_LEVEL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-max-short-size">CCL_MAX_SHORT_SIZE</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="reference internal" href="../../api.html">Library API</a><ul class="current">
@@ -291,13 +291,13 @@
 <h1>Context<a class="headerlink" href="#context" title="Permalink to this headline">¶</a></h1>
 <dl class="cpp function">
 <dt>
-context <code class="sig-name descname">create_context</code><span class="sig-paren">(</span><span class="sig-paren">)</span><br /></dt>
-<dd><p>Creates a new context from &#64;native_device_contex_type. </p>
+template&lt;class <code class="sig-name descname">native_context_type</code>, class = <em class="property">typename</em> std::enable_if&lt;is_context_supported&lt;<a class="reference internal" href="#_CPPv4I00E14create_context7contextRR19native_context_type" title="create_context::native_context_type">native_context_type</a>&gt;<span class="sig-paren">(</span><span class="sig-paren">)</span>&gt;::type&gt;<br />context <code class="sig-name descname">create_context</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I00E14create_context7contextRR19native_context_type" title="create_context::native_context_type">native_context_type</a> &amp;&amp;<em>native_context</em><span class="sig-paren">)</span><br /></dt>
+<dd><p>Creates a new context from &#64;native_contex_type. </p>
 <p><dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>context object </p>
 </dd>
 <dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">native_device_context</span></code>: the existing handle of context </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">native_context</span></code>: the existing handle of context </p></li>
 </ul>
 </dd>
 </dl>
@@ -306,12 +306,7 @@ context <code class="sig-name descname">create_context</code><span class="sig-pa
 
 <dl class="cpp function">
 <dt>
-template&lt;class <code class="sig-name descname">native_device_context_type</code>, class = <em class="property">typename</em> std::enable_if&lt;is_context_supported&lt;<a class="reference internal" href="#_CPPv4I00E14create_context7contextRR26native_device_context_type" title="create_context::native_device_context_type">native_device_context_type</a>&gt;<span class="sig-paren">(</span><span class="sig-paren">)</span>&gt;::type&gt;<br />context <code class="sig-name descname">create_context</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I00E14create_context7contextRR26native_device_context_type" title="create_context::native_device_context_type">native_device_context_type</a> &amp;&amp;<em>native_device_context</em><span class="sig-paren">)</span><br /></dt>
-<dd></dd></dl>
-
-<dl class="cpp function">
-<dt>
-template&lt;class ...<code class="sig-name descname">attr_value_pair_t</code>&gt;<br />context <code class="sig-name descname">create_context_from_attr</code><span class="sig-paren">(</span><em class="property">typename</em> unified_device_context_type::ccl_native_t <em>ctx</em>, <a class="reference internal" href="#_CPPv4IDpE24create_context_from_attr7contextN27unified_device_context_type12ccl_native_tEDpRR17attr_value_pair_t" title="create_context_from_attr::attr_value_pair_t">attr_value_pair_t</a>&amp;&amp;... <em>avps</em><span class="sig-paren">)</span><br /></dt>
+context <code class="sig-name descname">create_context</code><span class="sig-paren">(</span><span class="sig-paren">)</span><br /></dt>
 <dd></dd></dl>
 
 </div>

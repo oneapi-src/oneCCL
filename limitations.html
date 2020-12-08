@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Specification &mdash; oneCCL Documentation (Beta) 2.0 documentation</title>
+  <title>Limitations &mdash; oneCCL Documentation (Beta) 2.0 documentation</title>
   
 
   
@@ -41,8 +41,8 @@
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Host Communication" href="host_communication.html" />
-    <link rel="prev" title="Sample Application" href="sample.html" />
+    <link rel="next" title="Execution of Communication Operations" href="operation_execution.html" />
+    <link rel="prev" title="Device Communication" href="device_communication.html" />
     <link href="_static/style.css" rel="stylesheet" type="text/css">
 
 </head>
@@ -107,7 +107,7 @@
 </ul>
 <p class="caption"><span class="caption-text">Programming Model</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="specification.html">Specification</a></li>
 <li class="toctree-l1"><a class="reference internal" href="host_communication.html">Host Communication</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="host_communication.html#example">Example</a></li>
 </ul>
@@ -116,7 +116,7 @@
 <li class="toctree-l2"><a class="reference internal" href="device_communication.html#example">Example</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Limitations</a></li>
 </ul>
 <p class="caption"><span class="caption-text">General Configuration</span></p>
 <ul>
@@ -264,13 +264,13 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>Specification</li>
+      <li>Limitations</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="_sources/specification.rst.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/limitations.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -283,14 +283,13 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="id1">
-<h1>Specification<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
-<p>Please refer to oneCCL <a class="reference external" href="https://spec.oneapi.com/versions/latest/elements/oneCCL/source/index.html">specification</a> for description of:</p>
+  <div class="section" id="limitations">
+<h1>Limitations<a class="headerlink" href="#limitations" title="Permalink to this headline">¶</a></h1>
+<p>The list of scenarious not yet supported by oneCCL:</p>
 <ul class="simple">
-<li><p><a class="reference external" href="https://spec.oneapi.com/versions/latest/elements/oneCCL/source/spec/main_objects.html">Main concepts</a></p></li>
-<li><p><a class="reference external" href="https://spec.oneapi.com/versions/latest/elements/oneCCL/source/spec/operations.html">Communication operations</a></p></li>
-<li><p><a class="reference external" href="https://spec.oneapi.com/versions/latest/elements/oneCCL/source/spec/error_handling.html">Error handling</a></p></li>
-<li><p><a class="reference external" href="https://spec.oneapi.com/versions/latest/elements/oneCCL/source/spec/generic_workflow.html">Generic workflow</a></p></li>
+<li><p>Creation of multiple ranks within single process</p></li>
+<li><p>Handling of dependencies as operation parameter (for example, <code class="docutils literal notranslate"><span class="pre">deps</span></code> vector in <code class="docutils literal notranslate"><span class="pre">ccl::allreduce(...,</span> <span class="pre">deps)</span></code>)</p></li>
+<li><p>Float16 datatype support</p></li>
 </ul>
 </div>
 
@@ -302,10 +301,10 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="host_communication.html" class="btn btn-neutral float-right" title="Host Communication" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="operation_execution.html" class="btn btn-neutral float-right" title="Execution of Communication Operations" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="sample.html" class="btn btn-neutral float-left" title="Sample Application" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="device_communication.html" class="btn btn-neutral float-left" title="Device Communication" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

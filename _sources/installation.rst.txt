@@ -10,11 +10,7 @@ Installation
 
 This page explains how to install and configure the |product_full| (|product_short|).
 
-|product_short| supports different installation scenarios:
-
-* `Installation using command line interface`_
-* `Installation using tar.gz`_
-* `Installation using RPM`_
+|product_short| supports different installation scenarios using command line interface.
 
 .. note:: Visit |sys_req|_ to learn about hardware and software requirements for |product_short|.
 
@@ -64,93 +60,30 @@ You can customize CLI-based installation (for example, specify directory, compil
 
   ::
 
-    cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/installation/directory
+    cmake .. -DCMAKE_INSTALL_PREFIX=</path/to/installation/directory>
 
-  If no ``-DCMAKE_INSTALL_PREFIX`` is specified, |product_short| is installed into the ``_install`` subdirectory of the current build directory.
-  For example, ``ccl/build/_install``.
+  If no ``-DCMAKE_INSTALL_PREFIX`` is specified, |product_short| is installed into the ``_install`` subdirectory of the current build directory. For example, ``ccl/build/_install``.
 
 * To specify **compiler**, modify the ``cmake`` command:
 
   ::
 
-     cmake .. -DCMAKE_C_COMPILER=your_c_compiler -DCMAKE_CXX_COMPILER=your_cxx_compiler
+     cmake .. -DCMAKE_C_COMPILER=<c_compiler> -DCMAKE_CXX_COMPILER=<cxx_compiler>
 
-  If ``CMAKE_CXX_COMPILER`` requires ``SYCL`` cross-platform abstraction level it should be specified in ``-DCOMPUTE_RUNTIME`` ( ``compute++`` and ``dpcpp`` supported only):
-
-  ::
-
-     cmake .. -DCMAKE_C_COMPILER=your_c_compiler -DCMAKE_CXX_COMPILER=compute++ -DCOMPUTE_RUNTIME=computecpp
-     cmake .. -DCMAKE_C_COMPILER=your_c_compiler -DCMAKE_CXX_COMPILER=dpcpp -DCOMPUTE_RUNTIME=dpcpp
-
-  OpenCL search location path hint can be specified by using standart environment ``OPENCLROOT`` additionally:
+  To enable ``SYCL`` devices communication support specify ``SYCL`` compiler and set ``-DCOMPUTE_RUNTIME`` (DPC++ supported only):
 
   ::
 
-     OPENCLROOT=your_opencl_location cmake .. -DCMAKE_C_COMPILER=your_c_compiler -DCMAKE_CXX_COMPILER=compute++ -DCOMPUTE_RUNTIME=computecpp
-
+     cmake .. -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=dpcpp -DCOMPUTE_RUNTIME=dpcpp
 
 * To specify the **build type**, modify the ``cmake`` command:
 
   ::
 
-     cmake .. -DCMAKE_BUILD_TYPE=[Debug|Release|RelWithDebInfo|MinSizeRel]
+     cmake .. -DCMAKE_BUILD_TYPE=[Debug|Release]
 
 * To enable ``make`` verbose output to see all parameters used by ``make`` during compilation and linkage, modify the ``make`` command as follows:
 
   ::
 
-     make -j VERBOSE=1
-
-* To archive installed files:
-
-  ::
-
-     make -j install
-
-* To build with Address Sanitizer, modify the ``cmake`` command as follow:
-
-  ::
-
-     cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_ASAN=true
-
-  Make sure that ``libasan.so`` exists.
-
-  .. note::
-
-     Address sanitizer only works in the debug build.
-
-Binary releases are available on our release page.
-
-Installation using tar.gz
-*************************
-
-To install |product_short| using the |tgz_file|_ in a user mode, execute the following commands:
-
-.. prompt:: bash
-
-   tar zxf l_ccl-devel-64-<version>.<update>.<package#>.tgz
-   cd l_ccl_<version>.<update>.<package#>
-   ./install.sh
-
-There is no uninstall script. To uninstall |product_short|, delete the whole installation directory.
-
-Installation using RPM
-**********************
-
-You can get |product_short| through the RPM Package Manager. To install the library in a root mode using RPM, follow these steps:
-
-#. Log in as root.
-
-#. Install the following package:
-
-  .. prompt:: bash
-
-     rpm -i intel-ccl-devel-64-<version>.<update>-<package#>.x86_64.rpm
-
-     where ``<version>.<update>-<package#>`` is a string. For example, ``2017.0-009``.
-
-To uninstall |product_short| using the RPM Package Manager, execute this command:
-
-  .. prompt:: bash
-
-     rpm -e intel-ccl-devel-64-<version>.<update>-<package#>.x86_64
+     make -j VERBOSE=1 install

@@ -97,8 +97,6 @@
 <li class="toctree-l3"><a class="reference internal" href="../../installation.html#custom-installation">Custom Installation</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../installation.html#installation-using-tar-gz">Installation using tar.gz</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../installation.html#installation-using-rpm">Installation using RPM</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../sample.html">Sample Application</a><ul>
@@ -118,6 +116,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../device_communication.html#example">Example</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="../../limitations.html">Limitations</a></li>
 </ul>
 <p class="caption"><span class="caption-text">General Configuration</span></p>
 <ul>
@@ -181,6 +180,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-worker-count">CCL_WORKER_COUNT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-worker-affinity">CCL_WORKER_AFFINITY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-log-level">CCL_LOG_LEVEL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-max-short-size">CCL_MAX_SHORT_SIZE</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="reference internal" href="../../api.html">Library API</a><ul class="current">
@@ -297,7 +297,7 @@ template&lt;class <code class="sig-name descname">event_type</code>, class = <em
 <dt><strong>Return</strong></dt><dd><p>event object </p>
 </dd>
 <dt><strong>Parameters</strong></dt><dd><ul class="breatheparameterlist simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">native_event</span></code>: the existing handle of event </p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">native_event</span></code>: the existing event </p></li>
 </ul>
 </dd>
 </dl>

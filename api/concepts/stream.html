@@ -97,8 +97,6 @@
 <li class="toctree-l3"><a class="reference internal" href="../../installation.html#custom-installation">Custom Installation</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../installation.html#installation-using-tar-gz">Installation using tar.gz</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../installation.html#installation-using-rpm">Installation using RPM</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../sample.html">Sample Application</a><ul>
@@ -118,6 +116,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../device_communication.html#example">Example</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="../../limitations.html">Limitations</a></li>
 </ul>
 <p class="caption"><span class="caption-text">General Configuration</span></p>
 <ul>
@@ -181,6 +180,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-worker-count">CCL_WORKER_COUNT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-worker-affinity">CCL_WORKER_AFFINITY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-log-level">CCL_LOG_LEVEL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../env_variables.html#ccl-max-short-size">CCL_MAX_SHORT_SIZE</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="reference internal" href="../../api.html">Library API</a><ul class="current">
@@ -291,7 +291,7 @@
 <h1>Stream<a class="headerlink" href="#stream" title="Permalink to this headline">¶</a></h1>
 <dl class="cpp function">
 <dt>
-stream <code class="sig-name descname">create_stream</code><span class="sig-paren">(</span><span class="sig-paren">)</span><br /></dt>
+template&lt;class <code class="sig-name descname">native_stream_type</code>, class = <em class="property">typename</em> std::enable_if&lt;is_stream_supported&lt;<a class="reference internal" href="#_CPPv4I00E13create_stream6streamR18native_stream_type" title="create_stream::native_stream_type">native_stream_type</a>&gt;<span class="sig-paren">(</span><span class="sig-paren">)</span>&gt;::type&gt;<br />stream <code class="sig-name descname">create_stream</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I00E13create_stream6streamR18native_stream_type" title="create_stream::native_stream_type">native_stream_type</a> &amp;<em>native_stream</em><span class="sig-paren">)</span><br /></dt>
 <dd><p>Creates a new stream from &#64;native_stream_type. </p>
 <p><dl class="simple">
 <dt><strong>Return</strong></dt><dd><p>stream object </p>
@@ -306,22 +306,7 @@ stream <code class="sig-name descname">create_stream</code><span class="sig-pare
 
 <dl class="cpp function">
 <dt>
-template&lt;class <code class="sig-name descname">native_stream_type</code>, class = <em class="property">typename</em> std::enable_if&lt;is_stream_supported&lt;<a class="reference internal" href="#_CPPv4I00E13create_stream6streamR18native_stream_type" title="create_stream::native_stream_type">native_stream_type</a>&gt;<span class="sig-paren">(</span><span class="sig-paren">)</span>&gt;::type&gt;<br />stream <code class="sig-name descname">create_stream</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I00E13create_stream6streamR18native_stream_type" title="create_stream::native_stream_type">native_stream_type</a> &amp;<em>native_stream</em><span class="sig-paren">)</span><br /></dt>
-<dd></dd></dl>
-
-<dl class="cpp function">
-<dt>
-template&lt;class <code class="sig-name descname">native_stream_type</code>, class <code class="sig-name descname">native_context_type</code>, class = <em class="property">typename</em> std::enable_if&lt;is_stream_supported&lt;<a class="reference internal" href="#_CPPv4I000E13create_stream6streamR18native_stream_typeR19native_context_type" title="create_stream::native_stream_type">native_stream_type</a>&gt;<span class="sig-paren">(</span><span class="sig-paren">)</span>&gt;::type&gt;<br />stream <code class="sig-name descname">create_stream</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4I000E13create_stream6streamR18native_stream_typeR19native_context_type" title="create_stream::native_stream_type">native_stream_type</a> &amp;<em>native_stream</em>, <a class="reference internal" href="#_CPPv4I000E13create_stream6streamR18native_stream_typeR19native_context_type" title="create_stream::native_context_type">native_context_type</a> &amp;<em>native_ctx</em><span class="sig-paren">)</span><br /></dt>
-<dd></dd></dl>
-
-<dl class="cpp function">
-<dt>
-template&lt;class ...<code class="sig-name descname">attr_value_pair_t</code>&gt;<br />stream <code class="sig-name descname">create_stream_from_attr</code><span class="sig-paren">(</span><em class="property">typename</em> unified_device_type::ccl_native_t <em>device</em>, <a class="reference internal" href="#_CPPv4IDpE23create_stream_from_attr6streamN19unified_device_type12ccl_native_tEDpRR17attr_value_pair_t" title="create_stream_from_attr::attr_value_pair_t">attr_value_pair_t</a>&amp;&amp;... <em>avps</em><span class="sig-paren">)</span><br /></dt>
-<dd></dd></dl>
-
-<dl class="cpp function">
-<dt>
-template&lt;class ...<code class="sig-name descname">attr_value_pair_t</code>&gt;<br />stream <code class="sig-name descname">create_stream_from_attr</code><span class="sig-paren">(</span><em class="property">typename</em> unified_device_type::ccl_native_t <em>device</em>, <em class="property">typename</em> unified_device_context_type::ccl_native_t <em>context</em>, <a class="reference internal" href="#_CPPv4IDpE23create_stream_from_attr6streamN19unified_device_type12ccl_native_tEN27unified_device_context_type12ccl_native_tEDpRR17attr_value_pair_t" title="create_stream_from_attr::attr_value_pair_t">attr_value_pair_t</a>&amp;&amp;... <em>avps</em><span class="sig-paren">)</span><br /></dt>
+stream <code class="sig-name descname">create_stream</code><span class="sig-paren">(</span><span class="sig-paren">)</span><br /></dt>
 <dd></dd></dl>
 
 </div>

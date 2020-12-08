@@ -534,3 +534,28 @@ CCL_LOG_LEVEL
 **Description**
 
 Set this environment variable to control logging level.
+
+
+CCL_MAX_SHORT_SIZE
+##################
+**Syntax**
+
+:: 
+
+  CCL_MAX_SHORT_SIZE=<value>
+
+**Arguments**
+
+.. list-table:: 
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+   
+   * - <value> 
+     - Description
+   * - ``SIZE``
+     - Bytes threshold for a collective operation (``0`` if not specified). If the size of a communication buffer in bytes is less than or equal to ``SIZE``, then |product_short| does not split operation between workers. Applicable for ``allreduce``, ``reduce`` and ``broadcast``.
+
+**Description**
+
+Set this environment variable to specify the threshold of the number of bytes for a collective operation to be split.
