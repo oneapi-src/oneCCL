@@ -15,6 +15,8 @@
 */
 #include <arpa/inet.h>
 #include <errno.h>
+#include <ifaddrs.h>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <mutex>
 #include <pthread.h>
@@ -22,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -628,15 +631,57 @@ size_t init_main_server_by_string(const char* main_addr) {
     return 0;
 }
 
+int fill_local_host_ip() {
+    struct ifaddrs *ifaddr, *ifa;
+    int family = AF_UNSPEC;
+    if (getifaddrs(&ifaddr) < 0) {
+        perror("fill_local_host_ip: can not get host IP");
+        return -1;
+    }
+
+    const char iface_name[] = "lo";
+
+    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr == NULL)
+            continue;
+        if (strstr(ifa->ifa_name, iface_name) == NULL) {
+            family = ifa->ifa_addr->sa_family;
+            if (family == AF_INET || family == AF_INET6)
+                break;
+        }
+    }
+    if (!ifa) {
+        perror("fill_local_host_ip: can't find interface to get host IP");
+        return -1;
+    }
+
+    int res =
+        getnameinfo(ifa->ifa_addr,
+                    (family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6),
+                    local_host_ip,
+                    CCL_IP_LEN,
+                    NULL,
+                    0,
+                    NI_NUMERICHOST);
+
+    if (res != 0) {
+        std::string s("fill_local_host_ip: getnameinfo error > ");
+        s.append(gai_strerror(res));
+        perror(s.c_str());
+        return -1;
+    }
+
+    freeifaddrs(ifaddr);
+    return 0;
+}
+
+
 size_t internal_kvs::kvs_main_server_address_reserve(char* main_address) {
-    FILE* fp;
     char* additional_local_host_ips;
-    if ((fp = popen(GET_IP_CMD, READ_ONLY)) == NULL) {
-        perror("reserve_main_address: can not get host IP");
+    if (fill_local_host_ip() < 0) {
+        perror("reserve_main_address: failed to get local host IP");
         exit(EXIT_FAILURE);
     }
-    CHECK_FGETS(fgets(local_host_ip, CCL_IP_LEN, fp), local_host_ip);
-    pclose(fp);
 
     while (local_host_ip[strlen(local_host_ip) - 1] == '\n' ||
            local_host_ip[strlen(local_host_ip) - 1] == ' ')
@@ -681,17 +726,13 @@ size_t internal_kvs::kvs_main_server_address_reserve(char* main_address) {
 
 size_t init_main_server_address(const char* main_addr) {
     char* ip_getting_type = getenv(CCL_KVS_IP_EXCHANGE_ENV);
-    FILE* fp;
     char* additional_local_host_ips;
 
-    if ((fp = popen(GET_IP_CMD, READ_ONLY)) == NULL) {
-        perror("init_main_server_address: can not get host IP");
+    memset(local_host_ip, 0, CCL_IP_LEN);
+    if (fill_local_host_ip() < 0) {
+        perror("init_main_server_address: failed to get local host IP");
         exit(EXIT_FAILURE);
     }
-
-    memset(local_host_ip, 0, CCL_IP_LEN);
-    CHECK_FGETS(fgets(local_host_ip, CCL_IP_LEN, fp), local_host_ip);
-    pclose(fp);
 
     while (local_host_ip[strlen(local_host_ip) - 1] == '\n' ||
            local_host_ip[strlen(local_host_ip) - 1] == ' ')
