@@ -18,7 +18,7 @@ idna==2.8
 imagesize==1.1.0
 importlib-metadata==0.19
 isort==4.3.21
-Jinja2==2.10.1
+Jinja2==2.11.3
 lazy-object-proxy==1.4.1
 lxml==4.6.2
 MarkupSafe==1.1.1
