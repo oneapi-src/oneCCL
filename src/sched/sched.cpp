@@ -169,6 +169,8 @@ ccl_request* ccl_sched::start_subsched(ccl_extra_sched* subsched) {
     subsched->renew();
     subsched->set_counter(1);
 
+    ccl::global_data::get().executor->update_wait_condition(
+        queue->get_idx(), ccl_base_thread::wait_data::update_type::increment, 1);
     queue->add(subsched);
 
     if (ccl::global_data::env().sched_dump) {

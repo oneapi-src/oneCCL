@@ -14,6 +14,7 @@
  limitations under the License.
 */
 #pragma once
+
 #include "common/comm/l0/communicator/thread_group/thread_ring_communicator.hpp"
 #include "common/comm/l0/communicator/typed_base_communicator_impl.hpp"
 
@@ -22,6 +23,7 @@
 #include "common/comm/l0/context/thread_group_ctx.hpp"
 #include "common/comm/l0/scheduler/thread_group_scheduler.hpp"
 #include "common/event/impls/gpu_event.hpp"
+#include "common/comm/l0/communicator/thread_group/thread_communicator_utils.hpp"
 
 /* allgatherv */
 template <class buffer_type>
@@ -104,59 +106,19 @@ ccl::event thread_device_group_ring_communicator::allgatherv_impl(
     using community_t = typename device_community_container<class_id>::element_type;
     community_t community = device_community_impl.get_topology(ring_index);
 
-    const auto& in_process_gpu_storage = community->get_devices<ccl_gpu_comm>();
-    const auto& virtual_process_gpu_storage = community->get_devices<ccl_virtual_gpu_comm>();
-
-    auto& ipc_gpu_storage = community->get_devices<ccl_ipc_gpu_comm>();
-    (void)ipc_gpu_storage;
-
-    thread_group_scheduler::thread_schedule_ptr schedule;
-    //source for collective operation is real gpu or virtual gpu
-    auto real_device_it = in_process_gpu_storage.find(comm_rank);
-    if (real_device_it != in_process_gpu_storage.end()) {
-        LOG_DEBUG("Invoke: ", real_device_it->second->to_string());
-
-        using gpu_allgatherv_entry = l0_allgatherv_typed_entry<buffer_type, ccl_gpu_comm, group_id>;
-
-        schedule = ctx->scheduler_impl
-                       ->submit_entry<gpu_allgatherv_entry, ccl_sched_add_back, group_id, class_id>(
-                           thread_id,
-                           *community,
-                           real_device_it->second,
-                           this->get_native_context(),
-                           send_entry_buffer,
-                           send_count,
-                           recv_entry_buffer,
-                           recv_counts.data(),
-                           stream);
-    }
-    else {
-        auto virtual_device_it = virtual_process_gpu_storage.find(comm_rank);
-        if (virtual_device_it != virtual_process_gpu_storage.end()) {
-            LOG_DEBUG("Invoke: ", virtual_device_it->second->to_string());
-            using gpu_allgatherv_entry =
-                l0_allgatherv_typed_entry<buffer_type, ccl_virtual_gpu_comm, group_id>;
-
-            schedule =
-                ctx->scheduler_impl
-                    ->submit_entry<gpu_allgatherv_entry, ccl_sched_add_back, group_id, class_id>(
-                        thread_id,
-                        *community,
-                        virtual_device_it->second,
-                        this->get_native_context(),
-                        send_entry_buffer,
-                        send_count,
-                        recv_entry_buffer,
-                        recv_counts.data(),
-                        stream);
-        }
-    }
-
-    //if sched is not ready - send NULL
-    if (schedule) {
-        LOG_DEBUG("Device group finalized");
-    }
-    return std::unique_ptr<ccl::event_impl>(new ccl::gpu_shared_event_impl(std::move(schedule)));
+    return do_collective_op<kernel_params_default<buffer_type>,
+                            group_id,
+                            class_id,
+                            l0_allgatherv_typed_entry>(communication_device,
+                                                       ctx,
+                                                       community,
+                                                       thread_id,
+                                                       this->get_native_context(),
+                                                       send_entry_buffer,
+                                                       send_count,
+                                                       recv_entry_buffer,
+                                                       recv_counts.data(),
+                                                       stream);
 }
 
 /* allreduce */
@@ -200,59 +162,18 @@ ccl::event thread_device_group_ring_communicator::allreduce_impl(
     using community_t = typename device_community_container<class_id>::element_type;
     community_t community = device_community_impl.get_topology(ring_index);
 
-    const auto& in_process_gpu_storage = community->get_devices<ccl_gpu_comm>();
-    const auto& virtual_process_gpu_storage = community->get_devices<ccl_virtual_gpu_comm>();
-
-    auto& ipc_gpu_storage = community->get_devices<ccl_ipc_gpu_comm>();
-    (void)ipc_gpu_storage;
-
-    thread_group_scheduler::thread_schedule_ptr schedule;
-    //source for collective operation is real gpu or virtual gpu
-    auto real_device_it = in_process_gpu_storage.find(comm_rank);
-    if (real_device_it != in_process_gpu_storage.end()) {
-        LOG_DEBUG("Invoke: ", real_device_it->second->to_string());
-
-        using gpu_allreduce_entry = l0_allreduce_typed_entry<buffer_type, ccl_gpu_comm, group_id>;
-
-        schedule = ctx->scheduler_impl
-                       ->submit_entry<gpu_allreduce_entry, ccl_sched_add_back, group_id, class_id>(
-                           thread_id,
-                           *community,
-                           real_device_it->second,
-                           this->get_native_context(),
-                           send_entry_buffer,
-                           recv_entry_buffer,
-                           count,
-                           reduction,
-                           stream);
-    }
-    else {
-        auto virtual_device_it = virtual_process_gpu_storage.find(comm_rank);
-        if (virtual_device_it != virtual_process_gpu_storage.end()) {
-            LOG_DEBUG("Invoke: ", virtual_device_it->second->to_string());
-            using gpu_allreduce_entry =
-                l0_allreduce_typed_entry<buffer_type, ccl_virtual_gpu_comm, group_id>;
-
-            schedule =
-                ctx->scheduler_impl
-                    ->submit_entry<gpu_allreduce_entry, ccl_sched_add_back, group_id, class_id>(
-                        thread_id,
-                        *community,
-                        virtual_device_it->second,
-                        this->get_native_context(),
-                        send_entry_buffer,
-                        recv_entry_buffer,
-                        count,
-                        reduction,
-                        stream);
-        }
-    }
-
-    //if sched is not ready - send NULL
-    if (schedule) {
-        LOG_DEBUG("Device group finalized");
-    }
-    return std::unique_ptr<ccl::event_impl>(new ccl::gpu_shared_event_impl(std::move(schedule)));
+    return do_collective_op_reductions<buffer_type, group_id, class_id, l0_allreduce_typed_entry>(
+        reduction,
+        communication_device,
+        ctx,
+        community,
+        thread_id,
+        this->get_native_context(),
+        send_entry_buffer,
+        recv_entry_buffer,
+        count,
+        reduction,
+        stream);
 }
 
 template <class buffer_type>
@@ -394,59 +315,19 @@ ccl::event thread_device_group_ring_communicator::alltoallv_impl(
     using community_t = typename device_community_container<class_id>::element_type;
     community_t community = device_community_impl.get_topology(ring_index);
 
-    const auto& in_process_gpu_storage = community->get_devices<ccl_gpu_comm>();
-    const auto& virtual_process_gpu_storage = community->get_devices<ccl_virtual_gpu_comm>();
-
-    auto& ipc_gpu_storage = community->get_devices<ccl_ipc_gpu_comm>();
-    (void)ipc_gpu_storage;
-
-    thread_group_scheduler::thread_schedule_ptr schedule;
-    //source for collective operation is real gpu or virtual gpu
-    auto real_device_it = in_process_gpu_storage.find(comm_rank);
-    if (real_device_it != in_process_gpu_storage.end()) {
-        LOG_DEBUG("Invoke: ", real_device_it->second->to_string());
-
-        using gpu_alltoallv_entry = l0_alltoallv_typed_entry<buffer_type, ccl_gpu_comm, group_id>;
-
-        schedule = ctx->scheduler_impl
-                       ->submit_entry<gpu_alltoallv_entry, ccl_sched_add_back, group_id, class_id>(
-                           thread_id,
-                           *community,
-                           real_device_it->second,
-                           this->get_native_context(),
-                           send_entry_buffer,
-                           send_counts.data(),
-                           recv_entry_buffer,
-                           recv_counts.data(),
-                           stream);
-    }
-    else {
-        auto virtual_device_it = virtual_process_gpu_storage.find(comm_rank);
-        if (virtual_device_it != virtual_process_gpu_storage.end()) {
-            LOG_DEBUG("Invoke: ", virtual_device_it->second->to_string());
-            using gpu_alltoallv_entry =
-                l0_alltoallv_typed_entry<buffer_type, ccl_virtual_gpu_comm, group_id>;
-
-            schedule =
-                ctx->scheduler_impl
-                    ->submit_entry<gpu_alltoallv_entry, ccl_sched_add_back, group_id, class_id>(
-                        thread_id,
-                        *community,
-                        virtual_device_it->second,
-                        this->get_native_context(),
-                        send_entry_buffer,
-                        send_counts.data(),
-                        recv_entry_buffer,
-                        recv_counts.data(),
-                        stream);
-        }
-    }
-
-    //if sched is not ready - send NULL
-    if (schedule) {
-        LOG_DEBUG("Device group finalized");
-    }
-    return std::unique_ptr<ccl::event_impl>(new ccl::gpu_shared_event_impl(std::move(schedule)));
+    return do_collective_op<kernel_params_default<buffer_type>,
+                            group_id,
+                            class_id,
+                            l0_alltoallv_typed_entry>(communication_device,
+                                                      ctx,
+                                                      community,
+                                                      thread_id,
+                                                      this->get_native_context(),
+                                                      send_entry_buffer,
+                                                      send_counts.data(),
+                                                      recv_entry_buffer,
+                                                      recv_counts.data(),
+                                                      stream);
 }
 
 /* bcast */
@@ -484,56 +365,18 @@ ccl::event thread_device_group_ring_communicator::broadcast_impl(
     using community_t = typename device_community_container<class_id>::element_type;
     community_t community = device_community_impl.get_topology(ring_index);
 
-    const auto& in_process_gpu_storage = community->get_devices<ccl_gpu_comm>();
-    const auto& virtual_process_gpu_storage = community->get_devices<ccl_virtual_gpu_comm>();
-
-    auto& ipc_gpu_storage = community->get_devices<ccl_ipc_gpu_comm>();
-    (void)ipc_gpu_storage;
-
-    thread_group_scheduler::thread_schedule_ptr schedule;
-    //source for collective operation is real gpu or virtual gpu
-    auto real_device_it = in_process_gpu_storage.find(comm_rank);
-    if (real_device_it != in_process_gpu_storage.end()) {
-        LOG_DEBUG("Invoke: ", real_device_it->second->to_string());
-
-        using gpu_bcast_entry = l0_bcast_typed_entry<buffer_type, ccl_gpu_comm, group_id>;
-
-        schedule = ctx->scheduler_impl
-                       ->submit_entry<gpu_bcast_entry, ccl_sched_add_back, group_id, class_id>(
-                           thread_id,
-                           *community,
-                           real_device_it->second,
-                           this->get_native_context(),
-                           entry_buffer,
-                           count,
-                           root,
-                           stream);
-    }
-    else {
-        auto virtual_device_it = virtual_process_gpu_storage.find(comm_rank);
-        if (virtual_device_it != virtual_process_gpu_storage.end()) {
-            LOG_DEBUG("Invoke: ", virtual_device_it->second->to_string());
-            using gpu_bcast_entry =
-                l0_bcast_typed_entry<buffer_type, ccl_virtual_gpu_comm, group_id>;
-
-            schedule = ctx->scheduler_impl
-                           ->submit_entry<gpu_bcast_entry, ccl_sched_add_back, group_id, class_id>(
-                               thread_id,
-                               *community,
-                               virtual_device_it->second,
-                               this->get_native_context(),
-                               entry_buffer,
-                               count,
-                               root,
-                               stream);
-        }
-    }
-
-    //if sched is not ready - send NULL
-    if (schedule) {
-        LOG_DEBUG("Device group finalized");
-    }
-    return std::unique_ptr<ccl::event_impl>(new ccl::gpu_shared_event_impl(std::move(schedule)));
+    return do_collective_op<kernel_params_default<buffer_type>,
+                            group_id,
+                            class_id,
+                            l0_bcast_typed_entry>(communication_device,
+                                                  ctx,
+                                                  community,
+                                                  thread_id,
+                                                  this->get_native_context(),
+                                                  entry_buffer,
+                                                  count,
+                                                  root,
+                                                  stream);
 }
 
 template <class buffer_type>
@@ -590,61 +433,19 @@ ccl::event thread_device_group_ring_communicator::reduce_impl(
     using community_t = typename device_community_container<class_id>::element_type;
     community_t community = device_community_impl.get_topology(ring_index);
 
-    const auto& in_process_gpu_storage = community->get_devices<ccl_gpu_comm>();
-    const auto& virtual_process_gpu_storage = community->get_devices<ccl_virtual_gpu_comm>();
-
-    auto& ipc_gpu_storage = community->get_devices<ccl_ipc_gpu_comm>();
-    (void)ipc_gpu_storage;
-
-    thread_group_scheduler::thread_schedule_ptr schedule;
-    //source for collective operation is real gpu or virtual gpu
-    auto real_device_it = in_process_gpu_storage.find(comm_rank);
-    if (real_device_it != in_process_gpu_storage.end()) {
-        LOG_DEBUG("Invoke: ", real_device_it->second->to_string());
-
-        using gpu_reduce_entry = l0_reduce_typed_entry<buffer_type, ccl_gpu_comm, group_id>;
-
-        schedule = ctx->scheduler_impl
-                       ->submit_entry<gpu_reduce_entry, ccl_sched_add_back, group_id, class_id>(
-                           thread_id,
-                           *community,
-                           real_device_it->second,
-                           this->get_native_context(),
-                           send_entry_buffer,
-                           recv_entry_buffer,
-                           count,
-                           reduction,
-                           root,
-                           stream);
-    }
-    else {
-        auto virtual_device_it = virtual_process_gpu_storage.find(comm_rank);
-        if (virtual_device_it != virtual_process_gpu_storage.end()) {
-            LOG_DEBUG("Invoke: ", virtual_device_it->second->to_string());
-            using gpu_reduce_entry =
-                l0_reduce_typed_entry<buffer_type, ccl_virtual_gpu_comm, group_id>;
-
-            schedule = ctx->scheduler_impl
-                           ->submit_entry<gpu_reduce_entry, ccl_sched_add_back, group_id, class_id>(
-                               thread_id,
-                               *community,
-                               virtual_device_it->second,
-                               this->get_native_context(),
-                               send_entry_buffer,
-                               recv_entry_buffer,
-                               count,
-                               reduction,
-                               root,
-                               stream);
-        }
-    }
-
-    //if sched is not ready - send NULL
-    if (schedule) {
-        LOG_DEBUG("Device group finalized");
-    }
-
-    return std::unique_ptr<ccl::event_impl>(new ccl::gpu_shared_event_impl(std::move(schedule)));
+    return do_collective_op_reductions<buffer_type, group_id, class_id, l0_reduce_typed_entry>(
+        reduction,
+        communication_device,
+        ctx,
+        community,
+        thread_id,
+        this->get_native_context(),
+        send_entry_buffer,
+        recv_entry_buffer,
+        count,
+        reduction,
+        root,
+        stream);
 }
 
 template <class buffer_type>
@@ -671,9 +472,53 @@ ccl::event thread_device_group_ring_communicator::reduce_scatter_impl(
     const ccl::stream::impl_value_t& stream,
     const ccl::reduce_scatter_attr& attr,
     const ccl::vector_class<ccl::event>& deps) {
-    throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
-    return {};
+    using namespace native;
+
+    static constexpr ccl::group_split_type group_id = base_t::topology_type();
+    static constexpr ccl::device_topology_type class_id = base_t::topology_class();
+
+    if (!is_ready()) {
+        throw ccl::exception(std::string(
+            "Device communicator for group_id: " + ::to_string(group_id) +
+            " is not ready yet. Not all сommunicators are created in group. Please create them before usage"));
+    }
+
+    int comm_rank = rank();
+    size_t ring_index = 0;
+    LOG_DEBUG("communicator for device idx: ",
+              get_device_path(),
+              ", rank idx: ",
+              comm_rank,
+              ", ring_index :",
+              ring_index);
+
+    //TODO make const!
+    ccl_buffer send_entry_buffer(const_cast<buffer_type**>(&send_buf),
+                                 recv_count * sizeof(buffer_type),
+                                 0,
+                                 ccl_buffer_type::INDIRECT);
+    ccl_buffer recv_entry_buffer(
+        &recv_buf, recv_count * sizeof(buffer_type), 0, ccl_buffer_type::INDIRECT);
+
+    using community_t = typename device_community_container<class_id>::element_type;
+    community_t community = device_community_impl.get_topology(ring_index);
+
+    return do_collective_op_reductions<buffer_type,
+                                       group_id,
+                                       class_id,
+                                       l0_reduce_scatter_typed_entry>(reduction,
+                                                                      communication_device,
+                                                                      ctx,
+                                                                      community,
+                                                                      thread_id,
+                                                                      this->get_native_context(),
+                                                                      send_entry_buffer,
+                                                                      recv_entry_buffer,
+                                                                      recv_count,
+                                                                      reduction,
+                                                                      stream);
 }
+
 template <class buffer_type>
 ccl::event thread_device_group_ring_communicator::reduce_scatter_impl(
     const buffer_type& send_buf,

@@ -21,6 +21,8 @@
 #include "oneapi/ccl/native_device_api/l0/driver.hpp"
 #include "oneapi/ccl/native_device_api/l0/subdevice.hpp"
 #include "oneapi/ccl/native_device_api/l0/primitives_impl.hpp"
+#include "oneapi/ccl/native_device_api/export_api.hpp"
+#include "common/log/log.hpp"
 
 namespace native {
 
@@ -28,17 +30,15 @@ uint32_t get_subdevice_properties_from_handle(ccl_device::handle_t handle) {
     ze_device_properties_t device_properties;
     ze_result_t ret = zeDeviceGetProperties(handle, &device_properties);
     if (ret != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(std::string("zeDeviceGetProperties failed, error: ") +
-                                 native::to_string(ret));
+        CCL_THROW("zeDeviceGetProperties failed, error: " + native::to_string(ret));
     }
     if (!(device_properties.flags & ZE_DEVICE_PROPERTY_FLAG_SUBDEVICE)) {
-        throw std::runtime_error(std::string(__PRETTY_FUNCTION__) +
-                                 "- invalid device type, got device, but subdevice requested");
+        CCL_THROW("invalid device type, got device, but subdevice requested");
     }
     return device_properties.subdeviceId;
 }
 
-CCL_API
+CCL_BE_API
 std::shared_ptr<ccl_subdevice> ccl_subdevice::create(handle_t handle,
                                                      owner_ptr_t&& device,
                                                      base::owner_ptr_t&& driver) {
@@ -48,15 +48,14 @@ std::shared_ptr<ccl_subdevice> ccl_subdevice::create(handle_t handle,
     return subdevice;
 }
 
-CCL_API
+CCL_BE_API
 ccl_subdevice::indexed_handles ccl_subdevice::get_handles(
     const ccl_device& device,
     const ccl::device_indices_type& requested_indices) {
     uint32_t subdevices_count = 0;
     ze_result_t err = zeDeviceGetSubDevices(device.get(), &subdevices_count, nullptr);
     if (err != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(std::string(__FUNCTION__) +
-                                 "zeDeviceGetSubDevices failed, error: " + native::to_string(err));
+        CCL_THROW("zeDeviceGetSubDevices failed, error: " + native::to_string(err));
     }
 
     std::vector<ccl_subdevice::handle_t> handles;
@@ -64,9 +63,8 @@ ccl_subdevice::indexed_handles ccl_subdevice::get_handles(
 
     err = zeDeviceGetSubDevices(device.get(), &subdevices_count, handles.data());
     if (err != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(
-            std::string(__FUNCTION__) +
-            "zeDeviceGetSubDevices failed for device request, error: " + native::to_string(err));
+        CCL_THROW("zeDeviceGetSubDevices failed for device request, error: " +
+                  native::to_string(err));
     }
 
     //filter indices
@@ -82,7 +80,7 @@ ccl_subdevice::indexed_handles ccl_subdevice::get_handles(
             }
         }
         if (filtered_ids.empty()) {
-            throw std::runtime_error(std::string(__FUNCTION__) + " - Failed, nothing to get");
+            CCL_THROW("failed, nothing to get");
         }
     }
 
@@ -95,8 +93,7 @@ ccl_subdevice::indexed_handles ccl_subdevice::get_handles(
             std::bind(get_subdevice_properties_from_handle, std::placeholders::_1));
     }
     catch (const std::exception& ex) {
-        throw std::runtime_error(std::string(__FUNCTION__) +
-                                 " - Cannot add subdevice: " + ex.what());
+        CCL_THROW(std::string("cannot add subdevice: ") + ex.what());
     }
     return ret;
 }
@@ -104,12 +101,11 @@ ccl_subdevice::indexed_handles ccl_subdevice::get_handles(
 void ccl_subdevice::initialize_subdevice_data() {
     ze_result_t ret = zeDeviceGetProperties(handle, &device_properties);
     if (ret != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(std::string("cannot get properties for subdevice, error: ") +
-                                 native::to_string(ret));
+        CCL_THROW("cannot get properties for subdevice, error: " + native::to_string(ret));
     }
 }
 
-CCL_API
+CCL_BE_API
 ccl_subdevice::ccl_subdevice(handle_t h,
                              owner_ptr_t&& device,
                              base::owner_ptr_t&& driver,
@@ -118,7 +114,7 @@ ccl_subdevice::ccl_subdevice(handle_t h,
         : base(h, std::move(driver), std::move(ctx), std::false_type{}),
           parent_device(std::move(device)) {}
 
-CCL_API
+CCL_BE_API
 ccl_subdevice::ccl_subdevice(handle_t h,
                              owner_ptr_t&& device,
                              base::owner_ptr_t&& driver,
@@ -129,7 +125,7 @@ ccl_subdevice::ccl_subdevice(handle_t h,
     initialize_subdevice_data();
 }
 
-CCL_API
+CCL_BE_API
 ccl_subdevice::~ccl_subdevice() {
     //TODO think about orphant device
 
@@ -142,22 +138,22 @@ ccl_subdevice::~ccl_subdevice() {
     }
 }
 
-CCL_API
+CCL_BE_API
 bool ccl_subdevice::is_subdevice() const noexcept {
     return true;
 }
 
-CCL_API
-ccl::index_type CCL_API ccl_subdevice::get_device_id() const {
+CCL_BE_API
+ccl::index_type CCL_BE_API ccl_subdevice::get_device_id() const {
     assert((device_properties.flags & ZE_DEVICE_PROPERTY_FLAG_SUBDEVICE) && "Must be subdevice");
     return device_properties.subdeviceId;
 }
 
-CCL_API
-ccl::device_index_type CCL_API ccl_subdevice::get_device_path() const {
+CCL_BE_API
+ccl::device_index_type CCL_BE_API ccl_subdevice::get_device_path() const {
     const auto device = parent_device.lock();
     if (!device) {
-        throw std::runtime_error("cannot get get_device_path() because ccl_subdevice has no owner");
+        CCL_THROW("cannot get get_device_path() because ccl_subdevice has no owner");
     }
 
     ccl::device_index_type suddevice_path = device->get_device_path();
@@ -165,7 +161,7 @@ ccl::device_index_type CCL_API ccl_subdevice::get_device_path() const {
     return suddevice_path;
 }
 
-CCL_API
+CCL_BE_API
 std::string ccl_subdevice::to_string(const std::string& prefix) const {
     std::stringstream ss;
     ss << prefix << "SubdDevice: " << handle << std::endl;
@@ -173,68 +169,25 @@ std::string ccl_subdevice::to_string(const std::string& prefix) const {
     return ss.str();
 }
 
-CCL_API
-size_t ccl_subdevice::serialize(std::vector<uint8_t>& out,
-                                size_t from_pos,
-                                size_t expected_size) const {
-    // check parent existence
-    const auto device = parent_device.lock();
+CCL_BE_API
+std::weak_ptr<ccl_subdevice> ccl_subdevice::deserialize(
+    const uint8_t** data,
+    size_t& size,
+    std::shared_ptr<ccl_device_platform>& out_platform) {
+    //restore device
+    auto device = ccl_device::deserialize(data, size, out_platform).lock();
     if (!device) {
-        throw std::runtime_error("cannot serialize ccl_subdevice without owner");
+        CCL_THROW("cannot deserialize ccl_subdevice, because owner is nullptr");
     }
 
-    constexpr size_t expected_device_bytes = sizeof(device_properties.subdeviceId);
-    size_t serialized_bytes = device->serialize(
-        out, from_pos, expected_device_bytes + expected_size); //resize vector inside
+    if (!device->is_subdevice()) {
+        CCL_THROW("is not a subdevice");
+    }
 
-    // serialize from position
-    uint8_t* data_start = out.data() + from_pos + serialized_bytes;
-    *(reinterpret_cast<decltype(device_properties.subdeviceId)*>(data_start)) = get_device_id();
-    serialized_bytes += expected_device_bytes;
-
-    return serialized_bytes;
+    return std::static_pointer_cast<ccl_subdevice>(device);
 }
 
-CCL_API
-std::weak_ptr<ccl_subdevice> ccl_subdevice::deserialize(const uint8_t** data,
-                                                        size_t& size,
-                                                        ccl_device_platform& platform) {
-    //restore driver
-    auto device = ccl_device::deserialize(data, size, platform).lock();
-    if (!device) {
-        throw std::runtime_error("cannot deserialize ccl_subdevice, because owner is nullptr");
-    }
-
-    constexpr size_t expected_bytes = sizeof(device_properties.subdeviceId);
-    if (size < expected_bytes) {
-        throw std::runtime_error("cannot deserialize ccl_device, not enough data");
-    }
-
-    //restore subdevice index
-    decltype(device_properties.subdeviceId) recovered_handle =
-        *(reinterpret_cast<const decltype(device_properties.subdeviceId)*>(*data));
-    size -= expected_bytes;
-    *data += expected_bytes;
-
-    //find subdevice device with requested handle
-    const auto& subdevices = device->get_subdevices();
-
-    auto it = std::find_if(
-        subdevices.begin(),
-        subdevices.end(),
-        [recovered_handle](const typename ccl_device::sub_devices_container_type::value_type& sub) {
-            return sub.second->get_device_id() == recovered_handle;
-        });
-
-    if (it == subdevices.end()) {
-        throw std::runtime_error(
-            std::string("cannot deserialize ccl_subdevice: orphant subddevice: ") +
-            std::to_string(recovered_handle));
-    }
-    return it->second;
-}
-
-CCL_API
+CCL_BE_API
 std::ostream& operator<<(std::ostream& out, const ccl_subdevice& node) {
     out << "SubDevice: " << node.handle << "\n"
         << "parent device: "

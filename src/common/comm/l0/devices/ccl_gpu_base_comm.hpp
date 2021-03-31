@@ -31,6 +31,7 @@
 #include "common/comm/l0/modules/ring/alltoallv_entry_module.hpp"
 #include "common/comm/l0/modules/ring/bcast_entry_module.hpp"
 #include "common/comm/l0/modules/ring/reduce_entry_module.hpp"
+#include "common/comm/l0/modules/ring/reduce_scatter_entry_module.hpp"
 
 #include "common/comm/l0/modules/a2a/allreduce_module.hpp"
 #include "common/comm/l0/modules/supported_modules.hpp"
@@ -40,6 +41,57 @@
 
 namespace native {
 
+// Proxy classes to encapsulate command list and fence handles and provide a simplified interface on
+// top of them.
+// Here we have only "base" classes with a basic functionality(e.g. no thread-safety, just raw L0 calls)
+// and they're returned by methods of ccl_gpu_base_comm while its childs can override
+// and return the extended proxy objects with the same interface(see ccl_gpu_base_comm for example)
+class cmd_list_proxy_base {
+protected:
+    ccl_device& device;
+    ccl_device::device_cmd_list& cmd_list;
+
+public:
+    cmd_list_proxy_base(ccl_device& device, ccl_device::device_cmd_list& cmd_list)
+            : device{ device },
+              cmd_list{ cmd_list } {}
+
+    cmd_list_proxy_base(const cmd_list_proxy_base& other)
+            : device{ other.device },
+              cmd_list{ other.cmd_list } {}
+
+    cmd_list_proxy_base& operator=(const cmd_list_proxy_base& other) = delete;
+
+    ze_command_list_handle_t get();
+    ze_command_list_handle_t* get_ptr();
+
+    void append_kernel(ze_kernel_handle_t handle, ze_group_count_t* launch_args);
+    void close_and_execute(std::shared_ptr<ccl_context> ctx, ze_fence_handle_t fence);
+    void reset();
+};
+
+class fence_proxy_base {
+protected:
+    ccl_device& device;
+    ccl_device::device_queue_fence& fence;
+
+public:
+    fence_proxy_base(ccl_device& device, ccl_device::device_queue_fence& fence)
+            : device{ device },
+              fence{ fence } {}
+
+    fence_proxy_base(const fence_proxy_base& other)
+            : device{ other.device },
+              fence{ other.fence } {}
+
+    fence_proxy_base& operator=(const fence_proxy_base& other) = delete;
+
+    ze_fence_handle_t get() const;
+
+    ze_result_t query_status() const;
+    void reset();
+};
+
 template <class gpu_impl, gpu_types type>
 class ccl_gpu_base_comm {
 public:
@@ -47,9 +99,7 @@ public:
     using type_idx_t = typename std::underlying_type<gpu_types>::type;
     ccl_gpu_base_comm(ccl_device& assigned_device, comm_rank_t idx)
             : index_in_group(idx),
-              device(assigned_device)
-
-    {}
+              device(assigned_device) {}
 
     ~ccl_gpu_base_comm() = default;
 
@@ -76,6 +126,7 @@ public:
     ccl_device& get_device() {
         return device;
     }
+
     [[deprecated]] comm_rank_t get_index_in_group() const {
         return index_in_group;
     }
@@ -114,8 +165,21 @@ public:
               class module_impl>
     static std::shared_ptr<module_impl<module_type, group_id, class_id>>& get_gpu_module_unsafe(
         supported_device_modules<module_impl>& modules) {
-        return std::get<utils::enum_to_underlying(class_id)>(
-            std::get<utils::enum_to_underlying(group_id)>(std::get<module_type>(modules)));
+        return std::get<::utils::enum_to_underlying(class_id)>(
+            std::get<::utils::enum_to_underlying(group_id)>(std::get<module_type>(modules)));
+    }
+
+    cmd_list_proxy_base get_cmd_list(
+        std::shared_ptr<ccl_context> ctx,
+        const ze_command_list_desc_t& properties = ccl_device::get_default_list_desc()) {
+        auto& cmd_list = device.get_cmd_list(ctx, properties);
+        return cmd_list_proxy_base(device, cmd_list);
+    }
+
+    fence_proxy_base get_fence(const ccl_device::device_queue& cmd_queue,
+                               std::shared_ptr<ccl_context> ctx) {
+        auto& fence = device.get_fence(cmd_queue, ctx);
+        return fence_proxy_base(device, fence);
     }
 
 protected:

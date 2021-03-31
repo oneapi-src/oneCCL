@@ -51,8 +51,8 @@ std::unique_ptr<ccl_stream> stream_provider_dispatcher::create(
     ret->native_context.second = native_stream.get_context();
     ret->native_context.first = true;
     LOG_INFO("SYCL queue type: ",
-             static_cast<int>(type),
-             " device: ",
+             ::to_string(type),
+             ", device: ",
              native_stream.get_device().template get_info<cl::sycl::info::device::name>());
 
 #else
@@ -109,8 +109,8 @@ stream_provider_dispatcher::stream_native_t stream_provider_dispatcher::get_nati
 }
 
 #ifdef CCL_ENABLE_SYCL
-stream_provider_dispatcher::stream_native_t stream_provider_dispatcher::get_native_stream(
-    size_t idx) const {
+stream_provider_dispatcher::stream_native_t* stream_provider_dispatcher::get_native_stream(
+    size_t idx) {
     if (creation_is_postponed) {
         throw ccl::exception("native stream is not set");
     }
@@ -119,7 +119,7 @@ stream_provider_dispatcher::stream_native_t stream_provider_dispatcher::get_nati
         throw ccl::exception("unexpected stream idx");
     }
 
-    return native_streams[idx];
+    return &(native_streams[idx]);
 }
 #endif /* CCL_ENABLE_SYCL */
 

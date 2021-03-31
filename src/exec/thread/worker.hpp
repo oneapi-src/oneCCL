@@ -56,6 +56,12 @@ public:
     std::atomic<bool> should_lock;
     std::atomic<bool> is_locked;
 
+    void update_wait_condition(ccl_base_thread::wait_data::update_type type, size_t delta);
+
+    bool check_wait_condition(size_t iter);
+    bool check_affinity_condition(size_t iter);
+    bool check_stop_condition(size_t iter);
+
 private:
     ccl::status process_strict_sched_queue();
     ccl::status process_sched_queue(size_t& processed_count, bool process_all);

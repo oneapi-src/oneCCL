@@ -16,6 +16,8 @@
 #pragma once
 
 #include <atomic>
+#include <condition_variable>
+#include <mutex>
 #include <pthread.h>
 
 #include "common/log/log.hpp"
@@ -25,10 +27,13 @@
 
 class ccl_base_thread {
 public:
-    ccl_base_thread(size_t idx, void* (*progress_function)(void*))
-            : idx(idx),
+    ccl_base_thread(size_t idx, void* (*thread_function)(void*))
+            : should_stop(false),
+              started(false),
+              wait(0),
+              idx(idx),
               start_affinity(CCL_UNDEFINED_CPU_ID),
-              progress_function(progress_function) {}
+              thread_function(thread_function) {}
 
     ccl_base_thread() = delete;
     ~ccl_base_thread() = default;
@@ -59,8 +64,26 @@ public:
         return name;
     };
 
-    std::atomic<bool> should_stop{ false };
-    std::atomic<bool> started{ false };
+    std::atomic<bool> should_stop;
+    std::atomic<bool> started;
+
+    struct wait_data {
+        std::mutex mtx;
+        std::condition_variable var;
+
+        /*
+           wakeup condition
+           for worker threads value == active_op_count
+           so wakeup will happen if value is > 0
+        */
+        size_t value;
+
+        enum update_type { increment, decrement };
+
+        wait_data(size_t value) : value(value) {}
+    };
+
+    wait_data wait;
 
 private:
     ccl::status set_affinity(int affinity);
@@ -68,6 +91,6 @@ private:
     const size_t idx;
 
     int start_affinity;
-    void* (*progress_function)(void*);
+    void* (*thread_function)(void*);
     pthread_t thread{};
 };

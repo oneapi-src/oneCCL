@@ -130,8 +130,6 @@
 #define KVS_APPROVED_DEAD_POD "CCL_APPROVED_DEAD_POD"
 #define KVS_ACCEPT            "CCL_ACCEPT"
 
-#define CCL_IP_LEN 128
-
 #define GET_IP_CMD         "hostname -I"
 #define READ_ONLY          "r"
 #define NULL_CHAR          '\0'
@@ -141,3 +139,40 @@
 #define MAX_CLEAN_CHECKS   3
 
 extern char my_hostname[MAX_KVS_VAL_LENGTH];
+
+#include <cerrno>
+#include <cstring>
+#include <cstdio>
+#include <cstdlib>
+#include <csignal>
+#include <stdexcept>
+
+void inline kvs_str_copy(char* dst, const char* src, size_t bytes) {
+    strncpy(dst, src, bytes - 1);
+    dst[bytes - 1] = '\0';
+}
+
+void inline kvs_str_copy_known_sizes(char* dst, const char* src, size_t bytes) {
+    strncpy(dst, src, bytes);
+    dst[bytes - 1] = '\0';
+}
+
+long int inline safe_strtol(const char* str, char** endptr, int base) {
+    auto val = strtol(str, endptr, base);
+    if (val == 0) {
+        /* if a conversion error occurred, display a message and exit */
+        if (errno == EINVAL) {
+            throw std::runtime_error(
+                std::string(__PRETTY_FUNCTION__) +
+                ": conversion error occurred from: " + std::to_string((int)val));
+        }
+
+        /* if the value provided was out of range, display a warning message */
+        if (errno == ERANGE) {
+            throw std::runtime_error(
+                std::string(__PRETTY_FUNCTION__) +
+                ": the value provided was out of range, value: " + std::to_string((int)val));
+        }
+    }
+    return val;
+}

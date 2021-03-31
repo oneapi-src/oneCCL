@@ -40,7 +40,7 @@ using ccl::preview::create_comm_split_attr;
 
 host_communicator::host_communicator() : comm_attr(create_comm_split_attr()) {}
 
-host_communicator::host_communicator(int size, shared_ptr_class<kvs_interface> kvs)
+host_communicator::host_communicator(int size, shared_ptr_class<ikvs_wrapper> kvs)
         : comm_attr(create_comm_split_attr()),
           comm_rank(0),
           comm_size(size) {
@@ -49,7 +49,7 @@ host_communicator::host_communicator(int size, shared_ptr_class<kvs_interface> k
     }
 }
 
-host_communicator::host_communicator(int size, int rank, shared_ptr_class<kvs_interface> kvs)
+host_communicator::host_communicator(int size, int rank, shared_ptr_class<ikvs_wrapper> kvs)
         : comm_attr(create_comm_split_attr()),
           comm_rank(rank),
           comm_size(size) {
@@ -57,12 +57,11 @@ host_communicator::host_communicator(int size, int rank, shared_ptr_class<kvs_in
         throw ccl::exception("Incorrect rank or size value when creating a host communicator");
     }
 
-    LOG_DEBUG("host_communicator ctor");
+    LOG_DEBUG("ctor");
 
     ccl::global_data& data = ccl::global_data::get();
-    std::shared_ptr<ikvs_wrapper> kvs_tmp = std::shared_ptr<ikvs_wrapper>(new users_kvs(kvs));
     std::shared_ptr<atl_wrapper> atl_tmp =
-        std::shared_ptr<atl_wrapper>(new atl_wrapper(size, { rank }, kvs_tmp));
+        std::shared_ptr<atl_wrapper>(new atl_wrapper(size, { rank }, kvs));
     comm_impl =
         std::shared_ptr<ccl_comm>(new ccl_comm(rank, size, data.comm_ids->acquire(), atl_tmp));
 }
@@ -80,7 +79,7 @@ host_communicator::host_communicator(std::shared_ptr<atl_wrapper> atl)
                              std::to_string(rank) + " size: " + std::to_string(size));
     }
 
-    LOG_DEBUG("host_communicator ctor");
+    LOG_DEBUG("ctor");
 
     ccl::global_data& data = ccl::global_data::get();
     comm_impl = std::shared_ptr<ccl_comm>(new ccl_comm(rank, size, data.comm_ids->acquire(), atl));

@@ -69,7 +69,8 @@ public:
                   comm->template get_comm_data<dependent_topology(), dependent_topology_class()>()),
               ccl_communicator(ccl_comm),
               node_device_storage(global_device_storage),
-              send_handles(std::move(send_data)) {
+              send_handles(std::move(send_data)),
+              ctx(in_ctx) {
         LOG_DEBUG(class_name(), " entry req ", &req, ", rank: ", comm_addr.to_string());
     }
 
@@ -164,7 +165,7 @@ public:
                      */
                     auto recv_ip_handle = ccl_device::device_ipc_memory_handle::deserialize<
                         ccl_device::device_ipc_memory_handle>(
-                        &recv_data_start, recv_data_size, get_platform());
+                        &recv_data_start, recv_data_size, ctx, get_platform());
 
                     std::shared_ptr<ccl_ipc_gpu_comm> ipc_mem_owner;
                     {
@@ -294,8 +295,6 @@ private:
     std::vector<size_t> recv_bytes;
     std::vector<int> offsets;
 
-    std::vector<ccl_device::device_ipc_memory> recv_ipc_handles;
-
     using ipc_memory_container = std::vector<ccl_device::device_ipc_memory>;
     std::map<std::shared_ptr<ccl_ipc_gpu_comm>, ipc_memory_container>
         foreign_device_ipc_mem_storage;
@@ -304,5 +303,7 @@ private:
 
     ccl::event event;
     atl_req_t req{};
+
+    ccl_driver_context_ptr ctx;
 };
 } // namespace native

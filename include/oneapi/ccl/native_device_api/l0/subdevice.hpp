@@ -54,17 +54,10 @@ struct ccl_subdevice : public ccl_device {
     // utils
     std::string to_string(const std::string& prefix = std::string()) const;
 
-    // serialize/deserialize
-    static constexpr size_t get_size_for_serialize() {
-        return /*owner_t::get_size_for_serialize()*/ sizeof(size_t) +
-               sizeof(device_properties.subdeviceId);
-    }
-    size_t serialize(std::vector<uint8_t>& out,
-                     size_t from_pos,
-                     size_t expected_size) const override;
-    static std::weak_ptr<ccl_subdevice> deserialize(const uint8_t** data,
-                                                    size_t& size,
-                                                    ccl_device_platform& platform);
+    static std::weak_ptr<ccl_subdevice> deserialize(
+        const uint8_t** data,
+        size_t& size,
+        std::shared_ptr<ccl_device_platform>& out_platform);
 
 private:
     ccl_subdevice(handle_t h,

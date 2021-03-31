@@ -26,7 +26,7 @@ namespace v1 {
 enum class kvs_attr_id : int {
     version,
 
-    last_value
+    ip_port,
 };
 
 } // namespace v1

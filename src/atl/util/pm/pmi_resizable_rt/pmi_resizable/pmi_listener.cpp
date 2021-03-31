@@ -113,22 +113,7 @@ int pmi_listener::collect_sock_addr(std::shared_ptr<helper> h) {
             continue;
         }
 
-        if ((server_addresses[i].sin_port = strtol(point_to_port, NULL, 10)) == 0) {
-            /* if a conversion error occurred, display a message and exit */
-            if (errno == EINVAL) {
-                printf("\nconversion error occurred from: %hu\n", server_addresses[i].sin_port);
-                res = -1;
-                goto exit;
-            }
-
-            /* if the value provided was out of range, display a warning message */
-            if (errno == ERANGE) {
-                printf("\nthe value provided was out of range, value: %hu\n",
-                       server_addresses[i].sin_port);
-                res = -1;
-                goto exit;
-            }
-        }
+        server_addresses[i].sin_port = safe_strtol(point_to_port, NULL, 10);
         server_addresses[i].sin_family = AF_INET;
 
         if (inet_pton(AF_INET, sock_addr_str[j], &(server_addresses[i].sin_addr)) <= 0) {

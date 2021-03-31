@@ -25,15 +25,15 @@ typename ccl_sparse_allreduce_attr_impl_t::sparse_allreduce_completion_fn_traits
 ccl_sparse_allreduce_attr_impl_t::set_attribute_value(
     typename sparse_allreduce_completion_fn_traits::type val,
     const sparse_allreduce_completion_fn_traits& t) {
-    auto old = reduction_fn_val;
-    reduction_fn_val = typename sparse_allreduce_completion_fn_traits::return_type{ val };
+    auto old = completion_fn_val;
+    completion_fn_val = typename sparse_allreduce_completion_fn_traits::return_type{ val };
     return typename sparse_allreduce_completion_fn_traits::return_type{ old };
 }
 
 const typename ccl_sparse_allreduce_attr_impl_t::sparse_allreduce_completion_fn_traits::return_type&
 ccl_sparse_allreduce_attr_impl_t::get_attribute_value(
     const sparse_allreduce_completion_fn_traits& id) const {
-    return reduction_fn_val;
+    return completion_fn_val;
 }
 
 typename ccl_sparse_allreduce_attr_impl_t::sparse_allreduce_alloc_fn_traits::return_type
@@ -79,4 +79,5 @@ const typename ccl_sparse_allreduce_attr_impl_t::sparse_coalesce_mode_traits::re
 ccl_sparse_allreduce_attr_impl_t::get_attribute_value(const sparse_coalesce_mode_traits& id) const {
     return mode_val;
 }
+
 } // namespace ccl

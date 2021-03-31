@@ -4385,7 +4385,14 @@ class ScopedPrematureExitFile {
       // errors are ignored as there's nothing better we can do and we
       // don't want to fail the test because of this.
       FILE* pfile = posix::FOpen(premature_exit_filepath, "w");
+#if 0
       (void)fwrite("0", 1, 1, pfile);
+#else
+      /* CCL: check error code to avoid warning with strict compiler flags */
+      if (fwrite("0", 1, 1, pfile) != 1) {
+          GTEST_LOG_(ERROR) << "Failed to correctly write character";
+      }
+#endif
       fclose(pfile);
     }
   }

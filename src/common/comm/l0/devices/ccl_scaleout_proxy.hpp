@@ -22,6 +22,7 @@
 
 #include "common/comm/l0/devices/ccl_gpu_base_comm.hpp"
 #include "common/comm/l0/devices/proxy_observer_types.hpp"
+#include "common/comm/l0/context/scaling_ctx/observer_session_key.hpp"
 
 namespace native {
 
@@ -48,12 +49,15 @@ public:
                                                  group_id,
                                                  class_id>; //same as in-process GPU
 
+    template <ccl_coll_type algo_type, ccl::group_split_type group, ccl::device_topology_type mode>
+    using kernel_class_t = typename gpu_module_t<algo_type, group, mode>::scale_out_cpu_gw_class;
+
     template <ccl_coll_type algo_type,
-              ccl::group_split_type group_id,
-              ccl::device_topology_type class_id,
-              class native_data_type>
+              ccl::group_split_type group,
+              ccl::device_topology_type mode,
+              class kernel_params>
     using gpu_kernel_t =
-        typename gpu_module_t<algo_type, group_id, class_id>::template kernel<native_data_type>;
+        typename kernel_class_t<algo_type, group, mode>::template kernel_t<kernel_params>;
 
     static constexpr const char* name_impl() {
         return "SCALE_OUT_PROXY";
@@ -76,12 +80,12 @@ public:
     template <ccl_coll_type module_type,
               ccl::group_split_type group_id,
               ccl::device_topology_type class_id,
-              class native_data_type>
-    gpu_kernel_t<module_type, group_id, class_id, native_data_type>& get_gpu_kernel() {
-        this->template invoke<group_id>();
+              class kernel_params>
+    gpu_kernel_t<module_type, group_id, class_id, kernel_params>& get_gpu_kernel() {
+        auto& ptr = wrapped_gpu_comm.template get_gpu_module<module_type, group_id, class_id>();
 
-        return wrapped_gpu_comm
-            .template get_gpu_kernel<module_type, group_id, class_id, native_data_type>();
+        using requested_class = kernel_class_t<module_type, group_id, class_id>;
+        return ptr.template get_class<requested_class>().template get<kernel_params>();
     }
 
     template <ccl::group_split_type group_id, ccl::device_topology_type class_id>
@@ -89,19 +93,44 @@ public:
         return wrapped_gpu_comm.template get_comm_data<group_id, class_id>();
     }
 
-    template <class native_data_type,
+    template <class kernel_params,
               ccl::group_split_type group_id,
               ccl::device_topology_type class_id,
               class gpu_entry,
               class = typename std::enable_if<group_id == ccl::group_split_type::cluster>::type>
-    gpu_kernel_t<gpu_entry::type(), group_id, class_id, native_data_type>& register_entry(
+    gpu_kernel_t<gpu_entry::type(), group_id, class_id, kernel_params>& register_entry(
         gpu_entry& entry) {
         const topology_addr<group_id, class_id>& comm_addr = get_comm_data<group_id, class_id>();
         LOG_DEBUG("entry: ", gpu_entry::class_name(), " registered on: ", comm_addr.to_string());
 
-        auto& main_func = get_gpu_kernel<gpu_entry::type(), group_id, class_id, native_data_type>();
+        using kernel_func_type = gpu_kernel_t<gpu_entry::type(), group_id, class_id, kernel_params>;
+
+        kernel_func_type& main_func =
+            get_gpu_kernel<gpu_entry::type(), group_id, class_id, kernel_params>();
+
         main_func.set_rank(comm_addr.rank);
         main_func.set_size(comm_addr.size);
+
+        // alloc shared data structure to notify host side with device parital result
+        observer::invoke_params<gpu_entry::type(), kernel_params> params = entry.get_numa_data();
+
+        // invoke host-side context creation
+        this->template invoke<group_id, class_id>(entry.get_numa_session_key(), params);
+
+        // bind shared data to kernel
+        const auto& out_ctx_params = params.get_ctx_params();
+        main_func.template set_arg<typename kernel_func_type::event_prod_chunk_mem_arg>(
+            out_ctx_params.numa_staged_memory->get());
+        main_func.template set_arg<typename kernel_func_type::event_prod_bytes_arg>(
+            out_ctx_params.staged_memory_size_counter->get());
+
+        main_func.template set_arg<typename kernel_func_type::event_consumed_bytes_offset_arg>(
+            out_ctx_params.producer_aggregated_memory_offset->get());
+        main_func.template set_arg<typename kernel_func_type::event_consumed_chunk_mem_arg>(
+            out_ctx_params.total_producers_aggregated_memory->get());
+        main_func.template set_arg<typename kernel_func_type::event_consumed_bytes_arg>(
+            out_ctx_params.total_producers_aggregated_size_counter->get());
+
         return main_func;
     }
 
@@ -140,9 +169,9 @@ public:
     template <ccl_coll_type algo_type,
               ccl::group_split_type group_id,
               ccl::device_topology_type class_id,
-              class native_data_type>
-    using gpu_kernel_t =
-        typename gpu_module_t<algo_type, group_id, class_id>::template kernel<native_data_type>;
+              class kernel_params>
+    using gpu_kernel_t = typename gpu_module_t<algo_type, group_id, class_id>::
+        scale_out_cpu_gw_class::template kernel_t<kernel_params>;
 
     //using ctx_ptr = std::weak_ptr<scale_up_ctx_t>;
     using device_impl_t = ccl_numa_proxy<device_t>;
@@ -168,12 +197,12 @@ public:
     template <ccl_coll_type module_type,
               ccl::group_split_type group_id,
               ccl::device_topology_type class_id,
-              class native_data_type>
-    gpu_kernel_t<module_type, group_id, class_id, native_data_type>& get_gpu_kernel() {
+              class kernel_params>
+    gpu_kernel_t<module_type, group_id, class_id, kernel_params>& get_gpu_kernel() {
         this->template invoke<group_id>();
 
         return wrapped_gpu_comm
-            .template get_gpu_kernel<module_type, group_id, class_id, native_data_type>();
+            .template get_gpu_kernel<module_type, group_id, class_id, kernel_params>();
     }
 
     template <ccl::group_split_type group_id, ccl::device_topology_type class_id>
@@ -181,17 +210,17 @@ public:
         return wrapped_gpu_comm.template get_comm_data<group_id, class_id>();
     }
 
-    template <class native_data_type,
+    template <class kernel_params,
               ccl::group_split_type group_id,
               ccl::device_topology_type class_id,
               class gpu_entry,
               class = typename std::enable_if<group_id == ccl::group_split_type::cluster>::type>
-    gpu_kernel_t<gpu_entry::type(), group_id, class_id, native_data_type>& register_entry(
+    gpu_kernel_t<gpu_entry::type(), group_id, class_id, kernel_params>& register_entry(
         gpu_entry& entry) {
         const topology_addr<group_id, class_id>& comm_addr = get_comm_data<group_id, class_id>();
         LOG_DEBUG("entry: ", gpu_entry::class_name(), " registered on: ", comm_addr.to_string());
 
-        auto& main_func = get_gpu_kernel<gpu_entry::type(), group_id, class_id, native_data_type>();
+        auto& main_func = get_gpu_kernel<gpu_entry::type(), group_id, class_id, kernel_params>();
         main_func.set_rank(comm_addr.rank);
         main_func.set_size(comm_addr.size);
         return main_func;
@@ -230,9 +259,9 @@ public:
     template <ccl_coll_type algo_type,
               ccl::group_split_type group_id,
               ccl::device_topology_type class_id,
-              class native_data_type>
-    using gpu_kernel_t =
-        typename gpu_module_t<algo_type, group_id, class_id>::template kernel<native_data_type>;
+              class kernel_params>
+    using gpu_kernel_t = typename gpu_module_t<algo_type, group_id, class_id>::
+        scale_out_cpu_gw_class::template kernel_t<kernel_params>;
 
     //using ctx_ptr = std::weak_ptr<scale_up_ctx_t>;
     using device_impl_t = ccl_gpu_scaleup_proxy<device_t>;
@@ -258,12 +287,12 @@ public:
     template <ccl_coll_type module_type,
               ccl::group_split_type group_id,
               ccl::device_topology_type class_id,
-              class native_data_type>
-    gpu_kernel_t<module_type, group_id, class_id, native_data_type>& get_gpu_kernel() {
+              class kernel_params>
+    gpu_kernel_t<module_type, group_id, class_id, kernel_params>& get_gpu_kernel() {
         this->template invoke<group_id>();
 
         return wrapped_gpu_comm
-            .template get_gpu_kernel<module_type, group_id, class_id, native_data_type>();
+            .template get_gpu_kernel<module_type, group_id, class_id, kernel_params>();
     }
 
     template <ccl::group_split_type group_id, ccl::device_topology_type class_id>
@@ -271,17 +300,17 @@ public:
         return wrapped_gpu_comm.template get_comm_data<group_id, class_id>();
     }
 
-    template <class native_data_type,
+    template <class kernel_params,
               ccl::group_split_type group_id,
               ccl::device_topology_type class_id,
               class gpu_entry,
               class = typename std::enable_if<group_id == ccl::group_split_type::cluster>::type>
-    gpu_kernel_t<gpu_entry::type(), group_id, class_id, native_data_type>& register_entry(
+    gpu_kernel_t<gpu_entry::type(), group_id, class_id, kernel_params>& register_entry(
         gpu_entry& entry) {
         const topology_addr<group_id, class_id>& comm_addr = get_comm_data<group_id, class_id>();
         LOG_DEBUG("entry: ", gpu_entry::class_name(), " registered on: ", comm_addr.to_string());
 
-        auto& main_func = get_gpu_kernel<gpu_entry::type(), group_id, class_id, native_data_type>();
+        auto& main_func = get_gpu_kernel<gpu_entry::type(), group_id, class_id, kernel_params>();
         main_func.set_rank(comm_addr.rank);
         main_func.set_size(comm_addr.size);
         return main_func;
@@ -320,9 +349,10 @@ public:
     template <ccl_coll_type algo_type,
               ccl::group_split_type group,
               ccl::device_topology_type mode,
-              class native_data_type>
+              class kernel_params>
     using gpu_kernel_t =
-        typename gpu_module_t<algo_type, group, mode>::template kernel<native_data_type>;
+        typename gpu_module_t<algo_type, group, mode>::scale_out_cpu_gw_class::template kernel_t<
+            kernel_params>;
 
     //using ctx_ptr = std::weak_ptr<scale_up_ctx_t>;
     using device_impl_t = ccl_gpu_scaleup_proxy<ccl_numa_proxy<device_t>>;
@@ -348,12 +378,12 @@ public:
     template <ccl_coll_type module_type,
               ccl::group_split_type group_id,
               ccl::device_topology_type class_id,
-              class native_data_type>
-    gpu_kernel_t<module_type, group_id, class_id, native_data_type>& get_gpu_kernel() {
+              class kernel_params>
+    gpu_kernel_t<module_type, group_id, class_id, kernel_params>& get_gpu_kernel() {
         this->template invoke<group_id>();
 
         return wrapped_gpu_comm
-            .template get_gpu_kernel<module_type, group_id, class_id, native_data_type>();
+            .template get_gpu_kernel<module_type, group_id, class_id, kernel_params>();
     }
 
     template <ccl::group_split_type group_id, ccl::device_topology_type class_id>
@@ -361,17 +391,17 @@ public:
         return wrapped_gpu_comm.template get_comm_data<group_id, class_id>();
     }
 
-    template <class native_data_type,
+    template <class kernel_params,
               ccl::group_split_type group_id,
               ccl::device_topology_type class_id,
               class gpu_entry,
               class = typename std::enable_if<group_id == ccl::group_split_type::cluster>::type>
-    gpu_kernel_t<gpu_entry::type(), group_id, class_id, native_data_type>& register_entry(
+    gpu_kernel_t<gpu_entry::type(), group_id, class_id, kernel_params>& register_entry(
         gpu_entry& entry) {
         const topology_addr<group_id, class_id>& comm_addr = get_comm_data<group_id, class_id>();
         LOG_DEBUG("entry: ", gpu_entry::class_name(), " registered on: ", comm_addr.to_string());
 
-        auto& main_func = get_gpu_kernel<gpu_entry::type(), group_id, class_id, native_data_type>();
+        auto& main_func = get_gpu_kernel<gpu_entry::type(), group_id, class_id, kernel_params>();
         main_func.set_rank(comm_addr.rank);
         main_func.set_size(comm_addr.size);
         return main_func;

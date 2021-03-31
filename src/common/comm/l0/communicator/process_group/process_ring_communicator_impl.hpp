@@ -22,6 +22,7 @@
 #include "common/comm/l0/context/process_group_ctx.hpp"
 #include "common/comm/l0/scheduler/allied_process_group_scheduler.hpp"
 #include "common/event/impls/gpu_event.hpp"
+#include "common/comm/l0/communicator/process_group/process_communicator_utils.hpp"
 
 /* allgatherv */
 template <class buffer_type>
@@ -35,6 +36,7 @@ ccl::event process_ring_communicator::allgatherv_impl(const buffer_type* send_bu
     throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
     return {};
 }
+
 template <class buffer_type>
 ccl::event process_ring_communicator::allgatherv_impl(const buffer_type* send_buf,
                                                       size_t send_count,
@@ -112,6 +114,22 @@ ccl::event process_ring_communicator::allreduce_impl(const buffer_type* send_buf
 
     using community_t = typename device_community_container<class_id>::element_type;
     community_t community = device_community_impl.get_topology(ring_index);
+
+    return do_collective_op_reductions<buffer_type, group_id, class_id, l0_allreduce_typed_entry>(
+        reduction,
+        communication_device,
+        ctx,
+        community,
+        process_id,
+        thread_id,
+        this->get_native_context(),
+        send_entry_buffer,
+        recv_entry_buffer,
+        count,
+        reduction,
+        stream);
+
+    /*
 
     const auto& in_process_gpu_storage = community->get_devices<ccl_gpu_comm>();
     const auto& virtual_process_gpu_storage = community->get_devices<ccl_virtual_gpu_comm>();
@@ -223,7 +241,9 @@ ccl::event process_ring_communicator::allreduce_impl(const buffer_type* send_buf
     if (schedule) {
         LOG_DEBUG("Device group finalized");
     }
-    return std::unique_ptr<ccl::event_impl>(new ccl::gpu_shared_event_impl(std::move(schedule)));
+    return std::unique_ptr<ccl::event_impl>(
+        new ccl::gpu_shared_event_impl(std::move(schedule)));
+    */
 }
 
 template <class buffer_type>

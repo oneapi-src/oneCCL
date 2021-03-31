@@ -36,18 +36,18 @@ template <class native_type>
 using ccl_sycl_typed_buffer_t = cl::sycl::buffer<native_type, 1>;
 
 /* ordering should be aligned with ccl::datatype */
-using ccl_sycle_buffer_one_dim_types = std::tuple<ccl_sycl_typed_buffer_t<int8_t>,
-                                                  ccl_sycl_typed_buffer_t<uint8_t>,
-                                                  ccl_sycl_typed_buffer_t<int16_t>,
-                                                  ccl_sycl_typed_buffer_t<uint16_t>,
-                                                  ccl_sycl_typed_buffer_t<int32_t>,
-                                                  ccl_sycl_typed_buffer_t<uint32_t>,
-                                                  ccl_sycl_typed_buffer_t<int64_t>,
-                                                  ccl_sycl_typed_buffer_t<uint64_t>,
-                                                  ccl_sycl_typed_buffer_t<float>, //unsupported
-                                                  ccl_sycl_typed_buffer_t<float>,
-                                                  ccl_sycl_typed_buffer_t<double>,
-                                                  ccl_sycl_typed_buffer_t<float>>; //unsupported
+using ccl_sycl_buffer_one_dim_types = std::tuple<ccl_sycl_typed_buffer_t<int8_t>,
+                                                 ccl_sycl_typed_buffer_t<uint8_t>,
+                                                 ccl_sycl_typed_buffer_t<int16_t>,
+                                                 ccl_sycl_typed_buffer_t<uint16_t>,
+                                                 ccl_sycl_typed_buffer_t<int32_t>,
+                                                 ccl_sycl_typed_buffer_t<uint32_t>,
+                                                 ccl_sycl_typed_buffer_t<int64_t>,
+                                                 ccl_sycl_typed_buffer_t<uint64_t>,
+                                                 ccl_sycl_typed_buffer_t<float>, //unsupported
+                                                 ccl_sycl_typed_buffer_t<float>,
+                                                 ccl_sycl_typed_buffer_t<double>,
+                                                 ccl_sycl_typed_buffer_t<float>>; //unsupported
 #endif /* CCL_ENABLE_SYCL */
 
 #define CCL_INVALID_PROC_IDX (-1)

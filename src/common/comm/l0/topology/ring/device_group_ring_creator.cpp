@@ -206,31 +206,24 @@ bool device_group_ring_topology::build_scale_up_specific_topology(
                 0,
                 0);
         // promote real-virtual device (right corner devices) in graphs up to scale_up_proxy type
-        // all loca group devices in different graph would be linked by scale_up_proxy
+        // all local group devices in different graph would be linked by scale_up_proxy
         // each local group ( in graph) must have at least one scale_up_proxy device
         const ccl::device_index_type& last_in_graph_index = *graph.rbegin();
-        auto scale_virt = detail::add_numa_proxy_device<ccl_virtual_gpu_comm, group_id(), class_id>(
-            *group_gpu_comms, last_in_graph_index, context, devices_factory);
-        if (scale_virt) {
-            out << "Added scaleup virtual device:\n"
-                << scale_virt->to_string() << "\nby idx: " << last_in_graph_index << std::endl;
+        size_t inserted_device_type_index = detail::role_mod::inject_numa_device<
+            group_id(),
+            class_id,
+            device_group_context,
+            ccl_virtual_gpu_comm, /* `virtual` is better candiate*/
+            ccl_gpu_comm>(*group_gpu_comms, last_in_graph_index, context, devices_factory);
+        if (inserted_device_type_index == std::numeric_limits<size_t>::max()) {
+            assert(false && "Unsupported device type in topology creation");
+            std::ostringstream ss;
+            ss << out.rdbuf();
+            throw std::runtime_error(
+                std::string("Unsupported device type in topology creation. Log:\n") + ss.str());
         }
-        else {
-            auto scale_real = detail::add_numa_proxy_device<ccl_gpu_comm, group_id(), class_id>(
-                *group_gpu_comms, last_in_graph_index, context, devices_factory);
-            if (scale_real) {
-                out << "Added scaleup real device:\n"
-                    << scale_real->to_string() << "\nby idx: " << last_in_graph_index << std::endl;
-            }
-            else {
-                assert(false && "Unsupported device type in topology creation");
-                std::ostringstream ss;
-                ss << out.rdbuf();
-                throw std::runtime_error(
-                    std::string("Unsupported device type in topology creation. Log:\n") + ss.str());
-            }
-        }
-
+        out << "Inject numa device by order: " << inserted_device_type_index
+            << "\nby idx: " << last_in_graph_index << std::endl;
         /* use plain (non-indexed) device wrapper list, which is allocated from device_storage
          * in the following way:
          *

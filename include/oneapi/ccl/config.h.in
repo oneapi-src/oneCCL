@@ -1,5 +1,20 @@
 #pragma once
 
+#define CCL_FORCEINLINE   inline __attribute__((always_inline))
+#define CCL_FORCENOINLINE __attribute__((noinline))
+
+#if (__GNUC__ >= 6) || defined(__clang__)
+#   define CCL_DEPRECATED_ENUM_FIELD __attribute__((deprecated))
+#else
+#   define CCL_DEPRECATED_ENUM_FIELD
+#endif
+
+#if defined(__GNUC__)
+#   define CCL_DEPRECATED __attribute__((deprecated))
+#else
+#   define CCL_DEPRECATED
+#endif
+
 /* All symbols shall be internal unless marked as CCL_API */
 #ifdef __linux__
 #   if __GNUC__ >= 4
@@ -31,3 +46,6 @@
 
 /* Auto-generated configuration settings for multi GPU support*/
 #cmakedefine MULTI_GPU_SUPPORT
+
+/* Configuration setting for truncate v/s RNE rounding mode */
+#cmakedefine CCL_GPU_BF16_TRUNCATE

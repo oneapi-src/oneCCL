@@ -30,9 +30,7 @@ CCL_API event::event(impl_value_t&& impl) noexcept : base_t(std::move(impl)) {}
 CCL_API event::~event() noexcept {}
 
 CCL_API event& event::operator=(event&& src) noexcept {
-    if (this->get_impl() != src.get_impl()) {
-        this->get_impl() = std::move(src.get_impl());
-    }
+    this->acc_policy_t::create(this, std::move(src));
     return *this;
 }
 

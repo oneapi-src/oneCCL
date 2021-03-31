@@ -19,6 +19,7 @@
 #include "oneapi/ccl/native_device_api/l0/primitives.hpp"
 #include "oneapi/ccl/native_device_api/l0/utils.hpp"
 #include "oneapi/ccl/native_device_api/l0/context.hpp"
+#include "oneapi/ccl/native_device_api/l0/driver.hpp"
 
 namespace native {
 struct ccl_device_platform;
@@ -56,7 +57,10 @@ struct ccl_device : public cl_base<ze_device_handle_t, ccl_device_driver, ccl_co
 
     using device_ipc_memory = ipc_memory<ccl_device, ccl_context>;
     using device_ipc_memory_handle = ipc_memory_handle<ccl_device, ccl_context>;
+
+    using queue_group_properties = std::vector<ze_command_queue_group_properties_t>;
     using device_queue = queue<ccl_device, ccl_context>;
+
     using device_queue_fence = queue_fence<ccl_device, ccl_context>;
     using device_cmd_list = cmd_list<ccl_device, ccl_context>;
     using device_module = module<ccl_device, ccl_context>;
@@ -66,6 +70,7 @@ struct ccl_device : public cl_base<ze_device_handle_t, ccl_device_driver, ccl_co
 
     ccl_device(handle_t h, owner_ptr_t&& parent, std::weak_ptr<ccl_context_holder>&& ctx);
     ccl_device(const ccl_device& src) = delete;
+    ccl_device& operator=(const ccl_device& src) = delete;
     virtual ~ccl_device();
 
     static const ze_command_queue_desc_t& get_default_queue_desc();
@@ -102,6 +107,7 @@ struct ccl_device : public cl_base<ze_device_handle_t, ccl_device_driver, ccl_co
     virtual ccl::device_index_type get_device_path() const;
 
     const ze_device_properties_t& get_device_properties() const;
+    const ze_device_compute_properties_t& get_compute_properties() const;
     ze_device_p2p_properties_t get_p2p_properties(const ccl_device& remote_device) const;
 
     // primitives creation
@@ -113,6 +119,21 @@ struct ccl_device : public cl_base<ze_device_handle_t, ccl_device_driver, ccl_co
         const ze_device_mem_alloc_desc_t& mem_descr = get_default_mem_alloc_desc(),
         const ze_host_mem_alloc_desc_t& host_descr = get_default_host_alloc_desc()) {
         return device_memory<elem_t>(
+            reinterpret_cast<elem_t*>(
+                device_alloc_memory(count * sizeof(elem_t), alignment, mem_descr, host_descr, ctx)),
+            count,
+            get_ptr(),
+            ctx);
+    }
+
+    template <class elem_t>
+    device_memory_ptr<elem_t> alloc_memory_ptr(
+        size_t count,
+        size_t alignment,
+        std::shared_ptr<ccl_context> ctx,
+        const ze_device_mem_alloc_desc_t& mem_descr = get_default_mem_alloc_desc(),
+        const ze_host_mem_alloc_desc_t& host_descr = get_default_host_alloc_desc()) {
+        return std::make_shared<device_memory<elem_t>>(
             reinterpret_cast<elem_t*>(
                 device_alloc_memory(count * sizeof(elem_t), alignment, mem_descr, host_descr, ctx)),
             count,
@@ -134,6 +155,7 @@ struct ccl_device : public cl_base<ze_device_handle_t, ccl_device_driver, ccl_co
             get_ptr(),
             ctx);
     }
+
     device_ipc_memory_handle create_ipc_memory_handle(void* device_mem_ptr,
                                                       std::shared_ptr<ccl_context> ctx);
     std::shared_ptr<device_ipc_memory_handle> create_shared_ipc_memory_handle(
@@ -152,9 +174,14 @@ struct ccl_device : public cl_base<ze_device_handle_t, ccl_device_driver, ccl_co
     device_queue_fence& get_fence(const device_queue& queue, std::shared_ptr<ccl_context> ctx);
     device_queue& get_cmd_queue(const ze_command_queue_desc_t& properties,
                                 std::shared_ptr<ccl_context> ctx);
+    queue_group_properties get_queue_group_prop() const;
+
     device_cmd_list create_cmd_list(
         std::shared_ptr<ccl_context> ctx,
         const ze_command_list_desc_t& properties = get_default_list_desc());
+    device_cmd_list create_immediate_cmd_list(
+        std::shared_ptr<ccl_context> ctx,
+        const ze_command_queue_desc_t& properties = get_default_queue_desc());
     device_cmd_list& get_cmd_list(
         std::shared_ptr<ccl_context> ctx,
         const ze_command_list_desc_t& properties = get_default_list_desc());
@@ -186,19 +213,18 @@ struct ccl_device : public cl_base<ze_device_handle_t, ccl_device_driver, ccl_co
     void on_delete(ze_module_handle_t& module_handle, ze_context_handle_t& ctx);
     template <class elem_t>
     void on_delete(elem_t* mem_handle, ze_context_handle_t& ctx) {
-        // TODO: ctx
-        device_free_memory(static_cast<void*>(mem_handle), std::shared_ptr<ccl_context>{});
+        device_free_memory(static_cast<void*>(mem_handle), ctx);
     }
 
     // serialize/deserialize
     static constexpr size_t get_size_for_serialize() {
-        return /*owner_t::get_size_for_serialize()*/ sizeof(size_t) +
-               sizeof(device_properties.deviceId);
+        return owner_t::get_size_for_serialize();
     }
 
-    static std::weak_ptr<ccl_device> deserialize(const uint8_t** data,
-                                                 size_t& size,
-                                                 ccl_device_platform& platform);
+    static std::weak_ptr<ccl_device> deserialize(
+        const uint8_t** data,
+        size_t& size,
+        std::shared_ptr<ccl_device_platform>& out_platform);
     virtual size_t serialize(std::vector<uint8_t>& out,
                              size_t from_pos,
                              size_t expected_size) const;
@@ -224,11 +250,11 @@ private:
     static handle_t get_assoc_device_handle(const void* ptr,
                                             const ccl_device_driver* driver,
                                             std::shared_ptr<ccl_context> ctx);
-    void device_free_memory(void* mem_ptr, std::shared_ptr<ccl_context> ctx);
+    void device_free_memory(void* mem_ptr, ze_context_handle_t& ctx);
 
     //TODO shared mutex?
     std::mutex queue_mutex;
-    std::map<ze_command_queue_desc_t, device_queue, command_queue_desc_comparator> cmd_queus;
+    std::map<ze_command_queue_desc_t, device_queue, command_queue_desc_comparator> cmd_queues;
     std::map<ze_command_queue_handle_t, device_queue_fence> queue_fences;
 
     std::mutex list_mutex;

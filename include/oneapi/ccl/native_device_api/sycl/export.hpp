@@ -14,7 +14,10 @@
  limitations under the License.
 */
 #pragma once
+
 #include "oneapi/ccl/types.hpp"
+
+#define CCL_BE_API /*CCL_HELPER_DLL_EXPORT*/
 
 #define CL_BACKEND_TYPE ccl::cl_backend_type::dpcpp_sycl
 #include <CL/sycl.hpp>
@@ -22,11 +25,11 @@
 namespace ccl {
 template <>
 struct backend_info<CL_BACKEND_TYPE> {
-    CCL_API static constexpr ccl::cl_backend_type type() {
+    static constexpr ccl::cl_backend_type type() {
         return CL_BACKEND_TYPE;
     }
-    CCL_API static constexpr const char* name() {
-        return "CL_DPCPP_BACKEND";
+    static constexpr const char* name() {
+        return "DPCPP_BACKEND";
     }
 };
 

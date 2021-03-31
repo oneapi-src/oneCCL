@@ -23,7 +23,6 @@ RST_DIR=$SCRIPT_DIR/rst
 RST_SOURCE_DIR=$RST_DIR/source
 RST_BUILD_DIR=$RST_DIR/build
 RST_HTML_BUILD_DIR=$RST_BUILD_DIR/html
-RST_API_DIR=$RST_SOURCE_DIR/api
 
 if ! [ -x "$(command -v doxygen)" ]
 then
@@ -41,12 +40,6 @@ if [ -d "$DOXYGEN_XML_OUTPUT" ]
 then
   echo "Removing $DOXYGEN_XML_OUTPUT"
   rm -r $DOXYGEN_XML_OUTPUT
-fi
-
-if [ -d "$RST_API_DIR" ]
-then
-  echo "Removing $RST_API_DIR"
-  rm -r $RST_API_DIR
 fi
 
 if [ -d "$RST_HTML_BUILD_DIR" ]

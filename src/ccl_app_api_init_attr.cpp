@@ -49,15 +49,12 @@ CCL_API init_attr::init_attr(
 CCL_API init_attr::~init_attr() noexcept {}
 
 CCL_API init_attr& init_attr::operator=(const init_attr& src) {
-    this->get_impl() = src.get_impl();
+    this->acc_policy_t::create(this, src);
     return *this;
 }
 
 CCL_API init_attr& init_attr::operator=(init_attr&& src) {
-    if (src.get_impl() != this->get_impl()) {
-        src.get_impl().swap(this->get_impl());
-        src.get_impl().reset();
-    }
+    this->acc_policy_t::create(this, std::move(src));
     return *this;
 }
 

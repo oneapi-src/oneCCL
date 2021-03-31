@@ -38,6 +38,8 @@ void ccl_worker::add(ccl_sched* sched) {
     CCL_ASSERT(!sched->bin);
     CCL_ASSERT(sched->get_in_bin_status() != ccl_sched_in_bin_added);
 
+    update_wait_condition(ccl_base_thread::wait_data::update_type::increment, 1);
+
     if (sched->strict_order) {
         /* to keep valid non-completed req until safe releasing */
         sched->req->increase_counter(1);
@@ -221,35 +223,64 @@ void ccl_worker::clear_queue() {
     sched_queue->clear();
 }
 
-static inline bool ccl_worker_check_conditions(ccl_worker* worker,
-                                               size_t iter_count,
-                                               int do_work_status) {
-    bool should_stop = false;
+void ccl_worker::update_wait_condition(ccl_base_thread::wait_data::update_type type, size_t delta) {
+    if (delta == 0)
+        return;
 
-    if ((iter_count % CCL_WORKER_CHECK_STOP_ITERS) == 0) {
-        if (worker->should_stop.load(std::memory_order_acquire))
-            should_stop = true;
+    LOG_DEBUG("type ", type, ", delta ", delta);
+
+    if (ccl::global_data::env().worker_wait == 0)
+        return;
+
+    std::unique_lock<std::mutex> lock(wait.mtx);
+
+    if (type == wait_data::update_type::increment) {
+        wait.value += delta;
+        if (wait.value - delta == 0)
+            wait.var.notify_one();
+    }
+    else if (type == wait_data::update_type::decrement) {
+        CCL_THROW_IF_NOT(
+            delta <= wait.value, "decrement ", delta, " should be less or equal to ", wait.value);
+        wait.value -= delta;
     }
 
-    if (ccl::global_data::get().is_ft_enabled &&
-        unlikely(do_work_status == ccl::status::blocked_due_to_resize ||
-                 iter_count % CCL_WORKER_CHECK_UPDATE_ITERS == 0)) {
-        if (worker->should_lock.load(std::memory_order_acquire)) {
-            worker->clear_queue();
-            worker->is_locked = true;
-            while (worker->should_lock.load(std::memory_order_relaxed)) {
-                ccl_yield(ccl::global_data::env().yield_type);
-            }
-            worker->is_locked = false;
-        }
+    LOG_DEBUG("type ", type, ", delta ", delta, ", new value ", wait.value);
+}
+
+bool ccl_worker::check_wait_condition(size_t iter) {
+    if (ccl::global_data::env().worker_wait && (wait.value == 0)) {
+        std::unique_lock<std::mutex> lock(wait.mtx);
+        wait.var.wait(lock, [this] {
+            bool cond = ((wait.value == 0) && (check_stop_condition(0) == false));
+            return !cond;
+        });
+    }
+    else {
+        ccl_yield(ccl::global_data::env().yield_type);
     }
 
-    if ((iter_count % CCL_WORKER_CHECK_AFFINITY_ITERS) == 0) {
-        int start_affinity = worker->get_start_affinity();
-        int affinity = worker->get_affinity();
+    return true;
+}
+
+bool ccl_worker::check_stop_condition(size_t iter) {
+    bool stop_signal = false;
+
+    if ((iter % CCL_WORKER_CHECK_STOP_ITERS) == 0) {
+        if (should_stop.load(std::memory_order_acquire))
+            stop_signal = true;
+    }
+
+    return stop_signal;
+}
+
+bool ccl_worker::check_affinity_condition(size_t iter) {
+    if ((iter % CCL_WORKER_CHECK_AFFINITY_ITERS) == 0) {
+        int start_affinity = get_start_affinity();
+        int affinity = get_affinity();
         if (start_affinity != affinity) {
             LOG_ERROR("worker ",
-                      worker->get_idx(),
+                      get_idx(),
                       " unexpectedly changed affinity from ",
                       start_affinity,
                       " to ",
@@ -257,7 +288,7 @@ static inline bool ccl_worker_check_conditions(ccl_worker* worker,
         }
     }
 
-    return should_stop;
+    return true;
 }
 
 static void* ccl_worker_func(void* args) {
@@ -265,13 +296,12 @@ static void* ccl_worker_func(void* args) {
 
     auto worker_idx = worker->get_idx();
 
-    LOG_INFO("worker_idx ", worker_idx);
+    LOG_DEBUG("worker_idx ", worker_idx);
 
-    size_t iter_count = 0;
+    size_t iter = 0;
     size_t processed_count = 0;
     size_t max_spin_count = ccl::global_data::env().spin_count;
     size_t spin_count = max_spin_count;
-    ccl::status ret;
 
     ccl::global_data::get().is_worker_thread = true;
 
@@ -279,10 +309,14 @@ static void* ccl_worker_func(void* args) {
 
     do {
         try {
-            ret = worker->do_work(processed_count);
-
-            if (ccl_worker_check_conditions(worker, iter_count, ret))
+            if (worker->check_stop_condition(iter))
                 break;
+            worker->check_affinity_condition(iter);
+
+            worker->do_work(processed_count);
+
+            worker->update_wait_condition(ccl_base_thread::wait_data::update_type::decrement,
+                                          processed_count);
         }
         catch (ccl::exception& ccl_e) {
             CCL_FATAL("worker ", worker_idx, " caught internal exception: ", ccl_e.what());
@@ -294,12 +328,12 @@ static void* ccl_worker_func(void* args) {
             CCL_FATAL("worker ", worker_idx, " caught general exception");
         }
 
-        iter_count++;
+        iter++;
 
         if (processed_count == 0) {
             spin_count--;
             if (!spin_count) {
-                ccl_yield(ccl::global_data::env().yield_type);
+                worker->check_wait_condition(iter);
                 spin_count = 1;
             }
         }

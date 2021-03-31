@@ -27,17 +27,17 @@ namespace ccl {
 /**
  * Context
  */
-generic_context_type<cl_backend_type::dpcpp_sycl>::generic_context_type() {}
-generic_context_type<cl_backend_type::dpcpp_sycl>::generic_context_type(ccl_native_t ctx)
+CCL_BE_API generic_context_type<cl_backend_type::dpcpp_sycl>::generic_context_type() {}
+CCL_BE_API generic_context_type<cl_backend_type::dpcpp_sycl>::generic_context_type(ccl_native_t ctx)
         : context(ctx) {}
 
-generic_context_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
+CCL_BE_API generic_context_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
 generic_context_type<cl_backend_type::dpcpp_sycl>::get() noexcept {
     return const_cast<generic_context_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&>(
         static_cast<const generic_context_type<cl_backend_type::dpcpp_sycl>*>(this)->get());
 }
 
-const generic_context_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
+CCL_BE_API const generic_context_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
 generic_context_type<cl_backend_type::dpcpp_sycl>::get() const noexcept {
     return context;
 }
@@ -45,7 +45,7 @@ generic_context_type<cl_backend_type::dpcpp_sycl>::get() const noexcept {
 /**
  * Device
  */
-CCL_API generic_device_type<cl_backend_type::dpcpp_sycl>::generic_device_type(
+CCL_BE_API generic_device_type<cl_backend_type::dpcpp_sycl>::generic_device_type(
     device_index_type id,
     cl::sycl::info::device_type type)
         : device() {
@@ -72,8 +72,7 @@ CCL_API generic_device_type<cl_backend_type::dpcpp_sycl>::generic_device_type(
                << "\nvendor: " << pl.get_info<cl::sycl::info::platform::vendor>();
         }
 
-        throw std::runtime_error(std::string("Cannot find device by id: ") + ccl::to_string(id) +
-                                 ", reason:\n" + ss.str());
+        CCL_THROW("cannot find device by id: " + ccl::to_string(id) + ", reason:\n" + ss.str());
     }
 
     LOG_DEBUG("Platform:\nprofile: ",
@@ -103,27 +102,26 @@ CCL_API generic_device_type<cl_backend_type::dpcpp_sycl>::generic_device_type(
                << "\nprofile: " << dev.get_info<cl::sycl::info::device::profile>();
         }
 
-        throw std::runtime_error(std::string("Cannot find device by id: ") + ccl::to_string(id) +
-                                 ", reason:\n" + ss.str());
+        CCL_THROW("cannot find device by id: " + ccl::to_string(id) + ", reason:\n" + ss.str());
     }
     device = *it;
 }
 
-generic_device_type<cl_backend_type::dpcpp_sycl>::generic_device_type(
+CCL_BE_API generic_device_type<cl_backend_type::dpcpp_sycl>::generic_device_type(
     const cl::sycl::device& in_device)
         : device(in_device) {}
 
-device_index_type generic_device_type<cl_backend_type::dpcpp_sycl>::get_id() const {
+CCL_BE_API device_index_type generic_device_type<cl_backend_type::dpcpp_sycl>::get_id() const {
     //TODO -S-
     return device_index_type{};
 }
 
-typename generic_device_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
+CCL_BE_API typename generic_device_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
 generic_device_type<cl_backend_type::dpcpp_sycl>::get() noexcept {
     return device;
 }
 
-const typename generic_device_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
+CCL_BE_API const typename generic_device_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
 generic_device_type<cl_backend_type::dpcpp_sycl>::get() const noexcept {
     return device;
 }

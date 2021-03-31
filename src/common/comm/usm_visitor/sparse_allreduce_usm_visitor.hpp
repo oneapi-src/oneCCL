@@ -46,7 +46,7 @@ struct sparse_allreduce_usm_visitor {
                Args&&... args) {
         bool processed = false;
         LOG_TRACE("comm: ",
-                  get_self()->to_string(),
+                  /*get_self()->to_string(),*/
                   " - starting to find visitor for datatype: ",
                   ccl::to_string(value_dtype),
                   " , handle: ",
@@ -57,7 +57,7 @@ struct sparse_allreduce_usm_visitor {
         switch (value_dtype) //TODO -S- value only
         {
             case ccl::datatype::int8: {
-                using type = char;
+                using type = int8_t;
                 req = get_self()->template sparse_allreduce_impl<type>(
                     static_cast<const type*>(send_ind_buf),
                     send_ind_count,
@@ -183,8 +183,9 @@ struct sparse_allreduce_usm_visitor {
                 break;
             }
             default: {
+                CCL_THROW("unknown datatype ", dtype);
                 LOG_DEBUG("comm: ",
-                          get_self()->to_string(),
+                          /*get_self()->to_string(),*/
                           " - no found visitor for datatype: ",
                           ccl::to_string(value_dtype),
                           " , handle: ",

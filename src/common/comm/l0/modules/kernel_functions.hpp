@@ -26,7 +26,7 @@ struct kernel_data_storage {
 
     // generic getter
     template <class kernel_argument>
-    typename kernel_argument::return_t get_arg() const {
+    typename kernel_argument::return_t get_arg() {
         return std::get<kernel_argument::index>(args).load();
     }
 

@@ -34,10 +34,13 @@ CCL_API stream::~stream() {}
 
 CCL_API stream::stream(const stream& src) : base_t(src) {}
 
+CCL_API stream& stream::operator=(stream&& src) noexcept {
+    this->acc_policy_t::create(this, std::move(src));
+    return *this;
+}
+
 CCL_API stream& stream::operator=(const stream& src) {
-    if (src.get_impl() != this->get_impl()) {
-        this->get_impl() = src.get_impl();
-    }
+    this->acc_policy_t::create(this, src);
     return *this;
 }
 

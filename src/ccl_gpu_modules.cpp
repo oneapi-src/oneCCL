@@ -19,75 +19,76 @@
 #include "ccl_gpu_module.hpp"
 
 #ifdef MULTI_GPU_SUPPORT
+
 #include "common/comm/l0/modules/specific_modules_source_data.hpp"
 #include "common/comm/l0/device_group_routing_schema.hpp"
 #include "coll/algorithms/algorithms_enum.hpp"
 
-ccl::status register_gpu_module_source(const char* path,
-                                       ccl::device_topology_type topology_class,
-                                       ccl_coll_type type) {
-    ccl::device_topology_type t_class = static_cast<ccl::device_topology_type>(topology_class);
+ccl::status load_gpu_module(const std::string& path,
+                            ccl::device_topology_type topo_type,
+                            ccl_coll_type coll_type) {
     char pwd[PATH_MAX];
     char* ret = getcwd(pwd, sizeof(pwd));
     (void)ret;
 
-    LOG_INFO("loading file contained gpu module \"",
-             ccl_coll_type_to_str(type),
-             "\", topology class: \"",
-             to_string(t_class),
+    LOG_INFO("loading GPU module for collective: \"",
+             ccl_coll_type_to_str(coll_type),
+             "\", topology: \"",
+             to_string(topo_type),
              "\" by path: ",
              path,
-             ". Current path is: ",
+             ", current directory is: ",
              pwd);
 
     try {
-        if (!path) {
-            throw std::runtime_error("Path is empty");
+        if (path.empty()) {
+            throw std::runtime_error("path is empty");
         }
 
-        switch (type) {
+        switch (coll_type) {
             case ccl_coll_allgatherv:
                 native::specific_modules_source_data_storage::instance()
-                    .load_kernel_source<ccl_coll_allgatherv>(path, t_class);
+                    .load_kernel_source<ccl_coll_allgatherv>(path, topo_type);
                 break;
             case ccl_coll_allreduce:
                 native::specific_modules_source_data_storage::instance()
-                    .load_kernel_source<ccl_coll_allreduce>(path, t_class);
+                    .load_kernel_source<ccl_coll_allreduce>(path, topo_type);
                 break;
             case ccl_coll_alltoallv:
                 native::specific_modules_source_data_storage::instance()
-                    .load_kernel_source<ccl_coll_alltoallv>(path, t_class);
+                    .load_kernel_source<ccl_coll_alltoallv>(path, topo_type);
                 break;
             case ccl_coll_bcast:
                 native::specific_modules_source_data_storage::instance()
-                    .load_kernel_source<ccl_coll_bcast>(path, t_class);
+                    .load_kernel_source<ccl_coll_bcast>(path, topo_type);
                 break;
             case ccl_coll_reduce:
                 native::specific_modules_source_data_storage::instance()
-                    .load_kernel_source<ccl_coll_reduce>(path, t_class);
+                    .load_kernel_source<ccl_coll_reduce>(path, topo_type);
                 break;
             case ccl_coll_reduce_scatter:
                 native::specific_modules_source_data_storage::instance()
-                    .load_kernel_source<ccl_coll_reduce_scatter>(path, t_class);
+                    .load_kernel_source<ccl_coll_reduce_scatter>(path, topo_type);
                 break;
             default:
                 throw std::runtime_error(
                     std::string(__PRETTY_FUNCTION__) +
-                    " - get unexpected ccl collective type: " + std::to_string(type));
+                    " - unexpected collective type: " + std::to_string(coll_type));
                 break;
         }
     }
     catch (const std::exception& ex) {
-        LOG_ERROR("Cannot preload kernel source by path: ", path, ", error: ", ex.what());
+        LOG_ERROR("cannot load GPU module from: ", path, ", error: ", ex.what());
         CCL_ASSERT(false);
         return ccl::status::runtime_error;
     }
 
-    LOG_INFO("gpu kernel source by type \"",
-             ccl_coll_type_to_str(type),
-             "\", topology class: \"",
-             to_string(t_class),
+    LOG_INFO("GPU module for collective: \"",
+             ccl_coll_type_to_str(coll_type),
+             "\", topology: \"",
+             to_string(topo_type),
              "\" loaded succesfully");
+
     return ccl::status::success;
 }
 

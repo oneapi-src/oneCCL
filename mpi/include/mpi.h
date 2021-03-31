@@ -1,20 +1,5 @@
 /*
- Copyright 2016-2020 Intel Corporation
- 
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
- 
-     http://www.apache.org/licenses/LICENSE-2.0
- 
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
-*/
-/*
-    Copyright 2003-2020 Intel Corporation.
+    Copyright 2003-2021 Intel Corporation.
     
     This software and the related documents are Intel copyrighted materials, and
     your use of them is governed by the express license under which they were
@@ -595,8 +580,8 @@ typedef int (MPI_Delete_function) ( MPI_Comm, int, void *, void * );
  * digits for REV, 1 digit for EXT and 2 digits for EXT_NUMBER. So,
  * 2019.0.0b0 will have the numeric version 20190000100.
  */
-#define I_MPI_VERSION "2021.1.0"
-#define I_MPI_NUMVERSION 20210100300
+#define I_MPI_VERSION "2021.2.0"
+#define I_MPI_NUMVERSION 20210200300
 
 /* for the datatype decoders */
 enum MPIR_Combiner_enum {

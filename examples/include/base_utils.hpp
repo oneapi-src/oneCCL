@@ -13,8 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#ifndef BASE_UTILS_HPP
-#define BASE_UTILS_HPP
+#pragma once
 
 #include <algorithm>
 #include <iterator>
@@ -159,92 +158,4 @@ void str_to_mset(const char* input, std::multiset<T>& output, char delimiter) {
         }
     }
 }
-
-#ifdef MULTI_GPU_SUPPORT
-template <>
-void str_to_mset(const char* input, std::multiset<ccl::device_index_type>& output, char delimiter) {
-    std::string processes_input(input);
-
-    processes_input.erase(std::remove_if(processes_input.begin(),
-                                         processes_input.end(),
-                                         [](unsigned char x) {
-                                             return std::isspace(x);
-                                         }),
-                          processes_input.end());
-
-    std::replace(processes_input.begin(), processes_input.end(), delimiter, ' ');
-    std::stringstream ss(processes_input);
-
-    while (ss >> processes_input) {
-        output.insert(ccl::from_string(processes_input));
-    }
-}
-
-std::shared_ptr<ccl::kvs> build_kvs(int mpi_rank) {
-    std::shared_ptr<ccl::kvs> kvs_instance;
-    ccl::kvs::address_type main_addr;
-    if (mpi_rank == 0) {
-        kvs_instance = ccl::create_main_kvs();
-        main_addr = kvs_instance->get_address();
-        MPI_Bcast((void*)main_addr.data(), main_addr.size(), MPI_BYTE, 0, MPI_COMM_WORLD);
-    }
-    else {
-        MPI_Bcast((void*)main_addr.data(), main_addr.size(), MPI_BYTE, 0, MPI_COMM_WORLD);
-        kvs_instance = ccl::create_kvs(main_addr);
-    }
-    return kvs_instance;
-}
-
-inline size_t take_mpi_rank_id_offest(const size_t mpi_rank_in_cluster,
-                                      const int mpi_size,
-                                      const size_t total_device_in_cluster) {
-    if (mpi_size > 2) {
-        throw std::runtime_error(std::string(__FUNCTION__) +
-                                 " - Only TWO processes support case !\n");
-    }
-    return total_device_in_cluster;
-}
-
-ccl::process_device_indices_type extract_indices_for_threads(
-    const size_t mpi_rank_in_cluster,
-    const int current_mpi_rank,
-    std::vector<std::string> thread_gpu_affinity,
-    size_t& total_device_in_cluster,
-    std::vector<size_t>& total_devices_in_process,
-    std::map<size_t, std::vector<ccl::communicator::device_type>>& devices_for_current_mpi_rank) {
-    ccl::process_device_indices_type thread_group_affinity;
-
-    for (size_t thread_index = 0; thread_index < thread_gpu_affinity.size(); thread_index++) {
-        ccl::device_indices_type device_group_affinity;
-        str_to_mset<ccl::device_index_type>(
-            thread_gpu_affinity[thread_index].c_str(), device_group_affinity, ',');
-
-        std::cout << " Extracted GPU indices for thread by id: " << thread_index
-                  << ", devices in threads count: " << device_group_affinity.size() << std::endl;
-        total_device_in_cluster += device_group_affinity.size();
-        total_devices_in_process[mpi_rank_in_cluster] += device_group_affinity.size();
-        thread_group_affinity[thread_index] = device_group_affinity;
-
-        if (mpi_rank_in_cluster == static_cast<size_t>(current_mpi_rank)) {
-            for (auto device_vendor_id : device_group_affinity) {
-                devices_for_current_mpi_rank[thread_index].push_back(
-                    ccl::create_from_index(device_vendor_id).device);
-            }
-        }
-    }
-    return thread_group_affinity;
-}
-
-std::vector<ccl::communicator::device_type> set_union_devices_in_current_process(
-    const std::map<size_t, std::vector<ccl::communicator::device_type>>& devices_for_mpi_rank) {
-    std::vector<ccl::communicator::device_type> devices_in_process;
-    for (auto& thread_devices : devices_for_mpi_rank) {
-        devices_in_process.insert(
-            devices_in_process.end(), thread_devices.second.begin(), thread_devices.second.end());
-    }
-    return devices_in_process;
-}
-
-#endif //MULTI_GPU_SUPPORT
 } // namespace utils
-#endif /* BASE_UTILS_HPP */

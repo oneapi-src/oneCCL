@@ -19,16 +19,6 @@
 #include "common/comm/l0/device_community_holder.hpp"
 #include "native_device_api/compiler_ccl_wrappers_dispatcher.hpp"
 
-/*
-namespace native
-{
-    template<ccl::device_topology_type class_id>
-    struct device_community;
-
-    template<ccl::device_topology_type class_id>
-    device_community_container;
-}
-*/
 template <class comm_impl,
           ccl::group_split_type group_id,
           ccl::device_topology_type class_id,
@@ -106,4 +96,11 @@ public:
     impl_t* get_impl() {
         return static_cast<impl_t*>(this);
     }
+
+    /*
+    native::binder_t bind_device;
+    native::binder_t& get_communication_device()
+    {
+        return bind_device;
+    }*/
 };

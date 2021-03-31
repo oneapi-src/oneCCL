@@ -51,15 +51,12 @@ CCL_API datatype_attr::datatype_attr(
 CCL_API datatype_attr::~datatype_attr() noexcept {}
 
 CCL_API datatype_attr& datatype_attr::operator=(const datatype_attr& src) {
-    this->get_impl() = src.get_impl();
+    this->acc_policy_t::create(this, src);
     return *this;
 }
 
 CCL_API datatype_attr& datatype_attr::operator=(datatype_attr&& src) {
-    if (src.get_impl() != this->get_impl()) {
-        src.get_impl().swap(this->get_impl());
-        src.get_impl().reset();
-    }
+    this->acc_policy_t::create(this, std::move(src));
     return *this;
 }
 

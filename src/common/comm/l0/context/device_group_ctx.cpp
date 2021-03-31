@@ -16,14 +16,13 @@
 #include <sstream>
 
 #include "common/comm/l0/devices/devices_declaration.hpp"
+#include "common/comm/l0/context/scaling_ctx/numa_ctx_impl.hpp"
 #include "common/comm/l0/context/device_group_ctx.hpp"
 #include "common/comm/l0/context/device_storage.hpp"
 #include "common/comm/l0/topology/ring/device_group_ring_creator.hpp"
 #include "common/comm/l0/device_community_holder_impl.hpp"
 
 #include "common/comm/l0/scheduler/device_group_scheduler.hpp"
-
-#include "common/comm/l0/context/scaling_ctx/numa_ctx_impl.hpp"
 
 namespace native {
 

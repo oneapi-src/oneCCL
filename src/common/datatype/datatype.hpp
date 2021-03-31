@@ -89,7 +89,7 @@ private:
 
     mutable ccl_datatype_lock_t guard{};
 
-    ccl::datatype custom_idx;
+    ccl::datatype custom_idx{};
 
     ccl_datatype_table_t predefined_table;
     ccl_datatype_table_t custom_table;

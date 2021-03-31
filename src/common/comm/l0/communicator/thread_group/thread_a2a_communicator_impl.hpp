@@ -22,6 +22,7 @@
 #include "common/comm/l0/context/thread_group_ctx.hpp"
 #include "common/comm/l0/scheduler/thread_group_scheduler.hpp"
 #include "common/event/impls/gpu_event.hpp"
+#include "common/comm/l0/communicator/thread_group/thread_communicator_utils.hpp"
 
 /* allgatherv */
 template <class buffer_type>

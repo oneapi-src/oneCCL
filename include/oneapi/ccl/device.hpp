@@ -104,9 +104,9 @@ private:
               class = typename std::enable_if<is_device_supported<device_type>()>::type>
     static device create_device(device_type&& native_device);
 
-    template <class device_handle_type, class... attr_value_pair_t>
+    template <class device_handle_type, class... attr_val_type>
     static device create_device_from_attr(device_handle_type& native_device_handle,
-                                          attr_value_pair_t&&... avps);
+                                          attr_val_type&&... avs);
 };
 
 template <device_attr_id t, class value_type>

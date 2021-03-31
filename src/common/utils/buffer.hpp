@@ -86,6 +86,17 @@ public:
         CCL_ASSERT(check_offset());
     }
 
+    ccl_buffer& operator=(const ccl_buffer& src) {
+        if (this != &src) {
+            this->src = src.src;
+            this->size = src.size;
+            this->offset = src.offset;
+            this->type = src.type;
+            CCL_ASSERT(check_offset());
+        }
+        return *this;
+    }
+
     void set(void* src, ssize_t size, size_t offset, ccl_buffer_type type) {
         LOG_DEBUG("set: src ",
                   src,

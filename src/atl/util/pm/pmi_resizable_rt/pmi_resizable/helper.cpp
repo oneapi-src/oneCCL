@@ -14,6 +14,7 @@
  limitations under the License.
 */
 #include <string.h>
+#include <errno.h>
 
 #include "util/pm/pmi_resizable_rt/pmi_resizable/helper.hpp"
 #include "util/pm/pmi_resizable_rt/pmi_resizable/kvs/internal_kvs.h"
@@ -28,11 +29,6 @@ int killed_ranks_count = 0;
 
 rank_list_t* new_ranks = NULL;
 int new_ranks_count = 0;
-
-void kvs_str_copy(char* dst, const char* src, size_t bytes) {
-    strncpy(dst, src, bytes - 1);
-    dst[bytes - 1] = '\0';
-}
 
 size_t helper::replace_str(char* str, int old_rank, int new_rank) {
     throw std::runtime_error("unexpected path");
@@ -73,10 +69,10 @@ void helper::update_ranks(int* old_count, rank_list_t** origin_list, const char*
     }
 
     for (i = 0; i < rank_count; i++) {
-        if (rank_list_contains(*origin_list, strtol(rank_nums[i], NULL, 10)))
+        if (rank_list_contains(*origin_list, safe_strtol(rank_nums[i], NULL, 10)))
             continue;
 
-        rank_list_add(origin_list, strtol(rank_nums[i], NULL, 10));
+        rank_list_add(origin_list, safe_strtol(rank_nums[i], NULL, 10));
         cur_count++;
     }
 
@@ -153,7 +149,7 @@ void helper::wait_accept(void) {
 
     while (1) {
         if (get_value_by_name_key(KVS_ACCEPT, my_hostname, my_rank_str) != 0) {
-            my_rank = strtol(my_rank_str, NULL, 10);
+            my_rank = safe_strtol(my_rank_str, NULL, 10);
             break;
         }
     }
@@ -286,9 +282,9 @@ size_t helper::get_barrier_idx(void) {
     if (count_kvs_values == 0)
         return 0;
 
-    min_barrier_num = strtol(kvs_values[0], NULL, 10);
+    min_barrier_num = safe_strtol(kvs_values[0], NULL, 10);
     for (i = 1; i < count_kvs_values; i++) {
-        tmp_barrier_num = strtol(kvs_values[i], NULL, 10);
+        tmp_barrier_num = safe_strtol(kvs_values[i], NULL, 10);
         if (min_barrier_num > tmp_barrier_num)
             min_barrier_num = tmp_barrier_num;
     }
@@ -502,7 +498,7 @@ void helper::get_new_root(int* old_root) {
     size_t rank_count = get_keys_values_by_name(KVS_DEAD_POD, NULL, &rank_nums);
 
     for (i = 0; i < rank_count; i++) {
-        if (*old_root == (int)strtol(rank_nums[i], NULL, 10))
+        if (*old_root == (int)safe_strtol(rank_nums[i], NULL, 10))
             (*old_root)++;
         free(rank_nums[i]);
     }

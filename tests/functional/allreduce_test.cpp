@@ -13,81 +13,44 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#define TEST_CCL_REDUCE
-
-#define COLL_NAME "CCL_ALLREDUCE"
+#define ALGO_SELECTION_ENV "CCL_ALLREDUCE"
 
 #include "base_impl.hpp"
 
 template <typename T>
 class allreduce_test : public base_test<T> {
 public:
-    int check(typed_test_param<T>& param) {
-        for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++) {
-            for (size_t elem_idx = 0; elem_idx < param.elem_count; elem_idx++) {
-                if (param.test_conf.reduction == RT_SUM) {
-                    T expected = ((param.process_count * (param.process_count - 1) / 2) +
-                                  ((elem_idx + buf_idx) * param.process_count));
-                    if (base_test<T>::check_error(param, expected, buf_idx, elem_idx))
-                        return TEST_FAILURE;
-                }
-
-                if (param.test_conf.reduction == RT_MAX) {
-                    T expected = get_expected_max<T>(elem_idx, buf_idx, param.process_count);
-                    if (base_test<T>::check_error(param, expected, buf_idx, elem_idx))
-                        return TEST_FAILURE;
-                }
-
-                if (param.test_conf.reduction == RT_MIN) {
-                    T expected = get_expected_min<T>(elem_idx, buf_idx, param.process_count);
-                    if (base_test<T>::check_error(param, expected, buf_idx, elem_idx))
-                        return TEST_FAILURE;
-                }
-
-                if (param.test_conf.reduction == RT_PROD) {
-                    T expected = 1;
-                    for (size_t k = 0; k < param.process_count; k++) {
-                        expected *= elem_idx + buf_idx + k;
-                    }
-                    if (base_test<T>::check_error(param, expected, buf_idx, elem_idx))
-                        return TEST_FAILURE;
-                }
+    int check(test_operation<T>& op) {
+        for (size_t buf_idx = 0; buf_idx < op.buffer_count; buf_idx++) {
+            for (size_t elem_idx = 0; elem_idx < op.elem_count;
+                 elem_idx += op.get_check_step(elem_idx)) {
+                T expected = base_test<T>::calculate_reduce_value(op, buf_idx, elem_idx);
+                if (base_test<T>::check_error(op, expected, buf_idx, elem_idx))
+                    return TEST_FAILURE;
             }
         }
         return TEST_SUCCESS;
     }
 
-    size_t get_recv_buf_size(typed_test_param<T>& param) {
-        return param.elem_count;
-    }
-
-    void run_derived(typed_test_param<T>& param) {
+    void run_derived(test_operation<T>& op) {
         void* send_buf;
         void* recv_buf;
-        size_t count = param.elem_count;
 
-        const ccl_test_conf& test_conf = param.get_conf();
-
+        auto param = op.get_param();
         auto attr = ccl::create_operation_attr<ccl::allreduce_attr>();
 
-        ccl::reduction reduction = get_ccl_lib_reduction(test_conf);
-        ccl::datatype datatype = get_ccl_lib_datatype(test_conf);
+        for (auto buf_idx : op.buf_indexes) {
+            op.prepare_attr(attr, buf_idx);
+            send_buf = op.get_send_buf(buf_idx);
+            recv_buf = op.get_recv_buf(buf_idx);
 
-        for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++) {
-            size_t new_idx = param.buf_indexes[buf_idx];
-            param.prepare_coll_attr(attr, param.buf_indexes[buf_idx]);
-
-            send_buf = param.get_send_buf(new_idx);
-            recv_buf = param.get_recv_buf(new_idx);
-
-            param.reqs[buf_idx] =
-                ccl::allreduce((test_conf.place_type == PT_IN) ? recv_buf : send_buf,
-                               recv_buf,
-                               count,
-                               datatype,
-                               reduction,
-                               GlobalData::instance().comms[0],
-                               attr);
+            op.events.push_back(ccl::allreduce((param.place_type == PLACE_IN) ? recv_buf : send_buf,
+                                               recv_buf,
+                                               op.elem_count,
+                                               op.datatype,
+                                               op.reduction,
+                                               global_data::instance().comms[0],
+                                               attr));
         }
     }
 };

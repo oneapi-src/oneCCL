@@ -17,16 +17,11 @@
 #include "exec/exec.hpp"
 
 void ccl_atl_tag::print() {
-    LOG_INFO("\n",
-             "\ntag_bits:      ",
-             tag_bits,
-             "\nmax_tag:       ",
-             max_tag,
-             "\npof2(max_tag): ",
-             ccl_pof2(max_tag),
-             "\nmax_tag_mask:  ",
-             max_tag_mask,
-             "\n");
+    LOG_INFO("atl-tag:");
+    LOG_INFO("  bits: ", tag_bits);
+    LOG_INFO("  max: ", max_tag);
+    LOG_INFO("  mask: ", max_tag_mask);
+    LOG_INFO("  pof2: ", ccl_pof2(max_tag));
 }
 
 uint64_t ccl_atl_tag::create(ccl_comm_id_t comm_id,

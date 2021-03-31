@@ -37,9 +37,11 @@ struct device_community_container {
         storage = item;
     }
 
-    template <ccl::group_split_type group_id>
-    void register_device_by_id(const ccl::device_index_type& device_id,
-                               ccl::context_comm_addr& registered_addr);
+    template <ccl::group_split_type group_id, class... DeviceTypes>
+    void bind_device_by_id(const ccl::device_index_type& device_id,
+                           ccl::context_comm_addr& registered_addr,
+                           device_variant_t<DeviceTypes...>& out_binder,
+                           size_t preferred_rank = std::numeric_limits<size_t>::max());
 };
 
 template <>
@@ -72,9 +74,11 @@ struct device_community_container<ccl::device_topology_type::ring> {
         torn_apart_rings.push_back(std::move(item));
     }
 
-    template <ccl::group_split_type group_id>
-    void register_device_by_id(const ccl::device_index_type& device_id,
-                               ccl::context_comm_addr& registered_addr);
+    template <ccl::group_split_type group_id, class... DeviceTypes>
+    void bind_device_by_id(const ccl::device_index_type& device_id,
+                           ccl::context_comm_addr& registered_addr,
+                           device_variant_t<DeviceTypes...>& out_binder,
+                           size_t preferred_rank = std::numeric_limits<size_t>::max());
 };
 
 template <ccl::group_split_type group_id, ccl::device_topology_type... class_id>
@@ -89,10 +93,11 @@ public:
     template <ccl::device_topology_type requested_id>
     device_community_container<requested_id>& get_community();
 
-    template <ccl::device_topology_type requested_id>
-    void register_device_by_id(const ccl::device_index_type& device_id,
-                               ccl::context_comm_addr& registered_addr);
-
+    template <ccl::device_topology_type requested_id, class... DeviceTypes>
+    void bind_device_by_id(const ccl::device_index_type& device_id,
+                           ccl::context_comm_addr& registered_addr,
+                           device_variant_t<DeviceTypes...>& out_binder,
+                           size_t preferred_rank = std::numeric_limits<size_t>::max());
     std::string to_string() const;
 
 private:

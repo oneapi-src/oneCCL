@@ -26,6 +26,7 @@
 #endif
 
 #include "oneapi/ccl/native_device_api/l0/utils.hpp"
+#include "common/log/log.hpp"
 
 namespace native {
 namespace detail {
@@ -44,10 +45,12 @@ template <class DeviceType,
                   "Unsupported 'DeviceType'");
     size_t driver_idx = 0; // limitation for OPENCL/SYCL
     size_t device_id = 0;
+    size_t subdevice_id = 0;
 #ifdef CCL_ENABLE_SYCL
     device_id = native::detail::get_sycl_device_id(device);
+    subdevice_id = native::detail::get_sycl_subdevice_id(device);
 #endif
-    ccl::device_index_type path(driver_idx, device_id, ccl::unused_index_value);
+    ccl::device_index_type path(driver_idx, device_id, subdevice_id);
 
     return detail::get_runtime_device_impl(path);
 }
@@ -68,8 +71,7 @@ template <class ContextType>
         "Invalid ContextType");
     auto l0_handle_ptr = ctx.template get_native<cl::sycl::backend::level_zero>();
     if (!l0_handle_ptr) {
-        throw std::runtime_error(std::string(__FUNCTION__) +
-                                 " - failed for sycl context: handle is nullptr!");
+        CCL_THROW("failed for sycl context: handle is nullptr");
     }
     auto& drivers = get_platform().get_drivers();
     assert(drivers.size() == 1 && "Only one driver supported for L0 at now");

@@ -53,15 +53,12 @@ CCL_API comm_split_attr::comm_split_attr(
 CCL_API comm_split_attr::~comm_split_attr() noexcept {}
 
 CCL_API comm_split_attr& comm_split_attr::operator=(const comm_split_attr& src) {
-    this->get_impl() = src.get_impl();
+    this->acc_policy_t::create(this, src);
     return *this;
 }
 
 CCL_API comm_split_attr& comm_split_attr::operator=(comm_split_attr&& src) {
-    if (src.get_impl() != this->get_impl()) {
-        src.get_impl().swap(this->get_impl());
-        src.get_impl().reset();
-    }
+    this->acc_policy_t::create(this, std::move(src));
     return *this;
 }
 

@@ -53,20 +53,13 @@ ccl_allreduce_2d_builder::ccl_allreduce_2d_builder(size_t base_size,
             second_dim_ranks +=
                 ((idx) ? " " : "") + std::to_string(second_dim_comm->get_global_rank(idx));
         }
-        LOG_INFO("\n\nallreduce_2d",
-                 "\nbase_size: ",
-                 base_size,
-                 "\nswitch_dims: ",
-                 switch_dims,
-                 "\nfirst_dim_comm: size ",
-                 first_dim_comm->size(),
-                 ", ranks ",
-                 first_dim_ranks,
-                 "\nsecond_dim_comm: size ",
-                 second_dim_comm->size(),
-                 ", ranks ",
-                 second_dim_ranks,
-                 "\n");
+
+        LOG_DEBUG("allreduce_2d:");
+        LOG_DEBUG("  base_size: ", base_size);
+        LOG_DEBUG("  switch_dims: ", switch_dims);
+        LOG_DEBUG("  first_dim_comm: size ", first_dim_comm->size(), ", ranks ", first_dim_ranks);
+        LOG_DEBUG(
+            "  second_dim_comm: size ", second_dim_comm->size(), ", ranks ", second_dim_ranks);
     }
 }
 

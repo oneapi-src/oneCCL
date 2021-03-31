@@ -70,7 +70,7 @@ public:
 
     ccl_sched_entry_field_function_t fn = nullptr;
     const void* ctx = nullptr;
-    bool update_once;
+    bool update_once{};
     static constexpr field_id_t<id> entry_field_id{};
 };
 

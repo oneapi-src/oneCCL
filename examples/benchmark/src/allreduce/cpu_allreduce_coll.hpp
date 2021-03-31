@@ -31,6 +31,7 @@ struct cpu_allreduce_coll : cpu_base_coll<Dtype, allreduce_strategy_impl> {
                                    ccl::stream& stream,
                                    size_t rank_idx) override {
         Dtype sbuf_expected = comm.rank();
+        /* TODO: handle PROD, MIN, MAX */
         Dtype rbuf_expected = (comm.size() - 1) * ((float)comm.size() / 2);
         Dtype value;
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {

@@ -15,17 +15,8 @@
 #
 cmake_minimum_required (VERSION 2.8)
 
-set(PROJECT_NAME "oneCCL examples")
-
-project(${PROJECT_NAME})
-
-include(../cmake/helpers.cmake)
-
 if (DEFINED ENV{CCL_CONFIGURATION})
     set(CCL_CONFIGURATION "$ENV{CCL_CONFIGURATION}")
-    if(${CCL_CONFIGURATION} STREQUAL "cpu_gpu_dpcpp")
-        set(COMPUTE_RUNTIME_TARGET_NAME "Intel::SYCL")
-    endif()
 endif()
 
 if (DEFINED ENV{CCL_ROOT})
@@ -34,16 +25,12 @@ else()
     message(FATAL_ERROR "Please define CCL_ROOT environment variable")
 endif()
 
-if (DEFINED ENV{I_MPI_ROOT})
-    set(I_MPI_ROOT "$ENV{I_MPI_ROOT}")
-else()
-    message(FATAL_ERROR "Please define I_MPI_ROOT environment variable")
-endif()
-
 message(STATUS "CCL_ROOT: ${CCL_ROOT}")
-message(STATUS "I_MPI_ROOT: ${I_MPI_ROOT}")
 message(STATUS "CCL_CONFIGURATION: ${CCL_CONFIGURATION}")
-message(STATUS "PROJECT_SOURCE_DIR: ${PROJECT_SOURCE_DIR}")
+
+if (NOT DEFINED ${CCL_INSTALL_BENCHMARKS})
+    set(CCL_INSTALL_BENCHMARKS "$ENV{PWD}")
+endif()
 
 if (NOT DEFINED ${CCL_INSTALL_EXAMPLES})
     set(CCL_INSTALL_EXAMPLES "$ENV{PWD}")
@@ -71,11 +58,11 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${CXX_COMP
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if (COMPUTE_RUNTIME)
-    activate_compute_runtime("${CCL_ROOT}/lib;${PROJECT_SOURCE_DIR}/../cmake" ${COMPUTE_RUNTIME})
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMPUTE_RUNTIME_FLAGS}")
-    list(APPEND CCL_INC_DIRS ${COMPUTE_RUNTIME_INCLUDE_DIRS})
-    list(APPEND EXTERNAL_LIBS ${COMPUTE_RUNTIME_LIBRARIES})
+if (${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
+    set(CMAKE_CLANG_FLAGS "-fsycl")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -lsycl")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CLANG_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CLANG_FLAGS}")
 endif()
 
 set(GCC_BF16_MIN_SUPPORTED "4.9.0")
@@ -98,12 +85,11 @@ if (CCL_BF16_COMPILER)
     endif()
 endif()
 
-include_directories(include)
-include_directories(${I_MPI_ROOT}/include/)
+
 include_directories(${CCL_ROOT}/include/${CCL_CONFIGURATION})
-link_directories(${I_MPI_ROOT}/lib/release_mt)
-link_directories(${I_MPI_ROOT}/libfabric/lib)
 link_directories(${CCL_ROOT}/lib/${CCL_CONFIGURATION})
+
+include_directories(include)
 
 add_subdirectory(cpu)
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
@@ -111,3 +97,4 @@ if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
 endif()
 add_subdirectory(common)
 add_subdirectory(benchmark)
+add_subdirectory(external_launcher)

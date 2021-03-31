@@ -40,6 +40,7 @@ struct alltoall_strategy_impl {
                         const bench_exec_attr& bench_attr,
                         req_list_t& reqs,
                         Args&&... args) {
-        reqs.push_back(ccl::alltoall(send_buf, recv_buf, count, comm, std::forward<Args>(args)...));
+        reqs.push_back(ccl::alltoall(
+            send_buf, recv_buf, count, get_ccl_dtype<Dtype>(), comm, std::forward<Args>(args)...));
     }
 };

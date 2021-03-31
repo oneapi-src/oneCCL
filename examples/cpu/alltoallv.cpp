@@ -80,6 +80,8 @@ int main() {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+    atexit(mpi_finalize);
+
     ccl::shared_ptr_class<ccl::kvs> kvs;
     ccl::kvs::address_type main_addr;
     if (rank == 0) {
@@ -121,8 +123,6 @@ int main() {
              attr.set<ccl::operation_attr_id::to_cache>(false);
              run_collective(
                  "regular alltoallv", send_buf, recv_buf, send_counts, recv_counts, comm, attr););
-
-    MPI_Finalize();
 
     return 0;
 }

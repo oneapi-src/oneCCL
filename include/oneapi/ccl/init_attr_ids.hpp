@@ -25,8 +25,6 @@ namespace v1 {
 
 enum class init_attr_id : int {
     version,
-
-    last_value
 };
 
 } // namespace v1

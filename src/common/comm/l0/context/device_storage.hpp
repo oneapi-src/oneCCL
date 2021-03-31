@@ -22,11 +22,11 @@ namespace native {
 /*
  * Class device_storage:
  * used for typed device wrapper creation during topology construction.
- * It must remember all created device wrappers and must guarantee uniqueness 
+ * It must remember all created device wrappers and must guarantee uniqueness
  * for exclusive device wrappers (REAL devices) and their clones (VIRTUAL devices)
- * Every time when a new device is created it wrapped into REAL deice type, 
+ * Every time when a new device is created it wrapped into REAL deice type,
  * all other request to create the same device must be wrapped into VIRTUAL devices.
- * 
+ *
  * Guarantee must be applied across threads
  */
 struct device_storage {
@@ -47,6 +47,12 @@ struct device_storage {
     // creation specific device type, determined from 'create_devices_by_indices'
     template <class device_t, class... Args>
     device_t_ptr<device_t> create_gpu_device(ccl_device& device, size_t ranks, Args&&... args) {
+        //break compiler for 'device_t' constructible check
+        static_assert(std::is_constructible<device_t,
+                                            typename std::add_lvalue_reference<ccl_device>::type,
+                                            size_t,
+                                            Args...>::value,
+                      "Object of class 'device_t' is not constructible from given arguments");
         std::shared_ptr<device_t> gpu_instance =
             std::make_shared<device_t>(device, ranks, std::forward<Args>(args)...);
 
@@ -77,6 +83,7 @@ struct device_storage {
                 : lock(mutex),
                   inner_data(storage) {}
         accessor(accessor&& src) = default;
+        accessor& operator=(accessor&& src) = delete;
 
         specific_indexed_device_storage& get() {
             return inner_data;

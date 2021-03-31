@@ -18,6 +18,7 @@
 
 #include "oneapi/ccl/native_device_api/l0/primitives.hpp"
 #include "oneapi/ccl/native_device_api/l0/base_impl.hpp"
+#include "oneapi/ccl/native_device_api/l0/context.hpp"
 
 namespace native {
 
@@ -26,12 +27,17 @@ namespace native {
 
 struct ccl_device;
 namespace detail {
-void copy_memory_to_device_sync_unsafe(void* dst,
-                                       const void* src,
-                                       size_t size,
-                                       std::weak_ptr<ccl_device> device_weak,
-                                       std::shared_ptr<ccl_context> ctx);
-}
+void copy_memory_sync_unsafe(void* dst,
+                             const void* src,
+                             size_t size,
+                             std::weak_ptr<ccl_device> device_weak,
+                             std::shared_ptr<ccl_context> ctx);
+void copy_memory_sync_unsafe(void* dst,
+                             const void* src,
+                             size_t size,
+                             std::weak_ptr<ccl_context> ctx_weak,
+                             std::shared_ptr<ccl_context> ctx);
+} // namespace detail
 
 template <TEMPLATE_DECL_ARG>
 memory<TEMPLATE_DEF_ARG>::memory(elem_t* h,
@@ -72,7 +78,7 @@ void memory<TEMPLATE_DEF_ARG>::enqueue_write_sync(const std::vector<elem_t>& src
     }
 
     try {
-        detail::copy_memory_to_device_sync_unsafe(
+        detail::copy_memory_sync_unsafe(
             get(), src.data(), src.size() * sizeof(elem_t), get_owner(), get_ctx().lock());
     }
     catch (const std::exception& ex) {
@@ -94,7 +100,7 @@ void memory<TEMPLATE_DEF_ARG>::enqueue_write_sync(
     }
 
     try {
-        detail::copy_memory_to_device_sync_unsafe(
+        detail::copy_memory_sync_unsafe(
             get(), &(*first), requested_size * sizeof(elem_t), get_owner(), get_ctx().lock());
     }
     catch (const std::exception& ex) {
@@ -113,7 +119,7 @@ void memory<TEMPLATE_DEF_ARG>::enqueue_write_sync(const std::array<elem_t, N>& s
     }
 
     try {
-        detail::copy_memory_to_device_sync_unsafe(
+        detail::copy_memory_sync_unsafe(
             get(), src.data(), N * sizeof(elem_t), get_owner(), get_ctx().lock());
     }
     catch (const std::exception& ex) {
@@ -138,7 +144,7 @@ void memory<TEMPLATE_DEF_ARG>::enqueue_write_sync(const elem_t* src, size_t src_
     }
 
     try {
-        detail::copy_memory_to_device_sync_unsafe(
+        detail::copy_memory_sync_unsafe(
             get(), src, src_elem_count * sizeof(elem_t), get_owner(), get_ctx().lock());
     }
     catch (const std::exception& ex) {
@@ -163,7 +169,7 @@ std::vector<elem_t> memory<TEMPLATE_DEF_ARG>::enqueue_read_sync(
     size_t actual_size = std::min(src_elem_count, count());
     try {
         dst.resize(actual_size);
-        detail::copy_memory_to_device_sync_unsafe(
+        detail::copy_memory_sync_unsafe(
             dst.data(), get(), actual_size * sizeof(elem_t), get_owner(), get_ctx().lock());
     }
     catch (const std::exception& ex) {

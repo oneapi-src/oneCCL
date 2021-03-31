@@ -17,6 +17,7 @@
 #include <mpi.h>
 #include <vector>
 
+#include "base.hpp"
 #include "oneapi/ccl.hpp"
 
 using namespace std;
@@ -35,6 +36,8 @@ int main() {
     MPI_Init(NULL, NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    atexit(mpi_finalize);
 
     ccl::shared_ptr_class<ccl::kvs> kvs;
     ccl::kvs::address_type main_addr;
@@ -84,8 +87,6 @@ int main() {
             cout << "PASSED\n";
         }
     }
-
-    MPI_Finalize();
 
     return 0;
 }

@@ -29,17 +29,12 @@ CCL_API device::device(impl_value_t&& impl) : base_t(std::move(impl)) {}
 CCL_API device::~device() {}
 
 CCL_API device& device::operator=(device&& src) {
-    if (src.get_impl() != this->get_impl()) {
-        src.get_impl().swap(this->get_impl());
-        src.get_impl().reset();
-    }
+    this->acc_policy_t::create(this, std::move(src));
     return *this;
 }
 
 CCL_API device& device::operator=(const device& src) {
-    if (src.get_impl() != this->get_impl()) {
-        this->get_impl() = src.get_impl();
-    }
+    this->acc_policy_t::create(this, src);
     return *this;
 }
 

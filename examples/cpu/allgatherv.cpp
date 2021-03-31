@@ -97,6 +97,8 @@ int main() {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+    atexit(mpi_finalize);
+
     ccl::shared_ptr_class<ccl::kvs> kvs;
     ccl::kvs::address_type main_addr;
     auto kvs_attr = ccl::create_kvs_attr();
@@ -139,8 +141,6 @@ int main() {
              run_collective("regular_allgatherv", send_buf, recv_buf, recv_counts, comm, attr);
              run_collective_vector(
                  "regular_allgatherv_vector", send_buf, recv_bufs, recv_counts, comm, attr););
-
-    MPI_Finalize();
 
     return 0;
 }

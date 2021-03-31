@@ -35,11 +35,8 @@
 #include "types_generator_defines.hpp"
 #include "atl/atl_wrapper.h"
 
+class ikvs_wrapper;
 namespace ccl {
-
-namespace v1 {
-class kvs_interface;
-}
 
 class host_communicator : public ccl::communicator_interface {
 public:
@@ -122,8 +119,8 @@ public:
     COMM_IMPL_SPARSE_CLASS_DECLARATION
 
     host_communicator();
-    host_communicator(int size, shared_ptr_class<kvs_interface> kvs);
-    host_communicator(int size, int rank, shared_ptr_class<kvs_interface> kvs);
+    host_communicator(int size, shared_ptr_class<ikvs_wrapper> kvs);
+    host_communicator(int size, int rank, shared_ptr_class<ikvs_wrapper> kvs);
     host_communicator(std::shared_ptr<atl_wrapper> atl);
     host_communicator(std::shared_ptr<ccl_comm> impl);
     host_communicator(host_communicator& src) = delete;

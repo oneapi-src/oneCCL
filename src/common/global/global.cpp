@@ -96,8 +96,6 @@ void global_data::init_resize_independent_objects() {
         new ccl_algorithm_selector_wrapper<CCL_COLL_LIST>());
 
     algorithm_selector->init();
-
-    bf16_impl_type = ccl_bf16_get_impl_type();
 }
 
 void global_data::reset_resize_dependent_objects() {

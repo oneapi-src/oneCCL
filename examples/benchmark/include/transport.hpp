@@ -33,6 +33,7 @@ public:
     ccl::communicator& get_service_comm();
     void init_comms(user_options_t& options);
     std::vector<ccl::communicator>& get_comms();
+    void reset_comms();
 
     std::vector<ccl::stream>& get_streams();
     std::vector<ccl::stream>& get_bench_streams();

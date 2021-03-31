@@ -26,9 +26,12 @@
 #include "util/pm/pmi_resizable_rt/pmi_resizable/kvs/internal_kvs.h"
 #include "util/pm/pmi_resizable_rt/pmi_resizable/kvs/users_kvs.h"
 
+class ccl_executor;
+
 class atl_wrapper {
 public:
     static void set_internal_env(const atl_attr_t& attr);
+    static void set_exec(ccl_executor* exec);
 
     ~atl_wrapper();
     atl_wrapper();
@@ -80,10 +83,6 @@ public:
 
     atl_proc_coord_t* atl_get_proc_coord() {
         return transport->atl_get_proc_coord();
-    }
-
-    int atl_is_resize_enabled() {
-        return transport->atl_is_resize_enabled();
     }
 
     atl_status_t atl_mr_reg(const void* buf, size_t len, atl_mr_t** mr) {

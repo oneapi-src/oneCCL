@@ -38,7 +38,7 @@ kvs_resize_action_t pmi_resizable::default_checker(int comm_size) {
     comm_size_to_start_env = getenv(CCL_WORLD_SIZE_ENV);
 
     if (comm_size_to_start_env != NULL)
-        comm_size_to_start = strtol(comm_size_to_start_env, NULL, 10);
+        comm_size_to_start = safe_strtol(comm_size_to_start_env, NULL, 10);
     else
         comm_size_to_start = h->get_replica_size();
     if (comm_size >= comm_size_to_start)
@@ -74,7 +74,7 @@ int pmi_resizable::PMIR_Update(void) {
 
         h->get_value_by_name_key(KVS_UP, KVS_IDX, up_idx_str);
 
-        up_idx = strtol(up_idx_str, NULL, 10);
+        up_idx = safe_strtol(up_idx_str, NULL, 10);
         if (up_idx == 0)
             is_first_collect = 1;
 
@@ -86,7 +86,7 @@ int pmi_resizable::PMIR_Update(void) {
                 usleep(10000);
                 h->get_value_by_name_key(KVS_UP, KVS_IDX, up_idx_str);
 
-                up_idx = strtol(up_idx_str, NULL, 10);
+                up_idx = safe_strtol(up_idx_str, NULL, 10);
                 if (prev_idx == (int)up_idx) {
                     count_clean_checks = 0;
 
@@ -121,7 +121,7 @@ int pmi_resizable::PMIR_Update(void) {
                 PMIR_Barrier();
                 if (my_rank == root_rank && is_new_root == 0) {
                     up_idx++;
-                    if (up_idx > MAX_UP_IDX)
+                    if (up_idx > 0 && up_idx > MAX_UP_IDX)
                         up_idx = 1;
 
                     SET_STR(up_idx_str, INT_STR_SIZE, SIZE_T_TEMPLATE, up_idx);

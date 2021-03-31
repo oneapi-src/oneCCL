@@ -66,19 +66,22 @@ void typed_base_communicator<TEMPLATE_DEF_ARG>::initialize_comm_addr(
     // for rank assigning in auto-ranking mode. SO, use clsoed ring t first, then goesn into torn_apart
 
     ccl::context_comm_addr registered_addr;
+    native::detail::printer<topology_type(), topology_class()> p;
     {
         std::unique_lock<ccl_spinlock> lock(ready_mutex);
+
+        auto& binder = get_impl()->get_communication_device();
         device_community_impl = new_community;
-        device_community_impl.template register_device_by_id<topology_type()>(device_id,
-                                                                              registered_addr);
+        device_community_impl.template bind_device_by_id<topology_type()>(
+            device_id, registered_addr, binder
+            /*TODO PUT your preferred rank here*/);
+        // print assigned device from topology
+        ccl_tuple_for_each(binder, p);
     }
 
     //TODO multiple topologies in curr class_id
     comm_rank = registered_addr.comm_rank;
     comm_size = registered_addr.comm_size;
-
-    //TODO
-    //ADD communicator device binding
 
     LOG_INFO("Communicator finalized. Rank (",
              comm_rank,
@@ -90,7 +93,8 @@ void typed_base_communicator<TEMPLATE_DEF_ARG>::initialize_comm_addr(
              thread_id,
              ", proc: ",
              process_id,
-             "}");
+             "} on device:\n",
+             p.to_string());
 }
 
 template <TEMPLATE_DECL_ARG>

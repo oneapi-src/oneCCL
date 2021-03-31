@@ -19,8 +19,16 @@
 
 #include "common/log/log.hpp"
 
-ccl_log_level ccl_logger::level = ccl_log_level::ERROR;
+ccl_log_level ccl_logger::level = ccl_log_level::warn;
 ccl_logger logger;
+
+std::map<ccl_log_level, std::string> ccl_logger::level_names = {
+    std::make_pair(ccl_log_level::error, "error"),
+    std::make_pair(ccl_log_level::warn, "warn"),
+    std::make_pair(ccl_log_level::info, "info"),
+    std::make_pair(ccl_log_level::debug, "debug"),
+    std::make_pair(ccl_log_level::trace, "trace")
+};
 
 std::ostream& operator<<(std::ostream& os, ccl_streambuf& buf) {
     buf.set_eol();

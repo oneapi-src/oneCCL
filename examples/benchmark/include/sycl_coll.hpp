@@ -119,7 +119,7 @@ struct sycl_base_coll : base_coll, private strategy {
                                               coll_strategy::get_op_attr(attr));
             }
             else {
-                sycl_buffer_t<Dtype>& send_buf =
+                /*sycl_buffer_t<Dtype>& send_buf =
                     *(static_cast<sycl_buffer_t<Dtype>*>(send_bufs[buf_idx][rank_idx]));
                 sycl_buffer_t<Dtype>& recv_buf =
                     *(static_cast<sycl_buffer_t<Dtype>*>(recv_bufs[buf_idx][rank_idx]));
@@ -131,7 +131,10 @@ struct sycl_base_coll : base_coll, private strategy {
                     attr,
                     reqs,
                     streams[rank_idx],
-                    coll_strategy::get_op_attr(attr));
+                    coll_strategy::get_op_attr(attr));*/
+
+                throw std::runtime_error(std::string(__FUNCTION__) +
+                                         " - only USM buffers are supported\n");
             }
         }
     }
@@ -183,7 +186,7 @@ struct sycl_base_coll : base_coll, private strategy {
     }
 
     ccl::datatype get_dtype() const override final {
-        return ccl::native_type_info<typename std::remove_pointer<Dtype>::type>::dtype;
+        return get_ccl_dtype<Dtype>();
     }
 
     /* used on fill/check phases */

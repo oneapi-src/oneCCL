@@ -46,8 +46,10 @@ struct ccl_device_driver
     using devices_storage_type = std::map<ccl::index_type, device_ptr>;
     using indexed_driver_handles = indexed_storage<handle_t>;
 
+    using driver_index_type = uint32_t;
+
     ccl_device_driver(handle_t h,
-                      uint32_t id,
+                      driver_index_type id,
                       owner_ptr_t&& platform,
                       std::weak_ptr<ccl_context_holder>&& ctx);
 
@@ -55,13 +57,13 @@ struct ccl_device_driver
         const ccl::device_indices_type& requested_driver_indexes = ccl::device_indices_type());
     static std::shared_ptr<ccl_device_driver> create(
         handle_t h,
-        uint32_t id,
+        driver_index_type id,
         owner_ptr_t&& platform,
         const ccl::device_mask_t& rank_device_affinity);
 
     static std::shared_ptr<ccl_device_driver> create(
         handle_t h,
-        uint32_t id,
+        driver_index_type id,
         owner_ptr_t&& platform,
         const ccl::device_indices_type& rank_device_affinity = ccl::device_indices_type());
 
@@ -70,8 +72,10 @@ struct ccl_device_driver
     }
 
     context_storage_type get_driver_contexts();
+    context_storage_type get_driver_contexts() const;
 
-    uint32_t get_driver_id() const noexcept;
+    driver_index_type get_driver_id() const noexcept;
+    ccl::device_index_type get_driver_path() const noexcept;
 
     ze_driver_properties_t get_properties() const;
     const devices_storage_type& get_devices() const noexcept;
@@ -88,11 +92,15 @@ struct ccl_device_driver
 
     // serialize/deserialize
     static constexpr size_t get_size_for_serialize() {
-        return sizeof(size_t);
+        return /*owner_t::get_size_for_serialize()*/
+            sizeof(int) + sizeof(int) + sizeof(size_t) + detail::serialize_device_path_size;
     }
-    static std::weak_ptr<ccl_device_driver> deserialize(const uint8_t** data,
-                                                        size_t& size,
-                                                        ccl_device_platform& driver);
+
+    static std::weak_ptr<ccl_device_driver> deserialize(
+        const uint8_t** data,
+        size_t& size,
+        std::shared_ptr<ccl_device_platform>& out_platform,
+        ccl::device_index_type& out_device_path);
     size_t serialize(std::vector<uint8_t>& out, size_t from_pos, size_t expected_size) const;
 
     // utility
@@ -101,10 +109,11 @@ struct ccl_device_driver
     static ccl::device_indices_type get_device_indices(const ccl::device_mask_t& mask);
     static ccl::device_mask_t get_device_mask(const ccl::device_indices_type& device_idx);
 
-    uint32_t driver_id;
+    driver_index_type driver_id;
 
 private:
     devices_storage_type devices;
+    ze_driver_ipc_properties_t ipc_prop;
 };
 /*
 template <class DeviceType,

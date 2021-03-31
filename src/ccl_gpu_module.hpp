@@ -20,7 +20,7 @@
 #include "internal_types.hpp"
 
 #ifdef MULTI_GPU_SUPPORT
-ccl::status register_gpu_module_source(const char* source,
-                                       ccl::device_topology_type topology_class,
-                                       ccl_coll_type type);
+ccl::status load_gpu_module(const std::string& path,
+                            ccl::device_topology_type topo_type,
+                            ccl_coll_type coll_type);
 #endif //MULTI_GPU_SUPPORT

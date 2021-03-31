@@ -15,10 +15,12 @@
 */
 #pragma once
 #include "common/comm/l0/context/thread_group_ctx.hpp"
+#include "common/comm/l0/context/scaling_ctx/ipc_ctx.hpp"
 #include "common/comm/l0/context/scaling_ctx/numa_ctx.hpp"
 #include "common/comm/l0/context/scaling_ctx/scale_up_ctx.hpp"
 #include "common/comm/l0/context/scaling_ctx/scale_out_ctx.hpp"
 
+#include "common/comm/l0/context/scaling_ctx/scaling_context_dispatcher.hpp"
 #include "common/comm/l0/topology/topology_declarations.hpp"
 namespace ccl {
 class host_communicator;
@@ -31,18 +33,22 @@ struct allied_process_group_scheduler;
 
 //TODO separate class on two: context & process device requestor
 struct process_group_context
-        : numa_ctx<process_group_context, SUPPORTED_TOPOLOGY_CLASSES_DECL_LIST>,
-          scale_up_ctx<process_group_context, SUPPORTED_TOPOLOGY_CLASSES_DECL_LIST>,
-          scale_out_ctx<process_group_context, SUPPORTED_TOPOLOGY_CLASSES_DECL_LIST> {
+        : scaling_ctx_dispatcher<
+              numa_ctx<process_group_context, SUPPORTED_TOPOLOGY_CLASSES_DECL_LIST>,
+              scale_up_ctx<process_group_context, SUPPORTED_TOPOLOGY_CLASSES_DECL_LIST>,
+              scale_out_ctx<process_group_context, SUPPORTED_TOPOLOGY_CLASSES_DECL_LIST>,
+              ipc_ctx<process_group_context, SUPPORTED_TOPOLOGY_CLASSES_DECL_LIST>> {
     using numa_context_base = numa_ctx<process_group_context, SUPPORTED_TOPOLOGY_CLASSES_DECL_LIST>;
     using scaleup_context_base =
         scale_up_ctx<process_group_context, SUPPORTED_TOPOLOGY_CLASSES_DECL_LIST>;
     using scaleout_context_base =
         scale_out_ctx<process_group_context, SUPPORTED_TOPOLOGY_CLASSES_DECL_LIST>;
+    using ipc_context_base = ipc_ctx<process_group_context, SUPPORTED_TOPOLOGY_CLASSES_DECL_LIST>;
 
     friend class device_group_ring_topology;
     friend class thread_group_ring_topology;
     friend class cluster_group_device_creator;
+    friend class allied_process_group_ring_topology;
 
     static constexpr ccl::group_split_type group_id() {
         return ccl::group_split_type::cluster;
@@ -129,6 +135,8 @@ struct process_group_context
     const scaleup_context_base& get_scaleup_ctx() const;
     scaleout_context_base& get_scaleout_ctx();
     const scaleout_context_base& get_scaleout_ctx() const;
+    ipc_context_base& get_ipc_ctx();
+    const ipc_context_base& get_ipc_ctx() const;
 
     virtual /*TODO use stub*/
         void
@@ -149,6 +157,11 @@ private:
     ccl::host_id my_host_name;
     ccl::cluster_aggregated_device_mask_t global_mask;
     ccl::cluster_device_indices_type cluster_gpu_indices;
+
+    //TODO -S- temporary START
+    size_t cluster_device_rank_offset;
+    size_t cluster_device_size;
+    //TODO -S- temporary END
 
     std::unique_ptr<device_storage> gpu_device_storage;
     topologies_storage process_device_topology;

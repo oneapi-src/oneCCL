@@ -30,26 +30,26 @@ namespace ccl {
 namespace v1 {
 
 /* TODO temporary function for UT compilation: would be part of ccl::detail::environment in final*/
-template <class... attr_value_pair_t>
+template <class... attr_val_type>
 stream stream::create_stream_from_attr(typename unified_device_type::ccl_native_t device,
-                                       attr_value_pair_t&&... avps) {
+                                       attr_val_type&&... avs) {
     auto version = utils::get_library_version();
 
     stream str{ stream_provider_dispatcher::create(device, version) };
-    int expander[]{ (str.template set<attr_value_pair_t::idx()>(avps.val()), 0)... };
+    int expander[]{ (str.template set<attr_val_type::idx()>(avs.val()), 0)... };
     (void)expander;
     str.build_from_params();
     return str;
 }
 
-template <class... attr_value_pair_t>
+template <class... attr_val_type>
 stream stream::create_stream_from_attr(typename unified_device_type::ccl_native_t device,
                                        typename unified_context_type::ccl_native_t context,
-                                       attr_value_pair_t&&... avps) {
+                                       attr_val_type&&... avs) {
     auto version = utils::get_library_version();
 
     stream str{ stream_provider_dispatcher::create(device, context, version) };
-    int expander[]{ (str.template set<attr_value_pair_t::idx()>(avps.val()), 0)... };
+    int expander[]{ (str.template set<attr_val_type::idx()>(avs.val()), 0)... };
     (void)expander;
     str.build_from_params();
     return str;

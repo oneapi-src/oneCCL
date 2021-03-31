@@ -47,7 +47,7 @@ public:
     stream_native_t get_native_stream() const;
 
 #ifdef CCL_ENABLE_SYCL
-    stream_native_t get_native_stream(size_t idx) const;
+    stream_native_t* get_native_stream(size_t idx);
 #endif /* CCL_ENABLE_SYCL */
 
     const stream_native_device_t& get_native_device() const;

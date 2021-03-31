@@ -28,17 +28,12 @@ CCL_API context::context(impl_value_t&& impl) : base_t(std::move(impl)) {}
 CCL_API context::~context() {}
 
 CCL_API context& context::operator=(context&& src) {
-    if (src.get_impl() != this->get_impl()) {
-        src.get_impl().swap(this->get_impl());
-        src.get_impl().reset();
-    }
+    this->acc_policy_t::create(this, std::move(src));
     return *this;
 }
 
 CCL_API context& context::operator=(const context& src) {
-    if (src.get_impl() != this->get_impl()) {
-        this->get_impl() = src.get_impl();
-    }
+    this->acc_policy_t::create(this, src);
     return *this;
 }
 

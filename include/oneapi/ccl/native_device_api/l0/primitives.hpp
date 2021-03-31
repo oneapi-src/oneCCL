@@ -19,8 +19,11 @@
 #include <ze_api.h>
 
 #include "oneapi/ccl/native_device_api/l0/base.hpp"
-#include "oneapi/ccl/native_device_api/l0/context.hpp"
+
 namespace native {
+
+struct ccl_device_platform;
+
 std::string to_string(const ze_result_t result);
 std::string to_string(ze_memory_type_t type);
 std::string to_string(ze_memory_access_cap_flags_t cap);
@@ -36,6 +39,8 @@ std::string to_string(const ze_memory_allocation_properties_t& prop);
 std::string to_string(const ze_device_p2p_properties_t& properties);
 std::string to_string(const ze_device_mem_alloc_desc_t& mem_descr);
 std::string to_string(const ze_ipc_mem_handle_t& handle);
+std::string to_string(const ze_command_queue_desc_t& queue_descr);
+std::string to_string(const ze_command_list_desc_t& list_descr);
 
 /**
  * Specific L0 primitives declaration

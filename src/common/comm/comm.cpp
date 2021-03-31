@@ -36,8 +36,7 @@ void ccl_comm::allocate_resources() {
         env_object.allreduce_2d_switch_dims,
         this));
 
-    if (m_rank == 0)
-        env_object.print();
+    env_object.print(m_rank);
 }
 
 ccl_comm::ccl_comm(int rank,

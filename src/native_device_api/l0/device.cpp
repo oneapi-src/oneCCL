@@ -24,14 +24,16 @@
 #include "oneapi/ccl/native_device_api/l0/primitives_impl.hpp"
 #include "oneapi/ccl/native_device_api/l0/utils.hpp"
 
+#include "oneapi/ccl/native_device_api/export_api.hpp"
+#include "common/log/log.hpp"
+
 namespace native {
 
 uint32_t get_device_properties_from_handle(ccl_device::handle_t handle) {
     ze_device_properties_t device_properties;
     ze_result_t ret = zeDeviceGetProperties(handle, &device_properties);
     if (ret != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(std::string("zeDeviceGetProperties failed, error: ") +
-                                 native::to_string(ret));
+        CCL_THROW("zeDeviceGetProperties failed, error: " + native::to_string(ret));
     }
 
     return device_properties.deviceId;
@@ -47,14 +49,13 @@ detail::cross_device_rating property_p2p_rating_calculator(const native::ccl_dev
         ze_bool_t access;
         ze_result_t ret = zeDeviceCanAccessPeer(lhs.handle, rhs.handle, &access);
         if (ret != ZE_RESULT_SUCCESS) {
-            throw std::runtime_error(std::string("Cannot execute zeDeviceCanAccessPeer, error: ") +
-                                     native::to_string(ret));
+            CCL_THROW("cannot execute zeDeviceCanAccessPeer, error: " + native::to_string(ret));
         }
         return access ? weight : 0;
     }
 }
 
-CCL_API
+CCL_BE_API
 std::shared_ptr<ccl_device> ccl_device::create(
     handle_t handle,
     owner_ptr_t&& driver,
@@ -102,15 +103,14 @@ std::shared_ptr<ccl_device> ccl_device::create(
     return device;
 }
 
-CCL_API
+CCL_BE_API
 ccl_device::indexed_handles ccl_device::get_handles(
     const ccl_device_driver& driver,
     const ccl::device_indices_type& requested_device_indexes /* = indices()*/) {
     uint32_t devices_count = 0;
     ze_result_t err = zeDeviceGet(driver.handle, &devices_count, nullptr);
     if (err != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(std::string(__FUNCTION__) +
-                                 " - zeDeviceGet failed, error: " + native::to_string(err));
+        CCL_THROW("zeDeviceGet failed, error: " + native::to_string(err));
     }
 
     std::vector<ccl_device::handle_t> handles;
@@ -118,9 +118,7 @@ ccl_device::indexed_handles ccl_device::get_handles(
 
     err = zeDeviceGet(driver.handle, &devices_count, handles.data());
     if (err != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(
-            std::string(__FUNCTION__) +
-            " - zeDeviceGet failed for device request, error: " + native::to_string(err));
+        CCL_THROW("zeDeviceGet failed for device request, error: " + native::to_string(err));
     }
 
     //filter indices by driver id
@@ -133,7 +131,7 @@ ccl_device::indexed_handles ccl_device::get_handles(
             }
         }
         if (filtered_ids.empty()) {
-            throw std::runtime_error(std::string(__FUNCTION__) + " - Failed, nothing to get");
+            CCL_THROW("failed, nothing to get");
         }
     }
 
@@ -155,7 +153,7 @@ ccl_device::indexed_handles ccl_device::get_handles(
         */
     }
     catch (const std::exception& ex) {
-        throw std::runtime_error(std::string(__FUNCTION__) + " - Cannot add device: " + ex.what());
+        CCL_THROW(std::string("cannot add device: ") + ex.what());
     }
     return ret;
 }
@@ -163,38 +161,32 @@ ccl_device::indexed_handles ccl_device::get_handles(
 void ccl_device::initialize_device_data() {
     ze_result_t ret = zeDeviceGetProperties(handle, &device_properties);
     if (ret != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(std::string("zeDeviceGetProperties failed, error: ") +
-                                 native::to_string(ret));
+        CCL_THROW("zeDeviceGetProperties failed, error: " + native::to_string(ret));
     }
 
     uint32_t memory_prop_count = 0;
     ret = zeDeviceGetMemoryProperties(handle, &memory_prop_count, nullptr);
     if (ret != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(
-            std::string("zeDeviceGetMemoryProperties failed for nullptr, error: ") +
-            native::to_string(ret));
+        CCL_THROW("zeDeviceGetMemoryProperties failed for nullptr, error: " +
+                  native::to_string(ret));
     }
     memory_properties.resize(memory_prop_count);
 
     ret = zeDeviceGetMemoryProperties(handle, &memory_prop_count, memory_properties.data());
     if (ret != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(
-            std::string("zeDeviceGetMemoryProperties failed for memory_properties, error: ") +
-            native::to_string(ret));
+        CCL_THROW("zeDeviceGetMemoryProperties failed for memory_properties, error: " +
+                  native::to_string(ret));
     }
 
     ret = zeDeviceGetMemoryAccessProperties(handle, &memory_access_properties);
     if (ret != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(
-            std::string(
-                "zeDeviceGetMemoryAccessProperties failed for memory_access_properties, error: ") +
-            native::to_string(ret));
+        CCL_THROW("zeDeviceGetMemoryAccessProperties failed for memory_access_properties, error: " +
+                  native::to_string(ret));
     }
 
     ret = zeDeviceGetComputeProperties(handle, &compute_properties);
     if (ret != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(std::string("zeDeviceGetComputeProperties failed, error: ") +
-                                 native::to_string(ret));
+        CCL_THROW("zeDeviceGetComputeProperties failed, error: " + native::to_string(ret));
     }
 }
 
@@ -202,113 +194,119 @@ ccl_device::ccl_device(handle_t h,
                        owner_ptr_t&& parent,
                        std::weak_ptr<ccl_context_holder>&& ctx,
                        std::false_type)
-        : base(h, std::move(parent), std::move(ctx)) {}
+        : base(h, std::move(parent), std::move(ctx)),
+          device_properties(),
+          memory_properties(),
+          memory_access_properties(),
+          compute_properties() {}
 
 ccl_device::ccl_device(handle_t h, owner_ptr_t&& parent, std::weak_ptr<ccl_context_holder>&& ctx)
-        : base(h, std::move(parent), std::move(ctx)) {
+        : base(h, std::move(parent), std::move(ctx)),
+          device_properties(),
+          memory_properties(),
+          memory_access_properties(),
+          compute_properties() {
     initialize_device_data();
 }
 
-CCL_API ccl_device::~ccl_device() {
-    cmd_queus.clear();
+CCL_BE_API ccl_device::~ccl_device() {
+    cmd_queues.clear();
     sub_devices.clear();
 }
 
-CCL_API ccl_device::sub_devices_container_type& ccl_device::get_subdevices() {
+CCL_BE_API ccl_device::sub_devices_container_type& ccl_device::get_subdevices() {
     return const_cast<sub_devices_container_type&>(
         static_cast<const ccl_device*>(this)->get_subdevices());
 }
 
-CCL_API const ccl_device::sub_devices_container_type& ccl_device::get_subdevices() const {
+CCL_BE_API const ccl_device::sub_devices_container_type& ccl_device::get_subdevices() const {
     return sub_devices;
 }
 
-CCL_API ccl_device::subdevice_ptr ccl_device::get_subdevice(const ccl::device_index_type& path) {
+CCL_BE_API ccl_device::subdevice_ptr ccl_device::get_subdevice(const ccl::device_index_type& path) {
     return std::const_pointer_cast<ccl_subdevice>(
         static_cast<const ccl_device*>(this)->get_subdevice(path));
 }
 
-CCL_API ccl_device::const_subdevice_ptr ccl_device::get_subdevice(
+CCL_BE_API ccl_device::const_subdevice_ptr ccl_device::get_subdevice(
     const ccl::device_index_type& path) const {
     const auto driver = get_owner().lock();
     if (!driver) {
         assert(false && "because ccl_device has no owner");
-        throw std::runtime_error(std::string(__PRETTY_FUNCTION__) +
-                                 " - cannot get get_device_path() because ccl_device has no owner");
+        CCL_THROW("cannot get get_device_path() because ccl_device has no owner");
     }
 
     ccl::index_type driver_idx = std::get<ccl::device_index_enum::driver_index_id>(path);
     if (driver_idx != driver->get_driver_id()) {
         assert(false && "incorrect owner driver");
-        throw std::runtime_error(
-            std::string(__PRETTY_FUNCTION__) + " - incorrect driver, expected: " +
-            std::to_string(driver->get_driver_id()) + ", requested: " + ccl::to_string(path));
+        CCL_THROW("incorrect driver, expected: " + std::to_string(driver->get_driver_id()) +
+                  ", requested: " + ccl::to_string(path));
     }
 
     ccl::index_type device_index = std::get<ccl::device_index_enum::device_index_id>(path);
     if (device_index != get_device_id()) {
         assert(false && "incorrect device index");
-        throw std::runtime_error(std::string(__PRETTY_FUNCTION__) +
-                                 " - incorrect device, expected: " + std::to_string(device_index) +
-                                 ", requested: " + ccl::to_string(path));
+        CCL_THROW("incorrect device, expected: " + std::to_string(device_index) +
+                  ", requested: " + ccl::to_string(path));
     }
 
     ccl::index_type subdevice_index = std::get<ccl::device_index_enum::subdevice_index_id>(path);
     if (ccl::unused_index_value == subdevice_index) {
         assert(false && "incorrect subdevice index");
-        throw std::runtime_error(std::string(__PRETTY_FUNCTION__) +
-                                 " - incorrect subdevice requested: " + ccl::to_string(path));
+        CCL_THROW("incorrect subdevice requested: " + ccl::to_string(path));
     }
 
     auto it = sub_devices.find(subdevice_index);
     if (it == sub_devices.end()) {
         assert(false && "subdevice is not found");
-        throw std::runtime_error(std::string(__PRETTY_FUNCTION__) +
-                                 " - incorrect subdevice index requested: " + ccl::to_string(path) +
-                                 ". Total subdevices count: " + std::to_string(sub_devices.size()));
+        CCL_THROW("incorrect subdevice index requested: " + ccl::to_string(path) +
+                  ". Total subdevices count: " + std::to_string(sub_devices.size()));
     }
 
     return it->second;
 }
 
-CCL_API const ze_device_properties_t& ccl_device::get_device_properties() const {
+CCL_BE_API const ze_device_properties_t& ccl_device::get_device_properties() const {
     return device_properties;
 }
 
-CCL_API bool ccl_device::is_subdevice() const noexcept {
+CCL_BE_API const ze_device_compute_properties_t& ccl_device::get_compute_properties() const {
+    return compute_properties;
+}
+
+CCL_BE_API bool ccl_device::is_subdevice() const noexcept {
     return false;
 }
 
-CCL_API ccl::index_type ccl_device::get_device_id() const {
+CCL_BE_API ccl::index_type ccl_device::get_device_id() const {
     assert(!(device_properties.flags & ZE_DEVICE_PROPERTY_FLAG_SUBDEVICE) &&
            "Must NOT be subdevice");
     return get_device_properties().deviceId;
 }
 
-CCL_API ccl::device_index_type ccl_device::get_device_path() const {
+CCL_BE_API ccl::device_index_type ccl_device::get_device_path() const {
     const auto driver = get_owner().lock();
     if (!driver) {
-        throw std::runtime_error("cannot get get_device_path() because ccl_device has no owner");
+        CCL_THROW("cannot get get_device_path() because ccl_device has no owner");
     }
 
-    ccl::device_index_type device_path = std::make_tuple(
-        driver->get_driver_id(), get_device_id(), std::numeric_limits<uint32_t>::max());
+    ccl::device_index_type device_path =
+        std::make_tuple(driver->get_driver_id(), get_device_id(), ccl::unused_index_value);
     return device_path;
 }
 
-CCL_API ze_device_p2p_properties_t
+CCL_BE_API ze_device_p2p_properties_t
 ccl_device::get_p2p_properties(const ccl_device& remote_device) const {
     ze_device_p2p_properties_t pP2PProperties = { .stype = ZE_STRUCTURE_TYPE_DEVICE_P2P_PROPERTIES,
                                                   .pNext = nullptr };
     ze_result_t ret = zeDeviceGetP2PProperties(handle, remote_device.handle, &pP2PProperties);
     if (ret != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(std::string("Cannot execute zeDeviceGetP2PProperties, error: ") +
-                                 native::to_string(ret));
+        CCL_THROW("cannot execute zeDeviceGetP2PProperties, error: " + native::to_string(ret));
     }
     return pP2PProperties;
 }
 
-CCL_API const ze_command_queue_desc_t& ccl_device::get_default_queue_desc() {
+CCL_BE_API const ze_command_queue_desc_t& ccl_device::get_default_queue_desc() {
     static ze_command_queue_desc_t common{
         .stype = ZE_STRUCTURE_TYPE_COMMAND_QUEUE_DESC,
         .pNext = NULL,
@@ -321,7 +319,7 @@ CCL_API const ze_command_queue_desc_t& ccl_device::get_default_queue_desc() {
     return common;
 }
 
-CCL_API const ze_command_list_desc_t& ccl_device::get_default_list_desc() {
+CCL_BE_API const ze_command_list_desc_t& ccl_device::get_default_list_desc() {
     static ze_command_list_desc_t common{
         .stype = ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC,
         .pNext = NULL,
@@ -331,7 +329,7 @@ CCL_API const ze_command_list_desc_t& ccl_device::get_default_list_desc() {
     return common;
 }
 
-CCL_API const ze_device_mem_alloc_desc_t& ccl_device::get_default_mem_alloc_desc() {
+CCL_BE_API const ze_device_mem_alloc_desc_t& ccl_device::get_default_mem_alloc_desc() {
     static ze_device_mem_alloc_desc_t common{
         .stype = ZE_STRUCTURE_TYPE_DEVICE_MEM_ALLOC_DESC,
         .pNext = NULL,
@@ -341,7 +339,7 @@ CCL_API const ze_device_mem_alloc_desc_t& ccl_device::get_default_mem_alloc_desc
     return common;
 }
 
-CCL_API const ze_host_mem_alloc_desc_t& ccl_device::get_default_host_alloc_desc() {
+CCL_BE_API const ze_host_mem_alloc_desc_t& ccl_device::get_default_host_alloc_desc() {
     static const ze_host_mem_alloc_desc_t common{
         .stype = ZE_STRUCTURE_TYPE_HOST_MEM_ALLOC_DESC,
         .pNext = NULL,
@@ -350,7 +348,7 @@ CCL_API const ze_host_mem_alloc_desc_t& ccl_device::get_default_host_alloc_desc(
     return common;
 }
 
-CCL_API ccl_device::device_queue ccl_device::create_cmd_queue(
+CCL_BE_API ccl_device::device_queue ccl_device::create_cmd_queue(
     std::shared_ptr<ccl_context> ctx,
     const ze_command_queue_desc_t& properties /* = get_default_queue_desc()*/) {
     if (!ctx) {
@@ -360,14 +358,13 @@ CCL_API ccl_device::device_queue ccl_device::create_cmd_queue(
     ze_command_queue_handle_t hCommandQueue;
     ze_result_t ret = zeCommandQueueCreate(ctx->get(), handle, &properties, &hCommandQueue);
     if (ret != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(std::string("cannot allocate queue, error: ") +
-                                 native::to_string(ret));
+        CCL_THROW("cannot allocate queue, error: " + native::to_string(ret));
     }
     return device_queue(hCommandQueue, get_ptr(), ctx);
 }
 
-CCL_API ccl_device::device_queue_fence& ccl_device::get_fence(const device_queue& queue,
-                                                              std::shared_ptr<ccl_context> ctx) {
+CCL_BE_API ccl_device::device_queue_fence& ccl_device::get_fence(const device_queue& queue,
+                                                                 std::shared_ptr<ccl_context> ctx) {
     //TODO not optimal
     std::unique_lock<std::mutex> lock(queue_mutex);
     auto fence_it = queue_fences.find(queue.handle);
@@ -381,8 +378,7 @@ CCL_API ccl_device::device_queue_fence& ccl_device::get_fence(const device_queue
 
         ze_result_t ret = zeFenceCreate(queue.handle, &desc, &h);
         if (ret != ZE_RESULT_SUCCESS) {
-            throw std::runtime_error(std::string("cannot allocate fence, error: ") +
-                                     native::to_string(ret));
+            CCL_THROW("cannot allocate fence, error: " + native::to_string(ret));
         }
         device_queue_fence f(h, get_ptr(), ctx);
         fence_it = queue_fences.emplace(queue.handle, std::move(f)).first;
@@ -390,11 +386,11 @@ CCL_API ccl_device::device_queue_fence& ccl_device::get_fence(const device_queue
     return fence_it->second;
 }
 
-CCL_API void* ccl_device::device_alloc_memory(size_t bytes_count,
-                                              size_t alignment,
-                                              const ze_device_mem_alloc_desc_t& mem_descr,
-                                              const ze_host_mem_alloc_desc_t& host_descr,
-                                              std::shared_ptr<ccl_context> ctx) {
+CCL_BE_API void* ccl_device::device_alloc_memory(size_t bytes_count,
+                                                 size_t alignment,
+                                                 const ze_device_mem_alloc_desc_t& mem_descr,
+                                                 const ze_host_mem_alloc_desc_t& host_descr,
+                                                 std::shared_ptr<ccl_context> ctx) {
     void* out_ptr = nullptr;
     if (!ctx) {
         ctx = get_default_context();
@@ -406,18 +402,17 @@ CCL_API void* ccl_device::device_alloc_memory(size_t bytes_count,
         zeMemAllocDevice(
             ctx->get(), &mem_descr, /*&host_descr, */ bytes_count, alignment, handle, &out_ptr);
     if (ret != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(std::string("cannot allocate memory, error: ") +
-                                 std::to_string(ret));
+        CCL_THROW("cannot allocate memory, error: " + std::to_string(ret));
     }
 
     return out_ptr;
 }
 
-CCL_API void* ccl_device::device_alloc_shared_memory(size_t bytes_count,
-                                                     size_t alignment,
-                                                     const ze_host_mem_alloc_desc_t& host_desc,
-                                                     const ze_device_mem_alloc_desc_t& mem_descr,
-                                                     std::shared_ptr<ccl_context> ctx) {
+CCL_BE_API void* ccl_device::device_alloc_shared_memory(size_t bytes_count,
+                                                        size_t alignment,
+                                                        const ze_host_mem_alloc_desc_t& host_desc,
+                                                        const ze_device_mem_alloc_desc_t& mem_descr,
+                                                        std::shared_ptr<ccl_context> ctx) {
     void* out_ptr = nullptr;
     if (!ctx) {
         ctx = get_default_context();
@@ -427,44 +422,46 @@ CCL_API void* ccl_device::device_alloc_shared_memory(size_t bytes_count,
         ctx->get(), &mem_descr, &host_desc, bytes_count, alignment, handle, &out_ptr);
 
     if (ret != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(std::string("cannot allocate shared memory, error: ") +
-                                 std::to_string(ret));
+        CCL_THROW("cannot allocate shared memory, error: " + std::to_string(ret));
     }
 
     return out_ptr;
 }
 
-CCL_API ccl_device::handle_t ccl_device::get_assoc_device_handle(const void* ptr,
-                                                                 const ccl_device_driver* driver,
-                                                                 std::shared_ptr<ccl_context> ctx) {
+CCL_BE_API ccl_device::handle_t ccl_device::get_assoc_device_handle(
+    const void* ptr,
+    const ccl_device_driver* driver,
+    std::shared_ptr<ccl_context> ctx) {
     assert(driver && "Driver must exist!");
     ze_memory_allocation_properties_t mem_prop;
     ze_device_handle_t alloc_device_handle{};
-    // TODO: empty
-    ze_context_handle_t ctx_tmp = nullptr;
 
-    ze_result_t result = zeMemGetAllocProperties(ctx_tmp, ptr, &mem_prop, &alloc_device_handle);
+    if (!ctx) {
+        auto& contexts_storage = driver->get_driver_contexts()->get_context_storage(driver);
+        auto acc = contexts_storage.access();
+        if (acc.get().empty())
+            CCL_THROW("no default driver in context map");
+        ctx = *acc.get().begin();
+    }
+
+    ze_result_t result = zeMemGetAllocProperties(ctx->get(), ptr, &mem_prop, &alloc_device_handle);
     if (result != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(std::string("Cannot zeMemGetAllocProperties: ") +
-                                 native::to_string(result));
+        CCL_THROW("cannot zeMemGetAllocProperties: " + native::to_string(result));
     }
     return alloc_device_handle;
 }
 
-CCL_API void ccl_device::device_free_memory(void* mem_handle, std::shared_ptr<ccl_context> ctx) {
+CCL_BE_API void ccl_device::device_free_memory(void* mem_handle, ze_context_handle_t& ctx) {
     if (!mem_handle) {
         return;
     }
-    if (!ctx) {
-        ctx = get_default_context();
-    }
 
-    if (zeMemFree(ctx->get(), mem_handle) != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(std::string("cannot release memory"));
+    if (zeMemFree(ctx, mem_handle) != ZE_RESULT_SUCCESS) {
+        CCL_THROW("cannot release memory");
     }
 }
 
-CCL_API ccl_device::device_ipc_memory_handle ccl_device::create_ipc_memory_handle(
+CCL_BE_API ccl_device::device_ipc_memory_handle ccl_device::create_ipc_memory_handle(
     void* device_mem_ptr,
     std::shared_ptr<ccl_context> ctx) {
     ze_ipc_mem_handle_t ipc_handle;
@@ -475,13 +472,12 @@ CCL_API ccl_device::device_ipc_memory_handle ccl_device::create_ipc_memory_handl
 
     ze_result_t ret = zeMemGetIpcHandle(ctx->get(), device_mem_ptr, &ipc_handle);
     if (ret != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(std::string("cannot get ipc mem handle, error: ") +
-                                 native::to_string(ret));
+        CCL_THROW("cannot get ipc mem handle, error: " + native::to_string(ret));
     }
     return device_ipc_memory_handle(ipc_handle, get_ptr(), ctx);
 }
 
-CCL_API std::shared_ptr<ccl_device::device_ipc_memory_handle>
+CCL_BE_API std::shared_ptr<ccl_device::device_ipc_memory_handle>
 ccl_device::create_shared_ipc_memory_handle(void* device_mem_ptr,
                                             std::shared_ptr<ccl_context> ctx) {
     ze_ipc_mem_handle_t ipc_handle;
@@ -497,8 +493,7 @@ ccl_device::create_shared_ipc_memory_handle(void* device_mem_ptr,
 
     ze_result_t ret = zeMemGetIpcHandle(ctx->get(), device_mem_ptr, &ipc_handle);
     if (ret != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(std::string("cannot get ipc mem handle, error: ") +
-                                 native::to_string(ret));
+        CCL_THROW("cannot get ipc mem handle, error: " + native::to_string(ret));
     }
 
     return ipc_storage
@@ -508,14 +503,15 @@ ccl_device::create_shared_ipc_memory_handle(void* device_mem_ptr,
         .first->second;
 }
 
-void CCL_API ccl_device::on_delete(ze_ipc_mem_handle_t& ipc_mem_handle, ze_context_handle_t& ctx) {
+void CCL_BE_API ccl_device::on_delete(ze_ipc_mem_handle_t& ipc_mem_handle,
+                                      ze_context_handle_t& ctx) {
     /*
     //No need to destroy ipc handle on parent process?
 
     ze_result_t ret = xeIpcCloseMemHandle(ipc_mem_handle);
     if(ret != ZE_RESULT_SUCCESS)
     {
-        throw std::runtime_error(std::string("cannot close ipc handle, error: ") + std::to_string(ret));
+        CCL_THROW("cannot close ipc handle, error: " + std::to_string(ret));
     }
     */
 
@@ -527,7 +523,7 @@ void CCL_API ccl_device::on_delete(ze_ipc_mem_handle_t& ipc_mem_handle, ze_conte
     }
 }
 
-CCL_API ccl_device::device_ipc_memory ccl_device::get_ipc_memory(
+CCL_BE_API ccl_device::device_ipc_memory ccl_device::get_ipc_memory(
     std::shared_ptr<device_ipc_memory_handle>&& ipc_handle,
     std::shared_ptr<ccl_context> ctx) {
     assert(ipc_handle->get_owner().lock().get() == this && "IPC handle doesn't belong to device: ");
@@ -544,9 +540,9 @@ CCL_API ccl_device::device_ipc_memory ccl_device::get_ipc_memory(
     ze_result_t ret =
         zeMemOpenIpcHandle(ctx->get(), handle, ipc_handle->handle, flag, &(ipc_memory.pointer));
     if (ret != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(std::string("cannot get open ipc mem handle from: ") +
-                                 native::to_string(ipc_handle->handle) +
-                                 ", error: " + native::to_string(ret));
+        CCL_THROW("cannot get open ipc mem handle from: " + native::to_string(ipc_handle->handle) +
+                  "\n" + to_string() + "\nCtx: " + ctx->to_string() +
+                  "\nerror: " + native::to_string(ret));
     }
 
     assert(ipc_memory.pointer && "opened ipc memory handle is nullptr");
@@ -558,7 +554,7 @@ CCL_API ccl_device::device_ipc_memory ccl_device::get_ipc_memory(
     return device_ipc_memory(ipc_memory, get_ptr(), ctx);
 }
 
-CCL_API std::shared_ptr<ccl_device::device_ipc_memory> ccl_device::restore_shared_ipc_memory(
+CCL_BE_API std::shared_ptr<ccl_device::device_ipc_memory> ccl_device::restore_shared_ipc_memory(
     std::shared_ptr<device_ipc_memory_handle>&& ipc_handle,
     std::shared_ptr<ccl_context> ctx) {
     assert(ipc_handle->get_owner().lock().get() == this && "IPC handle doesn't belong to device: ");
@@ -572,9 +568,8 @@ CCL_API std::shared_ptr<ccl_device::device_ipc_memory> ccl_device::restore_share
     ze_result_t ret =
         zeMemOpenIpcHandle(ctx->get(), handle, ipc_handle->handle, flag, &(ipc_memory.pointer));
     if (ret != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(std::string("cannot get open ipc mem handle from: ") +
-                                 native::to_string(ipc_handle->handle) +
-                                 ", error: " + native::to_string(ret));
+        CCL_THROW("cannot get open ipc mem handle from: " + native::to_string(ipc_handle->handle) +
+                  ", error: " + native::to_string(ret));
     }
 
     assert(ipc_memory.pointer && "opened ipc memory handle is nullptr");
@@ -586,37 +581,50 @@ CCL_API std::shared_ptr<ccl_device::device_ipc_memory> ccl_device::restore_share
     return std::shared_ptr<device_ipc_memory>(new device_ipc_memory(ipc_memory, get_ptr(), ctx));
 }
 
-void CCL_API ccl_device::on_delete(ip_memory_elem_t& ipc_mem, ze_context_handle_t& ctx) {
-    // if(!ctx) {
-    //     ctx = std::shared_ptr<ccl_context>(get_owner().lock()->context->map_context.begin()->second.front().lock());
-    // }
-
-    // TODO: empty
-    ze_context_handle_t ctx_tmp = nullptr;
-    ze_result_t ret = zeMemCloseIpcHandle(ctx_tmp, ipc_mem.pointer);
+void CCL_BE_API ccl_device::on_delete(ip_memory_elem_t& ipc_mem, ze_context_handle_t& ctx) {
+    ze_result_t ret = zeMemCloseIpcHandle(ctx, ipc_mem.pointer);
     if (ret != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(std::string("cannot close ipc mem handle, error: ") +
-                                 native::to_string(ret));
+        CCL_THROW("cannot close ipc mem handle, error: " + native::to_string(ret));
     }
 }
 
-CCL_API ccl_device::device_queue& ccl_device::get_cmd_queue(
+CCL_BE_API ccl_device::device_queue& ccl_device::get_cmd_queue(
     const ze_command_queue_desc_t& properties,
     std::shared_ptr<ccl_context> ctx) {
     std::unique_lock<std::mutex> lock(queue_mutex);
-    auto it = cmd_queus.find(properties);
-    if (it == cmd_queus.end()) {
-        it = cmd_queus.emplace(properties, create_cmd_queue(ctx, properties)).first;
+    auto it = cmd_queues.find(properties);
+    if (it == cmd_queues.end()) {
+        it = cmd_queues.emplace(properties, create_cmd_queue(ctx, properties)).first;
     }
     return it->second;
 }
 
-CCL_API
+CCL_BE_API ccl_device::queue_group_properties ccl_device::get_queue_group_prop() const {
+    uint32_t numQueueGroups = 0;
+    ze_result_t ret = zeDeviceGetCommandQueueGroupProperties(handle, &numQueueGroups, nullptr);
+    if (ret != ZE_RESULT_SUCCESS) {
+        CCL_THROW("cannot execute zeDeviceGetCommandQueueGroupProperties, error: " +
+                  native::to_string(ret));
+    }
+
+    ccl_device::queue_group_properties props;
+    if (numQueueGroups != 0) {
+        props.resize(numQueueGroups);
+        ret = zeDeviceGetCommandQueueGroupProperties(handle, &numQueueGroups, props.data());
+        if (ret != ZE_RESULT_SUCCESS) {
+            CCL_THROW("cannot get groups by zeDeviceGetCommandQueueGroupProperties, error: " +
+                      native::to_string(ret));
+        }
+    }
+    return props;
+}
+
+CCL_BE_API
 ccl_device::context_storage_type ccl_device::get_contexts() {
     return get_ctx().lock();
 }
 
-CCL_API
+CCL_BE_API
 std::shared_ptr<ccl_context> ccl_device::get_default_context() {
     auto ctx_holder = get_contexts();
     auto driver = get_owner().lock();
@@ -624,17 +632,16 @@ std::shared_ptr<ccl_context> ccl_device::get_default_context() {
     auto& contexts_storage = ctx_holder->get_context_storage(driver.get());
     auto acc = contexts_storage.access();
     if (acc.get().empty())
-        throw std::runtime_error(std::string(__PRETTY_FUNCTION__) +
-                                 " - no default driver in context map");
+        CCL_THROW("no default driver in context map");
     auto ctx = *acc.get().begin();
 
     return ctx;
 }
 
-ccl_device::device_cmd_list CCL_API
+ccl_device::device_cmd_list CCL_BE_API
 ccl_device::create_cmd_list(std::shared_ptr<ccl_context> ctx,
                             const ze_command_list_desc_t& properties) {
-    // Create a command queue
+    // Create a command list
     if (!ctx) {
         ctx = get_default_context();
     }
@@ -642,13 +649,29 @@ ccl_device::create_cmd_list(std::shared_ptr<ccl_context> ctx,
     ze_command_list_handle_t hCommandList;
     ze_result_t ret = zeCommandListCreate(ctx->get(), handle, &properties, &hCommandList);
     if (ret != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(std::string("cannot allocate command list, error: ") +
-                                 native::to_string(ret));
+        CCL_THROW("cannot allocate command list, error: " + native::to_string(ret));
+    }
+
+    return device_cmd_list(hCommandList, get_ptr(), ctx);
+}
+
+ccl_device::device_cmd_list CCL_BE_API
+ccl_device::create_immediate_cmd_list(std::shared_ptr<ccl_context> ctx,
+                                      const ze_command_queue_desc_t& properties) {
+    // Create an immediate command list
+    if (!ctx) {
+        ctx = get_default_context();
+    }
+
+    ze_command_list_handle_t hCommandList;
+    ze_result_t ret = zeCommandListCreateImmediate(ctx->get(), handle, &properties, &hCommandList);
+    if (ret != ZE_RESULT_SUCCESS) {
+        CCL_THROW("cannot allocate immediate command list, error: " + native::to_string(ret));
     }
     return device_cmd_list(hCommandList, get_ptr(), ctx);
 }
 
-CCL_API ccl_device::device_cmd_list& ccl_device::get_cmd_list(
+CCL_BE_API ccl_device::device_cmd_list& ccl_device::get_cmd_list(
     std::shared_ptr<ccl_context> ctx,
     const ze_command_list_desc_t& properties /* = get_default_list_desc()*/) {
     std::unique_lock<std::mutex> lock(list_mutex);
@@ -659,9 +682,10 @@ CCL_API ccl_device::device_cmd_list& ccl_device::get_cmd_list(
     return it->second;
 }
 
-CCL_API ccl_device::device_module_ptr ccl_device::create_module(const ze_module_desc_t& descr,
-                                                                size_t hash,
-                                                                std::shared_ptr<ccl_context> ctx) {
+CCL_BE_API ccl_device::device_module_ptr ccl_device::create_module(
+    const ze_module_desc_t& descr,
+    size_t hash,
+    std::shared_ptr<ccl_context> ctx) {
     auto it = modules.find(hash);
     if (it != modules.end()) {
         return it->second;
@@ -678,45 +702,42 @@ CCL_API ccl_device::device_module_ptr ccl_device::create_module(const ze_module_
     ze_result_t result = zeModuleCreate(ctx->get(), handle, &descr, &module, &build_log);
     if (result != ZE_RESULT_SUCCESS) {
         build_log_string = get_build_log_string(build_log);
-        throw std::runtime_error("zeModuleCreate failed: " + native::to_string(result) +
-                                 ", Log: " + build_log_string);
+        CCL_THROW("zeModuleCreate failed: " + native::to_string(result) +
+                  ", Log: " + build_log_string);
     }
 
     result = zeModuleBuildLogDestroy(build_log);
     if (result) {
-        throw std::runtime_error("zeModuleBuildLogDestroy failed: " + native::to_string(result));
+        CCL_THROW("zeModuleBuildLogDestroy failed: " + native::to_string(result));
     }
 
     ccl_device::device_module_ptr module_ptr(new device_module(module, get_ptr(), ctx));
     if (!modules.insert({ hash, module_ptr }).second) {
-        throw std::runtime_error(std::string(__FUNCTION__) +
-                                 " - failed: hash conflict for: " + std::to_string(hash));
+        CCL_THROW("failed: hash conflict for: " + std::to_string(hash));
     }
     return module_ptr;
 }
 
-void CCL_API ccl_device::on_delete(ze_command_queue_handle_t& handle, ze_context_handle_t& ctx) {
+void CCL_BE_API ccl_device::on_delete(ze_command_queue_handle_t& handle, ze_context_handle_t& ctx) {
     //todo not thread safe
     ze_result_t ret = zeCommandQueueDestroy(handle);
     if (ret != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(std::string("cannot destroy queue, error: ") +
-                                 native::to_string(ret));
+        CCL_THROW("cannot destroy queue, error: " + native::to_string(ret));
     }
 
     //TODO remove from map
 }
-void CCL_API ccl_device::on_delete(ze_command_list_handle_t& handle, ze_context_handle_t& ctx) {
+void CCL_BE_API ccl_device::on_delete(ze_command_list_handle_t& handle, ze_context_handle_t& ctx) {
     //todo not thread safe
     ze_result_t ret = zeCommandListDestroy(handle);
     if (ret != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(std::string("cannot destroy cmd list, error: ") +
-                                 native::to_string(ret));
+        CCL_THROW("cannot destroy cmd list, error: " + native::to_string(ret));
     }
     //TODO remove from map: cmd_lists;
 }
 
-void CCL_API ccl_device::on_delete(ze_device_handle_t& sub_device_handle,
-                                   ze_context_handle_t& ctx) {
+void CCL_BE_API ccl_device::on_delete(ze_device_handle_t& sub_device_handle,
+                                      ze_context_handle_t& ctx) {
     auto& subdevices = get_subdevices();
     auto it = std::find_if(
         subdevices.begin(),
@@ -726,75 +747,61 @@ void CCL_API ccl_device::on_delete(ze_device_handle_t& sub_device_handle,
         });
 
     if (it == subdevices.end()) {
-        throw std::runtime_error(
-            std::string("cannot destroy subdevice handle: orphant subddevice: ") +
-            std::to_string(reinterpret_cast<size_t>(sub_device_handle)));
+        CCL_THROW("cannot destroy subdevice handle: orphant subddevice: " +
+                  std::to_string(reinterpret_cast<size_t>(sub_device_handle)));
     }
     subdevices.erase(it);
 }
 
-void CCL_API ccl_device::on_delete(ze_module_handle_t& module_handle, ze_context_handle_t& ctx) {
+void CCL_BE_API ccl_device::on_delete(ze_module_handle_t& module_handle, ze_context_handle_t& ctx) {
     ze_result_t ret = zeModuleDestroy(module_handle);
     if (ret != ZE_RESULT_SUCCESS) {
-        throw std::runtime_error(std::string("cannot destroy module handle, error: ") +
-                                 native::to_string(ret));
+        CCL_THROW("cannot destroy module handle, error: " + native::to_string(ret));
     }
 }
 
-size_t ccl_device::serialize(std::vector<uint8_t>& out,
-                             size_t from_pos,
-                             size_t expected_size) const {
+CCL_BE_API size_t ccl_device::serialize(std::vector<uint8_t>& out,
+                                        size_t from_pos,
+                                        size_t expected_size) const {
     // check parent existence
     const auto driver = get_owner().lock();
     if (!driver) {
-        throw std::runtime_error("cannot serialize ccl_device without owner");
+        CCL_THROW("cannot serialize ccl_device without owner");
     }
 
-    constexpr size_t expected_device_bytes = sizeof(device_properties.deviceId);
-    size_t serialized_bytes = driver->serialize(
-        out, from_pos, expected_device_bytes + expected_size); //resize vector inside
+    /* write driver path */
+    size_t serialized_bytes =
+        driver->serialize(out, from_pos, expected_size); //resize vector inside
 
-    // serialize from position
-    uint8_t* data_start = out.data() + from_pos + serialized_bytes;
-    *(reinterpret_cast<decltype(device_properties.deviceId)*>(data_start)) = get_device_id();
-    serialized_bytes += expected_device_bytes;
+    auto path = get_device_path();
+
+    /* overwrite driver path to device path */
+    size_t offset = serialized_bytes + from_pos - detail::serialize_device_path_size;
+    detail::serialize_device_path(out, path, offset);
 
     return serialized_bytes;
 }
 
-std::weak_ptr<ccl_device> ccl_device::deserialize(const uint8_t** data,
-                                                  size_t& size,
-                                                  ccl_device_platform& platform) {
+CCL_BE_API std::weak_ptr<ccl_device> ccl_device::deserialize(
+    const uint8_t** data,
+    size_t& size,
+    std::shared_ptr<ccl_device_platform>& out_platform) {
     //restore driver
-    auto driver = ccl_device_driver::deserialize(data, size, platform).lock();
+    ccl::device_index_type recovered_path;
+    auto driver = ccl_device_driver::deserialize(data, size, out_platform, recovered_path).lock();
     if (!driver) {
-        throw std::runtime_error("cannot deserialize ccl_device, because owner is nullptr");
+        CCL_THROW("cannot deserialize ccl_device, because owner is nullptr");
     }
 
-    constexpr size_t expected_bytes = sizeof(device_properties.deviceId);
-    if (size < expected_bytes) {
-        throw std::runtime_error("cannot deserialize ccl_device, not enough data");
-    }
-
-    //restore device index
-    decltype(device_properties.deviceId) recovered_index =
-        *(reinterpret_cast<const decltype(device_properties.deviceId)*>(*data));
-    size -= expected_bytes;
-    *data += expected_bytes;
-
-    //find device with requested handle
-    ccl::device_index_type path{ driver->get_driver_id(),
-                                 recovered_index,
-                                 ccl::unused_index_value };
-    auto device_ptr = driver->get_device(path);
+    auto device_ptr = driver->get_device(recovered_path);
     if (!device_ptr) {
-        throw std::runtime_error(std::string(__FUNCTION__) +
-                                 " - invalid device index: " + ccl::to_string(path));
+        CCL_THROW("invalid device index: " + ccl::to_string(recovered_path));
     }
+
     return device_ptr;
 }
 
-std::string CCL_API ccl_device::to_string(const std::string& prefix) const {
+std::string CCL_BE_API ccl_device::to_string(const std::string& prefix) const {
     std::stringstream ss;
     ss << prefix << "Device: " << handle << std::endl;
     ss << prefix << "[\n";

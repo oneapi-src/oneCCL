@@ -148,3 +148,8 @@ void transport_data::init_comms(user_options_t& options) {
 std::vector<ccl::communicator>& transport_data::get_comms() {
     return comms;
 }
+
+void transport_data::reset_comms() {
+    comms.clear();
+    service_comms.clear();
+}

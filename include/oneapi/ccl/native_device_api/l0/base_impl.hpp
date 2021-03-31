@@ -22,6 +22,7 @@
 #include <stdexcept>
 
 #include "oneapi/ccl/native_device_api/l0/base.hpp"
+#include "oneapi/ccl/native_device_api/l0/subdevice.hpp"
 
 namespace native {
 inline std::ostream& operator<<(std::ostream& out, const ccl::device_index_type& index) {
@@ -56,12 +57,12 @@ cl_base<TEMPLATE_DEF_ARG>& cl_base<TEMPLATE_DEF_ARG>::operator=(cl_base&& src) n
 }
 
 template <TEMPLATE_DECL_ARG>
-cl_base<TEMPLATE_DEF_ARG>::~cl_base() noexcept {
+CCL_API cl_base<TEMPLATE_DEF_ARG>::~cl_base() noexcept {
     auto lock = owner.lock();
-    // auto ctx = context.lock(); ctx->get();
-    ze_context_handle_t ctxtmp = nullptr;
-    if (lock) {
-        lock->on_delete(handle, ctxtmp);
+    auto ctx = context.lock();
+    if (lock && ctx) {
+        auto ref = ctx->get();
+        lock->on_delete(handle, ref);
     }
 }
 
@@ -144,6 +145,7 @@ template <TEMPLATE_DECL_ARG>
 template <class type, class... helpers>
 std::shared_ptr<type> cl_base<TEMPLATE_DEF_ARG>::deserialize(const uint8_t** data,
                                                              size_t& size,
+                                                             std::shared_ptr<cl_context> ctx,
                                                              helpers&... args) {
     constexpr size_t expected_bytes = sizeof(handle);
     size_t initial_size = size;
@@ -163,7 +165,6 @@ std::shared_ptr<type> cl_base<TEMPLATE_DEF_ARG>::deserialize(const uint8_t** dat
     handle_t h = *(reinterpret_cast<const handle_t*>(*data));
     *data += expected_bytes;
     size -= expected_bytes;
-    std::shared_ptr<cl_context> ctx;
     return std::shared_ptr<type>{ new type(h, owner, ctx) };
 }
 
