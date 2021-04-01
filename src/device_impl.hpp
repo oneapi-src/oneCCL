@@ -29,13 +29,13 @@ namespace ccl {
 
 namespace v1 {
 
-template <class device_type, class... attr_value_pair_t>
+template <class device_type, class... attr_val_type>
 CCL_API device device::create_device_from_attr(device_type& native_device_handle,
-                                               attr_value_pair_t&&... avps) {
+                                               attr_val_type&&... avs) {
     auto version = utils::get_library_version();
 
     device str{ device::impl_value_t(new device::impl_t(native_device_handle, version)) };
-    int expander[]{ (str.template set<attr_value_pair_t::idx()>(avps.val()), 0)... };
+    int expander[]{ (str.template set<attr_val_type::idx()>(avs.val()), 0)... };
     (void)expander;
     str.build_from_params();
 

@@ -28,14 +28,10 @@ enum class comm_split_attr_id : int {
 
     color,
     group,
-
-    last_value
 };
 
 enum class split_group : int {
     cluster,
-
-    last_value
 };
 
 } // namespace v1

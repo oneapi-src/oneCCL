@@ -31,12 +31,12 @@ namespace ccl {
 
 namespace detail {
 
-CCL_API environment::environment() {
+environment::environment() {
     static auto result = global_data::get().init();
     CCL_CHECK_AND_THROW(result, "failed to initialize CCL");
 }
 
-CCL_API environment::~environment() {}
+environment::~environment() {}
 
 CCL_API environment& environment::instance() {
     static environment env;
@@ -104,13 +104,13 @@ size_t environment::get_datatype_size(ccl::datatype dtype) const {
 
 /******************** STREAM ********************/
 
-stream CCL_API environment::create_stream(typename unified_device_type::ccl_native_t device) {
+stream environment::create_stream(typename unified_device_type::ccl_native_t device) {
     auto version = utils::get_library_version();
     return stream{ stream_provider_dispatcher::create(device, version) };
 }
 
-stream CCL_API environment::create_stream(typename unified_device_type::ccl_native_t device,
-                                          typename unified_context_type::ccl_native_t context) {
+stream environment::create_stream(typename unified_device_type::ccl_native_t device,
+                                  typename unified_context_type::ccl_native_t context) {
     auto version = utils::get_library_version();
     return stream{ stream_provider_dispatcher::create(device, context, version) };
 }
@@ -130,10 +130,14 @@ communicator environment::create_single_device_communicator(
     std::shared_ptr<atl_wrapper> atl =
         std::shared_ptr<atl_wrapper>(new atl_wrapper(comm_size, { rank }, kvs_wrapper));
 
-    comm_split_attr attr = create_comm_split_attr(attr_val<comm_split_attr_id::group>(
-        split_group::cluster /*group_split_type::undetermined*/));
-    ccl::communicator_interface_ptr impl = ccl::communicator_interface::create_communicator_impl(
-        device, context, rank, comm_size, attr, atl);
+    ccl::communicator_interface_ptr impl =
+        ccl::communicator_interface::create_communicator_impl(device,
+                                                              context,
+                                                              rank,
+                                                              comm_size,
+                                                              create_comm_split_attr(),
+                                                              atl,
+                                                              ccl::group_split_type::single);
 
     //TODO use gpu_comm_attr to automatically visit()
     auto single_dev_comm = std::dynamic_pointer_cast<single_device_communicator>(impl);

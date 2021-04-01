@@ -23,6 +23,9 @@ namespace ccl {
 namespace detail {
 class environment;
 }
+namespace v1 {
+class communicator;
+}
 
 class kvs_impl;
 
@@ -52,6 +55,7 @@ public:
 
 private:
     friend class ccl::detail::environment;
+    friend class ccl::v1::communicator;
 
     kvs(const kvs_attr& attr);
     kvs(const address_type& addr, const kvs_attr& attr);

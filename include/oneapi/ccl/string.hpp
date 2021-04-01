@@ -52,8 +52,8 @@ public:
     }
 
     string(string&& str) noexcept {
-        len = str.len;
         storage = str.storage;
+        len = str.len;
         str.len = 0;
         str.storage = nullptr;
     }
@@ -79,10 +79,13 @@ public:
     }
 
     string& operator=(string&& str) noexcept {
-        len = str.len;
-        storage = str.storage;
-        str.len = 0;
-        str.storage = nullptr;
+        if (this != &str) {
+            delete[] storage;
+            storage = str.storage;
+            len = str.len;
+            str.len = 0;
+            str.storage = nullptr;
+        }
         return *this;
     }
 

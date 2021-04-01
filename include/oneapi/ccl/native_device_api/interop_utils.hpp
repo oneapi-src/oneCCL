@@ -25,6 +25,7 @@ namespace detail {
 
 #ifdef CCL_ENABLE_SYCL
 size_t get_sycl_device_id(const cl::sycl::device& dev);
+size_t get_sycl_subdevice_id(const cl::sycl::device& dev);
 std::string usm_to_string(cl::sycl::usm::alloc val);
 #endif
 

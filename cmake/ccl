@@ -52,7 +52,6 @@ module-whatis "Intel(R) oneAPI Collective Communications Library"
 set                topdir                               "$componentroot/$modulefilever"
 
 setenv             CCL_ROOT                             "$topdir"
-setenv             CCL_ATL_TRANSPORT_PATH               "$topdir/lib"
 
 prepend-path       LD_LIBRARY_PATH                      "$topdir/lib"
 prepend-path       LIBRARY_PATH                         "$topdir/lib"

@@ -37,9 +37,9 @@ struct sycl_bcast_coll : sycl_base_coll<Dtype, bcast_strategy_impl> {
         size_t count = elem_count;
         size_t bytes = count * base_coll::get_dtype_size();
 
-        std::iota(host_recv_buf.begin(), host_recv_buf.end(), 0);
-
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
+            std::fill(host_recv_buf.begin(), host_recv_buf.end(), b_idx);
+
             if (base_coll::get_sycl_mem_type() == SYCL_MEM_USM) {
                 if (comm_rank == COLL_ROOT)
                     stream.get_native()
@@ -91,9 +91,9 @@ struct sycl_bcast_coll : sycl_base_coll<Dtype, bcast_strategy_impl> {
 
             for (size_t e_idx = 0; e_idx < elem_count; e_idx++) {
                 value = host_recv_buf[e_idx];
-                if (value != e_idx) {
+                if (value != b_idx) {
                     std::cout << this->name() << " recv_bufs: buf_idx " << b_idx << ", rank_idx "
-                              << rank_idx << ", elem_idx " << e_idx << ", expected " << (Dtype)e_idx
+                              << rank_idx << ", elem_idx " << e_idx << ", expected " << (Dtype)b_idx
                               << ", got " << value << std::endl;
                     ASSERT(0, "unexpected value");
                 }

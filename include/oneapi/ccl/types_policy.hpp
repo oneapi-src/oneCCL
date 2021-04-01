@@ -20,6 +20,7 @@ template <class impl_t>
 class non_copyable {
 public:
     non_copyable(const non_copyable&) = delete;
+    non_copyable& operator=(const non_copyable& src) = delete;
     impl_t& operator=(const impl_t&) = delete;
 
 protected:
@@ -31,6 +32,7 @@ template <class impl_t>
 class non_movable {
 public:
     non_movable(non_movable&&) = delete;
+    non_movable& operator=(non_movable&& src) = delete;
     impl_t& operator=(impl_t&&) = delete;
 
 protected:
@@ -67,14 +69,18 @@ struct copy_on_write_access_policy {
     static void create(ccl_api_t* dst, const ccl_api_t& src) {
         static_assert(std::is_same<typename ccl_api_t::acc_policy_t, self_t>::value,
                       "ccl_api_t is not provide 'copy_on_write_access_policy'");
-        dst->get_impl().reset(new T(*src.get_impl().get()));
+        if (dst != &src) {
+            dst->get_impl().reset(new T(*src.get_impl().get()));
+        }
     }
 
     template <class ccl_api_t>
     static void create(ccl_api_t* dst, ccl_api_t&& src) {
         static_assert(std::is_same<typename ccl_api_t::acc_policy_t, self_t>::value,
                       "ccl_api_t is not provide 'copy_on_write_access_policy'");
-        dst->get_impl().swap(src.get_impl());
+        if (dst != &src) {
+            dst->get_impl() = std::move(src.get_impl());
+        }
     }
 
     template <template <class...> class wrapper>
@@ -101,14 +107,18 @@ struct direct_access_policy {
     static void create(ccl_api_t* dst, const ccl_api_t& src) {
         static_assert(std::is_same<typename ccl_api_t::acc_policy_t, self_t>::value,
                       "ccl_api_t is not provide 'copy_on_write_access_policy'");
-        dst->get_impl() = src.get_impl();
+        if (dst != &src) {
+            dst->get_impl() = src.get_impl();
+        }
     }
 
     template <class ccl_api_t>
     static void create(ccl_api_t* dst, ccl_api_t&& src) {
         static_assert(std::is_same<typename ccl_api_t::acc_policy_t, self_t>::value,
                       "ccl_api_t is not provide 'copy_on_write_access_policy'");
-        dst->get_impl().swap(src.get_impl());
+        if (dst != &src) {
+            dst->get_impl() = std::move(src.get_impl());
+        }
     }
 
     template <template <class...> class wrapper>
@@ -143,6 +153,8 @@ protected:
     ccl_api_base_copyable(ccl_api_base_copyable&& src) {
         access_policy_t<impl_t>::create(this, std::move(src));
     }
+    ccl_api_base_copyable& operator=(const ccl_api_base_copyable& src) = delete;
+    ccl_api_base_copyable& operator=(ccl_api_base_copyable&& src) = delete;
     ~ccl_api_base_copyable() = default;
 
     impl_value_t& get_impl() {
@@ -175,6 +187,7 @@ protected:
     ccl_api_base_movable(ccl_api_base_movable&& src) {
         access_policy_t<impl_t>::create(this, std::move(src));
     }
+    ccl_api_base_movable& operator=(ccl_api_base_movable&& src) = delete;
     ~ccl_api_base_movable() = default;
 
     impl_value_t& get_impl() {
@@ -193,12 +206,12 @@ namespace detail {
 template <class attr, attr id>
 struct ccl_api_type_attr_traits {};
 
-template <class attrib_id, attrib_id attrId, class value_type>
+template <class attr_id_type, attr_id_type attr_id, class value_type>
 struct attr_value_triple {
-    using type_t = attrib_id;
+    using type_t = attr_id_type;
     using value_t = value_type;
-    static constexpr attrib_id idx() {
-        return attrId;
+    static constexpr attr_id_type idx() {
+        return attr_id;
     }
 
     explicit attr_value_triple(value_t val) : m_val(val) {}

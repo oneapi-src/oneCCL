@@ -13,15 +13,17 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#ifndef SYCL_BASE_HPP
-#define SYCL_BASE_HPP
+#pragma once
 
+#include <algorithm>
 #include <CL/sycl.hpp>
 #include <iostream>
 #include <map>
 #include <mpi.h>
+#include <numeric>
 #include <set>
 #include <string>
+#include <numeric>
 
 #include "base.hpp"
 #include "base_utils.hpp"
@@ -65,36 +67,35 @@ inline bool check_sycl_usm(queue& q, usm::alloc alloc_type) {
         ret = false;
 
     if (!ret) {
-        cout << "Incompatible device type and USM type\n";
+        cout << "incompatible device type and USM type\n";
     }
 
     return ret;
 }
 
 std::string get_preferred_gpu_platform_name() {
-    std::string backend;
+    std::string filter;
     std::string result;
 
-    if (getenv("SYCL_BE") == nullptr) {
-        backend = "OpenCL";
+    if (getenv("SYCL_DEVICE_FILTER") == nullptr) {
+        filter = "level-zero";
     }
-    else if (getenv("SYCL_BE") != nullptr) {
-        if (std::strcmp(getenv("SYCL_BE"), "PI_LEVEL_ZERO") == 0) {
-            backend = "Level-Zero";
+    else if (getenv("SYCL_DEVICE_FILTER") != nullptr) {
+        if (std::strstr(getenv("SYCL_DEVICE_FILTER"), "level_zero") != NULL) {
+            filter = "level-zero";
         }
-        else if (std::strcmp(getenv("SYCL_BE"), "PI_OPENCL") == 0) {
-            backend = "OpenCL";
+        else if (std::strstr(getenv("SYCL_DEVICE_FILTER"), "opencl") != NULL) {
+            filter = "opencl";
         }
         else {
-            throw std::runtime_error("invalid backend: " + std::string(getenv("SYCL_BE")));
+            throw std::runtime_error("invalid device filter: " +
+                                     std::string(getenv("SYCL_DEVICE_FILTER")));
         }
     }
 
     auto plaform_list = sycl::platform::get_platforms();
 
     for (const auto& platform : plaform_list) {
-        auto platform_name = platform.get_info<sycl::info::platform::name>();
-
         auto devices = platform.get_devices();
         auto gpu_dev = std::find_if(devices.begin(), devices.end(), [](const sycl::device& d) {
             return d.is_gpu();
@@ -106,10 +107,17 @@ std::string get_preferred_gpu_platform_name() {
             continue;
         }
 
-        if (platform_name.find(backend) == std::string::npos) {
+        auto platform_name = platform.get_info<sycl::info::platform::name>();
+        std::string platform_name_low_case;
+        platform_name_low_case.resize(platform_name.size());
+
+        std::transform(
+            platform_name.begin(), platform_name.end(), platform_name_low_case.begin(), ::tolower);
+
+        if (platform_name_low_case.find(filter) == std::string::npos) {
             // cout << "platform [" << platform_name
             //      << "] does not match with requested "
-            //      << backend << ", skipping\n";
+            //      << filter << ", skipping\n";
             continue;
         }
 
@@ -218,8 +226,12 @@ std::vector<sycl::queue> create_sycl_queues(const std::string& device_type,
     std::vector<sycl::device> devices;
 
     try {
-        if ((device_type.compare("gpu") == 0) && has_gpu()) {
-            /* special handling to cover multi-tile case */
+        if (device_type.compare("gpu") == 0) {
+            if (!has_gpu()) {
+                throw std::runtime_error("GPU is requested but not available.");
+            }
+
+            /* GPU type has special handling to cover multi-tile case */
             devices = create_sycl_gpu_devices();
         }
         else {
@@ -227,19 +239,6 @@ std::vector<sycl::queue> create_sycl_queues(const std::string& device_type,
 
             if (device_type.compare("cpu") == 0) {
                 selector.reset(new cpu_selector());
-            }
-            else if (device_type.compare("gpu") == 0) {
-                if (has_accelerator()) {
-                    selector.reset(new host_selector());
-                    cout
-                        << "Accelerator is the first in device list, but unavailable for multiprocessing "
-                        << "host_selector has been created instead of default_selector.\n";
-                }
-                else {
-                    selector.reset(new default_selector());
-                    cout
-                        << "GPU is unavailable, default_selector has been created instead of gpu_selector.\n";
-                }
             }
             else if (device_type.compare("host") == 0) {
                 selector.reset(new host_selector());
@@ -387,6 +386,9 @@ struct buf_allocator {
 
     buf_allocator(queue& q) : q(q) {}
 
+    buf_allocator(const buf_allocator&) = delete;
+    buf_allocator(buf_allocator&&) = default;
+
     ~buf_allocator() {
         for (auto& ptr : memory_storage) {
             sycl::free(ptr, q);
@@ -525,5 +527,3 @@ public:
         ccl_tuple_for_each(allocators, dealloc_impl{ &in_ptr, size, type, this });
     }
 };
-
-#endif /* SYCL_BASE_HPP */

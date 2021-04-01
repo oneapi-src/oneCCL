@@ -66,28 +66,23 @@ public:
 
     //observer subject interface implementations
     template <class device_t, ccl::device_topology_type topology_type>
-    void attach_ctx_observer(observer_t<device_t>* observer_ptr,
+    void attach_ctx_observer(size_t rank_addr,
+                             observer_t<device_t>* observer_ptr,
                              std::integral_constant<ccl::device_topology_type, topology_type> val) {
-        register_observer_impl<topology_type>(observer_ptr);
+        register_observer_impl<topology_type>(rank_addr, observer_ptr);
     }
 
-    void invoke_ctx_observer(
-        observer_t<ccl_gpu_comm>* observer_ptr,
-        std::integral_constant<ccl::device_topology_type, ccl::device_topology_type::ring> val);
-    void invoke_ctx_observer(
-        observer_t<ccl_virtual_gpu_comm>* observer_ptr,
-        std::integral_constant<ccl::device_topology_type, ccl::device_topology_type::ring> val);
-
-    void invoke_ctx_observer(
-        observer_t<ccl_gpu_comm>* observer_ptr,
-        std::integral_constant<ccl::device_topology_type, ccl::device_topology_type::a2a> val);
-    void invoke_ctx_observer(
-        observer_t<ccl_virtual_gpu_comm>* observer_ptr,
-        std::integral_constant<ccl::device_topology_type, ccl::device_topology_type::a2a> val);
+    template <class device_t, ccl::device_topology_type class_id, class invoke_params_t>
+    void invoke_ctx_observer(observer_t<device_t>* observer_ptr,
+                             std::integral_constant<ccl::device_topology_type, class_id> val,
+                             const observer::session_key& sess_key,
+                             invoke_params_t& param) {
+        throw std::runtime_error("SCALE_OUT invoke is not implemented yet");
+    }
 
 private:
     template <ccl::device_topology_type topology_type, class device_t>
-    void register_observer_impl(observer_t<device_t>* observer_ptr); /*
+    void register_observer_impl(size_t rank_addr, observer_t<device_t>* observer_ptr); /*
     {
         auto &topologu_specific_observers = std::get<topology_index>(observables);
         container_t<device_t>& container = std::get<device_t::type_idx()>(topologu_specific_observers);

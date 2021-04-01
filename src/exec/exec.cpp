@@ -75,8 +75,12 @@ ccl_executor::ccl_executor(const char* main_addr) {
 
     /* generate ATL attr for all future communicators */
     atl_wrapper::attr = generate_atl_attr(env);
+    atl_wrapper::set_exec(this);
+}
 
-    set_local_coord();
+void ccl_executor::start_workers(size_t proc_idx, size_t proc_count) {
+    set_local_coord(proc_idx, proc_count);
+    auto& env = ccl::global_data::env();
     CCL_THROW_IF_NOT(env.env_2_worker_affinity(get_local_proc_idx(), get_local_proc_count()));
     start_workers();
 }
@@ -122,6 +126,7 @@ void ccl_executor::start_workers() {
                       affinity);
         }
     }
+    workers_started = true;
 }
 
 ccl_executor::~ccl_executor() {
@@ -264,32 +269,45 @@ void ccl_executor::do_work() {
     }
 }
 
+void ccl_executor::set_local_coord(size_t proc_idx, size_t proc_count) {
+    local_proc_idx = proc_idx;
+    local_proc_count = proc_count;
+    auto& env = ccl::global_data::env();
+    if (env.atl_transport == ccl_atl_mpi) {
+        /* hydra specific env variables */
+        const char local_idx_env_name[] = "MPI_LOCALRANKID";
+        const char local_count_env_name[] = "MPI_LOCALNRANKS";
+        char* local_idx_env = getenv(local_idx_env_name);
+        char* local_count_env = getenv(local_count_env_name);
+        if (local_idx_env && local_count_env) {
+            size_t local_idx = std::atoi(local_idx_env);
+            size_t local_count = std::atoi(local_count_env);
+            CCL_THROW_IF_NOT(local_idx == local_proc_idx,
+                             "unexpected local_proc_idx ",
+                             local_proc_idx,
+                             ", expected ",
+                             local_idx);
+            CCL_THROW_IF_NOT(local_count == local_proc_count,
+                             "unexpected local_proc_count ",
+                             local_proc_count,
+                             ", expected ",
+                             local_count);
+        }
+        else {
+            LOG_WARN(local_idx_env_name, " or ", local_count_env_name, " not found");
+            LOG_WARN(
+                "use local_proc_idx: ", local_proc_idx, " , local_proc_count: ", local_proc_count);
+        }
+    }
+}
+
 size_t ccl_executor::get_worker_count() const {
     return workers.size();
 }
-void ccl_executor::set_local_coord() {
-    /* hydra specific env variables */
-    const char idx_env_name[] = "MPI_LOCALRANKID";
-    const char count_env_name[] = "MPI_LOCALNRANKS";
 
-    char* idx_env = getenv(idx_env_name);
-    char* count_env = getenv(count_env_name);
-
-    if (!(idx_env && count_env)) {
-        local_proc_idx = 0;
-        local_proc_count = 1;
-
-        LOG_INFO("WARNING: ",
-                 idx_env_name,
-                 " or ",
-                 count_env_name,
-                 " not found. Use default: local_proc_idx ",
-                 local_proc_idx,
-                 " , local_proc_count ",
-                 local_proc_count);
-    }
-    else {
-        local_proc_idx = std::atoi(idx_env);
-        local_proc_count = std::atoi(count_env);
-    }
+void ccl_executor::update_wait_condition(size_t idx,
+                                         ccl_base_thread::wait_data::update_type type,
+                                         size_t delta) {
+    CCL_THROW_IF_NOT(idx < workers.size(), "unexpected worker idx ", idx);
+    workers[idx]->update_wait_condition(type, delta);
 }

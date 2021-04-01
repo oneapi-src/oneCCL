@@ -35,23 +35,14 @@ bool thread_group_context::sync_barrier(const ccl::device_indices_type& device_i
     //comm_addr.thread_idx = thread_device_group_ctx.size();
     aggregate_device_indices(comm_addr.thread_idx, device_indices_t);
 
-    //TODO refactore device_group_creation...(Each Device Group should have REAL device independently)
-    {
-        thread_local device_storage tls_device_storage;
-        //check on group creation final condition
-        device_group_ctx_ptr group_ctx =
-            device_group_context::create(comm_addr, device_indices_t, tls_device_storage);
-        if (false == thread_device_group_ctx.insert({ comm_addr.thread_idx, group_ctx }).second) {
-            LOG_ERROR("cannot register devices group ctx for thread idx: ", comm_addr.thread_idx);
-            abort();
-        }
-    }
-    //TODO refactore device_group_creation(Each Thread Group should have unique REAL device)
     {
         //check on group creation final condition
         device_group_ctx_ptr group_ctx =
             device_group_context::create(comm_addr, device_indices_t, devices);
-        (void)group_ctx;
+        if (false == thread_device_group_ctx.insert({ comm_addr.thread_idx, group_ctx }).second) {
+            LOG_ERROR("cannot register devices group ctx for thread idx: ", comm_addr.thread_idx);
+            abort();
+        }
     }
 
     LOG_DEBUG("Thread ", comm_addr.to_string(), " reached thread group communicator barrier");

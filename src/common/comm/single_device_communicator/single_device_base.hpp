@@ -27,7 +27,7 @@ public:
 
     // Topologies
     static constexpr ccl::group_split_type topology_type() {
-        return ccl::group_split_type::undetermined;
+        return ccl::group_split_type::single;
     }
 
     static constexpr ccl::device_topology_type topology_class() {

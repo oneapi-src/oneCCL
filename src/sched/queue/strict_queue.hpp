@@ -15,8 +15,10 @@
 */
 #pragma once
 
-#include "sched/queue/queue.hpp"
+#include "common/utils/spinlock.hpp"
+#include "sched/sched.hpp"
 
+using sched_queue_lock_t = ccl_spinlock;
 using sched_queue_t = std::vector<ccl_sched*>;
 
 /* used to ensure strict start ordering for transports w/o tagged direct collectives - i.e. for all transports */

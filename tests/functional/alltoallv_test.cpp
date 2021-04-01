@@ -13,9 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#define TEST_CCL_ALLTOALLV
-
-#define COLL_NAME "CCL_ALLTOALLV"
+#define ALGO_SELECTION_ENV "CCL_ALLTOALLV"
 
 #include "base_impl.hpp"
 
@@ -25,54 +23,26 @@ public:
     std::vector<size_t> send_counts;
     std::vector<size_t> recv_counts;
 
-    int check(typed_test_param<T>& param) {
-        for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++) {
-            size_t elem_idx = 0;
-            for (size_t proc_idx = 0; proc_idx < param.process_count; proc_idx++) {
-                T expected = static_cast<T>(proc_idx);
-                for (size_t idx = 0; idx < recv_counts[proc_idx]; idx++) {
-                    if (base_test<T>::check_error(param, expected, buf_idx, elem_idx))
+    int check(test_operation<T>& op) {
+        for (size_t buf_idx = 0; buf_idx < op.buffer_count; buf_idx++) {
+            size_t global_elem_idx_base = 0;
+            for (int rank = 0; rank < op.comm_size; rank++) {
+                T expected = static_cast<T>(rank + buf_idx);
+                for (size_t idx = 0; idx < recv_counts[rank]; idx += op.get_check_step(idx)) {
+                    if (base_test<T>::check_error(
+                            op, expected, buf_idx, global_elem_idx_base + idx))
                         return TEST_FAILURE;
-                    elem_idx++;
                 }
+                global_elem_idx_base += recv_counts[rank];
             }
         }
         return TEST_SUCCESS;
     }
 
-    void alloc_buffers(typed_test_param<T>& param) {
-        base_test<T>::alloc_buffers(param);
-
-        send_counts.resize(param.process_count);
-        recv_counts.resize(param.process_count);
-
-        if (param.test_conf.place_type == PT_OOP) {
-            for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++) {
-                param.recv_buf[buf_idx].resize(param.elem_count * param.process_count);
-            }
-        }
-    }
-
-    void fill_buffers(typed_test_param<T>& param) {
-        /* TODO: this already happens in alloc_buffers, remove duplicated logic, review all func test */
-        for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++) {
-            param.recv_buf[buf_idx].resize(param.elem_count * param.process_count);
-            param.send_buf[buf_idx].resize(param.elem_count * param.process_count);
-        }
-
-        for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++) {
-            for (size_t elem_idx = 0; elem_idx < param.process_count * param.elem_count;
-                 elem_idx++) {
-                param.send_buf[buf_idx][elem_idx] = param.process_idx;
-                if (param.test_conf.place_type == PT_OOP) {
-                    param.recv_buf[buf_idx][elem_idx] = static_cast<T> SOME_VALUE;
-                }
-            }
-        }
-
-        if (param.test_conf.place_type == PT_IN) {
-            param.recv_buf = param.send_buf;
-
+    void alloc_buffers(test_operation<T>& op) {
+        send_counts.resize(op.comm_size);
+        recv_counts.resize(op.comm_size);
+        if (op.param.place_type == PLACE_IN) {
             /*
                Specifying the in-place option indicates that
                the same amount and type of data is sent and received
@@ -80,54 +50,52 @@ public:
                Different pairs of processes can exchange different amounts of data.
                https://docs.microsoft.com/en-us/message-passing-interface/mpi-alltoallv-function#remarks
              */
-            for (size_t idx = 0; idx < param.process_count; idx++) {
-                size_t common_size = (param.process_idx + idx) * (param.elem_count / 4);
-                recv_counts[idx] = ((common_size > param.elem_count) || (common_size == 0))
-                                       ? param.elem_count
-                                       : common_size;
-                send_counts[idx] = recv_counts[idx];
+            for (int rank = 0; rank < op.comm_size; rank++) {
+                size_t common_size = (op.comm_rank + rank) * (op.elem_count / 4);
+                recv_counts[rank] = ((common_size > op.elem_count) || (common_size == 0))
+                                        ? op.elem_count
+                                        : common_size;
+                send_counts[rank] = recv_counts[rank];
             }
         }
         else {
-            bool is_even_rank = (param.process_idx % 2 == 0) ? true : false;
-            size_t send_count = (is_even_rank) ? (param.elem_count / 2) : param.elem_count;
-            for (size_t idx = 0; idx < param.process_count; idx++) {
-                int is_even_peer = (idx % 2 == 0) ? true : false;
-                send_counts[idx] = send_count;
-                recv_counts[idx] = (is_even_peer) ? (param.elem_count / 2) : param.elem_count;
+            bool is_even_rank = (op.comm_rank % 2 == 0) ? true : false;
+            size_t send_count = (is_even_rank) ? (op.elem_count / 2) : op.elem_count;
+            for (int rank = 0; rank < op.comm_size; rank++) {
+                int is_even_peer = (rank % 2 == 0) ? true : false;
+                send_counts[rank] = send_count;
+                recv_counts[rank] = (is_even_peer) ? (op.elem_count / 2) : op.elem_count;
             }
         }
     }
 
-    size_t get_recv_buf_size(typed_test_param<T>& param) {
-        return param.elem_count * param.process_count;
+    void fill_send_buffers(test_operation<T>& op) {
+        for (size_t buf_idx = 0; buf_idx < op.buffer_count; buf_idx++) {
+            for (size_t elem_idx = 0; elem_idx < op.comm_size * op.elem_count; elem_idx++) {
+                op.send_bufs[buf_idx][elem_idx] = op.comm_rank + buf_idx;
+            }
+        }
     }
 
-    void run_derived(typed_test_param<T>& param) {
+    void run_derived(test_operation<T>& op) {
         void* send_buf;
         void* recv_buf;
 
-        const ccl_test_conf& test_conf = param.get_conf();
-
+        auto param = op.get_param();
         auto attr = ccl::create_operation_attr<ccl::alltoallv_attr>();
 
-        ccl::datatype datatype = get_ccl_lib_datatype(test_conf);
+        for (auto buf_idx : op.buf_indexes) {
+            op.prepare_attr(attr, buf_idx);
+            send_buf = op.get_send_buf(buf_idx);
+            recv_buf = op.get_recv_buf(buf_idx);
 
-        for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++) {
-            size_t new_idx = param.buf_indexes[buf_idx];
-            param.prepare_coll_attr(attr, param.buf_indexes[buf_idx]);
-
-            send_buf = param.get_send_buf(new_idx);
-            recv_buf = param.get_recv_buf(new_idx);
-
-            param.reqs[buf_idx] =
-                ccl::alltoallv((test_conf.place_type == PT_IN) ? recv_buf : send_buf,
-                               send_counts,
-                               recv_buf,
-                               recv_counts,
-                               datatype,
-                               GlobalData::instance().comms[0],
-                               attr);
+            op.events.push_back(ccl::alltoallv((param.place_type == PLACE_IN) ? recv_buf : send_buf,
+                                               send_counts,
+                                               recv_buf,
+                                               recv_counts,
+                                               op.datatype,
+                                               global_data::instance().comms[0],
+                                               attr));
         }
     }
 };

@@ -39,17 +39,17 @@ void ccl_gpu_sched::set_fence(ze_fence_handle_t entry_fence) //TODO temporary
 }
 
 bool ccl_gpu_sched::wait(size_t nanosec) {
-    bool ready = true;
-    for (auto fence : entry_fences) {
-        ze_result_t ret = zeFenceHostSynchronize(fence, nanosec);
-        if (ret != ZE_RESULT_SUCCESS) {
-            if (ret == ZE_RESULT_NOT_READY or ret == ZE_RESULT_ERROR_INVALID_ARGUMENT) {
-                ready = false;
-                break;
-            }
-            throw std::runtime_error(std::string("zeFenceHostSynchronize failed: ") +
-                                     native::to_string(ret));
+    if (nanosec > 0) {
+        throw std::runtime_error("nanosec != 0, not yet supported");
+    }
+
+    // TODO: in case we really need to support != 0 case it's probably better to
+    // rework entry->do_progress to work with timeout value
+    for (auto& e : entries) {
+        if (e->get_status() != ccl_sched_entry_status_complete) {
+            return false;
         }
     }
-    return ready;
+
+    return true;
 }

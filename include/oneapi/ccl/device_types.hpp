@@ -47,7 +47,12 @@ using device_indices_type = std::multiset<device_index_type>;
 using process_device_indices_type = std::map<process_id, device_indices_type>;
 using cluster_device_indices_type = std::map<host_id, process_device_indices_type>;
 
+std::string to_string(const device_indices_type& indices);
+std::string to_string(const process_device_indices_type& indices);
+std::string to_string(const cluster_device_indices_type& indices);
+
 struct empty_t {};
+
 template <cl_backend_type config_backend>
 struct backend_info {};
 

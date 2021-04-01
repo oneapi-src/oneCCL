@@ -65,7 +65,7 @@ struct arg_access_policy_atomic {
         charged.store(true, std::memory_order_release);
     }
 
-    inline bool test() const noexcept {
+    bool test() const noexcept {
         return charged.load(std::memory_order_acquire);
     }
 
@@ -83,16 +83,38 @@ struct arg_access_policy_atomic {
         return ret;
     }
 
-private:
+protected:
     std::atomic<arg_type> arg_value{};
     std::atomic<bool> charged{ false };
 };
 
+// Policy that invalidates the value once it's loaded by a consumer. It remains invalid for read untill a producer
+// writes an new one
+// Note: only one read/invalidate is supported
 template <size_t pos, class ArgType, bool must_exist = true>
-struct arg_access_policy_atomic_uncached : arg_access_policy_atomic<pos, ArgType, must_exist> {
-    using base_t = arg_access_policy_atomic<pos, ArgType, must_exist>;
-    using arg_type = typename base_t::arg_type;
-    using return_t = typename base_t::return_t;
+struct arg_access_policy_atomic_reset : public arg_access_policy_atomic<pos, ArgType, must_exist> {
+    using base = arg_access_policy_atomic<pos, ArgType, must_exist>;
+    using return_t = typename base::return_t;
+
+    return_t load() noexcept {
+        auto res = base::load();
+        reset();
+        return res;
+    }
+
+    void reset() noexcept {
+        base::charged.store(false, std::memory_order_release);
+    }
+
+    void dump(std::ostream &out) const {
+        if (base::test()) {
+            auto ret = base::load();
+            out << "{ " << ret.second << " }";
+        }
+        else {
+            out << "{ RESET (" << base::arg_value << ")}";
+        }
+    }
 };
 
 template <size_t pos, class ArgType, bool must_exist = true>

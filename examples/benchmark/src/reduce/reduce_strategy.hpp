@@ -46,6 +46,7 @@ struct reduce_strategy_impl {
         reqs.push_back(ccl::reduce(send_buf,
                                    recv_buf,
                                    count,
+                                   get_ccl_dtype<Dtype>(),
                                    bench_attr.reduction,
                                    COLL_ROOT,
                                    comm,

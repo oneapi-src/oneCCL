@@ -53,15 +53,12 @@ CCL_API comm_attr::comm_attr(
 CCL_API comm_attr::~comm_attr() noexcept {}
 
 CCL_API comm_attr& comm_attr::operator=(const comm_attr& src) {
-    this->get_impl() = src.get_impl();
+    this->acc_policy_t::create(this, src);
     return *this;
 }
 
 CCL_API comm_attr& comm_attr::operator=(comm_attr&& src) {
-    if (src.get_impl() != this->get_impl()) {
-        src.get_impl().swap(this->get_impl());
-        src.get_impl().reset();
-    }
+    this->acc_policy_t::create(this, std::move(src));
     return *this;
 }
 

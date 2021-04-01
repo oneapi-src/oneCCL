@@ -40,13 +40,17 @@ ccl_ipc_gpu_comm::ccl_ipc_gpu_comm(ccl_device& assigned_device,
         case ccl::group_split_type::cluster: {
             switch (class_id) {
                 case ccl::device_topology_type::ring: {
-                    reset_rank<ccl::group_split_type::cluster, ccl::device_topology_type::ring>(
-                        idx, size);
+                    /* -S-
+                    reset_rank<ccl::group_split_type::cluster,
+                               ccl::device_topology_type::ring>(idx, size);
+                    */
                     break;
                 }
                 case ccl::device_topology_type::a2a: {
-                    reset_rank<ccl::group_split_type::cluster, ccl::device_topology_type::a2a>(
-                        idx, size);
+                    /* -S-
+                    reset_rank<ccl::group_split_type::cluster,
+                               ccl::device_topology_type::a2a>(idx, size);
+                    */
                     break;
                 }
                 default: {
@@ -63,6 +67,16 @@ ccl_ipc_gpu_comm::ccl_ipc_gpu_comm(ccl_device& assigned_device,
                 "for process-based topology, but requested: " + ::to_string(topology_type));
         }
     }
+
+    LOG_INFO("Created ", name_impl(), ", addr: ", reinterpret_cast<void*>(this));
+}
+
+ccl_ipc_gpu_comm::~ccl_ipc_gpu_comm() {
+    LOG_INFO("Destroyed ", name_impl(), ", addr: ", reinterpret_cast<void*>(this));
+}
+
+ccl_ipc_gpu_comm::supported_modules& ccl_ipc_gpu_comm::get_registered_modules() {
+    return registered_modules;
 }
 
 std::string ccl_ipc_gpu_comm::to_string_impl() const {

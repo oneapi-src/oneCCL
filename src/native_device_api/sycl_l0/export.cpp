@@ -45,7 +45,7 @@ generic_context_type<cl_backend_type::dpcpp_sycl_l0>::get() const noexcept {
 /**
  * Device
  */
-CCL_API generic_device_type<cl_backend_type::dpcpp_sycl_l0>::generic_device_type(
+generic_device_type<cl_backend_type::dpcpp_sycl_l0>::generic_device_type(
     device_index_type id,
     cl::sycl::info::device_type type /* = info::device_type::gpu*/)
         : device() {
@@ -72,8 +72,7 @@ CCL_API generic_device_type<cl_backend_type::dpcpp_sycl_l0>::generic_device_type
                << "\nvendor: " << pl.get_info<cl::sycl::info::platform::vendor>();
         }
 
-        throw std::runtime_error(std::string("Cannot find device by id: ") + ccl::to_string(id) +
-                                 ", reason:\n" + ss.str());
+        CCL_THROW("cannot find device by id: " + ccl::to_string(id) + ", reason:\n" + ss.str());
     }
 
     LOG_DEBUG("Platform:\nprofile: ",
@@ -89,12 +88,7 @@ CCL_API generic_device_type<cl_backend_type::dpcpp_sycl_l0>::generic_device_type
     LOG_DEBUG("Found devices: ", devices.size());
     auto it =
         std::find_if(devices.begin(), devices.end(), [id](const cl::sycl::device& dev) -> bool {
-#ifdef MULTI_GPU_SUPPORT
-            //TODO -S-
             return id == native::get_runtime_device(dev)->get_device_path();
-#endif
-            (void)id;
-            return true;
         });
     if (it == devices.end()) {
         std::stringstream ss;
@@ -103,11 +97,11 @@ CCL_API generic_device_type<cl_backend_type::dpcpp_sycl_l0>::generic_device_type
             ss << "Device:\nname: " << dev.get_info<cl::sycl::info::device::name>()
                << "\nvendor: " << dev.get_info<cl::sycl::info::device::vendor>()
                << "\nversion: " << dev.get_info<cl::sycl::info::device::version>()
-               << "\nprofile: " << dev.get_info<cl::sycl::info::device::profile>();
+               << "\nprofile: " << dev.get_info<cl::sycl::info::device::profile>()
+               << "\ndevice id: " << native::get_runtime_device(dev)->get_device_path();
         }
 
-        throw std::runtime_error(std::string("Cannot find device by id: ") + ccl::to_string(id) +
-                                 ", reason:\n" + ss.str());
+        CCL_THROW("cannot find device by id: " + ccl::to_string(id) + ", reason:\n" + ss.str());
     }
     device = *it;
 }

@@ -23,10 +23,6 @@
 
 namespace ccl {
 
-#define SUPPORTED_KERNEL_NATIVE_DATA_TYPES \
-    int8_t, uint8_t, int16_t, uint16_t, int32_t, uint32_t, int64_t, uint64_t, float, double, \
-        ccl::bfloat16
-
 template <class native_stream>
 constexpr bool is_stream_supported() {
     return api_type_info</*typename std::remove_pointer<typename std::remove_cv<*/
@@ -59,10 +55,4 @@ API_CLASS_TYPE_INFO(typename unified_device_type::ccl_native_t)
 API_CLASS_TYPE_INFO(typename unified_context_type::ccl_native_t);
 API_CLASS_TYPE_INFO(typename unified_stream_type::ccl_native_t);
 API_CLASS_TYPE_INFO(typename unified_event_type::ccl_native_t);
-
-//TMP - matching device index into native device object
-template <class... Args>
-unified_device_type create_from_index(Args&&... args) {
-    return unified_device_type(std::forward<Args>(args)...);
-}
 } // namespace ccl

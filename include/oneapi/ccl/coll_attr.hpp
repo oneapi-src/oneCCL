@@ -61,6 +61,8 @@ public:
 
     allgatherv_attr(allgatherv_attr&& src);
     allgatherv_attr(const allgatherv_attr& src);
+    allgatherv_attr& operator=(allgatherv_attr&& src) noexcept;
+    allgatherv_attr& operator=(const allgatherv_attr& src);
     ~allgatherv_attr();
 
     /**
@@ -118,6 +120,8 @@ public:
 
     allreduce_attr(allreduce_attr&& src);
     allreduce_attr(const allreduce_attr& src);
+    allreduce_attr& operator=(allreduce_attr&& src) noexcept;
+    allreduce_attr& operator=(const allreduce_attr& src);
     ~allreduce_attr();
 
     /**
@@ -175,6 +179,8 @@ public:
 
     alltoall_attr(alltoall_attr&& src);
     alltoall_attr(const alltoall_attr& src);
+    alltoall_attr& operator=(alltoall_attr&& src) noexcept;
+    alltoall_attr& operator=(const alltoall_attr& src);
     ~alltoall_attr();
 
     /**
@@ -233,6 +239,8 @@ public:
 
     alltoallv_attr(alltoallv_attr&& src);
     alltoallv_attr(const alltoallv_attr& src);
+    alltoallv_attr& operator=(alltoallv_attr&& src) noexcept;
+    alltoallv_attr& operator=(const alltoallv_attr& src);
     ~alltoallv_attr();
 
     /**
@@ -290,6 +298,8 @@ public:
 
     barrier_attr(barrier_attr&& src);
     barrier_attr(const barrier_attr& src);
+    barrier_attr& operator=(barrier_attr&& src) noexcept;
+    barrier_attr& operator=(const barrier_attr& src);
     ~barrier_attr();
 
     /**
@@ -349,6 +359,8 @@ public:
 
     broadcast_attr(broadcast_attr&& src);
     broadcast_attr(const broadcast_attr& src);
+    broadcast_attr& operator=(broadcast_attr&& src) noexcept;
+    broadcast_attr& operator=(const broadcast_attr& src);
     ~broadcast_attr();
 
     /**
@@ -406,6 +418,8 @@ public:
 
     reduce_attr(reduce_attr&& src);
     reduce_attr(const reduce_attr& src);
+    reduce_attr& operator=(reduce_attr&& src) noexcept;
+    reduce_attr& operator=(const reduce_attr& src);
     ~reduce_attr();
 
     /**
@@ -464,6 +478,8 @@ public:
 
     reduce_scatter_attr(reduce_scatter_attr&& src);
     reduce_scatter_attr(const reduce_scatter_attr& src);
+    reduce_scatter_attr& operator=(reduce_scatter_attr&& src) noexcept;
+    reduce_scatter_attr& operator=(const reduce_scatter_attr& src);
     ~reduce_scatter_attr();
 
     /**
@@ -523,6 +539,8 @@ public:
 
     sparse_allreduce_attr(sparse_allreduce_attr&& src);
     sparse_allreduce_attr(const sparse_allreduce_attr& src);
+    sparse_allreduce_attr& operator=(sparse_allreduce_attr&& src) noexcept;
+    sparse_allreduce_attr& operator=(const sparse_allreduce_attr& src);
     ~sparse_allreduce_attr();
 
     /**
@@ -566,11 +584,11 @@ extern allgatherv_attr default_allgatherv_attr;
 extern allreduce_attr default_allreduce_attr;
 extern alltoall_attr default_alltoall_attr;
 extern alltoallv_attr default_alltoallv_attr;
+extern barrier_attr default_barrier_attr;
 extern broadcast_attr default_broadcast_attr;
 extern reduce_attr default_reduce_attr;
 extern reduce_scatter_attr default_reduce_scatter_attr;
 extern sparse_allreduce_attr default_sparse_allreduce_attr;
-extern barrier_attr default_barrier_attr;
 
 /**
  * Fabric helpers
@@ -597,6 +615,11 @@ template <alltoallv_attr_id t, class value_type>
 constexpr auto attr_val(value_type v)
     -> detail::attr_value_triple<alltoallv_attr_id, t, value_type> {
     return detail::attr_value_triple<alltoallv_attr_id, t, value_type>(v);
+}
+
+template <barrier_attr_id t, class value_type>
+constexpr auto attr_val(value_type v) -> detail::attr_value_triple<barrier_attr_id, t, value_type> {
+    return detail::attr_value_triple<barrier_attr_id, t, value_type>(v);
 }
 
 template <broadcast_attr_id t, class value_type>
@@ -629,30 +652,31 @@ constexpr auto attr_val(value_type v)
 }
 
 /* TODO temporary function for UT compilation: would be part of detail::environment in final*/
-template <class coll_attribute_type, class... attr_value_pair_t>
-coll_attribute_type create_coll_attr(attr_value_pair_t&&... avps);
+template <class coll_attribute_type, class... attr_val_type>
+coll_attribute_type create_coll_attr(attr_val_type&&... avs);
 
 } // namespace v1
+
+using v1::attr_val;
 
 using v1::allgatherv_attr;
 using v1::allreduce_attr;
 using v1::alltoall_attr;
 using v1::alltoallv_attr;
+using v1::barrier_attr;
 using v1::broadcast_attr;
 using v1::reduce_attr;
 using v1::reduce_scatter_attr;
 using v1::sparse_allreduce_attr;
-using v1::barrier_attr;
-using v1::attr_val;
 
 using v1::default_allgatherv_attr;
 using v1::default_allreduce_attr;
 using v1::default_alltoall_attr;
 using v1::default_alltoallv_attr;
+using v1::default_barrier_attr;
 using v1::default_broadcast_attr;
 using v1::default_reduce_attr;
 using v1::default_reduce_scatter_attr;
 using v1::default_sparse_allreduce_attr;
-using v1::default_barrier_attr;
 
 } // namespace ccl

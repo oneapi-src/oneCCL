@@ -19,6 +19,7 @@
 #include "common/comm/comm_interface.hpp"
 //TODO #include "sched/gpu_sched.hpp"
 #include "common/comm/l0/comm_context_id.hpp"
+#include "common/comm/l0/modules/kernel_params.hpp"
 
 struct base_communicator : public ccl::communicator_interface {
     //TODO using group_comm_storage = native::specific_indexed_device_storage;

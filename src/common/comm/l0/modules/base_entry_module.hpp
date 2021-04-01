@@ -102,4 +102,5 @@ struct coll_module_traits {
         return class_id;
     }
 };
+
 } // namespace native

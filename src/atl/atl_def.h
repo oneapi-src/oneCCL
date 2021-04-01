@@ -14,6 +14,7 @@
  limitations under the License.
 */
 #pragma once
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -41,11 +42,13 @@
  * Dynamically loaded transports must export the following entry point.
  * This is invoked by the ATL framework when the transport library is loaded.
  */
-#define ATL_EXT_INI \
-    __attribute__((visibility("default"))) atl_status_t atl_ini(atl_transport_t* atl_transport)
+
+#define ATL_EXT_INI atl_status_t atl_ini(atl_transport_t* atl_transport)
 
 #define ATL_OFI_INI ATL_EXT_INI
 #define ATL_MPI_INI ATL_EXT_INI
+
+class ipmi;
 
 typedef struct atl_ctx atl_ctx_t;
 typedef struct atl_ep atl_ep_t;
@@ -130,8 +133,12 @@ typedef struct {
 
 typedef struct {
     const char* name;
-    atl_status_t (
-        *init)(int* argc, char*** argv, atl_attr_t* attr, atl_ctx_t** ctx, const char* main_addr);
+    atl_status_t (*init)(int* argc,
+                         char*** argv,
+                         atl_attr_t* attr,
+                         atl_ctx_t** ctx,
+                         const char* main_addr,
+                         ipmi* pmi);
     atl_status_t (*reserve_addr)(char* main_addr);
 } atl_transport_t;
 
@@ -151,8 +158,6 @@ struct atl_ctx {
 
     size_t ep_count;
     atl_ep_t** eps;
-
-    int is_resize_enabled;
 };
 
 /*

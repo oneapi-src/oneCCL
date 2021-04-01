@@ -104,9 +104,9 @@ private:
               class = typename std::enable_if<is_context_supported<context_type>()>::type>
     static context create_context(context_type&& native_context);
 
-    template <class context_handle_type, class... attr_value_pair_t>
+    template <class context_handle_type, class... attr_val_type>
     static context create_context_from_attr(context_handle_type& native_context_handle,
-                                            attr_value_pair_t&&... avps);
+                                            attr_val_type&&... avs);
 };
 
 template <context_attr_id t, class value_type>

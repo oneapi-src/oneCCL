@@ -17,12 +17,15 @@
 #include "atl/util/pm/pmi_rt/pmi_simple.h"
 #include "atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs/internal_kvs.h"
 #include "atl/util/pm/pmi_resizable_rt/pmi_resizable.h"
-#include "atl/ofi/atl_ofi.h"
-#include "atl/mpi/atl_mpi.h"
+#include "atl/ofi/atl_ofi.hpp"
+#include "atl/mpi/atl_mpi.hpp"
 #include "atl_wrapper.h"
 #include "common/global/global.hpp"
+#include "exec/exec.hpp"
+#include "util/pm/pmi_resizable_rt/pmi_resizable_simple_internal.h"
 
 static std::list<std::shared_ptr<iatl>> transports{};
+static ccl_executor* executor;
 
 atl_attr_t atl_wrapper::attr = {
     1, /* ep_count */
@@ -42,6 +45,10 @@ void atl_wrapper::set_internal_env(const atl_attr_t& attr) {
         atl_mpi::atl_set_env(attr);
     else if (transport_type == ccl_atl_ofi)
         atl_ofi::atl_set_env(attr);
+}
+
+void atl_wrapper::set_exec(ccl_executor* exec) {
+    executor = exec;
 }
 
 atl_wrapper::atl_wrapper() {
@@ -113,7 +120,14 @@ atl_wrapper::atl_wrapper(int total_rank_count,
     switch (transport_type) {
         case ccl_atl_ofi: {
             size_t transorts_count = transports.size();
-            pmi = std::unique_ptr<ipmi>(new pmi_resizable_simple(total_rank_count, ranks, k));
+            std::shared_ptr<internal_kvs> kvs;
+            if ((kvs = std::dynamic_pointer_cast<internal_kvs>(k)) != nullptr) {
+                pmi = std::unique_ptr<ipmi>(
+                    new pmi_resizable_simple_internal(total_rank_count, ranks, kvs));
+            }
+            else {
+                pmi = std::unique_ptr<ipmi>(new pmi_resizable_simple(total_rank_count, ranks, k));
+            }
 
             if (pmi->get_local_thread_idx() == 0) {
                 transports.push_back(std::shared_ptr<iatl>(new atl_ofi()));
@@ -135,12 +149,15 @@ atl_wrapper::atl_wrapper(int total_rank_count,
     init_transport();
 }
 void atl_wrapper::init_transport() {
-    LOG_INFO("init ATL, requested ep_count ", attr.ep_count);
+    LOG_DEBUG("init ATL, requested ep_count ", attr.ep_count);
     static std::mutex memory_mutex;
     {
         std::lock_guard<std::mutex> lock(memory_mutex);
-        if (!transport->is_inited())
-            transport->atl_init(nullptr, nullptr, &attr, nullptr, pmi);
+        if (!transport->is_inited()) {
+            CCL_THROW_IF_NOT(
+                transport->atl_init(nullptr, nullptr, &attr, nullptr, pmi) == ATL_STATUS_SUCCESS,
+                "failed to initialize ATL");
+        }
     }
     eps = transport->atl_get_eps();
     tag = std::unique_ptr<ccl_atl_tag>(new ccl_atl_tag(attr.tag_bits, attr.max_tag));
@@ -160,28 +177,29 @@ void atl_wrapper::init_transport() {
 
     if (rank == 0) {
         tag->print();
+        LOG_INFO("atl-parameters:");
+        LOG_INFO("  ep_count: ", attr.ep_count);
+        LOG_INFO("  enable_shm: ", attr.enable_shm);
+        LOG_INFO("  enable_rma: ", attr.enable_rma);
+        LOG_INFO("  max_order_waw_size: ", attr.max_order_waw_size);
+        LOG_INFO("  sync_coll: ", attr.sync_coll);
+        LOG_INFO("  extra_ep: ", attr.extra_ep);
+    }
 
-        LOG_INFO("\n",
-                 "\nATL parameters:",
-                 "\n  ep_count:           ",
-                 attr.ep_count,
-                 "\n  enable_shm:         ",
-                 attr.enable_shm,
-                 "\n  tag_bits:           ",
-                 attr.tag_bits,
-                 "\n  max_tag:            ",
-                 attr.max_tag,
-                 "\n  enable_rma:         ",
-                 attr.enable_rma,
-                 "\n  max_order_waw_size: ",
-                 attr.max_order_waw_size,
-                 "\n  sync_coll:          ",
-                 attr.sync_coll,
-                 "\n  extra_ep:           ",
-                 attr.extra_ep,
-                 "\n");
+    if ((!pmi) || (pmi && pmi->get_local_thread_idx() == 0)) {
+        if (!executor->are_workers_started()) {
+            atl_proc_coord_t* coord = atl_get_proc_coord();
+            if (rank < coord->local_count)
+                LOG_INFO("start workers for local process [",
+                         coord->local_idx,
+                         ":",
+                         coord->local_count,
+                         "]");
+            executor->start_workers(coord->local_idx, coord->local_count);
+        }
     }
 }
+
 atl_wrapper::~atl_wrapper() {
     static std::mutex memory_mutex;
     std::lock_guard<std::mutex> lock(memory_mutex);

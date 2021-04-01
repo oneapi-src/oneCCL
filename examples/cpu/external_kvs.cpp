@@ -74,6 +74,8 @@ int main() {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+    atexit(mpi_finalize);
+
     ccl::shared_ptr_class<ccl::kvs> kvs;
     ccl::kvs::address_type main_addr;
     if (rank == 0) {
@@ -94,8 +96,6 @@ int main() {
     MSG_LOOP(comm, std::vector<float> send_buf(msg_count, static_cast<float>(comm.rank()));
              std::vector<float> recv_buf(msg_count);
              run_collective("regular allreduce", send_buf, recv_buf, comm, attr););
-
-    MPI_Finalize();
 
     return 0;
 }

@@ -13,102 +13,135 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#ifndef BASE_HPP
-#define BASE_HPP
+#pragma once
 
+#include <algorithm>
 #include <chrono>
 #include <functional>
+#include <random>
 #include <vector>
 
 #include "oneapi/ccl.hpp"
-#include "ccl_test_conf.hpp"
+#include "conf.hpp"
 
-class GlobalData {
+class global_data {
 public:
     std::vector<ccl::communicator> comms;
     ccl::shared_ptr_class<ccl::kvs> kvs;
 
-    GlobalData(GlobalData& gd) = delete;
-    void operator=(const GlobalData&) = delete;
-    static GlobalData& instance() {
-        static GlobalData gd;
+    global_data(global_data& gd) = delete;
+    void operator=(const global_data&) = delete;
+    static global_data& instance() {
+        static global_data gd;
         return gd;
-    };
+    }
 
 protected:
-    GlobalData(){};
-    ~GlobalData(){};
+    global_data(){};
+    ~global_data(){};
 };
 
 #include "utils.hpp"
 
-#define SEED_STEP 10
+bool is_lp_datatype(ccl_data_type dtype);
 
 template <typename T>
-struct typed_test_param {
-    ccl_test_conf test_conf;
+struct test_operation {
+    test_param param;
+
     size_t elem_count;
     size_t buffer_count;
-    size_t process_count;
-    size_t process_idx;
-    static size_t priority;
+    ccl::datatype datatype;
+    ccl::reduction reduction;
+
+    int comm_size;
+    int comm_rank;
+
     std::vector<size_t> buf_indexes;
-    std::vector<std::vector<T>> send_buf;
-    std::vector<std::vector<T>> recv_buf;
 
-    // buffers for bf16
-    std::vector<std::vector<short>> send_buf_bf16;
-    std::vector<std::vector<short>> recv_buf_bf16;
+    std::vector<std::vector<T>> send_bufs;
+    std::vector<std::vector<T>> recv_bufs;
 
-    std::vector<ccl::event> reqs;
+    // buffers for 16-bits low precision datatype
+    std::vector<std::vector<short>> send_bufs_lp;
+    std::vector<std::vector<short>> recv_bufs_lp;
+
+    std::vector<ccl::event> events;
     ccl::string_class match_id;
 
-    typed_test_param(ccl_test_conf tconf)
-            : test_conf(tconf),
-              elem_count(get_ccl_elem_count(test_conf)),
-              buffer_count(get_ccl_buffer_count(test_conf)) {
-        process_count = GlobalData::instance().comms[0].size();
-        process_idx = GlobalData::instance().comms[0].rank();
+    test_operation(test_param param)
+            : param(param),
+              elem_count(get_elem_count(param)),
+              buffer_count(get_buffer_count(param)),
+              datatype(get_ccl_datatype(param)),
+              reduction(get_ccl_reduction(param)) {
+        comm_size = global_data::instance().comms[0].size();
+        comm_rank = global_data::instance().comms[0].rank();
         buf_indexes.resize(buffer_count);
     }
 
     template <class coll_attr_type>
-    void prepare_coll_attr(coll_attr_type& coll_attr, size_t idx);
+    void prepare_attr(coll_attr_type& coll_attr, size_t idx);
 
     std::string create_match_id(size_t buf_idx);
-    bool complete_request(ccl::event& e);
-    void define_start_order();
-    bool complete();
-    void swap_buffers(size_t iter);
+    void change_buffer_pointers();
     size_t generate_priority_value(size_t buf_idx);
 
-    const ccl_test_conf& get_conf() {
-        return test_conf;
+    void define_start_order(std::default_random_engine& rand_engine);
+
+    bool complete_events();
+    bool complete_event(ccl::event& e);
+
+    const test_param& get_param() {
+        return param;
     }
 
     void print(std::ostream& output);
 
     void* get_send_buf(size_t buf_idx) {
-        if (test_conf.datatype == DT_BFLOAT16)
-            return static_cast<void*>(send_buf_bf16[buf_idx].data());
+        if (is_lp_datatype(param.datatype))
+            return static_cast<void*>(send_bufs_lp[buf_idx].data());
         else
-            return static_cast<void*>(send_buf[buf_idx].data());
+            return static_cast<void*>(send_bufs[buf_idx].data());
     }
 
     void* get_recv_buf(size_t buf_idx) {
-        if (test_conf.datatype == DT_BFLOAT16)
-            return static_cast<void*>(recv_buf_bf16[buf_idx].data());
+        if (is_lp_datatype(param.datatype))
+            return static_cast<void*>(recv_bufs_lp[buf_idx].data());
         else
-            return static_cast<void*>(recv_buf[buf_idx].data());
+            return static_cast<void*>(recv_bufs[buf_idx].data());
+    }
+
+    size_t get_check_step(size_t elem_idx) {
+        size_t step;
+        if (param.size_type == SIZE_SMALL)
+            step = 1;
+        else if (param.size_type == SIZE_MEDIUM)
+            step = 4;
+        else
+            step = 32;
+
+        if ((step > 1) && (elem_idx + step >= elem_count)) {
+            /* 
+                to process tail elements
+                when elem_count is not dividable by step
+            */
+            step = 1;
+        }
+
+        return step;
     }
 };
 
 template <typename T>
 class base_test {
 public:
-    size_t global_process_idx;
-    size_t global_process_count;
+    int global_comm_rank;
+    int global_comm_size;
     char err_message[ERR_MESSAGE_MAX_LEN]{};
+
+    std::random_device rand_device;
+    std::default_random_engine rand_engine;
 
     char* get_err_message() {
         return err_message;
@@ -116,47 +149,46 @@ public:
 
     base_test();
 
-    virtual void alloc_buffers(typed_test_param<T>& param);
-    virtual void fill_buffers(typed_test_param<T>& param);
+    void alloc_buffers_base(test_operation<T>& op);
+    virtual void alloc_buffers(test_operation<T>& op);
 
-    int run(typed_test_param<T>& param);
-    virtual void run_derived(typed_test_param<T>& param) = 0;
+    void fill_send_buffers_base(test_operation<T>& op);
+    virtual void fill_send_buffers(test_operation<T>& op);
 
-    virtual size_t get_recv_buf_size(typed_test_param<T>& param) = 0;
+    void fill_recv_buffers_base(test_operation<T>& op);
+    virtual void fill_recv_buffers(test_operation<T>& op);
 
-    virtual int check(typed_test_param<T>& param) = 0;
-    virtual int check_error(typed_test_param<T>& param,
-                            T expected,
-                            size_t buf_idx,
-                            size_t elem_idx);
+    virtual T calculate_reduce_value(test_operation<T>& op, size_t buf_idx, size_t elem_idx);
+
+    int run(test_operation<T>& op);
+    virtual void run_derived(test_operation<T>& op) = 0;
+
+    virtual int check(test_operation<T>& op) = 0;
+    virtual int check_error(test_operation<T>& op, T expected, size_t buf_idx, size_t elem_idx);
 };
 
-class MainTest : public ::testing ::TestWithParam<ccl_test_conf> {
+class MainTest : public ::testing ::TestWithParam<test_param> {
     template <typename T>
-    int run(ccl_test_conf param);
+    int run(test_param param);
 
 public:
-    int test(ccl_test_conf& param) {
+    int test(test_param& param) {
         switch (param.datatype) {
-            case DT_INT8: return run<int8_t>(param);
-            /*case DT_UINT8: return run<uint8_t>(param);*/
-            case DT_INT16: return run<int16_t>(param);
-            /*case DT_UINT16: return run<uint16_t>(param);*/
-            case DT_INT32: return run<int32_t>(param);
-            /*case DT_UINT32: return run<uint32_t>(param);
-            case DT_INT64: return run<int64_t>(param);
-            case DT_UINT64: return run<uint64_t>(param);
-            case DT_FLOAT16: return TEST_SUCCESS;*/
-            case DT_FLOAT32:
-                return run<float>(param);
-                /*case DT_FLOAT64: return run<double>(param);*/
-#ifdef CCL_BF16_COMPILER
-            case DT_BFLOAT16: return run<float>(param);
-#endif
+            case DATATYPE_INT8: return run<int8_t>(param);
+            case DATATYPE_UINT8: return run<uint8_t>(param);
+            case DATATYPE_INT16: return run<int16_t>(param);
+            case DATATYPE_UINT16: return run<uint16_t>(param);
+            case DATATYPE_INT32: return run<int32_t>(param);
+            case DATATYPE_UINT32: return run<uint32_t>(param);
+            case DATATYPE_INT64: return run<int64_t>(param);
+            case DATATYPE_UINT64: return run<uint64_t>(param);
+            case DATATYPE_FLOAT16: return run<float>(param);
+            case DATATYPE_FLOAT32: return run<float>(param);
+            case DATATYPE_FLOAT64: return run<double>(param);
+            case DATATYPE_BFLOAT16: return run<float>(param);
             default:
                 EXPECT_TRUE(false) << "Unexpected data type: " << param.datatype;
                 return TEST_FAILURE;
         }
     }
 };
-#endif /* BASE_HPP */

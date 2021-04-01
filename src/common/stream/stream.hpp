@@ -14,11 +14,13 @@
  limitations under the License.
 */
 #pragma once
+
 #include "oneapi/ccl/types_policy.hpp"
 #include "oneapi/ccl/types.hpp"
 #include "oneapi/ccl/type_traits.hpp"
 #include "oneapi/ccl/stream_attr_ids.hpp"
 #include "oneapi/ccl/stream_attr_ids_traits.hpp"
+#include "common/utils/enums.hpp"
 #include "common/utils/utils.hpp"
 #include "common/stream/stream_provider_dispatcher.hpp"
 
@@ -30,6 +32,9 @@ namespace detail {
 class environment;
 }
 } // namespace ccl
+
+using stream_str_enum = utils::enum_to_str<utils::enum_to_underlying(stream_type::last_value)>;
+std::string to_string(const stream_type& type);
 
 /*
 ccl::status CCL_API ccl_stream_create(stream_type type,

@@ -53,17 +53,19 @@ CCL_API kvs_attr::kvs_attr(
 CCL_API kvs_attr::~kvs_attr() noexcept {}
 
 CCL_API kvs_attr& kvs_attr::operator=(const kvs_attr& src) {
-    this->get_impl() = src.get_impl();
+    this->acc_policy_t::create(this, src);
     return *this;
 }
 
 CCL_API kvs_attr& kvs_attr::operator=(kvs_attr&& src) {
-    if (src.get_impl() != this->get_impl()) {
-        src.get_impl().swap(this->get_impl());
-        src.get_impl().reset();
-    }
+    this->acc_policy_t::create(this, std::move(src));
     return *this;
 }
+
+API_FORCE_INSTANTIATION(kvs_attr,
+                        kvs_attr_id::ip_port,
+                        ccl::string,
+                        detail::ccl_api_type_attr_traits)
 
 API_FORCE_INSTANTIATION(kvs_attr,
                         kvs_attr_id::version,

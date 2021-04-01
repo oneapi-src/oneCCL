@@ -19,12 +19,16 @@
 
 ccl_event::ccl_event(event_native_t& event, const ccl::library_version& version)
         : version(version),
-          native_event(event) {}
+          native_event(event),
+          command_type_val(),
+          command_execution_status_val() {}
 
 ccl_event::ccl_event(event_native_handle_t event,
                      event_native_context_t context,
                      const ccl::library_version& version)
-        : version(version) {
+        : version(version),
+          command_type_val(),
+          command_execution_status_val() {
 #ifdef CCL_ENABLE_SYCL
     native_event = event_native_t{ event, context };
 #else

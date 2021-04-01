@@ -23,6 +23,8 @@
 #include "common/comm/l0/scheduler/device_group_scheduler.hpp"
 #include "common/event/impls/gpu_event.hpp"
 
+#include "common/comm/l0/communicator/device_group/device_communicator_utils.hpp"
+
 /* allgatherv */
 template <class buffer_type>
 ccl::event device_group_a2a_communicator::allgatherv_impl(

@@ -24,6 +24,8 @@ public:
     ccl_spinlock(const ccl_spinlock&) = delete;
     ~ccl_spinlock() = default;
 
+    ccl_spinlock& operator=(const ccl_spinlock& src) = delete;
+
     void lock();
     bool try_lock();
     void unlock();

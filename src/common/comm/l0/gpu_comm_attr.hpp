@@ -24,6 +24,7 @@
 #include "common/comm/l0/context/context_barrier.hpp"
 
 #include "common/comm/l0/comm_context_id.hpp"
+#include "common/comm/l0/context_comm_addr.hpp"
 
 namespace native {
 struct process_group_context;
@@ -36,14 +37,6 @@ class communicator;
 }
 class host_communicator;
 struct communicator_interface;
-struct context_comm_addr {
-    size_t thread_idx = 0;
-    size_t thread_count = 0;
-    int comm_rank = 0;
-    int comm_size = 0;
-
-    std::string to_string() const;
-};
 
 struct gpu_comm_attr {
 public:
@@ -70,7 +63,7 @@ public:
     std::shared_ptr<host_communicator> get_host_communicator();
 
     const group_unique_key& get_unique_id() const;
-    const size_t get_expected_process_device_size() const noexcept;
+    size_t get_expected_process_device_size() const noexcept;
 
 private:
     bool delegate_sync_register_communicator(std::shared_ptr<communicator_interface> comm);

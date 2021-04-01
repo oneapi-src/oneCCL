@@ -30,6 +30,17 @@ public:
                                            ccl::device_topology_type::ring,
                                            ccl::gpu_communicator_traits>;
 
+    using communication_devices_t =
+        native::device_variant_t<native::ccl_gpu_comm,
+                                 native::ccl_virtual_gpu_comm,
+                                 native::ccl_ipc_source_gpu_comm<native::ccl_gpu_comm>,
+                                 native::ccl_ipc_source_gpu_comm<native::ccl_virtual_gpu_comm>,
+                                 native::ccl_numa_proxy<native::ccl_gpu_comm>,
+                                 native::ccl_numa_proxy<native::ccl_virtual_gpu_comm>,
+                                 native::ccl_scaleout_proxy<native::ccl_gpu_comm>,
+                                 native::ccl_scaleout_proxy<native::ccl_virtual_gpu_comm>>;
+    using coll_request_t = ccl::event;
+
     process_ring_communicator(ccl::unified_device_type&& device,
                               ccl::unified_context_type&& ctx,
                               size_t thread_idx,
@@ -47,6 +58,11 @@ public:
     COMM_IMPL_SPARSE_DECLARATION
     COMM_IMPL_SPARSE_CLASS_DECLARATION
 
+    communication_devices_t& get_communication_device() {
+        return communication_device;
+    }
+
 private:
     std::shared_ptr<native::process_group_context> ctx;
+    communication_devices_t communication_device;
 };

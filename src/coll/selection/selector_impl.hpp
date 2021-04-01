@@ -39,7 +39,7 @@ void ccl_selection_unpack_elem(size_t& size,
         size = it->first;
         algo = it->second.first;
         border = it->second.second;
-        LOG_DEBUG("size ",
+        LOG_TRACE("size ",
                   (size == CCL_SELECTION_MAX_COLL_SIZE) ? CCL_SELECTION_MAX_COLL_SIZE_STR
                                                         : std::to_string(size),
                   ", algo ",
@@ -72,7 +72,7 @@ void ccl_algorithm_selector_base<algo_group_type>::init() {
 
     full_stream.str(str_to_parse);
     while (std::getline(full_stream, block, CCL_SELECTION_BLOCK_DELIMETER)) {
-        LOG_DEBUG(block);
+        LOG_TRACE(block);
         block_stream.str(block);
         try {
             if (!std::getline(block_stream, algo_name_str, CCL_SELECTION_ALGO_DELIMETER))
@@ -91,7 +91,7 @@ void ccl_algorithm_selector_base<algo_group_type>::init() {
             CCL_THROW("can't parse algorithm name from string: ", str_to_parse, ", block: ", block);
         }
 
-        LOG_DEBUG("block ", block, ", algo_name_str ", algo_name_str);
+        LOG_TRACE("block ", block, ", algo_name_str ", algo_name_str);
 
         algo_group_type algo =
             ccl_algorithm_selector_helper<algo_group_type>::algo_from_str(algo_name_str);
@@ -132,7 +132,7 @@ void ccl_algorithm_selector_base<algo_group_type>::init() {
                 CCL_THROW("can't parse right size from string: ", str_to_parse, ", block: ", block);
             }
 
-            LOG_DEBUG("algo ", algo_name_str, ", left ", left_size, ", right ", right_size);
+            LOG_TRACE("algo ", algo_name_str, ", left ", left_size, ", right ", right_size);
 
             CCL_THROW_IF_NOT(left_size <= right_size,
                              "left border should be less or equal to right border (",
@@ -231,7 +231,7 @@ void ccl_algorithm_selector_base<algo_group_type>::print() const {
                 << "]: " << ccl_coll_algorithm_to_str(elem_algo) << std::endl;
         }
     }
-    LOG_INFO(str.str());
+    LOG_TRACE(str.str());
 }
 
 template <typename algo_group_type>
@@ -281,7 +281,7 @@ void ccl_algorithm_selector_base<algo_group_type>::insert(
     size_t left,
     size_t right,
     algo_group_type algo) {
-    LOG_DEBUG("left ",
+    LOG_TRACE("left ",
               (left == CCL_SELECTION_MAX_COLL_SIZE) ? CCL_SELECTION_MAX_COLL_SIZE_STR
                                                     : std::to_string(left),
               ", right ",

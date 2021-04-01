@@ -30,8 +30,6 @@ enum class context_attr_id : int {
     version,
     cl_backend,
     native_handle,
-
-    last_value
 };
 
 } // namespace v1

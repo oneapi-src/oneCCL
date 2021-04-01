@@ -141,7 +141,7 @@ std::string to_string(const global_sorted_colored_plain_graphs& cluster) {
 }
 
 std::string to_string(const global_plain_colored_graphs& cluster) {
-    return std::string("Plain Colored- ") + to_string_impl(cluster);
+    return std::string("Plain Colored - ") + to_string_impl(cluster);
 }
 
 void fill_adjacency_matrix_for_single_device_in_devices_by_cond(

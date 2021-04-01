@@ -24,6 +24,15 @@ ccl_master_sched* ccl_sched_cache::find_unsafe(const ccl_sched_key& key) const {
             sched = it->second;
         }
     }
+
+#ifdef ENABLE_DEBUG
+    if (sched && ccl::global_data::env().cache_key_type != ccl_cache_key_full) {
+        LOG_DEBUG("do sanity check for found sched ", sched);
+        CCL_THROW_IF_NOT(key.check(sched->coll_param, sched->coll_attr));
+        LOG_DEBUG("sanity check is passed for sched ", sched);
+    }
+#endif
+
     return sched;
 }
 

@@ -54,9 +54,23 @@ struct ccl_sched_buffer_handler {
     ccl_sched_buffer_handler(ccl_buffer buffer, size_t size) : buffer(buffer), size(size) {}
 };
 
+#ifdef CCL_ENABLE_SYCL
+struct ccl_sched_sycl_buffer_handler : public ccl_sched_buffer_handler {
+    const sycl::context ctx;
+
+    ccl_sched_sycl_buffer_handler(ccl_buffer buffer, size_t size, const sycl::context& ctx)
+            : ccl_sched_buffer_handler(buffer, size),
+              ctx(ctx) {}
+};
+#endif /* CCL_ENABLE_SYCL */
+
 struct ccl_sched_memory {
     std::list<ccl_sched_buffer_handler> buf_list;
     std::list<atl_mr_t*> mr_list;
+
+#ifdef CCL_ENABLE_SYCL
+    std::list<ccl_sched_sycl_buffer_handler> sycl_buf_list;
+#endif /* CCL_ENABLE_SYCL */
 };
 
 static size_t lifo_priority = 0;
@@ -76,9 +90,15 @@ struct ccl_sched_base {
     size_t get_priority() const;
 
     ccl_buffer alloc_buffer(size_t bytes);
+
+#ifdef CCL_ENABLE_SYCL
+    ccl_buffer alloc_staging_buffer(size_t bytes);
+#endif /* CCL_ENABLE_SYCL */
+
+    void free_buffers();
+
     ccl_buffer update_buffer(ccl_buffer buffer, size_t new_size);
     ccl_buffer find_and_realloc_buffer(void* buffer, size_t new_size, size_t expected_size = 0);
-    void free_buffers();
 
     void add_memory_region(atl_mr_t* mr);
 

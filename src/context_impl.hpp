@@ -29,13 +29,13 @@ namespace ccl {
 
 namespace v1 {
 
-template <class context_type, class... attr_value_pair_t>
+template <class context_type, class... attr_val_type>
 CCL_API context context::create_context_from_attr(context_type& native_context_handle,
-                                                  attr_value_pair_t&&... avps) {
+                                                  attr_val_type&&... avs) {
     auto version = utils::get_library_version();
 
     context str{ context::impl_value_t(new context::impl_t(native_context_handle, version)) };
-    int expander[]{ (str.template set<attr_value_pair_t::idx()>(avps.val()), 0)... };
+    int expander[]{ (str.template set<attr_val_type::idx()>(avs.val()), 0)... };
     (void)expander;
     str.build_from_params();
 

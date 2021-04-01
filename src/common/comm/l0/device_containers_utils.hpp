@@ -58,6 +58,14 @@ struct printer {
                 { dev->template get_comm_data<group_id, class_id>().rank, dev->to_string() });
         }
     }
+
+    template <class device_t>
+    void operator()(const native::device_t_ptr<device_t>& dev) {
+        if (dev) {
+            device_rank_descr.insert(
+                { dev->template get_comm_data<group_id, class_id>().rank, dev->to_string() });
+        }
+    }
     /*
     template<class device_t>
     void operator() (const native::indexed_device_container<native::ccl_thread_comm<device_t>>& container)

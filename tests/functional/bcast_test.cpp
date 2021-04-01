@@ -13,65 +13,47 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#define TEST_CCL_BCAST
-
-#define COLL_NAME "CCL_BCAST"
+#define ALGO_SELECTION_ENV "CCL_BCAST"
+#define BCAST_VALUE_COEFF  128
 
 #include "base_impl.hpp"
 
 template <typename T>
 class bcast_test : public base_test<T> {
 public:
-    int check(typed_test_param<T>& param) {
-        for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++) {
-            for (size_t elem_idx = 0; elem_idx < param.elem_count; elem_idx++) {
-                T expected = static_cast<T>(elem_idx);
-                if (base_test<T>::check_error(param, expected, buf_idx, elem_idx))
+    int check(test_operation<T>& op) {
+        for (size_t buf_idx = 0; buf_idx < op.buffer_count; buf_idx++) {
+            for (size_t elem_idx = 0; elem_idx < op.elem_count;
+                 elem_idx += op.get_check_step(elem_idx)) {
+                T expected = static_cast<T>(elem_idx % BCAST_VALUE_COEFF);
+                if (base_test<T>::check_error(op, expected, buf_idx, elem_idx))
                     return TEST_FAILURE;
             }
         }
         return TEST_SUCCESS;
     }
 
-    void fill_buffers(typed_test_param<T>& param) {
-        for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++) {
-            for (size_t elem_idx = 0; elem_idx < param.elem_count; elem_idx++) {
-                if (param.process_idx == ROOT_PROCESS_IDX) {
-                    param.recv_buf[buf_idx][elem_idx] = elem_idx;
-                }
-                else {
-                    param.recv_buf[buf_idx][elem_idx] = static_cast<T>(SOME_VALUE);
-                    if (param.test_conf.datatype == DT_BFLOAT16) {
-                        param.recv_buf_bf16[buf_idx][elem_idx] = static_cast<short>(SOME_VALUE);
-                    }
-                }
+    void fill_recv_buffers(test_operation<T>& op) {
+        if (op.comm_rank != ROOT_RANK)
+            return;
+
+        for (size_t buf_idx = 0; buf_idx < op.buffer_count; buf_idx++) {
+            for (size_t elem_idx = 0; elem_idx < op.elem_count; elem_idx++) {
+                op.recv_bufs[buf_idx][elem_idx] = elem_idx % BCAST_VALUE_COEFF;
             }
-            param.send_buf[buf_idx] = param.recv_buf[buf_idx];
         }
     }
 
-    size_t get_recv_buf_size(typed_test_param<T>& param) {
-        return param.elem_count;
-    }
-
-    void run_derived(typed_test_param<T>& param) {
-        void* recv_buf;
-        size_t count = param.elem_count;
-
-        const ccl_test_conf& test_conf = param.get_conf();
-
+    void run_derived(test_operation<T>& op) {
         auto attr = ccl::create_operation_attr<ccl::broadcast_attr>();
-
-        ccl::datatype datatype = get_ccl_lib_datatype(test_conf);
-
-        for (size_t buf_idx = 0; buf_idx < param.buffer_count; buf_idx++) {
-            size_t new_idx = param.buf_indexes[buf_idx];
-            param.prepare_coll_attr(attr, param.buf_indexes[buf_idx]);
-
-            recv_buf = param.get_recv_buf(new_idx);
-
-            param.reqs[buf_idx] = ccl::broadcast(
-                recv_buf, count, datatype, ROOT_PROCESS_IDX, GlobalData::instance().comms[0], attr);
+        for (auto buf_idx : op.buf_indexes) {
+            op.prepare_attr(attr, buf_idx);
+            op.events.push_back(ccl::broadcast(op.get_recv_buf(buf_idx),
+                                               op.elem_count,
+                                               op.datatype,
+                                               ROOT_RANK,
+                                               global_data::instance().comms[0],
+                                               attr));
         }
     }
 };

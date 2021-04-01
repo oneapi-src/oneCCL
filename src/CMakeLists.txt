@@ -49,10 +49,17 @@ list (APPEND EXTENSIONS_SRC
 
                     common/comm/l0/comm_context.cpp
                     common/comm/l0/comm_context_storage.cpp
+                    common/comm/l0/context_comm_addr.cpp
 
+                    common/comm/l0/devices/ccl_gpu_base_comm.cpp
                     common/comm/l0/devices/ccl_gpu_comm.cpp
                     common/comm/l0/devices/ccl_virtual_gpu_comm.cpp
                     common/comm/l0/devices/ccl_ipc_gpu_comm.cpp
+
+                    common/comm/l0/devices/communication_structs/connection.cpp
+                    common/comm/l0/devices/communication_structs/ipc_connection.cpp
+                    common/comm/l0/devices/communication_structs/ipc_server.cpp
+                    common/comm/l0/devices/communication_structs/ipc_client.cpp
 
                     common/comm/single_device_communicator/single_device_communicator.cpp
                     common/comm/l0/communicator/device_group/device_ring_communicator.cpp
@@ -72,6 +79,13 @@ list (APPEND EXTENSIONS_SRC
                     common/comm/l0/topology/ring/thread_group_ring_creator.cpp
                     common/comm/l0/topology/ring/process_group_ring_creator.cpp
                     common/comm/l0/topology/topology_construction_utils.cpp
+
+                    common/comm/l0/context/scaling_ctx/ipc_ctx_session.cpp
+                    common/comm/l0/context/scaling_ctx/ipc_ctx_utils.cpp
+                    common/comm/l0/context/scaling_ctx/ipc_session_key.cpp
+
+                    common/comm/l0/context/scaling_ctx/observer_ctx_session.cpp
+                    common/comm/l0/context/scaling_ctx/observer_session_key.cpp
 
                     common/comm/l0/gpu_comm_attr.cpp
                     common/comm/l0/modules/base_entry_module.cpp
@@ -109,6 +123,7 @@ set(CCL_SRC
     atl/ofi/atl_ofi.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable_simple.cpp
+    atl/util/pm/pmi_resizable_rt/pmi_resizable_simple_internal.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable/helper.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs_keeper.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable/pmi_listener.cpp
@@ -116,7 +131,8 @@ set(CCL_SRC
     atl/util/pm/pmi_resizable_rt/pmi_resizable/request_wrappers_k8s.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable/resizable_pmi.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable/shift_list.cpp
-        atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs/internal_kvs.cpp
+    atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs/internal_kvs.cpp
+    atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs/internal_kvs_server.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs/users_kvs.cpp
     atl/util/pm/pmi_rt/pmi_simple.cpp
     atl/util/pm/pmi_rt/pmi/simple_pmi.c
@@ -155,6 +171,8 @@ set(CCL_SRC
     comp/bf16/bf16.cpp
     comp/bf16/bf16_intrisics.cpp
     comp/comp.cpp
+    comp/fp16/fp16.cpp
+    comp/fp16/fp16_intrisics.cpp
     sched/sched.cpp
     sched/extra_sched.cpp
     sched/master_sched.cpp
@@ -179,7 +197,7 @@ set(CCL_SRC
 
     common/comm/atl_tag.cpp
     common/comm/comm.cpp
-    common/comm/comm_interface.cpp
+    common/comm/compiler_comm_interface_dispatcher.cpp
     common/comm/host_communicator/host_communicator.cpp
 
     common/context/context.cpp
@@ -193,6 +211,7 @@ set(CCL_SRC
     common/log/log.cpp
     common/event/impls/host_event.cpp
     common/event/impls/native_event.cpp
+    common/framework/framework.cpp
     common/request/request.cpp
     common/utils/spinlock.cpp
     common/utils/version.cpp
@@ -217,53 +236,47 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 #special library that holds objects only
 add_library(ccl-objects OBJECT ${CCL_SRC})
 set_target_properties(ccl-objects PROPERTIES POSITION_INDEPENDENT_CODE 1)
-target_compile_definitions(ccl-objects PRIVATE PT_LOCK_SPIN=1)
-target_compile_definitions(ccl-objects PRIVATE ATL_TRANSPORT_DL_DIR=\"${CCL_BUILD_DIR}\")
 target_include_directories(ccl-objects PRIVATE ${CCL_INC_DIRS})
 
-if(COMPUTE_RUNTIME_TARGET_NAME)
-    target_include_directories(ccl-objects PRIVATE $<TARGET_PROPERTY:${COMPUTE_RUNTIME_TARGET_NAME},INTERFACE_INCLUDE_DIRECTORIES>)
+if(COMPUTE_BACKEND_TARGET_NAME)
+    target_include_directories(ccl-objects PRIVATE $<TARGET_PROPERTY:${COMPUTE_BACKEND_TARGET_NAME},INTERFACE_INCLUDE_DIRECTORIES>)
 endif()
 
 # add library search directory
 link_directories(${PROJECT_SOURCE_DIR}/mpi/lib)
 link_directories(${LIBFABRIC_LIB_DIR})
+
 #shared library
 add_library(ccl SHARED $<TARGET_OBJECTS:ccl-objects>)
 target_include_directories(ccl PUBLIC ${CCL_INC_DIRS})
+
 # link with release_mt libmpi.so for oneAPI Base toolkit
-set_target_properties(ccl PROPERTIES LINK_FLAGS "-Wl,-rpath,../../../../mpi/latest/lib/release_mt/")
-target_link_libraries(ccl PUBLIC dl pthread ${EXTERNAL_LIBS} ${COMPUTE_RUNTIME_TARGET_NAME} fabric mpi)
+# libccl.so -> cpu_icc/cpu_gpu_dpcpp -> lib -> latest -> ccl -> mpi -> ... 
+set(ONEAPI_IMPI_RPATH "'$ORIGIN'/../../../../mpi/latest/lib/release_mt/")
+set_target_properties(ccl PROPERTIES LINK_FLAGS "-Wl,-rpath,${ONEAPI_IMPI_RPATH}")
+
+target_link_libraries(ccl PUBLIC dl pthread ${EXTERNAL_LIBS} ${COMPUTE_BACKEND_TARGET_NAME} fabric mpi)
 if (NOT LIB_SO_VERSION AND NOT LIB_MAJOR_VERSION)
         set_target_properties(ccl PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CCL_BUILD_DIR})
 else()
         set_target_properties(ccl PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CCL_BUILD_DIR} VERSION ${LIB_SO_VERSION} SOVERSION ${LIB_MAJOR_VERSION})
 endif()
+
 install(TARGETS ccl LIBRARY DESTINATION ${CCL_INSTALL_LIB})
 install(FILES
     "../cmake/FindOpenCL.cmake"
-    "../cmake/FindL0.cmake"
+    "../cmake/Findlevel_zero.cmake"
     "../cmake/FindSYCL.cmake"
     "../cmake/FindIntelSYCL.cmake"
+    "../cmake/FindIntelSYCL_level_zero.cmake"
     "../cmake/FindComputeCpp.cmake"
     DESTINATION ${CCL_INSTALL_LIB})
-
 
 #static library
 add_library(ccl-static STATIC $<TARGET_OBJECTS:ccl-objects>)
 set_target_properties(ccl-static PROPERTIES OUTPUT_NAME ccl)
 set_target_properties(ccl-static PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${CCL_BUILD_DIR})
 install(TARGETS ccl-static ARCHIVE DESTINATION ${CCL_INSTALL_LIB} OPTIONAL)
-
-if(MULTI_GPU_SUPPORT)
-    message("Turn on L0 multi-gpu unit tests")
-    add_library(ccl-ut-static STATIC $<TARGET_OBJECTS:ccl-objects>)
-    target_link_libraries(ccl-ut-static PUBLIC dl pthread ${EXTERNAL_LIBS} ${COMPUTE_RUNTIME_TARGET_NAME} fabric mpi)
-    set_target_properties(ccl-ut-static PROPERTIES COMPILE_FLAGS "-fvisibility=default -DUNIT_TESTS")
-    set_target_properties(ccl-ut-static PROPERTIES OUTPUT_NAME cclut)
-    set_target_properties(ccl-ut-static PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${CCL_BUILD_DIR})
-    set_target_properties(ccl-ut-static PROPERTIES INTERFACE_INCLUDE_DIRECTORIES  $<TARGET_PROPERTY:${COMPUTE_RUNTIME_TARGET_NAME},INTERFACE_INCLUDE_DIRECTORIES>)
-endif(MULTI_GPU_SUPPORT)
 
 #headers installation
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/

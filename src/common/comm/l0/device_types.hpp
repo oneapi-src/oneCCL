@@ -65,7 +65,7 @@ enum class gpu_types : size_t {
     MAX_TYPE
 };
 
-using gpu_type_names = utils::enum_to_str<static_cast<int>(gpu_types::MAX_TYPE)>;
+using gpu_type_names = ::utils::enum_to_str<static_cast<int>(gpu_types::MAX_TYPE)>;
 inline std::string to_string(gpu_types type) {
     return gpu_type_names({ "REAL_GPU",
                             "VIRTUAL_GPU",

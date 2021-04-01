@@ -25,7 +25,7 @@ set(PROJECT_FULL_NAME "oneAPI Collective Communications Library")
 
 project(${PROJECT_NAME})
 
-include(cmake/helpers.cmake)
+include(${PROJECT_SOURCE_DIR}/cmake/helpers.cmake)
 
 check_compiler_version()
 
@@ -44,7 +44,10 @@ if (${CMAKE_BUILD_TYPE_CASE_INSENSITIVE} STREQUAL "debug")
     set(USE_SECURITY_FLAGS FALSE)
 endif()
 
+option(BUILD_EXAMPLES "Build examples" TRUE)
+option(BUILD_FT "Build functional tests" TRUE)
 option(BUILD_UT "Build unit tests" TRUE)
+
 option(USE_CODECOV_FLAGS "Calculate code coverage" FALSE)
 option(WITH_ASAN "Use address sanitizer, can only be used in Debug build" FALSE)
 
@@ -56,11 +59,16 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 
 #show build info
-message(STATUS "Build unit tests: ${BUILD_UT}")
 message(STATUS "Installation directory: ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE_CASE_INSENSITIVE}")
 message(STATUS "C compiler : ${CMAKE_C_COMPILER}")
 message(STATUS "CXX compiler : ${CMAKE_CXX_COMPILER}")
+message(STATUS "Build examples: ${BUILD_EXAMPLES}")
+message(STATUS "Build functional tests: ${BUILD_FT}")
+message(STATUS "Build unit tests: ${BUILD_UT}")
+
+add_definitions(-DCCL_C_COMPILER="${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
+add_definitions(-DCCL_CXX_COMPILER="${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 
 SET(MULTI_GPU_SUPPORT OFF CACHE BOOL "Enable Multi GPU extension support")
 
@@ -76,7 +84,10 @@ set(CCL_INSTALL_LICENSE "${CMAKE_INSTALL_PREFIX}/licensing")
 set(CCL_INSTALL_MODULE "${CMAKE_INSTALL_PREFIX}/modulefiles")
 set(CCL_INSTALL_EXAMPLES "${CMAKE_INSTALL_PREFIX}/examples")
 set(CCL_INSTALL_TESTS "${CMAKE_INSTALL_PREFIX}/tests")
+set(CCL_INSTALL_UNIT_TESTS "${CMAKE_INSTALL_PREFIX}/tests/unit")
+set(CCL_INSTALL_KERNELS "${CMAKE_INSTALL_PREFIX}/lib/kernels")
 
+set(CCL_UNIT_TESTS_BUILD "${CMAKE_BINARY_DIR}/tests/unit")
 
 set(MPI_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/mpi/include/")
 set(MPI_LIB_DIR "${PROJECT_SOURCE_DIR}/mpi/lib/")
@@ -92,7 +103,6 @@ include_directories(${LIBFABRIC_INCLUDE_DIR})
 link_directories(${MPI_LIB_DIR})
 link_directories(${LIBFABRIC_LIB_DIR})
 
-set(CCL_INSTALL_UNIT_TESTS "${CMAKE_INSTALL_PREFIX}/tests/unit")
 
 set(CMAKE_SKIP_INSTALL_RPATH TRUE)
 set(CMAKE_SKIP_RPATH TRUE)
@@ -116,6 +126,8 @@ if(USE_SECURITY_FLAGS)
         endif()
     endif()
 endif()
+
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--version-script=${PROJECT_SOURCE_DIR}/ccl.map")
 
 if(${CMAKE_C_COMPILER_ID} STREQUAL "Intel" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
 	if (USE_CODECOV_FLAGS)
@@ -141,35 +153,28 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${CXX_COMP
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(TRY_ENABLE_SYCL_L0 OFF)
+set(TRY_ENABLE_SYCL_L0 ON)
 
-if (COMPUTE_RUNTIME)
-    activate_compute_runtime("${CMAKE_CURRENT_LIST_DIR}/cmake" ${COMPUTE_RUNTIME})
-    if (NOT COMPUTE_RUNTIME_TARGET_NAME)
-        message(FATAL_ERROR "Failed to find requested compute runtime: ${COMPUTE_RUNTIME}")
+if (COMPUTE_BACKEND)
+    activate_compute_backend("${CMAKE_CURRENT_LIST_DIR}/cmake" ${COMPUTE_BACKEND})
+    if (NOT COMPUTE_BACKEND_TARGET_NAME)
+        message(FATAL_ERROR "Failed to find requested compute runtime: ${COMPUTE_BACKEND}")
     endif()
-    message(STATUS "COMPUTE_RUNTIME_TARGET_NAME: ${COMPUTE_RUNTIME_TARGET_NAME}")
-    if (${CCL_ENABLE_SYCL_V} STREQUAL 1)
-        option (CCL_ENABLE_SYCL "Enable CCL SYCL runtime" ON)
-        message(STATUS "Enable CCL SYCL runtime")
-        if (${COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "Intel::SYCL")
-            set (CCL_ENABLE_SYCL_CHECK_CONTRACT "#if defined(__cplusplus)\n#if !defined(__clang__) || __clang_major__ < 9 || !defined(SYCL_LANGUAGE_VERSION)\n#error This version of CCL configured only for oneAPI DPC++ Compiler\n#endif\n#endif")
-            execute_process(COMMAND dpcpp -v
-                OUTPUT_VARIABLE DPCPP_VERSION
-                ERROR_VARIABLE DPCPP_VERSION
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-                ERROR_STRIP_TRAILING_WHITESPACE
-            )
-            message(STATUS "DPC++ compiler version:\n" "${DPCPP_VERSION}")
-        else(${COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "Codeplay::ComputeCpp")
-            set (CCL_ENABLE_SYCL_CHECK_CONTRACT "#if defined(__cplusplus)\n#if !defined(__clang__) || __clang_major__ < 6\n#error This version of CCL configured only for oneAPI DPC++ Compiler\n#endif\n#endif")
-        endif()
-    endif()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMPUTE_RUNTIME_FLAGS}")
-    if ((${COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "Intel::SYCL") AND
-        ${CCL_ENABLE_SYCL_L0} STREQUAL 1)
-        set(MULTI_GPU_SUPPORT ON)
-    elseif(${COMPUTE_RUNTIME_TARGET_NAME} STREQUAL "ze_loader")
+    message(STATUS "COMPUTE_BACKEND_TARGET_NAME: ${COMPUTE_BACKEND_TARGET_NAME}")
+
+	if (${COMPUTE_BACKEND_TARGET_NAME} STREQUAL "Intel::SYCL" OR ${COMPUTE_BACKEND_TARGET_NAME} STREQUAL "Intel::SYCL_level_zero")
+		option (CCL_ENABLE_SYCL "Enable CCL SYCL runtime" ON)
+		message(STATUS "Enable CCL SYCL runtime")
+		execute_process(COMMAND dpcpp -v
+			OUTPUT_VARIABLE DPCPP_VERSION
+			ERROR_VARIABLE DPCPP_VERSION
+			OUTPUT_STRIP_TRAILING_WHITESPACE
+			ERROR_STRIP_TRAILING_WHITESPACE
+		)
+		message(STATUS "DPC++ compiler version:\n" "${DPCPP_VERSION}")
+	endif()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMPUTE_BACKEND_FLAGS}")
+    if (${COMPUTE_BACKEND_TARGET_NAME} STREQUAL "Intel::SYCL_level_zero" OR ${COMPUTE_BACKEND_TARGET_NAME} STREQUAL "ze_loader")
         set(MULTI_GPU_SUPPORT ON)
     endif()
     if (MULTI_GPU_SUPPORT)
@@ -191,50 +196,7 @@ if(WITH_ASAN AND ${CMAKE_BUILD_TYPE_CASE_INSENSITIVE} STREQUAL "debug")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -lasan")
 endif()
 
-set(GCC_BF16_MIN_SUPPORTED "4.9.0")
-set(GCC_BF16_AVX512BF_MIN_SUPPORTED "10.0.0")
-set(ICC_BF16_AVX512BF_MIN_SUPPORTED "19.1.0")
-set(CLANG_BF16_MIN_SUPPORTED "9.0.0")
-set(CLANG_BF16_AVX512BF_MIN_SUPPORTED "10.0.0")
-
-if (${CMAKE_C_COMPILER_ID} STREQUAL "Intel"
-    OR (${CMAKE_C_COMPILER_ID} STREQUAL "Clang"
-        AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${CLANG_BF16_MIN_SUPPORTED})
-    OR (${CMAKE_C_COMPILER_ID} STREQUAL "GNU"
-        AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${GCC_BF16_MIN_SUPPORTED})
-    )
-    add_definitions(-DCCL_BF16_COMPILER)
-    set(CCL_BF16_COMPILER ON)
-    message(STATUS "BF16 compiler: yes")
-else()
-    set(CCL_BF16_COMPILER OFF)
-    message(STATUS "BF16 compiler: no")
-endif()
-
-if ((${CMAKE_C_COMPILER_ID} STREQUAL "Intel"
-        AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${ICC_BF16_AVX512BF_MIN_SUPPORTED})
-    OR (${CMAKE_C_COMPILER_ID} STREQUAL "Clang"
-        AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${CLANG_BF16_AVX512BF_MIN_SUPPORTED})
-    OR (${CMAKE_C_COMPILER_ID} STREQUAL "GNU"
-        AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${GCC_BF16_AVX512BF_MIN_SUPPORTED})
-    )
-    add_definitions(-DCCL_BF16_AVX512BF_COMPILER)
-    message(STATUS "BF16 AVX512BF compiler: yes")
-else()
-    message(STATUS "BF16 AVX512BF compiler: no")
-endif()
-
-if (CCL_BF16_COMPILER)
-    if ((${CMAKE_C_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_C_COMPILER_ID} STREQUAL "GNU"))
-        add_definitions(-DCCL_BF16_TARGET_ATTRIBUTES)
-        message(STATUS "BF16 target attributes: yes")
-    else()
-        message(STATUS "BF16 target attributes: no")
-    endif()
-endif()
-
-add_definitions(-DCCL_GPU_BF16_TRUNCATE)
-set(CCL_GPU_BF16_TRUNCATE ON)
+set_lp_env()
 
 set(CCL_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/src)
 
@@ -259,8 +221,14 @@ install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/ccl DESTINATION ${CCL_INSTALL_MODUL
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/third-party-programs.txt DESTINATION ${CCL_INSTALL_LICENSE})
 install(PROGRAMS ${PROJECT_SOURCE_DIR}/LICENSE DESTINATION ${CCL_INSTALL_LICENSE})
 
+# copy kernels
+if(COMPUTE_BACKEND AND EXISTS "${PROJECT_SOURCE_DIR}/src/kernels")
+    file(GLOB spv_kernels "${PROJECT_SOURCE_DIR}/src/kernels/ring_*.spv")
+    install(PROGRAMS ${spv_kernels} DESTINATION ${CCL_INSTALL_KERNELS})
+endif()
+
 set(CCL_MAJOR_VERSION     "2021")
-set(CCL_MINOR_VERSION     "1")
+set(CCL_MINOR_VERSION     "2")
 set(CCL_UPDATE_VERSION    "0")
 set(CCL_PRODUCT_STATUS    "Gold")
 string(TIMESTAMP CCL_PRODUCT_BUILD_DATE "%Y-%m-%dT %H:%M:%SZ")
@@ -270,19 +238,35 @@ configure_file(${PROJECT_SOURCE_DIR}/include/oneapi/ccl/config.h.in "${CMAKE_CUR
 file(COPY "${CMAKE_CURRENT_BINARY_DIR}/include/oneapi/ccl/config.h" DESTINATION ${PROJECT_SOURCE_DIR}/include/oneapi/ccl)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/include)
 
+#generate oneCCLConfig*.cmake
+configure_file("cmake/templates/oneCCLConfig.cmake.in"
+               "${CCL_INSTALL_LIB}/cmake/oneCCL/oneCCLConfig.cmake"
+               COPYONLY)
+
+set(PROJECT_VERSION "${CCL_MAJOR_VERSION}.${CCL_MINOR_VERSION}.${CCL_UPDATE_VERSION}")
+
+configure_file("cmake/templates/oneCCLConfigVersion.cmake.in"
+               "${CCL_INSTALL_LIB}/cmake/oneCCL/oneCCLConfigVersion.cmake"
+               @ONLY)
 
 #include other CMakeLists
 
 add_subdirectory(src)
-add_subdirectory(examples/benchmark)
-add_subdirectory(examples/common)
-add_subdirectory(examples/cpu)
-if (CCL_ENABLE_SYCL)
-    add_subdirectory(examples/sycl)
+
+if (BUILD_EXAMPLES)
+    add_subdirectory(examples/benchmark)
+    add_subdirectory(examples/common)
+    add_subdirectory(examples/cpu)
+    add_subdirectory(examples/external_launcher)
+    if (CCL_ENABLE_SYCL)
+        add_subdirectory(examples/sycl)
+    endif()
 endif()
 
-add_subdirectory(tests/functional)
+if (BUILD_FT)
+    add_subdirectory(tests/functional)
+endif()
 
 if (BUILD_UT)
-    #add_subdirectory(tests/unit)
+	#add_subdirectory(tests/unit)
 endif()

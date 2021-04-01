@@ -33,12 +33,15 @@
 #include "common/comm/l0/context/scaling_ctx/numa_ctx_impl.hpp"
 #include "common/comm/l0/context/scaling_ctx/scale_up_ctx_impl.hpp"
 #include "common/comm/l0/context/scaling_ctx/scale_out_ctx_impl.hpp"
+#include "common/comm/l0/context/scaling_ctx/ipc_ctx_impl.hpp"
 /*REFACTORING*/
 
 namespace native {
 
 namespace detail {
-/*REFACTORING*/
+
+namespace helper {
+
 template <class device_t,
           ccl::group_split_type group_id,
           ccl::device_topology_type class_id,
@@ -67,7 +70,310 @@ device_t_ptr<ccl_numa_proxy<device_t>> add_numa_proxy_device(
     }
     return ret;
 }
-/*REFACTORNG*/
+
+template <class device_t,
+          ccl::group_split_type group_id,
+          ccl::device_topology_type class_id,
+          class context,
+          class = typename std::enable_if<
+              not std::is_same<device_t, ccl_thread_comm<typename device_t::impl_t>>::value>::type>
+device_t_ptr<ccl_gpu_scaleup_proxy<device_t>> add_scaleup_device(
+    specific_indexed_device_storage& storage,
+    const ccl::device_index_type& index,
+    context& context_to_register,
+    device_storage& device_factory) {
+    device_t_ptr<ccl_gpu_scaleup_proxy<device_t>> ret;
+    indexed_device_container<device_t>& container = std::get<device_t::type_idx()>(storage);
+    for (auto it = container.begin(); it != container.end(); ++it) {
+        // find device candidate
+        if (it->second->get_device().get_device_path() == index) {
+            // promote device candidate to scaleup type
+            size_t index = it->first;
+            device_t_ptr<device_t> device = it->second;
+            container.erase(it);
+
+            ret = device_factory.create_gpu_device<ccl_gpu_scaleup_proxy<device_t>>(
+                device->get_device(), container.size(), *device);
+            ret->template assign<group_id, class_id>(context_to_register,
+                                                     context_to_register.get_scaleup_ctx());
+            auto inserted =
+                std::get<ccl_gpu_scaleup_proxy<device_t>::type_idx()>(storage).emplace(index, ret);
+
+            if (!inserted.second) {
+                throw std::runtime_error(
+                    std::string(__PRETTY_FUNCTION__) + " - cannot promoted device wrapper: " +
+                    device->to_string() + " by index: " + std::to_string(index) +
+                    " - to scaleup, because it exist already: " +
+                    inserted.first->second->to_string());
+            }
+            break;
+        }
+    }
+    return ret;
+}
+
+template <class device_t,
+          ccl::group_split_type group_id,
+          ccl::device_topology_type class_id,
+          class context,
+          typename std::enable_if<
+              std::is_same<device_t, ccl_thread_comm<typename device_t::impl_t>>::value,
+              int>::type = 0>
+device_t_ptr<ccl_gpu_scaleup_proxy<device_t>> add_scaleup_device(
+    specific_indexed_device_storage& storage,
+    const ccl::device_index_type& index,
+    context& context_to_register,
+    device_storage& device_factory) {
+    using impl_device_t = typename device_t::impl_t;
+    device_t_ptr<ccl_gpu_scaleup_proxy<impl_device_t>> ret;
+    indexed_device_container<device_t>& container = std::get<device_t::type_idx()>(storage);
+    for (auto it = container.begin(); it != container.end(); ++it) {
+        // find device candidate
+        if (it->second->get_device().get_device_path() == index) {
+            // promote device candidate to scaleup type
+            size_t index = it->first;
+            device_t_ptr<device_t> device = it->second;
+            container.erase(it);
+
+            impl_device_t& core_dev = device->get_impl_device();
+            ret = device_factory.create_gpu_device<ccl_gpu_scaleup_proxy<impl_device_t>>(
+                device->get_device(), container.size(), core_dev);
+            ret->template assign<group_id, class_id>(context_to_register,
+                                                     context_to_register.get_scaleup_ctx());
+            auto inserted =
+                std::get<ccl_gpu_scaleup_proxy<impl_device_t>::type_idx()>(storage).emplace(index,
+                                                                                            ret);
+            if (!inserted.second) {
+                throw std::runtime_error(
+                    std::string(__PRETTY_FUNCTION__) + " - cannot promoted device wrapper: " +
+                    device->to_string() + " by index: " + std::to_string(index) +
+                    " - to scaleup, because it exist already: " +
+                    inserted.first->second->to_string());
+            }
+            break;
+        }
+    }
+    return ret;
+}
+
+//-S- correct version
+template <class device_t,
+          ccl::group_split_type group_id,
+          ccl::device_topology_type class_id,
+          class context,
+          class = typename std::enable_if<
+              not std::is_same<device_t, ccl_thread_comm<typename device_t::impl_t>>::value>::type>
+device_t_ptr<ccl_ipc_source_gpu_comm<device_t>> add_ipc_src_device(
+    specific_indexed_device_storage& storage,
+    const ccl::device_index_type& index,
+    context& context_to_register,
+    device_storage& device_factory) {
+    device_t_ptr<ccl_ipc_source_gpu_comm<device_t>> ret;
+    indexed_device_container<device_t>& container = std::get<device_t::type_idx()>(storage);
+    for (auto it = container.begin(); it != container.end(); ++it) {
+        // find device candidate
+        if (it->second->get_device().get_device_path() == index) {
+            // promote device candidate to ipc_src type
+            size_t index = it->first;
+            device_t_ptr<device_t> device = it->second;
+            container.erase(it);
+
+            ret = device_factory.create_gpu_device<ccl_ipc_source_gpu_comm<device_t>>(
+                device->get_device(), container.size(), *device, group_id, class_id);
+            ret->template assign<group_id, class_id>(context_to_register,
+                                                     context_to_register.get_ipc_ctx());
+            auto inserted =
+                std::get<ccl_ipc_source_gpu_comm<device_t>::type_idx()>(storage).emplace(index,
+                                                                                         ret);
+
+            if (!inserted.second) {
+                throw std::runtime_error(
+                    std::string(__PRETTY_FUNCTION__) + " - cannot promoted device wrapper: " +
+                    device->to_string() + " by index: " + std::to_string(index) +
+                    " - to ipc_src, because it exist already: " +
+                    inserted.first->second->to_string());
+            }
+            break;
+        }
+    }
+    return ret;
+}
+
+template <class device_t,
+          ccl::group_split_type group_id,
+          ccl::device_topology_type class_id,
+          class context,
+          class = typename std::enable_if<
+              not std::is_same<device_t, ccl_thread_comm<typename device_t::impl_t>>::value>::type>
+device_t_ptr<ccl_scaleout_proxy<device_t>> add_scaleout_device(
+    specific_indexed_device_storage& storage,
+    const ccl::device_index_type& index,
+    context& context_to_register,
+    device_storage& device_factory) {
+    device_t_ptr<ccl_scaleout_proxy<device_t>> ret;
+    indexed_device_container<device_t>& container = std::get<device_t::type_idx()>(storage);
+    for (auto it = container.begin(); it != container.end(); ++it) {
+        // find device candidate
+        if (it->second->get_device().get_device_path() == index) {
+            // promote device candidate to scaleup type
+            size_t index = it->first;
+            device_t_ptr<device_t> device = it->second;
+            container.erase(it);
+
+            ret = device_factory.create_gpu_device<ccl_scaleout_proxy<device_t>>(
+                device->get_device(), container.size(), *device);
+            ret->template assign<group_id, class_id>(context_to_register,
+                                                     context_to_register.get_scaleout_ctx());
+            auto inserted =
+                std::get<ccl_scaleout_proxy<device_t>::type_idx()>(storage).emplace(index, ret);
+            if (!inserted.second) {
+                throw std::runtime_error(
+                    std::string(__PRETTY_FUNCTION__) + " - cannot promoted device wrapper: " +
+                    device->to_string() + " by index: " + std::to_string(index) +
+                    " - to scaleout, because it exist already: " +
+                    inserted.first->second->to_string());
+            }
+            break;
+        }
+    }
+    return ret;
+}
+
+template <class device_t,
+          ccl::group_split_type group_id,
+          ccl::device_topology_type class_id,
+          class context,
+          typename std::enable_if<
+              std::is_same<device_t, ccl_thread_comm<typename device_t::impl_t>>::value,
+              int>::type = 0>
+device_t_ptr<ccl_scaleout_proxy<device_t>> add_scaleout_device(
+    specific_indexed_device_storage& storage,
+    const ccl::device_index_type& index,
+    context& context_to_register,
+    device_storage& device_factory) {
+    using impl_device_t = typename device_t::impl_t;
+
+    device_t_ptr<ccl_scaleout_proxy<impl_device_t>> ret;
+    indexed_device_container<device_t>& container = std::get<device_t::type_idx()>(storage);
+    for (auto it = container.begin(); it != container.end(); ++it) {
+        // find device candidate
+        if (it->second->get_device().get_device_path() == index) {
+            // promote device candidate to scaleup type
+            size_t index = it->first;
+            device_t_ptr<device_t> device = it->second;
+            container.erase(it);
+
+            impl_device_t& core_dev = device->get_impl_device();
+
+            ret = device_factory.create_gpu_device<ccl_scaleout_proxy<impl_device_t>>(
+                device->get_device(), container.size(), *device);
+            ret->template assign<group_id, class_id>(context_to_register,
+                                                     context_to_register.get_scaleout_ctx());
+            auto inserted =
+                std::get<ccl_scaleout_proxy<impl_device_t>::type_idx()>(storage).emplace(index,
+                                                                                         ret);
+            if (!inserted.second) {
+                throw std::runtime_error(
+                    std::string(__PRETTY_FUNCTION__) + " - cannot promoted device wrapper: " +
+                    device->to_string() + " by index: " + std::to_string(index) +
+                    " - to scaleout, because it exist already: " +
+                    inserted.first->second->to_string());
+            }
+            break;
+        }
+    }
+    return ret;
+}
+
+} // namespace helper
+namespace role_mod {
+template <ccl::group_split_type group_id,
+          ccl::device_topology_type class_id,
+          class context,
+          class... device_candidate_t>
+size_t inject_scaleup_device(specific_indexed_device_storage& storage,
+                             const ccl::device_index_type& index,
+                             context& context_to_register,
+                             device_storage& device_factory) {
+    bool created = false;
+    std::array<bool, sizeof...(device_candidate_t)> expander{ (
+        created =
+            (created == false
+                 ? (bool)
+                       helper::add_scaleup_device<device_candidate_t, group_id, class_id, context>(
+                           storage, index, context_to_register, device_factory)
+                 : created))... };
+    auto inserted_it = std::find(expander.begin(), expander.end(), true);
+
+    return inserted_it != expander.end() ? std::distance(expander.begin(), inserted_it)
+                                         : std::numeric_limits<size_t>::max();
+}
+
+template <ccl::group_split_type group_id,
+          ccl::device_topology_type class_id,
+          class context,
+          class... device_candidate_t>
+size_t inject_numa_device(specific_plain_device_storage& plain_storage,
+                          const ccl::device_index_type& index,
+                          context& context_to_register,
+                          device_storage& device_factory) {
+    bool created = false;
+    std::array<bool, sizeof...(device_candidate_t)> expander{ (
+        created = (created == false
+                       ? (bool)helper::
+                             add_numa_proxy_device<device_candidate_t, group_id, class_id, context>(
+                                 plain_storage, index, context_to_register, device_factory)
+                       : created))... };
+    auto inserted_it = std::find(expander.begin(), expander.end(), true);
+
+    return inserted_it != expander.end() ? std::distance(expander.begin(), inserted_it)
+                                         : std::numeric_limits<size_t>::max();
+}
+
+template <ccl::group_split_type group_id,
+          ccl::device_topology_type class_id,
+          class context,
+          class... device_candidate_t>
+size_t inject_ipc_src_device(specific_indexed_device_storage& storage,
+                             const ccl::device_index_type& index,
+                             context& context_to_register,
+                             device_storage& device_factory) {
+    bool created = false;
+    std::array<bool, sizeof...(device_candidate_t)> expander{ (
+        created =
+            (created == false
+                 ? (bool)
+                       helper::add_ipc_src_device<device_candidate_t, group_id, class_id, context>(
+                           storage, index, context_to_register, device_factory)
+                 : created))... };
+    auto inserted_it = std::find(expander.begin(), expander.end(), true);
+
+    return inserted_it != expander.end() ? std::distance(expander.begin(), inserted_it)
+                                         : std::numeric_limits<size_t>::max();
+}
+
+template <ccl::group_split_type group_id,
+          ccl::device_topology_type class_id,
+          class context,
+          class... device_candidate_t>
+size_t inject_scaleout_device(specific_indexed_device_storage& storage,
+                              const ccl::device_index_type& index,
+                              context& context_to_register,
+                              device_storage& device_factory) {
+    bool created = false;
+    std::array<bool, sizeof...(device_candidate_t)> expander{ (
+        created =
+            (created == false
+                 ? (bool)
+                       helper::add_scaleout_device<device_candidate_t, group_id, class_id, context>(
+                           storage, index, context_to_register, device_factory)
+                 : created))... };
+    auto inserted_it = std::find(expander.begin(), expander.end(), true);
+
+    return inserted_it != expander.end() ? std::distance(expander.begin(), inserted_it)
+                                         : std::numeric_limits<size_t>::max();
+}
+} // namespace role_mod
 
 inline std::vector<marked_idx> create_marked(const plain_graph& id_vector) {
     std::vector<marked_idx> ret;
@@ -256,19 +562,24 @@ inline void separate_ipc_devices(const ccl::process_device_indices_type& ipc_ind
                 return val.color == process_idx;
             });
         if (graph_it == id_array.end()) {
-            assert(false && "Invalide configuration: not my graph");
-            throw std::runtime_error(
-                std::string(__FUNCTION__) +
-                " - unexpected graph for process: " + std::to_string(process_idx));
+            /* throw std::runtime_error(
+                std::string(__FUNCTION__) + " - unexpected graph for process: " +
+                std::to_string(process_idx) + ". Graph: \n" + to_string(id_array));
+            */
+            // nothing to do
+            return;
         }
 
         // calc IPC process Index
         size_t ipc_process_index_to_find = process_idx + 1;
+
         size_t actual_ipc_process_index = ipc_process_index_to_find;
+        /*
         if (process_idx == process_num - 1) {
             //replace terminator as index for right
             actual_ipc_process_index = 0;
         }
+        */
 
         // find  first IPC device
         graph_it = std::find_if(
@@ -292,7 +603,6 @@ inline void separate_ipc_devices(const ccl::process_device_indices_type& ipc_ind
     } while (false);
 
     //find left ipc
-    // find right ipcs
     do {
         auto graph_rit =
             std::find_if(id_array.rbegin(), id_array.rend(), [process_idx](const colored_idx& val) {
@@ -307,11 +617,9 @@ inline void separate_ipc_devices(const ccl::process_device_indices_type& ipc_ind
 
         // calc IPC process Index
         size_t ipc_process_index_to_find = process_idx - 1;
-        size_t actual_ipc_process_index = ipc_process_index_to_find;
         if (process_idx == 0) {
             //replace terminator as index for left
             ipc_process_index_to_find = process_num;
-            actual_ipc_process_index = process_num - 1;
         }
 
         // find  first IPC device
@@ -325,7 +633,7 @@ inline void separate_ipc_devices(const ccl::process_device_indices_type& ipc_ind
         }
 
         //test on ipc filter
-        auto candidate_it = ipc_indices.find(actual_ipc_process_index);
+        auto candidate_it = ipc_indices.find(ipc_process_index_to_find);
         if (candidate_it == ipc_indices.end() or
             (candidate_it->second.find(graph_rit->index) == candidate_it->second.end())) {
             break;
@@ -338,7 +646,7 @@ inline void separate_ipc_devices(const ccl::process_device_indices_type& ipc_ind
     } while (false);
 }
 
-template <ccl::group_split_type group_id, ccl::device_topology_type class_id>
+template <ccl::group_split_type group_id, ccl::device_topology_type class_id, class context_t>
 struct smart_ring_indexer {
     static constexpr color_t marked_color = std::numeric_limits<color_t>::max();
 
@@ -346,22 +654,30 @@ struct smart_ring_indexer {
                        color_t process_id,
                        size_t process_count,
                        size_t process_device_rank_offset,
+                       size_t process_device_size_offset,
                        device_storage& device_factory,
                        specific_indexed_device_storage& device_topology,
                        const ccl::process_device_indices_type& ipc_device,
-                       const ccl::process_device_indices_type& scaleout_device_indices)
+                       const ccl::process_device_indices_type& scaleout_device_indices,
+                       typename colored_plain_graph::iterator local_proc_ring_it,
+                       context_t& parent_ctx)
             : id_array(id_ring_vector),
               process_idx(process_id),
               process_num(process_count),
               device_index_offset(process_device_rank_offset),
+              device_size_offset(process_device_size_offset),
               factory(device_factory),
               topology(device_topology),
               ipc_src_indices(),
               ipc_dst_indices(),
               scaleout_indices(scaleout_device_indices),
-              marked_indices_count() {
+              marked_indices_count(),
+              context(parent_ctx) {
         separate_ipc_devices(
             ipc_device, process_idx, process_num, id_array, ipc_src_indices, ipc_dst_indices);
+
+        //offset used for calculation opertional rank & size
+        local_proc_color_it = local_proc_ring_it;
     }
 
     template <class device_t>
@@ -373,7 +689,7 @@ struct smart_ring_indexer {
 
             //find rank for device id in our ring
             auto it = std::find_if(id_array.begin(), id_array.end(), [id, this](colored_idx& val) {
-                if (val.color == process_idx) // find in my process
+                if (val.color == process_idx) // find for current process
                 {
                     return val.index == id;
                 }
@@ -387,40 +703,26 @@ struct smart_ring_indexer {
                 continue;
             }
 
-            //rank in local graph_ring
-            int rank = std::distance(id_array.begin(), it);
+            // calculate operation rank using from current process color position 'local_proc_color_it'
+            int rank = std::distance(local_proc_color_it, it);
             size_t size = id_array.size();
 
+            size -= device_size_offset;
+
             //Check on IPC source candidate at first
-            /*
-            auto process_set = ipc_src_indices.find(process_idx);
-            if (process_set != ipc_src_indices.end()
-                and
-                process_set->second.find(it->second) != process_set->second.end())
-            {
-                // ipc device
-                using ipc_device_t = ccl_ipc_source_gpu_comm<device_t>;
-                device_t_ptr<ipc_device_t> new_ipc_source_comm =
-                            factory.create_gpu_device<ipc_device_t>(gpu_device->get_device(),
-                                                                    rank,
-                                                                    *gpu_device,
-                                                                    group_id);
-                new_ipc_source_comm->template reset_rank<group_id, class_id>(rank, size);
-                indexed_device_container<ipc_device_t>& out_ipc_container =
-                        std::get<ipc_device_t::type_idx()>(*topology);
-                out_ipc_container.insert({rank, new_ipc_source_comm});
-                */
-            if (!try_as_ipc_source(gpu_device, rank, size)) {
+            //First device in ring will be upgraded to IPC source, if reflected IPC devices for another process is existing
+            if (!try_as_ipc_source(gpu_device, rank, device_index_offset, size)) {
                 // regular device
                 gpu_device->template reset_rank<group_id, class_id>(rank, size);
 
                 indexed_device_container<device_t>& out_container =
                     std::get<device_t::type_idx()>(topology);
                 out_container.insert({ rank + device_index_offset, gpu_device });
-
-                it->color = marked_color; //marked
-                marked_indices_count++;
             }
+
+            // mark as processed in id_ring
+            it->color = marked_color;
+            marked_indices_count++;
         }
     }
 
@@ -455,12 +757,31 @@ struct smart_ring_indexer {
             }
 
             //rank in local graph_ring
-            int rank = std::distance(id_array.begin(), it);
+            int rank = std::distance(local_proc_color_it, it);
+            //size_t rank = std::distance(id_array.begin(), it);
             size_t size = id_array.size();
+            size -= device_size_offset; //ipc_src_indices.size();
 
-            //apply offsets
-            gpu_device->template reset_rank<group_id, class_id>(rank, size);
-            out_container.insert({ rank + device_index_offset, gpu_device });
+            // limit rank on edge of ring
+            if (foreign_process_idx == process_num) {
+                rank = (rank + device_index_offset) % size;
+                //apply offsets
+                gpu_device->template reset_rank<group_id, class_id>(rank, size);
+                gpu_device->template reassign_with_addr<group_id, class_id>(rank);
+
+                out_container.insert({ rank /* + device_index_offset*/, gpu_device });
+            }
+            else {
+                //no offsets
+                gpu_device->template reset_rank<group_id, class_id>(rank, size);
+                gpu_device->template reassign_with_addr<group_id, class_id>(rank);
+
+                out_container.insert({ rank + device_index_offset, gpu_device });
+            }
+
+            // mark as processed in id_ring
+            it->color = marked_color;
+            marked_indices_count++;
         }
     }
 
@@ -473,6 +794,7 @@ protected:
     color_t process_idx;
     size_t process_num;
     size_t device_index_offset;
+    size_t device_size_offset;
     device_storage& factory;
     specific_indexed_device_storage& topology;
     ccl::process_device_indices_type ipc_src_indices;
@@ -480,25 +802,38 @@ protected:
     const ccl::process_device_indices_type& scaleout_indices;
     size_t marked_indices_count;
 
+    context_t& context;
+    typename colored_plain_graph::iterator local_proc_color_it;
+
 private:
     template <class device_t>
-    bool try_as_ipc_source(std::shared_ptr<device_t> gpu_device, int rank, size_t size) {
+    bool try_as_ipc_source(std::shared_ptr<device_t> gpu_device,
+                           int rank,
+                           int process_offset,
+                           size_t size) {
         //concurrent device is not IPC source
         return false;
     }
 
-    bool try_as_ipc_source(std::shared_ptr<ccl_gpu_comm> gpu_device, int rank, size_t size) {
-        return try_as_ipc_source_impl(gpu_device, rank, size);
+    bool try_as_ipc_source(std::shared_ptr<ccl_gpu_comm> gpu_device,
+                           int rank,
+                           int process_offset,
+                           size_t size) {
+        return try_as_ipc_source_impl(gpu_device, rank, process_offset, size);
     }
 
     bool try_as_ipc_source(std::shared_ptr<ccl_virtual_gpu_comm> gpu_device,
                            int rank,
+                           int process_offset,
                            size_t size) {
-        return try_as_ipc_source_impl(gpu_device, rank, size);
+        return try_as_ipc_source_impl(gpu_device, rank, process_offset, size);
     }
 
     template <class device_t>
-    bool try_as_ipc_source_impl(std::shared_ptr<device_t> gpu_device, int rank, size_t size) {
+    bool try_as_ipc_source_impl(std::shared_ptr<device_t> gpu_device,
+                                int rank,
+                                int process_offset,
+                                size_t size) {
         //Check on IPC source candidate at first
         const ccl::device_index_type& id = gpu_device->get_device().get_device_path();
         auto process_set = ipc_src_indices.find(process_idx);
@@ -507,15 +842,25 @@ private:
             return false;
         }
 
+        //set rank before upgrade
+        gpu_device->template reset_rank<group_id, class_id>(rank + process_offset, size);
+
         // ipc device
         using ipc_device_t = ccl_ipc_source_gpu_comm<device_t>;
         device_t_ptr<ipc_device_t> new_ipc_source_comm = factory.create_gpu_device<ipc_device_t>(
-            gpu_device->get_device(), rank, *gpu_device, group_id);
+            gpu_device->get_device(), rank + process_offset, *gpu_device, group_id, class_id);
 
-        new_ipc_source_comm->template reset_rank<group_id, class_id>(rank, size);
+        new_ipc_source_comm->template assign<group_id, class_id>(context, context.get_ipc_ctx());
+        new_ipc_source_comm->template reassign_with_addr<group_id, class_id>(rank + process_offset);
+
+        //new_ipc_source_comm->template reset_rank<group_id, class_id>(rank, size);
         indexed_device_container<ipc_device_t>& out_ipc_container =
             std::get<ipc_device_t::type_idx()>(topology);
-        out_ipc_container.insert({ rank, new_ipc_source_comm });
+        out_ipc_container.insert({ rank + process_offset, new_ipc_source_comm });
+
+        //remove ipc_index
+        auto rem_it = process_set->second.find(id);
+        process_set->second.erase(rem_it);
         return true;
     }
 };
@@ -864,7 +1209,8 @@ device_t_ptr<ccl_thread_comm<device_t>> add_concurrent_locker_device(
     return new_concurrent_comm;
 }
 
-template <class device_t, ccl::group_split_type topology>
+//-S- IPC
+template <class device_t, ccl::group_split_type split_id, ccl::device_topology_type class_id>
 device_t_ptr<ccl_ipc_source_gpu_comm<device_t>> add_ipc_source_locker_device(
     size_t next_rank,
     size_t index_offset,
@@ -875,9 +1221,9 @@ device_t_ptr<ccl_ipc_source_gpu_comm<device_t>> add_ipc_source_locker_device(
 
     device_t_ptr<device_t> dev = std::get<1>(dev_to_lock);
     device_t_ptr<ipc_device_t> new_ipc_source_comm = device_factory.create_gpu_device<ipc_device_t>(
-        dev->get_device(), next_rank, *dev, topology);
+        dev->get_device(), next_rank, *dev, split_id, class_id);
 
-    const auto& comm_addr = new_ipc_source_comm->template get_comm_data<topology>();
+    const auto& comm_addr = new_ipc_source_comm->template get_comm_data<split_id, class_id>();
 
     indexed_device_container<ipc_device_t>& current_locker_map =
         std::get<ipc_device_t::type_idx()>(storage_to_lock);
@@ -897,238 +1243,23 @@ device_t_ptr<ccl_ipc_source_gpu_comm<device_t>> add_ipc_source_locker_device(
     return new_ipc_source_comm;
 }
 
-template <class device_t,
-          ccl::group_split_type group_id,
-          ccl::device_topology_type class_id,
-          class context,
-          class = typename std::enable_if<
-              not std::is_same<device_t, ccl_thread_comm<typename device_t::impl_t>>::value>::type>
-device_t_ptr<ccl_gpu_scaleup_proxy<device_t>> add_scaleup_device(
-    specific_indexed_device_storage& storage,
-    const ccl::device_index_type& index,
-    context& context_to_register,
-    device_storage& device_factory) {
-    device_t_ptr<ccl_gpu_scaleup_proxy<device_t>> ret;
-    indexed_device_container<device_t>& container = std::get<device_t::type_idx()>(storage);
-    for (auto it = container.begin(); it != container.end(); ++it) {
-        // find device candidate
-        if (it->second->get_device().get_device_path() == index) {
-            // promote device candidate to scaleup type
-            size_t index = it->first;
-            device_t_ptr<device_t> device = it->second;
-            container.erase(it);
-
-            ret = device_factory.create_gpu_device<ccl_gpu_scaleup_proxy<device_t>>(
-                device->get_device(), container.size(), *device);
-            ret->template assign<group_id, class_id>(context_to_register,
-                                                     context_to_register.get_scaleup_ctx());
-            auto inserted =
-                std::get<ccl_gpu_scaleup_proxy<device_t>::type_idx()>(storage).emplace(index, ret);
-
-            if (!inserted.second) {
-                throw std::runtime_error(
-                    std::string(__PRETTY_FUNCTION__) + " - cannot promoted device wrapper: " +
-                    device->to_string() + " by index: " + std::to_string(index) +
-                    " - to scaleup, because it exist already: " +
-                    inserted.first->second->to_string());
-            }
-            break;
-        }
-    }
-    return ret;
-}
-
-template <class device_t,
-          ccl::group_split_type group_id,
-          ccl::device_topology_type class_id,
-          class context,
-          typename std::enable_if<
-              std::is_same<device_t, ccl_thread_comm<typename device_t::impl_t>>::value,
-              int>::type = 0>
-device_t_ptr<ccl_gpu_scaleup_proxy<device_t>> add_scaleup_device(
-    specific_indexed_device_storage& storage,
-    const ccl::device_index_type& index,
-    context& context_to_register,
-    device_storage& device_factory) {
-    using impl_device_t = typename device_t::impl_t;
-
-    device_t_ptr<ccl_gpu_scaleup_proxy<impl_device_t>> ret;
-    indexed_device_container<device_t>& container = std::get<device_t::type_idx()>(storage);
-    for (auto it = container.begin(); it != container.end(); ++it) {
-        // find device candidate
-        if (it->second->get_device().get_device_path() == index) {
-            // promote device candidate to scaleup type
-            size_t index = it->first;
-            device_t_ptr<device_t> device = it->second;
-            container.erase(it);
-
-            impl_device_t& core_dev = device->get_impl_device();
-            ret = device_factory.create_gpu_device<ccl_gpu_scaleup_proxy<impl_device_t>>(
-                device->get_device(), container.size(), core_dev);
-            ret->template assign<group_id, class_id>(context_to_register,
-                                                     context_to_register.get_scaleup_ctx());
-            auto inserted =
-                std::get<ccl_gpu_scaleup_proxy<impl_device_t>::type_idx()>(storage).emplace(index,
-                                                                                            ret);
-            if (!inserted.second) {
-                throw std::runtime_error(
-                    std::string(__PRETTY_FUNCTION__) + " - cannot promoted device wrapper: " +
-                    device->to_string() + " by index: " + std::to_string(index) +
-                    " - to scaleup, because it exist already: " +
-                    inserted.first->second->to_string());
-            }
-            break;
-        }
-    }
-    return ret;
-}
-
-template <ccl::group_split_type group_id,
-          ccl::device_topology_type class_id,
-          class context,
-          class... device_candidate_t>
-size_t inject_scaleup_device(specific_indexed_device_storage& storage,
-                             const ccl::device_index_type& index,
-                             context& context_to_register,
-                             device_storage& device_factory) {
-    bool created = false;
-    std::array<bool, sizeof...(device_candidate_t)> expander{ (
-        created = (created == false
-                       ? (bool)add_scaleup_device<device_candidate_t, group_id, class_id, context>(
-                             storage, index, context_to_register, device_factory)
-                       : created))... };
-    auto inserted_it = std::find(expander.begin(), expander.end(), true);
-
-    return inserted_it != expander.end() ? std::distance(expander.begin(), inserted_it)
-                                         : std::numeric_limits<size_t>::max();
-}
-
-template <class device_t,
-          ccl::group_split_type group_id,
-          ccl::device_topology_type class_id,
-          class context,
-          class = typename std::enable_if<
-              not std::is_same<device_t, ccl_thread_comm<typename device_t::impl_t>>::value>::type>
-device_t_ptr<ccl_scaleout_proxy<device_t>> add_scaleout_device(
-    specific_indexed_device_storage& storage,
-    const ccl::device_index_type& index,
-    context& context_to_register,
-    device_storage& device_factory) {
-    device_t_ptr<ccl_scaleout_proxy<device_t>> ret;
-    indexed_device_container<device_t>& container = std::get<device_t::type_idx()>(storage);
-    for (auto it = container.begin(); it != container.end(); ++it) {
-        // find device candidate
-        if (it->second->get_device().get_device_path() == index) {
-            // promote device candidate to scaleup type
-            size_t index = it->first;
-            device_t_ptr<device_t> device = it->second;
-            container.erase(it);
-
-            ret = device_factory.create_gpu_device<ccl_scaleout_proxy<device_t>>(
-                device->get_device(), container.size(), *device);
-            ret->template assign<group_id, class_id>(context_to_register,
-                                                     context_to_register.get_scaleout_ctx());
-            auto inserted =
-                std::get<ccl_scaleout_proxy<device_t>::type_idx()>(storage).emplace(index, ret);
-            if (!inserted.second) {
-                throw std::runtime_error(
-                    std::string(__PRETTY_FUNCTION__) + " - cannot promoted device wrapper: " +
-                    device->to_string() + " by index: " + std::to_string(index) +
-                    " - to scaleout, because it exist already: " +
-                    inserted.first->second->to_string());
-            }
-            break;
-        }
-    }
-    return ret;
-}
-
-template <class device_t,
-          ccl::group_split_type group_id,
-          ccl::device_topology_type class_id,
-          class context,
-          typename std::enable_if<
-              std::is_same<device_t, ccl_thread_comm<typename device_t::impl_t>>::value,
-              int>::type = 0>
-device_t_ptr<ccl_scaleout_proxy<device_t>> add_scaleout_device(
-    specific_indexed_device_storage& storage,
-    const ccl::device_index_type& index,
-    context& context_to_register,
-    device_storage& device_factory) {
-    using impl_device_t = typename device_t::impl_t;
-
-    device_t_ptr<ccl_scaleout_proxy<impl_device_t>> ret;
-    indexed_device_container<device_t>& container = std::get<device_t::type_idx()>(storage);
-    for (auto it = container.begin(); it != container.end(); ++it) {
-        // find device candidate
-        if (it->second->get_device().get_device_path() == index) {
-            // promote device candidate to scaleup type
-            size_t index = it->first;
-            device_t_ptr<device_t> device = it->second;
-            container.erase(it);
-
-            impl_device_t& core_dev = device->get_impl_device();
-
-            ret = device_factory.create_gpu_device<ccl_scaleout_proxy<impl_device_t>>(
-                device->get_device(), container.size(), *device);
-            ret->template assign<group_id, class_id>(context_to_register,
-                                                     context_to_register.get_scaleout_ctx());
-            auto inserted =
-                std::get<ccl_scaleout_proxy<impl_device_t>::type_idx()>(storage).emplace(index,
-                                                                                         ret);
-            if (!inserted.second) {
-                throw std::runtime_error(
-                    std::string(__PRETTY_FUNCTION__) + " - cannot promoted device wrapper: " +
-                    device->to_string() + " by index: " + std::to_string(index) +
-                    " - to scaleout, because it exist already: " +
-                    inserted.first->second->to_string());
-            }
-            break;
-        }
-    }
-    return ret;
-}
-
-template <ccl::group_split_type group_id,
-          ccl::device_topology_type class_id,
-          class context,
-          class... device_candidate_t>
-size_t inject_scaleout_device(specific_indexed_device_storage& storage,
-                              const ccl::device_index_type& index,
-                              context& context_to_register,
-                              device_storage& device_factory) {
-    bool created = false;
-    std::array<bool, sizeof...(device_candidate_t)> expander{ (
-        created = (created == false
-                       ? (bool)add_scaleout_device<device_candidate_t, group_id, class_id, context>(
-                             storage, index, context_to_register, device_factory)
-                       : created))... };
-    auto inserted_it = std::find(expander.begin(), expander.end(), true);
-
-    return inserted_it != expander.end() ? std::distance(expander.begin(), inserted_it)
-                                         : std::numeric_limits<size_t>::max();
-}
-
 using ipc_devices_pool = std::map<size_t /*rank*/, device_t_ptr<ccl_ipc_gpu_comm>>;
 
-#if 0
-template<ccl::group_split_type group_id, ccl::device_topology_type class_id>
+//#if 0 OLD topology construction
+template <ccl::group_split_type group_id, ccl::device_topology_type class_id>
 inline ipc_devices_pool create_ipc_gpu_comms(id_thread_table assigned_ids_copy,
                                              const plain_graph& id_ring,
                                              device_storage& device_factory,
                                              size_t size_override_value,
-                                             size_t rank_offset_value)
-{
+                                             size_t rank_offset_value) {
     // allocate IPC devices pool with rank from unassigned IDs
     // need to find symmetric_difference between graph ids and assigned ids
     // unassigned ids is a ipc device candidate
 
     ipc_devices_pool ret;
-    for (auto graph_it = id_ring.begin(); graph_it != id_ring.end(); )
-    {
+    for (auto graph_it = id_ring.begin(); graph_it != id_ring.end();) {
         auto assigned_id_it = assigned_ids_copy.find(*graph_it);
-        if(assigned_id_it != assigned_ids_copy.end())
-        {
+        if (assigned_id_it != assigned_ids_copy.end()) {
             assigned_ids_copy.erase(assigned_id_it);
             ++graph_it;
             continue;
@@ -1139,52 +1270,44 @@ inline ipc_devices_pool create_ipc_gpu_comms(id_thread_table assigned_ids_copy,
         size_t size = size_override_value;
 
         //recalculate rank to apply offset for other processes count
-        rank = (rank + rank_offset_value ) % size;
+        rank = (rank + rank_offset_value) % size;
 
         ccl_device_driver::device_ptr ipc_device = get_runtime_device(*graph_it);
-        device_t_ptr<ccl_ipc_gpu_comm> locker =
-                                device_factory.create_gpu_device<ccl_ipc_gpu_comm>(*ipc_device,
-                                                                                   rank,
-                                                                                   size,
-                                                                                   group_id);
-        ret.insert({rank, std::move(locker)});
+        device_t_ptr<ccl_ipc_gpu_comm> locker = device_factory.create_gpu_device<ccl_ipc_gpu_comm>(
+            *ipc_device, rank, size, group_id, class_id);
+        ret.insert({ rank, std::move(locker) });
         ++graph_it;
     }
     return ret;
 }
 
-using cluster_ipc_devices_pool = std::map<size_t/*process_id*/, ipc_devices_pool>;
+using cluster_ipc_devices_pool = std::map<size_t /*process_id*/, ipc_devices_pool>;
 
-template<ccl::group_split_type topology>
-inline cluster_ipc_devices_pool create_filtered_ipc_gpu_comms(const colored_plain_graph& id_ring,
-                                                     const ccl::process_device_indices_type& ipc_indices,
-                                                     size_t process_idx,
-                                                     size_t process_size,
-                                                     device_storage& device_factory)
-{
+template <ccl::group_split_type group_id, ccl::device_topology_type class_id>
+inline cluster_ipc_devices_pool create_filtered_ipc_gpu_comms(
+    const colored_plain_graph& id_ring,
+    const ccl::process_device_indices_type& ipc_indices,
+    size_t process_idx,
+    size_t process_size,
+    device_storage& device_factory) {
     cluster_ipc_devices_pool ret;
-    for (auto graph_it = id_ring.begin(); graph_it != id_ring.end(); ++graph_it)
-    {
-        if (graph_it->color != colored_graph_ring_indexer<topology>::marked_color and
-            graph_it->color != process_idx)
-        {
+    for (auto graph_it = id_ring.begin(); graph_it != id_ring.end(); ++graph_it) {
+        if (graph_it->color != colored_graph_ring_indexer<group_id, class_id>::marked_color and
+            graph_it->color != process_idx) {
             size_t ipc_process_index = graph_it->color;
-            if (process_idx == 0 and ipc_process_index > process_size)
-            {
+            if (process_idx == 0 and ipc_process_index > process_size) {
                 //replace terminator as index
                 ipc_process_index = process_size;
             }
 
-            if (process_idx == process_size - 1 and ipc_process_index > process_size)
-            {
+            if (process_idx == process_size - 1 and ipc_process_index > process_size) {
                 //replace terminator as index
                 ipc_process_index = 0;
             }
             //find ipc_device in candidates list
             auto candidate_it = ipc_indices.find(ipc_process_index);
-            if (candidate_it == ipc_indices.end()
-                or (candidate_it->second.find(graph_it->index) == candidate_it->second.end()))
-            {
+            if (candidate_it == ipc_indices.end() or
+                (candidate_it->second.find(graph_it->index) == candidate_it->second.end())) {
                 continue;
             }
 
@@ -1194,47 +1317,57 @@ inline cluster_ipc_devices_pool create_filtered_ipc_gpu_comms(const colored_plai
 
             ccl_device_driver::device_ptr ipc_device = get_runtime_device(graph_it->index);
             device_t_ptr<ccl_ipc_gpu_comm> locker =
-                                device_factory.create_gpu_device<ccl_ipc_gpu_comm>(*ipc_device,
-                                                                                   rank,
-                                                                                   size,
-                                                                                   topology);
-            ret[graph_it->color].insert({rank, std::move(locker)});
+                device_factory.create_gpu_device<ccl_ipc_gpu_comm>(
+                    *ipc_device, rank, size, group_id, class_id);
+            ret[graph_it->color].insert({ rank, std::move(locker) });
         }
     }
     return ret;
 }
 
-
-
-
-template<ccl::group_split_type topology>
+template <ccl::group_split_type group_id, ccl::device_topology_type class_id, class context>
 inline cluster_ipc_devices_pool create_filtered_ipc_destination_gpu_comms(
-                                            const colored_plain_graph& id_ring,
-                                            const ccl::process_device_indices_type& ipc_indices,
-                                            size_t process_idx,
-                                            size_t process_size,
-                                            device_storage& device_factory,
-                                            specific_plain_device_storage& out_container)
-{
-    //destination is right device
+    const colored_plain_graph& id_ring,
+    const ccl::process_device_indices_type& ipc_indices,
+    size_t process_idx,
+    size_t process_size,
+    context& context_to_register,
+    device_storage& device_factory,
+    specific_plain_device_storage& out_container) {
+    //destination is right device with max color
     cluster_ipc_devices_pool ret;
-    for (auto graph_it = id_ring.begin(); graph_it != id_ring.end(); ++graph_it)
-    {
-        if (graph_it->color != colored_graph_ring_indexer<topology>::marked_color and
-            graph_it->color > process_idx)
-        {
+
+    //find beginning point
+    auto graph_it =
+        std::find_if(id_ring.begin(), id_ring.end(), [process_idx](const colored_idx& val) {
+            return val.color == process_idx;
+        });
+
+    if (graph_it == id_ring.end()) {
+        abort();
+    }
+
+    //find IPC device in increasing process order
+    for (; graph_it != id_ring.end(); ++graph_it) {
+        if (graph_it->color != colored_graph_ring_indexer<group_id, class_id>::marked_color and
+            graph_it->color > process_idx) {
             size_t ipc_process_index = graph_it->color;
-            if ((process_idx == process_size - 1) and ipc_process_index > process_size)
-            {
+
+            if (!ret.empty()) {
+                // 1 device in enough for ring
+                continue;
+            }
+            /*
+            if ((process_idx == process_size - 1) and ipc_process_index >= process_size) {
                 //replace terminator as index
                 ipc_process_index = 0;
             }
+            */
 
             //find ipc_device in candidates list
             auto candidate_it = ipc_indices.find(ipc_process_index);
-            if (candidate_it == ipc_indices.end()
-                or (candidate_it->second.find(graph_it->index) == candidate_it->second.end()))
-            {
+            if (candidate_it == ipc_indices.end() or
+                (candidate_it->second.find(graph_it->index) == candidate_it->second.end())) {
                 continue;
             }
 
@@ -1244,83 +1377,72 @@ inline cluster_ipc_devices_pool create_filtered_ipc_destination_gpu_comms(
 
             ccl_device_driver::device_ptr ipc_device = get_runtime_device(graph_it->index);
             device_t_ptr<ccl_ipc_gpu_comm> locker =
-                                device_factory.create_gpu_device<ccl_ipc_gpu_comm>(*ipc_device,
-                                                                                   rank,
-                                                                                   size,
-                                                                                   topology);
+                device_factory.create_gpu_device<ccl_ipc_gpu_comm>(
+                    *ipc_device, rank, size, group_id, class_id);
+
+            locker->template assign<group_id, class_id>(context_to_register,
+                                                        context_to_register.get_ipc_ctx());
 
             std::get<ccl_ipc_gpu_comm::type_idx()>(out_container).push_back(locker);
-            ret[graph_it->color].insert({rank, std::move(locker)});
+            ret[graph_it->color].insert({ rank, std::move(locker) });
         }
     }
     return ret;
 }
 
-template<ccl::group_split_type topology>
+template <ccl::group_split_type group_id, ccl::device_topology_type class_id>
 inline cluster_ipc_devices_pool create_ipc_gpu_comms(const colored_plain_graph& id_ring,
                                                      size_t process_idx,
                                                      device_storage& device_factory,
                                                      size_t size_override_value,
-                                                     size_t rank_offset_value)
-{
+                                                     size_t rank_offset_value) {
     cluster_ipc_devices_pool ret;
-    for (auto graph_it = id_ring.begin(); graph_it != id_ring.end(); ++graph_it)
-    {
-        if (graph_it->color != colored_graph_ring_indexer<topology>::marked_color and
-            graph_it->color != process_idx)
-        {
+    for (auto graph_it = id_ring.begin(); graph_it != id_ring.end(); ++graph_it) {
+        if (graph_it->color != colored_graph_ring_indexer<group_id, class_id>::marked_color and
+            graph_it->color != process_idx) {
             int rank = std::distance(id_ring.begin(), graph_it);
             size_t size = size_override_value;
 
             //recalculate rank to apply offset for other processes count
-            rank = (rank + rank_offset_value ) % size;
+            rank = (rank + rank_offset_value) % size;
 
             ccl_device_driver::device_ptr ipc_device = get_runtime_device(graph_it->index);
             device_t_ptr<ccl_ipc_gpu_comm> locker =
-                                device_factory.create_gpu_device<ccl_ipc_gpu_comm>(*ipc_device,
-                                                                                   rank,
-                                                                                   size,
-                                                                                   topology);
-            ret[graph_it->color].insert({rank, std::move(locker)});
+                device_factory.create_gpu_device<ccl_ipc_gpu_comm>(
+                    *ipc_device, rank, size, group_id, class_id);
+            ret[graph_it->color].insert({ rank, std::move(locker) });
         }
     }
     return ret;
 }
 
-
-template<ccl::group_split_type topology>
+template <ccl::group_split_type topology>
 inline cluster_ipc_devices_pool create_ipc_gpu_comms(const colored_plain_graph_list& list,
                                                      size_t process_idx,
                                                      device_storage& device_factory,
                                                      size_t size_override_value,
-                                                     size_t rank_offset_value)
-{
+                                                     size_t rank_offset_value) {
     cluster_ipc_devices_pool ret;
-    for (const auto& graph : list)
-    {
-        auto graph_ret = create_ipc_gpu_comms<topology>(graph, process_idx, device_factory,
-                                                        size_override_value, rank_offset_value);
+    for (const auto& graph : list) {
+        auto graph_ret = create_ipc_gpu_comms<topology>(
+            graph, process_idx, device_factory, size_override_value, rank_offset_value);
         ret.insert(graph_ret.begin(), graph_ret.end());
     }
     return ret;
 }
 
-
 inline std::vector<size_t> get_ipc_proceses(const cluster_ipc_devices_pool& ipc_comms,
-                                     size_t process_index,
-                                     size_t process_count)
-{
+                                            size_t process_index,
+                                            size_t process_count) {
     std::vector<size_t> ipc_processes_id;
     ipc_processes_id.reserve(ipc_comms.size());
-    for(auto it = ipc_comms.begin(); it != ipc_comms.end(); ++it)
-    {
-        if (it->first != process_index)
-        {
+    for (auto it = ipc_comms.begin(); it != ipc_comms.end(); ++it) {
+        if (it->first != process_index) {
             ipc_processes_id.push_back(it->first);
         }
     }
     return ipc_processes_id;
 }
-#endif
+//#endif //OLD topology construction
 } // namespace detail
 } // namespace native

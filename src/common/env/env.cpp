@@ -13,6 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#include <dlfcn.h>
 #include <iterator>
 #include <sstream>
 #include <unistd.h>
@@ -38,14 +39,22 @@ std::map<ccl_atl_transport, std::string> env_data::atl_transport_names = {
     std::make_pair(ccl_atl_mpi, "mpi")
 };
 
+std::map<ccl_staging_buffer, std::string> env_data::staging_buffer_names = {
+    std::make_pair(ccl_staging_regular, "regular"),
+    std::make_pair(ccl_staging_usm, "usm")
+};
+
 env_data::env_data()
         : was_printed(false),
 
-          log_level(static_cast<int>(ccl_log_level::ERROR)),
+          log_level(ccl_log_level::warn),
           sched_dump(0),
+
+          fw_type(ccl_framework_none),
 
           worker_count(1),
           worker_offload(1),
+          worker_wait(1),
 
           atl_transport(ccl_atl_mpi),
           enable_shm(0),
@@ -69,6 +78,7 @@ env_data::env_data()
           cache_key_type(ccl_cache_key_match_id),
           enable_cache_flush(1),
           enable_strict_order(0),
+          staging_buffer(ccl_staging_usm),
 
           chunk_count(1),
           min_chunk_size(65536),
@@ -83,17 +93,45 @@ env_data::env_data()
           alltoall_scatter_max_ops(CCL_ENV_SIZET_NOT_SPECIFIED),
           alltoall_scatter_plain(0),
 
-          default_resizable(0),
-          kernel_path() {}
+          enable_comm_kernels(0),
+          comm_kernels_path(),
+          gpu_thread_count(CCL_ENV_SIZET_NOT_SPECIFIED),
+
+          bf16_impl_type(ccl_bf16_no_compiler_support),
+          fp16_impl_type(ccl_fp16_no_compiler_support) {}
 
 void env_data::parse() {
-    env_2_type(CCL_LOG_LEVEL, log_level);
-    ccl_logger::set_log_level(static_cast<ccl_log_level>(log_level));
+    env_2_enum(CCL_LOG_LEVEL, ccl_logger::level_names, log_level);
+    ccl_logger::set_log_level(log_level);
     env_2_type(CCL_SCHED_DUMP, sched_dump);
+
+    if (fw_type == ccl_framework_none) {
+        /* try to automatically detect framework */
+        void* handle = dlopen(NULL, RTLD_GLOBAL | RTLD_NOW);
+        if (handle) {
+            horovod_init_function =
+                (ccl_horovod_init_function)dlsym(handle, horovod_init_function_name);
+            dlclose(handle);
+        }
+
+        if (horovod_init_function) {
+            LOG_INFO("found horovod_init function");
+            fw_type = ccl_framework_horovod;
+        }
+    }
+    env_2_enum(CCL_FRAMEWORK, ccl_framework_type_names, fw_type);
+
+    if (fw_type == ccl_framework_horovod) {
+        worker_wait = 1;
+        sync_coll = 1;
+        extra_ep = 1;
+        yield_type = ccl_yield_sched_yield;
+    }
 
     env_2_type(CCL_WORKER_COUNT, worker_count);
     CCL_THROW_IF_NOT(worker_count >= 1, "incorrect ", CCL_WORKER_COUNT, " ", worker_count);
     env_2_type(CCL_WORKER_OFFLOAD, worker_offload);
+    env_2_type(CCL_WORKER_WAIT, worker_wait);
 
     env_2_atl_transport();
     env_2_type(CCL_ATL_SHM, enable_shm);
@@ -132,6 +170,12 @@ void env_data::parse() {
                          fusion_count_threshold);
     }
 
+    if (!worker_offload || enable_fusion)
+        worker_wait = 0;
+
+    if (worker_wait)
+        spin_count = 1000;
+
     env_2_type(CCL_RMA, enable_rma);
     env_2_enum(CCL_PRIORITY, priority_mode_names, priority_mode);
     env_2_type(CCL_SPIN_COUNT, spin_count);
@@ -141,6 +185,7 @@ void env_data::parse() {
     env_2_enum(CCL_CACHE_KEY, ccl_sched_key::key_type_names, cache_key_type);
     env_2_type(CCL_CACHE_FLUSH, enable_cache_flush);
     env_2_type(CCL_STRICT_ORDER, enable_strict_order);
+    env_2_enum(CCL_STAGING_BUFFER, staging_buffer_names, staging_buffer);
 
     env_2_type(CCL_CHUNK_COUNT, chunk_count);
     CCL_THROW_IF_NOT(chunk_count >= 1, "incorrect ", CCL_CHUNK_COUNT, " ", chunk_count);
@@ -166,14 +211,66 @@ void env_data::parse() {
     env_2_type(CCL_ALLTOALL_SCATTER_MAX_OPS, (size_t&)alltoall_scatter_max_ops);
     env_2_type(CCL_ALLTOALL_SCATTER_PLAIN, alltoall_scatter_plain);
 
-    env_2_type(CCL_DEFAULT_RESIZABLE, default_resizable);
-    CCL_THROW_IF_NOT(
-        default_resizable <= 2, "incorrect ", CCL_DEFAULT_RESIZABLE, " ", default_resizable);
+    env_2_type(CCL_COMM_KERNELS, enable_comm_kernels);
+    if (enable_comm_kernels) {
+        env_2_type(CCL_COMM_KERNELS_PATH, comm_kernels_path);
+        if (comm_kernels_path.empty()) {
+            std::string ccl_root = getenv("CCL_ROOT");
+            CCL_THROW_IF_NOT(!ccl_root.empty(), "incorrect comm kernels path, CCL_ROOT not found!");
+            comm_kernels_path = ccl_root + "/lib/kernels/";
+        }
 
-    env_2_type(CCL_COLL_KERNELS_PATH, kernel_path);
+        // TODO remove IPC workaround knobs
+        if (!getenv("DisableStatelessToStatefulOptimization")) {
+            setenv("DisableStatelessToStatefulOptimization", "1", 1);
+            LOG_WARN(
+                "environment variable 'DisableStatelessToStatefulOptimization' is not set, will be used DisableStatelessToStatefulOptimization=1");
+        }
+        if (!getenv("CFESingleSliceDispatchCCSMode")) {
+            setenv("CFESingleSliceDispatchCCSMode", "1", 1);
+            LOG_WARN(
+                "environment variable 'CFESingleSliceDispatchCCSMode' is not set, will be used CFESingleSliceDispatchCCSMode=1");
+        }
+        if (!getenv("OverrideStatelessMocsIndex")) {
+            setenv("OverrideStatelessMocsIndex", "2", 1);
+            LOG_WARN(
+                "environment variable 'OverrideStatelessMocsIndex' is not set, will be used OverrideStatelessMocsIndex=2");
+        }
+
+        if (!getenv("CCL_KVS_GET_TIMEOUT")) {
+            setenv("CCL_KVS_GET_TIMEOUT", "10", 1);
+            LOG_WARN(
+                "environment variable 'CCL_KVS_GET_TIMEOUT' is not set, will be used CCL_KVS_GET_TIMEOUT=10");
+        }
+    }
+    env_2_type(CCL_GPU_THREAD_COUNT, gpu_thread_count);
+
+    auto bf16_impl_types = ccl_bf16_get_impl_types();
+    ccl_bf16_impl_type bf16_env_impl_type;
+    if (env_2_enum(CCL_BF16, bf16_env_impl_names, bf16_env_impl_type)) {
+        CCL_THROW_IF_NOT(bf16_impl_types.find(bf16_env_impl_type) != bf16_impl_types.end(),
+                         "unsupported BF16 impl type: ",
+                         bf16_env_impl_names[bf16_env_impl_type]);
+        bf16_impl_type = bf16_env_impl_type;
+    }
+    else {
+        bf16_impl_type = *bf16_impl_types.rbegin();
+    }
+
+    auto fp16_impl_types = ccl_fp16_get_impl_types();
+    ccl_fp16_impl_type fp16_env_impl_type;
+    if (env_2_enum(CCL_FP16, fp16_env_impl_names, fp16_env_impl_type)) {
+        CCL_THROW_IF_NOT(fp16_impl_types.find(fp16_env_impl_type) != fp16_impl_types.end(),
+                         "unsupported FP16 impl type: ",
+                         fp16_env_impl_names[fp16_env_impl_type]);
+        fp16_impl_type = fp16_env_impl_type;
+    }
+    else {
+        fp16_impl_type = *fp16_impl_types.rbegin();
+    }
 }
 
-void env_data::print() {
+void env_data::print(int rank) {
     std::lock_guard<ccl_spinlock> lock{ print_guard };
 
     if (was_printed)
@@ -181,31 +278,36 @@ void env_data::print() {
     else
         was_printed = true;
 
-#ifdef ENABLE_DEBUG
-    const char* build_mode = "debug";
-#else
-    const char* build_mode = "release";
-#endif
-    LOG_INFO("build mode : ", build_mode);
+    auto& global_data = ccl::global_data::get();
 
-    auto version = utils::get_library_version();
+    auto local_proc_idx = global_data.executor->get_local_proc_idx();
+    auto local_proc_count = global_data.executor->get_local_proc_count();
 
-    LOG_INFO("version : ", version.full);
+    if (rank < (int)local_proc_count) {
+        for (size_t w_idx = 0; w_idx < worker_count; w_idx++) {
+            LOG_INFO(CCL_WORKER_AFFINITY,
+                     ": local process [",
+                     local_proc_idx,
+                     ":",
+                     local_proc_count,
+                     "]: worker: ",
+                     w_idx,
+                     ", core: ",
+                     worker_affinity[local_proc_idx * worker_count + w_idx]);
+        }
+    }
 
-    char* ccl_root = getenv("CCL_ROOT");
-    LOG_INFO("CCL_ROOT : ", (ccl_root) ? ccl_root : CCL_ENV_STR_NOT_SPECIFIED);
-
-    char* impi_root = getenv("I_MPI_ROOT");
-    LOG_INFO("I_MPI_ROOT : ", (impi_root) ? impi_root : CCL_ENV_STR_NOT_SPECIFIED);
-
-    LOG_INFO(CCL_LOG_LEVEL, ": ", log_level);
-    LOG_INFO(CCL_SCHED_DUMP, ": ", sched_dump);
+    if (rank != 0)
+        return;
 
     LOG_INFO(CCL_WORKER_COUNT, ": ", worker_count);
     LOG_INFO(CCL_WORKER_OFFLOAD, ": ", worker_offload);
-    for (size_t w_idx = 0; w_idx < worker_affinity.size(); w_idx++) {
-        LOG_INFO(CCL_WORKER_AFFINITY, ": worker: ", w_idx, ", processor: ", worker_affinity[w_idx]);
-    }
+    LOG_INFO(CCL_WORKER_WAIT, ": ", worker_wait);
+
+    LOG_INFO(CCL_LOG_LEVEL, ": ", str_by_enum(ccl_logger::level_names, log_level));
+    LOG_INFO(CCL_SCHED_DUMP, ": ", sched_dump);
+
+    LOG_INFO(CCL_FRAMEWORK, ": ", str_by_enum(ccl_framework_type_names, fw_type));
 
     LOG_INFO(CCL_ATL_TRANSPORT, ": ", str_by_enum(atl_transport_names, atl_transport));
     LOG_INFO(CCL_ATL_SHM, ": ", enable_shm);
@@ -259,6 +361,7 @@ void env_data::print() {
     LOG_INFO(CCL_CACHE_KEY, ": ", str_by_enum(ccl_sched_key::key_type_names, cache_key_type));
     LOG_INFO(CCL_CACHE_FLUSH, ": ", enable_cache_flush);
     LOG_INFO(CCL_STRICT_ORDER, ": ", enable_strict_order);
+    LOG_INFO(CCL_STAGING_BUFFER, ": ", str_by_enum(staging_buffer_names, staging_buffer));
 
     LOG_INFO(CCL_CHUNK_COUNT, ": ", chunk_count);
     LOG_INFO(CCL_MIN_CHUNK_SIZE, ": ", min_chunk_size);
@@ -281,27 +384,47 @@ void env_data::print() {
                  : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_ALLTOALL_SCATTER_PLAIN, ": ", alltoall_scatter_plain);
 
-    LOG_INFO(CCL_COLL_KERNELS_PATH,
+    LOG_INFO(CCL_COMM_KERNELS, ": ", enable_comm_kernels);
+    LOG_INFO(CCL_COMM_KERNELS_PATH,
              ": ",
-             (kernel_path.length()) ? kernel_path : CCL_ENV_STR_NOT_SPECIFIED);
+             (!comm_kernels_path.empty()) ? comm_kernels_path : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_GPU_THREAD_COUNT,
+             ": ",
+             (gpu_thread_count != CCL_ENV_SIZET_NOT_SPECIFIED) ? std::to_string(gpu_thread_count)
+                                                               : CCL_ENV_STR_NOT_SPECIFIED);
 
-    auto& global_data = ccl::global_data::get();
-    global_data.algorithm_selector->print();
+    LOG_INFO(CCL_BF16, ": ", str_by_enum(bf16_impl_names, bf16_impl_type));
+    LOG_INFO(CCL_FP16, ": ", str_by_enum(fp16_impl_names, fp16_impl_type));
 
-    auto bf16_impl_type = global_data.bf16_impl_type;
-
-    if (bf16_impl_type != ccl_bf16_none) {
-        LOG_INFO("\n\nBF16 is enabled through ",
-                 (bf16_impl_type == ccl_bf16_avx512bf) ? "AVX512-BF" : "AVX512-F",
-                 "\n");
-    }
-    else {
-#ifdef CCL_BF16_COMPILER
-        LOG_INFO("\n\nBF16 is disabled on HW level\n");
+#ifdef ENABLE_DEBUG
+    const char* build_mode = "debug";
 #else
-        LOG_INFO("\n\nBF16 is disabled on compiler level\n");
+    const char* build_mode = "release";
 #endif
-    }
+    LOG_INFO("build mode: ", build_mode);
+
+    LOG_INFO("C compiler: ", CCL_C_COMPILER);
+    LOG_INFO("C++ compiler: ", CCL_CXX_COMPILER);
+
+    auto version = utils::get_library_version();
+    LOG_INFO("library version: ", version.full);
+
+    LOG_INFO("specification version: ", ONECCL_SPEC_VERSION);
+
+    char* ccl_root = getenv("CCL_ROOT");
+    LOG_INFO("CCL_ROOT: ", (ccl_root) ? ccl_root : CCL_ENV_STR_NOT_SPECIFIED);
+
+    char* impi_root = getenv("I_MPI_ROOT");
+    LOG_INFO("I_MPI_ROOT: ", (impi_root) ? impi_root : CCL_ENV_STR_NOT_SPECIFIED);
+
+    char* fi_provider_path = getenv("FI_PROVIDER_PATH");
+    LOG_INFO("FI_PROVIDER_PATH: ",
+             (fi_provider_path) ? fi_provider_path : CCL_ENV_STR_NOT_SPECIFIED);
+
+    char* fi_provider = getenv("FI_PROVIDER");
+    LOG_INFO("FI_PROVIDER: ", (fi_provider) ? fi_provider : CCL_ENV_STR_NOT_SPECIFIED);
+
+    global_data.algorithm_selector->print();
 }
 
 void env_data::set_internal_env() {
@@ -315,20 +438,51 @@ int env_data::env_2_worker_affinity_auto(size_t local_proc_idx, size_t workers_p
                      "auto pinning requires ",
                      I_MPI_AVAILABLE_CORES_ENV,
                      " env variable to be set");
-    std::vector<size_t> cores;
-    ccl_str_to_array(available_cores + 1, cores, ',');
 
     LOG_DEBUG("available_cores ", available_cores);
 
-    CCL_THROW_IF_NOT(worker_count <= cores.size(),
-                     "count of workers ",
-                     worker_count,
-                     " exceeds the number of available cores ",
-                     cores.size());
+    std::set<char> delims;
+    for (char c : std::string(I_MPI_AVAILABLE_CORES_DELIMS)) {
+        delims.insert(c);
+    }
+    std::vector<size_t> cores;
+    ccl_str_to_array(available_cores, delims, cores);
 
-    size_t ccl_cores_start = cores.size() - worker_count;
-    for (size_t idx = 0; idx < worker_count; ++idx) {
-        worker_affinity[local_proc_idx * workers_per_process + idx] = cores[ccl_cores_start + idx];
+    CCL_THROW_IF_NOT(workers_per_process <= cores.size(),
+                     "failed to implicitly set workers affinity, "
+                     "the number of workers (",
+                     workers_per_process,
+                     ") exceeds the number of available cores per process (",
+                     cores.size(),
+                     "), consider increasing the number of cores per process ",
+                     "or explicitly setting of workers affinity using ",
+                     CCL_WORKER_AFFINITY);
+
+    if ((workers_per_process == cores.size()) && worker_offload) {
+        LOG_WARN("the number of workers (",
+                 workers_per_process,
+                 ") matches the number of available cores per process,"
+                 " this may lead to contention between workers and"
+                 " application threads");
+        if (!std::getenv(CCL_WORKER_OFFLOAD)) {
+            worker_offload = 0;
+            LOG_WARN("workers are disabled,"
+                     " to forcibly enable them set ",
+                     CCL_WORKER_OFFLOAD,
+                     "=1");
+        }
+        else {
+            LOG_WARN("consider increasing the number of cores per process",
+                     " or disabling workers using ",
+                     CCL_WORKER_OFFLOAD,
+                     "=0");
+        }
+    }
+
+    size_t worker_cores_start = cores.size() - workers_per_process;
+    for (size_t idx = 0; idx < workers_per_process; ++idx) {
+        worker_affinity[local_proc_idx * workers_per_process + idx] =
+            cores[worker_cores_start + idx];
     }
     return 1;
 }
@@ -337,7 +491,6 @@ int env_data::env_2_worker_affinity(size_t local_proc_idx, size_t local_proc_cou
     CCL_THROW_IF_NOT(local_proc_count > 0);
 
     int read_env = 0;
-    size_t workers_per_process = worker_count;
     size_t w_idx, read_count = 0;
     char* affinity_copy = nullptr;
     char* affinity_to_parse = getenv(CCL_WORKER_AFFINITY);
@@ -345,28 +498,28 @@ int env_data::env_2_worker_affinity(size_t local_proc_idx, size_t local_proc_cou
     char* tmp;
     size_t proccessor_count;
 
-    size_t affinity_size = local_proc_count * workers_per_process;
+    size_t affinity_size = local_proc_count * worker_count;
     worker_affinity.assign(affinity_size, 0);
 
-    if (affinity_to_parse && strcmp(affinity_to_parse, "auto") == 0) {
-        return env_2_worker_affinity_auto(local_proc_idx, workers_per_process);
-    }
-
-    if (!affinity_to_parse || strlen(affinity_to_parse) == 0) {
-        /* generate default affinity */
-        proccessor_count = sysconf(_SC_NPROCESSORS_ONLN);
-        for (w_idx = 0; w_idx < affinity_size; w_idx++) {
-            if (w_idx < proccessor_count) {
-                worker_affinity[w_idx] = proccessor_count - w_idx - 1;
-            }
-            else {
-                worker_affinity[w_idx] = worker_affinity[w_idx % proccessor_count];
-            }
+    if (!affinity_to_parse || (strlen(affinity_to_parse) == 0) ||
+        (strcmp(affinity_to_parse, "auto") == 0)) {
+        if (std::getenv(I_MPI_AVAILABLE_CORES_ENV)) {
+            /* generate auto affinity based on IMPI process pinning */
+            return env_2_worker_affinity_auto(local_proc_idx, worker_count);
         }
-
-        read_env = 1;
-        CCL_FREE(affinity_copy);
-        return read_env;
+        else {
+            /* generate auto affinity as last N cores */
+            proccessor_count = sysconf(_SC_NPROCESSORS_ONLN);
+            for (w_idx = 0; w_idx < affinity_size; w_idx++) {
+                if (w_idx < proccessor_count) {
+                    worker_affinity[w_idx] = proccessor_count - w_idx - 1;
+                }
+                else {
+                    worker_affinity[w_idx] = worker_affinity[w_idx % proccessor_count];
+                }
+            }
+            return 1;
+        }
     }
 
     /* create copy of original buffer because it will be modified in strsep */
@@ -402,7 +555,7 @@ int env_data::env_2_worker_affinity(size_t local_proc_idx, size_t local_proc_cou
     }
     if (read_count < affinity_size) {
         LOG_ERROR(
-            "unexpected number of processors (specify 1 logical processor per 1 progress thread), affinity string ",
+            "unexpected number of processors (specify 1 logical processor per 1 worker thread), affinity string ",
             affinity_to_parse);
         read_env = 0;
         CCL_FREE(affinity_copy);
@@ -416,8 +569,8 @@ int env_data::env_2_worker_affinity(size_t local_proc_idx, size_t local_proc_cou
 
 void env_data::env_2_atl_transport() {
     if (!getenv(CCL_ATL_TRANSPORT) && !with_mpirun()) {
-        LOG_INFO("\n\nDid not find MPI-launcher specific variables, switch to ATL/OFI"
-                 "\nTo force enable ATL/MPI set CCL_ATL_TRANSPORT=mpi\n");
+        LOG_WARN("did not find MPI-launcher specific variables, switch to ATL/OFI, "
+                 "to force enable ATL/MPI set CCL_ATL_TRANSPORT=mpi");
 
         atl_transport = ccl_atl_ofi;
     }

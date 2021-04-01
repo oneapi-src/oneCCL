@@ -36,6 +36,9 @@ void gpu_module_base::release() {
         zeKernelDestroy(f.second);
     }
 
+    // TODO: do the destroy in device.cpp through a wrapper instead of destroying the handle directly here
+    // Potentially there could be the case when we have several gpu_module_base objects referencing the
+    // same handle and such change will allow to avoid issues related to that.
     if (module) {
         zeModuleDestroy(module);
         module = nullptr;

@@ -13,8 +13,8 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "atl_mpi.h"
-#include "atl_mpi.c"
+#include "atl_mpi.hpp"
+#include "atl_mpi_impl.cpp"
 
 atl_status_t atl_mpi::atl_set_env(const atl_attr_t& attr) {
     return atl_mpi_set_env(attr);
@@ -25,9 +25,8 @@ atl_status_t atl_mpi::atl_init(int* argc,
                                atl_attr_t* attr,
                                const char* main_addr,
                                std::unique_ptr<ipmi>& pmi) {
-    (void)pmi;
     inited = true;
-    return atl_mpi_init(argc, argv, attr, &ctx, main_addr);
+    return atl_mpi_init(argc, argv, attr, &ctx, main_addr, pmi.get());
 }
 
 atl_status_t atl_mpi::atl_finalize() {
@@ -46,10 +45,6 @@ atl_ep_t** atl_mpi::atl_get_eps() {
 
 atl_proc_coord_t* atl_mpi::atl_get_proc_coord() {
     return &(ctx->coord);
-}
-
-int atl_mpi::atl_is_resize_enabled() {
-    return ctx->is_resize_enabled;
 }
 
 atl_status_t atl_mpi::atl_mr_reg(const void* buf, size_t len, atl_mr_t** mr) {

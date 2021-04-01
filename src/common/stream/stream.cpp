@@ -18,7 +18,10 @@
 #include "common/stream/stream.hpp"
 #include "common/stream/stream_provider_dispatcher_impl.hpp"
 #include "oneapi/ccl/native_device_api/export_api.hpp"
-#include "unified_context_impl.hpp"
+
+std::string to_string(const stream_type& type) {
+    return stream_str_enum({ "host", "cpu", "gpu" }).choose(type, "unknown");
+}
 
 ccl_stream::ccl_stream(stream_type type,
                        stream_native_t& stream,
@@ -108,8 +111,8 @@ void ccl_stream::build_from_params() {
                     std::string("Supported types: host, cpu, gpu"));
         }
         LOG_INFO("SYCL queue type from postponed creation: ",
-                 static_cast<int>(type),
-                 " device: ",
+                 ::to_string(type),
+                 ", device: ",
                  native_stream.get_device().template get_info<cl::sycl::info::device::name>());
 #else
 #ifdef MULTI_GPU_SUPPORT

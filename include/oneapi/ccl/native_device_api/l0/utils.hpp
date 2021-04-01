@@ -56,6 +56,7 @@ template <class Lock, class Resource>
 struct unique_accessor {
     unique_accessor(Lock& mutex, Resource& storage) : lock(mutex), inner_data(storage) {}
     unique_accessor(unique_accessor&& src) = default;
+    unique_accessor& operator=(unique_accessor&& src) = delete;
 
     Resource& get() {
         return inner_data;
@@ -65,5 +66,16 @@ private:
     std::unique_lock<Lock> lock;
     Resource& inner_data;
 };
+
+/*
+ * ccl::device_index_path serialization/deserialization
+ */
+constexpr size_t serialize_device_path_size =
+    std::tuple_size<ccl::device_index_type>::value * sizeof(ccl::index_type);
+size_t serialize_device_path(std::vector<uint8_t>& out,
+                             const ccl::device_index_type& path,
+                             size_t offset = 0);
+ccl::device_index_type deserialize_device_path(const uint8_t** data, size_t& size);
+
 } // namespace detail
 } // namespace native

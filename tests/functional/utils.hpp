@@ -13,6 +13,8 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#pragma once
+
 #include <ctime>
 #include <cstdlib>
 #include <fstream>
@@ -26,6 +28,7 @@
 
 #include "mpi.h"
 
+#include "conf.hpp"
 #include "oneapi/ccl.hpp"
 
 #define sizeofa(arr)   (sizeof(arr) / sizeof(*arr))
@@ -101,37 +104,30 @@
         } \
     } while (0)
 
-#define SHOW_ALGO(coll_name) \
-    do { \
-        char* algo_name = getenv(coll_name); \
-        if (algo_name) \
-            printf("%s  = %s\n", coll_name, algo_name); \
-    } while (0)
-
 #define RUN_METHOD_DEFINITION(ClassName) \
     template <typename T> \
-    int MainTest::run(ccl_test_conf tParam) { \
+    int MainTest::run(test_param param) { \
         ClassName<T> className; \
-        typed_test_param<T> typed_param(tParam); \
+        test_operation<T> op(param); \
         std::ostringstream output; \
-        if (typed_param.process_idx == 0) \
+        if (op.comm_rank == 0) \
             printf("%s", output.str().c_str()); \
-        int result = className.run(typed_param); \
+        int result = className.run(op); \
         int result_final = 0; \
         static int glob_idx = 0; \
-        auto& comm = GlobalData::instance().comms[0]; \
+        auto& comm = global_data::instance().comms[0]; \
         ccl::allreduce(&result, &result_final, 1, ccl::reduction::sum, comm).wait(); \
         if (result_final > 0) { \
             print_err_message(className.get_err_message(), output); \
-            if (typed_param.process_idx == 0) { \
+            if (op.comm_rank == 0) { \
                 printf("%s", output.str().c_str()); \
                 if (glob_idx) { \
-                    typed_test_param<T> test_conf(test_params[glob_idx - 1]); \
-                    output << "Previous case:\n"; \
-                    test_conf.print(output); \
+                    test_operation<T> prev_op(test_params[glob_idx - 1]); \
+                    output << "Previous operation:\n"; \
+                    prev_op.print(output); \
                 } \
-                output << "Current case:\n"; \
-                typed_param.print(output); \
+                output << "Current operation:\n"; \
+                op.print(output); \
                 EXPECT_TRUE(false) << output.str(); \
             } \
             output.str(""); \
@@ -168,11 +164,12 @@
         if (!mpi_inited) { \
             MPI_Init(NULL, NULL); \
         } \
+        atexit(mpi_finalize); \
         int size, rank; \
         MPI_Comm_size(MPI_COMM_WORLD, &size); \
         MPI_Comm_rank(MPI_COMM_WORLD, &rank); \
         ccl::kvs::address_type main_addr; \
-        auto& gd = GlobalData::instance(); \
+        auto& gd = global_data::instance(); \
         if (rank == 0) { \
             gd.kvs = ccl::create_main_kvs(); \
             main_addr = gd.kvs->get_address(); \
@@ -186,76 +183,15 @@
         PATCH_OUTPUT_NAME_ARG(argc, argv); \
         testing::InitGoogleTest(&argc, argv); \
         int res = RUN_ALL_TESTS(); \
-        MPI_Finalize(); \
         return res; \
     }
 
 #define TEST_CASES_DEFINITION(FuncName) \
     TEST_P(MainTest, FuncName) { \
-        ccl_test_conf param = GetParam(); \
+        test_param param = GetParam(); \
         EXPECT_EQ(TEST_SUCCESS, this->test(param)); \
     } \
     INSTANTIATE_TEST_CASE_P(test_params, MainTest, ::testing::ValuesIn(test_params));
-
-void print_err_message(char* err_message, std::ostream& output) {
-    int message_len = strlen(err_message);
-    ccl::communicator& comm = GlobalData::instance().comms[0];
-    int process_count = comm.size();
-    int process_idx = comm.rank();
-    std::vector<size_t> arr_message_len(process_count, 0);
-    int* arr_message_len_copy = new int[process_count];
-    std::vector<size_t> displs(process_count, 1);
-    ccl::allgatherv(&message_len, 1, arr_message_len_copy, displs, comm).wait();
-    std::copy(arr_message_len_copy, arr_message_len_copy + process_count, arr_message_len.begin());
-    int full_message_len = std::accumulate(arr_message_len.begin(), arr_message_len.end(), 0);
-
-    if (full_message_len == 0) {
-        delete[] arr_message_len_copy;
-        return;
-    }
-
-    char* arrerr_message = new char[full_message_len];
-    ccl::allgatherv(
-        err_message, message_len, arrerr_message, arr_message_len, ccl::datatype::int8, comm)
-        .wait();
-
-    if (process_idx == 0) {
-        output << arrerr_message;
-    }
-
-    delete[] arr_message_len_copy;
-    delete[] arrerr_message;
-}
-
-std::ostream& operator<<(std::ostream& stream, ccl_test_conf const& test_conf) {
-    return stream << "\n"
-                  << ccl_data_type_str[test_conf.datatype] << "\n"
-                  << ccl_place_type_str[test_conf.place_type] << "\n"
-                  << ccl_cache_type_str[test_conf.cache_type] << "\n"
-                  << ccl_size_type_str[test_conf.size_type] << "\n"
-                  << ccl_completion_type_str[test_conf.completion_type] << "\n"
-                  << ccl_sync_type_str[test_conf.sync_type] << "\n"
-                  << ccl_reduction_type_str[test_conf.reduction] << "\n"
-                  << ccl_order_type_str[test_conf.complete_order_type] << "\n"
-                  << ccl_order_type_str[test_conf.start_order_type] << "\n"
-                  << ccl_buffer_count_str[test_conf.buffer_count] << "\n"
-                  << ccl_prolog_type_str[test_conf.prolog_type] << "\n"
-                  << ccl_epilog_type_str[test_conf.epilog_type] << std::endl;
-}
-
-template <typename T>
-T get_expected_min(size_t i, size_t buf_idx, size_t process_count, size_t coeff = 1) {
-    if ((T)(coeff * (i + buf_idx + process_count - 1)) < T(coeff * (i + buf_idx)))
-        return (T)(coeff * (i + buf_idx + process_count - 1));
-    return (T)(coeff * (i + buf_idx));
-}
-
-template <typename T>
-T get_expected_max(size_t i, size_t buf_idx, size_t process_count, size_t coeff = 1) {
-    if ((T)(coeff * (i + buf_idx + process_count - 1)) > T(coeff * (i + buf_idx)))
-        return (T)(coeff * (i + buf_idx + process_count - 1));
-    return (T)(coeff * (i + buf_idx));
-}
 
 class CustomPrinter : public ::testing::EmptyTestEventListener {
     virtual void OnTestCaseStart(const ::testing::TestCase& test_case) {

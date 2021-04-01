@@ -23,6 +23,7 @@
 #include "common/comm/l0/scheduler/allied_process_group_scheduler.hpp"
 #include "common/event/impls/gpu_event.hpp"
 
+#include "common/comm/l0/communicator/process_group/process_communicator_utils.hpp"
 /* allgatherv */
 template <class buffer_type>
 ccl::event process_a2a_communicator::allgatherv_impl(const buffer_type* send_buf,

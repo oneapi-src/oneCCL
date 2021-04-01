@@ -61,8 +61,12 @@
     to->epilogue_fn = nullptr; /*from.get<ccl::operation_attr_id::epilogue_fn>().get();*/ \
     to->priority = from.get<ccl::operation_attr_id::priority>(); \
     to->synchronous = from.get<ccl::operation_attr_id::synchronous>(); \
-    to->to_cache = from.get<ccl::operation_attr_id::to_cache>(); \
-    to->match_id = from.get<ccl::operation_attr_id::match_id>();
+    to->to_cache = (from.get<ccl::operation_attr_id::match_id>().length()) \
+                       ? from.get<ccl::operation_attr_id::to_cache>() \
+                       : false; \
+    to->match_id = from.get<ccl::operation_attr_id::match_id>(); \
+    if (to->to_cache != from.get<ccl::operation_attr_id::to_cache>()) \
+        LOG_INFO("collective caching is requested but no match_id is provided, disable caching");
 
 //TODO temporary solution for type convertation, ccl_coll_attr would be depreacated
 ccl_coll_attr::ccl_coll_attr(const ccl::allgatherv_attr& attr) {

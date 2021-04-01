@@ -83,8 +83,10 @@ struct gpu_comm_attr;
     COMM_INTERFACE_COLL_CLASS_##TYPE(cl::sycl::buffer<uint32_t COMMA 1>); \
     COMM_INTERFACE_COLL_CLASS_##TYPE(cl::sycl::buffer<int64_t COMMA 1>); \
     COMM_INTERFACE_COLL_CLASS_##TYPE(cl::sycl::buffer<uint64_t COMMA 1>); \
+    /*COMM_INTERFACE_COLL_CLASS_##TYPE(cl::sycl::buffer<ccl::float16 COMMA 1>);*/ \
     COMM_INTERFACE_COLL_CLASS_##TYPE(cl::sycl::buffer<float COMMA 1>); \
     COMM_INTERFACE_COLL_CLASS_##TYPE(cl::sycl::buffer<double COMMA 1>); \
+    /*COMM_INTERFACE_COLL_CLASS_##TYPE(cl::sycl::buffer<ccl::bfloat16 COMMA 1>);*/ \
 \
     COMM_INTERFACE_SPARSE_CLASS_##TYPE(cl::sycl::buffer<int32_t COMMA 1>, \
                                        cl::sycl::buffer<float COMMA 1>); \
@@ -117,8 +119,10 @@ struct gpu_comm_attr;
     COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(COMM, cl::sycl::buffer<int32_t COMMA 1>); \
     COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(COMM, cl::sycl::buffer<int64_t COMMA 1>); \
     COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(COMM, cl::sycl::buffer<uint64_t COMMA 1>); \
+    /*COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(COMM, cl::sycl::buffer<ccl::float16 COMMA 1>);*/ \
     COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(COMM, cl::sycl::buffer<float COMMA 1>); \
     COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(COMM, cl::sycl::buffer<double COMMA 1>); \
+    /*COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(COMM, cl::sycl::buffer<ccl::bfloat16 COMMA 1>);*/ \
 \
     COMM_INTERFACE_SPARSE_ALLREDUCE_EXPLICIT_CLASS_INSTANTIATION( \
         COMM, cl::sycl::buffer<int32_t COMMA 1>, cl::sycl::buffer<float COMMA 1>); \

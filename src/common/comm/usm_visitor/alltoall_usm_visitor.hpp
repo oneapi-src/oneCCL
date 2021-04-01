@@ -39,17 +39,15 @@ struct alltoall_usm_visitor {
                Args&&... args) {
         bool processed = false;
         LOG_TRACE("comm: ",
-                  get_self()->to_string(),
+                  /*get_self()->to_string(),*/
                   " - starting to find visitor for datatype: ",
                   ccl::to_string(dtype),
                   " , handle: ",
                   utils::enum_to_underlying(dtype));
 
-        CCL_THROW("unexpected path");
-
         switch (dtype) {
             case ccl::datatype::int8: {
-                using type = char;
+                using type = int8_t;
                 req = get_self()->template alltoall_impl<type>(static_cast<const type*>(send_buf),
                                                                static_cast<type*>(recv_buf),
                                                                count,
@@ -58,21 +56,30 @@ struct alltoall_usm_visitor {
                 break;
             }
             case ccl::datatype::uint8: {
-                throw ccl::exception(std::string(__PRETTY_FUNCTION__) +
-                                     " - USM convertation of: " + ccl::to_string(dtype) +
-                                     " is not supported for such configuration");
+                using type = uint8_t;
+                req = get_self()->template alltoall_impl<type>(static_cast<const type*>(send_buf),
+                                                               static_cast<type*>(recv_buf),
+                                                               count,
+                                                               std::forward<Args>(args)...);
+                processed = true;
                 break;
             }
             case ccl::datatype::int16: {
-                throw ccl::exception(std::string(__PRETTY_FUNCTION__) +
-                                     " - USM convertation of: " + ccl::to_string(dtype) +
-                                     " is not supported for such configuration");
+                using type = uint16_t;
+                req = get_self()->template alltoall_impl<type>(static_cast<const type*>(send_buf),
+                                                               static_cast<type*>(recv_buf),
+                                                               count,
+                                                               std::forward<Args>(args)...);
+                processed = true;
                 break;
             }
             case ccl::datatype::uint16: {
-                throw ccl::exception(std::string(__PRETTY_FUNCTION__) +
-                                     " - USM convertation of: " + ccl::to_string(dtype) +
-                                     " is not supported for such configuration");
+                using type = uint16_t;
+                req = get_self()->template alltoall_impl<type>(static_cast<const type*>(send_buf),
+                                                               static_cast<type*>(recv_buf),
+                                                               count,
+                                                               std::forward<Args>(args)...);
+                processed = true;
                 break;
             }
             case ccl::datatype::int32: {
@@ -85,9 +92,12 @@ struct alltoall_usm_visitor {
                 break;
             }
             case ccl::datatype::uint32: {
-                throw ccl::exception(std::string(__PRETTY_FUNCTION__) +
-                                     " - USM convertation of: " + ccl::to_string(dtype) +
-                                     " is not supported for such configuration");
+                using type = uint32_t;
+                req = get_self()->template alltoall_impl<type>(static_cast<const type*>(send_buf),
+                                                               static_cast<type*>(recv_buf),
+                                                               count,
+                                                               std::forward<Args>(args)...);
+                processed = true;
                 break;
             }
             case ccl::datatype::int64: {
@@ -109,9 +119,12 @@ struct alltoall_usm_visitor {
                 break;
             }
             case ccl::datatype::float16: {
-                throw ccl::exception(std::string(__PRETTY_FUNCTION__) +
-                                     " - USM convertation of: " + ccl::to_string(dtype) +
-                                     " is not supported for such configuration");
+                using type = ccl::float16;
+                req = get_self()->template alltoall_impl<type>(static_cast<const type*>(send_buf),
+                                                               static_cast<type*>(recv_buf),
+                                                               count,
+                                                               std::forward<Args>(args)...);
+                processed = true;
                 break;
             }
             case ccl::datatype::float32: {
@@ -133,14 +146,18 @@ struct alltoall_usm_visitor {
                 break;
             }
             case ccl::datatype::bfloat16: {
-                throw ccl::exception(
-                    std::string(__PRETTY_FUNCTION__) +
-                    " - USM convertationf loat16  is not supported for such configuration");
+                using type = ccl::bfloat16;
+                req = get_self()->template alltoall_impl<type>(static_cast<const type*>(send_buf),
+                                                               static_cast<type*>(recv_buf),
+                                                               count,
+                                                               std::forward<Args>(args)...);
+                processed = true;
                 break;
             }
             default: {
+                CCL_THROW("unknown datatype ", dtype);
                 LOG_DEBUG("comm: ",
-                          get_self()->to_string(),
+                          /*get_self()->to_string(),*/
                           " - no found visitor for datatype: ",
                           ccl::to_string(dtype),
                           " , handle: ",

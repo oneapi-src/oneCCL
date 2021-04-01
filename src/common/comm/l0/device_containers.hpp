@@ -50,6 +50,9 @@ struct indexed_device_container<ccl_thread_comm<ccl_virtual_gpu_comm>> : std::ma
 template <class... device_t>
 using indexed_device_storage = std::tuple<indexed_device_container<device_t>...>;
 
+template <class... device_t>
+using device_variant_t = std::tuple<device_t_ptr<device_t>...>; //TOSO use std::variant
+
 namespace detail {
 //TODO - use traits
 template <class device_t, class... total_devices_t>

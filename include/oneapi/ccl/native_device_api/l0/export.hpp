@@ -14,7 +14,10 @@
  limitations under the License.
 */
 #pragma once
+
 #include "oneapi/ccl/types.hpp"
+
+#define CCL_BE_API CCL_HELPER_DLL_EXPORT
 
 #define CL_BACKEND_TYPE ccl::cl_backend_type::l0
 
@@ -24,11 +27,11 @@ namespace ccl {
 
 template <>
 struct backend_info<CL_BACKEND_TYPE> {
-    CCL_API static constexpr ccl::cl_backend_type type() {
+    static constexpr ccl::cl_backend_type type() {
         return CL_BACKEND_TYPE;
     }
-    CCL_API static constexpr const char* name() {
-        return "CL_INTEL_L0_BACKEND";
+    static constexpr const char* name() {
+        return "LEVEL_ZERO_BACKEND";
     }
 };
 
@@ -41,8 +44,8 @@ struct generic_device_type<CL_BACKEND_TYPE> {
     generic_device_type(device_index_type id);
     generic_device_type(ccl_native_t dev);
     device_index_type get_id() const noexcept;
-    ccl_native_t& get() noexcept;
-    const ccl_native_t& get() const noexcept;
+    ccl_native_t get() noexcept;
+    const ccl_native_t get() const noexcept;
 
     handle_t device;
 };

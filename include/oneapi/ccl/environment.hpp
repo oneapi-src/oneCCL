@@ -90,30 +90,29 @@ public:
 
     static ccl::library_version get_library_version();
 
-    template <class... attr_value_pair_t>
-    static init_attr create_init_attr(attr_value_pair_t&&... avps) {
+    template <class... attr_val_type>
+    static init_attr create_init_attr(attr_val_type&&... avs) {
         auto init_create_attr = create_postponed_api_type<init_attr>();
-        int expander[]{ (init_create_attr.template set<attr_value_pair_t::idx()>(avps.val()),
-                         0)... };
+        int expander[]{ (init_create_attr.template set<attr_val_type::idx()>(avs.val()), 0)... };
         (void)expander;
         return init_create_attr;
     }
 
-    template <class coll_attribute_type, class... attr_value_pair_t>
-    static coll_attribute_type create_operation_attr(attr_value_pair_t&&... avps) {
+    template <class coll_attribute_type, class... attr_val_type>
+    static coll_attribute_type create_operation_attr(attr_val_type&&... avs) {
         auto op_attr = create_postponed_api_type<coll_attribute_type>();
-        int expander[]{ (op_attr.template set<attr_value_pair_t::idx()>(avps.val()), 0)... };
+        int expander[]{ (op_attr.template set<attr_val_type::idx()>(avs.val()), 0)... };
         (void)expander;
         return op_attr;
     }
 
     /******************** DATATYPE ********************/
 
-    template <class... attr_value_pair_t>
-    static datatype_attr create_datatype_attr(attr_value_pair_t&&... avps) {
-        static_assert(sizeof...(avps) > 0, "At least one argument must be specified");
+    template <class... attr_val_type>
+    static datatype_attr create_datatype_attr(attr_val_type&&... avs) {
+        static_assert(sizeof...(avs) > 0, "At least one argument must be specified");
         auto attr = create_postponed_api_type<datatype_attr>();
-        int expander[]{ (attr.template set<attr_value_pair_t::idx()>(avps.val()), 0)... };
+        int expander[]{ (attr.template set<attr_val_type::idx()>(avs.val()), 0)... };
         (void)expander;
         return attr;
     }
@@ -124,11 +123,10 @@ public:
 
     /******************** KVS ********************/
 
-    template <class... attr_value_pair_t>
-    static kvs_attr create_kvs_attr(attr_value_pair_t&&... avps) {
+    template <class... attr_val_type>
+    static kvs_attr create_kvs_attr(attr_val_type&&... avs) {
         auto kvs_create_attr = create_postponed_api_type<kvs_attr>();
-        int expander[]{ (kvs_create_attr.template set<attr_value_pair_t::idx()>(avps.val()),
-                         0)... };
+        int expander[]{ (kvs_create_attr.template set<attr_val_type::idx()>(avs.val()), 0)... };
         (void)expander;
         return kvs_create_attr;
     }
@@ -144,11 +142,11 @@ public:
               class = typename std::enable_if<is_device_supported<native_device_type>()>::type>
     device create_device(native_device_type&& native_device) const;
 
-    template <class... attr_value_pair_t>
+    template <class... attr_val_type>
     device create_device_from_attr(typename unified_device_type::ccl_native_t dev,
-                                   attr_value_pair_t&&... avps) const {
+                                   attr_val_type&&... avs) const {
         device str = create_postponed_api_type<device>(dev);
-        int expander[]{ (str.template set<attr_value_pair_t::idx()>(avps.val()), 0)... };
+        int expander[]{ (str.template set<attr_val_type::idx()>(avs.val()), 0)... };
         (void)expander;
         str.build_from_params();
         return str;
@@ -163,11 +161,11 @@ public:
         class = typename std::enable_if<is_device_supported<native_device_contex_type>()>::type>
     context create_context(native_device_contex_type&& native_context) const;
 
-    template <class... attr_value_pair_t>
+    template <class... attr_val_type>
     context create_context_from_attr(typename unified_context_type::ccl_native_t ctx,
-                                     attr_value_pair_t&&... avps) const {
+                                     attr_val_type&&... avs) const {
         context str = create_postponed_api_type<context>(ctx);
-        int expander[]{ (str.template set<attr_value_pair_t::idx()>(avps.val()), 0)... };
+        int expander[]{ (str.template set<attr_val_type::idx()>(avs.val()), 0)... };
         (void)expander;
         str.build_from_params();
         return str;
@@ -198,22 +196,22 @@ public:
               class = typename std::enable_if<is_stream_supported<native_stream_type>()>::type>
     stream create_stream(native_stream_type& native_stream, native_context_type& native_ctx);
 
-    template <class... attr_value_pair_t>
+    template <class... attr_val_type>
     stream create_stream_from_attr(typename unified_device_type::ccl_native_t device,
-                                   attr_value_pair_t&&... avps) {
+                                   attr_val_type&&... avs) {
         stream str = create_stream(device);
-        int expander[]{ (str.template set<attr_value_pair_t::idx()>(avps.val()), 0)... };
+        int expander[]{ (str.template set<attr_val_type::idx()>(avs.val()), 0)... };
         (void)expander;
         str.build_from_params();
         return str;
     }
 
-    template <class... attr_value_pair_t>
+    template <class... attr_val_type>
     stream create_stream_from_attr(typename unified_device_type::ccl_native_t device,
                                    typename unified_context_type::ccl_native_t context,
-                                   attr_value_pair_t&&... avps) {
+                                   attr_val_type&&... avs) {
         stream str = create_stream(device, context);
-        int expander[]{ (str.template set<attr_value_pair_t::idx()>(avps.val()), 0)... };
+        int expander[]{ (str.template set<attr_val_type::idx()>(avs.val()), 0)... };
         (void)expander;
         str.build_from_params();
         return str;
@@ -229,19 +227,18 @@ public:
                                                    shared_ptr_class<kvs_interface> kvs) const;
 #endif
 
-    template <class... attr_value_pair_t>
-    static comm_split_attr create_comm_split_attr(attr_value_pair_t&&... avps) {
+    template <class... attr_val_type>
+    static comm_split_attr create_comm_split_attr(attr_val_type&&... avs) {
         auto split_attr = create_postponed_api_type<comm_split_attr>();
-        int expander[]{ (split_attr.template set<attr_value_pair_t::idx()>(avps.val()), 0)... };
+        int expander[]{ (split_attr.template set<attr_val_type::idx()>(avs.val()), 0)... };
         (void)expander;
         return split_attr;
     }
 
-    template <class... attr_value_pair_t>
-    static comm_attr create_comm_attr(attr_value_pair_t&&... avps) {
+    template <class... attr_val_type>
+    static comm_attr create_comm_attr(attr_val_type&&... avs) {
         auto comm_create_attr = create_postponed_api_type<comm_attr>();
-        int expander[]{ (comm_create_attr.template set<attr_value_pair_t::idx()>(avps.val()),
-                         0)... };
+        int expander[]{ (comm_create_attr.template set<attr_val_type::idx()>(avs.val()), 0)... };
         (void)expander;
         return comm_create_attr;
     }

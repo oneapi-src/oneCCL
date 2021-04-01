@@ -53,11 +53,12 @@ ccl_fusion_buffer_cache::ccl_fusion_buffer_cache(size_t buf_size) : buf_size(buf
 ccl_fusion_buffer_cache::~ccl_fusion_buffer_cache() {
     std::lock_guard<ccl_fusion_lock_t> lock{ guard };
 
-    if (free_buffers.size() > all_buffers.size()) {
-        CCL_FATAL("unexpected buffer count - free_buffers: ",
-                  free_buffers.size(),
-                  ", all_buffers: ",
-                  all_buffers.size());
+    if (all_buffers.size() != free_buffers.size()) {
+        LOG_INFO("fusion buffers may be still in use"
+                 ", free_buffers: ",
+                 free_buffers.size(),
+                 ", all_buffers: ",
+                 all_buffers.size());
     }
 
     for (size_t idx = 0; idx < all_buffers.size(); idx++) {
@@ -309,7 +310,6 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
 
         for (size_t copy_idx = 0; copy_idx < copies_count; copy_idx++) {
             size_t global_copy_idx = idx * copies_per_part + copy_idx;
-
 #ifdef CCL_ENABLE_SYCL
             if (stream && stream->is_sycl_device_stream())
                 entry_factory::make_entry<sycl_copy_entry<sycl_copy_direction::d2h>>(
@@ -347,7 +347,6 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
 
         for (size_t copy_idx = 0; copy_idx < copies_count; copy_idx++) {
             size_t global_copy_idx = idx * copies_per_part + copy_idx;
-
 #ifdef CCL_ENABLE_SYCL
             if (stream && stream->is_sycl_device_stream())
                 entry_factory::make_entry<sycl_copy_entry<sycl_copy_direction::h2d>>(

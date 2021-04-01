@@ -75,7 +75,7 @@ CCL_TYPE_TRAITS(ccl::datatype::int32, int32_t, sizeof(int32_t), int32)
 CCL_TYPE_TRAITS(ccl::datatype::uint32, uint32_t, sizeof(uint32_t), uint32)
 CCL_TYPE_TRAITS(ccl::datatype::int64, int64_t, sizeof(int64_t), int64)
 CCL_TYPE_TRAITS(ccl::datatype::uint64, uint64_t, sizeof(uint64_t), uint64)
-//CCL_TYPE_TRAITS(ccl::datatype::float16, float16, sizeof(float16), float16)
+CCL_TYPE_TRAITS(ccl::datatype::float16, float16, sizeof(float16), float16)
 CCL_TYPE_TRAITS(ccl::datatype::float32, float, sizeof(float), float32)
 CCL_TYPE_TRAITS(ccl::datatype::float64, double, sizeof(double), float64)
 CCL_TYPE_TRAITS(ccl::datatype::bfloat16, bfloat16, sizeof(bfloat16), bfloat16)
@@ -110,10 +110,10 @@ CCL_CLASS_TYPE_TRAITS(ccl::datatype::uint64,
                       cl::sycl::buffer<uint64_t COMMA 1>,
                       sizeof(uint64_t),
                       uint64)
-// CCL_CLASS_TYPE_TRAITS(ccl::datatype::float16,
-//                       cl::sycl::buffer<float16 COMMA 1>,
-//                       sizeof(float16),
-//                       float16)
+CCL_CLASS_TYPE_TRAITS(ccl::datatype::float16,
+                      cl::sycl::buffer<float16 COMMA 1>,
+                      sizeof(float16),
+                      float16)
 CCL_CLASS_TYPE_TRAITS(ccl::datatype::float32,
                       cl::sycl::buffer<float COMMA 1>,
                       sizeof(float),

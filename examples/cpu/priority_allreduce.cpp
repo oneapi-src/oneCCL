@@ -201,6 +201,8 @@ int main() {
     MPI_Comm_size(MPI_COMM_WORLD, (int*)&size);
     MPI_Comm_rank(MPI_COMM_WORLD, (int*)&rank);
 
+    atexit(mpi_finalize);
+
     ccl::shared_ptr_class<ccl::kvs> kvs;
     ccl::kvs::address_type main_addr;
     if (rank == 0) {
@@ -276,7 +278,8 @@ int main() {
         msg_pure_wait_timers[idx] /= ITER_COUNT;
     }
 
-    ccl::barrier(comm);
+    auto attr = ccl::create_operation_attr<ccl::barrier_attr>();
+    ccl::barrier(comm, attr);
 
     std::vector<double> recv_msg_timers(size * MSG_COUNT);
     std::vector<size_t> recv_msg_timers_counts(size, MSG_COUNT);
@@ -363,8 +366,6 @@ int main() {
 
     if (rank == 0)
         printf("PASSED\n");
-
-    MPI_Finalize();
 
     return 0;
 }

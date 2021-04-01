@@ -290,35 +290,26 @@ bool thread_group_ring_topology::build_scale_up_specific(
                     continue;
                 }
 
-                auto scale_virt =
-                    detail::add_numa_proxy_device<ccl_virtual_gpu_comm, group_id(), class_id>(
-                        *non_indexed_plain_devices, last_in_graph_index, context, devices_factory);
-                if (scale_virt) {
-                    created_scaleup_indices.insert(last_in_graph_index);
-                    out << "added scaleup virtual device: " << scale_virt->to_string()
-                        << ", by idx: " << last_in_graph_index << std::endl;
+                size_t inserted_device_type_index = detail::role_mod::inject_numa_device<
+                    group_id(),
+                    class_id,
+                    thread_group_context,
+                    ccl_virtual_gpu_comm, /* `virtual` is better candiate*/
+                    ccl_gpu_comm>(
+                    *non_indexed_plain_devices, last_in_graph_index, context, devices_factory);
+                if (inserted_device_type_index == std::numeric_limits<size_t>::max()) {
+                    assert(false && "Unsupported device type in topology creation");
+                    std::ostringstream ss;
+                    ss << out.rdbuf();
+
+                    //TODO no need to throw?
+                    throw std::runtime_error(
+                        std::string("Unsupported device type in topology creation. Log:\n") +
+                        ss.str());
                 }
-                else {
-                    auto scale_real =
-                        detail::add_numa_proxy_device<ccl_gpu_comm, group_id(), class_id>(
-                            *non_indexed_plain_devices,
-                            last_in_graph_index,
-                            context,
-                            devices_factory);
-                    if (scale_real) {
-                        created_scaleup_indices.insert(last_in_graph_index);
-                        out << "added scaleup real device: " << scale_real->to_string()
-                            << ", by idx: " << last_in_graph_index << std::endl;
-                    }
-                    //                    else
-                    //                    {
-                    //                        assert(false && "Unsupported device type in torn-apart ring creation");
-                    //                        std::ostringstream ss;
-                    //                        ss << out.rdbuf();
-                    //                        throw std::runtime_error(std::string("Unsupported device type in torn-apart ring creation. Log:\n") +
-                    //                                                 ss.str());
-                    //                    }
-                }
+                out << "Inject numa device by order: " << inserted_device_type_index
+                    << "\nby idx: " << last_in_graph_index << std::endl;
+                created_scaleup_indices.insert(last_in_graph_index);
             }
         }
     }

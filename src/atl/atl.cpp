@@ -20,7 +20,6 @@
 #include <dlfcn.h>
 
 #include "atl/atl.h"
-#include "common/log/log.hpp"
 
 #define LIB_SUFFIX     ".so"
 #define ATL_LIB_PREFIX "libccl_atl_"
@@ -52,6 +51,8 @@ static void atl_ini_dir(const char* transport_name,
                         atl_ctx_t** ctx,
                         const char* dir,
                         const char* main_addr) {
+    CCL_THROW("unexpected path");
+
     int n = 0;
     char* lib;
     void* dlhandle;
@@ -59,11 +60,6 @@ static void atl_ini_dir(const char* transport_name,
     typedef atl_status_t (*init_f)(atl_transport_t*);
     init_f init_func;
     size_t transport_name_len = strlen(transport_name);
-
-    if (strcmp(transport_name, "mpi") == 0 && !getenv("I_MPI_ROOT")) {
-        LOG_INFO("ATL MPI transport is requested but seems Intel MPI environment is not set. "
-                 "Please source release_mt version of Intel MPI (2019 or higher version).");
-    }
 
     n = scandir(dir, &liblist, atl_lib_filter, NULL);
     if (n < 0)
@@ -110,7 +106,7 @@ static void atl_ini_dir(const char* transport_name,
                 ret = transport.reserve_addr(const_cast<char*>(main_addr));
             }
             else {
-                ret = transport.init(argc, argv, attr, ctx, main_addr);
+                ret = transport.init(argc, argv, attr, ctx, main_addr, nullptr /* pmi */);
             }
             if (ret != ATL_STATUS_SUCCESS) {
                 dlclose(dlhandle);
@@ -196,6 +192,8 @@ atl_status_t atl_init(const char* transport_name,
                       atl_attr_t* attr,
                       atl_ctx_t** ctx,
                       const char* main_addr) {
+    CCL_THROW("unexpected path");
+
     const char* transport_dl_dir = NULL;
     int n = 0;
     char** dirs;
@@ -209,10 +207,6 @@ atl_status_t atl_init(const char* transport_name,
         goto err_dlopen;
 
     dlclose(dlhandle);
-
-    transport_dl_dir = getenv("CCL_ATL_TRANSPORT_PATH");
-    if (!transport_dl_dir)
-        transport_dl_dir = ATL_TRANSPORT_DL_DIR;
 
     dirs = atl_split_and_alloc(transport_dl_dir, ":", NULL);
     if (dirs) {
@@ -229,6 +223,7 @@ err_dlopen:
 }
 
 void atl_main_addr_reserve(char* main_addr) {
+    CCL_THROW("unexpected path");
     should_reserve_addr = 1;
     atl_init("ofi", NULL, NULL, NULL, NULL, main_addr);
     should_reserve_addr = 0;
