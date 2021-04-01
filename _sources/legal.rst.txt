@@ -2,11 +2,13 @@
 Notices and Disclaimers
 =======================
 
-Intel technologies may require enabled hardware, software or service activation.
+Performance varies by use, configuration and other factors. Learn more at www.Intel.com/PerformanceIndex​.
 
 No product or component can be absolutely secure.
 
 Your costs and results may vary.
+
+Intel technologies may require enabled hardware, software or service activation.
 
 |copy| Intel Corporation.
 Intel, the Intel logo, and other Intel marks are trademarks of Intel Corporation or its subsidiaries.

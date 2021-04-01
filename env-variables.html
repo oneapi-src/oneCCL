@@ -1,0 +1,969 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Environment Variables &mdash; oneCCL Documentation 2021 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/sphinx_tabs/semantic-ui-2.4.1/segment.min.css" type="text/css" />
+  <link rel="stylesheet" href="_static/sphinx_tabs/semantic-ui-2.4.1/menu.min.css" type="text/css" />
+  <link rel="stylesheet" href="_static/sphinx_tabs/semantic-ui-2.4.1/tab.min.css" type="text/css" />
+  <link rel="stylesheet" href="_static/sphinx_tabs/tabs.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Notices and Disclaimers" href="legal.html" />
+    <link rel="prev" title="SparseAllreduce" href="api/operations/collective-operations/sparse-allreduce.html" />
+    <link href="_static/style.css" rel="stylesheet" type="text/css">
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home" alt="Documentation Home"> oneCCL Documentation
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Get Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="introduction/release-notes.html">Release Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="introduction/installation.html">Installation Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="introduction/installation.html#system-requirements">System Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction/installation.html#installation-using-command-line-interface">Installation using Command Line Interface</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="introduction/installation.html#custom-installation">Custom Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="introduction/installation.html#environment-setup">Environment Setup</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="introduction/sample.html">Sample Application</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="introduction/sample.html#build-details">Build details</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction/sample.html#run-the-sample">Run the sample</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="introduction/cmake-configuration.html">Use oneCCL package from CMake</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="introduction/cmake-configuration.html#onecclconfig-files-generation">oneCCLConfig files generation</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="programming-model.html">Programming Model</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="programming-model/host-communication.html">Host Communication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="programming-model/device-communication.html">Device Communication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="programming-model/limitations.html">Limitations</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="general-configuration.html">General Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="general-configuration/operation-execution.html">Execution of Communication Operations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="general-configuration/operation-execution.html#automatic-setup">Automatic setup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="general-configuration/operation-execution.html#explicit-setup">Explicit setup</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="general-configuration/transport-selection.html">Transport selection</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="advanced-configuration.html">Advanced Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="advanced-configuration/collective-algorithms-selection.html">Selection of Collective Algorithms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced-configuration/operation-caching.html">Caching of Communication Operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced-configuration/operation-prioritization.html">Prioritization of Communication Operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced-configuration/operation-fusion.html">Fusion of Communication Operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced-configuration/unordered-collectives.html">Unordered collectives support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced-configuration/sparse-collectives.html">Sparse collective operations</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="api.html">oneCCL API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/initialization.html">Initialization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/concepts.html">oneCCL Concepts</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/concepts/communicator.html">Communicator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/concepts/context.html">Context</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/concepts/device.html">Device</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/concepts/event.html">Event</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/concepts/kvs.html">Key-value Store</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/concepts/stream.html">Stream</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api/operations.html">Communication operations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api/operations/datatypes.html">Datatypes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api/operations/collective-operations.html">Collective Operations</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api/operations/collective-operations/allgatherv.html">Allgatherv</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/operations/collective-operations/allreduce.html">Allreduce</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/operations/collective-operations/alltoall.html">Alltoall</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/operations/collective-operations/alltoallv.html">Alltoallv</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/operations/collective-operations/barrier.html">Barrier</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/operations/collective-operations/broadcast.html">Broadcast</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/operations/collective-operations/reduce.html">Reduce</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/operations/collective-operations/reduce-scatter.html">ReduceScatter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/operations/collective-operations/sparse-allreduce.html">SparseAllreduce</a></li>
+<li class="toctree-l4"><a class="reference internal" href="api/operations/collective-operations.html#operation-attributes">Operation Attributes</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#id1">Generic workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#id2">Error Handling</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Environment Variables</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#collective-algorithms-selection">Collective algorithms selection</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#ccl-coll-name">CCL_&lt;coll_name&gt;</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#available-collectives">Available collectives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#available-algorithms">Available algorithms</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#allgatherv-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLGATHERV</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#allreduce-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLREDUCE</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#alltoall-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLTOALL</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#alltoallv-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLTOALLV</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#barrier-algorithms"><code class="docutils literal notranslate"><span class="pre">BARRIER</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#bcast-algorithms"><code class="docutils literal notranslate"><span class="pre">BCAST</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#reduce-algorithms"><code class="docutils literal notranslate"><span class="pre">REDUCE</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#reduce-scatter-algorithms"><code class="docutils literal notranslate"><span class="pre">REDUCE_SCATTER</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#sparse-allreduce-algorithms"><code class="docutils literal notranslate"><span class="pre">SPARSE_ALLREDUCE</span></code> algorithms</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ccl-rs-chunk-count">CCL_RS_CHUNK_COUNT</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ccl-rs-min-chunk-size">CCL_RS_MIN_CHUNK_SIZE</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#fusion">Fusion</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#ccl-fusion">CCL_FUSION</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ccl-fusion-bytes-threshold">CCL_FUSION_BYTES_THRESHOLD</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ccl-fusion-count-threshold">CCL_FUSION_COUNT_THRESHOLD</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ccl-fusion-cycle-ms">CCL_FUSION_CYCLE_MS</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#ccl-atl-transport">CCL_ATL_TRANSPORT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ccl-unordered-coll">CCL_UNORDERED_COLL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ccl-priority">CCL_PRIORITY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ccl-worker-count">CCL_WORKER_COUNT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ccl-worker-affinity">CCL_WORKER_AFFINITY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ccl-log-level">CCL_LOG_LEVEL</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ccl-max-short-size">CCL_MAX_SHORT_SIZE</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Notices and Disclaimers</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="legal.html">Notices and Disclaimers</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">oneCCL Documentation</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Environment Variables</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/env-variables.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="environment-variables">
+<h1>Environment Variables<a class="headerlink" href="#environment-variables" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="collective-algorithms-selection">
+<h2>Collective algorithms selection<a class="headerlink" href="#collective-algorithms-selection" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="ccl-coll-name">
+<h3>CCL_&lt;coll_name&gt;<a class="headerlink" href="#ccl-coll-name" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<p>To set a specific algorithm for the whole message size range:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_</span><span class="o">&lt;</span><span class="n">coll_name</span><span class="o">&gt;=&lt;</span><span class="n">algo_name</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>To set a specific algorithm for a specific message size range:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_</span><span class="o">&lt;</span><span class="n">coll_name</span><span class="o">&gt;=</span><span class="s">&quot;&lt;algo_name_1&gt;[:&lt;size_range_1&gt;][;&lt;algo_name_2&gt;:&lt;size_range_2&gt;][;...]&quot;</span>
+</pre></div>
+</div>
+<p>Where:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;coll_name&gt;</span></code> is selected from a list of available collective operations (<a class="reference internal" href="#available-collectives">Available collectives</a>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;algo_name&gt;</span></code> is selected from a list of available algorithms for a specific collective operation (<a class="reference internal" href="#available-algorithms">Available algorithms</a>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;size_range&gt;</span></code> is described by the left and the right size borders in a format <code class="docutils literal notranslate"><span class="pre">&lt;left&gt;-&lt;right&gt;</span></code>.
+Size is specified in bytes. Use reserved word <code class="docutils literal notranslate"><span class="pre">max</span></code> to specify the maximum message size.</p></li>
+</ul>
+<p>oneCCL internally fills algorithm selection table with sensible defaults. User input complements the selection table.
+To see the actual table values set <code class="docutils literal notranslate"><span class="pre">CCL_LOG_LEVEL=info</span></code>.</p>
+<p class="rubric">Example</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_ALLREDUCE</span><span class="o">=</span><span class="s">&quot;recursive_doubling:0-8192;rabenseifner:8193-1048576;ring:1048577-max&quot;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="available-collectives">
+<h3>Available collectives<a class="headerlink" href="#available-collectives" title="Permalink to this headline">¶</a></h3>
+<p>Available collective operations (<code class="docutils literal notranslate"><span class="pre">&lt;coll_name&gt;</span></code>):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ALLGATHERV</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ALLREDUCE</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ALLTOALL</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ALLTOALLV</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BARRIER</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BCAST</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">REDUCE</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">REDUCE_SCATTER</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SPARSE_ALLREDUCE</span></code></p></li>
+</ul>
+</div>
+<div class="section" id="available-algorithms">
+<h3>Available algorithms<a class="headerlink" href="#available-algorithms" title="Permalink to this headline">¶</a></h3>
+<p>Available algorithms for each collective operation (<code class="docutils literal notranslate"><span class="pre">&lt;algo_name&gt;</span></code>):</p>
+<div class="section" id="allgatherv-algorithms">
+<h4><code class="docutils literal notranslate"><span class="pre">ALLGATHERV</span></code> algorithms<a class="headerlink" href="#allgatherv-algorithms" title="Permalink to this headline">¶</a></h4>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">direct</span></code></p></td>
+<td><p>Based on <code class="docutils literal notranslate"><span class="pre">MPI_Iallgatherv</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">naive</span></code></p></td>
+<td><p>Send to all, receive from all</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">flat</span></code></p></td>
+<td><p>Alltoall-based algorithm</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">multi_bcast</span></code></p></td>
+<td><p>Series of broadcast operations with different root ranks</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="allreduce-algorithms">
+<h4><code class="docutils literal notranslate"><span class="pre">ALLREDUCE</span></code> algorithms<a class="headerlink" href="#allreduce-algorithms" title="Permalink to this headline">¶</a></h4>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">direct</span></code></p></td>
+<td><p>Based on <code class="docutils literal notranslate"><span class="pre">MPI_Iallreduce</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">rabenseifner</span></code></p></td>
+<td><p>Rabenseifner’s algorithm</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">starlike</span></code></p></td>
+<td><p>May be beneficial for imbalanced workloads</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ring</span></code></p></td>
+<td><p>reduce_scatter + allgather ring.
+Use <code class="docutils literal notranslate"><span class="pre">CCL_RS_CHUNK_COUNT</span></code> and <code class="docutils literal notranslate"><span class="pre">CCL_RS_MIN_CHUNK_SIZE</span></code>
+to control pipelining on reduce_scatter phase.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ring_rma</span></code></p></td>
+<td><p>reduce_scatter+allgather ring using RMA communications</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">double_tree</span></code></p></td>
+<td><p>Double-tree algorithm</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">recursive_doubling</span></code></p></td>
+<td><p>Recursive doubling algorithm</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">2d</span></code></p></td>
+<td><p>Two-dimensional algorithm (reduce_scatter + allreduce + allgather)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="alltoall-algorithms">
+<h4><code class="docutils literal notranslate"><span class="pre">ALLTOALL</span></code> algorithms<a class="headerlink" href="#alltoall-algorithms" title="Permalink to this headline">¶</a></h4>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">direct</span></code></p></td>
+<td><p>Based on <code class="docutils literal notranslate"><span class="pre">MPI_Ialltoall</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">naive</span></code></p></td>
+<td><p>Send to all, receive from all</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="alltoallv-algorithms">
+<h4><code class="docutils literal notranslate"><span class="pre">ALLTOALLV</span></code> algorithms<a class="headerlink" href="#alltoallv-algorithms" title="Permalink to this headline">¶</a></h4>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">direct</span></code></p></td>
+<td><p>Based on <code class="docutils literal notranslate"><span class="pre">MPI_Ialltoallv</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">naive</span></code></p></td>
+<td><p>Send to all, receive from all</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="barrier-algorithms">
+<h4><code class="docutils literal notranslate"><span class="pre">BARRIER</span></code> algorithms<a class="headerlink" href="#barrier-algorithms" title="Permalink to this headline">¶</a></h4>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">direct</span></code></p></td>
+<td><p>Based on <code class="docutils literal notranslate"><span class="pre">MPI_Ibarrier</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ring</span></code></p></td>
+<td><p>Ring-based algorithm</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="bcast-algorithms">
+<h4><code class="docutils literal notranslate"><span class="pre">BCAST</span></code> algorithms<a class="headerlink" href="#bcast-algorithms" title="Permalink to this headline">¶</a></h4>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">direct</span></code></p></td>
+<td><p>Based on <code class="docutils literal notranslate"><span class="pre">MPI_Ibcast</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ring</span></code></p></td>
+<td><p>Ring</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">double_tree</span></code></p></td>
+<td><p>Double-tree algorithm</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">naive</span></code></p></td>
+<td><p>Send to all from root rank</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="reduce-algorithms">
+<h4><code class="docutils literal notranslate"><span class="pre">REDUCE</span></code> algorithms<a class="headerlink" href="#reduce-algorithms" title="Permalink to this headline">¶</a></h4>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">direct</span></code></p></td>
+<td><p>Based on <code class="docutils literal notranslate"><span class="pre">MPI_Ireduce</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">rabenseifner</span></code></p></td>
+<td><p>Rabenseifner’s algorithm</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">tree</span></code></p></td>
+<td><p>Tree algorithm</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">double_tree</span></code></p></td>
+<td><p>Double-tree algorithm</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="reduce-scatter-algorithms">
+<h4><code class="docutils literal notranslate"><span class="pre">REDUCE_SCATTER</span></code> algorithms<a class="headerlink" href="#reduce-scatter-algorithms" title="Permalink to this headline">¶</a></h4>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">direct</span></code></p></td>
+<td><p>Based on <code class="docutils literal notranslate"><span class="pre">MPI_Ireduce_scatter_block</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ring</span></code></p></td>
+<td><p>Use <code class="docutils literal notranslate"><span class="pre">CCL_RS_CHUNK_COUNT</span></code> and <code class="docutils literal notranslate"><span class="pre">CCL_RS_MIN_CHUNK_SIZE</span></code>
+to control pipelining.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="sparse-allreduce-algorithms">
+<h4><code class="docutils literal notranslate"><span class="pre">SPARSE_ALLREDUCE</span></code> algorithms<a class="headerlink" href="#sparse-allreduce-algorithms" title="Permalink to this headline">¶</a></h4>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ring</span></code></p></td>
+<td><p>Ring-allreduce based algorithm</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">mask</span></code></p></td>
+<td><p>Mask matrix based algorithm</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">allgatherv</span></code></p></td>
+<td><p>3-allgatherv based algorithm</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>WARNING: <code class="docutils literal notranslate"><span class="pre">ccl::sparse_allreduce</span></code> is experimental and subject to change.</p>
+</div>
+</div>
+<div class="section" id="ccl-rs-chunk-count">
+<h4>CCL_RS_CHUNK_COUNT<a class="headerlink" href="#ccl-rs-chunk-count" title="Permalink to this headline">¶</a></h4>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_RS_CHUNK_COUNT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">COUNT</span></code></p></td>
+<td><p>Maximum number of chunks.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify maximum number of chunks for reduce_scatter phase in ring allreduce.</p>
+</div>
+<div class="section" id="ccl-rs-min-chunk-size">
+<h4>CCL_RS_MIN_CHUNK_SIZE<a class="headerlink" href="#ccl-rs-min-chunk-size" title="Permalink to this headline">¶</a></h4>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_RS_MIN_CHUNK_SIZE</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SIZE</span></code></p></td>
+<td><p>Minimum number of bytes in chunk.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify minimum number of bytes in chunk for reduce_scatter phase in ring allreduce. Affects actual value of <code class="docutils literal notranslate"><span class="pre">CCL_RS_CHUNK_COUNT</span></code>.</p>
+</div>
+</div>
+</div>
+<div class="section" id="fusion">
+<h2>Fusion<a class="headerlink" href="#fusion" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="ccl-fusion">
+<h3>CCL_FUSION<a class="headerlink" href="#ccl-fusion" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_FUSION</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+<td><p>Enable fusion of collective operations</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Disable fusion of collective operations (<strong>default</strong>)</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to control fusion of collective operations.
+The real fusion depends on additional settings described below.</p>
+</div>
+<div class="section" id="ccl-fusion-bytes-threshold">
+<h3>CCL_FUSION_BYTES_THRESHOLD<a class="headerlink" href="#ccl-fusion-bytes-threshold" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_FUSION_BYTES_THRESHOLD</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SIZE</span></code></p></td>
+<td><p>Bytes threshold for a collective operation. If the size of a communication buffer in bytes is less than or equal
+to <code class="docutils literal notranslate"><span class="pre">SIZE</span></code>, then oneCCL fuses this operation with the other ones.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify the threshold of the number of bytes for a collective operation to be fused.</p>
+</div>
+<div class="section" id="ccl-fusion-count-threshold">
+<h3>CCL_FUSION_COUNT_THRESHOLD<a class="headerlink" href="#ccl-fusion-count-threshold" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_FUSION_COUNT_THRESHOLD</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">COUNT</span></code></p></td>
+<td><p>The threshold for the number of collective operations.
+oneCCL can fuse together no more than <code class="docutils literal notranslate"><span class="pre">COUNT</span></code> operations at a time.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify count threshold for a collective operation to be fused.</p>
+</div>
+<div class="section" id="ccl-fusion-cycle-ms">
+<h3>CCL_FUSION_CYCLE_MS<a class="headerlink" href="#ccl-fusion-cycle-ms" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_FUSION_CYCLE_MS</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MS</span></code></p></td>
+<td><p>The frequency of checking for collectives operations to be fused, in milliseconds:</p>
+<ul class="simple">
+<li><p>Small <code class="docutils literal notranslate"><span class="pre">MS</span></code> value can improve latency.</p></li>
+<li><p>Large <code class="docutils literal notranslate"><span class="pre">MS</span></code> value can help to fuse larger number of operations at a time.</p></li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify the frequency of checking for collectives operations to be fused.</p>
+</div>
+</div>
+<div class="section" id="ccl-atl-transport">
+<h2>CCL_ATL_TRANSPORT<a class="headerlink" href="#ccl-atl-transport" title="Permalink to this headline">¶</a></h2>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_ATL_TRANSPORT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">mpi</span></code></p></td>
+<td><p>MPI transport (<strong>default</strong>).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ofi</span></code></p></td>
+<td><p>OFI (Libfabric*) transport.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to select the transport for inter-node communications.</p>
+</div>
+<div class="section" id="ccl-unordered-coll">
+<h2>CCL_UNORDERED_COLL<a class="headerlink" href="#ccl-unordered-coll" title="Permalink to this headline">¶</a></h2>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_UNORDERED_COLL</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+<td><p>Enable execution of unordered collectives.
+You have to additionally specify <code class="docutils literal notranslate"><span class="pre">match_id</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Disable execution of unordered collectives (<strong>default</strong>).</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to enable execution of unordered collective operations on different nodes.</p>
+</div>
+<div class="section" id="ccl-priority">
+<h2>CCL_PRIORITY<a class="headerlink" href="#ccl-priority" title="Permalink to this headline">¶</a></h2>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_PRIORITY</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">direct</span></code></p></td>
+<td><p>You have to explicitly specify priority using <code class="docutils literal notranslate"><span class="pre">priority</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">lifo</span></code></p></td>
+<td><p>Priority is implicitly increased on each collective call. You do not have to specify priority.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">none</span></code></p></td>
+<td><p>Disable prioritization (<strong>default</strong>).</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to control priority mode of collective operations.</p>
+</div>
+<div class="section" id="ccl-worker-count">
+<h2>CCL_WORKER_COUNT<a class="headerlink" href="#ccl-worker-count" title="Permalink to this headline">¶</a></h2>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_WORKER_COUNT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">N</span></code></p></td>
+<td><p>The number of worker threads for oneCCL rank (<code class="docutils literal notranslate"><span class="pre">1</span></code> if not specified).</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify the number of oneCCL worker threads.</p>
+</div>
+<div class="section" id="ccl-worker-affinity">
+<h2>CCL_WORKER_AFFINITY<a class="headerlink" href="#ccl-worker-affinity" title="Permalink to this headline">¶</a></h2>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_WORKER_AFFINITY</span><span class="o">=&lt;</span><span class="n">proclist</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;proclist&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">auto</span></code></p></td>
+<td><p>Workers are automatically pinned to last cores of pin domain.
+Pin domain depends from process launcher.
+If <code class="docutils literal notranslate"><span class="pre">mpirun</span></code> from oneCCL package is used then pin domain is MPI process pin domain.
+Otherwise, pin domain is all cores on the node.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">n1,n2,..</span></code></p></td>
+<td><p>Affinity is explicitly specified for all local workers.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify cpu affinity for oneCCL worker threads.</p>
+</div>
+<div class="section" id="ccl-log-level">
+<h2>CCL_LOG_LEVEL<a class="headerlink" href="#ccl-log-level" title="Permalink to this headline">¶</a></h2>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_LOG_LEVEL</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="docutils align-left">
+<colgroup>
+<col style="width: 100%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">error</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">warn</span></code> (<strong>default</strong>)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">info</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">debug</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">trace</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to control logging level.</p>
+</div>
+<div class="section" id="ccl-max-short-size">
+<h2>CCL_MAX_SHORT_SIZE<a class="headerlink" href="#ccl-max-short-size" title="Permalink to this headline">¶</a></h2>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_MAX_SHORT_SIZE</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given docutils align-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SIZE</span></code></p></td>
+<td><p>Bytes threshold for a collective operation (<code class="docutils literal notranslate"><span class="pre">0</span></code> if not specified). If the size of a communication buffer in bytes is less than or equal to <code class="docutils literal notranslate"><span class="pre">SIZE</span></code>, then oneCCL does not split operation between workers. Applicable for <code class="docutils literal notranslate"><span class="pre">allreduce</span></code>, <code class="docutils literal notranslate"><span class="pre">reduce</span></code> and <code class="docutils literal notranslate"><span class="pre">broadcast</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify the threshold of the number of bytes for a collective operation to be split.</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="legal.html" class="btn btn-neutral float-right" title="Notices and Disclaimers" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="api/operations/collective-operations/sparse-allreduce.html" class="btn btn-neutral float-left" title="SparseAllreduce" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2019–2021
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+<br>
+<div>
+  <p>
+      For more complete information about compiler optimizations, see our <a href="optimization_notice.html">Optimization Notice</a>.
+  </p>  
+</div>
+
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
