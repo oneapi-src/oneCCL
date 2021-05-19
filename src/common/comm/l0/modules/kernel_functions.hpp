@@ -15,6 +15,7 @@
 */
 #pragma once
 #include "common/comm/l0/modules/kernel_argument_types.hpp"
+#include "coll/coll_param.hpp"
 
 namespace native {
 // kernel with its argument collection
@@ -70,21 +71,37 @@ struct kernel_data_storage {
 // major kernel args
 enum main_kernel_args { rank_index = 0, size_index = 1, args_start_index };
 
+class kernel_parameters_holder {
+    coll_param_gpu params;
+
+public:
+    kernel_parameters_holder(const coll_param_gpu& params) : params{ params } {}
+
+    const coll_param_gpu& get_kernel_params() const {
+        return params;
+    }
+};
+
 //main kernel - used for GPU program execution
 template <class Impl, class... arguments>
 struct execution_kernel : public kernel_data_storage<arg<main_kernel_args::rank_index, int>,
                                                      arg<main_kernel_args::size_index, int>,
-                                                     arguments...> {
+                                                     arguments...>,
+                          public kernel_parameters_holder {
     using base = kernel_data_storage<arg<main_kernel_args::rank_index, int>,
                                      arg<main_kernel_args::size_index, int>,
                                      arguments...>;
     using base::args;
     using base::handle;
 
+    using params_base = kernel_parameters_holder;
+
+    execution_kernel(const coll_param_gpu& params) : base{}, params_base{ params } {}
+
     using rank_type = int;
     using size_type = int;
 
-    static constexpr const char* name() {
+    const char* name() {
         return Impl::specific_name();
     }
 
@@ -179,16 +196,22 @@ struct execution_kernel : public kernel_data_storage<arg<main_kernel_args::rank_
     }
 };
 
-// ipc_kernel - used for GPU data synchronization only
+// base_ipc_kernel - used for GPU data synchronization only
 template <class Impl, class... arguments>
-struct ipc_kernel : public kernel_data_storage<arg<main_kernel_args::rank_index, int>,
-                                               arg<main_kernel_args::size_index, int>,
-                                               arguments...> {
+struct base_ipc_kernel : public kernel_data_storage<arg<main_kernel_args::rank_index, int>,
+                                                    arg<main_kernel_args::size_index, int>,
+                                                    arguments...>,
+                         public kernel_parameters_holder {
     using base = kernel_data_storage<arg<main_kernel_args::rank_index, int>,
                                      arg<main_kernel_args::size_index, int>,
                                      arguments...>;
     using base::args;
     using base::handle;
+
+    using params_base = kernel_parameters_holder;
+
+    base_ipc_kernel(const coll_param_gpu& params) : base{}, params_base{ params } {}
+
     static constexpr const char* name() {
         return Impl::specific_name();
     }

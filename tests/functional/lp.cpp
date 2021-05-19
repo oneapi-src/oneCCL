@@ -30,7 +30,6 @@ int is_fp16_enabled() {
                              : "a"(1));
         is_fp16_enabled = (reg[2] & (1 << 29)) >> 29;
     }
-    printf("FUNC_TESTS: FP16 compiler, is_fp16_enabled %d\n", is_fp16_enabled);
     return is_fp16_enabled;
 #else
     printf("FUNC_TESTS: no FP16 compiler\n");
@@ -50,7 +49,6 @@ int is_bf16_enabled() {
         is_bf16_enabled = ((reg[1] & (1 << 16)) >> 16) & ((reg[1] & (1 << 30)) >> 30) &
                           ((reg[1] & (1 << 31)) >> 31);
     }
-    printf("FUNC_TESTS: BF16 compiler, is_bf16_enabled %d\n", is_bf16_enabled);
     return is_bf16_enabled;
 #else
     printf("FUNC_TESTS: no BF16 compiler\n");
@@ -97,7 +95,7 @@ void convert_fp16_to_fp32(const void* src, void* dst) {
 void convert_fp32_to_bf16(const void* src, void* dst) {
 #ifdef CCL_BF16_AVX512BF_COMPILER
     if (is_avx512bf_enabled())
-        _mm256_storeu_si256((__m256i*)(dst), _mm512_cvtneps_pbh(_mm512_loadu_ps(src)));
+        _mm256_storeu_si256((__m256i*)(dst), (__m256i)_mm512_cvtneps_pbh(_mm512_loadu_ps(src)));
     else
 #endif
         _mm256_storeu_si256((__m256i*)(dst),

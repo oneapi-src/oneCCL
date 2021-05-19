@@ -62,8 +62,52 @@ ccl::event process_ring_communicator::allgatherv_impl(const void* send_buf,
                                                       const ccl::stream::impl_value_t& stream,
                                                       const ccl::allgatherv_attr& attr,
                                                       const ccl::vector_class<ccl::event>& deps) {
-    throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
-    return {};
+    using namespace native;
+
+    static constexpr ccl::group_split_type group_id = base_t::topology_type();
+    static constexpr ccl::device_topology_type class_id = base_t::topology_class();
+
+    if (!is_ready()) {
+        throw ccl::exception(std::string(
+            "Device communicator for group_id: " + ::to_string(group_id) +
+            " is not ready yet. Not all сommunicators are created in group. Please create them before usage"));
+    }
+
+    int comm_rank = rank();
+    size_t ring_index = 0;
+    LOG_DEBUG("communicator for device idx: ",
+              get_device_path(),
+              ", rank idx: ",
+              comm_rank,
+              ", ring_index :",
+              ring_index);
+
+    //TODO make const!
+    ccl_buffer send_entry_buffer(const_cast<void**>(&send_buf),
+                                 send_count * ccl::get_datatype_size(dtype),
+                                 0,
+                                 ccl_buffer_type::INDIRECT);
+    ccl_buffer recv_entry_buffer(
+        &recv_buf, send_count * ccl::get_datatype_size(dtype), 0, ccl_buffer_type::INDIRECT);
+
+    using community_t = typename device_community_container<class_id>::element_type;
+    community_t community = device_community_impl.get_topology(ring_index);
+
+    const coll_param_gpu params(ccl_coll_allgatherv, dtype);
+
+    return do_collective_op<group_id, class_id, l0_allgatherv_typed_entry>(
+        communication_device,
+        ctx,
+        community,
+        process_id,
+        thread_id,
+        this->get_native_context(),
+        send_entry_buffer,
+        send_count,
+        recv_entry_buffer,
+        recv_counts.data(),
+        params,
+        stream);
 }
 ccl::event process_ring_communicator::allgatherv_impl(const void* send_buf,
                                                       size_t send_count,
@@ -87,8 +131,52 @@ ccl::event process_ring_communicator::allreduce_impl(const void* send_buf,
                                                      const ccl::stream::impl_value_t& stream,
                                                      const ccl::allreduce_attr& attr,
                                                      const ccl::vector_class<ccl::event>& deps) {
-    throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
-    return {};
+    using namespace native;
+
+    static constexpr ccl::group_split_type group_id = base_t::topology_type();
+    static constexpr ccl::device_topology_type class_id = base_t::topology_class();
+
+    if (!is_ready()) {
+        throw ccl::exception(std::string(
+            "Device communicator for group_id: " + ::to_string(group_id) +
+            " is not ready yet. Not all сommunicators are created in group. Please create them before usage"));
+    }
+
+    int comm_rank = rank();
+    size_t ring_index = 0;
+    LOG_DEBUG("communicator for device idx: ",
+              get_device_path(),
+              ", rank idx: ",
+              comm_rank,
+              ", ring_index: ",
+              ring_index);
+
+    //TODO make const!
+    ccl_buffer send_entry_buffer(const_cast<void**>(&send_buf),
+                                 count * ccl::get_datatype_size(dtype),
+                                 0,
+                                 ccl_buffer_type::INDIRECT);
+    ccl_buffer recv_entry_buffer(
+        &recv_buf, count * ccl::get_datatype_size(dtype), 0, ccl_buffer_type::INDIRECT);
+
+    using community_t = typename device_community_container<class_id>::element_type;
+    community_t community = device_community_impl.get_topology(ring_index);
+
+    // TODO: we can get dtype value from buffer_type template, no need to introduce a new parameter
+    const coll_param_gpu params(ccl_coll_allreduce, dtype, reduction);
+
+    return do_collective_op<group_id, class_id, l0_allreduce_typed_entry>(
+        communication_device,
+        ctx,
+        community,
+        process_id,
+        thread_id,
+        this->get_native_context(),
+        send_entry_buffer,
+        recv_entry_buffer,
+        count,
+        params,
+        stream);
 }
 
 /* alltoall */
@@ -122,8 +210,55 @@ ccl::event process_ring_communicator::alltoallv_impl(const void* send_buf,
                                                      const ccl::stream::impl_value_t& stream,
                                                      const ccl::alltoallv_attr& attr,
                                                      const ccl::vector_class<ccl::event>& deps) {
-    throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
-    return {};
+    using namespace native;
+    static constexpr ccl::group_split_type group_id = base_t::topology_type();
+    static constexpr ccl::device_topology_type class_id = base_t::topology_class();
+
+    if (!is_ready()) {
+        throw ccl::exception(std::string(
+            "Device communicator for group_id: " + ::to_string(group_id) +
+            " is not ready yet. Not all сommunicators are created in group. Please create them before usage"));
+    }
+
+    int comm_rank = rank();
+    size_t ring_index = 0;
+    LOG_DEBUG("communicator for device idx: ",
+              get_device_path(),
+              ", rank idx: ",
+              comm_rank,
+              ", ring_index :",
+              ring_index);
+    size_t total_send_counts = std::accumulate(std::begin(send_counts), std::end(send_counts), 0);
+    //TODO make const!
+    ccl_buffer send_entry_buffer(const_cast<void**>(&send_buf),
+                                 total_send_counts * ccl::get_datatype_size(dtype),
+                                 0,
+                                 ccl_buffer_type::INDIRECT);
+
+    size_t total_recv_counts = std::accumulate(std::begin(recv_counts), std::end(recv_counts), 0);
+    ccl_buffer recv_entry_buffer(
+        &recv_buf, total_recv_counts * ccl::get_datatype_size(dtype), 0, ccl_buffer_type::INDIRECT);
+
+    using community_t = typename device_community_container<class_id>::element_type;
+    community_t community = device_community_impl.get_topology(ring_index);
+
+    const coll_param_gpu params(ccl_coll_alltoallv, dtype);
+
+    return do_collective_op<group_id, class_id, l0_alltoallv_typed_entry>(
+        communication_device,
+        ctx,
+        community,
+        process_id,
+        thread_id,
+        this->get_native_context(),
+        send_entry_buffer,
+        send_counts.data(),
+        total_send_counts,
+        recv_entry_buffer,
+        recv_counts.data(),
+        total_recv_counts,
+        params,
+        stream);
 }
 ccl::event process_ring_communicator::alltoallv_impl(const ccl::vector_class<void*>& send_buf,
                                                      const ccl::vector_class<size_t>& send_counts,
@@ -146,8 +281,46 @@ ccl::event process_ring_communicator::broadcast_impl(void* buf,
                                                      const ccl::stream::impl_value_t& stream,
                                                      const ccl::broadcast_attr& attr,
                                                      const ccl::vector_class<ccl::event>& deps) {
-    throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
-    return {};
+    using namespace native;
+
+    static constexpr ccl::group_split_type group_id = base_t::topology_type();
+    static constexpr ccl::device_topology_type class_id = base_t::topology_class();
+
+    if (!is_ready()) {
+        throw ccl::exception(std::string(
+            "Device communicator for group_id: " + ::to_string(group_id) +
+            " is not ready yet. Not all сommunicators are created in group. Please create them before usage"));
+    }
+
+    int comm_rank = rank();
+    size_t ring_index = 0;
+    LOG_DEBUG("communicator for device idx: ",
+              get_device_path(),
+              ", rank idx: ",
+              comm_rank,
+              ", ring_index :",
+              ring_index);
+
+    //TODO make const!
+    ccl_buffer entry_buffer(
+        &buf, count * ccl::get_datatype_size(dtype), 0, ccl_buffer_type::INDIRECT);
+
+    using community_t = typename device_community_container<class_id>::element_type;
+    community_t community = device_community_impl.get_topology(ring_index);
+
+    const coll_param_gpu params(ccl_coll_bcast, dtype);
+
+    return do_collective_op<group_id, class_id, l0_bcast_typed_entry>(communication_device,
+                                                                      ctx,
+                                                                      community,
+                                                                      process_id,
+                                                                      thread_id,
+                                                                      this->get_native_context(),
+                                                                      entry_buffer,
+                                                                      count,
+                                                                      root,
+                                                                      params,
+                                                                      stream);
 }
 
 /* reduce */
@@ -160,8 +333,52 @@ ccl::event process_ring_communicator::reduce_impl(const void* send_buf,
                                                   const ccl::stream::impl_value_t& stream,
                                                   const ccl::reduce_attr& attr,
                                                   const ccl::vector_class<ccl::event>& deps) {
-    throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
-    return {};
+    using namespace native;
+
+    static constexpr ccl::group_split_type group_id = base_t::topology_type();
+    static constexpr ccl::device_topology_type class_id = base_t::topology_class();
+
+    if (!is_ready()) {
+        throw ccl::exception(std::string(
+            "Device communicator for group_id: " + ::to_string(group_id) +
+            " is not ready yet. Not all сommunicators are created in group. Please create them before usage"));
+    }
+
+    int comm_rank = rank();
+    size_t ring_index = 0;
+    LOG_DEBUG("communicator for device idx: ",
+              get_device_path(),
+              ", rank idx: ",
+              comm_rank,
+              ", ring_index :",
+              ring_index);
+
+    //TODO make const!
+    ccl_buffer send_entry_buffer(const_cast<void**>(&send_buf),
+                                 count * ccl::get_datatype_size(dtype),
+                                 0,
+                                 ccl_buffer_type::INDIRECT);
+    ccl_buffer recv_entry_buffer(
+        &recv_buf, count * ccl::get_datatype_size(dtype), 0, ccl_buffer_type::INDIRECT);
+
+    using community_t = typename device_community_container<class_id>::element_type;
+    community_t community = device_community_impl.get_topology(ring_index);
+
+    const coll_param_gpu params(ccl_coll_allreduce, dtype, reduction);
+
+    return do_collective_op<group_id, class_id, l0_reduce_typed_entry>(communication_device,
+                                                                       ctx,
+                                                                       community,
+                                                                       process_id,
+                                                                       thread_id,
+                                                                       this->get_native_context(),
+                                                                       send_entry_buffer,
+                                                                       recv_entry_buffer,
+                                                                       count,
+                                                                       reduction,
+                                                                       root,
+                                                                       params,
+                                                                       stream);
 }
 
 /* reduce_scatter */
@@ -174,8 +391,51 @@ ccl::event process_ring_communicator::reduce_scatter_impl(
     const ccl::stream::impl_value_t& stream,
     const ccl::reduce_scatter_attr& attr,
     const ccl::vector_class<ccl::event>& deps) {
-    throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
-    return {};
+    using namespace native;
+
+    static constexpr ccl::group_split_type group_id = base_t::topology_type();
+    static constexpr ccl::device_topology_type class_id = base_t::topology_class();
+
+    if (!is_ready()) {
+        throw ccl::exception(std::string(
+            "Device communicator for group_id: " + ::to_string(group_id) +
+            " is not ready yet. Not all сommunicators are created in group. Please create them before usage"));
+    }
+
+    int comm_rank = rank();
+    size_t ring_index = 0;
+    LOG_DEBUG("communicator for device idx: ",
+              get_device_path(),
+              ", rank idx: ",
+              comm_rank,
+              ", ring_index :",
+              ring_index);
+
+    //TODO make const!
+    ccl_buffer send_entry_buffer(const_cast<void**>(&send_buf),
+                                 recv_count * ccl::get_datatype_size(dtype),
+                                 0,
+                                 ccl_buffer_type::INDIRECT);
+    ccl_buffer recv_entry_buffer(
+        &recv_buf, recv_count * ccl::get_datatype_size(dtype), 0, ccl_buffer_type::INDIRECT);
+
+    using community_t = typename device_community_container<class_id>::element_type;
+    community_t community = device_community_impl.get_topology(ring_index);
+
+    const coll_param_gpu params(ccl_coll_reduce_scatter, dtype, reduction);
+
+    return do_collective_op<group_id, class_id, l0_reduce_scatter_typed_entry>(
+        communication_device,
+        ctx,
+        community,
+        process_id,
+        thread_id,
+        this->get_native_context(),
+        send_entry_buffer,
+        recv_entry_buffer,
+        recv_count,
+        params,
+        stream);
 }
 
 /* sparse_allreduce */

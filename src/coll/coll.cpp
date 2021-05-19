@@ -689,7 +689,8 @@ ccl_request* ccl_allgatherv_impl(const void* send_buf,
                                  ccl::datatype dtype,
                                  const ccl_coll_attr& attr,
                                  ccl_comm* comm,
-                                 const ccl_stream* stream) {
+                                 const ccl_stream* stream,
+                                 const std::vector<ccl::event>& deps) {
     ccl_coll_param param{};
 
     param.ctype = ccl_coll_allgatherv;
@@ -700,6 +701,7 @@ ccl_request* ccl_allgatherv_impl(const void* send_buf,
     param.dtype = ccl::global_data::get().dtypes->get(dtype);
     param.stream = stream;
     param.comm = comm;
+    copy_deps(deps, param.deps);
 
     auto req = ccl_coll_create(param, attr);
     LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req);
@@ -713,7 +715,8 @@ ccl_request* ccl_allreduce_impl(const void* send_buf,
                                 ccl::reduction reduction,
                                 const ccl_coll_attr& attr,
                                 ccl_comm* comm,
-                                const ccl_stream* stream) {
+                                const ccl_stream* stream,
+                                const std::vector<ccl::event>& deps) {
     ccl_coll_param param{};
 
     param.ctype = ccl_coll_allreduce;
@@ -724,6 +727,7 @@ ccl_request* ccl_allreduce_impl(const void* send_buf,
     param.reduction = reduction;
     param.stream = stream;
     param.comm = comm;
+    copy_deps(deps, param.deps);
 
     auto req = ccl_coll_create(param, attr);
     LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req, " count ", count);
@@ -736,7 +740,8 @@ ccl_request* ccl_alltoall_impl(const void* send_buf,
                                ccl::datatype dtype,
                                const ccl_coll_attr& attr,
                                ccl_comm* comm,
-                               const ccl_stream* stream) {
+                               const ccl_stream* stream,
+                               const std::vector<ccl::event>& deps) {
     ccl_coll_param param{};
 
     param.ctype = ccl_coll_alltoall;
@@ -746,6 +751,7 @@ ccl_request* ccl_alltoall_impl(const void* send_buf,
     param.dtype = ccl::global_data::get().dtypes->get(dtype);
     param.stream = stream;
     param.comm = comm;
+    copy_deps(deps, param.deps);
 
     auto req = ccl_coll_create(param, attr);
     LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req, " count ", count);
@@ -759,7 +765,8 @@ ccl_request* ccl_alltoallv_impl(const void* send_buf,
                                 ccl::datatype dtype,
                                 const ccl_coll_attr& attr,
                                 ccl_comm* comm,
-                                const ccl_stream* stream) {
+                                const ccl_stream* stream,
+                                const std::vector<ccl::event>& deps) {
     ccl_coll_param param{};
 
     param.ctype = ccl_coll_alltoallv;
@@ -770,6 +777,7 @@ ccl_request* ccl_alltoallv_impl(const void* send_buf,
     param.dtype = ccl::global_data::get().dtypes->get(dtype);
     param.stream = stream;
     param.comm = comm;
+    copy_deps(deps, param.deps);
 
     auto req = ccl_coll_create(param, attr);
     LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req);
@@ -784,7 +792,8 @@ ccl_request* ccl_allreduce_gpu_impl(const void* send_buf,
                                     ccl::reduction reduction,
                                     const ccl_coll_attr& attr,
                                     ccl_comm* comm,
-                                    const ccl_stream* stream) {
+                                    const ccl_stream* stream,
+                                    const std::vector<ccl::event>& deps) {
     ccl_coll_param param{};
 
     param.ctype = ccl_coll_allreduce;
@@ -795,6 +804,7 @@ ccl_request* ccl_allreduce_gpu_impl(const void* send_buf,
     param.reduction = reduction;
     param.stream = stream;
     param.comm = comm;
+    copy_deps(deps, param.deps);
 
     auto req = ccl_gpu_coll_create(param, attr);
     LOG_DEBUG(
@@ -802,13 +812,16 @@ ccl_request* ccl_allreduce_gpu_impl(const void* send_buf,
     return req;
 }
 
-void ccl_barrier_impl(ccl_comm* comm, const ccl_stream* stream) {
+void ccl_barrier_impl(ccl_comm* comm,
+                      const ccl_stream* stream,
+                      const std::vector<ccl::event>& deps) {
     ccl_coll_param param{};
 
     param.ctype = ccl_coll_barrier;
     param.dtype = ccl_datatype_int8;
     param.stream = stream;
     param.comm = comm;
+    copy_deps(deps, param.deps);
 
     ccl_coll_attr attr{};
     attr.synchronous = 1;
@@ -829,7 +842,8 @@ ccl_request* ccl_broadcast_impl(void* buf,
                                 int root,
                                 const ccl_coll_attr& attr,
                                 ccl_comm* comm,
-                                const ccl_stream* stream) {
+                                const ccl_stream* stream,
+                                const std::vector<ccl::event>& deps) {
     ccl_coll_param param{};
 
     param.ctype = ccl_coll_bcast;
@@ -839,6 +853,7 @@ ccl_request* ccl_broadcast_impl(void* buf,
     param.root = root;
     param.stream = stream;
     param.comm = comm;
+    copy_deps(deps, param.deps);
 
     auto req = ccl_coll_create(param, attr);
     LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req);
@@ -853,7 +868,8 @@ ccl_request* ccl_reduce_impl(const void* send_buf,
                              int root,
                              const ccl_coll_attr& attr,
                              ccl_comm* comm,
-                             const ccl_stream* stream) {
+                             const ccl_stream* stream,
+                             const std::vector<ccl::event>& deps) {
     ccl_coll_param param{};
 
     param.ctype = ccl_coll_reduce;
@@ -865,6 +881,7 @@ ccl_request* ccl_reduce_impl(const void* send_buf,
     param.root = root;
     param.stream = stream;
     param.comm = comm;
+    copy_deps(deps, param.deps);
 
     auto req = ccl_coll_create(param, attr);
     LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req);
@@ -878,7 +895,8 @@ ccl_request* ccl_reduce_scatter_impl(const void* send_buf,
                                      ccl::reduction reduction,
                                      const ccl_coll_attr& attr,
                                      ccl_comm* comm,
-                                     const ccl_stream* stream) {
+                                     const ccl_stream* stream,
+                                     const std::vector<ccl::event>& deps) {
     ccl_coll_param param{};
 
     param.ctype = ccl_coll_reduce_scatter;
@@ -889,6 +907,7 @@ ccl_request* ccl_reduce_scatter_impl(const void* send_buf,
     param.reduction = reduction;
     param.stream = stream;
     param.comm = comm;
+    copy_deps(deps, param.deps);
 
     auto req = ccl_coll_create(param, attr);
     LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req);
@@ -908,7 +927,8 @@ ccl_request* ccl_sparse_allreduce_impl(const void* send_ind_buf,
                                        ccl::reduction reduction,
                                        const ccl_coll_attr& attr,
                                        ccl_comm* comm,
-                                       const ccl_stream* stream) {
+                                       const ccl_stream* stream,
+                                       const std::vector<ccl::event>& deps) {
     ccl_coll_param param{};
 
     param.ctype = ccl_coll_sparse_allreduce;
@@ -925,6 +945,7 @@ ccl_request* ccl_sparse_allreduce_impl(const void* send_ind_buf,
     param.reduction = reduction;
     param.stream = stream;
     param.comm = comm;
+    copy_deps(deps, param.deps);
 
     ccl_coll_attr internal_attr(attr);
     internal_attr.to_cache = 0; /* skip to_cache flag, unsupported yet */

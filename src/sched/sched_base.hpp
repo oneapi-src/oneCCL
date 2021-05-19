@@ -129,6 +129,10 @@ struct ccl_sched_base {
 protected:
     ~ccl_sched_base() = default;
 
+    ccl_sched_base() {
+        CCL_THROW("unsupported");
+    }
+
     ccl_sched_base(const ccl_coll_param& coll_param) : coll_param(coll_param) {}
 
     void update_id();

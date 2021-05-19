@@ -133,15 +133,16 @@ size_t get_platform_type_index(const ccl::unified_device_type::ccl_native_t& dev
 #if defined(MULTI_GPU_SUPPORT) || defined(CCL_ENABLE_SYCL)
 assoc_result check_assoc_device_memory(const void* mem,
                                        const ccl::unified_device_type::ccl_native_t& device,
-                                       const ccl::unified_context_type::ccl_native_t& ctx) {
+                                       const ccl::unified_context_type::ccl_native_t& ctx,
+                                       bool has_deps) {
     assoc_result ret{ usm_support_mode::direct, mem, "" };
 
 #ifdef CCL_ENABLE_SYCL
 
-    cl::sycl::usm::alloc pointer_type = cl::sycl::get_pointer_type(mem, ctx);
+    sycl::usm::alloc pointer_type = sycl::get_pointer_type(mem, ctx);
 
     using usm_truth_table =
-        std::array<usm_support_mode, utils::enum_to_underlying(cl::sycl::usm::alloc::unknown) + 1>;
+        std::array<usm_support_mode, utils::enum_to_underlying(sycl::usm::alloc::unknown) + 1>;
 
     constexpr int platform_config_count = 4; /*host, cpu, gpu, accel*/
     constexpr std::array<usm_truth_table, platform_config_count> usm_target_table{ {
@@ -175,6 +176,10 @@ assoc_result check_assoc_device_memory(const void* mem,
     std::get<assoc_result_index::SUPPORT_MODE>(ret) =
         usm_target_table[platform_type_index][pointer_type_idx];
 
+    if (has_deps && device.is_gpu() && (pointer_type == sycl::usm::alloc::shared)) {
+        std::get<assoc_result_index::SUPPORT_MODE>(ret) = usm_support_mode::need_conversion;
+    }
+
     if (std::get<assoc_result_index::SUPPORT_MODE>(ret) == usm_support_mode::prohibited) {
         std::stringstream ss;
         ss << "Incompatible USM type requested: " << usm_to_string(pointer_type)
@@ -189,13 +194,15 @@ assoc_result check_assoc_device_memory(const void* mem,
 
 usm_support_mode check_assoc_device_memory(const std::vector<void*>& mems,
                                            const ccl::unified_device_type::ccl_native_t& device,
-                                           const ccl::unified_context_type::ccl_native_t& ctx) {
+                                           const ccl::unified_context_type::ccl_native_t& ctx,
+                                           bool has_deps) {
     usm_support_mode ret = usm_support_mode::direct;
     std::string err_msg;
 
     for (size_t idx = 0; idx < mems.size(); idx++) {
         usm_support_mode mode;
-        std::tie(mode, std::ignore, err_msg) = check_assoc_device_memory(mems[idx], device, ctx);
+        std::tie(mode, std::ignore, err_msg) =
+            check_assoc_device_memory(mems[idx], device, ctx, has_deps);
 
         if (idx > 0)
             CCL_THROW_IF_NOT(mode == ret, "different USM modes between buffers: ", err_msg);

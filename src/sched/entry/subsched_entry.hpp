@@ -41,6 +41,7 @@ public:
         subsched.reset(new ccl_extra_sched(sched->coll_param, sched->sched_id));
         subsched->coll_param.ctype = ccl_coll_internal;
         subsched->set_op_id(this->op_id);
+        subsched->flow_control.set_max_credits(sched->flow_control.get_max_credits());
 
         if (sched->coll_param.ctype == ccl_coll_allreduce ||
             sched->coll_param.ctype == ccl_coll_reduce ||

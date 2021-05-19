@@ -33,11 +33,12 @@
 
 #define ATL_MPI_PM_KEY "atl-mpi"
 
-#define EP_IDX_KEY          "ep_idx"
-#define NIC_IDX_KEY         "pref_nic"
-#define NIC_COUNT_KEY       "num_nics"
-#define CLOSE_NIC_IDX_KEY   "pref_close_nic"
-#define CLOSE_NIC_COUNT_KEY "num_close_nics"
+#define EP_IDX_KEY "ep_idx"
+
+#define GLOBAL_NIC_IDX_KEY   "pref_nic"
+#define GLOBAL_NIC_COUNT_KEY "num_nics"
+#define LOCAL_NIC_IDX_KEY    "pref_close_nic"
+#define LOCAL_NIC_COUNT_KEY  "num_close_nics"
 
 #define RET2ATL(ret) (ret != MPI_SUCCESS) ? ATL_STATUS_FAILURE : ATL_STATUS_SUCCESS
 
@@ -104,8 +105,8 @@ typedef struct atl_mpi_global_data {
     size_t ctx_count;
     atl_mpi_lib_type_t mpi_lib_type;
     int extra_ep;
-    size_t nic_count;
-    size_t close_nic_count;
+    atl_mnic_t mnic_type;
+    size_t mnic_count;
     atl_mpi_bf16_data_t bf16;
     atl_mpi_fp16_data_t fp16;
 
@@ -114,8 +115,8 @@ typedef struct atl_mpi_global_data {
               ctx_count(0),
               mpi_lib_type(ATL_MPI_LIB_NONE),
               extra_ep(0),
-              nic_count(1),
-              close_nic_count(1) {
+              mnic_type(ATL_MNIC_NONE),
+              mnic_count(1) {
         bf16.dtype = MPI_DATATYPE_NULL;
         bf16.sum_op = MPI_OP_NULL;
         bf16.prod_op = MPI_OP_NULL;
@@ -689,10 +690,22 @@ size_t atl_mpi_get_ep_count(const atl_attr_t& attr) {
     return mpi_ep_count;
 }
 
+size_t atl_mpi_get_ep_idx(size_t ep_idx) {
+    size_t mpi_ep_idx = ep_idx;
+    if (global_data.extra_ep)
+        mpi_ep_idx += global_data.extra_ep;
+    return mpi_ep_idx;
+}
+
 /* set these knobs without detection of MPI library type */
 atl_status_t atl_mpi_set_base_env(const atl_attr_t& attr) {
     setenv("PSM2_MULTI_EP", "1", 0);
     setenv("FI_OFI_RXM_USE_HASH", "0", 0);
+
+#ifdef CCL_ENABLE_SYCL
+    setenv("FI_SHM_DISABLE_CMA", "1", 0);
+#endif /* CCL_ENABLE_SYCL */
+
     setenv("MPIR_CVAR_DEFAULT_THREAD_LEVEL", "MPI_THREAD_MULTIPLE", 0);
 
     /* request IMPI level append library kind into MPI_Get_library_version output */
@@ -714,10 +727,9 @@ atl_status_t atl_mpi_set_impi_env(const atl_attr_t& attr) {
     if (attr.ep_count)
         setenv("I_MPI_OFI_ISEND_INJECT_THRESHOLD", "0", 0);
 
-    auto& env = ccl::global_data::env();
-    if (env.log_level >= ccl_log_level::info) {
-        setenv("I_MPI_DEBUG", "4", 0);
-    }
+#ifdef CCL_ENABLE_SYCL
+    setenv("I_MPI_SHM_CMA", "0", 0);
+#endif /* CCL_ENABLE_SYCL */
 
     return ATL_STATUS_SUCCESS;
 }
@@ -756,17 +768,19 @@ atl_status_t atl_mpi_set_mpich_env(const atl_attr_t& attr) {
     setenv("MPIR_CVAR_CH4_OFI_MAX_VCIS", ep_count_str, 0);
     setenv("MPIR_CVAR_CH4_ASYNC_PROGRESS_ID_KEY", EP_IDX_KEY, 0);
     setenv("MPIR_CVAR_CH4_OFI_ENABLE_SCALABLE_ENDPOINTS", "1", 0);
-    setenv("MPIR_CVAR_CH4_OFI_ENABLE_NIC_SELECTION", "1", 0);
+
+    if (attr.mnic_type != ATL_MNIC_NONE) {
+        setenv("MPIR_CVAR_CH4_OFI_ENABLE_NIC_SELECTION", "1", 0);
+        auto& env = ccl::global_data::env();
+        if (env.log_level >= ccl_log_level::info) {
+            setenv("MPIR_CVAR_CH4_OFI_DUMP_NIC_SETTINGS", "1", 0);
+        }
+    }
 
     setenv("FI_PSM2_DELAY", "0", 0);
     setenv("FI_PSM2_TIMEOUT", "0", 0);
     setenv("FI_PSM2_NAME_SERVER", "0", 0);
     setenv("HFI_NO_CPUAFFINITY", "1", 0);
-
-    auto& env = ccl::global_data::env();
-    if (env.log_level >= ccl_log_level::info) {
-        setenv("MPIR_CVAR_CH4_OFI_DUMP_NIC_SETTINGS", "1", 0);
-    }
 
     return ATL_STATUS_SUCCESS;
 }
@@ -838,9 +852,6 @@ atl_mpi_comm_info_t atl_mpi_get_comm_info(MPI_Comm comm, const char* key) {
 }
 
 size_t atl_mpi_get_nic_count(const char* nic_count_key) {
-    if (global_data.mpi_lib_type != ATL_MPI_LIB_MPICH)
-        return 1;
-
     size_t count = 1;
     atl_mpi_comm_info_t info = atl_mpi_get_comm_info(MPI_COMM_WORLD, nic_count_key);
     CCL_THROW_IF_NOT(info.found, "MPI comm key ", nic_count_key, " was not set");
@@ -876,9 +887,6 @@ void atl_mpi_check_comm_ep_idx(MPI_Comm comm, size_t expected_idx) {
 }
 
 void atl_mpi_check_comm_nic_idx(MPI_Comm comm, size_t expected_idx, const char* nic_idx_key) {
-    if (global_data.mpi_lib_type != ATL_MPI_LIB_MPICH)
-        return;
-
     char expected_idx_str[MPI_MAX_INFO_VAL] = { 0 };
     snprintf(expected_idx_str, MPI_MAX_INFO_VAL, "%zu", expected_idx);
     atl_mpi_check_comm_info(comm, nic_idx_key, expected_idx_str);
@@ -887,7 +895,7 @@ void atl_mpi_check_comm_nic_idx(MPI_Comm comm, size_t expected_idx, const char* 
 #ifdef ENABLE_DEBUG
 inline void atl_mpi_check_ep(atl_ep_t* ep) {
     atl_mpi_ep_t* mpi_ep = container_of(ep, atl_mpi_ep_t, ep);
-    atl_mpi_check_comm_ep_idx(mpi_ep->mpi_comm, ep->idx);
+    atl_mpi_check_comm_ep_idx(mpi_ep->mpi_comm, atl_mpi_get_ep_idx(ep->idx));
 }
 #else
 #define atl_mpi_check_ep(ep)
@@ -1441,13 +1449,14 @@ static atl_comp_ops_t atl_mpi_ep_comp_ops = { .wait = atl_mpi_ep_wait,
 
 static atl_status_t atl_mpi_ep_init(atl_mpi_ctx_t* mpi_ctx, size_t idx, atl_ep_t** ep) {
     int ret;
-    ssize_t mpi_ep_idx = idx;
 
-    /* select NIC index from local NICs only */
-    size_t nic_idx = (idx % global_data.close_nic_count);
-
-    char nic_idx_str[MPI_MAX_INFO_VAL] = { 0 };
+    ssize_t mpi_ep_idx = atl_mpi_get_ep_idx(idx);
     char mpi_ep_idx_str[MPI_MAX_INFO_VAL] = { 0 };
+
+    size_t nic_idx = 0;
+    char nic_idx_str[MPI_MAX_INFO_VAL] = { 0 };
+    const char* nic_idx_key =
+        (global_data.mnic_type == ATL_MNIC_GLOBAL) ? GLOBAL_NIC_IDX_KEY : LOCAL_NIC_IDX_KEY;
 
     atl_mpi_ep_t* mpi_ep = (atl_mpi_ep_t*)calloc(1, sizeof(atl_mpi_ep_t));
     if (!mpi_ep)
@@ -1460,15 +1469,16 @@ static atl_status_t atl_mpi_ep_init(atl_mpi_ctx_t* mpi_ctx, size_t idx, atl_ep_t
     MPI_Info info;
     MPI_Info_create(&info);
 
-    /* set NIC index */
-    snprintf(nic_idx_str, MPI_MAX_INFO_VAL, "%zu", nic_idx);
-    MPI_Info_set(info, CLOSE_NIC_IDX_KEY, nic_idx_str);
-
     /* set EP index */
-    if (global_data.extra_ep)
-        mpi_ep_idx += global_data.extra_ep;
     snprintf(mpi_ep_idx_str, MPI_MAX_INFO_VAL, "%zu", mpi_ep_idx);
     MPI_Info_set(info, EP_IDX_KEY, mpi_ep_idx_str);
+
+    if (global_data.mnic_type != ATL_MNIC_NONE) {
+        /* set NIC index */
+        nic_idx = (idx % global_data.mnic_count);
+        snprintf(nic_idx_str, MPI_MAX_INFO_VAL, "%zu", nic_idx);
+        MPI_Info_set(info, nic_idx_key, nic_idx_str);
+    }
 
     MPI_Comm_set_info(mpi_ep->mpi_comm, info);
 
@@ -1479,14 +1489,18 @@ static atl_status_t atl_mpi_ep_init(atl_mpi_ctx_t* mpi_ctx, size_t idx, atl_ep_t
         MPI_Comm_set_info(mpi_ep->dummy_comm, info);
         MPI_Irecv(NULL, 0, MPI_CHAR, 0, 0, mpi_ep->dummy_comm, &(mpi_ep->dummy_req.native_req));
 
-        atl_mpi_check_comm_nic_idx(mpi_ep->dummy_comm, nic_idx, CLOSE_NIC_IDX_KEY);
         atl_mpi_check_comm_ep_idx(mpi_ep->dummy_comm, mpi_ep_idx);
+        if (global_data.mnic_type != ATL_MNIC_NONE) {
+            atl_mpi_check_comm_nic_idx(mpi_ep->dummy_comm, nic_idx, nic_idx_key);
+        }
     }
 
     MPI_Info_free(&info);
 
-    atl_mpi_check_comm_nic_idx(mpi_ep->mpi_comm, nic_idx, CLOSE_NIC_IDX_KEY);
     atl_mpi_check_comm_ep_idx(mpi_ep->mpi_comm, mpi_ep_idx);
+    if (global_data.mnic_type != ATL_MNIC_NONE) {
+        atl_mpi_check_comm_nic_idx(mpi_ep->mpi_comm, nic_idx, nic_idx_key);
+    }
 
     LOG_DEBUG("atl-mpi-ep: ", idx, ", ep_idx ", mpi_ep_idx, ", nic_idx ", nic_idx);
 
@@ -1541,7 +1555,7 @@ static atl_status_t atl_mpi_init(int* argc,
         if (!global_data.is_external_init) {
             ret = MPI_Init_thread(argc, argv, required_thread_level, &provided_thread_level);
             if (provided_thread_level < required_thread_level) {
-                LOG_ERROR("unexpected MPI thread level: requested ",
+                LOG_ERROR("unexpected MPI thread level: required ",
                           required_thread_level,
                           ", provided ",
                           provided_thread_level);
@@ -1552,12 +1566,11 @@ static atl_status_t atl_mpi_init(int* argc,
             LOG_DEBUG("MPI was initialized externaly");
             MPI_Query_thread(&provided_thread_level);
             if (provided_thread_level < required_thread_level) {
-                LOG_ERROR("MPI was initialized externaly but with unexpected thread level: "
-                          "requested ",
-                          required_thread_level,
-                          ", provided ",
-                          provided_thread_level);
-                goto err_init;
+                LOG_WARN("MPI was initialized externaly but with unexpected thread level: "
+                         "required ",
+                         required_thread_level,
+                         ", provided ",
+                         provided_thread_level);
             }
         }
 
@@ -1566,9 +1579,24 @@ static atl_status_t atl_mpi_init(int* argc,
 
         if (global_data.mpi_lib_type == ATL_MPI_LIB_NONE)
             global_data.mpi_lib_type = atl_mpi_get_lib_type();
+
         global_data.extra_ep = attr->extra_ep;
-        global_data.nic_count = atl_mpi_get_nic_count(NIC_COUNT_KEY);
-        global_data.close_nic_count = atl_mpi_get_nic_count(CLOSE_NIC_COUNT_KEY);
+
+        global_data.mnic_type = attr->mnic_type;
+        if (global_data.mpi_lib_type != ATL_MPI_LIB_MPICH) {
+            /* only MPICH supports multi-NIC */
+            global_data.mnic_type = ATL_MNIC_NONE;
+        }
+
+        if (global_data.mnic_type == ATL_MNIC_LOCAL) {
+            global_data.mnic_count = atl_mpi_get_nic_count(LOCAL_NIC_COUNT_KEY);
+        }
+        else if (global_data.mnic_type == ATL_MNIC_GLOBAL) {
+            global_data.mnic_count = atl_mpi_get_nic_count(GLOBAL_NIC_IDX_KEY);
+        }
+        global_data.mnic_count = std::min(global_data.mnic_count, attr->mnic_count);
+        global_data.mnic_count = std::min(global_data.mnic_count, attr->ep_count);
+        global_data.mnic_count = std::max(global_data.mnic_count, (size_t)(1));
 
         if (atl_mpi_bf16_init() == ATL_STATUS_FAILURE) {
             atl_mpi_bf16_finalize();
@@ -1618,8 +1646,8 @@ static atl_status_t atl_mpi_init(int* argc,
             LOG_INFO("  is_external_init: ", global_data.is_external_init);
             LOG_INFO("  mpi_lib_type: ", mpi_lib_infos[global_data.mpi_lib_type].name);
             LOG_INFO("  extra_ep: ", global_data.extra_ep);
-            LOG_INFO("  nic_count: ", global_data.nic_count);
-            LOG_INFO("  close_nic_count: ", global_data.close_nic_count);
+            LOG_INFO("  mnic_type: ", global_data.mnic_type);
+            LOG_INFO("  mnic_count: ", global_data.mnic_count);
         }
         LOG_INFO("atl-mpi-ctx: ", (global_data.ctx_count - 1));
         LOG_INFO("  progress_mode: ", mpi_ctx->progress_mode);

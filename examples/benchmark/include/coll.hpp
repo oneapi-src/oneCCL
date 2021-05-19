@@ -127,6 +127,10 @@ struct base_coll {
     }
 
     virtual void finalize(size_t elem_count) {
+        auto dtype = get_dtype();
+        if (dtype == ccl::datatype::float16 || dtype == ccl::datatype::bfloat16)
+            return;
+
         auto& transport = transport_data::instance();
         auto& comms = transport.get_comms();
         auto streams = transport.get_bench_streams();

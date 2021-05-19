@@ -15,6 +15,7 @@
 */
 #pragma once
 #include "common/comm/l0/communicator/typed_base_communicator.hpp"
+#include "common/comm/usm_visitor/usm_visitors.hpp"
 
 namespace native {
 struct process_group_context;

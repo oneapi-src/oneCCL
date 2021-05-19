@@ -15,18 +15,18 @@
 #
 cmake_minimum_required (VERSION 2.8)
 
-if (DEFINED ENV{CCL_CONFIGURATION})
-    set(CCL_CONFIGURATION "$ENV{CCL_CONFIGURATION}")
-endif()
-
 if (DEFINED ENV{CCL_ROOT})
     set(CCL_ROOT "$ENV{CCL_ROOT}")
 else()
     message(FATAL_ERROR "Please define CCL_ROOT environment variable")
 endif()
 
-message(STATUS "CCL_ROOT: ${CCL_ROOT}")
-message(STATUS "CCL_CONFIGURATION: ${CCL_CONFIGURATION}")
+if (DEFINED ENV{CCL_CONFIGURATION})
+    set(CCL_CONFIGURATION "$ENV{CCL_CONFIGURATION}")
+endif()
+
+message(STATUS "EXAMPLES CCL_ROOT: ${CCL_ROOT}")
+message(STATUS "EXAMPLES CCL_CONFIGURATION: ${CCL_CONFIGURATION}")
 
 if (NOT DEFINED ${CCL_INSTALL_BENCHMARKS})
     set(CCL_INSTALL_BENCHMARKS "$ENV{PWD}")
@@ -63,6 +63,8 @@ if (${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND ${CMAKE_CXX_COMPILER_ID} STREQUA
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -lsycl")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CLANG_FLAGS}")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CLANG_FLAGS}")
+    # Use c++17 to be aligned with the compiler
+    set(CMAKE_CXX_STANDARD 17)
 endif()
 
 set(GCC_BF16_MIN_SUPPORTED "4.9.0")
@@ -84,10 +86,6 @@ if (CCL_BF16_COMPILER)
         message(STATUS "BF16 target attributes: no")
     endif()
 endif()
-
-
-include_directories(${CCL_ROOT}/include/${CCL_CONFIGURATION})
-link_directories(${CCL_ROOT}/lib/${CCL_CONFIGURATION})
 
 include_directories(include)
 

@@ -36,6 +36,7 @@ struct actor {
     actor(key_t actor_id, Function&& f, Args&&... args)
             : function(std::bind(std::forward<Function>(f),
                                  std::forward<Args>(args)...,
+                                 this,
                                  std::placeholders::_1)),
               stop(false),
               processing(&actor<message_type>::run, this),
@@ -61,6 +62,17 @@ struct actor {
         }
     }
 
+protected:
+    template <class Derived, class Function, class... Args>
+    actor(Derived* child, key_t actor_id, Function&& f, Args&&... args)
+            : function(std::bind(std::forward<Function>(f),
+                                 std::forward<Args>(args)...,
+                                 child,
+                                 std::placeholders::_1)),
+              stop(false),
+              processing(&actor<message_type>::run, this),
+              id(actor_id) {}
+
 private:
     core_t function;
     storage_t messages;
@@ -72,8 +84,8 @@ private:
     key_t id;
 
     virtual void run() {
+        storage_t to_do_list;
         while (!stop.load()) {
-            storage_t to_do_list;
             {
                 std::unique_lock<std::mutex> lk(mutex);
                 condition.wait(lk, [this]() {
@@ -105,7 +117,7 @@ struct subscribed_actor : public actor<message_type> {
 
     template <class Function, class... Args>
     subscribed_actor(key_t actor_id, Function&& f, Args&&... args)
-            : base_t(actor_id, std::forward<Function>(f), std::forward<Args>(args)..., this) {}
+            : base_t(this, actor_id, std::forward<Function>(f), std::forward<Args>(args)...) {}
 
     virtual ~subscribed_actor() {}
 

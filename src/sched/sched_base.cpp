@@ -13,8 +13,9 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "sched/sched_base.hpp"
+#include "coll/coll_param.hpp"
 #include "common/global/global.hpp"
+#include "sched/sched_base.hpp"
 
 std::string to_string(ccl_sched_add_mode mode) {
     switch (mode) {
@@ -32,6 +33,7 @@ void ccl_sched_base::set_coll_attr(const ccl_coll_attr& attr) {
 void ccl_sched_base::update_coll_param_and_attr(const ccl_coll_param& param,
                                                 const ccl_coll_attr& attr) {
 #ifdef CCL_ENABLE_SYCL
+    copy_deps(param.deps, coll_param.deps);
     if (param.stream && param.stream->is_sycl_device_stream()) {
         coll_param.sycl_buf = static_cast<ccl_sycl_buffer_t*>(param.buf);
         coll_param.sycl_send_buf = static_cast<ccl_sycl_buffer_t*>((void*)param.send_buf);
@@ -267,6 +269,16 @@ void ccl_sched_base::alloc_buffers_for_sycl_copy() {
               param.comm->size(),
               ", count ",
               param.count);
+
+    void* ptr_to_check = (param.ctype == ccl_coll_bcast) ? param.buf : (void*)param.send_buf;
+    auto ptr_type =
+        sycl::get_pointer_type(ptr_to_check, param.stream->get_native_stream().get_context());
+    if (ptr_type == sycl::usm::alloc::shared) {
+        param.sycl_send_buf = static_cast<ccl_sycl_buffer_t*>((void*)param.send_buf);
+        param.sycl_recv_buf = static_cast<ccl_sycl_buffer_t*>(param.recv_buf);
+        param.sycl_buf = static_cast<ccl_sycl_buffer_t*>(param.buf);
+        return;
+    }
 
     size_t idx, send_count = 0, recv_count = 0;
 

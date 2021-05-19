@@ -48,6 +48,8 @@ public:
         LOG_DEBUG(class_name(), ": in_buf ", in_buf, ", out_buf ", out_buf, ", count ", count);
 
         copier.set_queue(((ccl_stream*)stream)->get_native_stream(sched->queue->get_idx()));
+        if (direction == sycl_copy_direction::d2h)
+            copier.set_deps(sched->get_deps());
         ccl_tuple_for_each_indexed<ccl_sycl_buffer_one_dim_types>(copier);
         status = ccl_sched_entry_status_started;
     }

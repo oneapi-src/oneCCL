@@ -232,6 +232,12 @@ void init_test_dims() {
 void init_test_params() {
     init_test_dims();
 
+#ifdef CCL_ENABLE_SYCL
+    printf("FUNC_TESTS: CCL_ENABLE_SYCL ON\n");
+#endif
+    printf("FUNC_TESTS: BF16 enabled %d\n", is_bf16_enabled());
+    printf("FUNC_TESTS: FP16 enabled %d\n", is_fp16_enabled());
+
     for (auto data_type = first_data_type; data_type < last_data_type; data_type++) {
         if (should_skip_datatype(data_type))
             continue;
@@ -303,10 +309,9 @@ std::ostream& operator<<(std::ostream& stream, const test_param& param) {
 }
 
 void print_err_message(char* message, std::ostream& output) {
-    ccl::communicator& comm = global_data::instance().comms[0];
+    auto& comm = transport_data::instance().get_service_comm();
     int comm_size = comm.size();
     int comm_rank = comm.rank();
-
     size_t message_len = strlen(message);
     std::vector<size_t> message_lens(comm_size, 0);
     std::vector<size_t> recv_counts(comm_size, 1);
@@ -325,12 +330,4 @@ void print_err_message(char* message, std::ostream& output) {
     if (comm_rank == 0) {
         output << messages.data();
     }
-}
-
-void mpi_finalize() {
-    int is_finalized = 0;
-    MPI_Finalized(&is_finalized);
-
-    if (!is_finalized)
-        MPI_Finalize();
 }

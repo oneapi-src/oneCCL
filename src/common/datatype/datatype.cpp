@@ -90,18 +90,18 @@ ccl_datatype_storage::ccl_datatype_storage() {
                                                   : 0;
 
         CCL_ASSERT(size > 0, "Unexpected data type size: ", size, ", for idx: ", idx);
-        name_str = (idx == ccl::datatype::int8)       ? "INT8"
-                   : (idx == ccl::datatype::uint8)    ? "UINT8"
-                   : (idx == ccl::datatype::int16)    ? "INT16"
-                   : (idx == ccl::datatype::uint16)   ? "UINT16"
-                   : (idx == ccl::datatype::int32)    ? "INT32"
-                   : (idx == ccl::datatype::uint32)   ? "UINT32"
-                   : (idx == ccl::datatype::int64)    ? "INT64"
-                   : (idx == ccl::datatype::uint64)   ? "UINT64"
-                   : (idx == ccl::datatype::float16)  ? "FP16"
-                   : (idx == ccl::datatype::float32)  ? "FP32"
-                   : (idx == ccl::datatype::float64)  ? "FP64"
-                   : (idx == ccl::datatype::bfloat16) ? "BF16"
+        name_str = (idx == ccl::datatype::int8)       ? "int8"
+                   : (idx == ccl::datatype::uint8)    ? "uint8"
+                   : (idx == ccl::datatype::int16)    ? "int16"
+                   : (idx == ccl::datatype::uint16)   ? "uint16"
+                   : (idx == ccl::datatype::int32)    ? "int32"
+                   : (idx == ccl::datatype::uint32)   ? "uint32"
+                   : (idx == ccl::datatype::int64)    ? "int64"
+                   : (idx == ccl::datatype::uint64)   ? "uint64"
+                   : (idx == ccl::datatype::float16)  ? "float16"
+                   : (idx == ccl::datatype::float32)  ? "float32"
+                   : (idx == ccl::datatype::float64)  ? "float64"
+                   : (idx == ccl::datatype::bfloat16) ? "bfloat16"
                                                       : 0;
 
         create_internal(predefined_table, idx, size, name_str);

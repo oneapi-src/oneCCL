@@ -30,10 +30,10 @@
 #include "common/comm/l0/context/device_storage.hpp"
 
 /*REFACTORING*/
-#include "common/comm/l0/context/scaling_ctx/numa_ctx_impl.hpp"
-#include "common/comm/l0/context/scaling_ctx/scale_up_ctx_impl.hpp"
-#include "common/comm/l0/context/scaling_ctx/scale_out_ctx_impl.hpp"
-#include "common/comm/l0/context/scaling_ctx/ipc_ctx_impl.hpp"
+#include "common/comm/l0/context/scale/numa/numa_ctx_impl.hpp"
+#include "common/comm/l0/context/scale/scale_up/scale_up_ctx_impl.hpp"
+#include "common/comm/l0/context/scale/scale_out/scale_out_ctx_impl.hpp"
+#include "common/comm/l0/context/scale/ipc/ipc_ctx_impl.hpp"
 /*REFACTORING*/
 
 namespace native {

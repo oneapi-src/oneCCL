@@ -548,7 +548,7 @@ ccl::status ccl_coll_build_sparse_allreduce_ring(ccl_sched* sched,
     /* get value dimension */
     size_t val_dim_cnt = send_val_count / send_ind_count;
 
-    CCL_ASSERT(recv_ind_buf && recv_ind_buf, "recv buffers are null");
+    CCL_ASSERT(recv_ind_buf && recv_val_buf, "recv buffers are null");
     CCL_ASSERT(recv_ind_count && recv_val_count, "recv counts are null");
 
     void** r_ind_buf = recv_ind_buf;
@@ -767,7 +767,7 @@ ccl::status ccl_coll_build_sparse_allreduce_mask(ccl_sched* sched,
     /* get value dimension */
     size_t val_dim_cnt = send_val_count / send_ind_count;
 
-    CCL_ASSERT(recv_ind_buf && recv_ind_buf, "recv buffers are null");
+    CCL_ASSERT(recv_ind_buf && recv_val_buf, "recv buffers are null");
     CCL_ASSERT(recv_ind_count && recv_val_count, "recv counts are null");
 
     void** r_ind_buf = recv_ind_buf;
@@ -1077,7 +1077,7 @@ ccl::status ccl_coll_build_sparse_allreduce_3_allgatherv(ccl_sched* sched,
     /* get value dimension */
     size_t val_dim_cnt = send_val_count / send_ind_count;
 
-    CCL_ASSERT(recv_ind_buf && recv_ind_buf, "recv buffers are null");
+    CCL_ASSERT(recv_ind_buf && recv_val_buf, "recv buffers are null");
     CCL_ASSERT(recv_ind_count && recv_val_count, "recv counts are null");
 
     void** r_ind_buf = recv_ind_buf;
