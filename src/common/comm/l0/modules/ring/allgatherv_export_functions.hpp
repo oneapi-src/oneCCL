@@ -17,347 +17,225 @@
 #include "common/comm/l0/modules/kernel_functions.hpp"
 
 namespace native {
-template <class kernel_params>
-struct ring_allgatherv_kernel
-        : public execution_kernel<
-              ring_allgatherv_kernel<kernel_params>,
-              arg<main_kernel_args::args_start_index, size_t>, // elems_count
-              arg<main_kernel_args::args_start_index + 1, size_t*>, // recv_elem_counts_buf
-              arg<main_kernel_args::args_start_index + 2, size_t*>, // recv_elem_offsets_buf
-              arg<main_kernel_args::args_start_index + 3,
-                  typename kernel_params::native_type*>, // send_buf
-              thread_exchangable_arg<main_kernel_args::args_start_index + 4,
-                                     typename kernel_params::native_type*>, // recv_buf
-              arg<main_kernel_args::args_start_index + 5,
-                  typename kernel_params::native_type*>, // right_output_buffer
-              external_arg<main_kernel_args::args_start_index + 6,
-                           int*>, // left_wrote_to_me_flag
-              external_arg<main_kernel_args::args_start_index + 7,
-                           int*>, // i_ready_to_receive_flag
-              thread_exchangable_arg<main_kernel_args::args_start_index + 8,
-                                     int*>, // i_send_to_right_flag
-              thread_exchangable_arg<main_kernel_args::args_start_index + 9,
-                                     int*>> // right_ready_to_recv_flag
+
+namespace ring {
+
+namespace allgatherv {
+
+/**
+ * Common args for all kernel types
+ */
+
+using send_buf_size_arg = arg<main_kernel_args::args_start_index, size_t>;
+using send_buf_size_arg_type = typename send_buf_size_arg::arg_type;
+
+using recv_elem_counts_buf_arg = arg<main_kernel_args::args_start_index + 1, size_t*>;
+using recv_elem_counts_buf_arg_type = typename recv_elem_counts_buf_arg::arg_type;
+
+using recv_elem_offsets_buf_arg = arg<main_kernel_args::args_start_index + 2, size_t*>;
+using recv_elem_offsets_buf_arg_type = typename recv_elem_offsets_buf_arg::arg_type;
+
+template <class native_t>
+using send_buf_arg = arg<main_kernel_args::args_start_index + 3, native_t*>;
+
+template <class native_t>
+using recv_buf_arg = external_arg<main_kernel_args::args_start_index + 4, native_t*>;
+
+template <class native_t>
+using right_output_buf_arg =
+    thread_exchangable_arg<main_kernel_args::args_start_index + 5, native_t*>;
+
+using income_data_flag_arg = external_arg<main_kernel_args::args_start_index + 6, int*>;
+using income_data_flag_arg_type = typename income_data_flag_arg::arg_type;
+
+using ready_to_recv_flag_arg = external_arg<main_kernel_args::args_start_index + 7, int*>;
+using ready_to_recv_flag_arg_type = typename ready_to_recv_flag_arg::arg_type;
+
+using right_income_data_flag_arg =
+    thread_exchangable_arg<main_kernel_args::args_start_index + 8, int*>;
+
+using right_ready_to_recv_flag_arg =
+    thread_exchangable_arg<main_kernel_args::args_start_index + 9, int*>;
+
+// IMPORTANT: the number and types of arguments must be the same in all classes,
+// excluding arguments specific for numa/scaleout etc.
+struct main_kernel
+        : public execution_kernel<main_kernel,
+                                  send_buf_size_arg, // elems_count
+                                  recv_elem_counts_buf_arg, // recv_elem_counts_buf
+                                  recv_elem_offsets_buf_arg, // recv_elem_offsets_buf
+                                  send_buf_arg<void>, // send_buf
+                                  recv_buf_arg<void>, // recv_buf (output_buffer)
+                                  right_output_buf_arg<void>, // right_output_buffer
+                                  income_data_flag_arg, // left_wrote_to_me_flag
+                                  ready_to_recv_flag_arg, // i_ready_to_receive_flag
+                                  right_income_data_flag_arg, // i_send_to_right_flag
+                                  right_ready_to_recv_flag_arg> // right_ready_to_recv_flag
 {
-    using processing_type = typename kernel_params::native_type;
+    using processing_type = void;
 
     static constexpr const char* specific_name() {
         return "allgatherv_execution";
     }
 
-    // elems_count
-    using send_buf_size_arg = arg<main_kernel_args::args_start_index, size_t>;
     using common_entry_buf_size_arg = send_buf_size_arg;
-    using send_buf_size_arg_type = typename send_buf_size_arg::arg_type;
+    using common_entry_buf_arg = send_buf_arg<processing_type>;
 
-    // recv_elem_counts_buf
-    using recv_elem_counts_buf_arg = arg<main_kernel_args::args_start_index + 1, size_t*>;
-    using recv_elem_counts_buf_arg_type = typename recv_elem_counts_buf_arg::arg_type;
-
-    // recv_elem_offsets_buf
-    using recv_elem_offsets_buf_arg = arg<main_kernel_args::args_start_index + 2, size_t*>;
-    using recv_elem_offsets_buf_arg_type = typename recv_elem_offsets_buf_arg::arg_type;
-
-    // send_buf
-    using send_buf_arg = arg<main_kernel_args::args_start_index + 3, processing_type*>;
-    using common_entry_buf_arg = send_buf_arg;
-    using send_buf_arg_type = typename send_buf_arg::arg_type;
-
-    // recv_buf
-    using recv_buf_arg = arg<main_kernel_args::args_start_index + 4, processing_type*>;
-    using recv_buf_arg_type = typename recv_buf_arg::arg_type;
-
-    // right_output_buffer
-    using right_output_buf_arg =
-        thread_exchangable_arg<main_kernel_args::args_start_index + 5, processing_type*>;
-    using right_output_buf_arg_type = typename right_output_buf_arg::arg_type;
-
-    // left_wrote_to_me_flag
-    using income_data_flag_arg = external_arg<main_kernel_args::args_start_index + 6, int*>;
-    using income_data_flag_arg_type = typename income_data_flag_arg::arg_type;
-
-    // i_ready_to_receive_flag
-    using ready_to_recv_flag_arg = external_arg<main_kernel_args::args_start_index + 7, int*>;
-    using ready_to_recv_flag_arg_type = typename ready_to_recv_flag_arg::arg_type;
-
-    // i_send_to_right_flag
-    using right_income_data_flag_arg =
-        thread_exchangable_arg<main_kernel_args::args_start_index + 8, int*>;
-    using right_income_data_flag_arg_type = typename right_income_data_flag_arg::arg_type;
-
-    // right_ready_to_recv_flag
-    using right_ready_to_recv_flag_arg =
-        thread_exchangable_arg<main_kernel_args::args_start_index + 9, int*>;
-    using right_ready_to_recv_flag_arg_type = typename right_ready_to_recv_flag_arg::arg_type;
-
-    using base = execution_kernel<ring_allgatherv_kernel<kernel_params>,
+    using base = execution_kernel<main_kernel,
                                   send_buf_size_arg,
                                   recv_elem_counts_buf_arg,
                                   recv_elem_offsets_buf_arg,
-                                  send_buf_arg,
-                                  recv_buf_arg,
-                                  right_output_buf_arg,
+                                  send_buf_arg<processing_type>,
+                                  recv_buf_arg<processing_type>,
+                                  right_output_buf_arg<processing_type>,
                                   income_data_flag_arg,
                                   ready_to_recv_flag_arg,
                                   right_income_data_flag_arg,
                                   right_ready_to_recv_flag_arg>;
+
+    using base::base;
 };
 
 // IMPORTANT: the params order is default, see *algatherv*.cl for that
-template <class kernel_params>
-struct ring_allgatherv_numa_kernel
-        : public execution_kernel<
-              ring_allgatherv_numa_kernel<kernel_params>,
-              arg<main_kernel_args::args_start_index, size_t>, // elems_count
-              arg<main_kernel_args::args_start_index + 1, size_t*>, // recv_elem_counts_buf
-              arg<main_kernel_args::args_start_index + 2, size_t*>, // recv_elem_offsets_buf
-              arg<main_kernel_args::args_start_index + 3,
-                  typename kernel_params::native_type*>, // send_buf
-              arg<main_kernel_args::args_start_index + 4,
-                  typename kernel_params::native_type*>, // recv_buf
-              thread_safe_arg<main_kernel_args::args_start_index + 5,
-                              typename kernel_params::native_type*>, // right_output_buffer
-              thread_safe_arg<main_kernel_args::args_start_index + 6,
-                              int*>, // left_wrote_to_me_flag
-              thread_safe_arg<main_kernel_args::args_start_index + 7,
-                              int*>, // i_ready_to_receive_flag
-              thread_safe_arg<main_kernel_args::args_start_index + 8, int*>, // i_send_to_right_flag
-              thread_safe_arg<main_kernel_args::args_start_index + 9,
-                              int*>> // right_ready_to_recv_flag>
+struct numa_kernel
+        : public execution_kernel<numa_kernel,
+                                  send_buf_size_arg, // elems_count
+                                  recv_elem_counts_buf_arg, // recv_elem_counts_buf
+                                  recv_elem_offsets_buf_arg, // recv_elem_offsets_buf
+                                  send_buf_arg<void>, // send_buf
+                                  recv_buf_arg<void>, // recv_buf (output_buffer)
+                                  right_output_buf_arg<void>, // right_output_buffer
+                                  income_data_flag_arg, // left_wrote_to_me_flag
+                                  ready_to_recv_flag_arg, // i_ready_to_receive_flag
+                                  right_income_data_flag_arg, // i_send_to_right_flag
+                                  right_ready_to_recv_flag_arg> // right_ready_to_recv_flag
 {
-    using processing_type = typename kernel_params::native_type;
+    using processing_type = void;
 
     static constexpr const char* specific_name() {
         return "allgatherv_execution_numa";
     }
 
-    // elems_count
-    using send_buf_size_arg = arg<main_kernel_args::args_start_index, size_t>;
     using common_entry_buf_size_arg = send_buf_size_arg;
-    using send_buf_size_arg_type = typename send_buf_size_arg::arg_type;
+    using common_entry_buf_arg = send_buf_arg<processing_type>;
 
-    // recv_elem_counts_buf
-    using recv_elem_counts_buf_arg = arg<main_kernel_args::args_start_index + 1, size_t*>;
-    using recv_elem_counts_buf_arg_type = typename recv_elem_counts_buf_arg::arg_type;
-
-    // recv_elem_offsets_buf
-    using recv_elem_offsets_buf_arg = arg<main_kernel_args::args_start_index + 2, size_t*>;
-    using recv_elem_offsets_buf_arg_type = typename recv_elem_offsets_buf_arg::arg_type;
-
-    // send_buf
-    using send_buf_arg = arg<main_kernel_args::args_start_index + 3, processing_type*>;
-    using common_entry_buf_arg = send_buf_arg;
-    using send_buf_arg_type = typename send_buf_arg::arg_type;
-
-    // recv_buf
-    using recv_buf_arg = arg<main_kernel_args::args_start_index + 4, processing_type*>;
-    using recv_buf_arg_type = typename recv_buf_arg::arg_type;
-
-    // right_output_buffer
-    using right_output_buf_arg =
-        thread_safe_arg<main_kernel_args::args_start_index + 5, processing_type*>;
-    using right_output_buf_arg_type = typename right_output_buf_arg::arg_type;
-
-    // left_wrote_to_me_flag
-    using income_data_flag_arg = thread_safe_arg<main_kernel_args::args_start_index + 6, int*>;
-    using income_data_flag_arg_type = typename income_data_flag_arg::arg_type;
-
-    // i_ready_to_receive_flag
-    using ready_to_recv_flag_arg = thread_safe_arg<main_kernel_args::args_start_index + 7, int*>;
-    using ready_to_recv_flag_arg_type = typename ready_to_recv_flag_arg::arg_type;
-
-    // i_send_to_right_flag
-    using right_income_data_flag_arg =
-        thread_safe_arg<main_kernel_args::args_start_index + 8, int*>;
-    using right_income_data_flag_arg_type = typename right_income_data_flag_arg::arg_type;
-
-    // right_ready_to_recv_flag
-    using right_ready_to_recv_flag_arg =
-        thread_safe_arg<main_kernel_args::args_start_index + 9, int*>;
-    using right_ready_to_recv_flag_arg_type = typename right_ready_to_recv_flag_arg::arg_type;
-
-    using base = execution_kernel<ring_allgatherv_numa_kernel<kernel_params>,
+    using base = execution_kernel<numa_kernel,
                                   send_buf_size_arg,
                                   recv_elem_counts_buf_arg,
                                   recv_elem_offsets_buf_arg,
-                                  send_buf_arg,
-                                  recv_buf_arg,
-                                  right_output_buf_arg,
+                                  send_buf_arg<processing_type>,
+                                  recv_buf_arg<processing_type>,
+                                  right_output_buf_arg<processing_type>,
                                   income_data_flag_arg,
                                   ready_to_recv_flag_arg,
                                   right_income_data_flag_arg,
                                   right_ready_to_recv_flag_arg>;
+
+    template <class ctx_params_t>
+    void bind_data(const ctx_params_t& out_ctx_params) {
+        // TODO not implemented
+        (void)out_ctx_params;
+        throw ccl::exception(std::string(__FUNCTION__) + " - not implemented for that kernel type");
+    }
+
+    using base::base;
 };
 
-template <class kernel_params>
-struct ring_allgatherv_ipc
-        : public ipc_kernel<
-              ring_allgatherv_ipc<kernel_params>,
-              arg<main_kernel_args::args_start_index, size_t>, // elems_count
-              arg<main_kernel_args::args_start_index + 1, size_t*>, // recv_elem_counts_buf
-              arg<main_kernel_args::args_start_index + 2, size_t*>, // recv_elem_offsets_buf
-              arg<main_kernel_args::args_start_index + 3,
-                  typename kernel_params::native_type*>, // send_buf
-              arg<main_kernel_args::args_start_index + 4,
-                  typename kernel_params::native_type*>, // recv_buf
-              thread_safe_arg<main_kernel_args::args_start_index + 5,
-                              typename kernel_params::native_type*>, // right_output_buffer
-              thread_safe_arg<main_kernel_args::args_start_index + 6,
-                              int*>, // left_wrote_to_me_flag
-              thread_safe_arg<main_kernel_args::args_start_index + 7,
-                              int*>, // i_ready_to_receive_flag
-              thread_safe_arg<main_kernel_args::args_start_index + 8, int*>, // i_send_to_right_flag
-              thread_safe_arg<main_kernel_args::args_start_index + 9,
-                              int*>> // right_ready_to_recv_flag
+struct ipc_kernel : public base_ipc_kernel<ipc_kernel,
+                                           send_buf_size_arg, // elems_count
+                                           recv_elem_counts_buf_arg, // recv_elem_counts_buf
+                                           recv_elem_offsets_buf_arg, // recv_elem_offsets_buf
+                                           send_buf_arg<void>, // send_buf
+                                           recv_buf_arg<void>, // recv_buf (output_buffer)
+                                           right_output_buf_arg<void>, // right_output_buffer
+                                           income_data_flag_arg, // left_wrote_to_me_flag
+                                           ready_to_recv_flag_arg, // i_ready_to_receive_flag
+                                           right_income_data_flag_arg, // i_send_to_right_flag
+                                           right_ready_to_recv_flag_arg> // right_ready_to_recv_flag
 {
-    using processing_type = typename kernel_params::native_type;
+    using processing_type = void;
 
     static constexpr const char* specific_name() {
         return "ring_allgatherv_ipc";
     }
 
-    // elems_count
-    using send_buf_size_arg = arg<main_kernel_args::args_start_index, size_t>;
     using common_entry_buf_size_arg = send_buf_size_arg;
-    using send_buf_size_arg_type = typename send_buf_size_arg::arg_type;
+    using common_entry_buf_arg = send_buf_arg<processing_type>;
 
-    // recv_elem_counts_buf
-    using recv_elem_counts_buf_arg = arg<main_kernel_args::args_start_index + 1, size_t*>;
-    using recv_elem_counts_buf_arg_type = typename recv_elem_counts_buf_arg::arg_type;
+    using base = base_ipc_kernel<ipc_kernel,
+                                 send_buf_size_arg,
+                                 recv_elem_counts_buf_arg,
+                                 recv_elem_offsets_buf_arg,
+                                 send_buf_arg<processing_type>,
+                                 recv_buf_arg<processing_type>,
+                                 right_output_buf_arg<processing_type>,
+                                 income_data_flag_arg,
+                                 ready_to_recv_flag_arg,
+                                 right_income_data_flag_arg,
+                                 right_ready_to_recv_flag_arg>;
 
-    // recv_elem_offsets_buf
-    using recv_elem_offsets_buf_arg = arg<main_kernel_args::args_start_index + 2, size_t*>;
-    using recv_elem_offsets_buf_arg_type = typename recv_elem_offsets_buf_arg::arg_type;
+    template <class ipc_handles_t>
+    void bind_data(const ipc_handles_t& ipc_handles) {
+        auto recv_buf = reinterpret_cast<typename recv_buf_arg<processing_type>::arg_type>(
+            ipc_handles.at(0).get().pointer);
+        this->template set_arg<recv_buf_arg<processing_type>>(recv_buf);
 
-    // send_buf
-    using send_buf_arg = arg<main_kernel_args::args_start_index + 3, processing_type*>;
-    using common_entry_buf_arg = send_buf_arg;
-    using send_buf_arg_type = typename send_buf_arg::arg_type;
+        auto income_data_flag =
+            reinterpret_cast<income_data_flag_arg_type>(ipc_handles.at(1).get().pointer);
+        this->template set_arg<income_data_flag_arg>(income_data_flag);
 
-    // recv_buf
-    using recv_buf_arg = arg<main_kernel_args::args_start_index + 4, processing_type*>;
-    using recv_buf_arg_type = typename recv_buf_arg::arg_type;
+        auto ready_to_recv_flag =
+            reinterpret_cast<ready_to_recv_flag_arg_type>(ipc_handles.at(2).get().pointer);
+        this->template set_arg<ready_to_recv_flag_arg>(ready_to_recv_flag);
+    }
 
-    // right_output_buffer
-    using right_output_buf_arg =
-        thread_safe_arg<main_kernel_args::args_start_index + 5, processing_type*>;
-    using right_output_buf_arg_type = typename right_output_buf_arg::arg_type;
-
-    // left_wrote_to_me_flag
-    using income_data_flag_arg = thread_safe_arg<main_kernel_args::args_start_index + 6, int*>;
-    using income_data_flag_arg_type = typename income_data_flag_arg::arg_type;
-
-    // i_ready_to_receive_flag
-    using ready_to_recv_flag_arg = thread_safe_arg<main_kernel_args::args_start_index + 7, int*>;
-    using ready_to_recv_flag_arg_type = typename ready_to_recv_flag_arg::arg_type;
-
-    // i_send_to_right_flag
-    using right_income_data_flag_arg =
-        thread_safe_arg<main_kernel_args::args_start_index + 8, int*>;
-    using right_income_data_flag_arg_type = typename right_income_data_flag_arg::arg_type;
-
-    // right_ready_to_recv_flag
-    using right_ready_to_recv_flag_arg =
-        thread_safe_arg<main_kernel_args::args_start_index + 9, int*>;
-    using right_ready_to_recv_flag_arg_type = typename right_ready_to_recv_flag_arg::arg_type;
-
-    using base = execution_kernel<ring_allgatherv_ipc<kernel_params>,
-                                  send_buf_size_arg,
-                                  recv_elem_counts_buf_arg,
-                                  recv_elem_offsets_buf_arg,
-                                  send_buf_arg,
-                                  recv_buf_arg,
-                                  right_output_buf_arg,
-                                  income_data_flag_arg,
-                                  ready_to_recv_flag_arg,
-                                  right_income_data_flag_arg,
-                                  right_ready_to_recv_flag_arg>;
+    using base::base;
 };
 
-template <class kernel_params>
-struct ring_allgatherv_scale_out_cpu_gw_kernel
-        : public execution_kernel<
-              ring_allgatherv_scale_out_cpu_gw_kernel<kernel_params>,
-              arg<main_kernel_args::args_start_index, size_t>, // elems_count
-              arg<main_kernel_args::args_start_index + 1, size_t*>, // recv_elem_counts_buf
-              arg<main_kernel_args::args_start_index + 2, size_t*>, // recv_elem_offsets_buf
-              arg<main_kernel_args::args_start_index + 3,
-                  typename kernel_params::native_type*>, // send_buf
-              arg<main_kernel_args::args_start_index + 4,
-                  typename kernel_params::native_type*>, // recv_buf
-              thread_safe_arg<main_kernel_args::args_start_index + 5,
-                              typename kernel_params::native_type*>, // right_output_buffer
-              thread_safe_arg<main_kernel_args::args_start_index + 6,
-                              int*>, // left_wrote_to_me_flag
-              thread_safe_arg<main_kernel_args::args_start_index + 7,
-                              int*>, // i_ready_to_receive_flag
-              thread_safe_arg<main_kernel_args::args_start_index + 8, int*>, // i_send_to_right_flag
-              thread_safe_arg<main_kernel_args::args_start_index + 9,
-                              int*>> // right_ready_to_recv_flag>
+struct scale_out_cpu_gw_kernel
+        : public execution_kernel<scale_out_cpu_gw_kernel,
+                                  send_buf_size_arg, // elems_count
+                                  recv_elem_counts_buf_arg, // recv_elem_counts_buf
+                                  recv_elem_offsets_buf_arg, // recv_elem_offsets_buf
+                                  send_buf_arg<void>, // send_buf
+                                  recv_buf_arg<void>, // recv_buf (output_buffer)
+                                  right_output_buf_arg<void>, // right_output_buffer
+                                  income_data_flag_arg, // left_wrote_to_me_flag
+                                  ready_to_recv_flag_arg, // i_ready_to_receive_flag
+                                  right_income_data_flag_arg, // i_send_to_right_flag
+                                  right_ready_to_recv_flag_arg> // right_ready_to_recv_flag
 {
-    using param_t = kernel_params;
-    using processing_type = typename param_t::native_type;
+    using processing_type = void;
 
     static constexpr const char* specific_name() {
         return "allgatherv_execution_scale_out_cpu_gw";
     }
 
-    // elems_count
-    using send_buf_size_arg = arg<main_kernel_args::args_start_index, size_t>;
     using common_entry_buf_size_arg = send_buf_size_arg;
-    using send_buf_size_arg_type = typename send_buf_size_arg::arg_type;
+    using common_entry_buf_arg = send_buf_arg<processing_type>;
 
-    // recv_elem_counts_buf
-    using recv_elem_counts_buf_arg = arg<main_kernel_args::args_start_index + 1, size_t*>;
-    using recv_elem_counts_buf_arg_type = typename recv_elem_counts_buf_arg::arg_type;
-
-    // recv_elem_offsets_buf
-    using recv_elem_offsets_buf_arg = arg<main_kernel_args::args_start_index + 2, size_t*>;
-    using recv_elem_offsets_buf_arg_type = typename recv_elem_offsets_buf_arg::arg_type;
-
-    // send_buf
-    using send_buf_arg = arg<main_kernel_args::args_start_index + 3, processing_type*>;
-    using common_entry_buf_arg = send_buf_arg;
-    using send_buf_arg_type = typename send_buf_arg::arg_type;
-
-    // recv_buf
-    using recv_buf_arg = arg<main_kernel_args::args_start_index + 4, processing_type*>;
-    using recv_buf_arg_type = typename recv_buf_arg::arg_type;
-
-    // right_output_buffer
-    using right_output_buf_arg =
-        thread_safe_arg<main_kernel_args::args_start_index + 5, processing_type*>;
-    using right_output_buf_arg_type = typename right_output_buf_arg::arg_type;
-
-    // left_wrote_to_me_flag
-    using income_data_flag_arg = thread_safe_arg<main_kernel_args::args_start_index + 6, int*>;
-    using income_data_flag_arg_type = typename income_data_flag_arg::arg_type;
-
-    // i_ready_to_receive_flag
-    using ready_to_recv_flag_arg = thread_safe_arg<main_kernel_args::args_start_index + 7, int*>;
-    using ready_to_recv_flag_arg_type = typename ready_to_recv_flag_arg::arg_type;
-
-    // i_send_to_right_flag
-    using right_income_data_flag_arg =
-        thread_safe_arg<main_kernel_args::args_start_index + 8, int*>;
-    using right_income_data_flag_arg_type = typename right_income_data_flag_arg::arg_type;
-
-    // right_ready_to_recv_flag
-    using right_ready_to_recv_flag_arg =
-        thread_safe_arg<main_kernel_args::args_start_index + 9, int*>;
-    using right_ready_to_recv_flag_arg_type = typename right_ready_to_recv_flag_arg::arg_type;
-
-    using base = execution_kernel<ring_allgatherv_scale_out_cpu_gw_kernel<param_t>,
+    using base = execution_kernel<scale_out_cpu_gw_kernel,
                                   send_buf_size_arg,
                                   recv_elem_counts_buf_arg,
                                   recv_elem_offsets_buf_arg,
-                                  send_buf_arg,
-                                  recv_buf_arg,
-                                  right_output_buf_arg,
+                                  send_buf_arg<processing_type>,
+                                  recv_buf_arg<processing_type>,
+                                  right_output_buf_arg<processing_type>,
                                   income_data_flag_arg,
                                   ready_to_recv_flag_arg,
                                   right_income_data_flag_arg,
                                   right_ready_to_recv_flag_arg>;
+
+    template <class ctx_params_t>
+    void bind_data(const ctx_params_t& out_ctx_params) {
+        // TODO not implemented
+        (void)out_ctx_params;
+        throw ccl::exception(std::string(__FUNCTION__) + " - not implemented for that kernel type");
+    }
+
+    using base::base;
 };
 
+} // namespace allgatherv
+} // namespace ring
 } // namespace native

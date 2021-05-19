@@ -15,7 +15,7 @@
 */
 #define ALGO_SELECTION_ENV "CCL_ALLGATHERV"
 
-#include "base_impl.hpp"
+#include "test_impl.hpp"
 
 template <typename T>
 class allgatherv_test : public base_test<T> {
@@ -50,15 +50,12 @@ public:
             offsets[rank] = recv_counts[rank - 1] + offsets[rank - 1];
         }
 
-        if (op.param.place_type == PLACE_OUT) {
-            size_t total_recv_count = std::accumulate(recv_counts.begin(), recv_counts.end(), 0);
-            for (size_t buf_idx = 0; buf_idx < op.buffer_count; buf_idx++) {
-                op.recv_bufs[buf_idx].resize(total_recv_count);
-                if (is_lp_datatype(op.param.datatype)) {
-                    op.recv_bufs_lp[buf_idx].resize(total_recv_count);
-                }
-            }
-        }
+        // if (op.param.place_type == PLACE_OUT) {
+        //     size_t total_recv_count = std::accumulate(recv_counts.begin(), recv_counts.end(), 0);
+        //     for (size_t buf_idx = 0; buf_idx < op.buffer_count; buf_idx++) {
+        //         op.recv_bufs[buf_idx].resize(total_recv_count);
+        //     }
+        // }
     }
 
     void fill_send_buffers(test_operation<T>& op) {
@@ -99,7 +96,8 @@ public:
                                 recv_buf,
                                 recv_counts,
                                 op.datatype,
-                                global_data::instance().comms[0],
+                                transport_data::instance().get_comm(),
+                                transport_data::instance().get_stream(),
                                 attr));
         }
     }

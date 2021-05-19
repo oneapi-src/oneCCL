@@ -53,7 +53,7 @@ public:
 
     ~ccl_sched_list() {
         if (elems.size() != 0 && !ccl::global_data::get().is_ft_enabled) {
-            LOG_ERROR("unexpected elem_count ", elems.size(), ", expected 0");
+            LOG_WARN("unexpected elem_count ", elems.size(), ", expected 0");
         }
 
         for (size_t i = 0; i < elems.size(); i++) {

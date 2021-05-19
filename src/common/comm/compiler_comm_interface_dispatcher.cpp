@@ -140,7 +140,7 @@ communicator_interface_dispatcher::create_communicator_from_unified_device(
     // Use process class if not specified otherwise
     // TODO: implement a proper dispatching for other types
     if (preferred_topology_group == ccl::group_split_type::undetermined) {
-        preferred_topology_group = ccl::group_split_type::process;
+        preferred_topology_group = ccl::group_split_type::cluster;
     }
 
     // read comm split attributes

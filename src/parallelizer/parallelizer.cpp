@@ -365,6 +365,7 @@ ccl::status ccl_parallelizer::process(ccl_master_sched* sched) {
                     coll_param.count,
                     dtype,
                     coll_param.stream);
+                part_scheds[0]->add_barrier();
             }
 #endif /* CCL_ENABLE_SYCL */
             break;
@@ -418,6 +419,7 @@ ccl::status ccl_parallelizer::process(ccl_master_sched* sched) {
                         coll_param.count,
                         dtype,
                         coll_param.stream);
+                    part_scheds[0]->add_barrier();
                 }
             }
 #endif /* CCL_ENABLE_SYCL */
@@ -476,6 +478,7 @@ ccl::status ccl_parallelizer::process(ccl_master_sched* sched) {
                     coll_param.count,
                     dtype,
                     coll_param.stream);
+                part_scheds[0]->add_barrier();
             }
 #endif /* CCL_ENABLE_SYCL */
             break;
@@ -636,6 +639,7 @@ ccl::status ccl_parallelizer::process(ccl_master_sched* sched) {
                     coll_param.count,
                     dtype,
                     coll_param.stream);
+                part_scheds[0]->add_barrier();
             }
 #endif /* CCL_ENABLE_SYCL */
 
@@ -798,6 +802,7 @@ ccl::status ccl_parallelizer::process(ccl_master_sched* sched) {
                     ag_recv_count,
                     dtype,
                     coll_param.stream);
+                part_scheds[0]->add_barrier();
             }
 #endif /* CCL_ENABLE_SYCL */
             break;
@@ -864,6 +869,7 @@ ccl::status ccl_parallelizer::process(ccl_master_sched* sched) {
                     a2av_recv_count,
                     dtype,
                     coll_param.stream);
+                part_scheds[0]->add_barrier();
             }
 #endif /* CCL_ENABLE_SYCL */
             break;

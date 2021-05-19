@@ -48,6 +48,15 @@
 #define ATL_OFI_INI ATL_EXT_INI
 #define ATL_MPI_INI ATL_EXT_INI
 
+#define ATL_CALL(func, err_action) \
+    do { \
+        atl_status_t status = func; \
+        if (status != FI_SUCCESS) { \
+            LOG_ERROR(#func "\n fails with status: ", status); \
+            err_action; \
+        } \
+    } while (0)
+
 class ipmi;
 
 typedef struct atl_ctx atl_ctx_t;
@@ -100,6 +109,8 @@ typedef enum {
     ATL_REDUCTION_CUSTOM
 } atl_reduction_t;
 
+typedef enum { ATL_MNIC_NONE, ATL_MNIC_LOCAL, ATL_MNIC_GLOBAL } atl_mnic_t;
+
 typedef struct {
     size_t ep_count;
     int enable_shm;
@@ -109,6 +120,8 @@ typedef struct {
     size_t max_order_waw_size;
     int sync_coll;
     int extra_ep;
+    atl_mnic_t mnic_type;
+    size_t mnic_count;
 } atl_attr_t;
 
 typedef struct {

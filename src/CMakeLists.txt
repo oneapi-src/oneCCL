@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-#builds ccl
+# builds CCL
 
 set (EXTENSIONS_SRC)
 
@@ -36,6 +36,7 @@ list (APPEND EXTENSIONS_SRC
                     native_device_api/l0/base.cpp
                     native_device_api/l0/device.cpp
                     native_device_api/l0/context.cpp
+                    native_device_api/l0/event_pool.cpp
                     native_device_api/l0/subdevice.cpp
                     native_device_api/l0/driver.cpp
                     native_device_api/l0/export.cpp
@@ -80,16 +81,17 @@ list (APPEND EXTENSIONS_SRC
                     common/comm/l0/topology/ring/process_group_ring_creator.cpp
                     common/comm/l0/topology/topology_construction_utils.cpp
 
-                    common/comm/l0/context/scaling_ctx/ipc_ctx_session.cpp
-                    common/comm/l0/context/scaling_ctx/ipc_ctx_utils.cpp
-                    common/comm/l0/context/scaling_ctx/ipc_session_key.cpp
+                    common/comm/l0/context/scale/ipc/ipc_ctx_session.cpp
+                    common/comm/l0/context/scale/ipc/ipc_ctx_utils.cpp
+                    common/comm/l0/context/scale/ipc/ipc_session_key.cpp
 
-                    common/comm/l0/context/scaling_ctx/observer_ctx_session.cpp
-                    common/comm/l0/context/scaling_ctx/observer_session_key.cpp
+                    common/comm/l0/context/scale/base/base_session.cpp
+                    common/comm/l0/context/scale/scale_out/scale_out_session.cpp
 
                     common/comm/l0/gpu_comm_attr.cpp
                     common/comm/l0/modules/base_entry_module.cpp
-                    common/comm/l0/modules/modules_source_data.cpp)
+                    common/comm/l0/modules/modules_source_data.cpp
+                    common/comm/l0/modules/kernel_utils.cpp)
 endif(MULTI_GPU_SUPPORT)
 
 set(CCL_SRC
@@ -147,10 +149,12 @@ set(CCL_SRC
     coll/ccl_reduce_scatter_op_attr.cpp
     coll/ccl_sparse_allreduce_op_attr.cpp
     coll/ccl_barrier_op_attr.cpp
+    coll/coll_param.cpp
     coll/algorithms/allgatherv.cpp
     coll/algorithms/allreduce/allreduce.cpp
     coll/algorithms/allreduce/allreduce_2d.cpp
     coll/algorithms/allreduce/allreduce_rma.cpp
+    coll/algorithms/algorithm_utils.cpp
     coll/algorithms/alltoall.cpp
     coll/algorithms/alltoallv.cpp
     coll/algorithms/barrier.cpp
@@ -173,12 +177,14 @@ set(CCL_SRC
     comp/comp.cpp
     comp/fp16/fp16.cpp
     comp/fp16/fp16_intrisics.cpp
+    hwloc/hwloc_wrapper.c
     sched/sched.cpp
     sched/extra_sched.cpp
     sched/master_sched.cpp
     sched/sched_base.cpp
     sched/cache/cache.cpp
     sched/cache/key.cpp
+    sched/queue/flow_control.cpp
     sched/queue/strict_queue.cpp
     sched/queue/queue.cpp
     sched/entry/coll/coll_entry.cpp
@@ -220,18 +226,21 @@ set(CCL_SRC
     ${EXTENSIONS_SRC})
 
 list(APPEND CCL_INC_DIRS
-                 ${PROJECT_SOURCE_DIR}/include
-                 ${PROJECT_SOURCE_DIR}/mpi/include
-                 ${LIBFABRIC_INCLUDE_DIR}
-                 ${PROJECT_SOURCE_DIR}/src
-                 ${PROJECT_SOURCE_DIR}/src/atl)
+     ${PROJECT_SOURCE_DIR}/include
+     ${MPI_INCLUDE_DIR}
+     ${LIBFABRIC_INCLUDE_DIR}
+     ${HWLOC_INCLUDE_DIR}
+     ${PROJECT_SOURCE_DIR}/src
+     ${PROJECT_SOURCE_DIR}/src/atl)
 
-message(STATUS "CCL_INC_DIRS: ${CCL_INC_DIRS}")
-message(STATUS "oneCCL lib LIBFABRIC_LIB_DIR: ${LIBFABRIC_LIB_DIR}")
-message(STATUS "oneCCL lib LIBFABRIC_INCLUDE_DIR: ${LIBFABRIC_INCLUDE_DIR}")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SRC_C_FLAGS} -pthread")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SRC_CXX_FLAGS} -pthread")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${SRC_SHARED_LINKER_FLAGS}")
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+message(STATUS "SRC C_FLAGS: ${CMAKE_C_FLAGS}")
+message(STATUS "SRC CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+message(STATUS "SRC SHARED_LINKER_FLAGS: ${CMAKE_SHARED_LINKER_FLAGS}")
+message(STATUS "SRC INC_DIRS: ${CCL_INC_DIRS}")
 
 #special library that holds objects only
 add_library(ccl-objects OBJECT ${CCL_SRC})
@@ -243,19 +252,27 @@ if(COMPUTE_BACKEND_TARGET_NAME)
 endif()
 
 # add library search directory
-link_directories(${PROJECT_SOURCE_DIR}/mpi/lib)
+link_directories(${MPI_LIB_DIR})
 link_directories(${LIBFABRIC_LIB_DIR})
 
-#shared library
+# shared library
 add_library(ccl SHARED $<TARGET_OBJECTS:ccl-objects>)
 target_include_directories(ccl PUBLIC ${CCL_INC_DIRS})
 
 # link with release_mt libmpi.so for oneAPI Base toolkit
-# libccl.so -> cpu_icc/cpu_gpu_dpcpp -> lib -> latest -> ccl -> mpi -> ... 
+# libccl.so -> cpu_icc/cpu_gpu_dpcpp -> lib -> latest -> ccl -> mpi -> ...
 set(ONEAPI_IMPI_RPATH "'$ORIGIN'/../../../../mpi/latest/lib/release_mt/")
 set_target_properties(ccl PROPERTIES LINK_FLAGS "-Wl,-rpath,${ONEAPI_IMPI_RPATH}")
 
-target_link_libraries(ccl PUBLIC dl pthread ${EXTERNAL_LIBS} ${COMPUTE_BACKEND_TARGET_NAME} fabric mpi)
+target_link_libraries(ccl PUBLIC
+                      dl
+                      pthread
+                      fabric
+                      mpi
+                      ${HWLOC_LIB_DIR}/libhwloc.a
+                      ${EXTERNAL_LIBS}
+                      ${COMPUTE_BACKEND_TARGET_NAME})
+
 if (NOT LIB_SO_VERSION AND NOT LIB_MAJOR_VERSION)
         set_target_properties(ccl PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CCL_BUILD_DIR})
 else()
@@ -264,39 +281,39 @@ endif()
 
 install(TARGETS ccl LIBRARY DESTINATION ${CCL_INSTALL_LIB})
 install(FILES
-    "../cmake/FindOpenCL.cmake"
-    "../cmake/Findlevel_zero.cmake"
-    "../cmake/FindSYCL.cmake"
-    "../cmake/FindIntelSYCL.cmake"
-    "../cmake/FindIntelSYCL_level_zero.cmake"
-    "../cmake/FindComputeCpp.cmake"
+    "${PROJECT_SOURCE_DIR}/cmake/FindOpenCL.cmake"
+    "${PROJECT_SOURCE_DIR}/cmake/Findlevel_zero.cmake"
+    "${PROJECT_SOURCE_DIR}/cmake/FindSYCL.cmake"
+    "${PROJECT_SOURCE_DIR}/cmake/FindIntelSYCL.cmake"
+    "${PROJECT_SOURCE_DIR}/cmake/FindIntelSYCL_level_zero.cmake"
+    "${PROJECT_SOURCE_DIR}/cmake/FindComputeCpp.cmake"
     DESTINATION ${CCL_INSTALL_LIB})
 
-#static library
+# static library
 add_library(ccl-static STATIC $<TARGET_OBJECTS:ccl-objects>)
 set_target_properties(ccl-static PROPERTIES OUTPUT_NAME ccl)
 set_target_properties(ccl-static PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${CCL_BUILD_DIR})
 install(TARGETS ccl-static ARCHIVE DESTINATION ${CCL_INSTALL_LIB} OPTIONAL)
 
-#headers installation
+# API headers
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
         DESTINATION ${CCL_INSTALL_INCLUDE} FILES_MATCHING REGEX ".*\\.(h|hpp)$")
 
-#mpi & ofi rt
-file(GLOB mpi_bins "${PROJECT_SOURCE_DIR}/mpi/bin/*")
+# MPI and OFI runtimes
+file(GLOB mpi_bins "${DEPS_DIR}/mpi/bin/*")
 install(PROGRAMS ${mpi_bins} DESTINATION ${CCL_INSTALL_BIN})
 
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/ofi/lib/
+install(DIRECTORY ${DEPS_DIR}/ofi/lib/
         DESTINATION ${CCL_INSTALL_LIB})
 
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/mpi/include/
+install(DIRECTORY ${DEPS_DIR}/mpi/include/
         DESTINATION ${CCL_INSTALL_INCLUDE})
 
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/mpi/lib/
+install(DIRECTORY ${DEPS_DIR}/mpi/lib/
         DESTINATION ${CCL_INSTALL_LIB})
 
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/mpi/etc/
+install(DIRECTORY ${DEPS_DIR}/mpi/etc/
         DESTINATION ${CCL_INSTALL_ETC})
 
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/mpi/licensing/
+install(DIRECTORY ${DEPS_DIR}/mpi/licensing/
         DESTINATION ${CCL_INSTALL_LICENSE}/mpi/)

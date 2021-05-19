@@ -38,11 +38,13 @@ enum assoc_result_index { SUPPORT_MODE = 0, POINTER_VALUE, ERROR_CAUSE };
 #if defined(MULTI_GPU_SUPPORT) || defined(CCL_ENABLE_SYCL)
 assoc_result check_assoc_device_memory(const void* mem,
                                        const ccl::unified_device_type::ccl_native_t& device,
-                                       const ccl::unified_context_type::ccl_native_t& ctx);
+                                       const ccl::unified_context_type::ccl_native_t& ctx,
+                                       bool has_deps);
 
 usm_support_mode check_assoc_device_memory(const std::vector<void*>& mems,
                                            const ccl::unified_device_type::ccl_native_t& device,
-                                           const ccl::unified_context_type::ccl_native_t& ctx);
+                                           const ccl::unified_context_type::ccl_native_t& ctx,
+                                           bool has_deps = false);
 
 #endif //defined(MULTI_GPU_SUPPORT) || defined(CCL_ENABLE_SYCL)
 std::string to_string(const assoc_result& res);

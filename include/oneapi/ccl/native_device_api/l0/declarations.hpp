@@ -23,6 +23,7 @@
 
 #include "oneapi/ccl/native_device_api/l0/context.hpp"
 #include "oneapi/ccl/native_device_api/l0/device.hpp"
+#include "oneapi/ccl/native_device_api/l0/event_pool.hpp"
 #include "oneapi/ccl/native_device_api/l0/subdevice.hpp"
 #include "oneapi/ccl/native_device_api/l0/driver.hpp"
 #include "oneapi/ccl/native_device_api/l0/platform.hpp"

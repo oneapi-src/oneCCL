@@ -30,8 +30,8 @@
 #include "common/global/global.hpp"
 #include "common/stream/stream.hpp"
 
-#include "common/comm/l0/context/scaling_ctx/ipc_session_key.hpp"
-#include "common/comm/l0/context/scaling_ctx/observer_session_key.hpp"
+#include "common/comm/l0/context/scale/ipc/ipc_session_key.hpp"
+#include "common/comm/l0/context/scale/base/base_session.hpp"
 
 //TODO L0 Workaround
 #include <unistd.h>
@@ -149,19 +149,16 @@ inline std::string to_string(gpu_entry_state state) {
 }
 
 namespace native {
-template <class kernel_params,
-          class gpu_comm_impl,
+template <class gpu_comm_impl,
           ccl::group_split_type group_id,
           ccl::device_topology_type class_id,
           ccl_coll_type type_op>
 class base_gpu_entry : public sched_entry {
 public:
     using gpu_comm = gpu_comm_impl;
-    using processing_type = typename kernel_params::native_type;
-    using kernel_main_typed =
-        typename gpu_comm::template gpu_kernel_t<type_op, group_id, class_id, kernel_params>;
-    using kernel_ipc_typed = typename ccl_ipc_gpu_comm::
-        template gpu_kernel_t<type_op, group_id, class_id, kernel_params>;
+    using kernel_main_typed = typename gpu_comm::template gpu_kernel_t<type_op, group_id, class_id>;
+    using kernel_ipc_typed =
+        typename ccl_ipc_gpu_comm::template gpu_kernel_t<type_op, group_id, class_id>;
 
     template <class elem_t>
     using device_memory = memory<elem_t, ccl_device, ccl_context>;
@@ -188,14 +185,14 @@ public:
                    std::shared_ptr<gpu_comm> comm,
                    ccl_driver_context_ptr in_ctx,
                    const ccl_buffer send_buf,
-                   ccl::datatype dtype_in,
+                   const coll_param_gpu &params,
                    std::shared_ptr<ccl_stream> &stream)
             : sched_entry(sched),
               parent_communicator(comm),
               comm_addr(parent_communicator
                             ->template get_comm_data<get_topology(), get_topology_class()>()),
               send_buf(send_buf),
-              dtype(dtype_in),
+              params(params),
               device_stream(stream),
               ctx(in_ctx),
               entry_state(gpu_entry_state::initial),
@@ -209,10 +206,8 @@ public:
     }
 
     kernel_main_typed &get_local_kernel() noexcept {
-        return parent_communicator->template get_gpu_kernel<type(),
-                                                            get_topology(),
-                                                            get_topology_class(),
-                                                            kernel_params>();
+        return parent_communicator
+            ->template get_gpu_kernel<type(), get_topology(), get_topology_class()>(params);
     }
 
     virtual ~base_gpu_entry() {}
@@ -234,11 +229,11 @@ public:
 
         //set kernel args for main kernel on current device
         kernel_main_typed &main_entry_function =
-            parent_communicator->template register_entry<kernel_params, group_id, class_id>(*this);
+            parent_communicator->template register_entry<group_id, class_id>(*this);
 
-        auto send_buf_ptr =
-            reinterpret_cast<typename kernel_params::native_type *>(send_buf.get_ptr());
+        auto send_buf_ptr = send_buf.get_ptr();
 
+        //bind data
         main_entry_function.template set_args<typename kernel_main_typed::common_entry_buf_arg>(
             send_buf_ptr);
 
@@ -254,6 +249,7 @@ public:
 
     virtual void update() override {
         if (!ready_to_exec) {
+            // TODO: what if submit_for_execution() return false?
             submit_for_execution();
         }
         else {
@@ -262,7 +258,17 @@ public:
 
             ENTRY_LOG_TRACE(" waiting for finished execution, queue: ", cmd_queue.get());
 
-            ze_result_t ret = get_fence_impl().query_status();
+            ze_result_t ret;
+
+            // Quering fence doesn't sync kernel output with the host, so if we need this
+            // we use QuerySyncronize API.
+            if (ccl::global_data::env().comm_kernels_debug == 0) {
+                ret = get_fence_impl().query_status();
+            }
+            else {
+                ret = zeCommandQueueSynchronize(cmd_queue.get(), 0);
+            }
+
             ENTRY_LOG_TRACE(
                 "Fence query status: ", native::to_string(ret), ", queue: ", cmd_queue.get());
             if (ret == ZE_RESULT_SUCCESS) {
@@ -300,7 +306,13 @@ public:
 
     //USE GPU cache binding
     virtual std::vector<ccl_device::device_ipc_memory_handle> get_ipc_data() = 0;
-    virtual observer::invoke_params<type(), kernel_params> get_numa_data() {
+    virtual observer::invoke_params<type()> get_numa_data() {
+        //TODO make pure-virtual
+        ENTRY_LOG_ERROR("NOT implemented for that collective type");
+        abort();
+    }
+
+    virtual observer::invoke_params<type()> get_scaleout_data() {
         //TODO make pure-virtual
         ENTRY_LOG_ERROR("NOT implemented for that collective type");
         abort();
@@ -314,11 +326,19 @@ public:
         return native::observer::session_key{ this };
     }
 
+    virtual native::observer::session_key get_scaleout_session_key() const {
+        return native::observer::session_key{ this };
+    }
+
+    const coll_param_gpu &get_params() const {
+        return params;
+    }
+
 protected:
     size_t get_work_group_size(size_t buffer_size, ccl_device &device) {
         size_t group_size;
         size_t val_vector_size;
-        auto dtype = ccl::native_type_info<typename kernel_params::native_type>::dtype;
+        auto dtype = params.get_datatype();
 
         if (ccl::global_data::env().gpu_thread_count != CCL_ENV_SIZET_NOT_SPECIFIED) {
             group_size = ccl::global_data::env().gpu_thread_count;
@@ -431,9 +451,12 @@ protected:
         assert(this->get_state() != gpu_entry_state::wait_for_completion);
 
         if (get_topology() == ccl::group_split_type::cluster) {
-            // TODO: implement process communicator case
-            throw ccl::exception(std::string(__PRETTY_FUNCTION__) +
-                                 "TODO: implement process communicator case");
+            // TODO: in case of (vitual device + IPC) we can get the data race here
+            // How we can detect such case?
+            // In the case when we use one GPU queue per process, everything should be ok
+            // throw ccl::exception(std::string(__PRETTY_FUNCTION__) +
+            //                      "TODO: implement process communicator case");
+            cmd_list.close_and_execute(get_ctx(), this->get_fence());
         }
         else {
             // TODO: how to ensure that fence update is thread safe?
@@ -502,7 +525,10 @@ protected:
     std::shared_ptr<gpu_comm> parent_communicator;
     topology_addr<group_id, class_id> comm_addr;
     ccl_buffer send_buf;
-    ccl::datatype dtype;
+    coll_param_gpu params;
+
+    // TODO: we don't need dtype anymore?
+    // ccl::datatype dtype;
     atl_req_t req{};
     std::shared_ptr<ccl_stream> device_stream;
     // GPU
@@ -535,7 +561,8 @@ protected:
     static std::unique_ptr<base_connector_interface<kernel_main_typed>>
     create_kernel_router_for_rank(executor &exec,
                                   int next_rank,
-                                  specific_indexed_device_storage &group_devices) {
+                                  specific_indexed_device_storage &group_devices,
+                                  const coll_param_gpu &params) {
         std::unique_ptr<base_connector_interface<kernel_main_typed>> kernel_router;
         while (!kernel_router) {
             //Gather data from in-process GPU
@@ -548,10 +575,10 @@ protected:
 
             std::shared_ptr<right_gpu_type> gpu = it->second;
             using right_kernel_main_type = typename right_gpu_type::
-                template gpu_kernel_t<type(), get_topology(), get_topology_class(), kernel_params>;
+                template gpu_kernel_t<type(), get_topology(), get_topology_class()>;
 
             right_kernel_main_type &right_main_func =
-                gpu->get_gpu_kernel<type(), get_topology(), get_topology_class(), kernel_params>();
+                gpu->get_gpu_kernel<type(), get_topology(), get_topology_class()>(params);
 
             //communicate with real device
             kernel_router.reset(
@@ -570,10 +597,10 @@ protected:
 
             std::shared_ptr<right_gpu_type> gpu = it->second;
             using right_kernel_main_type = typename right_gpu_type::
-                template gpu_kernel_t<type(), get_topology(), get_topology_class(), kernel_params>;
+                template gpu_kernel_t<type(), get_topology(), get_topology_class()>;
 
             right_kernel_main_type &right_main_func =
-                gpu->get_gpu_kernel<type(), get_topology(), get_topology_class(), kernel_params>();
+                gpu->get_gpu_kernel<type(), get_topology(), get_topology_class()>(params);
             kernel_router.reset(
                 new kernel_connector<kernel_main_typed, executor, right_kernel_main_type>(
                     exec, right_main_func));
@@ -590,14 +617,14 @@ protected:
             }
             std::shared_ptr<right_gpu_type> gpu = it->second;
             using right_kernel_main_type = typename right_gpu_type::
-                template gpu_kernel_t<type(), get_topology(), get_topology_class(), kernel_params>;
+                template gpu_kernel_t<type(), get_topology(), get_topology_class()>;
             /*std::shared_ptr<thread_group_comm_device> gpu = map_devices.find(next_rank);
             if(gpu == nullptr)
             {
                 break; // not ready yet!
             }*/
             right_kernel_main_type &right_main_func =
-                gpu->get_gpu_kernel<type(), get_topology(), get_topology_class(), kernel_params>();
+                gpu->get_gpu_kernel<type(), get_topology(), get_topology_class()>(params);
 
             //communicate with real device from another thread
             kernel_router.reset(
@@ -616,7 +643,7 @@ protected:
             }
             std::shared_ptr<right_gpu_type> gpu = it->second;
             using right_kernel_main_type = typename right_gpu_type::
-                template gpu_kernel_t<type(), get_topology(), get_topology_class(), kernel_params>;
+                template gpu_kernel_t<type(), get_topology(), get_topology_class()>;
             /*
             std::shared_ptr<thread_group_comm_device> gpu = map_devices.find(next_rank);
             if(gpu == nullptr)
@@ -624,7 +651,7 @@ protected:
                 break; // not ready yet!
             }*/
             right_kernel_main_type &right_main_func =
-                gpu->get_gpu_kernel<type(), get_topology(), get_topology_class(), kernel_params>();
+                gpu->get_gpu_kernel<type(), get_topology(), get_topology_class()>(params);
 
             //communicate with virtual device from another thread
             kernel_router.reset(
@@ -643,9 +670,9 @@ protected:
             }
             std::shared_ptr<right_gpu_type> gpu = it->second;
             using right_kernel_main_type = typename right_gpu_type::
-                template gpu_kernel_t<type(), get_topology(), get_topology_class(), kernel_params>;
+                template gpu_kernel_t<type(), get_topology(), get_topology_class()>;
             right_kernel_main_type &right_main_func =
-                gpu->get_gpu_kernel<type(), get_topology(), get_topology_class(), kernel_params>();
+                gpu->get_gpu_kernel<type(), get_topology(), get_topology_class()>(params);
 
             //communicate with real device from another thread
             kernel_router.reset(
@@ -665,9 +692,9 @@ protected:
 
             std::shared_ptr<right_gpu_type> gpu = it->second;
             using right_kernel_main_type = typename right_gpu_type::
-                template gpu_kernel_t<type(), get_topology(), get_topology_class(), kernel_params>;
+                template gpu_kernel_t<type(), get_topology(), get_topology_class()>;
             right_kernel_main_type &right_main_func =
-                gpu->get_gpu_kernel<type(), get_topology(), get_topology_class(), kernel_params>();
+                gpu->get_gpu_kernel<type(), get_topology(), get_topology_class()>(params);
 
             //communicate with virtual device from another thread
             kernel_router.reset(
@@ -686,9 +713,9 @@ protected:
             }
             std::shared_ptr<right_gpu_type> gpu = it->second;
             using right_kernel_main_type = typename right_gpu_type::
-                template gpu_kernel_t<type(), get_topology(), get_topology_class(), kernel_params>;
+                template gpu_kernel_t<type(), get_topology(), get_topology_class()>;
             right_kernel_main_type &right_main_func =
-                gpu->get_gpu_kernel<type(), get_topology(), get_topology_class(), kernel_params>();
+                gpu->get_gpu_kernel<type(), get_topology(), get_topology_class()>(params);
 
             //communicate with virtual device from another thread
             kernel_router.reset(

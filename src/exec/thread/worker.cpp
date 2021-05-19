@@ -28,6 +28,7 @@ ccl_worker::ccl_worker(size_t idx, std::unique_ptr<ccl_sched_queue> queue)
         : ccl_base_thread(idx, ccl_worker_func),
           should_lock(false),
           is_locked(false),
+          process_atl(true),
           strict_sched_queue(std::unique_ptr<ccl_strict_sched_queue>(new ccl_strict_sched_queue())),
           sched_queue(std::move(queue)) {}
 
@@ -167,11 +168,13 @@ ccl::status ccl_worker::process_sched_bin(ccl_sched_bin* bin, size_t& completed_
 
     /* ensure communication progress */
 
-    for (size_t sched_idx = 0; sched_idx < 1 /*bin_size*/; sched_idx++) {
-        ccl_sched* sched = bin->get(sched_idx);
-        ccl_comm* comm = sched->coll_param.comm;
-        atl_status_t atl_status = comm->atl->atl_ep_poll(bin->get_atl_ep());
-        CCL_THROW_IF_NOT(atl_status == ATL_STATUS_SUCCESS, "bad status ", atl_status);
+    if (process_atl) {
+        for (size_t sched_idx = 0; sched_idx < 1; sched_idx++) {
+            ccl_sched* sched = bin->get(sched_idx);
+            ccl_comm* comm = sched->coll_param.comm;
+            atl_status_t atl_status = comm->atl->atl_ep_poll(bin->get_atl_ep());
+            CCL_THROW_IF_NOT(atl_status == ATL_STATUS_SUCCESS, "bad status ", atl_status);
+        }
     }
 
     //    if (ccl::global_data::get().is_ft_enabled) {

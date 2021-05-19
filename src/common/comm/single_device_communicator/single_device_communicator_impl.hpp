@@ -93,7 +93,8 @@ ccl::event single_device_communicator::allgatherv_impl(const buffer_type& send_b
                                            ccl::native_type_info<buffer_type>::dtype,
                                            attr,
                                            comm_impl.get(),
-                                           stream.get());
+                                           stream.get(),
+                                           deps);
     return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
 }
 template <class buffer_type>
@@ -143,7 +144,8 @@ ccl::event single_device_communicator::allreduce_impl(const buffer_type& send_bu
                                           reduction,
                                           attr,
                                           comm_impl.get(),
-                                          stream.get());
+                                          stream.get(),
+                                          deps);
     return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
 }
 
@@ -184,7 +186,8 @@ ccl::event single_device_communicator::alltoall_impl(const buffer_type& send_buf
                                          ccl::native_type_info<buffer_type>::dtype,
                                          attr,
                                          comm_impl.get(),
-                                         stream.get());
+                                         stream.get(),
+                                         deps);
     return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
 }
 
@@ -247,7 +250,8 @@ ccl::event single_device_communicator::alltoallv_impl(const buffer_type& send_bu
                                           ccl::native_type_info<buffer_type>::dtype,
                                           attr,
                                           comm_impl.get(),
-                                          stream.get());
+                                          stream.get(),
+                                          deps);
     return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
 }
 
@@ -289,7 +293,8 @@ ccl::event single_device_communicator::broadcast_impl(buffer_type& buf,
                                           root,
                                           attr,
                                           comm_impl.get(),
-                                          stream.get());
+                                          stream.get(),
+                                          deps);
     return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
 }
 
@@ -333,7 +338,8 @@ ccl::event single_device_communicator::reduce_impl(const buffer_type& send_buf,
                                        root,
                                        attr,
                                        comm_impl.get(),
-                                       stream_ptr);
+                                       stream_ptr,
+                                       deps);
     return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
 }
 
@@ -374,7 +380,8 @@ ccl::event single_device_communicator::reduce_scatter_impl(
                                                reduction,
                                                attr,
                                                comm_impl.get(),
-                                               stream_ptr);
+                                               stream_ptr,
+                                               deps);
     return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
 }
 
@@ -439,6 +446,7 @@ ccl::event single_device_communicator::sparse_allreduce_impl(
                                   reduction,
                                   attr,
                                   comm_impl.get(),
-                                  stream_ptr);
+                                  stream_ptr,
+                                  deps);
     return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
 }

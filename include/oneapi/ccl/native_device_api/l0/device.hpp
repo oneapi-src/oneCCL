@@ -50,9 +50,9 @@ struct ccl_device : public cl_base<ze_device_handle_t, ccl_device_driver, ccl_co
     using const_subdevice_ptr = std::shared_ptr<const ccl_subdevice>;
     using sub_devices_container_type = std::map<ccl::index_type, subdevice_ptr>;
 
-    template <class elem_t>
+    template <class elem_t = uint8_t>
     using device_memory = memory<elem_t, ccl_device, ccl_context>;
-    template <class elem_t>
+    template <class elem_t = uint8_t>
     using device_memory_ptr = std::shared_ptr<memory<elem_t, ccl_device, ccl_context>>;
 
     using device_ipc_memory = ipc_memory<ccl_device, ccl_context>;
@@ -65,7 +65,7 @@ struct ccl_device : public cl_base<ze_device_handle_t, ccl_device_driver, ccl_co
     using device_cmd_list = cmd_list<ccl_device, ccl_context>;
     using device_module = module<ccl_device, ccl_context>;
     using device_module_ptr = std::shared_ptr<device_module>;
-    using device_event = event<ccl_device, ccl_context>;
+    using device_event = event;
     using indexed_handles = indexed_storage<handle_t>;
 
     ccl_device(handle_t h, owner_ptr_t&& parent, std::weak_ptr<ccl_context_holder>&& ctx);

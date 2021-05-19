@@ -16,11 +16,8 @@
 #
 
 WORK_DIR="$(cd "$( dirname "${BASH_SOURCE[0]}" )" > /dev/null && pwd)"
-export CCL_ROOT="$(cd ${WORK_DIR}/../; pwd -P)"
-if [ -z "${I_MPI_ROOT}" ]
-then
-    export I_MPI_ROOT="${CCL_ROOT}"
-fi
+CCL_ROOT="$(cd ${WORK_DIR}/../; pwd -P)"
+export I_MPI_ROOT="${CCL_ROOT}"
 
 source ${CCL_ROOT}/env/vars.sh $1
 

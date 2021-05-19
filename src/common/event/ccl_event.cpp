@@ -23,39 +23,6 @@ ccl_event::ccl_event(event_native_t& event, const ccl::library_version& version)
           command_type_val(),
           command_execution_status_val() {}
 
-ccl_event::ccl_event(event_native_handle_t event,
-                     event_native_context_t context,
-                     const ccl::library_version& version)
-        : version(version),
-          command_type_val(),
-          command_execution_status_val() {
-#ifdef CCL_ENABLE_SYCL
-    native_event = event_native_t{ event, context };
-#else
-    //TODO
-    throw;
-#endif
-}
-
-void ccl_event::build_from_params() {
-    if (!creation_is_postponed) {
-        throw ccl::exception("error");
-    }
-#ifdef CCL_ENABLE_SYCL
-    /* TODO unavailbale??
-    event_native_t event_candidate{native_context};
-    std::swap(event_candidate, native_event); //TODO USE attributes fro sycl queue construction
-    */
-
-    throw ccl::exception("build_from_attr is not availbale for sycl::event");
-#else
-
-    //TODO use attributes
-
-#endif
-    creation_is_postponed = false;
-}
-
 //Export Attributes
 typename ccl_event::version_traits_t::type ccl_event::set_attribute_value(
     typename version_traits_t::type val,
@@ -73,11 +40,6 @@ const typename ccl_event::version_traits_t::return_type& ccl_event::get_attribut
 typename ccl_event::native_handle_traits_t::return_type& ccl_event::get_attribute_value(
     const native_handle_traits_t& id) {
     return native_event;
-}
-
-typename ccl_event::context_traits_t::return_type& ccl_event::get_attribute_value(
-    const context_traits_t& id) {
-    return native_context;
 }
 
 typename ccl_event::command_type_traits_t::type ccl_event::set_attribute_value(

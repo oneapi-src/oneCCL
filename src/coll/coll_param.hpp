@@ -17,14 +17,7 @@
 
 #include "coll/algorithms/algorithms_enum.hpp"
 #include "common/datatype/datatype.hpp"
-
-#include "oneapi/ccl/type_traits.hpp"
-#include "oneapi/ccl/stream_attr_ids.hpp"
-#include "oneapi/ccl/stream_attr_ids_traits.hpp"
-#include "oneapi/ccl/stream.hpp"
-#include "oneapi/ccl/coll_attr_ids.hpp"
-#include "oneapi/ccl/coll_attr_ids_traits.hpp"
-#include "oneapi/ccl/coll_attr.hpp"
+#include "oneapi/ccl.hpp"
 
 class ccl_comm;
 
@@ -44,10 +37,10 @@ using ccl_sycl_buffer_one_dim_types = std::tuple<ccl_sycl_typed_buffer_t<int8_t>
                                                  ccl_sycl_typed_buffer_t<uint32_t>,
                                                  ccl_sycl_typed_buffer_t<int64_t>,
                                                  ccl_sycl_typed_buffer_t<uint64_t>,
-                                                 ccl_sycl_typed_buffer_t<float>, //unsupported
+                                                 ccl_sycl_typed_buffer_t<uint16_t>,
                                                  ccl_sycl_typed_buffer_t<float>,
                                                  ccl_sycl_typed_buffer_t<double>,
-                                                 ccl_sycl_typed_buffer_t<float>>; //unsupported
+                                                 ccl_sycl_typed_buffer_t<uint16_t>>;
 #endif /* CCL_ENABLE_SYCL */
 
 #define CCL_INVALID_PROC_IDX (-1)
@@ -99,6 +92,8 @@ struct ccl_coll_sparse_param {
     ccl_datatype itype;
 };
 
+void copy_deps(const std::vector<ccl::event>& in, std::vector<ccl::event>& out);
+
 struct ccl_coll_param {
     ccl_coll_type ctype;
     void* buf;
@@ -112,6 +107,7 @@ struct ccl_coll_param {
     ccl::reduction reduction;
     int root;
     const ccl_stream* stream;
+    std::vector<ccl::event> deps;
     ccl_comm* comm;
     ccl_coll_sparse_param sparse_param;
 
@@ -120,7 +116,51 @@ struct ccl_coll_param {
     ccl_sycl_buffer_t* sycl_recv_buf;
     ccl_sycl_buffer_t* sycl_buf;
 #endif /* CCL_ENABLE_SYCL */
+
+    ccl_coll_param() {}
+    ccl_coll_param(const ccl_coll_param& other);
 };
+
+class coll_param_gpu {
+    ccl_coll_type ctype;
+    ccl::datatype dtype;
+    ccl::reduction red;
+
+public:
+    coll_param_gpu(ccl_coll_type ctype, ccl::datatype dtype, ccl::reduction red)
+            : ctype{ ctype },
+              dtype{ dtype },
+              red{ red } {}
+
+    coll_param_gpu(ccl_coll_type ctype, ccl::datatype dtype)
+            : ctype{ ctype },
+              dtype{ dtype },
+              red{ (ccl::reduction)-1 } {
+        assert(!is_reduction() && "This constructor is invalid for reduction types");
+    }
+
+    ccl_coll_type get_coll_type() const {
+        return ctype;
+    }
+
+    ccl::datatype get_datatype() const {
+        return dtype;
+    }
+
+    bool is_reduction() const {
+        return ccl_coll_type_is_reduction(get_coll_type());
+    }
+
+    ccl::reduction get_reduction() const {
+        if (!is_reduction()) {
+            throw ccl::exception(
+                "get_ruduction(): is not supported for non-reduction collective type, i.e. bcast");
+        }
+        return red;
+    }
+};
+
+bool operator==(const coll_param_gpu& lhs, const coll_param_gpu& rhs);
 
 /*
     explicitly split coll_param and coll_param_copy

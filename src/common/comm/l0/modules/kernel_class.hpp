@@ -15,142 +15,105 @@
 */
 #pragma once
 #include <tuple>
-#include "common/comm/l0/modules/kernel_params.hpp"
 #include "common/utils/tuple.hpp"
+#include <unordered_map>
 
 namespace native {
 
-#define SUPPORTED_KERNEL_NATIVE_DATA_TYPES \
-    int8_t, uint8_t, int16_t, uint16_t, int32_t, uint32_t, int64_t, uint64_t, ccl::float16, float, \
-        double, ccl::bfloat16
-
-template <ccl_coll_type type, template <typename> class kernel_function_impl>
+template <ccl_coll_type type, class kernel_function_impl, class Enable = void>
 struct kernel_class {
-    template <class native_data_type>
-    using kernel_param_t = kernel_params_default<native_data_type>;
+    using kernel_t = kernel_function_impl;
 
-    template <class kernel_param>
-    using kernel_t = kernel_function_impl<kernel_param>;
+    using key_type = ccl::datatype;
 
-    template <class... native_data_types>
-    using kernels_t = std::tuple<kernel_t<kernel_param_t<native_data_types>>...>;
+    struct hasher {
+        size_t operator()(const ccl::datatype& dtype) const {
+            return std::hash<size_t>{}((size_t)dtype);
+        }
+    };
 
-    using kernel_class_container_t = kernels_t<SUPPORTED_KERNEL_NATIVE_DATA_TYPES>;
+    using kernel_class_container_t = std::unordered_map<key_type, kernel_t, hasher>;
 
-    // getter
-    template <class kernel_param>
-    const kernel_t<kernel_param> &get() const {
-        return ccl_tuple_get<kernel_t<kernel_param>>(value);
+    kernel_class() {
+        for (ccl::datatype idx = ccl::datatype::int8; idx <= ccl::datatype::bfloat16; idx++) {
+            key_type key{ idx };
+            // Have to use this ugly inplace construction because kernel_t have deleted copy and move
+            // constructor and there is no other way to do that.
+            value.emplace(std::piecewise_construct,
+                          std::make_tuple(key),
+                          std::make_tuple(coll_param_gpu(type, idx)));
+        }
     }
+    // getter
+    kernel_t& get(const coll_param_gpu& params) {
+        assert(!params.is_reduction());
+        key_type key{ params.get_datatype() };
 
-    template <class kernel_param>
-    kernel_t<kernel_param> &get() {
-        return ccl_tuple_get<kernel_t<kernel_param>>(value);
+        auto it = value.find(key);
+        if (it == value.end()) {
+            // TODO: sycl error
+            throw std::runtime_error("Kernel not found");
+        }
+
+        return it->second;
     }
 
 protected:
     kernel_class_container_t value;
 };
 
-template <template <typename> class kernel_function_impl>
-struct kernel_class<ccl_coll_allreduce, kernel_function_impl> {
-    template <class native_data_type, ccl_coll_reduction reduction>
-    using kernel_param_t = kernel_reduction_params_traits<native_data_type, reduction>;
+template <ccl_coll_type type, class kernel_function_impl>
+struct kernel_class<type,
+                    kernel_function_impl,
+                    typename std::enable_if<is_reduction_coll_type<type>::value>::type> {
+    using kernel_t = kernel_function_impl;
 
-    template <class kernel_param>
-    using kernel_t = kernel_function_impl<kernel_param>;
+    using key_type = std::pair<ccl::datatype, ccl::reduction>;
 
-    template <class first_param, ccl_coll_reduction... second_params>
-    using kernel_second_params_expanded_t =
-        std::tuple<kernel_t<kernel_param_t<first_param, second_params>>...>;
+    struct hasher {
+        size_t operator()(const std::pair<ccl::datatype, ccl::reduction>& key) const {
+            return std::hash<size_t>{}((size_t)key.first) ^ std::hash<size_t>{}((size_t)key.second);
+        }
+    };
 
-    template <class... first_params>
-    using kernel_first_param_expanded_t = decltype(std::tuple_cat(
-        std::declval<kernel_second_params_expanded_t<first_params, REDUCE_TYPES> &&>()...));
+    using kernel_class_container_t = std::unordered_map<key_type, kernel_t, hasher>;
 
-    using kernel_class_container_t =
-        kernel_first_param_expanded_t<SUPPORTED_KERNEL_NATIVE_DATA_TYPES>;
+    kernel_class() {
+        for (ccl::datatype idx = ccl::datatype::int8; idx <= ccl::datatype::bfloat16; idx++) {
+            // TODO: allow to iterate over reduction values(need to implement operator++)
+            auto insert_kernel = [this, idx](ccl::reduction red) {
+                key_type key{ idx, red };
+                value.emplace(std::piecewise_construct,
+                              std::make_tuple(key),
+                              std::make_tuple(coll_param_gpu(type, idx, red)));
+            };
 
-    // getter
-    template <class kernel_param>
-    const kernel_t<kernel_param> &get() const {
-        return ccl_tuple_get<kernel_t<kernel_param>>(value);
+            insert_kernel(ccl::reduction::sum);
+            insert_kernel(ccl::reduction::prod);
+            insert_kernel(ccl::reduction::min);
+            insert_kernel(ccl::reduction::max);
+        }
     }
 
-    template <class kernel_param>
-    kernel_t<kernel_param> &get() {
-        return ccl_tuple_get<kernel_t<kernel_param>>(value);
+    // getter
+    kernel_t& get(const coll_param_gpu& params) {
+        assert(params.is_reduction());
+
+        key_type key{ params.get_datatype(), params.get_reduction() };
+
+        auto it = value.find(key);
+        if (it == value.end()) {
+            // TODO: sycl error
+            throw std::runtime_error("Kernel not found");
+        }
+
+        return it->second;
     }
 
 protected:
+    // TODO: threadsafety? Looks like this should be fine as different threads access different devices.
+    // Need to double check IPC/NUMA case.
     kernel_class_container_t value;
 };
 
-template <template <typename> class kernel_function_impl>
-struct kernel_class<ccl_coll_reduce, kernel_function_impl> {
-    template <class native_data_type, ccl_coll_reduction reduction>
-    using kernel_param_t = kernel_reduction_params_traits<native_data_type, reduction>;
-
-    template <class kernel_param>
-    using kernel_t = kernel_function_impl<kernel_param>;
-
-    template <class first_param, ccl_coll_reduction... second_params>
-    using kernel_second_params_expanded_t =
-        std::tuple<kernel_t<kernel_param_t<first_param, second_params>>...>;
-
-    template <class... first_params>
-    using kernel_first_param_expanded_t = decltype(std::tuple_cat(
-        std::declval<kernel_second_params_expanded_t<first_params, REDUCE_TYPES> &&>()...));
-
-    using kernel_class_container_t =
-        kernel_first_param_expanded_t<SUPPORTED_KERNEL_NATIVE_DATA_TYPES>;
-
-    // getter
-    template <class kernel_param>
-    const kernel_t<kernel_param> &get() const {
-        return ccl_tuple_get<kernel_t<kernel_param>>(value);
-    }
-
-    template <class kernel_param>
-    kernel_t<kernel_param> &get() {
-        return ccl_tuple_get<kernel_t<kernel_param>>(value);
-    }
-
-protected:
-    kernel_class_container_t value;
-};
-
-template <template <typename> class kernel_function_impl>
-struct kernel_class<ccl_coll_reduce_scatter, kernel_function_impl> {
-    template <class native_data_type, ccl_coll_reduction reduction>
-    using kernel_param_t = kernel_reduction_params_traits<native_data_type, reduction>;
-
-    template <class kernel_param>
-    using kernel_t = kernel_function_impl<kernel_param>;
-
-    template <class first_param, ccl_coll_reduction... second_params>
-    using kernel_second_params_expanded_t =
-        std::tuple<kernel_t<kernel_param_t<first_param, second_params>>...>;
-
-    template <class... first_params>
-    using kernel_first_param_expanded_t = decltype(std::tuple_cat(
-        std::declval<kernel_second_params_expanded_t<first_params, REDUCE_TYPES> &&>()...));
-
-    using kernel_class_container_t =
-        kernel_first_param_expanded_t<SUPPORTED_KERNEL_NATIVE_DATA_TYPES>;
-
-    // getter
-    template <class kernel_param>
-    const kernel_t<kernel_param> &get() const {
-        return ccl_tuple_get<kernel_t<kernel_param>>(value);
-    }
-
-    template <class kernel_param>
-    kernel_t<kernel_param> &get() {
-        return ccl_tuple_get<kernel_t<kernel_param>>(value);
-    }
-
-protected:
-    kernel_class_container_t value;
-};
 } //namespace native

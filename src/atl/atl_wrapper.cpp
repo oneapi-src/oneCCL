@@ -35,7 +35,9 @@ atl_attr_t atl_wrapper::attr = {
     0, /* enable_rma */
     0, /* max_order_waw_size */
     0, /* sync_coll */
-    0 /* extra_ep */
+    0, /* extra_ep */
+    ATL_MNIC_NONE, /* mnic_type */
+    1 /* mnic_count */
 };
 
 void atl_wrapper::set_internal_env(const atl_attr_t& attr) {
@@ -184,6 +186,8 @@ void atl_wrapper::init_transport() {
         LOG_INFO("  max_order_waw_size: ", attr.max_order_waw_size);
         LOG_INFO("  sync_coll: ", attr.sync_coll);
         LOG_INFO("  extra_ep: ", attr.extra_ep);
+        LOG_INFO("  mnic_type: ", attr.mnic_type);
+        LOG_INFO("  mnic_count: ", attr.mnic_count);
     }
 
     if ((!pmi) || (pmi && pmi->get_local_thread_idx() == 0)) {

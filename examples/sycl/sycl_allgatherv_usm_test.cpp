@@ -90,16 +90,13 @@ int main(int argc, char *argv[]) {
         });
     });
 
-    /* create dependency vector */
-    vector<ccl::event> events;
-    // events.push_back(ccl::create_event(e));
-
-    if (!handle_exception(q))
-        return -1;
+    /* do not wait completion of kernel and provide it as dependency for operation */
+    vector<ccl::event> deps;
+    deps.push_back(ccl::create_event(e));
 
     /* invoke allagtherv */
     auto attr = ccl::create_operation_attr<ccl::allgatherv_attr>();
-    ccl::allgatherv(send_buf, count, recv_buf, recv_counts, comm, stream, attr, events).wait();
+    ccl::allgatherv(send_buf, count, recv_buf, recv_counts, comm, stream, attr, deps).wait();
 
     /* open recv_buf and check its correctness on the device side */
     q.submit([&](auto &h) {

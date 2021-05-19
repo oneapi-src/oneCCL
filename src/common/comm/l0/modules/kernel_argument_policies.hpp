@@ -88,8 +88,8 @@ protected:
     std::atomic<bool> charged{ false };
 };
 
-// Policy that invalidates the value once it's loaded by a consumer. It remains invalid for read untill a producer
-// writes an new one
+// Policy that invalidates the value once it's loaded by a consumer.
+// It remains invalid for read untill a producer writes an new one
 // Note: only one read/invalidate is supported
 template <size_t pos, class ArgType, bool must_exist = true>
 struct arg_access_policy_atomic_reset : public arg_access_policy_atomic<pos, ArgType, must_exist> {

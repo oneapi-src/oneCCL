@@ -80,7 +80,7 @@ ccl::event single_device_communicator::barrier(const ccl::stream::impl_value_t& 
                                                const ccl::vector_class<ccl::event>& deps) {
     // TODO what exactly we need to do with 'attr' here?
 
-    ccl_barrier_impl(comm_impl.get(), op_stream.get());
+    ccl_barrier_impl(comm_impl.get(), op_stream.get(), deps);
 
     // TODO what exactly we need to return here? ccl_barrier_impl() is void func
     return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(nullptr));
@@ -99,7 +99,7 @@ ccl::event single_device_communicator::allgatherv_base_impl(
     using namespace ::native::detail;
 
     std::vector<void*> bufs = { (void*)send_buf, recv_buf };
-    auto mode = check_assoc_device_memory(bufs, get_device(), get_context());
+    auto mode = check_assoc_device_memory(bufs, get_device(), get_context(), deps.size());
 
     const ccl_stream* stream_handle = nullptr;
 
@@ -121,7 +121,8 @@ ccl::event single_device_communicator::allgatherv_base_impl(
                                                      dtype,
                                                      attr,
                                                      comm_impl.get(),
-                                                     stream_handle))));
+                                                     stream_handle,
+                                                     deps))));
 }
 
 ccl::event single_device_communicator::allgatherv_impl(const void* send_buf,
@@ -169,7 +170,7 @@ ccl::event single_device_communicator::allreduce_impl(const void* send_buf,
     using namespace ::native::detail;
 
     std::vector<void*> bufs = { (void*)send_buf, recv_buf };
-    auto mode = check_assoc_device_memory(bufs, get_device(), get_context());
+    auto mode = check_assoc_device_memory(bufs, get_device(), get_context(), deps.size());
 
     const ccl_stream* stream_handle = nullptr;
 
@@ -184,7 +185,7 @@ ccl::event single_device_communicator::allreduce_impl(const void* send_buf,
 #endif
 
     return ccl::event(std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(ccl_allreduce_impl(
-        send_buf, recv_buf, count, dtype, reduction, attr, comm_impl.get(), stream_handle))));
+        send_buf, recv_buf, count, dtype, reduction, attr, comm_impl.get(), stream_handle, deps))));
 }
 
 /* alltoall */
@@ -198,7 +199,7 @@ ccl::event single_device_communicator::alltoall_impl(const void* send_buf,
     using namespace ::native::detail;
 
     std::vector<void*> bufs = { (void*)send_buf, recv_buf };
-    auto mode = check_assoc_device_memory(bufs, get_device(), get_context());
+    auto mode = check_assoc_device_memory(bufs, get_device(), get_context(), deps.size());
 
     const ccl_stream* stream_handle = nullptr;
 
@@ -213,7 +214,7 @@ ccl::event single_device_communicator::alltoall_impl(const void* send_buf,
 #endif
 
     return ccl::event(std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(ccl_alltoall_impl(
-        send_buf, recv_buf, count, dtype, attr, comm_impl.get(), stream_handle))));
+        send_buf, recv_buf, count, dtype, attr, comm_impl.get(), stream_handle, deps))));
 }
 
 ccl::event single_device_communicator::alltoall_impl(const ccl::vector_class<void*>& send_buf,
@@ -239,7 +240,7 @@ ccl::event single_device_communicator::alltoallv_impl(const void* send_buf,
     using namespace ::native::detail;
 
     std::vector<void*> bufs = { (void*)send_buf, recv_buf };
-    auto mode = check_assoc_device_memory(bufs, get_device(), get_context());
+    auto mode = check_assoc_device_memory(bufs, get_device(), get_context(), deps.size());
 
     const ccl_stream* stream_handle = nullptr;
 
@@ -261,7 +262,8 @@ ccl::event single_device_communicator::alltoallv_impl(const void* send_buf,
                                                     dtype,
                                                     attr,
                                                     comm_impl.get(),
-                                                    stream_handle))));
+                                                    stream_handle,
+                                                    deps))));
 }
 ccl::event single_device_communicator::alltoallv_impl(const ccl::vector_class<void*>& send_buf,
                                                       const ccl::vector_class<size_t>& send_counts,
@@ -286,7 +288,7 @@ ccl::event single_device_communicator::broadcast_impl(void* buf,
     using namespace ::native::detail;
 
     std::vector<void*> bufs = { buf };
-    auto mode = check_assoc_device_memory(bufs, get_device(), get_context());
+    auto mode = check_assoc_device_memory(bufs, get_device(), get_context(), deps.size());
 
     const ccl_stream* stream_handle = nullptr;
 
@@ -301,7 +303,7 @@ ccl::event single_device_communicator::broadcast_impl(void* buf,
 #endif
 
     return ccl::event(std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(
-        ccl_broadcast_impl(buf, count, dtype, root, attr, comm_impl.get(), stream_handle))));
+        ccl_broadcast_impl(buf, count, dtype, root, attr, comm_impl.get(), stream_handle, deps))));
 }
 
 /* reduce */
@@ -317,7 +319,7 @@ ccl::event single_device_communicator::reduce_impl(const void* send_buf,
     using namespace ::native::detail;
 
     std::vector<void*> bufs = { (void*)send_buf, recv_buf };
-    auto mode = check_assoc_device_memory(bufs, get_device(), get_context());
+    auto mode = check_assoc_device_memory(bufs, get_device(), get_context(), deps.size());
 
     const ccl_stream* stream_handle = nullptr;
 
@@ -331,8 +333,17 @@ ccl::event single_device_communicator::reduce_impl(const void* send_buf,
                              " - USM convertation is not supported for such configuration");
 #endif
 
-    return ccl::event(std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(ccl_reduce_impl(
-        send_buf, recv_buf, count, dtype, reduction, root, attr, comm_impl.get(), stream_handle))));
+    return ccl::event(
+        std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(ccl_reduce_impl(send_buf,
+                                                                                  recv_buf,
+                                                                                  count,
+                                                                                  dtype,
+                                                                                  reduction,
+                                                                                  root,
+                                                                                  attr,
+                                                                                  comm_impl.get(),
+                                                                                  stream_handle,
+                                                                                  deps))));
 }
 
 /* reduce_scatter */
@@ -348,7 +359,7 @@ ccl::event single_device_communicator::reduce_scatter_impl(
     using namespace ::native::detail;
 
     std::vector<void*> bufs = { (void*)send_buf, recv_buf };
-    auto mode = check_assoc_device_memory(bufs, get_device(), get_context());
+    auto mode = check_assoc_device_memory(bufs, get_device(), get_context(), deps.size());
 
     const ccl_stream* stream_handle = nullptr;
 
@@ -362,9 +373,16 @@ ccl::event single_device_communicator::reduce_scatter_impl(
                              " - USM convertation is not supported for such configuration");
 #endif
 
-    return ccl::event(std::unique_ptr<
-                      ccl::event_impl>(new ccl::host_event_impl(ccl_reduce_scatter_impl(
-        send_buf, recv_buf, recv_count, dtype, reduction, attr, comm_impl.get(), stream_handle))));
+    return ccl::event(std::unique_ptr<ccl::event_impl>(
+        new ccl::host_event_impl(ccl_reduce_scatter_impl(send_buf,
+                                                         recv_buf,
+                                                         recv_count,
+                                                         dtype,
+                                                         reduction,
+                                                         attr,
+                                                         comm_impl.get(),
+                                                         stream_handle,
+                                                         deps))));
 }
 
 /* sparse_allreduce */
@@ -388,7 +406,7 @@ ccl::event single_device_communicator::sparse_allreduce_impl(
     std::vector<void*> bufs = {
         (void*)send_ind_buf, (void*)send_val_buf, recv_ind_buf, recv_val_buf
     };
-    auto mode = check_assoc_device_memory(bufs, get_device(), get_context());
+    auto mode = check_assoc_device_memory(bufs, get_device(), get_context(), deps.size());
 
     const ccl_stream* stream_handle = nullptr;
 
@@ -416,7 +434,8 @@ ccl::event single_device_communicator::sparse_allreduce_impl(
                                                            reduction,
                                                            attr,
                                                            comm_impl.get(),
-                                                           stream_handle))));
+                                                           stream_handle,
+                                                           deps))));
 }
 
 COMM_INTERFACE_COLL_INSTANTIATION(single_device_communicator);

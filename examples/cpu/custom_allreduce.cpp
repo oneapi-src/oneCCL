@@ -31,8 +31,8 @@ typedef void (*fill_fn_t)(void*, size_t, size_t);
 typedef int (*check_fn_t)(void*, size_t, expected_fn_t);
 
 #define RUN_COLLECTIVE(start_cmd, fill_fn, check_fn, expected_fn, name) \
-    t = 0; \
     do { \
+        double t1 = 0, t2 = 0, t = 0; \
         for (int iter_idx = 0; iter_idx < ITERS; iter_idx++) { \
             global_match_id = match_id; \
             fill_fn(send_buf, MSG_SIZE_COUNT, rank + 1); \
