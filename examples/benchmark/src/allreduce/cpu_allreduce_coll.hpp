@@ -37,7 +37,7 @@ struct cpu_allreduce_coll : cpu_base_coll<Dtype, allreduce_strategy_impl> {
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
             for (size_t e_idx = 0; e_idx < elem_count; e_idx++) {
                 value = ((Dtype*)send_bufs[b_idx][rank_idx])[e_idx];
-                if (value != sbuf_expected) {
+                if (!base_coll::get_inplace() && (value != sbuf_expected)) {
                     std::cout << this->name() << " send_bufs: buf_idx " << b_idx << ", rank_idx "
                               << rank_idx << ", elem_idx " << e_idx << ", expected "
                               << sbuf_expected << ", got " << value << std::endl;

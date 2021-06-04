@@ -80,11 +80,13 @@ int main(int argc, char *argv[]) {
         });
     });
 
-    if (!handle_exception(q))
-        return -1;
+    /* do not wait completion of kernel and provide it as dependency for operation */
+    vector<ccl::event> deps;
+    deps.push_back(ccl::create_event(e));
 
     /* invoke allreduce */
-    ccl::allreduce(buf, buf, count, ccl::reduction::sum, comm, stream).wait();
+    auto attr = ccl::create_operation_attr<ccl::allreduce_attr>();
+    ccl::allreduce(buf, buf, count, ccl::reduction::sum, comm, stream, attr, deps).wait();
 
     /* open recv_buf and check its correctness on the device side */
     buffer<int> check_buf(count);

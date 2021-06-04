@@ -36,6 +36,7 @@ using assoc_result = std::tuple<usm_support_mode, const void*, std::string>;
 enum assoc_result_index { SUPPORT_MODE = 0, POINTER_VALUE, ERROR_CAUSE };
 
 #if defined(MULTI_GPU_SUPPORT) || defined(CCL_ENABLE_SYCL)
+// TODO: move to src
 assoc_result check_assoc_device_memory(const void* mem,
                                        const ccl::unified_device_type::ccl_native_t& device,
                                        const ccl::unified_context_type::ccl_native_t& ctx);

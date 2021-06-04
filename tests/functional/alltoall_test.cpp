@@ -15,7 +15,7 @@
 */
 #define ALGO_SELECTION_ENV "CCL_ALLTOALL"
 
-#include "base_impl.hpp"
+#include "test_impl.hpp"
 
 template <typename T>
 class alltoall_test : public base_test<T> {
@@ -59,7 +59,8 @@ public:
                                               recv_buf,
                                               op.elem_count,
                                               op.datatype,
-                                              global_data::instance().comms[0],
+                                              transport_data::instance().get_comm(),
+                                              transport_data::instance().get_stream(),
                                               attr));
         }
     }

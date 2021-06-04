@@ -44,7 +44,7 @@ public:
         msg = std::string("oneCCL: ") + std::string(info);
     }
 
-    const char *what() const noexcept {
+    const char *what() const noexcept override {
         return msg.c_str();
     }
 };

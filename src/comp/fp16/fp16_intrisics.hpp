@@ -19,6 +19,7 @@
 
 #include <immintrin.h>
 #include <inttypes.h>
+#include <string.h>
 
 #include "common/global/global.hpp"
 #include "comp/fp16/fp16_utils.hpp"
@@ -28,7 +29,7 @@
 #define CCL_FP16_STEP_256 8
 
 #ifdef CCL_FP16_TARGET_ATTRIBUTES
-#define FP16_ALL_ATTRS                    "f16c,avx512f"
+#define FP16_ALL_ATTRS                    "f16c,avx512f,avx512bw,avx512vl"
 #define FP16_TARGET_ATTRIBUTE_F16C        __attribute__((target("f16c")))
 #define FP16_TARGET_ATTRIBUTE_AVX512      __attribute__((target("avx512f")))
 #define FP16_TARGET_ATTRIBUTE_ALL         __attribute__((target(FP16_ALL_ATTRS)))
@@ -91,6 +92,21 @@ FP16_INLINE_TARGET_ATTRIBUTE_ALL void ccl_fp16_reduce_inputs_256(
     _mm_storeu_si128((__m128i*)(res), _mm256_cvtps_ph(vfp32_out, 0));
 }
 
+FP16_INLINE_TARGET_ATTRIBUTE_ALL void ccl_fp16_reduce_tile_256(const void* in,
+                                                               void* inout,
+                                                               uint8_t len,
+                                                               ccl_fp16_reduction_func_ptr_256 op) {
+    if (len == 0)
+        return;
+    uint16_t a[CCL_FP16_STEP_256];
+    uint16_t b[CCL_FP16_STEP_256];
+    uint16_t res[CCL_FP16_STEP_256];
+    memcpy(a, in, len * sizeof(uint16_t));
+    memcpy(b, inout, len * sizeof(uint16_t));
+    ccl_fp16_reduce_inputs_256(a, b, res, op);
+    memcpy(inout, res, len * sizeof(uint16_t));
+}
+
 FP16_INLINE_TARGET_ATTRIBUTE_ALL void ccl_fp16_reduce_inputs_512(
     const void* a,
     const void* b,
@@ -103,23 +119,25 @@ FP16_INLINE_TARGET_ATTRIBUTE_ALL void ccl_fp16_reduce_inputs_512(
     _mm256_storeu_si256((__m256i*)(res), _mm512_cvtps_ph(vfp32_out, 0));
 }
 
+FP16_INLINE_TARGET_ATTRIBUTE_ALL void ccl_fp16_reduce_tile_512(const void* in,
+                                                               void* inout,
+                                                               uint8_t len,
+                                                               ccl_fp16_reduction_func_ptr_512 op) {
+    if (len == 0)
+        return;
+    uint16_t mask = ((uint16_t)0xFFFF) >> (CCL_FP16_STEP_512 - len);
+    __m256i a = _mm256_maskz_loadu_epi16(mask, in);
+    __m256i b = _mm256_maskz_loadu_epi16(mask, inout);
+    __m256i res;
+    ccl_fp16_reduce_inputs_512(&a, &b, &res, op);
+    _mm256_mask_storeu_epi16(inout, (__mmask16)mask, res);
+}
+
 #define CCL_FP16_DEFINE_REDUCE_FUNC(VLEN) \
 \
     FP16_INLINE_TARGET_ATTRIBUTE_ALL void ccl_fp16_reduce_main_##VLEN( \
         const void* in, const void* inout, ccl_fp16_reduction_func_ptr_##VLEN op) { \
         ccl_fp16_reduce_inputs_##VLEN(in, inout, (void*)inout, op); \
-    } \
-\
-    FP16_INLINE_TARGET_ATTRIBUTE_ALL void ccl_fp16_reduce_tile_##VLEN( \
-        const void* in, void* inout, uint8_t len, ccl_fp16_reduction_func_ptr_##VLEN op) { \
-        if (len == 0) \
-            return; \
-        uint16_t fp16_res[CCL_FP16_STEP_##VLEN]; \
-        ccl_fp16_reduce_inputs_##VLEN(in, inout, fp16_res, op); \
-        uint16_t* inout_ptr = (uint16_t*)inout; \
-        for (int i = 0; i < len; i++) { \
-            inout_ptr[i] = fp16_res[i]; \
-        } \
     } \
 \
     FP16_INLINE_TARGET_ATTRIBUTE_ALL void ccl_fp16_reduce_impl_##VLEN( \

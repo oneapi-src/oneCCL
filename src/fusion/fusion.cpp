@@ -123,8 +123,7 @@ ccl_fusion_manager::~ccl_fusion_manager() {
              ", overlapped_exec_calls ",
              stat_overlapped_exec_calls);
 
-    while (!tracked_scheds.empty())
-        check_tracked_scheds(true);
+    reset();
 
     CCL_ASSERT(postponed_queue.empty() && exec_queue.empty() && tracked_scheds.empty(),
                "queues are not empty, ",
@@ -135,8 +134,24 @@ ccl_fusion_manager::~ccl_fusion_manager() {
                tracked_scheds.size());
 }
 
+bool ccl_fusion_manager::can_reset() {
+    check_tracked_scheds(true);
+    return tracked_scheds.empty();
+}
+
+void ccl_fusion_manager::reset() {
+    while (tracked_scheds.size())
+        check_tracked_scheds(true);
+}
+
 bool ccl_fusion_manager::can_fuse(ccl_master_sched* sched) {
+    if (atl_wrapper::attr.out.enable_device_buf) {
+        /* TODO: implement fusion with D2D copies */
+        return false;
+    }
+
     size_t bytes = sched->coll_param.count * sched->coll_param.dtype.size();
+
     if (bytes >= bytes_threshold) {
         LOG_DEBUG("can't fuse due to size ", bytes, ", max ", bytes_threshold);
         return false;
@@ -144,6 +159,11 @@ bool ccl_fusion_manager::can_fuse(ccl_master_sched* sched) {
 
     if (sched->coll_param.ctype != ccl_coll_allreduce) {
         LOG_DEBUG("can't fuse due to coll_type ", ccl_coll_type_to_str(sched->coll_param.ctype));
+        return false;
+    }
+
+    if (sched->coll_param.deps.size()) {
+        LOG_DEBUG("can't fuse due to deps size ", sched->coll_param.deps.size());
         return false;
     }
 
@@ -165,8 +185,11 @@ bool ccl_fusion_manager::add(ccl_master_sched* sched) {
     CCL_THROW_IF_NOT(sched->is_completed(), "incorrect completion counter");
     sched->set_counter(1);
 
-    std::lock_guard<ccl_fusion_lock_t> lock{ guard };
-    postponed_queue.push_back(sched);
+    {
+        std::lock_guard<ccl_fusion_lock_t> lock{ guard };
+        postponed_queue.push_back(sched);
+    }
+
     return true;
 }
 
@@ -223,6 +246,7 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
                 coll_param.dtype = dtype;
                 coll_param.reduction = reduction;
                 coll_param.comm = comm;
+                coll_param.stream = nullptr;
                 sched = new ccl_master_sched(coll_param);
                 sched->internal_type = ccl_sched_internal_fusion;
             } break;
@@ -269,7 +293,11 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
 
     CCL_THROW_IF_NOT(sched);
 
-    tracked_scheds.push_back(sched);
+    {
+        std::lock_guard<ccl_fusion_lock_t> lock{ guard };
+        tracked_scheds.push_back(sched);
+    }
+
     sched->coll_attr.priority = max_priority;
     sched->coll_attr.to_cache = use_cache;
 
@@ -312,9 +340,10 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
             size_t global_copy_idx = idx * copies_per_part + copy_idx;
 #ifdef CCL_ENABLE_SYCL
             if (stream && stream->is_sycl_device_stream())
-                entry_factory::make_entry<sycl_copy_entry<sycl_copy_direction::d2h>>(
+                entry_factory::make_entry<sycl_copy_entry>(
                     part_scheds[idx].get(),
-                    ccl_buffer(&(exec_queue[global_copy_idx]->coll_param.sycl_send_buf),
+                    copy_direction::d2h,
+                    ccl_buffer(&(exec_queue[global_copy_idx]->coll_param.device_send_buf),
                                exec_queue[global_copy_idx]->coll_param.count * dtype_size,
                                ccl_buffer_type::INDIRECT),
                     ccl_buffer(fusion_buf, buf_cache.get_buf_size(), offset),
@@ -349,10 +378,11 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
             size_t global_copy_idx = idx * copies_per_part + copy_idx;
 #ifdef CCL_ENABLE_SYCL
             if (stream && stream->is_sycl_device_stream())
-                entry_factory::make_entry<sycl_copy_entry<sycl_copy_direction::h2d>>(
+                entry_factory::make_entry<sycl_copy_entry>(
                     part_scheds[idx].get(),
+                    copy_direction::h2d,
                     ccl_buffer(fusion_buf, buf_cache.get_buf_size(), offset),
-                    ccl_buffer(&(exec_queue[global_copy_idx]->coll_param.sycl_recv_buf),
+                    ccl_buffer(&(exec_queue[global_copy_idx]->coll_param.device_recv_buf),
                                exec_queue[global_copy_idx]->coll_param.count * dtype_size,
                                ccl_buffer_type::INDIRECT),
                     exec_queue[global_copy_idx]->coll_param.count,
@@ -369,6 +399,8 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
                     exec_queue[global_copy_idx]->coll_param.count,
                     dtype);
 
+            part_scheds[idx]->add_barrier();
+
             offset += exec_queue[global_copy_idx]->coll_param.count * dtype_size;
             entry_factory::make_entry<function_entry>(
                 part_scheds[idx].get(), complete_user_request, exec_queue[global_copy_idx]);
@@ -377,11 +409,12 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
         }
     }
 
+    sched->sync_partial_scheds();
+
     if (use_cache) {
         part_scheds[0]->set_finalize_fn(release_fusion_buf_for_cached_sched, fusion_buf);
     }
     else {
-        sched->sync_partial_scheds();
         entry_factory::make_entry<function_entry>(
             part_scheds[0].get(), release_fusion_buf, fusion_buf);
     }
@@ -412,6 +445,7 @@ void ccl_fusion_manager::execute() {
             }
         }
     }
+
     /* separate block to reduce lock scope */
     {
         std::lock_guard<ccl_fusion_lock_t> lock{ guard };
@@ -490,6 +524,7 @@ void ccl_fusion_manager::clear_exec_queue() {
 }
 
 void ccl_fusion_manager::check_tracked_scheds(bool force_release) {
+    std::lock_guard<ccl_fusion_lock_t> lock{ guard };
     for (auto it = tracked_scheds.begin(); it != tracked_scheds.end();) {
         ccl_master_sched* sched = *it;
         if (sched->is_completed() && (!sched->coll_attr.to_cache || force_release)) {

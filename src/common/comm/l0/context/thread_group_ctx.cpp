@@ -19,7 +19,7 @@
 #include "common/comm/l0/context/device_storage.hpp"
 
 #include "common/comm/l0/scheduler/thread_group_scheduler.hpp"
-#include "common/comm/l0/context/scaling_ctx/numa_ctx_impl.hpp"
+#include "common/comm/l0/context/scale/numa/numa_ctx_impl.hpp"
 
 namespace native {
 

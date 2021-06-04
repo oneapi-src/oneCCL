@@ -25,6 +25,8 @@ struct ccl_device_platform;
 struct ccl_device_driver;
 struct ccl_subdevice;
 struct ccl_device;
+struct ccl_event_pool_holder;
+class ccl_event_pool;
 
 // TODO not thread-safe!!!
 struct ccl_context : public cl_base<ze_context_handle_t, ccl_device_platform, ccl_context>,
@@ -42,7 +44,10 @@ struct ccl_context : public cl_base<ze_context_handle_t, ccl_device_platform, cc
     template <class elem_t>
     using host_memory_ptr = std::shared_ptr<host_memory<elem_t>>;
 
+    using ccl_event_pool_ptr = std::shared_ptr<ccl_event_pool>;
+
     ccl_context(handle_t h, owner_ptr_t&& platform);
+    ~ccl_context();
 
     static const ze_host_mem_alloc_desc_t& get_default_host_alloc_desc();
 
@@ -71,12 +76,22 @@ struct ccl_context : public cl_base<ze_context_handle_t, ccl_device_platform, cc
         host_free_memory(static_cast<void*>(mem_handle));
     }
 
+    // event pool
+    ccl_event_pool_ptr create_event_pool(std::initializer_list<ccl_device*> devices,
+                                         const ze_event_pool_desc_t& descr);
+    std::vector<std::shared_ptr<ccl_event_pool>> get_shared_event_pool(
+        std::initializer_list<ccl_device*> devices = {});
+    std::vector<std::shared_ptr<ccl_event_pool>> get_shared_event_pool(
+        std::initializer_list<ccl_device*> devices = {}) const;
+
 private:
     void* host_alloc_memory(size_t bytes_count,
                             size_t alignment,
                             const ze_host_mem_alloc_desc_t& host_desc);
 
     void host_free_memory(void* mem_handle);
+
+    std::shared_ptr<ccl_event_pool_holder> pool_holder;
 };
 
 class context_array_t {

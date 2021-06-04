@@ -15,12 +15,12 @@
 */
 #pragma once
 #include "common/comm/l0/context/thread_group_ctx.hpp"
-#include "common/comm/l0/context/scaling_ctx/ipc_ctx.hpp"
-#include "common/comm/l0/context/scaling_ctx/numa_ctx.hpp"
-#include "common/comm/l0/context/scaling_ctx/scale_up_ctx.hpp"
-#include "common/comm/l0/context/scaling_ctx/scale_out_ctx.hpp"
+#include "common/comm/l0/context/scale/ipc/ipc_ctx.hpp"
+#include "common/comm/l0/context/scale/numa/numa_ctx.hpp"
+#include "common/comm/l0/context/scale/scale_up/scale_up_ctx.hpp"
+#include "common/comm/l0/context/scale/scale_out/scale_out_ctx.hpp"
 
-#include "common/comm/l0/context/scaling_ctx/scaling_context_dispatcher.hpp"
+#include "common/comm/l0/context/scale/scaling_context_dispatcher.hpp"
 #include "common/comm/l0/topology/topology_declarations.hpp"
 namespace ccl {
 class host_communicator;

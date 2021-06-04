@@ -46,6 +46,3 @@
 
 /* Auto-generated configuration settings for multi GPU support*/
 #cmakedefine MULTI_GPU_SUPPORT
-
-/* Configuration setting for truncate v/s RNE rounding mode */
-#cmakedefine CCL_GPU_BF16_TRUNCATE

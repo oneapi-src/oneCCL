@@ -182,6 +182,10 @@ ccl_request* ccl_sched::start_subsched(ccl_extra_sched* subsched) {
     return subsched->req;
 }
 
+std::vector<ccl::event>& ccl_sched::get_deps() const {
+    return static_cast<ccl_master_sched*>(req)->coll_param.deps;
+}
+
 void ccl_sched::dump(std::ostream& out) const {
     if (!ccl::global_data::env().sched_dump) {
         return;
@@ -195,6 +199,10 @@ void ccl_sched::dump(std::ostream& out) const {
                        entries.size(),
                        ", priority: ",
                        get_priority(),
+                       ", max_flow_credits: ",
+                       flow_control.get_max_credits(),
+                       ", flow_credits: ",
+                       flow_control.get_credits(),
                        "\n");
 
     std::stringstream msg;

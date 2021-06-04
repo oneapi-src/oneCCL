@@ -42,18 +42,22 @@ size_t ccl_executor::calculate_atl_ep_count(size_t worker_count) {
 
 atl_attr_t ccl_executor::generate_atl_attr(const ccl::env_data& env) {
     atl_attr_t attr;
-
-    attr.ep_count = calculate_atl_ep_count(env.worker_count);
-    attr.enable_shm = env.enable_shm;
+    attr.in.enable_shm = env.enable_shm;
     /*
         TODO:
         executor may be destroyed before cached rma-based schedule made memory deregistration
         need to refactor global objects dependencies
         don't use ring_rma till that
     */
-    attr.enable_rma = 0; // env.enable_rma;
-    attr.sync_coll = env.sync_coll;
-    attr.extra_ep = env.extra_ep;
+    attr.in.enable_rma = 0; // env.enable_rma;
+    attr.in.enable_device_buf = env.enable_device_buf;
+    attr.in.enable_sync_coll = env.enable_sync_coll;
+    attr.in.enable_extra_ep = env.enable_extra_ep;
+    attr.in.ep_count = calculate_atl_ep_count(env.worker_count);
+    attr.in.mnic_type = env.mnic_type;
+    attr.in.mnic_count = env.mnic_count;
+
+    memset(&attr.out, 0, sizeof(attr.out));
 
     return attr;
 }
@@ -147,9 +151,13 @@ ccl_executor::~ccl_executor() {
             }
             else
                 LOG_DEBUG("stopped worker # ", idx);
-
-            workers[idx].reset();
         }
+
+        while (!workers[idx]->can_reset()) {
+            ccl_yield(ccl::global_data::env().yield_type);
+        }
+
+        workers[idx].reset();
     }
 }
 

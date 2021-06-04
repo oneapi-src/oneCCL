@@ -33,17 +33,11 @@ public:
     using event_native_handle_t = typename ccl::unified_event_type::handle_t;
     using event_native_t = typename ccl::unified_event_type::ccl_native_t;
 
-    using event_native_context_handle_t = typename ccl::unified_context_type::handle_t;
-    using event_native_context_t = typename ccl::unified_context_type::ccl_native_t;
-
     ccl_event() = delete;
     ccl_event(const ccl_event& other) = delete;
     ccl_event& operator=(const ccl_event& other) = delete;
 
     ccl_event(event_native_t& event, const ccl::library_version& version);
-    ccl_event(event_native_handle_t event,
-              event_native_context_t context,
-              const ccl::library_version& version);
     ~ccl_event() = default;
 
     //Export Attributes
@@ -60,10 +54,6 @@ public:
                                               ccl::event_attr_id::native_handle>;
     typename native_handle_traits_t::return_type& get_attribute_value(
         const native_handle_traits_t& id);
-
-    using context_traits_t =
-        ccl::detail::ccl_api_type_attr_traits<ccl::event_attr_id, ccl::event_attr_id::context>;
-    typename context_traits_t::return_type& get_attribute_value(const context_traits_t& id);
 
     using command_type_traits_t =
         ccl::detail::ccl_api_type_attr_traits<ccl::event_attr_id, ccl::event_attr_id::command_type>;
@@ -89,7 +79,6 @@ public:
 private:
     const ccl::library_version version;
     event_native_t native_event;
-    event_native_context_t native_context;
     bool creation_is_postponed{ false };
 
     typename command_type_traits_t::return_type command_type_val;

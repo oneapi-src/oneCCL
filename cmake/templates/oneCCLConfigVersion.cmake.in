@@ -1,4 +1,3 @@
-set(PACKAGE_VERSION @PROJECT_VERSION@)
 #
 # Copyright 2016-2020 Intel Corporation
 # 
@@ -14,6 +13,7 @@ set(PACKAGE_VERSION @PROJECT_VERSION@)
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+set(PACKAGE_VERSION @PROJECT_VERSION@)
 
 if ("${PACKAGE_VERSION}" VERSION_LESS "${PACKAGE_FIND_VERSION}")
     set(PACKAGE_VERSION_COMPATIBLE FALSE)
