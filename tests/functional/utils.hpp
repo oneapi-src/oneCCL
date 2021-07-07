@@ -22,7 +22,6 @@
 #include <sstream>
 #include <stdlib.h>
 #include <string>
-#include <sys/syscall.h>
 
 #include "gtest/gtest.h"
 
@@ -38,48 +37,24 @@
 #define ITER_COUNT          2
 #define ERR_MESSAGE_MAX_LEN 180
 
-#define TIMEOUT 30
-
-#define GETTID()    syscall(SYS_gettid)
+#define TIMEOUT     30
 #define UNUSED_ATTR __attribute__((unused))
 
 #define TEST_SUCCESS 0
 #define TEST_FAILURE 1
 
-#if 0
-
+#ifndef PRINT
 #define PRINT(fmt, ...) \
     do { \
         fflush(stdout); \
         printf("\n(%ld): %s: " fmt "\n", GETTID(), __FUNCTION__, ##__VA_ARGS__); \
         fflush(stdout); \
     } while (0)
-
-#define PRINT_BUFFER(buf, bufSize, prefix) \
-    do { \
-        std::string strToPrint; \
-        for (size_t idx = 0; idx < bufSize; idx++) { \
-            strToPrint += std::to_string(buf[idx]); \
-            if (idx != bufSize - 1) \
-                strToPrint += ", "; \
-        } \
-        strToPrint = std::string(prefix) + strToPrint; \
-        PRINT("%s", strToPrint.c_str()); \
-    } while (0)
-
-#else /* ENABLE_DEBUG */
-
-#define PRINT(fmt, ...) \
-    {}
-#define PRINT_BUFFER(buf, bufSize, prefix) \
-    {}
-
-#endif /* ENABLE_DEBUG */
+#endif /* PRINT */
 
 #define OUTPUT_NAME_ARG "--gtest_output="
-#define PATCH_OUTPUT_NAME_ARG(argc, argv) \
+#define PATCH_OUTPUT_NAME_ARG(argc, argv, comm) \
     do { \
-        auto& comm = gd.comms[0]; \
         if (comm.size() > 1) { \
             for (int idx = 1; idx < argc; idx++) { \
                 if (strstr(argv[idx], OUTPUT_NAME_ARG)) { \
@@ -115,8 +90,8 @@
         int result = className.run(op); \
         int result_final = 0; \
         static int glob_idx = 0; \
-        auto& comm = global_data::instance().comms[0]; \
-        ccl::allreduce(&result, &result_final, 1, ccl::reduction::sum, comm).wait(); \
+        auto& service_comm = transport_data::instance().get_service_comm(); \
+        ccl::allreduce(&result, &result_final, 1, ccl::reduction::sum, service_comm).wait(); \
         if (result_final > 0) { \
             print_err_message(className.get_err_message(), output); \
             if (op.comm_rank == 0) { \
@@ -139,50 +114,15 @@
         return TEST_SUCCESS; \
     }
 
-#define ASSERT(cond, fmt, ...) \
-    do { \
-        if (!(cond)) { \
-            fprintf(stderr, \
-                    "(%ld): %s:%s:%d: ASSERT '%s' FAILED: " fmt "\n", \
-                    GETTID(), \
-                    __FILE__, \
-                    __FUNCTION__, \
-                    __LINE__, \
-                    #cond, \
-                    ##__VA_ARGS__); \
-            fflush(stderr); \
-            exit(0); \
-        } \
-    } while (0)
-
 #define MAIN_FUNCTION() \
     int main(int argc, char** argv, char* envs[]) { \
         init_test_params(); \
-        ccl::init(); \
-        int mpi_inited = 0; \
-        MPI_Initialized(&mpi_inited); \
-        if (!mpi_inited) { \
-            MPI_Init(NULL, NULL); \
-        } \
-        atexit(mpi_finalize); \
-        int size, rank; \
-        MPI_Comm_size(MPI_COMM_WORLD, &size); \
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank); \
-        ccl::kvs::address_type main_addr; \
-        auto& gd = global_data::instance(); \
-        if (rank == 0) { \
-            gd.kvs = ccl::create_main_kvs(); \
-            main_addr = gd.kvs->get_address(); \
-            MPI_Bcast((void*)main_addr.data(), main_addr.size(), MPI_BYTE, 0, MPI_COMM_WORLD); \
-        } \
-        else { \
-            MPI_Bcast((void*)main_addr.data(), main_addr.size(), MPI_BYTE, 0, MPI_COMM_WORLD); \
-            gd.kvs = ccl::create_kvs(main_addr); \
-        } \
-        gd.comms.emplace_back(ccl::create_communicator(size, rank, gd.kvs)); \
-        PATCH_OUTPUT_NAME_ARG(argc, argv); \
+        auto& transport = transport_data::instance(); \
+        auto& service_comm = transport.get_service_comm(); \
+        PATCH_OUTPUT_NAME_ARG(argc, argv, service_comm); \
         testing::InitGoogleTest(&argc, argv); \
         int res = RUN_ALL_TESTS(); \
+        transport.reset_comms(); \
         return res; \
     }
 

@@ -122,12 +122,12 @@ void ccl_tuple_for_each_args(specific_tuple&& t, functor&& f, args_t&&... args) 
 }
 
 template <typename specific_tuple, size_t cur_index, typename functor, class... FunctionArgs>
-void ccl_tuple_for_each_indexed_impl(functor,
+void ccl_tuple_for_each_indexed_impl(functor&,
                                      std::true_type tuple_finished,
                                      const FunctionArgs&... args) {}
 
 template <typename specific_tuple, size_t cur_index, typename functor, class... FunctionArgs>
-void ccl_tuple_for_each_indexed_impl(functor f,
+void ccl_tuple_for_each_indexed_impl(functor& f,
                                      std::false_type tuple_not_finished,
                                      const FunctionArgs&... args) {
     using tuple_element_t = typename std::tuple_element<cur_index, specific_tuple>::type;
@@ -144,7 +144,7 @@ void ccl_tuple_for_each_indexed_impl(functor f,
 }
 
 template <typename specific_tuple, typename functor, class... FunctionArgs>
-void ccl_tuple_for_each_indexed(functor f, const FunctionArgs&... args) {
+void ccl_tuple_for_each_indexed(functor& f, const FunctionArgs&... args) {
     constexpr std::size_t tuple_size =
         std::tuple_size<typename std::remove_reference<specific_tuple>::type>::value;
     static_assert(tuple_size != 0, "Nothing to do, tuple is empty");

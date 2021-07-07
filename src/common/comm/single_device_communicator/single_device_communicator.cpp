@@ -80,7 +80,7 @@ ccl::event single_device_communicator::barrier(const ccl::stream::impl_value_t& 
                                                const ccl::vector_class<ccl::event>& deps) {
     // TODO what exactly we need to do with 'attr' here?
 
-    ccl_barrier_impl(comm_impl.get(), op_stream.get());
+    ccl_barrier_impl(comm_impl.get(), op_stream.get(), deps);
 
     // TODO what exactly we need to return here? ccl_barrier_impl() is void func
     return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(nullptr));
@@ -96,23 +96,6 @@ ccl::event single_device_communicator::allgatherv_base_impl(
     const ccl::stream::impl_value_t& stream,
     const ccl_coll_attr& attr,
     const ccl::vector_class<ccl::event>& deps) {
-    using namespace ::native::detail;
-
-    std::vector<void*> bufs = { (void*)send_buf, recv_buf };
-    auto mode = check_assoc_device_memory(bufs, get_device(), get_context());
-
-    const ccl_stream* stream_handle = nullptr;
-
-    if ((mode == usm_support_mode::direct) || (mode == usm_support_mode::shared)) {
-    }
-    else if (mode == usm_support_mode::need_conversion)
-#ifdef CCL_ENABLE_SYCL
-        stream_handle = stream.get();
-#else
-        throw ccl::exception(std::string(__PRETTY_FUNCTION__) +
-                             " - USM convertation is not supported for such configuration");
-#endif
-
     return ccl::event(std::unique_ptr<ccl::event_impl>(
         new ccl::host_event_impl(ccl_allgatherv_impl(send_buf,
                                                      send_count,
@@ -121,7 +104,8 @@ ccl::event single_device_communicator::allgatherv_base_impl(
                                                      dtype,
                                                      attr,
                                                      comm_impl.get(),
-                                                     stream_handle))));
+                                                     stream.get(),
+                                                     deps))));
 }
 
 ccl::event single_device_communicator::allgatherv_impl(const void* send_buf,
@@ -166,25 +150,8 @@ ccl::event single_device_communicator::allreduce_impl(const void* send_buf,
                                                       const ccl::stream::impl_value_t& stream,
                                                       const ccl::allreduce_attr& attr,
                                                       const ccl::vector_class<ccl::event>& deps) {
-    using namespace ::native::detail;
-
-    std::vector<void*> bufs = { (void*)send_buf, recv_buf };
-    auto mode = check_assoc_device_memory(bufs, get_device(), get_context());
-
-    const ccl_stream* stream_handle = nullptr;
-
-    if ((mode == usm_support_mode::direct) || (mode == usm_support_mode::shared)) {
-    }
-    else if (mode == usm_support_mode::need_conversion)
-#ifdef CCL_ENABLE_SYCL
-        stream_handle = stream.get();
-#else
-        throw ccl::exception(std::string(__PRETTY_FUNCTION__) +
-                             " - USM convertation is not supported for such configuration");
-#endif
-
     return ccl::event(std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(ccl_allreduce_impl(
-        send_buf, recv_buf, count, dtype, reduction, attr, comm_impl.get(), stream_handle))));
+        send_buf, recv_buf, count, dtype, reduction, attr, comm_impl.get(), stream.get(), deps))));
 }
 
 /* alltoall */
@@ -195,25 +162,8 @@ ccl::event single_device_communicator::alltoall_impl(const void* send_buf,
                                                      const ccl::stream::impl_value_t& stream,
                                                      const ccl::alltoall_attr& attr,
                                                      const ccl::vector_class<ccl::event>& deps) {
-    using namespace ::native::detail;
-
-    std::vector<void*> bufs = { (void*)send_buf, recv_buf };
-    auto mode = check_assoc_device_memory(bufs, get_device(), get_context());
-
-    const ccl_stream* stream_handle = nullptr;
-
-    if ((mode == usm_support_mode::direct) || (mode == usm_support_mode::shared)) {
-    }
-    else if (mode == usm_support_mode::need_conversion)
-#ifdef CCL_ENABLE_SYCL
-        stream_handle = stream.get();
-#else
-        throw ccl::exception(std::string(__PRETTY_FUNCTION__) +
-                             " - USM convertation is not supported for such configuration");
-#endif
-
     return ccl::event(std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(ccl_alltoall_impl(
-        send_buf, recv_buf, count, dtype, attr, comm_impl.get(), stream_handle))));
+        send_buf, recv_buf, count, dtype, attr, comm_impl.get(), stream.get(), deps))));
 }
 
 ccl::event single_device_communicator::alltoall_impl(const ccl::vector_class<void*>& send_buf,
@@ -236,23 +186,6 @@ ccl::event single_device_communicator::alltoallv_impl(const void* send_buf,
                                                       const ccl::stream::impl_value_t& stream,
                                                       const ccl::alltoallv_attr& attr,
                                                       const ccl::vector_class<ccl::event>& deps) {
-    using namespace ::native::detail;
-
-    std::vector<void*> bufs = { (void*)send_buf, recv_buf };
-    auto mode = check_assoc_device_memory(bufs, get_device(), get_context());
-
-    const ccl_stream* stream_handle = nullptr;
-
-    if ((mode == usm_support_mode::direct) || (mode == usm_support_mode::shared)) {
-    }
-    else if (mode == usm_support_mode::need_conversion)
-#ifdef CCL_ENABLE_SYCL
-        stream_handle = stream.get();
-#else
-        throw ccl::exception(std::string(__PRETTY_FUNCTION__) +
-                             " - USM convertation is not supported for such configuration");
-#endif
-
     return ccl::event(std::unique_ptr<ccl::event_impl>(
         new ccl::host_event_impl(ccl_alltoallv_impl(send_buf,
                                                     send_counts.data(),
@@ -261,7 +194,8 @@ ccl::event single_device_communicator::alltoallv_impl(const void* send_buf,
                                                     dtype,
                                                     attr,
                                                     comm_impl.get(),
-                                                    stream_handle))));
+                                                    stream.get(),
+                                                    deps))));
 }
 ccl::event single_device_communicator::alltoallv_impl(const ccl::vector_class<void*>& send_buf,
                                                       const ccl::vector_class<size_t>& send_counts,
@@ -283,25 +217,8 @@ ccl::event single_device_communicator::broadcast_impl(void* buf,
                                                       const ccl::stream::impl_value_t& stream,
                                                       const ccl::broadcast_attr& attr,
                                                       const ccl::vector_class<ccl::event>& deps) {
-    using namespace ::native::detail;
-
-    std::vector<void*> bufs = { buf };
-    auto mode = check_assoc_device_memory(bufs, get_device(), get_context());
-
-    const ccl_stream* stream_handle = nullptr;
-
-    if ((mode == usm_support_mode::direct) || (mode == usm_support_mode::shared)) {
-    }
-    else if (mode == usm_support_mode::need_conversion)
-#ifdef CCL_ENABLE_SYCL
-        stream_handle = stream.get();
-#else
-        throw ccl::exception(std::string(__PRETTY_FUNCTION__) +
-                             " - USM convertation is not supported for such configuration");
-#endif
-
     return ccl::event(std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(
-        ccl_broadcast_impl(buf, count, dtype, root, attr, comm_impl.get(), stream_handle))));
+        ccl_broadcast_impl(buf, count, dtype, root, attr, comm_impl.get(), stream.get(), deps))));
 }
 
 /* reduce */
@@ -314,25 +231,17 @@ ccl::event single_device_communicator::reduce_impl(const void* send_buf,
                                                    const ccl::stream::impl_value_t& stream,
                                                    const ccl::reduce_attr& attr,
                                                    const ccl::vector_class<ccl::event>& deps) {
-    using namespace ::native::detail;
-
-    std::vector<void*> bufs = { (void*)send_buf, recv_buf };
-    auto mode = check_assoc_device_memory(bufs, get_device(), get_context());
-
-    const ccl_stream* stream_handle = nullptr;
-
-    if ((mode == usm_support_mode::direct) || (mode == usm_support_mode::shared)) {
-    }
-    else if (mode == usm_support_mode::need_conversion)
-#ifdef CCL_ENABLE_SYCL
-        stream_handle = stream.get();
-#else
-        throw ccl::exception(std::string(__PRETTY_FUNCTION__) +
-                             " - USM convertation is not supported for such configuration");
-#endif
-
-    return ccl::event(std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(ccl_reduce_impl(
-        send_buf, recv_buf, count, dtype, reduction, root, attr, comm_impl.get(), stream_handle))));
+    return ccl::event(
+        std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(ccl_reduce_impl(send_buf,
+                                                                                  recv_buf,
+                                                                                  count,
+                                                                                  dtype,
+                                                                                  reduction,
+                                                                                  root,
+                                                                                  attr,
+                                                                                  comm_impl.get(),
+                                                                                  stream.get(),
+                                                                                  deps))));
 }
 
 /* reduce_scatter */
@@ -345,26 +254,16 @@ ccl::event single_device_communicator::reduce_scatter_impl(
     const ccl::stream::impl_value_t& stream,
     const ccl::reduce_scatter_attr& attr,
     const ccl::vector_class<ccl::event>& deps) {
-    using namespace ::native::detail;
-
-    std::vector<void*> bufs = { (void*)send_buf, recv_buf };
-    auto mode = check_assoc_device_memory(bufs, get_device(), get_context());
-
-    const ccl_stream* stream_handle = nullptr;
-
-    if ((mode == usm_support_mode::direct) || (mode == usm_support_mode::shared)) {
-    }
-    else if (mode == usm_support_mode::need_conversion)
-#ifdef CCL_ENABLE_SYCL
-        stream_handle = stream.get();
-#else
-        throw ccl::exception(std::string(__PRETTY_FUNCTION__) +
-                             " - USM convertation is not supported for such configuration");
-#endif
-
-    return ccl::event(std::unique_ptr<
-                      ccl::event_impl>(new ccl::host_event_impl(ccl_reduce_scatter_impl(
-        send_buf, recv_buf, recv_count, dtype, reduction, attr, comm_impl.get(), stream_handle))));
+    return ccl::event(std::unique_ptr<ccl::event_impl>(
+        new ccl::host_event_impl(ccl_reduce_scatter_impl(send_buf,
+                                                         recv_buf,
+                                                         recv_count,
+                                                         dtype,
+                                                         reduction,
+                                                         attr,
+                                                         comm_impl.get(),
+                                                         stream.get(),
+                                                         deps))));
 }
 
 /* sparse_allreduce */
@@ -383,25 +282,6 @@ ccl::event single_device_communicator::sparse_allreduce_impl(
     const ccl::stream::impl_value_t& stream,
     const ccl::sparse_allreduce_attr& attr,
     const ccl::vector_class<ccl::event>& deps) {
-    using namespace ::native::detail;
-
-    std::vector<void*> bufs = {
-        (void*)send_ind_buf, (void*)send_val_buf, recv_ind_buf, recv_val_buf
-    };
-    auto mode = check_assoc_device_memory(bufs, get_device(), get_context());
-
-    const ccl_stream* stream_handle = nullptr;
-
-    if ((mode == usm_support_mode::direct) || (mode == usm_support_mode::shared)) {
-    }
-    else if (mode == usm_support_mode::need_conversion)
-#ifdef CCL_ENABLE_SYCL
-        stream_handle = stream.get();
-#else
-        throw ccl::exception(std::string(__PRETTY_FUNCTION__) +
-                             " - USM convertation is not supported for such configuration");
-#endif
-
     return ccl::event(std::unique_ptr<ccl::event_impl>(
         new ccl::host_event_impl(ccl_sparse_allreduce_impl(send_ind_buf,
                                                            send_ind_count,
@@ -416,7 +296,8 @@ ccl::event single_device_communicator::sparse_allreduce_impl(
                                                            reduction,
                                                            attr,
                                                            comm_impl.get(),
-                                                           stream_handle))));
+                                                           stream.get(),
+                                                           deps))));
 }
 
 COMM_INTERFACE_COLL_INSTANTIATION(single_device_communicator);

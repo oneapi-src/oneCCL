@@ -16,6 +16,7 @@
 #pragma once
 
 #include <map>
+#include <string>
 
 typedef int (*ccl_horovod_init_function)(const int*, int);
 extern ccl_horovod_init_function horovod_init_function;

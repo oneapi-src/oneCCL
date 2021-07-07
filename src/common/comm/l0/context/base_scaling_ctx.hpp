@@ -34,6 +34,9 @@ namespace observer {
 template <class device_t, class actor_t>
 using device_thread_map = std::map<device_t*, std::unique_ptr<actor_t>>;
 
+template <class actor_t, class... devices_types>
+using multiple_device_thread_map_t = std::tuple<device_thread_map<devices_types, actor_t>...>;
+
 template <class device_t>
 using proxy_observer_ptr = typename std::add_pointer<device_t>::type;
 

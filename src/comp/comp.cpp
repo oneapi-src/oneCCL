@@ -20,6 +20,11 @@
 #include "common/log/log.hpp"
 #include "common/global/global.hpp"
 #include "common/utils/enums.hpp"
+#include "sched/queue/queue.hpp"
+
+#ifdef CCL_ENABLE_SYCL
+#include <CL/sycl.hpp>
+#endif /* CCL_ENABLE_SYCL */
 
 #define CCL_REDUCE(type) \
     do { \
@@ -60,14 +65,14 @@ ccl::status ccl_comp_copy(const void* in_buf,
     return ccl::status::success;
 }
 
-ccl::status ccl_comp_reduce(const void* in_buf,
-                            size_t in_count,
-                            void* inout_buf,
-                            size_t* out_count,
-                            const ccl_datatype& dtype,
-                            ccl::reduction reduction,
-                            ccl::reduction_fn reduction_fn,
-                            const ccl::fn_context* context) {
+ccl::status ccl_comp_reduce_regular(const void* in_buf,
+                                    size_t in_count,
+                                    void* inout_buf,
+                                    size_t* out_count,
+                                    const ccl_datatype& dtype,
+                                    ccl::reduction reduction,
+                                    ccl::reduction_fn reduction_fn,
+                                    const ccl::fn_context* context) {
     if (reduction == ccl::reduction::custom) {
         CCL_THROW_IF_NOT(reduction_fn, "custom reduction requires user callback");
         reduction_fn(in_buf, in_count, inout_buf, out_count, dtype.idx(), context);
@@ -97,6 +102,76 @@ ccl::status ccl_comp_reduce(const void* in_buf,
     return ccl::status::success;
 }
 
+ccl::status ccl_comp_reduce(ccl_sched* sched,
+                            const void* in_buf,
+                            size_t in_count,
+                            void* inout_buf,
+                            size_t* out_count,
+                            const ccl_datatype& dtype,
+                            ccl::reduction reduction,
+                            ccl::reduction_fn reduction_fn,
+                            const ccl::fn_context* context) {
+#ifdef CCL_ENABLE_SYCL
+    ccl_stream* stream = (ccl_stream*)sched->coll_param.stream;
+
+    if (!stream) {
+        return ccl_comp_reduce_regular(
+            in_buf, in_count, inout_buf, out_count, dtype, reduction, reduction_fn, context);
+    }
+
+    sycl::queue* q = stream->get_native_stream(sched->queue->get_idx());
+    CCL_THROW_IF_NOT(q, "null sycl queue");
+    auto in_ptr_type = sycl::get_pointer_type(in_buf, q->get_context());
+    auto inout_ptr_type = sycl::get_pointer_type(inout_buf, q->get_context());
+
+    LOG_DEBUG("in_ptr_type: ",
+              native::detail::usm_to_string(in_ptr_type),
+              ", inout_ptr_type: ",
+              native::detail::usm_to_string(inout_ptr_type),
+              ", native_stream: ",
+              stream->to_string(),
+              ", in_count: ",
+              in_count)
+
+    if ((in_ptr_type != sycl::usm::alloc::device) && (inout_ptr_type != sycl::usm::alloc::device)) {
+        return ccl_comp_reduce_regular(
+            in_buf, in_count, inout_buf, out_count, dtype, reduction, reduction_fn, context);
+    }
+
+    void* host_in_buf = (void*)in_buf;
+    void* host_inout_buf = inout_buf;
+    size_t bytes = in_count * dtype.size();
+
+    if (in_ptr_type == sycl::usm::alloc::device) {
+        host_in_buf = CCL_MALLOC(bytes, "host_in_buf");
+        q->memcpy(host_in_buf, in_buf, bytes).wait();
+    }
+
+    if (inout_ptr_type == sycl::usm::alloc::device) {
+        host_inout_buf = CCL_MALLOC(bytes, "host_inout_buf");
+        q->memcpy(host_inout_buf, inout_buf, bytes).wait();
+    }
+
+    ccl_comp_reduce_regular(
+        host_in_buf, in_count, host_inout_buf, out_count, dtype, reduction, reduction_fn, context);
+
+    if (host_in_buf != in_buf) {
+        CCL_FREE(host_in_buf);
+    }
+
+    if (host_inout_buf != inout_buf) {
+        q->memcpy(inout_buf, host_inout_buf, bytes).wait();
+        CCL_FREE(host_inout_buf);
+    }
+
+    return ccl::status::success;
+
+#else /* CCL_ENABLE_SYCL */
+    return ccl_comp_reduce_regular(
+        in_buf, in_count, inout_buf, out_count, dtype, reduction, reduction_fn, context);
+#endif /* CCL_ENABLE_SYCL */
+}
+
 ccl::status ccl_comp_batch_reduce(const void* in_buf,
                                   const std::vector<size_t>& offsets,
                                   size_t in_count,
@@ -118,28 +193,28 @@ ccl::status ccl_comp_batch_reduce(const void* in_buf,
         for (size_t i = 1; i < offsets.size(); i++) {
             ccl_convert_bf16_to_fp32_arrays(
                 (char*)in_buf + dtype.size() * offsets[i], tmp, in_count);
-            ccl_comp_reduce(tmp,
-                            in_count,
-                            acc,
-                            out_count,
-                            ccl::global_data::get().dtypes->get(ccl::datatype::float32),
-                            reduction,
-                            reduction_fn,
-                            context);
+            ccl_comp_reduce_regular(tmp,
+                                    in_count,
+                                    acc,
+                                    out_count,
+                                    ccl::global_data::get().dtypes->get(ccl::datatype::float32),
+                                    reduction,
+                                    reduction_fn,
+                                    context);
         }
 
         ccl_convert_fp32_to_bf16_arrays(acc, inout_buf, in_count);
     }
     else {
         for (size_t i = 1; i < offsets.size(); i++) {
-            ccl_comp_reduce((char*)in_buf + dtype.size() * offsets[i],
-                            in_count,
-                            inout_buf,
-                            out_count,
-                            dtype,
-                            reduction,
-                            reduction_fn,
-                            context);
+            ccl_comp_reduce_regular((char*)in_buf + dtype.size() * offsets[i],
+                                    in_count,
+                                    inout_buf,
+                                    out_count,
+                                    dtype,
+                                    reduction,
+                                    reduction_fn,
+                                    context);
         }
     }
 

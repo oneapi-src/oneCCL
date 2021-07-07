@@ -175,4 +175,3 @@ ccl::reduction get_ccl_reduction(const test_param& param);
 void init_test_dims();
 void init_test_params();
 void print_err_message(char* err_message, std::ostream& output);
-void mpi_finalize();

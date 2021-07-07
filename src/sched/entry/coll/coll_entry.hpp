@@ -15,12 +15,13 @@
 */
 #pragma once
 
+#include "common/global/global.hpp"
+#include "comp/comp.hpp"
 #include "sched/entry/coll/coll_entry_param.hpp"
 #include "sched/entry/entry.hpp"
 
 class coll_entry : public sched_entry,
                    public postponed_fields<coll_entry,
-                                           ccl_sched_entry_field_buf,
                                            ccl_sched_entry_field_send_buf,
                                            ccl_sched_entry_field_recv_buf,
                                            ccl_sched_entry_field_cnt,
@@ -53,10 +54,6 @@ public:
         return class_name();
     }
 
-    ccl_buffer& get_field_ref(field_id_t<ccl_sched_entry_field_buf> id) {
-        return param.buf;
-    }
-
     ccl_buffer& get_field_ref(field_id_t<ccl_sched_entry_field_send_buf> id) {
         return param.send_buf;
     }
@@ -84,8 +81,6 @@ protected:
                            ccl::global_data::get().dtypes->name(param.dtype),
                            ", coll_type ",
                            ccl_coll_type_to_str(param.ctype),
-                           ", buf ",
-                           param.buf,
                            ", send_buf ",
                            param.send_buf,
                            ", recv_buf ",

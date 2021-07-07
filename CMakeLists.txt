@@ -29,8 +29,8 @@ include(${PROJECT_SOURCE_DIR}/cmake/helpers.cmake)
 
 check_compiler_version()
 
-#set default build types.
-#Available build types are: Debug, Release, RelWithDebInfo and MinSizeRel
+#set default build type
+#available build types are: Debug, Release, RelWithDebInfo and MinSizeRel
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
@@ -46,7 +46,8 @@ endif()
 
 option(BUILD_EXAMPLES "Build examples" TRUE)
 option(BUILD_FT "Build functional tests" TRUE)
-option(BUILD_UT "Build unit tests" TRUE)
+option(BUILD_UT "Build unit tests" FALSE)
+option(BUILD_CONFIG "Build cmake configs" TRUE)
 
 option(USE_CODECOV_FLAGS "Calculate code coverage" FALSE)
 option(WITH_ASAN "Use address sanitizer, can only be used in Debug build" FALSE)
@@ -66,6 +67,7 @@ message(STATUS "CXX compiler : ${CMAKE_CXX_COMPILER}")
 message(STATUS "Build examples: ${BUILD_EXAMPLES}")
 message(STATUS "Build functional tests: ${BUILD_FT}")
 message(STATUS "Build unit tests: ${BUILD_UT}")
+message(STATUS "Build cmake configs: ${BUILD_CONFIG}")
 
 add_definitions(-DCCL_C_COMPILER="${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 add_definitions(-DCCL_CXX_COMPILER="${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
@@ -89,17 +91,33 @@ set(CCL_INSTALL_KERNELS "${CMAKE_INSTALL_PREFIX}/lib/kernels")
 
 set(CCL_UNIT_TESTS_BUILD "${CMAKE_BINARY_DIR}/tests/unit")
 
-set(MPI_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/mpi/include/")
-set(MPI_LIB_DIR "${PROJECT_SOURCE_DIR}/mpi/lib/")
+
+# setup dependency directories
+
+set(DEPS_DIR "${PROJECT_SOURCE_DIR}/deps")
+
+set(MPI_INCLUDE_DIR "${DEPS_DIR}/mpi/include/")
+set(MPI_LIB_DIR "${DEPS_DIR}/mpi/lib/")
 if ( "${LIBFABRIC_DIR}" STREQUAL "")
-    set(LIBFABRIC_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/ofi/include")
-    set(LIBFABRIC_LIB_DIR "${PROJECT_SOURCE_DIR}/ofi/lib/")
+    set(LIBFABRIC_INCLUDE_DIR "${DEPS_DIR}/ofi/include")
+    set(LIBFABRIC_LIB_DIR "${DEPS_DIR}/ofi/lib/")
 else()
     set(LIBFABRIC_INCLUDE_DIR "${LIBFABRIC_DIR}/include/")
     set(LIBFABRIC_LIB_DIR "${LIBFABRIC_DIR}/lib")
 endif()
+set(HWLOC_INCLUDE_DIR "${DEPS_DIR}/hwloc/include/")
+set(HWLOC_LIB_DIR "${DEPS_DIR}/hwloc/lib/")
+
+message(STATUS "MPI_INCLUDE_DIR: ${MPI_INCLUDE_DIR}")
+message(STATUS "MPI_LIB_DIR: ${MPI_LIB_DIR}")
+message(STATUS "LIBFABRIC_LIB_DIR: ${LIBFABRIC_LIB_DIR}")
+message(STATUS "LIBFABRIC_INCLUDE_DIR: ${LIBFABRIC_INCLUDE_DIR}")
+message(STATUS "HWLOC_INCLUDE_DIR: ${HWLOC_INCLUDE_DIR}")
+message(STATUS "HWLOC_LIB_DIR: ${HWLOC_LIB_DIR}")
+
 include_directories(${MPI_INCLUDE_DIR})
 include_directories(${LIBFABRIC_INCLUDE_DIR})
+
 link_directories(${MPI_LIB_DIR})
 link_directories(${LIBFABRIC_LIB_DIR})
 
@@ -114,26 +132,31 @@ if (${CMAKE_VERSION} VERSION_LESS 3.1)
     set(C_COMPILER_FLAGS "-std=gnu99")
 endif()
 
+# special flags for CCL library only
+set(SRC_C_FLAGS "")
+set(SRC_CXX_FLAGS "")
+set(SRC_SHARED_LINKER_FLAGS "")
+
 #common settings of security options
 if(USE_SECURITY_FLAGS)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wformat -Wformat-security -D_FORTIFY_SOURCE=2 -fstack-protector")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wformat -Wformat-security -D_FORTIFY_SOURCE=2 -fstack-protector")
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fPIE -fPIC -z noexecstack -z relro -z now")
+    set(SRC_C_FLAGS "${SRC_C_FLAGS} -Wformat -Wformat-security -D_FORTIFY_SOURCE=2 -fstack-protector")
+    set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -Wformat -Wformat-security -D_FORTIFY_SOURCE=2 -fstack-protector")
+    set(SRC_SHARED_LINKER_FLAGS "${SRC_SHARED_LINKER_FLAGS} -fPIE -fPIC -z noexecstack -z relro -z now")
     if(${CMAKE_C_COMPILER_ID} STREQUAL "GNU" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
         if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.9)
-            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fstack-protector-strong")
-            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fstack-protector-strong")
+            set(SRC_C_FLAGS "${SRC_C_FLAGS} -fstack-protector-strong")
+            set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -fstack-protector-strong")
         endif()
     endif()
 endif()
 
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--version-script=${PROJECT_SOURCE_DIR}/ccl.map")
+set(SRC_SHARED_LINKER_FLAGS "${SRC_SHARED_LINKER_FLAGS} -Wl,--version-script=${PROJECT_SOURCE_DIR}/ccl.map")
 
 if(${CMAKE_C_COMPILER_ID} STREQUAL "Intel" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
-	if (USE_CODECOV_FLAGS)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -prof-gen=srcpos -prof-src-root-cwd")
-		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -prof-gen=srcpos -prof-src-root-cwd")
-	endif()
+    if (USE_CODECOV_FLAGS)
+        set(SRC_C_FLAGS "${SRC_C_FLAGS} -prof-gen=srcpos -prof-src-root-cwd")
+        set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -prof-gen=srcpos -prof-src-root-cwd")
+    endif()
 endif()
 
 #TODO: add -Wextra to c/cxx flags
@@ -155,37 +178,25 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(TRY_ENABLE_SYCL_L0 ON)
 
+set(COMMON_CMAKE_DIR ${PROJECT_SOURCE_DIR}/cmake)
 if (COMPUTE_BACKEND)
-    activate_compute_backend("${CMAKE_CURRENT_LIST_DIR}/cmake" ${COMPUTE_BACKEND})
-    if (NOT COMPUTE_BACKEND_TARGET_NAME)
-        message(FATAL_ERROR "Failed to find requested compute runtime: ${COMPUTE_BACKEND}")
-    endif()
-    message(STATUS "COMPUTE_BACKEND_TARGET_NAME: ${COMPUTE_BACKEND_TARGET_NAME}")
-
-	if (${COMPUTE_BACKEND_TARGET_NAME} STREQUAL "Intel::SYCL" OR ${COMPUTE_BACKEND_TARGET_NAME} STREQUAL "Intel::SYCL_level_zero")
-		option (CCL_ENABLE_SYCL "Enable CCL SYCL runtime" ON)
-		message(STATUS "Enable CCL SYCL runtime")
-		execute_process(COMMAND dpcpp -v
-			OUTPUT_VARIABLE DPCPP_VERSION
-			ERROR_VARIABLE DPCPP_VERSION
-			OUTPUT_STRIP_TRAILING_WHITESPACE
-			ERROR_STRIP_TRAILING_WHITESPACE
-		)
-		message(STATUS "DPC++ compiler version:\n" "${DPCPP_VERSION}")
-	endif()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMPUTE_BACKEND_FLAGS}")
-    if (${COMPUTE_BACKEND_TARGET_NAME} STREQUAL "Intel::SYCL_level_zero" OR ${COMPUTE_BACKEND_TARGET_NAME} STREQUAL "ze_loader")
-        set(MULTI_GPU_SUPPORT ON)
-    endif()
-    if (MULTI_GPU_SUPPORT)
-        message(STATUS "Enable multi GPU support using L0")
-    endif()
+    message(STATUS "COMPUTE_BACKEND: ${COMPUTE_BACKEND}")
+    set_compute_backend(${COMMON_CMAKE_DIR})
 endif()
 
 if(${CMAKE_C_COMPILER_ID} STREQUAL "GNU" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
     if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0)
         #c++17 introduces algined new operator, use it
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -faligned-new")
+    endif()
+endif()
+
+# Clang doesn't automatically detects ninja processes as supporting colored output
+# due to the way they are spawned. In order to fix the issue we need to use the option
+# to force colored output
+if(${CMAKE_GENERATOR} STREQUAL "Ninja")
+    if (${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
+        add_compile_options(-fcolor-diagnostics)
     endif()
 endif()
 
@@ -203,7 +214,7 @@ set(CCL_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/src)
 enable_testing()
 
 set(EXTERNAL_LIBS "")
-set(EXAMPLES_INC_DIRS ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/examples/include ${PROJECT_SOURCE_DIR}/mpi/include)
+set(EXAMPLES_INC_DIRS ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/examples/include ${MPI_INCLUDE_DIR})
 
 # allow `deprecated`
 set(CMAKE_CLANG_FLAGS "${CMAKE_CLANG_FLAGS}")
@@ -223,12 +234,14 @@ install(PROGRAMS ${PROJECT_SOURCE_DIR}/LICENSE DESTINATION ${CCL_INSTALL_LICENSE
 
 # copy kernels
 if(COMPUTE_BACKEND AND EXISTS "${PROJECT_SOURCE_DIR}/src/kernels")
-    file(GLOB spv_kernels "${PROJECT_SOURCE_DIR}/src/kernels/ring_*.spv")
-    install(PROGRAMS ${spv_kernels} DESTINATION ${CCL_INSTALL_KERNELS})
+file(GLOB spv_kernels "${PROJECT_SOURCE_DIR}/src/kernels/ring_*.spv")
+    install(PROGRAMS ${spv_kernels}
+            DESTINATION ${CCL_INSTALL_KERNELS}
+            PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ)
 endif()
 
 set(CCL_MAJOR_VERSION     "2021")
-set(CCL_MINOR_VERSION     "2")
+set(CCL_MINOR_VERSION     "3")
 set(CCL_UPDATE_VERSION    "0")
 set(CCL_PRODUCT_STATUS    "Gold")
 string(TIMESTAMP CCL_PRODUCT_BUILD_DATE "%Y-%m-%dT %H:%M:%SZ")
@@ -238,16 +251,16 @@ configure_file(${PROJECT_SOURCE_DIR}/include/oneapi/ccl/config.h.in "${CMAKE_CUR
 file(COPY "${CMAKE_CURRENT_BINARY_DIR}/include/oneapi/ccl/config.h" DESTINATION ${PROJECT_SOURCE_DIR}/include/oneapi/ccl)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/include)
 
-#generate oneCCLConfig*.cmake
-configure_file("cmake/templates/oneCCLConfig.cmake.in"
-               "${CCL_INSTALL_LIB}/cmake/oneCCL/oneCCLConfig.cmake"
-               COPYONLY)
-
 set(PROJECT_VERSION "${CCL_MAJOR_VERSION}.${CCL_MINOR_VERSION}.${CCL_UPDATE_VERSION}")
 
-configure_file("cmake/templates/oneCCLConfigVersion.cmake.in"
-               "${CCL_INSTALL_LIB}/cmake/oneCCL/oneCCLConfigVersion.cmake"
-               @ONLY)
+if (BUILD_CONFIG)
+    configure_file("cmake/templates/oneCCLConfig.cmake.in"
+                   "${CCL_INSTALL_LIB}/cmake/oneCCL/oneCCLConfig.cmake"
+                   COPYONLY)
+    configure_file("cmake/templates/oneCCLConfigVersion.cmake.in"
+                   "${CCL_INSTALL_LIB}/cmake/oneCCL/oneCCLConfigVersion.cmake"
+                   @ONLY)
+endif()
 
 #include other CMakeLists
 
@@ -267,6 +280,6 @@ if (BUILD_FT)
     add_subdirectory(tests/functional)
 endif()
 
-if (BUILD_UT)
-	#add_subdirectory(tests/unit)
+if (BUILD_UT AND EXISTS "${PROJECT_SOURCE_DIR}/tests/unit")
+    add_subdirectory(tests/unit)
 endif()

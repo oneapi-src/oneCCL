@@ -30,6 +30,27 @@
 #include "common/log/log.hpp"
 
 namespace native {
+
+bool event::wait(uint64_t nanosec) const {
+    (void)nanosec;
+    ze_result_t ret = zeEventHostSynchronize(handle, nanosec);
+    if (ret != ZE_RESULT_SUCCESS && ret != ZE_RESULT_NOT_READY) {
+        CCL_THROW("zeEventHostSynchronize, error: " + native::to_string(ret));
+    }
+    return ret == ZE_RESULT_SUCCESS;
+}
+
+ze_result_t event::status() const {
+    return zeEventQueryStatus(handle);
+}
+
+void event::signal() {
+    ze_result_t ret = zeEventHostSignal(handle);
+    if (ret != ZE_RESULT_SUCCESS) {
+        CCL_THROW("zeEventHostSignal, error: " + native::to_string(ret));
+    }
+}
+
 namespace detail {
 CCL_BE_API void copy_memory_sync_unsafe(void* dst,
                                         const void* src,
@@ -46,7 +67,7 @@ CCL_BE_API void copy_memory_sync_unsafe(void* dst,
     ze_command_queue_desc_t queue_description = device->get_default_queue_desc();
     //queue_description.mode = ZE_COMMAND_QUEUE_MODE_ASYNCHRONOUS;   TODO may be &= for flags???
 
-    auto queue = device->create_cmd_queue(ctx, queue_description);
+    auto& queue = device->get_cmd_queue(queue_description, ctx);
 
     //create list
     ze_command_list_desc_t list_description = device->get_default_list_desc();
@@ -96,6 +117,28 @@ CCL_BE_API void copy_memory_sync_unsafe(void* dst,
     memcpy(dst, src, size);
 }
 
+/*
+
+event<ccl_device, ccl_context>
+copy_memory_async_unsafe(void* dst,
+                             const void* src,
+                             size_t size,
+                             std::weak_ptr<ccl_device> device_weak,
+                             std::shared_ptr<ccl_context> ctx,
+                             queue<ccl_device, ccl_context>& q);
+event<ccl_device, ccl_context>
+copy_memory_async_unsafe(void* dst,
+                             const void* src,
+                             size_t size,
+                             std::weak_ptr<ccl_context> ctx_weak,
+                             std::shared_ptr<ccl_context> ctx,
+                             queue<ccl_device, ccl_context>& q)
+{
+    (void)q;
+    copy_memory_sync_unsafe(dst, src, size, ctx_weak, ctx);
+    event<ccl_device, ccl_context> e(h, get_ptr(), ctx);
+}
+*/
 } // namespace detail
 
 std::string get_build_log_string(const ze_module_build_log_handle_t& build_log) {

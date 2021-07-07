@@ -27,7 +27,7 @@ ccl_request::~ccl_request() {
     auto counter = completion_counter.load(std::memory_order_acquire);
     LOG_DEBUG("delete req ", this, " with counter ", counter);
     if (counter != 0 && !ccl::global_data::get().is_ft_enabled) {
-        LOG_ERROR("unexpected completion_counter ", counter);
+        LOG_WARN("unexpected completion_counter ", counter);
     }
 }
 

@@ -179,12 +179,6 @@ public:
         return event::create_from_native(native_event);
     }
 
-    template <class event_handle_type,
-              class = typename std::enable_if<is_event_supported<event_handle_type>()>::type>
-    event create_event(event_handle_type& native_event_handle, event::context_t& context) {
-        return event::create_from_native(native_event_handle, context);
-    }
-
     /******************** STREAM ********************/
 
     template <class native_stream_type,

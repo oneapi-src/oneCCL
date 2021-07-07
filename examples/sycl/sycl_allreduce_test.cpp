@@ -81,8 +81,7 @@ int main(int argc, char *argv[]) {
         });
     });
 
-    if (!handle_exception(q))
-        return -1;
+    /* do not wait completion of kernel, dependency will be resolved by sycl::buffer */
 
     /* invoke allreduce */
     ccl::allreduce(send_buf, recv_buf, count, ccl::reduction::sum, comm, stream).wait();

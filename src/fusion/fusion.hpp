@@ -60,6 +60,8 @@ public:
     ccl_fusion_manager(const ccl_fusion_manager& other) = delete;
     ccl_fusion_manager& operator=(const ccl_fusion_manager& other) = delete;
 
+    void reset();
+    bool can_reset();
     bool can_fuse(ccl_master_sched* sched);
     bool add(ccl_master_sched* sched);
     void execute();

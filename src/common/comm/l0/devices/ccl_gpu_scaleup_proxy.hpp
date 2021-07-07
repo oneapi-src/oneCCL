@@ -47,12 +47,8 @@ public:
     template <ccl_coll_type algo_type, ccl::group_split_type group, ccl::device_topology_type mode>
     using kernel_class_t = typename gpu_module_t<algo_type, group, mode>::main_class;
 
-    template <ccl_coll_type algo_type,
-              ccl::group_split_type group,
-              ccl::device_topology_type mode,
-              class kernel_params>
-    using gpu_kernel_t =
-        typename kernel_class_t<algo_type, group, mode>::template kernel_t<kernel_params>;
+    template <ccl_coll_type algo_type, ccl::group_split_type group, ccl::device_topology_type mode>
+    using gpu_kernel_t = typename kernel_class_t<algo_type, group, mode>::kernel_t;
 
     //using ctx_ptr = std::weak_ptr<scale_up_ctx_t>;
 
@@ -76,13 +72,11 @@ public:
 
     template <ccl_coll_type module_type,
               ccl::group_split_type group_id,
-              ccl::device_topology_type class_id,
-              class kernel_params>
-    gpu_kernel_t<module_type, group_id, class_id, kernel_params>& get_gpu_kernel() {
+              ccl::device_topology_type class_id>
+    gpu_kernel_t<module_type, group_id, class_id>& get_gpu_kernel(const coll_param_gpu& params) {
         this->template invoke<group_id, class_id>();
 
-        return wrapped_gpu_comm
-            .template get_gpu_kernel<module_type, group_id, class_id, kernel_params>();
+        return wrapped_gpu_comm.template get_gpu_kernel<module_type, group_id, class_id>(params);
     }
 
     template <ccl::group_split_type group_id, ccl::device_topology_type class_id>
@@ -90,17 +84,15 @@ public:
         return wrapped_gpu_comm.template get_comm_data<group_id, class_id>();
     }
 
-    template <class kernel_params,
-              ccl::group_split_type group_id,
+    template <ccl::group_split_type group_id,
               ccl::device_topology_type class_id,
               class gpu_entry,
               class = typename std::enable_if<group_id == ccl::group_split_type::cluster>::type>
-    gpu_kernel_t<gpu_entry::type(), group_id, class_id, kernel_params>& register_entry(
-        gpu_entry& entry) {
+    gpu_kernel_t<gpu_entry::type(), group_id, class_id>& register_entry(gpu_entry& entry) {
         const topology_addr<group_id, class_id>& comm_addr = get_comm_data<group_id, class_id>();
         LOG_DEBUG("entry: ", gpu_entry::class_name(), " registered on: ", comm_addr.to_string());
 
-        auto& main_func = get_gpu_kernel<gpu_entry::type(), group_id, class_id, kernel_params>();
+        auto& main_func = get_gpu_kernel<gpu_entry::type(), group_id, class_id>(entry.get_params());
         main_func.set_rank(comm_addr.rank);
         main_func.set_size(comm_addr.size);
         return main_func;
@@ -139,12 +131,8 @@ public:
     template <ccl_coll_type algo_type, ccl::group_split_type group, ccl::device_topology_type mode>
     using kernel_class_t = typename gpu_module_t<algo_type, group, mode>::main_class;
 
-    template <ccl_coll_type algo_type,
-              ccl::group_split_type group,
-              ccl::device_topology_type mode,
-              class kernel_params>
-    using gpu_kernel_t =
-        typename kernel_class_t<algo_type, group, mode>::template kernel_t<kernel_params>;
+    template <ccl_coll_type algo_type, ccl::group_split_type group, ccl::device_topology_type mode>
+    using gpu_kernel_t = typename kernel_class_t<algo_type, group, mode>::kernel_t;
 
     //using ctx_ptr = std::weak_ptr<scale_up_ctx_t>;
     using device_impl_t = ccl_numa_proxy<device_t>;
@@ -174,25 +162,21 @@ public:
 
     template <ccl_coll_type module_type,
               ccl::group_split_type group_id,
-              ccl::device_topology_type class_id,
-              class kernel_params>
-    gpu_kernel_t<module_type, group_id, class_id, kernel_params>& get_gpu_kernel() {
+              ccl::device_topology_type class_id>
+    gpu_kernel_t<module_type, group_id, class_id>& get_gpu_kernel(const coll_param_gpu& params) {
         this->template invoke<group_id>();
-        return wrapped_gpu_comm
-            .template get_gpu_kernel<module_type, group_id, class_id, kernel_params>();
+        return wrapped_gpu_comm.template get_gpu_kernel<module_type, group_id, class_id>(params);
     }
 
-    template <class kernel_params,
-              ccl::group_split_type group_id,
+    template <ccl::group_split_type group_id,
               ccl::device_topology_type class_id,
               class gpu_entry,
               class = typename std::enable_if<group_id == ccl::group_split_type::cluster>::type>
-    gpu_kernel_t<gpu_entry::type(), group_id, class_id, kernel_params>& register_entry(
-        gpu_entry& entry) {
+    gpu_kernel_t<gpu_entry::type(), group_id, class_id>& register_entry(gpu_entry& entry) {
         const topology_addr<group_id, class_id>& comm_addr = get_comm_data<group_id, class_id>();
         LOG_DEBUG("entry: ", gpu_entry::class_name(), " registered on: ", comm_addr.to_string());
 
-        auto& main_func = get_gpu_kernel<gpu_entry::type(), group_id, class_id, kernel_params>();
+        auto& main_func = get_gpu_kernel<gpu_entry::type(), group_id, class_id>(entry.get_params());
         main_func.set_rank(comm_addr.rank);
         main_func.set_size(comm_addr.size);
         return main_func;

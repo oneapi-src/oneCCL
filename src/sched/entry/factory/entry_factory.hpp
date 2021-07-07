@@ -15,24 +15,6 @@
 */
 #pragma once
 
-#include "sched/entry/factory/entry_factory.h"
-
-#include "sched/entry/send_entry.hpp"
-#include "sched/entry/recv_entry.hpp"
-#include "sched/entry/write_entry.hpp"
-#include "sched/entry/reduce_local_entry.hpp"
-#include "sched/entry/recv_reduce_entry.hpp"
-#include "sched/entry/copy_entry.hpp"
-#include "sched/entry/sync_entry.hpp"
-#include "sched/entry/prologue_entry.hpp"
-#include "sched/entry/epilogue_entry.hpp"
-#include "sched/entry/sparse_allreduce_completion_entry.hpp"
-#include "sched/entry/wait_value_entry.hpp"
-#include "sched/entry/function_entry.hpp"
-#include "sched/entry/probe_entry.hpp"
-#include "sched/entry/register_entry.hpp"
-#include "sched/entry/deregister_entry.hpp"
-#include "sched/entry/subsched_entry.hpp"
 #include "sched/entry/coll/coll_entry.hpp"
 #include "sched/entry/coll/direct/allgatherv_entry.hpp"
 #include "sched/entry/coll/direct/allreduce_entry.hpp"
@@ -43,9 +25,28 @@
 #include "sched/entry/coll/direct/reduce_entry.hpp"
 #include "sched/entry/coll/direct/reduce_scatter_entry.hpp"
 
+#include "sched/entry/factory/entry_factory.h"
+
+#include "sched/entry/copy/copy_entry.hpp"
 #ifdef CCL_ENABLE_SYCL
-#include "sched/entry/sycl_copy_entry.hpp"
+#include "sched/entry/copy/sycl_copy_entry.hpp"
 #endif /* CCL_ENABLE_SYCL */
+#include "sched/entry/deps_entry.hpp"
+#include "sched/entry/deregister_entry.hpp"
+#include "sched/entry/epilogue_entry.hpp"
+#include "sched/entry/function_entry.hpp"
+#include "sched/entry/probe_entry.hpp"
+#include "sched/entry/prologue_entry.hpp"
+#include "sched/entry/recv_entry.hpp"
+#include "sched/entry/recv_reduce_entry.hpp"
+#include "sched/entry/reduce_local_entry.hpp"
+#include "sched/entry/register_entry.hpp"
+#include "sched/entry/send_entry.hpp"
+#include "sched/entry/sparse_allreduce_completion_entry.hpp"
+#include "sched/entry/subsched_entry.hpp"
+#include "sched/entry/sync_entry.hpp"
+#include "sched/entry/wait_value_entry.hpp"
+#include "sched/entry/write_entry.hpp"
 
 #include "sched/sched.hpp"
 

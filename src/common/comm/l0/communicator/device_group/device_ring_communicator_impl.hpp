@@ -88,50 +88,14 @@ ccl::event device_group_ring_communicator::allreduce_impl(
     const ccl::stream::impl_value_t& stream,
     const ccl::allreduce_attr& attr,
     const ccl::vector_class<ccl::event>& deps) {
-    using namespace native;
-
-    static constexpr ccl::group_split_type group_id = base_t::topology_type();
-    static constexpr ccl::device_topology_type class_id = base_t::topology_class();
-
-    if (!is_ready()) {
-        throw ccl::exception(std::string(
-            "Device communicator for group_id: " + ::to_string(group_id) +
-            " is not ready yet. Not all сommunicators are created in group. Please create them before usage"));
-    }
-
-    size_t ring_index = 0;
-
-    int comm_rank = rank();
-    LOG_DEBUG("communicator for device idx: ",
-              get_device_path(),
-              ", rank idx: , ring_index: ",
-              comm_rank,
-              ring_index);
-
-    //TODO make const!
-    ccl_buffer send_entry_buffer(const_cast<buffer_type**>(&send_buf),
-                                 count * sizeof(buffer_type),
-                                 0,
-                                 ccl_buffer_type::INDIRECT);
-    ccl_buffer recv_entry_buffer(
-        &recv_buf, count * sizeof(buffer_type), 0, ccl_buffer_type::INDIRECT);
-
-    using community_t = typename device_community_container<class_id>::element_type;
-    community_t community = device_community_impl.get_topology(ring_index);
-
-    return do_collective_op_reductions<buffer_type,
-                                       group_id,
-                                       class_id,
-                                       native::l0_allreduce_typed_entry>(reduction,
-                                                                         communication_device,
-                                                                         ctx,
-                                                                         community,
-                                                                         this->get_native_context(),
-                                                                         send_entry_buffer,
-                                                                         recv_entry_buffer,
-                                                                         count,
-                                                                         reduction,
-                                                                         stream);
+    return allreduce_impl(static_cast<const void*>(send_buf),
+                          static_cast<void*>(recv_buf),
+                          count,
+                          ccl::native_type_info<buffer_type>::dtype,
+                          reduction,
+                          stream,
+                          attr,
+                          deps);
 }
 
 template <class buffer_type>

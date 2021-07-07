@@ -41,12 +41,8 @@ public:
     template <ccl_coll_type algo_type, ccl::group_split_type group, ccl::device_topology_type mode>
     using kernel_class_t = typename gpu_module_t<algo_type, group, mode>::main_class;
 
-    template <ccl_coll_type algo_type,
-              ccl::group_split_type group,
-              ccl::device_topology_type mode,
-              class kernel_params>
-    using gpu_kernel_t =
-        typename kernel_class_t<algo_type, group, mode>::template kernel_t<kernel_params>;
+    template <ccl_coll_type algo_type, ccl::group_split_type group, ccl::device_topology_type mode>
+    using gpu_kernel_t = typename kernel_class_t<algo_type, group, mode>::kernel_t;
 
     static constexpr const char* name_impl() {
         return "CONCURRENT_GPU";
@@ -73,11 +69,10 @@ public:
 
     template <ccl_coll_type module_type,
               ccl::group_split_type group_id,
-              ccl::device_topology_type class_id,
-              class kernel_params>
-    gpu_kernel_t<module_type, group_id, class_id, kernel_params>& get_gpu_kernel() {
-        return next_thread_gpu_comm
-            .template get_gpu_kernel<module_type, group_id, class_id, kernel_params>();
+              ccl::device_topology_type class_id>
+    gpu_kernel_t<module_type, group_id, class_id>& get_gpu_kernel(const coll_param_gpu& params) {
+        return next_thread_gpu_comm.template get_gpu_kernel<module_type, group_id, class_id>(
+            params);
     }
 
     device_t& get_impl_device() {

@@ -197,7 +197,7 @@ void ccl_unordered_coll_manager::start_coordination(const std::string& match_id)
 
     ccl_coll_entry_param match_id_size_param{};
     match_id_size_param.ctype = ccl_coll_bcast;
-    match_id_size_param.buf = ccl_buffer(&ctx->match_id_size, sizeof(size_t));
+    match_id_size_param.recv_buf = ccl_buffer(&ctx->match_id_size, sizeof(size_t));
     match_id_size_param.count = sizeof(size_t);
     match_id_size_param.dtype = ccl_datatype_int8;
     match_id_size_param.root = CCL_UNORDERED_COLL_COORDINATOR;
@@ -209,14 +209,14 @@ void ccl_unordered_coll_manager::start_coordination(const std::string& match_id)
     /* 2. broadcast match_id_value */
     ccl_coll_entry_param match_id_val_param{};
     match_id_val_param.ctype = ccl_coll_bcast;
-    match_id_val_param.buf = ccl_buffer();
+    match_id_val_param.recv_buf = ccl_buffer();
     match_id_val_param.count = 0;
     match_id_val_param.dtype = ccl_datatype_int8;
     match_id_val_param.root = CCL_UNORDERED_COLL_COORDINATOR;
     match_id_val_param.comm = coll_param.comm;
     auto entry = entry_factory::make_entry<coll_entry>(service_sched.get(), match_id_val_param);
 
-    entry->set_field_fn<ccl_sched_entry_field_buf>(
+    entry->set_field_fn<ccl_sched_entry_field_recv_buf>(
         [](const void* fn_ctx, void* field_ptr) {
             auto ctx = static_cast<ccl_unordered_coll_ctx*>(const_cast<void*>(fn_ctx));
             if (ctx->service_sched->coll_param.comm->rank() != CCL_UNORDERED_COLL_COORDINATOR) {
@@ -244,7 +244,7 @@ void ccl_unordered_coll_manager::start_coordination(const std::string& match_id)
     /* 3. broadcast reserved comm_id */
     ccl_coll_entry_param reserved_comm_id_param{};
     reserved_comm_id_param.ctype = ccl_coll_bcast;
-    reserved_comm_id_param.buf = ccl_buffer(&ctx->reserved_comm_id, sizeof(ccl_comm_id_t));
+    reserved_comm_id_param.recv_buf = ccl_buffer(&ctx->reserved_comm_id, sizeof(ccl_comm_id_t));
     reserved_comm_id_param.count = sizeof(ccl_comm_id_t);
     reserved_comm_id_param.dtype = ccl_datatype_int8;
     reserved_comm_id_param.root = CCL_UNORDERED_COLL_COORDINATOR;
