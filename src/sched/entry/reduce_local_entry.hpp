@@ -48,7 +48,8 @@ public:
         size_t bytes = in_cnt * dtype.size();
         size_t offset = inout_buf.get_offset();
         const ccl::fn_context context = { sched->coll_attr.match_id.c_str(), offset };
-        ccl::status comp_status = ccl_comp_reduce(in_buf.get_ptr(bytes),
+        ccl::status comp_status = ccl_comp_reduce(sched,
+                                                  in_buf.get_ptr(bytes),
                                                   in_cnt,
                                                   inout_buf.get_ptr(bytes),
                                                   out_cnt,

@@ -48,10 +48,13 @@ __attribute__((__always_inline__)) inline std::set<ccl_fp16_impl_type> ccl_fp16_
 
     /* AVX512 capabilities for FP16 implementation */
     /* CPUID.(EAX=07H, ECX=0):EBX.AVX512F  [bit 16] */
+    /* CPUID.(EAX=07H, ECX=0):EBX.AVX512BW [bit 30] */
+    /* CPUID.(EAX=07H, ECX=0):EBX.AVX512VL [bit 31] */
     __asm__ __volatile__("cpuid"
                          : "=a"(reg[0]), "=b"(reg[1]), "=c"(reg[2]), "=d"(reg[3])
                          : "a"(7), "c"(0));
-    is_avx512f_enabled = ((reg[1] & (1 << 16)) >> 16);
+    is_avx512f_enabled =
+        ((reg[1] & (1 << 16)) >> 16) & ((reg[1] & (1 << 30)) >> 30) & ((reg[1] & (1 << 31)) >> 31);
 
     if (is_avx512f_enabled)
         result.insert(ccl_fp16_avx512f);

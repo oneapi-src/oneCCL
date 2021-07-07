@@ -47,6 +47,10 @@ public:
     ccl::status start(int affinity);
     ccl::status stop();
 
+    virtual bool can_reset() {
+        return true;
+    }
+
     size_t get_idx() {
         return idx;
     }

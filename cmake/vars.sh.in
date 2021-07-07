@@ -52,6 +52,17 @@ if [ "$_vars_this_script_name" = "$(_vars_get_proc_name "$0")" ] ; then
     return 255 2>/dev/null || exit 255
 fi
 
+prepend_path() (
+  path_to_add="$1"
+  path_is_now="$2"
+
+  if [ "" = "${path_is_now}" ] ; then   # avoid dangling ":"
+    printf "%s" "${path_to_add}"
+  else
+    printf "%s" "${path_to_add}:${path_is_now}"
+  fi
+)
+
 vars_script_name=""
 vars_script_shell="$(ps -p "$$" -o comm=)"
 
@@ -87,6 +98,7 @@ if [ "" = "$vars_script_name" ] ; then
     >&2 echo "   ERROR: Unable to proceed: possible causes listed below."
     >&2 echo "   This script must be sourced. Did you execute or source this script?" ;
     >&2 echo "   Unrecognized/unsupported shell (supported: bash, zsh, ksh, m/lksh, dash)." ;
+    >&2 echo "   May fail in dash if you rename this script (assumes \"vars.sh\")." ;
     >&2 echo "   Can be caused by sourcing from ZSH version 4.x or older." ;
     return 255 2>/dev/null || exit 255
 fi
@@ -95,6 +107,6 @@ WORK_DIR=$(get_script_path "${vars_script_name:-}")
 
 CCL_ROOT="$(cd "${WORK_DIR}"/../; pwd -P)"; export CCL_ROOT
 
-CPATH="${CCL_ROOT}/include/${CPATH+:${CPATH}}"; export CPATH
-LIBRARY_PATH="${CCL_ROOT}/lib/${LIBRARY_PATH+:${LIBRARY_PATH}}"; export LIBRARY_PATH
-LD_LIBRARY_PATH="${CCL_ROOT}/lib/${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}"; export LD_LIBRARY_PATH
+CPATH=$(prepend_path "${CCL_ROOT}/include" "${CPATH:-}"); export CPATH
+LIBRARY_PATH=$(prepend_path "${CCL_ROOT}/lib" "${LIBRARY_PATH:-}"); export LIBRARY_PATH
+LD_LIBRARY_PATH=$(prepend_path "${CCL_ROOT}/lib" "${LD_LIBRARY_PATH:-}"); export LD_LIBRARY_PATH

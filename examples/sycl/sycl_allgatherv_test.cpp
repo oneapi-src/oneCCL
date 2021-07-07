@@ -87,23 +87,18 @@ int main(int argc, char *argv[]) {
     }
 
     /* open send_buf and modify it on the device side */
-    auto e = q.submit([&](auto &h) {
+    q.submit([&](auto &h) {
         accessor send_buf_acc(send_buf, h, write_only);
         h.parallel_for(count, [=](auto id) {
             send_buf_acc[id] += 1;
         });
     });
 
-    /* create dependency vector */
-    vector<ccl::event> events;
-    //events.push_back(ccl::create_event(e));
-
     if (!handle_exception(q))
         return -1;
 
     /* invoke allagtherv */
-    auto attr = ccl::create_operation_attr<ccl::allgatherv_attr>();
-    ccl::allgatherv(send_buf, count, recv_buf, recv_counts, comm, stream, attr, events).wait();
+    ccl::allgatherv(send_buf, count, recv_buf, recv_counts, comm, stream).wait();
 
     /* open recv_buf and check its correctness on the device side */
     q.submit([&](auto &h) {

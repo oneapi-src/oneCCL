@@ -74,15 +74,6 @@ event CCL_API event::create_from_native(native_t& native_event) {
     return impl_value_t(new native_event_impl(std::move(ev)));
 }
 
-event CCL_API event::create_from_native(native_handle_t native_event_handle, context_t context) {
-    auto version = utils::get_library_version();
-
-    auto ev = std::unique_ptr<ccl_event>(new ccl_event(native_event_handle, context, version));
-    ev->build_from_params();
-
-    return impl_value_t(new native_event_impl(std::move(ev)));
-}
-
 } // namespace v1
 
 } // namespace ccl

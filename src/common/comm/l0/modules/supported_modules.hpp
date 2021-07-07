@@ -47,4 +47,6 @@ using supported_topology_device_modules = std::tuple<
 template <template <ccl_coll_type, ccl::group_split_type, ccl::device_topology_type>
           class module_impl>
 using supported_device_modules = supported_topology_device_modules<module_impl, CCL_COLL_TYPE_LIST>;
+
+using supported_device_modules1 = std::array<int, 1>;
 } // namespace native

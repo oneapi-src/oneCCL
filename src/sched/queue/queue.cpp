@@ -77,11 +77,14 @@ ccl_sched_queue::ccl_sched_queue(size_t idx, std::vector<size_t> atl_eps)
 }
 
 ccl_sched_queue::~ccl_sched_queue() {
-    CCL_ASSERT(bins.empty(), "unexpected bins size ", bins.size(), ", expected 0");
+    if (!bins.empty())
+        LOG_WARN("unexpected bins size ", bins.size(), ", expected 0");
 
-    CCL_ASSERT(max_priority == 0, "unexpected max_priority ", max_priority, ", expected 0");
+    if (max_priority != 0)
+        LOG_WARN("unexpected max_priority ", max_priority, ", expected 0");
 
-    CCL_ASSERT(!cached_max_priority_bin);
+    if (cached_max_priority_bin)
+        LOG_WARN("unexpected cached_max_priority_bin");
 }
 
 void ccl_sched_queue::add(ccl_sched* sched) {

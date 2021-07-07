@@ -27,6 +27,7 @@ namespace native {
 
 struct ccl_device;
 namespace detail {
+
 void copy_memory_sync_unsafe(void* dst,
                              const void* src,
                              size_t size,
@@ -37,6 +38,19 @@ void copy_memory_sync_unsafe(void* dst,
                              size_t size,
                              std::weak_ptr<ccl_context> ctx_weak,
                              std::shared_ptr<ccl_context> ctx);
+
+event copy_memory_async_unsafe(void* dst,
+                               const void* src,
+                               size_t size,
+                               std::weak_ptr<ccl_device> device_weak,
+                               std::shared_ptr<ccl_context> ctx,
+                               queue<ccl_device, ccl_context>& q);
+event copy_memory_async_unsafe(void* dst,
+                               const void* src,
+                               size_t size,
+                               std::weak_ptr<ccl_context> ctx_weak,
+                               std::shared_ptr<ccl_context> ctx,
+                               queue<ccl_device, ccl_context>& q);
 } // namespace detail
 
 template <TEMPLATE_DECL_ARG>
@@ -66,7 +80,82 @@ template <TEMPLATE_DECL_ARG>
 size_t memory<TEMPLATE_DEF_ARG>::size() const noexcept {
     return count() * sizeof(elem_t);
 }
+/*
+// async operations
+template <TEMPLATE_DECL_ARG>
+typename memory<TEMPLATE_DEF_ARG>::event_t
+memory<TEMPLATE_DEF_ARG>::enqueue_write_async(
+        const std::vector<elem_t>& src,
+        queue<resource_owner, cl_context>& queue)
+{
+    if (count() < src.size()) {
+        throw std::length_error(
+            std::string(__PRETTY_FUNCTION__) +
+            "\nCannot process 'enqueue_write_async', because memory has not enough size" +
+            ", expected: " + std::to_string(count()) +
+            ", requested: " + std::to_string(src.size()));
+    }
 
+    TODO
+}
+
+template <TEMPLATE_DECL_ARG>
+typename memory<TEMPLATE_DEF_ARG>::event_t
+enqueue_write_async(typename std::vector<elem_t>::const_iterator first,
+                    typename std::vector<elem_t>::const_iterator last,
+                    queue<resource_owner, cl_context>& queue)
+{
+    size_t requested_size = std::distance(first, last);
+    if (count() < requested_size) {
+        throw std::length_error(
+            std::string(__PRETTY_FUNCTION__) +
+            "\nCannot process 'enqueue_write_async', because memory has not enough size" +
+            ", expected: " + std::to_string(count()) +
+            ", requested range size: " + std::to_string(requested_size));
+    }
+    TODO
+}
+
+template <TEMPLATE_DECL_ARG>
+template <int N>
+typename memory<TEMPLATE_DEF_ARG>::event_t
+memory<TEMPLATE_DEF_ARG>::enqueue_write_async(
+        const std::array<elem_t, N>& src,
+        queue<resource_owner, cl_context>& queue)
+{
+    if (count() < N) {
+        throw std::length_error(
+            std::string(__PRETTY_FUNCTION__) +
+            "\nCannot process 'enqueue_write_async', because memory has not enough size" +
+            ", expected: " + std::to_string(count()) +
+            ", requested array count: " + std::to_string(N));
+    }
+
+    TODO
+}
+
+template <TEMPLATE_DECL_ARG>
+typename memory<TEMPLATE_DEF_ARG>::event_t
+memory<TEMPLATE_DEF_ARG>::enqueue_write_async(const elem_t* src, size_t src_elem_count, queue<resource_owner, cl_context>& queue)
+{
+    if (!src) {
+        throw std::invalid_argument(
+            std::string(__PRETTY_FUNCTION__) +
+            "\nCannot process 'enqueue_write_async', because 'src' is 'nullptr'");
+    }
+
+    if (count() < src_elem_count) {
+        throw std::length_error(
+            std::string(__PRETTY_FUNCTION__) +
+            "\nCannot process 'enqueue_write_async', because memory has not enough size" +
+            ", expected: " + std::to_string(count()) +
+            ", requested c-array count: " + std::to_string(src_elem_count * sizeof(elem_t)));
+    }
+
+    TODO
+}
+*/
+// sync operations
 template <TEMPLATE_DECL_ARG>
 void memory<TEMPLATE_DEF_ARG>::enqueue_write_sync(const std::vector<elem_t>& src) {
     if (count() < src.size()) {
@@ -135,11 +224,11 @@ void memory<TEMPLATE_DEF_ARG>::enqueue_write_sync(const elem_t* src, size_t src_
             "\nCannot process 'enqueue_write_sync', because 'src' is 'nullptr'");
     }
 
-    if (count() < src_elem_count * sizeof(elem_t)) {
+    if (size() < src_elem_count * sizeof(elem_t)) {
         throw std::length_error(
             std::string(__PRETTY_FUNCTION__) +
             "\nCannot process 'enqueue_write_sync', because memory has not enough size" +
-            ", expected: " + std::to_string(count()) +
+            ", expected: " + std::to_string(size()) +
             ", requested: " + std::to_string(src_elem_count * sizeof(elem_t)));
     }
 

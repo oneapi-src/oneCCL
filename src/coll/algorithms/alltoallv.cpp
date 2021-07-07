@@ -40,6 +40,17 @@ ccl::status ccl_coll_build_direct_alltoallv(ccl_sched* sched,
     return ccl::status::success;
 }
 
+ccl::status ccl_coll_add_scatter_alltoallv_plain_barriers(std::vector<ccl_sched*>& scheds) {
+    if (ccl::global_data::env().alltoall_scatter_plain) {
+        ssize_t max_ops = ccl::global_data::env().alltoall_scatter_max_ops;
+        for (auto s : scheds) {
+            if (s->entries_count() % max_ops == 0)
+                s->add_barrier();
+        }
+    }
+    return ccl::status::success;
+}
+
 ccl::status ccl_coll_add_scatter_alltoallv_barriers(std::vector<ccl_sched*>& scheds,
                                                     size_t sched_idx) {
     ssize_t max_ops = ccl::global_data::env().alltoall_scatter_max_ops;
@@ -48,12 +59,7 @@ ccl::status ccl_coll_add_scatter_alltoallv_barriers(std::vector<ccl_sched*>& sch
         if (scheds[sched_idx]->entries_count() % max_ops == 0)
             scheds[sched_idx]->add_barrier();
 
-        if (ccl::global_data::env().alltoall_scatter_plain) {
-            for (auto s : scheds) {
-                if (s->entries_count() % max_ops == 0)
-                    s->add_barrier();
-            }
-        }
+        ccl_coll_add_scatter_alltoallv_plain_barriers(scheds);
     }
 
     return ccl::status::success;
@@ -277,8 +283,6 @@ ccl::status ccl_coll_build_scatter_alltoallv(ccl_master_sched* main_sched,
 
         entry_factory::make_chunked_recv_entry(
             scheds, sched_idx, recv_buf, recv_counts[src], dtype, src, comm);
-
-        ccl_coll_add_scatter_alltoallv_barriers(scheds, sched_idx);
     }
 
     for (int idx = 0; idx < comm_size; idx++) {
@@ -300,8 +304,6 @@ ccl::status ccl_coll_build_scatter_alltoallv(ccl_master_sched* main_sched,
                                                dtype,
                                                dst,
                                                comm);
-
-        ccl_coll_add_scatter_alltoallv_barriers(scheds, sched_idx);
     }
 
     if (!inplace)
@@ -344,6 +346,13 @@ ccl::status ccl_coll_build_scatter_barrier_alltoallv(ccl_master_sched* main_sche
     std::vector<size_t> send_counts, recv_counts, send_offsets, recv_offsets;
     size_t total_send_count = 0, total_recv_count = 0;
     size_t total_send_bytes = 0, total_recv_bytes = 0;
+
+    ssize_t max_ops = ccl::global_data::env().alltoall_scatter_max_ops;
+    if (max_ops != CCL_ENV_SIZET_NOT_SPECIFIED) {
+        for (size_t idx = 0; idx < sched_count; idx++) {
+            scheds[idx]->flow_control.set_max_credits(max_ops);
+        }
+    }
 
     bool inplace =
         (coll_param.send_buf && (coll_param.send_buf == coll_param.recv_buf)) ? true : false;
@@ -419,8 +428,6 @@ ccl::status ccl_coll_build_scatter_barrier_alltoallv(ccl_master_sched* main_sche
 
         entry_factory::make_chunked_recv_entry(
             recv_scheds, sched_idx, recv_buf, recv_counts[src], dtype, src, comm);
-
-        ccl_coll_add_scatter_alltoallv_barriers(recv_scheds, sched_idx);
     }
 
     for (int idx = 0; idx < comm_size; idx++) {
@@ -442,8 +449,6 @@ ccl::status ccl_coll_build_scatter_barrier_alltoallv(ccl_master_sched* main_sche
                                                dtype,
                                                dst,
                                                comm);
-
-        ccl_coll_add_scatter_alltoallv_barriers(send_scheds, sched_idx);
     }
 
     if (!inplace)

@@ -132,8 +132,12 @@ int main() {
              run_collective_vector(
                  "warmup_allgatherv_vector", send_buf, recv_bufs, recv_counts, comm, attr);
 
+             ccl::string_class regular_match_id = std::to_string(msg_count);
+             ccl::string_class vector_match_id = regular_match_id + std::string("_vector");
+             attr.set<ccl::operation_attr_id::match_id>(regular_match_id);
              attr.set<ccl::operation_attr_id::to_cache>(true);
              run_collective("persistent_allgatherv", send_buf, recv_buf, recv_counts, comm, attr);
+             attr.set<ccl::operation_attr_id::match_id>(vector_match_id);
              run_collective_vector(
                  "persistent_allgatherv_vector", send_buf, recv_bufs, recv_counts, comm, attr);
 

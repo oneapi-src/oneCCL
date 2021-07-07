@@ -78,79 +78,92 @@ void do_regular(ccl::communicator& service_comm,
             PRINT_BY_ROOT(service_comm,
                           "#------------------------------------------------------------\n"
                           "# Benchmarking: %s\n"
-                          "# processes: %d\n"
+                          "# #processes: %d\n"
                           "#------------------------------------------------------------\n",
                           scolls.str().c_str(),
                           service_comm.size());
 
-            if (options.buf_count == 1) {
-                PRINT_BY_ROOT(service_comm, "%10s %12s %11s", "#bytes", "avg[usec]", "stddev[%]");
-            }
-            else {
-                PRINT_BY_ROOT(service_comm,
-                              "%10s %13s %18s %11s",
-                              "#bytes",
-                              "avg[usec]",
-                              "avg_per_buf[usec]",
-                              "stddev[%]");
+            if (service_comm.rank() == 0) {
+                std::stringstream ss;
+                ss << std::right << std::setw(COL_WIDTH) << "#bytes" << std::setw(COL_WIDTH)
+                   << "#repetitions" << std::setw(COL_WIDTH) << "t_min[usec]"
+                   << std::setw(COL_WIDTH) << "t_max[usec]" << std::setw(COL_WIDTH) << "t_avg[usec]"
+                   << std::setw(COL_WIDTH - 3) << "stddev[%]";
+
+                if (options.show_additional_info) {
+                    ss << std::right << std::setw(COL_WIDTH + 3) << "wait_t_avg[usec]";
+                }
+                ss << std::endl;
+                printf("%s", ss.str().c_str());
             }
 
             for (auto& count : options.elem_counts) {
-                size_t iter_count =
-                    get_iter_count(count * ccl::get_datatype_size(dtype), options.iters);
+                size_t iter_count = get_iter_count(
+                    count * ccl::get_datatype_size(dtype), options.iters, options.iter_policy);
 
-                size_t warmup_iter_count =
-                    get_iter_count(count * ccl::get_datatype_size(dtype), options.warmup_iters);
+                size_t warmup_iter_count = get_iter_count(count * ccl::get_datatype_size(dtype),
+                                                          options.warmup_iters,
+                                                          options.iter_policy);
 
                 try {
                     // we store times for each collective separately,
                     // but aggregate over buffers and iterations
-                    std::vector<double> coll_timers(colls.size(), 0);
+                    std::vector<double> total_timers(colls.size(), 0);
+                    std::vector<double> wait_timers(colls.size(), 0);
                     for (size_t coll_idx = 0; coll_idx < colls.size(); coll_idx++) {
                         auto& coll = colls[coll_idx];
-
-                        double t1 = 0, t2 = 0, t = 0;
-
-                        if (options.check_values) {
-                            coll->prepare(count);
-                        }
+                        double coll_time = 0, wait_time = 0;
 
                         ccl::barrier(service_comm);
 
                         for (size_t iter_idx = 0; iter_idx < (iter_count + warmup_iter_count);
                              iter_idx++) {
-                            t1 = when();
+                            if (options.check_values) {
+                                coll->prepare(count);
+                                ccl::barrier(service_comm);
+                            }
 
+                            double coll_start_time = when();
                             for (size_t buf_idx = 0; buf_idx < options.buf_count; buf_idx++) {
                                 match_id_stream << "coll_" << coll->name() << "_" << coll_idx
-                                                << "_count_" << count << "_buf_" << buf_idx;
+                                                << "_count_" << count << "_buf_" << buf_idx
+                                                << "_dt_" << dtype_name << "_rt_" << reduction;
                                 bench_attr.set<ccl::operation_attr_id::match_id>(
                                     ccl::string_class(match_id_stream.str()));
                                 match_id_stream.str("");
                                 coll->start(count, buf_idx, bench_attr, reqs);
                             }
+                            double coll_end_time = when();
 
+                            double wait_start_time = when();
                             for (auto& req : reqs) {
                                 req.wait();
                             }
+                            double wait_end_time = when();
                             reqs.clear();
 
-                            t2 = when();
-
                             if (iter_idx >= warmup_iter_count) {
-                                t += (t2 - t1);
+                                coll_time += coll_end_time - coll_start_time;
+                                wait_time += wait_end_time - wait_start_time;
+                            }
+
+                            if (options.check_values) {
+                                coll->finalize(count);
                             }
                         }
 
-                        if (options.check_values) {
-                            coll->finalize(count);
-                        }
-
-                        coll_timers[coll_idx] += t;
+                        total_timers[coll_idx] += coll_time + wait_time;
+                        wait_timers[coll_idx] += wait_time;
                     }
 
-                    print_timings(
-                        service_comm, coll_timers, options, count, iter_count, dtype, reduction_op);
+                    print_timings(service_comm,
+                                  total_timers,
+                                  wait_timers,
+                                  options,
+                                  count,
+                                  iter_count,
+                                  dtype,
+                                  reduction_op);
                 }
                 catch (const std::exception& ex) {
                     ASSERT(0, "error on count %zu, reason: %s", count, ex.what());
@@ -158,8 +171,11 @@ void do_regular(ccl::communicator& service_comm,
             }
         }
     }
+
+    PRINT_BY_ROOT(service_comm, "\n# All done\n");
 }
 
+/* TODO: merge with do_regular */
 void do_unordered(ccl::communicator& service_comm,
                   bench_exec_attr& bench_attr,
                   coll_list_t& all_colls,
@@ -487,14 +503,17 @@ int main(int argc, char* argv[]) {
 
     ccl::communicator& service_comm = transport.get_service_comm();
 
+    print_user_options(options, service_comm);
+
     init_attr.buf_count = options.buf_count;
     init_attr.max_elem_count = options.max_elem_count;
     init_attr.ranks_per_proc = options.ranks_per_proc;
+    init_attr.inplace = options.inplace;
+    init_attr.numa_node = options.numa_node;
 #ifdef CCL_ENABLE_SYCL
     init_attr.sycl_mem_type = options.sycl_mem_type;
     init_attr.sycl_usm_type = options.sycl_usm_type;
-#endif
-    init_attr.v2i_ratio = options.v2i_ratio;
+#endif /* CCL_ENABLE_SYCL */
 
     try {
         create_all_colls(init_attr, options, colls);
@@ -510,14 +529,6 @@ int main(int argc, char* argv[]) {
     bench_exec_attr bench_attr{};
     bench_attr.init_all();
 
-    print_user_options(options, service_comm);
-
-    if (options.coll_names.empty()) {
-        PRINT_BY_ROOT(service_comm, "empty coll list");
-        print_help_usage(argv[0]);
-        return -1;
-    }
-
     ccl::barrier(service_comm);
 
     switch (options.loop) {
@@ -525,15 +536,26 @@ int main(int argc, char* argv[]) {
             // open and truncate CSV file if csv-output is requested
             if (service_comm.rank() == 0 && !options.csv_filepath.empty()) {
                 std::ofstream csvf;
-                csvf.open(options.csv_filepath, std::ios::trunc);
+                csvf.open(options.csv_filepath, std::ofstream::out | std::ofstream::trunc);
                 if (!csvf.is_open()) {
                     std::cerr << "Cannot open CSV file for writing: " << options.csv_filepath
                               << std::endl;
-                    return -1;
+                    abort();
                 }
                 // write header (column names)
-                csvf << "#ranks,collective,reduction,type,typesize,#elements/buffer,#buffers,time"
-                     << std::endl;
+                csvf << "#ranks,"
+                     << "collective,"
+                     << "reduction,"
+                     << "dtype,"
+                     << "dtype_size,"
+                     << "#elements/buffer,"
+                     << "#buffers,"
+                     << "#repetitions,"
+                     << "t_min[usec],"
+                     << "t_max[usec],"
+                     << "t_avg[usec],"
+                     << "stddev[%],"
+                     << "wait_t_avg[usec]" << std::endl;
                 csvf.close();
             }
             ccl::barrier(service_comm);
@@ -549,6 +571,7 @@ int main(int argc, char* argv[]) {
         default: ASSERT(0, "unknown loop %d", options.loop); break;
     }
 
+    colls.clear();
     transport.reset_comms();
 
     return 0;

@@ -55,6 +55,7 @@ public:
 
     std::atomic<bool> should_lock;
     std::atomic<bool> is_locked;
+    bool process_atl;
 
     void update_wait_condition(ccl_base_thread::wait_data::update_type type, size_t delta);
 

@@ -34,14 +34,28 @@ set componentname "[file tail "$componentroot"]"
 # get oneAPI top-level root folder
 set oneapiroot "[file dirname "$componentroot"]"
 
+# disallow loading multiple versions of this modulefile
+# disallow loading multiple architectures of this modulefile
+# if only 64-bit architecture exists the test still works
+set mname32 $modulefilename
+set mname64 [string trimright $mname32 "32"]
+if { [string equal "$mname32" "$mname64"] } {
+    append mname32 "32"
+}
+conflict $mname32
+conflict $mname64
+
+
 # On load print component name and version being loaded
 if { [ module-info mode load ] } {
     puts stderr "Loading $modulefilename"
 }
 
-# On remove print component name and version being removed
+# On `module unload` print component module name and version being removed
+# Include `module list` message only if this modulefile loads dependent modules
 if { [ module-info mode ] == "unload" || [ module-info mode ] == "remove" } {
     puts stderr "Removing $modulefilename"
+    puts stderr "Use `module list` to view any remaining dependent modules."
 }
 
 

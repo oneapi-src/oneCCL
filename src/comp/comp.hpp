@@ -16,14 +16,16 @@
 #pragma once
 
 #include "common/datatype/datatype.hpp"
-#include "oneapi/ccl/types.hpp"
 #include "internal_types.hpp"
+#include "oneapi/ccl/types.hpp"
+#include "sched/sched.hpp"
 
 ccl::status ccl_comp_copy(const void* in_buf,
                           void* out_buf,
                           size_t count,
                           const ccl_datatype& dtype);
-ccl::status ccl_comp_reduce(const void* in_buf,
+ccl::status ccl_comp_reduce(ccl_sched* sched,
+                            const void* in_buf,
                             size_t in_count,
                             void* inout_buf,
                             size_t* out_count,

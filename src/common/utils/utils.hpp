@@ -57,8 +57,10 @@
 #endif
 
 #define CACHELINE_SIZE 64
-#define ONE_MB         1048576
-#define TWO_MB         2097152
+
+#define CCL_REG_MSG_ALIGNMENT   (4096)
+#define CCL_LARGE_MSG_ALIGNMENT (2 * 1024 * 1024)
+#define CCL_LARGE_MSG_THRESHOLD (1 * 1024 * 1024)
 
 #define CCL_MEMCPY(dest, src, n) std::copy((char*)(src), (char*)(src) + (n), (char*)(dest))
 
@@ -103,7 +105,10 @@
 
 #define CCL_MALLOC_WRAPPER(size, name) \
     ({ \
-        void* ptr = CCL_MEMALIGN_IMPL(size, (size < TWO_MB) ? CACHELINE_SIZE : TWO_MB); \
+        size_t alignment = CCL_REG_MSG_ALIGNMENT; \
+        if (size >= CCL_LARGE_MSG_THRESHOLD) \
+            alignment = CCL_LARGE_MSG_ALIGNMENT; \
+        void* ptr = CCL_MEMALIGN_IMPL(size, alignment); \
         CCL_THROW_IF_NOT(ptr, "CCL cannot allocate bytes: ", size, ", out of memory, ", name); \
         ptr; \
     })

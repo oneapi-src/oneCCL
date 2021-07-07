@@ -13,8 +13,12 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "sched/sched_base.hpp"
+#include <numeric>
+
+#include "coll/algorithms/algorithms_enum.hpp"
+#include "coll/coll_param.hpp"
 #include "common/global/global.hpp"
+#include "sched/sched_base.hpp"
 
 std::string to_string(ccl_sched_add_mode mode) {
     switch (mode) {
@@ -32,14 +36,19 @@ void ccl_sched_base::set_coll_attr(const ccl_coll_attr& attr) {
 void ccl_sched_base::update_coll_param_and_attr(const ccl_coll_param& param,
                                                 const ccl_coll_attr& attr) {
 #ifdef CCL_ENABLE_SYCL
+    copy_deps(param.deps, coll_param.deps);
     if (param.stream && param.stream->is_sycl_device_stream()) {
-        coll_param.sycl_buf = static_cast<ccl_sycl_buffer_t*>(param.buf);
-        coll_param.sycl_send_buf = static_cast<ccl_sycl_buffer_t*>((void*)param.send_buf);
-        coll_param.sycl_recv_buf = static_cast<ccl_sycl_buffer_t*>(param.recv_buf);
+        /* update device buffers only if they are already non-null
+           i.e. were set on previous call */
+        if (coll_param.device_send_buf) {
+            coll_param.device_send_buf = static_cast<ccl_sycl_buffer_t*>((void*)param.send_buf);
+        }
+        if (coll_param.device_recv_buf) {
+            coll_param.device_recv_buf = static_cast<ccl_sycl_buffer_t*>(param.recv_buf);
+        }
     }
     else {
 #endif /* CCL_ENABLE_SYCL */
-        coll_param.buf = param.buf;
         coll_param.send_buf = param.send_buf;
         coll_param.recv_buf = param.recv_buf;
 #ifdef CCL_ENABLE_SYCL
@@ -106,7 +115,7 @@ ccl_buffer ccl_sched_base::alloc_buffer(size_t bytes) {
     CCL_THROW_IF_NOT(bytes > 0, "incorrect buffer size: ", bytes);
 
     ccl_buffer buffer =
-        ccl_buffer(CCL_CALLOC(bytes, "sched_buffer"), bytes, 0, ccl_buffer_type::DIRECT);
+        ccl_buffer(CCL_MALLOC(bytes, "sched_buffer"), bytes, 0, ccl_buffer_type::DIRECT);
     memory.buf_list.emplace_back(buffer, bytes);
     CCL_THROW_IF_NOT(buffer.get_ptr(), "null ptr");
 
@@ -252,12 +261,79 @@ void ccl_sched_base::add_memory_region(atl_mr_t* mr) {
     memory.mr_list.emplace_back(mr);
 }
 
-void ccl_sched_base::alloc_buffers_for_sycl_copy() {
+void ccl_sched_base::alloc_buffers_for_pre_post_copy() {
 #ifdef CCL_ENABLE_SYCL
-
     ccl_coll_param& param = coll_param;
+    param.device_send_buf = param.device_recv_buf = nullptr;
+
     if (!param.stream || (!param.stream->is_sycl_device_stream()))
         return;
+
+    // check both recv and send buffers, for some algorithms(i.e. alltoallv) one of them is allowed to
+    // be invalid(i.e. unknown return type) as long as the corresponding count is 0 so we won't dereference it.
+    // TODO: should we add a special handling for case when both buffers are invalid?
+    auto send_ptr_type = sycl::get_pointer_type((void*)param.send_buf,
+                                                param.stream->get_native_stream().get_context());
+    auto recv_ptr_type =
+        sycl::get_pointer_type(param.recv_buf, param.stream->get_native_stream().get_context());
+
+    // TODO: we currently don't correctly handle cases when there are 2 different types at the same time
+    // i.e. device memory for send buffer and shared memory for recv buffer
+    bool should_alloc_buffers = true;
+    if ((send_ptr_type == sycl::usm::alloc::shared || recv_ptr_type == sycl::usm::alloc::shared) ||
+        ((send_ptr_type == sycl::usm::alloc::device || recv_ptr_type == sycl::usm::alloc::device) &&
+         atl_wrapper::attr.out.enable_device_buf)) {
+        should_alloc_buffers = false;
+    }
+
+    if (!should_alloc_buffers) {
+        return;
+    }
+
+    param.device_send_buf = static_cast<ccl_sycl_buffer_t*>((void*)param.send_buf);
+    param.device_recv_buf = static_cast<ccl_sycl_buffer_t*>(param.recv_buf);
+
+    param.send_buf = param.recv_buf = nullptr;
+
+    size_t send_alloc_count = 0, recv_alloc_count = 0;
+    switch (param.ctype) {
+        case ccl_coll_allgatherv:
+            send_alloc_count = param.send_count;
+            recv_alloc_count =
+                std::accumulate(param.recv_counts, param.recv_counts + param.comm->size(), 0);
+            break;
+        case ccl_coll_allreduce:
+            /* use in-place to avoid allocation of extra staging buffer*/
+            send_alloc_count = 0;
+            recv_alloc_count = param.count;
+            break;
+        case ccl_coll_alltoall:
+            send_alloc_count = recv_alloc_count = param.count * param.comm->size();
+            break;
+        case ccl_coll_alltoallv:
+            send_alloc_count =
+                std::accumulate(param.send_counts, param.send_counts + param.comm->size(), 0);
+            recv_alloc_count =
+                std::accumulate(param.recv_counts, param.recv_counts + param.comm->size(), 0);
+            break;
+        case ccl_coll_bcast:
+            send_alloc_count = 0;
+            recv_alloc_count = param.count;
+            break;
+        case ccl_coll_reduce:
+            send_alloc_count = param.count;
+            recv_alloc_count = (param.comm->rank() == param.root) ? param.count : 0;
+            break;
+        case ccl_coll_reduce_scatter:
+            send_alloc_count = param.count * param.comm->size();
+            recv_alloc_count = param.count;
+            break;
+        case ccl_coll_sparse_allreduce:
+            CCL_FATAL("SYCL stream is not supported for sparse_allreduce yet");
+            CCL_ASSERT(0);
+            break;
+        default: break;
+    }
 
     LOG_DEBUG("alloc tmp buffers for D2H and H2D copies, coll_type ",
               ccl_coll_type_to_str(param.ctype),
@@ -268,71 +344,16 @@ void ccl_sched_base::alloc_buffers_for_sycl_copy() {
               ", count ",
               param.count);
 
-    size_t idx, send_count = 0, recv_count = 0;
+    if (send_alloc_count) {
+        param.send_buf = alloc_staging_buffer(send_alloc_count * param.dtype.size()).get_ptr();
+    }
 
-    switch (param.ctype) {
-        case ccl_coll_allgatherv:
-            param.sycl_send_buf = static_cast<ccl_sycl_buffer_t*>((void*)param.send_buf);
-            param.sycl_recv_buf = static_cast<ccl_sycl_buffer_t*>(param.recv_buf);
-            param.send_buf = alloc_staging_buffer(param.send_count * param.dtype.size()).get_ptr();
-            for (idx = 0; idx < param.comm->size(); idx++)
-                recv_count += param.recv_counts[idx];
-            param.recv_buf = alloc_staging_buffer(recv_count * param.dtype.size()).get_ptr();
-            break;
-        case ccl_coll_allreduce:
-            param.sycl_send_buf = static_cast<ccl_sycl_buffer_t*>((void*)param.send_buf);
-            param.sycl_recv_buf = static_cast<ccl_sycl_buffer_t*>(param.recv_buf);
-            param.send_buf = alloc_staging_buffer(param.count * param.dtype.size()).get_ptr();
-            param.recv_buf = alloc_staging_buffer(param.count * param.dtype.size()).get_ptr();
-            break;
-        case ccl_coll_alltoall:
-            param.sycl_send_buf = static_cast<ccl_sycl_buffer_t*>((void*)param.send_buf);
-            param.sycl_recv_buf = static_cast<ccl_sycl_buffer_t*>(param.recv_buf);
-            param.send_buf =
-                alloc_staging_buffer(param.count * param.dtype.size() * param.comm->size())
-                    .get_ptr();
-            param.recv_buf =
-                alloc_staging_buffer(param.count * param.dtype.size() * param.comm->size())
-                    .get_ptr();
-            break;
-        case ccl_coll_alltoallv:
-            param.sycl_send_buf = static_cast<ccl_sycl_buffer_t*>((void*)param.send_buf);
-            param.sycl_recv_buf = static_cast<ccl_sycl_buffer_t*>(param.recv_buf);
-            for (idx = 0; idx < param.comm->size(); idx++) {
-                send_count += param.send_counts[idx];
-                recv_count += param.recv_counts[idx];
-            }
-            param.send_buf = alloc_staging_buffer(send_count * param.dtype.size()).get_ptr();
-            param.recv_buf = alloc_staging_buffer(recv_count * param.dtype.size()).get_ptr();
-            break;
-        case ccl_coll_bcast:
-            param.sycl_buf = static_cast<ccl_sycl_buffer_t*>(param.buf);
-            param.buf = alloc_staging_buffer(param.count * param.dtype.size()).get_ptr();
-            break;
-        case ccl_coll_reduce:
-            param.sycl_send_buf = static_cast<ccl_sycl_buffer_t*>((void*)(param.send_buf));
-            param.send_buf = alloc_staging_buffer(param.count * param.dtype.size()).get_ptr();
-            if (param.comm->rank() == param.root) {
-                param.sycl_recv_buf = static_cast<ccl_sycl_buffer_t*>(param.recv_buf);
-                param.recv_buf = alloc_staging_buffer(param.count * param.dtype.size()).get_ptr();
-            }
-            else {
-                param.recv_buf = nullptr;
-            }
-            break;
-        case ccl_coll_reduce_scatter:
-            param.sycl_send_buf = static_cast<ccl_sycl_buffer_t*>((void*)param.send_buf);
-            param.sycl_recv_buf = static_cast<ccl_sycl_buffer_t*>(param.recv_buf);
-            param.send_buf =
-                alloc_staging_buffer(param.count * param.comm->size() * param.dtype.size())
-                    .get_ptr();
-            param.recv_buf = alloc_staging_buffer(param.count * param.dtype.size()).get_ptr();
-            break;
-        case ccl_coll_sparse_allreduce:
-            CCL_FATAL("SYCL stream is not supported for sparse_allreduce yet");
-            CCL_ASSERT(0);
-            break;
-        default: break;
+    if (recv_alloc_count) {
+        param.recv_buf = alloc_staging_buffer(recv_alloc_count * param.dtype.size()).get_ptr();
+
+        if (param.ctype == ccl_coll_allreduce || param.ctype == ccl_coll_bcast) {
+            param.send_buf = param.recv_buf;
+        }
     }
 #endif /* CCL_ENABLE_SYCL */
 }

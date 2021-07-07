@@ -63,24 +63,21 @@ int main(int argc, char *argv[]) {
     /* create buffers */
     buffer<int> buf(count);
 
-    {
+    if (rank == root_rank) {
         /* open buf and initialize it on the host side */
         host_accessor send_buf_acc(buf, write_only);
         for (i = 0; i < count; i++) {
-            if (rank == root_rank)
-                send_buf_acc[i] = rank + 10;
-            else
-                send_buf_acc[i] = 0;
+            send_buf_acc[i] = 10;
         }
-    }
 
-    /* open buf and modify it on the device side */
-    q.submit([&](auto &h) {
-        accessor send_buf_acc(buf, h, write_only);
-        h.parallel_for(count, [=](auto id) {
-            send_buf_acc[id] += 1;
+        /* open buf and modify it on the device side */
+        q.submit([&](auto &h) {
+            accessor send_buf_acc(buf, h, write_only);
+            h.parallel_for(count, [=](auto id) {
+                send_buf_acc[id] += 1;
+            });
         });
-    });
+    }
 
     if (!handle_exception(q))
         return -1;
@@ -92,7 +89,7 @@ int main(int argc, char *argv[]) {
     q.submit([&](auto &h) {
         accessor recv_buf_acc(buf, h, write_only);
         h.parallel_for(count, [=](auto id) {
-            if (recv_buf_acc[id] != root_rank + 11) {
+            if (recv_buf_acc[id] != 11) {
                 recv_buf_acc[id] = -1;
             }
         });

@@ -112,7 +112,7 @@ void ccl_tuple_for_each_indexed(functor f, const FunctionArgs&... args) {
 namespace utils {
 
 template <typename T>
-void str_to_array(const char* input, std::vector<T>& output, char delimiter) {
+inline void str_to_array(const char* input, std::vector<T>& output, char delimiter) {
     if (!input) {
         return;
     }
@@ -126,7 +126,7 @@ void str_to_array(const char* input, std::vector<T>& output, char delimiter) {
     }
 }
 template <>
-void str_to_array(const char* input, std::vector<std::string>& output, char delimiter) {
+inline void str_to_array(const char* input, std::vector<std::string>& output, char delimiter) {
     std::string processes_input(input);
 
     processes_input.erase(std::remove_if(processes_input.begin(),

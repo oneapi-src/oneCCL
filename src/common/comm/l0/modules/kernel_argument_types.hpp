@@ -49,7 +49,8 @@ struct kernel_arg : public policy_impl, options {
 template <size_t pos, class type, class options = options::empty>
 using thread_safe_arg = kernel_arg<pos, arg_access_policy_atomic<pos, type, false>, options>;
 
-// thread-safe destructive-copying argument (rechargable): used for concurrent read/write applications, where reader take-away exising value
+// thread-safe destructive-copying argument (rechargeable): used for concurrent
+// read/write applications, where reader take-away existing value
 template <size_t pos, class type, class options = options::empty>
 using thread_exchangable_arg =
     kernel_arg<pos, arg_access_policy_atomic_reset<pos, type, false>, options>;
