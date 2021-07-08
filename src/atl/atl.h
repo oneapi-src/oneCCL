@@ -30,7 +30,7 @@ public:
 
     virtual atl_status_t atl_init(int* argc,
                                   char*** argv,
-                                  atl_attr_t* att,
+                                  atl_attr_t* attr,
                                   const char* main_addr,
                                   std::unique_ptr<ipmi>& pmi) = 0;
 

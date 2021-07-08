@@ -138,10 +138,10 @@ assoc_result check_assoc_device_memory(const void* mem,
 
 #ifdef CCL_ENABLE_SYCL
 
-    cl::sycl::usm::alloc pointer_type = cl::sycl::get_pointer_type(mem, ctx);
+    sycl::usm::alloc pointer_type = sycl::get_pointer_type(mem, ctx);
 
     using usm_truth_table =
-        std::array<usm_support_mode, utils::enum_to_underlying(cl::sycl::usm::alloc::unknown) + 1>;
+        std::array<usm_support_mode, utils::enum_to_underlying(sycl::usm::alloc::unknown) + 1>;
 
     constexpr int platform_config_count = 4; /*host, cpu, gpu, accel*/
     constexpr std::array<usm_truth_table, platform_config_count> usm_target_table{ {
@@ -177,8 +177,8 @@ assoc_result check_assoc_device_memory(const void* mem,
 
     if (std::get<assoc_result_index::SUPPORT_MODE>(ret) == usm_support_mode::prohibited) {
         std::stringstream ss;
-        ss << "Incompatible USM type requested: " << usm_to_string(pointer_type)
-           << ", for ccl_device: " << std::to_string(platform_type_index);
+        ss << "incompatible usm type requested: " << usm_to_string(pointer_type)
+           << " for device: " << std::to_string(platform_type_index);
         std::get<assoc_result_index::ERROR_CAUSE>(ret) = ss.str();
     }
 #else

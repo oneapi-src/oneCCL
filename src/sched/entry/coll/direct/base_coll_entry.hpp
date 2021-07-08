@@ -16,6 +16,7 @@
 #pragma once
 
 #include "sched/entry/entry.hpp"
+#include "sched/queue/queue.hpp"
 
 class base_coll_entry : public sched_entry {
 public:

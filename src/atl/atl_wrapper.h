@@ -40,14 +40,6 @@ public:
                 const std::vector<int>& ranks,
                 std::shared_ptr<ikvs_wrapper> k);
 
-    //    atl_status_t
-    //    atl_init(int* argc, char*** argv,
-    //             atl_attr_t* att,
-    //             const char* main_addr)
-    //    {
-    //        return transport->atl_init(argc, argv, att, main_addr, pmi);
-    //    }
-
     atl_status_t atl_main_addr_reserve(char* main_addr) {
         if (!pmi)
             return ATL_STATUS_UNSUPPORTED;

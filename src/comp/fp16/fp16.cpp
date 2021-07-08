@@ -65,7 +65,15 @@ void ccl_fp16_reduce(const void* in_buf,
                      void* inout_buf,
                      size_t* out_cnt,
                      ccl::reduction op) {
-    CCL_FATAL("FP16 reduction is requested but CCL was compiled w/o FP16 support");
+    CCL_FATAL("FP16 reduction was requested but CCL was compiled w/o FP16 support");
+}
+
+void ccl_convert_fp32_to_fp16(const void* src, void* dst) {
+    CCL_FATAL("FP32->FP16 conversion was requested but CCL was compiled w/o FP16 support");
+}
+
+void ccl_convert_fp16_to_fp32(const void* src, void* dst) {
+    CCL_FATAL("FP16->FP32 conversion was requested but CCL was compiled w/o FP16 support");
 }
 
 #endif /* CCL_FP16_COMPILER */

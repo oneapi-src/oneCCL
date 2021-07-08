@@ -1,4 +1,3 @@
-# Default installation path: <oneccl_root>/lib/cmake/oneCCL/
 #
 # Copyright 2016-2020 Intel Corporation
 # 
@@ -14,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
+# Default installation path: <oneccl_root>/lib/cmake/oneCCL/
 get_filename_component(_oneccl_root "${CMAKE_CURRENT_LIST_DIR}" REALPATH)
 get_filename_component(_oneccl_root "${_oneccl_root}/../../../" ABSOLUTE)
 
@@ -33,7 +32,7 @@ if (_oneccl_subdir EQUAL "cpu_icc")
 endif()
 
 get_filename_component(_oneccl_headers "${_oneccl_root}/include/${_oneccl_subdir}" ABSOLUTE)
-get_filename_component(_oneccl_lib "${_oneccl_root}/lib/${_oneccl_subdir}" ABSOLUTE)
+get_filename_component(_oneccl_lib "${_oneccl_root}/lib/${_oneccl_subdir}/libccl.so" ABSOLUTE)
 
 if (EXISTS "${_oneccl_headers}" AND EXISTS "${_oneccl_lib}")
     if (NOT TARGET oneCCL)

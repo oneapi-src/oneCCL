@@ -75,18 +75,20 @@ int main(int argc, char *argv[]) {
     auto recv_buf = allocator.allocate(count * size, usm_alloc_type);
 
     /* open buffers and modify them on the device side */
-    q.submit([&](auto &h) {
+    auto e = q.submit([&](auto &h) {
         h.parallel_for(count * size, [=](auto id) {
             send_buf[id] = id / count + 1;
             recv_buf[id] = -1;
         });
     });
 
-    if (!handle_exception(q))
-        return -1;
+    /* do not wait completion of kernel and provide it as dependency for operation */
+    vector<ccl::event> deps;
+    deps.push_back(ccl::create_event(e));
 
     /* invoke alltoall */
-    ccl::alltoall(send_buf, recv_buf, count, comm, stream).wait();
+    auto attr = ccl::create_operation_attr<ccl::alltoall_attr>();
+    ccl::alltoall(send_buf, recv_buf, count, comm, stream, attr, deps).wait();
 
     /* open recv_buf and check its correctness on the device side */
     buffer<int> check_buf(count * size);

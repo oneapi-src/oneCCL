@@ -15,7 +15,7 @@
 */
 #define ALGO_SELECTION_ENV "CCL_ALLREDUCE"
 
-#include "base_impl.hpp"
+#include "test_impl.hpp"
 
 template <typename T>
 class allreduce_test : public base_test<T> {
@@ -49,7 +49,8 @@ public:
                                                op.elem_count,
                                                op.datatype,
                                                op.reduction,
-                                               global_data::instance().comms[0],
+                                               transport_data::instance().get_comm(),
+                                               transport_data::instance().get_stream(),
                                                attr));
         }
     }

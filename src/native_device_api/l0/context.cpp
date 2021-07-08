@@ -17,6 +17,7 @@
 #include "oneapi/ccl/native_device_api/l0/context.hpp"
 #include "oneapi/ccl/native_device_api/l0/base_impl.hpp"
 #include "oneapi/ccl/native_device_api/l0/device.hpp"
+#include "oneapi/ccl/native_device_api/l0/event_pool.hpp"
 #include "oneapi/ccl/native_device_api/l0/primitives_impl.hpp"
 #include "oneapi/ccl/native_device_api/l0/driver.hpp"
 #include "oneapi/ccl/native_device_api/l0/platform.hpp"
@@ -26,6 +27,8 @@ namespace native {
 
 ccl_context::ccl_context(handle_t h, owner_ptr_t&& platform)
         : base(h, std::move(platform), std::weak_ptr<ccl_context>{}) {}
+
+ccl_context::~ccl_context() {}
 
 CCL_BE_API const ze_host_mem_alloc_desc_t& ccl_context::get_default_host_alloc_desc() {
     static const ze_host_mem_alloc_desc_t common{
@@ -55,6 +58,52 @@ CCL_BE_API void ccl_context::host_free_memory(void* mem_handle) {
     if (zeMemFree(handle, mem_handle) != ZE_RESULT_SUCCESS) {
         CCL_THROW("cannot release host memory");
     }
+}
+
+CCL_BE_API ccl_context::ccl_event_pool_ptr ccl_context::create_event_pool(
+    std::initializer_list<ccl_device*> devices,
+    const ze_event_pool_desc_t& descr) {
+    if (!pool_holder) {
+        pool_holder.reset(new ccl_event_pool_holder);
+    }
+
+    ze_event_pool_handle_t pool = nullptr;
+
+    std::vector<ccl_device::handle_t> device_handles(devices.size());
+    for (ccl_device* d : devices) {
+        device_handles.push_back(d->get());
+    }
+    ze_result_t status =
+        zeEventPoolCreate(get(),
+                          &descr,
+                          devices.size(),
+                          (device_handles.empty() ? nullptr : device_handles.data()),
+                          &pool);
+    if (status != ZE_RESULT_SUCCESS) {
+        CCL_THROW("zeEventPoolCreate, error: " + native::to_string(status));
+    }
+
+    std::shared_ptr<ccl_event_pool> pool_ptr =
+        std::make_shared<ccl_event_pool>(descr, pool, pool_holder, get_ptr());
+    return pool_holder->emplace(devices, pool_ptr);
+}
+
+CCL_BE_API std::vector<std::shared_ptr<ccl_event_pool>> ccl_context::get_shared_event_pool(
+    std::initializer_list<ccl_device*> devices) {
+    std::vector<std::shared_ptr<ccl_event_pool>> ret;
+    if (pool_holder) {
+        ret = pool_holder->get_event_pool_storage(devices);
+    }
+    return ret;
+}
+
+CCL_BE_API std::vector<std::shared_ptr<ccl_event_pool>> ccl_context::get_shared_event_pool(
+    std::initializer_list<ccl_device*> devices) const {
+    std::vector<std::shared_ptr<ccl_event_pool>> ret;
+    if (pool_holder) {
+        ret = pool_holder->get_event_pool_storage(devices);
+    }
+    return ret;
 }
 
 CCL_BE_API std::string ccl_context::to_string() const {

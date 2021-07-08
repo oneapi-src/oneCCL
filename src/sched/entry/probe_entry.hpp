@@ -17,6 +17,7 @@
 
 #include "sched/entry/entry.hpp"
 #include "sched/sched.hpp"
+#include "sched/queue/queue.hpp"
 
 class probe_entry : public sched_entry {
 public:

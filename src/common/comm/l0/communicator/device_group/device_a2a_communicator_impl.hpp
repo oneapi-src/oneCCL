@@ -87,75 +87,14 @@ ccl::event device_group_a2a_communicator::allreduce_impl(
     const ccl::stream::impl_value_t& stream,
     const ccl::allreduce_attr& attr,
     const ccl::vector_class<ccl::event>& deps) {
-    using namespace native;
-
-    static constexpr ccl::group_split_type group_id = base_t::topology_type();
-    static constexpr ccl::device_topology_type class_id = base_t::topology_class();
-    if (!is_ready()) {
-        throw ccl::exception(std::string(
-            "Device communicator for group_id: " + ::to_string(group_id) +
-            " is not ready yet. Not all сommunicators are created in group. Please create them before usage"));
-    }
-    int comm_rank = rank();
-    LOG_DEBUG("communicator for device idx: ", get_device_path(), ", rank idx: ", comm_rank);
-
-    //TODO make const!
-    ccl_buffer send_entry_buffer(const_cast<buffer_type**>(&send_buf),
-                                 count * sizeof(buffer_type),
-                                 0,
-                                 ccl_buffer_type::INDIRECT);
-    ccl_buffer recv_entry_buffer(
-        &recv_buf, count * sizeof(buffer_type), 0, ccl_buffer_type::INDIRECT);
-
-    using community_t = typename device_community_container<class_id>::element_type;
-    community_t community = device_community_impl.get_topology();
-
-    const auto& in_process_gpu_storage = community->get_devices<ccl_gpu_comm>();
-    const auto& virtual_process_gpu_storage = community->get_devices<ccl_virtual_gpu_comm>();
-    ;
-
-    device_group_scheduler::schedule_ptr schedule;
-
-    //source for collective operation is real gpu or virtual gpu
-    auto real_device_it = in_process_gpu_storage.find(comm_rank);
-    if (real_device_it != in_process_gpu_storage.end()) {
-        LOG_DEBUG("Invoke: ", real_device_it->second->to_string());
-
-        /* TODO
-
-        using gpu_allreduce_entry = l0_allreduce_typed_entry<buffer_type, ccl_gpu_comm, group_id>;
-
-        schedule =
-            ctx->scheduler_impl->submit_entry<gpu_allreduce_entry, ccl_sched_add_back>(*device_community_impl,
-                                                                                       real_device_it->second,send_entry_buffer,
-                                                                                       recv_entry_buffer,
-                                                                                       count,
-                                                                                       reduction);
-        */
-    }
-    else {
-        auto virtual_device_it = virtual_process_gpu_storage.find(comm_rank);
-        if (virtual_device_it != virtual_process_gpu_storage.end()) {
-            LOG_DEBUG("Invoke: ", virtual_device_it->second->to_string());
-            /* TODO
-
-        using gpu_allreduce_entry = l0_allreduce_typed_entry<buffer_type, ccl_virtual_gpu_comm, group_id>;
-
-        schedule =
-            ctx->scheduler_impl->submit_entry<gpu_allreduce_entry, ccl_sched_add_back>(*device_community_impl,
-                                                                                       virtual_device_it->second,send_entry_buffer,
-                                                                                       recv_entry_buffer,
-                                                                                       count,
-                                                                                       reduction);
-        */
-        }
-    }
-
-    //if sched is not ready - send NULL
-    if (schedule) {
-        LOG_DEBUG("Device group finalized");
-    }
-    return std::unique_ptr<ccl::event_impl>(new ccl::gpu_event_impl(std::move(schedule)));
+    return allreduce_impl(static_cast<const void*>(send_buf),
+                          static_cast<void*>(recv_buf),
+                          count,
+                          ccl::native_type_info<buffer_type>::dtype,
+                          reduction,
+                          stream,
+                          attr,
+                          deps);
 }
 
 template <class buffer_type>

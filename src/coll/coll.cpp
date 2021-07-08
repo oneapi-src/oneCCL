@@ -13,6 +13,8 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#include <numeric>
+
 #include "oneapi/ccl/types.hpp"
 #include "oneapi/ccl/aliases.hpp"
 
@@ -45,10 +47,12 @@
 #include "coll/ccl_reduce_op_attr.hpp"
 #include "coll/ccl_reduce_scatter_op_attr.hpp"
 #include "coll/ccl_sparse_allreduce_op_attr.hpp"
+#include "coll/coll_param.hpp"
 
 #include "common/global/global.hpp"
 
 #include "coll/algorithms/algorithms.hpp"
+#include "coll/algorithms/algorithms_enum.hpp"
 #include "coll/algorithms/allreduce/allreduce_2d.hpp"
 #include "coll/algorithms/sparse_allreduce/sparse_allreduce.hpp"
 #include "coll/selection/selection.hpp"
@@ -116,8 +120,66 @@ ccl_coll_attr::ccl_coll_attr(const ccl::sparse_allreduce_attr& attr) {
     sparse_coalesce_mode = attr.get<ccl::sparse_allreduce_attr_id::coalesce_mode>();
 }
 
+static void ccl_coll_validate_and_adjust(const ccl_coll_param& param) {
+    // not SYCL, don't need validation
+    if (param.stream == nullptr) {
+        return;
+    }
+
+    // skip validation if it was requested explicitly (e.g. for sycl::buffer)
+    if (param.skip_validation) {
+        return;
+    }
+
+#ifdef CCL_ENABLE_SYCL
+    std::vector<void*> bufs = {};
+
+    switch (param.ctype) {
+        case ccl_coll_alltoallv: {
+            // if the sum of the counts is 0 this means that the buf pointer could be anything,
+            // including nullptr and invalid pointer. We should neither validate nor dereference it.
+            // TODO: make const void*
+            if (std::accumulate(param.send_counts, param.send_counts + param.comm->size(), 0) > 0) {
+                bufs.push_back((void*)(param.send_buf));
+            }
+
+            if (std::accumulate(param.recv_counts, param.recv_counts + param.comm->size(), 0) > 0) {
+                bufs.push_back((void*)(param.recv_buf));
+            }
+            break;
+        }
+        case ccl_coll_allreduce:
+        case ccl_coll_allgatherv:
+        case ccl_coll_alltoall:
+        case ccl_coll_reduce:
+        case ccl_coll_reduce_scatter:
+            bufs = { (void*)param.send_buf, (void*)param.recv_buf };
+            break;
+        case ccl_coll_bcast: bufs = { (void*)param.recv_buf }; break;
+        case ccl_coll_sparse_allreduce:
+            bufs = { (void*)param.sparse_param.send_ind_buf,
+                     (void*)param.sparse_param.send_val_buf,
+                     (void*)param.sparse_param.recv_ind_buf,
+                     (void*)param.sparse_param.recv_val_buf };
+            break;
+        default:
+            // everything that is not a collective, i.e. barrier doesn't require validation
+            return;
+    }
+
+    auto q = param.stream->get_native_stream();
+    CCL_THROW_IF_NOT(
+        native::detail::check_assoc_device_memory(bufs, q.get_device(), q.get_context()) !=
+            native::detail::usm_support_mode::prohibited,
+        "unsupported usm type");
+#endif /* CCL_ENABLE_SYCL */
+}
+
 /* param is not const because param.comm can be updated for unordered colls */
 static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& attr) {
+    // perform a validation and adjustion if necessary
+    ccl_coll_validate_and_adjust(param);
+
     ccl::global_data& data = ccl::global_data::get();
 
     /* 1. decide whether schedule should be postponed (this includes caching and staring) */
@@ -689,7 +751,9 @@ ccl_request* ccl_allgatherv_impl(const void* send_buf,
                                  ccl::datatype dtype,
                                  const ccl_coll_attr& attr,
                                  ccl_comm* comm,
-                                 const ccl_stream* stream) {
+                                 const ccl_stream* stream,
+                                 const std::vector<ccl::event>& deps,
+                                 bool skip_validation) {
     ccl_coll_param param{};
 
     param.ctype = ccl_coll_allgatherv;
@@ -700,6 +764,8 @@ ccl_request* ccl_allgatherv_impl(const void* send_buf,
     param.dtype = ccl::global_data::get().dtypes->get(dtype);
     param.stream = stream;
     param.comm = comm;
+    param.skip_validation = skip_validation;
+    copy_deps(deps, param.deps);
 
     auto req = ccl_coll_create(param, attr);
     LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req);
@@ -713,7 +779,9 @@ ccl_request* ccl_allreduce_impl(const void* send_buf,
                                 ccl::reduction reduction,
                                 const ccl_coll_attr& attr,
                                 ccl_comm* comm,
-                                const ccl_stream* stream) {
+                                const ccl_stream* stream,
+                                const std::vector<ccl::event>& deps,
+                                bool skip_validation) {
     ccl_coll_param param{};
 
     param.ctype = ccl_coll_allreduce;
@@ -724,6 +792,8 @@ ccl_request* ccl_allreduce_impl(const void* send_buf,
     param.reduction = reduction;
     param.stream = stream;
     param.comm = comm;
+    param.skip_validation = skip_validation;
+    copy_deps(deps, param.deps);
 
     auto req = ccl_coll_create(param, attr);
     LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req, " count ", count);
@@ -736,7 +806,9 @@ ccl_request* ccl_alltoall_impl(const void* send_buf,
                                ccl::datatype dtype,
                                const ccl_coll_attr& attr,
                                ccl_comm* comm,
-                               const ccl_stream* stream) {
+                               const ccl_stream* stream,
+                               const std::vector<ccl::event>& deps,
+                               bool skip_validation) {
     ccl_coll_param param{};
 
     param.ctype = ccl_coll_alltoall;
@@ -746,6 +818,8 @@ ccl_request* ccl_alltoall_impl(const void* send_buf,
     param.dtype = ccl::global_data::get().dtypes->get(dtype);
     param.stream = stream;
     param.comm = comm;
+    param.skip_validation = skip_validation;
+    copy_deps(deps, param.deps);
 
     auto req = ccl_coll_create(param, attr);
     LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req, " count ", count);
@@ -759,7 +833,9 @@ ccl_request* ccl_alltoallv_impl(const void* send_buf,
                                 ccl::datatype dtype,
                                 const ccl_coll_attr& attr,
                                 ccl_comm* comm,
-                                const ccl_stream* stream) {
+                                const ccl_stream* stream,
+                                const std::vector<ccl::event>& deps,
+                                bool skip_validation) {
     ccl_coll_param param{};
 
     param.ctype = ccl_coll_alltoallv;
@@ -770,6 +846,8 @@ ccl_request* ccl_alltoallv_impl(const void* send_buf,
     param.dtype = ccl::global_data::get().dtypes->get(dtype);
     param.stream = stream;
     param.comm = comm;
+    param.skip_validation = skip_validation;
+    copy_deps(deps, param.deps);
 
     auto req = ccl_coll_create(param, attr);
     LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req);
@@ -784,7 +862,8 @@ ccl_request* ccl_allreduce_gpu_impl(const void* send_buf,
                                     ccl::reduction reduction,
                                     const ccl_coll_attr& attr,
                                     ccl_comm* comm,
-                                    const ccl_stream* stream) {
+                                    const ccl_stream* stream,
+                                    const std::vector<ccl::event>& deps) {
     ccl_coll_param param{};
 
     param.ctype = ccl_coll_allreduce;
@@ -795,6 +874,7 @@ ccl_request* ccl_allreduce_gpu_impl(const void* send_buf,
     param.reduction = reduction;
     param.stream = stream;
     param.comm = comm;
+    copy_deps(deps, param.deps);
 
     auto req = ccl_gpu_coll_create(param, attr);
     LOG_DEBUG(
@@ -802,13 +882,18 @@ ccl_request* ccl_allreduce_gpu_impl(const void* send_buf,
     return req;
 }
 
-void ccl_barrier_impl(ccl_comm* comm, const ccl_stream* stream) {
+void ccl_barrier_impl(ccl_comm* comm,
+                      const ccl_stream* stream,
+                      const std::vector<ccl::event>& deps,
+                      bool skip_validation) {
     ccl_coll_param param{};
 
     param.ctype = ccl_coll_barrier;
     param.dtype = ccl_datatype_int8;
     param.stream = stream;
     param.comm = comm;
+    param.skip_validation = skip_validation;
+    copy_deps(deps, param.deps);
 
     ccl_coll_attr attr{};
     attr.synchronous = 1;
@@ -829,16 +914,20 @@ ccl_request* ccl_broadcast_impl(void* buf,
                                 int root,
                                 const ccl_coll_attr& attr,
                                 ccl_comm* comm,
-                                const ccl_stream* stream) {
+                                const ccl_stream* stream,
+                                const std::vector<ccl::event>& deps,
+                                bool skip_validation) {
     ccl_coll_param param{};
 
     param.ctype = ccl_coll_bcast;
-    param.buf = buf;
+    param.send_buf = param.recv_buf = buf;
     param.count = count;
     param.dtype = ccl::global_data::get().dtypes->get(dtype);
     param.root = root;
     param.stream = stream;
     param.comm = comm;
+    param.skip_validation = skip_validation;
+    copy_deps(deps, param.deps);
 
     auto req = ccl_coll_create(param, attr);
     LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req);
@@ -853,7 +942,9 @@ ccl_request* ccl_reduce_impl(const void* send_buf,
                              int root,
                              const ccl_coll_attr& attr,
                              ccl_comm* comm,
-                             const ccl_stream* stream) {
+                             const ccl_stream* stream,
+                             const std::vector<ccl::event>& deps,
+                             bool skip_validation) {
     ccl_coll_param param{};
 
     param.ctype = ccl_coll_reduce;
@@ -865,6 +956,8 @@ ccl_request* ccl_reduce_impl(const void* send_buf,
     param.root = root;
     param.stream = stream;
     param.comm = comm;
+    param.skip_validation = skip_validation;
+    copy_deps(deps, param.deps);
 
     auto req = ccl_coll_create(param, attr);
     LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req);
@@ -878,7 +971,9 @@ ccl_request* ccl_reduce_scatter_impl(const void* send_buf,
                                      ccl::reduction reduction,
                                      const ccl_coll_attr& attr,
                                      ccl_comm* comm,
-                                     const ccl_stream* stream) {
+                                     const ccl_stream* stream,
+                                     const std::vector<ccl::event>& deps,
+                                     bool skip_validation) {
     ccl_coll_param param{};
 
     param.ctype = ccl_coll_reduce_scatter;
@@ -889,6 +984,8 @@ ccl_request* ccl_reduce_scatter_impl(const void* send_buf,
     param.reduction = reduction;
     param.stream = stream;
     param.comm = comm;
+    param.skip_validation = skip_validation;
+    copy_deps(deps, param.deps);
 
     auto req = ccl_coll_create(param, attr);
     LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req);
@@ -908,7 +1005,9 @@ ccl_request* ccl_sparse_allreduce_impl(const void* send_ind_buf,
                                        ccl::reduction reduction,
                                        const ccl_coll_attr& attr,
                                        ccl_comm* comm,
-                                       const ccl_stream* stream) {
+                                       const ccl_stream* stream,
+                                       const std::vector<ccl::event>& deps,
+                                       bool skip_validation) {
     ccl_coll_param param{};
 
     param.ctype = ccl_coll_sparse_allreduce;
@@ -925,6 +1024,8 @@ ccl_request* ccl_sparse_allreduce_impl(const void* send_ind_buf,
     param.reduction = reduction;
     param.stream = stream;
     param.comm = comm;
+    param.skip_validation = skip_validation;
+    copy_deps(deps, param.deps);
 
     ccl_coll_attr internal_attr(attr);
     internal_attr.to_cache = 0; /* skip to_cache flag, unsupported yet */

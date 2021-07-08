@@ -34,6 +34,7 @@ namespace native {
  * Base RAII L0 handles wrappper
  * support serialize/deserialize concept
  */
+
 template <class handle_type, class resource_owner, class cl_context>
 class cl_base {
 public:

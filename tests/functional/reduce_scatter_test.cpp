@@ -15,13 +15,13 @@
 */
 #define ALGO_SELECTION_ENV "CCL_REDUCE_SCATTER"
 
-#include "base_impl.hpp"
+#include "test_impl.hpp"
 
 template <typename T>
 class reduce_scatter_test : public base_test<T> {
 public:
     int check(test_operation<T>& op) {
-        size_t my_rank = global_data::instance().comms[0].rank();
+        int my_rank = transport_data::instance().get_rank();
         for (size_t buf_idx = 0; buf_idx < op.buffer_count; buf_idx++) {
             for (size_t elem_idx = 0; elem_idx < op.elem_count;
                  elem_idx += op.get_check_step(elem_idx)) {
@@ -52,7 +52,8 @@ public:
                                     op.elem_count,
                                     op.datatype,
                                     op.reduction,
-                                    global_data::instance().comms[0],
+                                    transport_data::instance().get_comm(),
+                                    transport_data::instance().get_stream(),
                                     attr));
         }
     }

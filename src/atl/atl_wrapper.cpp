@@ -28,14 +28,20 @@ static std::list<std::shared_ptr<iatl>> transports{};
 static ccl_executor* executor;
 
 atl_attr_t atl_wrapper::attr = {
-    1, /* ep_count */
-    1, /* enable_shm */
-    64, /* tag_bits */
-    0xFFFFFFFFFFFFFFFF, /* max_tag */
-    0, /* enable_rma */
-    0, /* max_order_waw_size */
-    0, /* sync_coll */
-    0 /* extra_ep */
+    /* in */
+    {
+        0, /* enable_shm */
+        0, /* enable_rma */
+        0, /* enable_device_buf */
+        0, /* enable_sync_coll */
+        0, /* enable_extra_ep */
+        1, /* ep_count */
+        ATL_MNIC_NONE, /* mnic_type */
+        1 /* mnic_count */
+    },
+
+    /* out */
+    {}
 };
 
 void atl_wrapper::set_internal_env(const atl_attr_t& attr) {
@@ -149,7 +155,7 @@ atl_wrapper::atl_wrapper(int total_rank_count,
     init_transport();
 }
 void atl_wrapper::init_transport() {
-    LOG_DEBUG("init ATL, requested ep_count ", attr.ep_count);
+    LOG_DEBUG("init ATL, requested ep_count ", attr.in.ep_count);
     static std::mutex memory_mutex;
     {
         std::lock_guard<std::mutex> lock(memory_mutex);
@@ -160,7 +166,7 @@ void atl_wrapper::init_transport() {
         }
     }
     eps = transport->atl_get_eps();
-    tag = std::unique_ptr<ccl_atl_tag>(new ccl_atl_tag(attr.tag_bits, attr.max_tag));
+    tag = std::unique_ptr<ccl_atl_tag>(new ccl_atl_tag(attr.out.tag_bits, attr.out.max_tag));
 
     if (pmi) {
         threads_per_process = pmi->get_threads_per_process();
@@ -177,13 +183,25 @@ void atl_wrapper::init_transport() {
 
     if (rank == 0) {
         tag->print();
-        LOG_INFO("atl-parameters:");
-        LOG_INFO("  ep_count: ", attr.ep_count);
-        LOG_INFO("  enable_shm: ", attr.enable_shm);
-        LOG_INFO("  enable_rma: ", attr.enable_rma);
-        LOG_INFO("  max_order_waw_size: ", attr.max_order_waw_size);
-        LOG_INFO("  sync_coll: ", attr.sync_coll);
-        LOG_INFO("  extra_ep: ", attr.extra_ep);
+        LOG_INFO("atl-in-attrs:");
+        LOG_INFO("  enable_shm: ", attr.in.enable_shm);
+        LOG_INFO("  enable_rma: ", attr.in.enable_rma);
+        LOG_INFO("  enable_device_buf: ", attr.in.enable_device_buf);
+        LOG_INFO("  enable_sync_coll: ", attr.in.enable_sync_coll);
+        LOG_INFO("  enable_extra_ep: ", attr.in.enable_extra_ep);
+        LOG_INFO("  ep_count: ", attr.in.ep_count);
+        LOG_INFO("  mnic_type: ", attr.in.mnic_type);
+        LOG_INFO("  mnic_count: ", attr.in.mnic_count);
+
+        LOG_INFO("atl-out-attrs:");
+        LOG_INFO("  enable_shm: ", attr.out.enable_shm);
+        LOG_INFO("  enable_rma: ", attr.out.enable_rma);
+        LOG_INFO("  enable_device_buf: ", attr.out.enable_device_buf);
+        LOG_INFO("  mnic_type: ", attr.out.mnic_type);
+        LOG_INFO("  mnic_count: ", attr.out.mnic_count);
+        LOG_INFO("  tag_bits: ", attr.out.tag_bits);
+        LOG_INFO("  max_tag: ", attr.out.max_tag);
+        LOG_INFO("  max_order_waw_size: ", attr.out.max_order_waw_size);
     }
 
     if ((!pmi) || (pmi && pmi->get_local_thread_idx() == 0)) {

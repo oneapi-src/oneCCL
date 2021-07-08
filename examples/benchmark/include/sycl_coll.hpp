@@ -63,8 +63,14 @@ struct sycl_base_coll : base_coll, private strategy {
                 for (size_t idx = 0; idx < base_coll::get_buf_count(); idx++) {
                     send_bufs[idx][rank_idx] = allocator.allocate(
                         base_coll::get_max_elem_count() * send_multiplier, usm_alloc_type);
-                    recv_bufs[idx][rank_idx] = allocator.allocate(
-                        base_coll::get_max_elem_count() * recv_multiplier, usm_alloc_type);
+
+                    if (base_coll::get_inplace()) {
+                        recv_bufs[idx][rank_idx] = send_bufs[idx][rank_idx];
+                    }
+                    else {
+                        recv_bufs[idx][rank_idx] = allocator.allocate(
+                            base_coll::get_max_elem_count() * recv_multiplier, usm_alloc_type);
+                    }
                 }
             }
             else {
@@ -88,7 +94,9 @@ struct sycl_base_coll : base_coll, private strategy {
             if (base_coll::get_sycl_mem_type() == SYCL_MEM_BUF) {
                 for (size_t idx = 0; idx < base_coll::get_buf_count(); idx++) {
                     delete static_cast<sycl_buffer_t<Dtype>*>(send_bufs[idx][rank_idx]);
-                    delete static_cast<sycl_buffer_t<Dtype>*>(recv_bufs[idx][rank_idx]);
+                    if (!base_coll::get_inplace()) {
+                        delete static_cast<sycl_buffer_t<Dtype>*>(recv_bufs[idx][rank_idx]);
+                    }
                 }
             }
         }
@@ -159,7 +167,9 @@ struct sycl_base_coll : base_coll, private strategy {
                     .memcpy(send_bufs[b_idx][rank_idx], host_send_buf.data(), send_bytes)
                     .wait();
 
-                stream.get_native().memset(recv_bufs[b_idx][rank_idx], 0, recv_bytes).wait();
+                if (!base_coll::get_inplace()) {
+                    stream.get_native().memset(recv_bufs[b_idx][rank_idx], 0, recv_bytes).wait();
+                }
             }
             else {
                 stream.get_native()

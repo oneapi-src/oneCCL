@@ -104,9 +104,43 @@ void ccl_master_sched::prepare_partial_scheds() {
 void ccl_master_sched::sync_partial_scheds() {
     CCL_THROW_IF_NOT(!partial_scheds.empty(), "no partial schedules");
 
-    auto sync_obj = std::make_shared<sync_object>(partial_scheds.size());
+    bool add_sync_entry = false;
+
+    /* ensure all partial schedules have the same add_mode */
+    ccl_sched_add_mode add_mode = partial_scheds[0]->get_add_mode();
     for (auto& sched : partial_scheds) {
-        entry_factory::make_entry<sync_entry>(sched.get(), sync_obj);
+        CCL_THROW_IF_NOT(sched->get_add_mode() == add_mode,
+                         "unexpected add_mode ",
+                         sched->get_add_mode(),
+                         ", expected ",
+                         add_mode);
+    }
+
+    /* check whether all partial schedules already have sync_entry at the tail */
+    for (auto& sched : partial_scheds) {
+        if (sched->entries.empty()) {
+            add_sync_entry = true;
+            break;
+        }
+
+        /* TODO: add enum field into base entry to distinguish different entry types */
+        const char* tail_entry_name = (add_mode == ccl_sched_add_back)
+                                          ? sched->entries.back()->name()
+                                          : sched->entries.front()->name();
+
+        if (tail_entry_name && strcmp(tail_entry_name, "SYNC")) {
+            add_sync_entry = true;
+            break;
+        }
+    }
+
+    /* if at least one partial schedule doesn't have sync entry
+       then sync all partial schedules */
+    if (add_sync_entry) {
+        auto sync_obj = std::make_shared<sync_object>(partial_scheds.size());
+        for (auto& sched : partial_scheds) {
+            entry_factory::make_entry<sync_entry>(sched.get(), sync_obj);
+        }
     }
 }
 
@@ -119,7 +153,7 @@ void ccl_master_sched::dump(std::ostream& out) const {
     ccl_logger::format(out,
                        ", req: ",
                        static_cast<const ccl_request*>(this),
-                       ", worker_sched count: ",
+                       ", partial_scheds size: ",
                        partial_scheds.size());
 
     for (const auto& sched : partial_scheds) {
@@ -209,7 +243,7 @@ ccl_master_sched::ccl_master_sched_ptr ccl_master_sched::create(const ccl_coll_p
 
     if (is_created) {
         sched->set_coll_attr(attr);
-        sched->alloc_buffers_for_sycl_copy();
+        sched->alloc_buffers_for_pre_post_copy();
         LOG_DEBUG("didn't find sched, create new one ",
                   sched,
                   ", type ",

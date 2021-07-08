@@ -15,6 +15,10 @@
 */
 #pragma once
 
+#ifdef CCL_ENABLE_NUMA
+#include <numa.h>
+#endif /* CCL_ENABLE_NUMA */
+
 #include "coll.hpp"
 
 /* cpu-specific base implementation */
@@ -33,14 +37,15 @@ struct cpu_base_coll : base_coll, protected strategy {
 
         for (size_t rank_idx = 0; rank_idx < base_coll::get_ranks_per_proc(); rank_idx++) {
             for (size_t idx = 0; idx < base_coll::get_buf_count(); idx++) {
-                result = posix_memalign(
-                    (void**)&(send_bufs[idx][rank_idx]),
-                    ALIGNMENT,
-                    base_coll::get_max_elem_count() * sizeof(Dtype) * send_multiplier);
-                result = posix_memalign(
-                    (void**)&(recv_bufs[idx][rank_idx]),
-                    ALIGNMENT,
-                    base_coll::get_max_elem_count() * sizeof(Dtype) * recv_multiplier);
+                send_bufs[idx][rank_idx] =
+                    alloc_buffer(base_coll::get_max_elem_count() * sizeof(Dtype) * send_multiplier);
+                if (base_coll::get_inplace()) {
+                    recv_bufs[idx][rank_idx] = send_bufs[idx][rank_idx];
+                }
+                else {
+                    recv_bufs[idx][rank_idx] = alloc_buffer(base_coll::get_max_elem_count() *
+                                                            sizeof(Dtype) * recv_multiplier);
+                }
             }
         }
 
@@ -50,10 +55,16 @@ struct cpu_base_coll : base_coll, protected strategy {
     cpu_base_coll(bench_init_attr init_attr) : cpu_base_coll(init_attr, 1, 1) {}
 
     virtual ~cpu_base_coll() {
+        size_t send_multiplier = coll_strategy::get_send_multiplier();
+        size_t recv_multiplier = coll_strategy::get_recv_multiplier();
         for (size_t rank_idx = 0; rank_idx < base_coll::get_ranks_per_proc(); rank_idx++) {
             for (size_t idx = 0; idx < base_coll::get_buf_count(); idx++) {
-                free(send_bufs[idx][rank_idx]);
-                free(recv_bufs[idx][rank_idx]);
+                free_buffer(send_bufs[idx][rank_idx],
+                            base_coll::get_max_elem_count() * sizeof(Dtype) * send_multiplier);
+                if (!base_coll::get_inplace()) {
+                    free_buffer(recv_bufs[idx][rank_idx],
+                                base_coll::get_max_elem_count() * sizeof(Dtype) * recv_multiplier);
+                }
             }
         }
     }
@@ -98,8 +109,60 @@ struct cpu_base_coll : base_coll, protected strategy {
 
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
             memcpy(send_bufs[b_idx][rank_idx], fill_vector.data(), send_bytes);
+            if (!base_coll::get_inplace()) {
+                memset(recv_bufs[b_idx][rank_idx], 0, recv_bytes);
+            }
+        }
+    }
 
-            memset(recv_bufs[b_idx][rank_idx], 0, recv_bytes);
+    void* alloc_buffer(size_t bytes) {
+        void* ptr = nullptr;
+#ifdef CCL_ENABLE_NUMA
+        int numa_node = base_coll::get_numa_node();
+        if (numa_node != DEFAULT_NUMA_NODE) {
+            ASSERT(numa_available() >= 0, "libnuma is not available");
+            ASSERT(numa_node <= numa_max_node(),
+                   "requsted NUMA node %d is larger than max NUMA node %d",
+                   numa_node,
+                   numa_max_node());
+
+            long long free_bytes = 0;
+            numa_node_size64(numa_node, &free_bytes);
+            ASSERT(bytes <= (size_t)free_bytes,
+                   "no enough free memory on NUMA node %d, requested %zu, free %lld",
+                   numa_node,
+                   bytes,
+                   free_bytes);
+
+            ptr = numa_alloc_onnode(bytes, numa_node);
+            ASSERT(
+                ptr, "failed to allocate buffer with size %zu on NUMA node %d", bytes, numa_node);
+        }
+        else
+#endif /* CCL_ENABLE_NUMA */
+        {
+            size_t alignment = REG_MSG_ALIGNMENT;
+            if (bytes >= LARGE_MSG_THRESHOLD)
+                alignment = LARGE_MSG_ALIGNMENT;
+
+            int result = posix_memalign(&ptr, alignment, bytes);
+            ASSERT((result == 0) && ptr, "failed to allocate buffer with size %zu", bytes);
+        }
+
+        return ptr;
+    }
+
+    void free_buffer(void* ptr, size_t bytes) {
+#ifdef CCL_ENABLE_NUMA
+        int numa_node = base_coll::get_numa_node();
+        if (numa_node != DEFAULT_NUMA_NODE) {
+            ASSERT(numa_available() >= 0, "libnuma is not available");
+            numa_free(ptr, bytes);
+        }
+        else
+#endif /* CCL_ENABLE_NUMA */
+        {
+            free(ptr);
         }
     }
 

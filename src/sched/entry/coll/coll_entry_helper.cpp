@@ -71,7 +71,7 @@ ccl::status coll_entry_helper::build_schedule(ccl_sched* sched,
         }
         case ccl_coll_bcast: {
             res = ccl_coll_build_bcast(
-                sched, param.buf, param.count, param.dtype, param.root, param.comm);
+                sched, param.recv_buf, param.count, param.dtype, param.root, param.comm);
             break;
         }
         case ccl_coll_reduce: {

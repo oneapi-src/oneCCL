@@ -17,7 +17,7 @@
 #include "common/comm/l0/context/device_group_ctx.hpp"
 #include "common/log/log.hpp"
 
-#include "common/comm/l0/context/scaling_ctx/numa_ctx.hpp"
+#include "common/comm/l0/context/scale/numa/numa_ctx.hpp"
 
 namespace native {
 struct device_storage;

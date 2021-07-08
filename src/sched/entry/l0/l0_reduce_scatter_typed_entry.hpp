@@ -19,12 +19,13 @@
 
 #include "sched/entry/l0/l0_entry.hpp"
 
+#include "kernels/shared.h"
+
 //TODO L0 Workaround
 
 namespace native {
-template <class kernel_params, class gpu_comm_impl, ccl::group_split_type topology>
-class l0_reduce_scatter_typed_entry : public base_gpu_entry<kernel_params,
-                                                            gpu_comm_impl,
+template <class gpu_comm_impl, ccl::group_split_type topology>
+class l0_reduce_scatter_typed_entry : public base_gpu_entry<gpu_comm_impl,
                                                             topology,
                                                             ccl::device_topology_type::ring,
                                                             ccl_coll_reduce_scatter> {
@@ -32,8 +33,7 @@ public:
     friend class ccl_gpu_comm;
     friend class ccl_virtual_gpu_comm;
 
-    using base = base_gpu_entry<kernel_params,
-                                gpu_comm_impl,
+    using base = base_gpu_entry<gpu_comm_impl,
                                 topology,
                                 ccl::device_topology_type::ring,
                                 ccl_coll_reduce_scatter>;
@@ -45,16 +45,14 @@ public:
     using base::kernel_router;
     using base::get_ctx;
     using base::get_local_kernel;
+    using kernel_main_typed = ring::reduce_scatter::main_kernel;
 
-    using kernel_main_typed = ring_reduce_scatter_kernel<kernel_params>;
-    using kernel_ipc_typed = ring_reduce_scatter_ipc<kernel_params>;
-
-    using income_data_flag_gpu_type =
-        typename std::remove_pointer<typename kernel_main_typed::income_data_flag_arg_type>::type;
-    using ready_to_recv_flag_gpu_type =
-        typename std::remove_pointer<typename kernel_main_typed::ready_to_recv_flag_arg_type>::type;
-    using local_barrier_flag_gpu_type =
-        typename std::remove_pointer<typename kernel_main_typed::local_barrier_flag_arg_type>::type;
+    using income_data_flag_gpu_type = typename std::remove_pointer<
+        typename ring::reduce_scatter::income_data_flag_arg_type>::type;
+    using ready_to_recv_flag_gpu_type = typename std::remove_pointer<
+        typename ring::reduce_scatter::ready_to_recv_flag_arg_type>::type;
+    using local_barrier_flag_gpu_type = typename std::remove_pointer<
+        typename ring::reduce_scatter::local_barrier_flag_arg_type>::type;
 
     static constexpr const char* class_name() noexcept {
         return "L0_REDUCE_SCATTER_TYPED";
@@ -73,27 +71,23 @@ public:
         const ccl_buffer send_buf,
         ccl_buffer recv_buf,
         size_t cnt,
-        ccl::reduction op,
+        const coll_param_gpu& params,
         std::shared_ptr<ccl_stream> device_stream = std::shared_ptr<ccl_stream>())
-            : base(sched,
-                   comm,
-                   in_ctx,
-                   send_buf,
-                   ccl::native_type_info<typename kernel_params::native_type>::dtype,
-                   device_stream),
+            : base(sched, comm, in_ctx, send_buf, params, device_stream),
 
-              temp_buffer(
-                  this->template alloc_memory_wrap(typename kernel_main_typed::tmp_recv_buf_arg{},
-                                                   parent_communicator,
-                                                   cnt,
-                                                   get_ctx())),
+              temp_buffer(this->template alloc_memory_wrap(
+                  typename ring::reduce_scatter::tmp_recv_buf_arg<uint8_t>{},
+                  parent_communicator,
+                  ring_reduce_scatter_tmp_buffer_size(cnt, base::comm_addr.size) *
+                      ccl::get_datatype_size(params.get_datatype()),
+                  get_ctx())),
               income_data_flag(this->template alloc_memory_wrap(
-                  typename kernel_main_typed::income_data_flag_arg{},
+                  typename ring::reduce_scatter::income_data_flag_arg{},
                   parent_communicator,
                   1,
                   get_ctx())),
               ready_to_recv_flag(this->template alloc_memory_wrap(
-                  typename kernel_main_typed::ready_to_recv_flag_arg{},
+                  typename ring::reduce_scatter::ready_to_recv_flag_arg{},
                   parent_communicator,
                   1,
                   get_ctx())),
@@ -103,13 +97,12 @@ public:
                                          sizeof(local_barrier_flag_gpu_type),
                                          get_ctx())) {
         recv_buf_typed_entry = recv_buf;
-        op_typed_entry = op;
         cnt_entry = cnt;
 
         int next_rank = (comm_addr.rank + 1) % comm_addr.size;
         kernel_router = base::template create_kernel_router_for_rank<
-            l0_reduce_scatter_typed_entry<kernel_params, gpu_comm_impl, topology>>(
-            *this, next_rank, available_devices);
+            l0_reduce_scatter_typed_entry<gpu_comm_impl, topology>>(
+            *this, next_rank, available_devices, base::get_params());
 
         ENTRY_LOG_DEBUG("Init phase of current entry for ext_rank:", next_rank);
 
@@ -131,15 +124,15 @@ public:
 
         auto& main_entry_function = get_local_kernel();
 
-        auto recv_buf_ptr =
-            reinterpret_cast<typename kernel_params::native_type*>(recv_buf_typed_entry.get_ptr());
+        auto recv_buf_ptr = reinterpret_cast<void*>(recv_buf_typed_entry.get_ptr());
+
         //create implementation specified primitives
         main_entry_function
-            .template set_args<typename kernel_main_typed::tmp_recv_buf_arg,
-                               typename kernel_main_typed::income_data_flag_arg,
-                               typename kernel_main_typed::ready_to_recv_flag_arg,
-                               typename kernel_main_typed::local_barrier_flag_arg,
-                               typename kernel_main_typed::recv_buf_arg,
+            .template set_args<typename ring::reduce_scatter::tmp_recv_buf_arg<void>,
+                               typename ring::reduce_scatter::income_data_flag_arg,
+                               typename ring::reduce_scatter::ready_to_recv_flag_arg,
+                               typename ring::reduce_scatter::local_barrier_flag_arg,
+                               typename ring::reduce_scatter::recv_buf_arg<void>,
                                typename kernel_main_typed::common_entry_buf_size_arg>(
                 temp_buffer.get(),
                 income_data_flag.get(),
@@ -164,9 +157,11 @@ public:
     std::vector<ccl_device::device_ipc_memory_handle> get_ipc_data() override {
         ccl_device& owned_device = parent_communicator->get_device();
 
-        //TODO
+        auto recv_buf_ptr = reinterpret_cast<void*>(recv_buf_typed_entry.get_ptr());
+
         std::vector<ccl_device::device_ipc_memory_handle> ret;
-        ret.reserve(3);
+        ret.reserve(4);
+        ret.push_back(owned_device.create_ipc_memory_handle(recv_buf_ptr, get_ctx()));
         ret.push_back(owned_device.create_ipc_memory_handle(temp_buffer.get(), get_ctx()));
         ret.push_back(owned_device.create_ipc_memory_handle(income_data_flag.get(), get_ctx()));
         ret.push_back(owned_device.create_ipc_memory_handle(ready_to_recv_flag.get(), get_ctx()));
@@ -179,137 +174,85 @@ protected:
     }
 
 private:
-    ccl_device::device_memory<typename kernel_params::native_type> temp_buffer;
+    ccl_device::device_memory<> temp_buffer;
     ccl_device::device_memory<income_data_flag_gpu_type> income_data_flag;
     ccl_device::device_memory<ready_to_recv_flag_gpu_type> ready_to_recv_flag;
     ccl_device::device_memory<local_barrier_flag_gpu_type> local_barrier_flag;
-    ccl::reduction op_typed_entry;
     ccl_buffer recv_buf_typed_entry;
     size_t cnt_entry;
     std::shared_ptr<ccl_context> ctx;
 
 public:
-    bool execute(kernel_main_typed& main_entry_function, kernel_main_typed& right_kernel) {
-        //Check argument binding in kernels for next rank
+    template <class left_kernel_t, class right_kernel_t>
+    bool execute(left_kernel_t& left_kernel, right_kernel_t& right_kernel) {
         bool is_right_kernel_ready =
-            right_kernel.template test_args<typename kernel_main_typed::recv_buf_arg,
-                                            typename kernel_main_typed::tmp_recv_buf_arg,
-                                            typename kernel_main_typed::income_data_flag_arg,
-                                            typename kernel_main_typed::ready_to_recv_flag_arg>();
+            right_kernel
+                .template test_args<typename ring::reduce_scatter::recv_buf_arg<void>,
+                                    typename ring::reduce_scatter::tmp_recv_buf_arg<void>,
+                                    typename ring::reduce_scatter::income_data_flag_arg,
+                                    typename ring::reduce_scatter::ready_to_recv_flag_arg>();
+
+        // Once we're sure that the parameters ready read them from the right kernel
+        // Note: we not only read the parameters but also reset their 'ready' flag
+        // (since we're using a destructive-copying policy) meaning that they must be stored
+        // in order to be read again.
+        // This is a protection to a case of multiple kernel launches
+        // (i.e. the collective is ran multiple times) where we might read not up-to-date
+        // values from the previous run.
+
         if (is_right_kernel_ready) {
-            //TODO do not get arguments sequencially - use array version instead
-            typename kernel_main_typed::recv_buf_arg::return_t right_output_buf_arg =
-                right_kernel.template get_arg<typename kernel_main_typed::recv_buf_arg>();
-            typename kernel_main_typed::tmp_recv_buf_arg::return_t right_tmp_recv_buf_arg =
-                right_kernel.template get_arg<typename kernel_main_typed::tmp_recv_buf_arg>();
-            typename kernel_main_typed::income_data_flag_arg::return_t right_income_data_flag_arg =
-                right_kernel.template get_arg<typename kernel_main_typed::income_data_flag_arg>();
-            typename kernel_main_typed::ready_to_recv_flag_arg::return_t
-                right_ready_to_recv_flag_arg =
-                    right_kernel
-                        .template get_arg<typename kernel_main_typed::ready_to_recv_flag_arg>();
+            auto right_output_buf_arg =
+                right_kernel.template get_arg<typename ring::reduce_scatter::recv_buf_arg<void>>();
+            auto right_tmp_recv_buf_arg =
+                right_kernel
+                    .template get_arg<typename ring::reduce_scatter::tmp_recv_buf_arg<void>>();
+            auto right_income_data_flag_arg =
+                right_kernel
+                    .template get_arg<typename ring::reduce_scatter::income_data_flag_arg>();
+            auto right_ready_to_recv_flag_arg =
+                right_kernel
+                    .template get_arg<typename ring::reduce_scatter::ready_to_recv_flag_arg>();
 
-            LOG_DEBUG("entry: ",
-                      class_name(),
-                      ", rank: ",
-                      comm_addr.to_string(),
-                      ", bind elapsed arguments for kernel: ",
-                      kernel_main_typed::name());
-            LOG_TRACE("Args: \n{ ",
-                      right_tmp_recv_buf_arg.first,
-                      ", ",
-                      right_tmp_recv_buf_arg.second,
-                      "}\n",
-                      "{ ",
-                      right_income_data_flag_arg.first,
-                      ", ",
-                      right_income_data_flag_arg.second,
-                      "}\n",
-                      "{ ",
-                      right_ready_to_recv_flag_arg.first,
-                      ", ",
-                      right_ready_to_recv_flag_arg.second,
-                      "}\n");
+            // ENTRY_LOG_DEBUG("Bind right arguments from ",
+            //                 right_kernel_t::name(),
+            //                 " kernel",
+            //                 " to ",
+            //                 left_kernel_t::name(),
+            //                 " kernel. "
+            //                 "Right arguments:\n{ ",
+            //                 right_output_buf_arg.first,
+            //                 ", ",
+            //                 right_output_buf_arg.second,
+            //                 "}\n",
+            //                 "{ ",
+            //                 right_tmp_recv_buf_arg.first,
+            //                 ", ",
+            //                 right_tmp_recv_buf_arg.second,
+            //                 "}\n",
+            //                 "{ ",
+            //                 right_income_data_flag_arg.first,
+            //                 ", ",
+            //                 right_income_data_flag_arg.second,
+            //                 "}\n",
+            //                 "{ ",
+            //                 right_ready_to_recv_flag_arg.first,
+            //                 ", ",
+            //                 right_ready_to_recv_flag_arg.second,
+            //                 "}\n");
 
-            //TODO register argument for current device kernel: use array-version
-            main_entry_function
-                .template set_args<typename kernel_main_typed::right_output_buf_arg,
-                                   typename kernel_main_typed::right_tmp_recv_buf_arg,
-                                   typename kernel_main_typed::right_income_data_flag_arg,
-                                   typename kernel_main_typed::right_ready_to_recv_flag_arg>(
+            left_kernel
+                .template set_args<typename ring::reduce_scatter::right_output_buf_arg<void>,
+                                   typename ring::reduce_scatter::right_tmp_recv_buf_arg<void>,
+                                   typename ring::reduce_scatter::right_income_data_flag_arg,
+                                   typename ring::reduce_scatter::right_ready_to_recv_flag_arg>(
                     right_output_buf_arg.second,
                     right_tmp_recv_buf_arg.second,
                     right_income_data_flag_arg.second,
                     right_ready_to_recv_flag_arg.second);
-            LOG_TRACE("Set right_tmp_recv_buf_arg",
-                      "Set right_income_data_flag_arg",
-                      "Set right_ready_to_recv_flag_arg");
-            LOG_DEBUG("entry: ",
-                      class_name(),
-                      ", rank: ",
-                      comm_addr.to_string(),
-                      ". Function: ",
-                      main_entry_function.to_string());
-        }
-        return is_right_kernel_ready;
-    }
 
-    bool execute(kernel_main_typed& main_entry_function, kernel_ipc_typed& right_kernel) {
-        //Check argument binding in kernels for next rank
-        bool is_right_kernel_ready =
-            right_kernel.template test_args<typename kernel_ipc_typed::tmp_recv_buf_arg,
-                                            typename kernel_ipc_typed::income_data_flag_arg,
-                                            typename kernel_ipc_typed::ready_to_recv_flag_arg>();
-        if (is_right_kernel_ready) {
-            //TODO do not get arguments sequencially - use array version instead
-            typename kernel_main_typed::tmp_recv_buf_arg::return_t right_tmp_recv_buf_arg =
-                right_kernel.template get_arg<typename kernel_ipc_typed::tmp_recv_buf_arg>();
-            typename kernel_main_typed::income_data_flag_arg::return_t right_income_data_flag_arg =
-                right_kernel.template get_arg<typename kernel_ipc_typed::income_data_flag_arg>();
-            typename kernel_main_typed::ready_to_recv_flag_arg::return_t
-                right_ready_to_recv_flag_arg =
-                    right_kernel
-                        .template get_arg<typename kernel_ipc_typed::ready_to_recv_flag_arg>();
-
-            LOG_DEBUG("entry: ",
-                      class_name(),
-                      ", rank: ",
-                      comm_addr.to_string(),
-                      ", bind elapsed arguments for kernel: ",
-                      kernel_main_typed::name());
-            LOG_TRACE("Args: \n{ ",
-                      right_tmp_recv_buf_arg.first,
-                      ", ",
-                      right_tmp_recv_buf_arg.second,
-                      "}\n",
-                      "{ ",
-                      right_income_data_flag_arg.first,
-                      ", ",
-                      right_income_data_flag_arg.second,
-                      "}\n",
-                      "{ ",
-                      right_ready_to_recv_flag_arg.first,
-                      ", ",
-                      right_ready_to_recv_flag_arg.second,
-                      "}\n");
-
-            //TODO register argument for current device kernel: user array version
-            main_entry_function
-                .template set_args<typename kernel_main_typed::right_tmp_recv_buf_arg,
-                                   typename kernel_main_typed::right_income_data_flag_arg,
-                                   typename kernel_main_typed::right_ready_to_recv_flag_arg>(
-                    right_tmp_recv_buf_arg.second,
-                    right_income_data_flag_arg.second,
-                    right_ready_to_recv_flag_arg.second);
-            LOG_TRACE("Set right_tmp_recv_buf_arg",
-                      "Set right_income_data_flag_arg",
-                      "Set right_ready_to_recv_flag_arg");
-            LOG_DEBUG("entry: ",
-                      class_name(),
-                      ", rank: ",
-                      comm_addr.to_string(),
-                      ". Function: ",
-                      main_entry_function.to_string());
+            ENTRY_LOG_DEBUG("Binding arguments between kernels is complete. ",
+                            "Arguments of the left kernel after binding:\n",
+                            left_kernel.to_string());
         }
         return is_right_kernel_ready;
     }

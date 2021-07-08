@@ -33,8 +33,14 @@ ccl::event process_ring_communicator::allgatherv_impl(const buffer_type* send_bu
                                                       const ccl::stream::impl_value_t& stream,
                                                       const ccl::allgatherv_attr& attr,
                                                       const ccl::vector_class<ccl::event>& deps) {
-    throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
-    return {};
+    return allgatherv_impl(static_cast<const void*>(send_buf),
+                           send_count,
+                           static_cast<void*>(recv_buf),
+                           recv_counts,
+                           ccl::native_type_info<buffer_type>::dtype,
+                           stream,
+                           attr,
+                           deps);
 }
 
 template <class buffer_type>
@@ -84,166 +90,14 @@ ccl::event process_ring_communicator::allreduce_impl(const buffer_type* send_buf
                                                      const ccl::stream::impl_value_t& stream,
                                                      const ccl::allreduce_attr& attr,
                                                      const ccl::vector_class<ccl::event>& deps) {
-    using namespace native;
-
-    static constexpr ccl::group_split_type group_id = base_t::topology_type();
-    static constexpr ccl::device_topology_type class_id = base_t::topology_class();
-
-    if (!is_ready()) {
-        throw ccl::exception(std::string(
-            "Device communicator for group_id: " + ::to_string(group_id) +
-            " is not ready yet. Not all сommunicators are created in group. Please create them before usage"));
-    }
-
-    int comm_rank = rank();
-    size_t ring_index = 0;
-    LOG_DEBUG("communicator for device idx: ",
-              get_device_path(),
-              ", rank idx: ",
-              comm_rank,
-              ", ring_index: ",
-              ring_index);
-
-    //TODO make const!
-    ccl_buffer send_entry_buffer(const_cast<buffer_type**>(&send_buf),
-                                 count * sizeof(buffer_type),
-                                 0,
-                                 ccl_buffer_type::INDIRECT);
-    ccl_buffer recv_entry_buffer(
-        &recv_buf, count * sizeof(buffer_type), 0, ccl_buffer_type::INDIRECT);
-
-    using community_t = typename device_community_container<class_id>::element_type;
-    community_t community = device_community_impl.get_topology(ring_index);
-
-    return do_collective_op_reductions<buffer_type, group_id, class_id, l0_allreduce_typed_entry>(
-        reduction,
-        communication_device,
-        ctx,
-        community,
-        process_id,
-        thread_id,
-        this->get_native_context(),
-        send_entry_buffer,
-        recv_entry_buffer,
-        count,
-        reduction,
-        stream);
-
-    /*
-
-    const auto& in_process_gpu_storage = community->get_devices<ccl_gpu_comm>();
-    const auto& virtual_process_gpu_storage = community->get_devices<ccl_virtual_gpu_comm>();
-
-    auto& ipc_gpu_storage = community->get_devices<ccl_ipc_gpu_comm>();
-    (void)ipc_gpu_storage;
-    auto& in_process_ipc_source_real_gpu_storage =
-        community->get_devices<ccl_ipc_source_gpu_comm<ccl_gpu_comm>>();
-    auto& in_process_ipc_source_virtual_gpu_storage =
-        community->get_devices<ccl_ipc_source_gpu_comm<ccl_virtual_gpu_comm>>();
-
-    allied_process_group_scheduler::thread_schedule_ptr schedule;
-    //source for collective operation is ipc sources, real gpu or virtual gpu
-    auto ipc_src_real_it = in_process_ipc_source_real_gpu_storage.find(comm_rank);
-    if (ipc_src_real_it != in_process_ipc_source_real_gpu_storage.end()) {
-        LOG_DEBUG("Invoke: ", ipc_src_real_it->second->to_string());
-
-        using gpu_allreduce_entry =
-            l0_allreduce_typed_entry<buffer_type, ccl_ipc_source_gpu_comm<ccl_gpu_comm>, group_id>;
-
-        schedule =
-            ctx->scheduler_impl
-                ->submit_entry_ipc<gpu_allreduce_entry, ccl_sched_add_back, group_id, class_id>(
-                    process_id,
-                    thread_id,
-                    *community,
-                    ipc_src_real_it->second,
-                    this->get_native_context(),
-                    send_entry_buffer,
-                    recv_entry_buffer,
-                    count,
-                    reduction,
-                    stream);
-    }
-    else {
-        auto ipc_src_virt_it = in_process_ipc_source_virtual_gpu_storage.find(comm_rank);
-        if (ipc_src_virt_it != in_process_ipc_source_virtual_gpu_storage.end()) {
-            LOG_DEBUG("Invoke: ", ipc_src_virt_it->second->to_string());
-
-            using gpu_allreduce_entry =
-                l0_allreduce_typed_entry<buffer_type,
-                                         ccl_ipc_source_gpu_comm<ccl_virtual_gpu_comm>,
-                                         group_id>;
-
-            schedule =
-                ctx->scheduler_impl
-                    ->submit_entry_ipc<gpu_allreduce_entry, ccl_sched_add_back, group_id, class_id>(
-                        process_id,
-                        thread_id,
-                        *community,
-                        ipc_src_virt_it->second,
-                        this->get_native_context(),
-                        send_entry_buffer,
-                        recv_entry_buffer,
-                        count,
-                        reduction,
-                        stream);
-        }
-        else {
-            auto real_device_it = in_process_gpu_storage.find(comm_rank);
-            if (real_device_it != in_process_gpu_storage.end()) {
-                LOG_DEBUG("Invoke: ", real_device_it->second->to_string());
-
-                using gpu_allreduce_entry =
-                    l0_allreduce_typed_entry<buffer_type, ccl_gpu_comm, group_id>;
-
-                schedule =
-                    ctx->scheduler_impl->submit_entry_ipc<gpu_allreduce_entry,
-                                                          ccl_sched_add_back,
-                                                          group_id,
-                                                          class_id>(process_id,
-                                                                    thread_id,
-                                                                    *community,
-                                                                    real_device_it->second,
-                                                                    this->get_native_context(),
-                                                                    send_entry_buffer,
-                                                                    recv_entry_buffer,
-                                                                    count,
-                                                                    reduction,
-                                                                    stream);
-            }
-            else {
-                auto virtual_device_it = virtual_process_gpu_storage.find(comm_rank);
-                if (virtual_device_it != virtual_process_gpu_storage.end()) {
-                    LOG_DEBUG("Invoke: ", virtual_device_it->second->to_string());
-                    using gpu_allreduce_entry =
-                        l0_allreduce_typed_entry<buffer_type, ccl_virtual_gpu_comm, group_id>;
-
-                    schedule =
-                        ctx->scheduler_impl->submit_entry_ipc<gpu_allreduce_entry,
-                                                              ccl_sched_add_back,
-                                                              group_id,
-                                                              class_id>(process_id,
-                                                                        thread_id,
-                                                                        *community,
-                                                                        virtual_device_it->second,
-                                                                        this->get_native_context(),
-                                                                        send_entry_buffer,
-                                                                        recv_entry_buffer,
-                                                                        count,
-                                                                        reduction,
-                                                                        stream);
-                }
-            }
-        }
-    }
-
-    //if sched is not ready - send NULL
-    if (schedule) {
-        LOG_DEBUG("Device group finalized");
-    }
-    return std::unique_ptr<ccl::event_impl>(
-        new ccl::gpu_shared_event_impl(std::move(schedule)));
-    */
+    return allreduce_impl(static_cast<const void*>(send_buf),
+                          static_cast<void*>(recv_buf),
+                          count,
+                          ccl::native_type_info<buffer_type>::dtype,
+                          reduction,
+                          stream,
+                          attr,
+                          deps);
 }
 
 template <class buffer_type>
@@ -313,9 +167,16 @@ ccl::event process_ring_communicator::alltoallv_impl(const buffer_type* send_buf
                                                      const ccl::stream::impl_value_t& stream,
                                                      const ccl::alltoallv_attr& attr,
                                                      const ccl::vector_class<ccl::event>& deps) {
-    throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
-    return {};
+    return alltoallv_impl(static_cast<const void*>(send_buf),
+                          send_counts,
+                          static_cast<void*>(recv_buf),
+                          recv_counts,
+                          ccl::native_type_info<buffer_type>::dtype,
+                          stream,
+                          attr,
+                          deps);
 }
+
 template <class buffer_type>
 ccl::event process_ring_communicator::alltoallv_impl(
     const ccl::vector_class<buffer_type*>& send_buf,
@@ -363,8 +224,13 @@ ccl::event process_ring_communicator::broadcast_impl(buffer_type* buf,
                                                      const ccl::stream::impl_value_t& stream,
                                                      const ccl::broadcast_attr& attr,
                                                      const ccl::vector_class<ccl::event>& deps) {
-    throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
-    return {};
+    return broadcast_impl(static_cast<void*>(buf),
+                          count,
+                          ccl::native_type_info<buffer_type>::dtype,
+                          root,
+                          stream,
+                          attr,
+                          deps);
 }
 
 template <class buffer_type>
@@ -388,8 +254,15 @@ ccl::event process_ring_communicator::reduce_impl(const buffer_type* send_buf,
                                                   const ccl::stream::impl_value_t& stream,
                                                   const ccl::reduce_attr& attr,
                                                   const ccl::vector_class<ccl::event>& deps) {
-    throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
-    return {};
+    return reduce_impl(static_cast<const void*>(send_buf),
+                       static_cast<void*>(recv_buf),
+                       count,
+                       ccl::native_type_info<buffer_type>::dtype,
+                       reduction,
+                       root,
+                       stream,
+                       attr,
+                       deps);
 }
 
 template <class buffer_type>
@@ -414,8 +287,14 @@ ccl::event process_ring_communicator::reduce_scatter_impl(
     const ccl::stream::impl_value_t& stream,
     const ccl::reduce_scatter_attr& attr,
     const ccl::vector_class<ccl::event>& deps) {
-    throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
-    return {};
+    return reduce_scatter_impl(static_cast<const void*>(send_buf),
+                               static_cast<void*>(recv_buf),
+                               recv_count,
+                               ccl::native_type_info<buffer_type>::dtype,
+                               reduction,
+                               stream,
+                               attr,
+                               deps);
 }
 template <class buffer_type>
 ccl::event process_ring_communicator::reduce_scatter_impl(

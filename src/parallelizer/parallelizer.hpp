@@ -34,5 +34,13 @@ public:
     ccl::status process(ccl_master_sched* sched);
 
 private:
+    ccl::status process_deps(ccl_master_sched* sched);
+
+#ifdef CCL_ENABLE_SYCL
+    ccl::status process_pre_post_copies(ccl_master_sched* sched);
+#endif /* CCL_ENABLE_SYCL */
+
+    ccl::status process_base(ccl_master_sched* sched);
+
     size_t max_data_partition_count;
 };
