@@ -1,284 +1,442 @@
 
-
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" >
-<head>
-  <meta charset="utf-8">
-  
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <title>Transport selection &mdash; oneCCL Documentation 2021 documentation</title>
-  
 
-  
-  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="../_static/sphinx_tabs/semantic-ui-2.4.1/segment.min.css" type="text/css" />
-  <link rel="stylesheet" href="../_static/sphinx_tabs/semantic-ui-2.4.1/menu.min.css" type="text/css" />
-  <link rel="stylesheet" href="../_static/sphinx_tabs/semantic-ui-2.4.1/tab.min.css" type="text/css" />
-  <link rel="stylesheet" href="../_static/sphinx_tabs/tabs.css" type="text/css" />
-
-  
-  
-  
-  
-
-  
-  <!--[if lt IE 9]>
-    <script src="../_static/js/html5shiv.min.js"></script>
-  <![endif]-->
-  
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Transport selection &#8212; oneCCL  documentation</title>
     
-      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-        <script src="../_static/jquery.js"></script>
-        <script src="../_static/underscore.js"></script>
-        <script src="../_static/doctools.js"></script>
-        <script src="../_static/language_data.js"></script>
-        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    
-    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  <link href="../_static/css/theme.css" rel="stylesheet" />
+  <link href="../_static/css/index.c5995385ac14fb8791e8eb36b4908be2.css" rel="stylesheet" />
 
     
+  <link rel="stylesheet"
+    href="../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    
+      
+
+    
+    <link rel="stylesheet" href="../_static/sphinx-book-theme.acff12b8f9c144ce68a297486a2fa670.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/tabs.css" />
+    
+  <link rel="preload" as="script" href="../_static/js/index.1c5a1a01449ed65a7b51.js">
+
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script src="../_static/sphinx-book-theme.12a9622fbb08dcb3a2a40b2c02b83a57.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="shortcut icon" href="../_static/favicons.png"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Advanced Configuration" href="../advanced-configuration.html" />
     <link rel="prev" title="Execution of Communication Operations" href="operation-execution.html" />
     <link href="../_static/style.css" rel="stylesheet" type="text/css">
 
-</head>
-
-<body class="wy-body-for-nav">
-
-   
-  <div class="wy-grid-for-nav">
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="80">
     
-    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
-      <div class="wy-side-scroll">
-        <div class="wy-side-nav-search" >
-          
+    <div class="container-fluid" id="banner"></div>
 
-          
-            <a href="../index.html" class="icon icon-home" alt="Documentation Home"> oneCCL Documentation
-          
+    
 
+    <div class="container-xl">
+      <div class="row">
           
-          </a>
-
-          
-            
-            
-          
-
-          
-<div role="search">
-  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
-    <input type="hidden" name="check_keywords" value="yes" />
-    <input type="hidden" name="area" value="default" />
-  </form>
-</div>
-
-          
-        </div>
-
-        
-        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
-          
-            
-            
-              
-            
-            
-              <p class="caption"><span class="caption-text">Get Started</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../introduction/release-notes.html">Release Notes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../introduction/installation.html">Installation Guide</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../introduction/installation.html#system-requirements">System Requirements</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../introduction/installation.html#installation-using-command-line-interface">Installation using Command Line Interface</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../introduction/installation.html#custom-installation">Custom Installation</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="../introduction/installation.html#environment-setup">Environment Setup</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="../introduction/sample.html">Sample Application</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../introduction/sample.html#build-details">Build details</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../introduction/sample.html#run-the-sample">Run the sample</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="../introduction/cmake-configuration.html">Use oneCCL package from CMake</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../introduction/cmake-configuration.html#onecclconfig-files-generation">oneCCLConfig files generation</a></li>
-</ul>
-</li>
-</ul>
-<p class="caption"><span class="caption-text">Developer Guide</span></p>
-<ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="../programming-model.html">Programming Model</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../programming-model/host-communication.html">Host Communication</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../programming-model/device-communication.html">Device Communication</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../programming-model/limitations.html">Limitations</a></li>
-</ul>
-</li>
-<li class="toctree-l1 current"><a class="reference internal" href="../general-configuration.html">General Configuration</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="operation-execution.html">Execution of Communication Operations</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="operation-execution.html#automatic-setup">Automatic setup</a></li>
-<li class="toctree-l3"><a class="reference internal" href="operation-execution.html#explicit-setup">Explicit setup</a></li>
-</ul>
-</li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">Transport selection</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="../advanced-configuration.html">Advanced Configuration</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../advanced-configuration/collective-algorithms-selection.html">Selection of Collective Algorithms</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../advanced-configuration/operation-caching.html">Caching of Communication Operations</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../advanced-configuration/operation-prioritization.html">Prioritization of Communication Operations</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../advanced-configuration/operation-fusion.html">Fusion of Communication Operations</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../advanced-configuration/unordered-collectives.html">Unordered collectives support</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../advanced-configuration/sparse-collectives.html">Sparse collective operations</a></li>
-</ul>
-</li>
-</ul>
-<p class="caption"><span class="caption-text">Developer Reference</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../api.html">oneCCL API</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../api/initialization.html">Initialization</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api/concepts.html">oneCCL Concepts</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../api/concepts/communicator.html">Communicator</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../api/concepts/context.html">Context</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../api/concepts/device.html">Device</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../api/concepts/event.html">Event</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../api/concepts/kvs.html">Key-value Store</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../api/concepts/stream.html">Stream</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="../api/operations.html">Communication operations</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../api/operations/datatypes.html">Datatypes</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../api/operations/collective-operations.html">Collective Operations</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/allgatherv.html">Allgatherv</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/allreduce.html">Allreduce</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/alltoall.html">Alltoall</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/alltoallv.html">Alltoallv</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/barrier.html">Barrier</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/broadcast.html">Broadcast</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/reduce.html">Reduce</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/reduce-scatter.html">ReduceScatter</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/sparse-allreduce.html">SparseAllreduce</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations.html#operation-attributes">Operation Attributes</a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="../api.html#id1">Generic workflow</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../api.html#id2">Error Handling</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="../env-variables.html">Environment Variables</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../env-variables.html#collective-algorithms-selection">Collective algorithms selection</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../env-variables.html#ccl-coll-name">CCL_&lt;coll_name&gt;</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../env-variables.html#available-collectives">Available collectives</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../env-variables.html#available-algorithms">Available algorithms</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../env-variables.html#allgatherv-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLGATHERV</span></code> algorithms</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../env-variables.html#allreduce-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLREDUCE</span></code> algorithms</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../env-variables.html#alltoall-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLTOALL</span></code> algorithms</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../env-variables.html#alltoallv-algorithms"><code class="docutils literal notranslate"><span class="pre">ALLTOALLV</span></code> algorithms</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../env-variables.html#barrier-algorithms"><code class="docutils literal notranslate"><span class="pre">BARRIER</span></code> algorithms</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../env-variables.html#bcast-algorithms"><code class="docutils literal notranslate"><span class="pre">BCAST</span></code> algorithms</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../env-variables.html#reduce-algorithms"><code class="docutils literal notranslate"><span class="pre">REDUCE</span></code> algorithms</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../env-variables.html#reduce-scatter-algorithms"><code class="docutils literal notranslate"><span class="pre">REDUCE_SCATTER</span></code> algorithms</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../env-variables.html#sparse-allreduce-algorithms"><code class="docutils literal notranslate"><span class="pre">SPARSE_ALLREDUCE</span></code> algorithms</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../env-variables.html#ccl-rs-chunk-count">CCL_RS_CHUNK_COUNT</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../env-variables.html#ccl-rs-min-chunk-size">CCL_RS_MIN_CHUNK_SIZE</a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="../env-variables.html#fusion">Fusion</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../env-variables.html#ccl-fusion">CCL_FUSION</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../env-variables.html#ccl-fusion-bytes-threshold">CCL_FUSION_BYTES_THRESHOLD</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../env-variables.html#ccl-fusion-count-threshold">CCL_FUSION_COUNT_THRESHOLD</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../env-variables.html#ccl-fusion-cycle-ms">CCL_FUSION_CYCLE_MS</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="../env-variables.html#ccl-atl-transport">CCL_ATL_TRANSPORT</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env-variables.html#ccl-unordered-coll">CCL_UNORDERED_COLL</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env-variables.html#ccl-priority">CCL_PRIORITY</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env-variables.html#ccl-worker-count">CCL_WORKER_COUNT</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env-variables.html#ccl-worker-affinity">CCL_WORKER_AFFINITY</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env-variables.html#ccl-log-level">CCL_LOG_LEVEL</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../env-variables.html#ccl-max-short-size">CCL_MAX_SHORT_SIZE</a></li>
-</ul>
-</li>
-</ul>
-<p class="caption"><span class="caption-text">Notices and Disclaimers</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../legal.html">Notices and Disclaimers</a></li>
-</ul>
-
-            
-          
-        </div>
-        
-      </div>
-    </nav>
-
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
-
+<div class="col-12 col-md-3 bd-sidebar site-navigation show" id="site-navigation">
+    
+        <div class="navbar-brand-box">
+    <a class="navbar-brand text-wrap" href="../index.html">
       
-      <nav class="wy-nav-top" aria-label="top navigation">
-        
-          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../index.html">oneCCL Documentation</a>
-        
-      </nav>
-
-
-      <div class="wy-nav-content">
-        
-        <div class="rst-content">
-        
-          
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div role="navigation" aria-label="breadcrumbs navigation">
-
-  <ul class="wy-breadcrumbs">
-    
-      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
-        
-          <li><a href="../general-configuration.html">General Configuration</a> &raquo;</li>
-        
-      <li>Transport selection</li>
-    
-    
-      <li class="wy-breadcrumbs-aside">
-        
-            
-            <a href="../_sources/general-configuration/transport-selection.rst.txt" rel="nofollow"> View page source</a>
-          
-        
-      </li>
-    
+      <img src="../_static/oneAPI-rgb-rev-100.png" class="logo" alt="logo">
+      
+      
+      <h1 class="site-logo" id="site-title">oneCCL  documentation</h1>
+      
+    </a>
+</div><form class="bd-search d-flex align-items-center" action="../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+    <div class="bd-toc-item active">
+        <p class="caption">
+ <span class="caption-text">
+  Get Started
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../introduction/release-notes.html">
+   Release Notes
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../introduction/installation.html">
+   Installation Guide
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../introduction/sample.html">
+   Sample Application
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../introduction/cmake-configuration.html">
+   Use oneCCL package from CMake
+  </a>
+ </li>
+</ul>
+<p class="caption">
+ <span class="caption-text">
+  Developer Guide
+ </span>
+</p>
+<ul class="current nav bd-sidenav">
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../programming-model.html">
+   Programming Model
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/>
+  <label for="toctree-checkbox-1">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../programming-model/host-communication.html">
+     Host Communication
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../programming-model/device-communication.html">
+     Device Communication
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../programming-model/limitations.html">
+     Limitations
+    </a>
+   </li>
   </ul>
+ </li>
+ <li class="toctree-l1 current active has-children">
+  <a class="reference internal" href="../general-configuration.html">
+   General Configuration
+  </a>
+  <input checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/>
+  <label for="toctree-checkbox-2">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul class="current">
+   <li class="toctree-l2">
+    <a class="reference internal" href="operation-execution.html">
+     Execution of Communication Operations
+    </a>
+   </li>
+   <li class="toctree-l2 current active">
+    <a class="current reference internal" href="#">
+     Transport selection
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../advanced-configuration.html">
+   Advanced Configuration
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/>
+  <label for="toctree-checkbox-3">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../advanced-configuration/collective-algorithms-selection.html">
+     Selection of Collective Algorithms
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../advanced-configuration/operation-caching.html">
+     Caching of Communication Operations
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../advanced-configuration/operation-prioritization.html">
+     Prioritization of Communication Operations
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../advanced-configuration/operation-fusion.html">
+     Fusion of Communication Operations
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../advanced-configuration/unordered-collectives.html">
+     Unordered collectives support
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../advanced-configuration/sparse-collectives.html">
+     Sparse collective operations
+    </a>
+   </li>
+  </ul>
+ </li>
+</ul>
+<p class="caption">
+ <span class="caption-text">
+  Developer Reference
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../api.html">
+   oneCCL API
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/>
+  <label for="toctree-checkbox-4">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../api/initialization.html">
+     Initialization
+    </a>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../api/concepts.html">
+     oneCCL Concepts
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/>
+    <label for="toctree-checkbox-5">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../api/concepts/communicator.html">
+       Communicator
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../api/concepts/context.html">
+       Context
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../api/concepts/device.html">
+       Device
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../api/concepts/event.html">
+       Event
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../api/concepts/kvs.html">
+       Key-value Store
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../api/concepts/stream.html">
+       Stream
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../api/operations.html">
+     Communication operations
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/>
+    <label for="toctree-checkbox-6">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../api/operations/datatypes.html">
+       Datatypes
+      </a>
+     </li>
+     <li class="toctree-l3 has-children">
+      <a class="reference internal" href="../api/operations/collective-operations.html">
+       Collective Operations
+      </a>
+      <input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/>
+      <label for="toctree-checkbox-7">
+       <i class="fas fa-chevron-down">
+       </i>
+      </label>
+      <ul>
+       <li class="toctree-l4">
+        <a class="reference internal" href="../api/operations/collective-operations/allgatherv.html">
+         Allgatherv
+        </a>
+       </li>
+       <li class="toctree-l4">
+        <a class="reference internal" href="../api/operations/collective-operations/allreduce.html">
+         Allreduce
+        </a>
+       </li>
+       <li class="toctree-l4">
+        <a class="reference internal" href="../api/operations/collective-operations/alltoall.html">
+         Alltoall
+        </a>
+       </li>
+       <li class="toctree-l4">
+        <a class="reference internal" href="../api/operations/collective-operations/alltoallv.html">
+         Alltoallv
+        </a>
+       </li>
+       <li class="toctree-l4">
+        <a class="reference internal" href="../api/operations/collective-operations/barrier.html">
+         Barrier
+        </a>
+       </li>
+       <li class="toctree-l4">
+        <a class="reference internal" href="../api/operations/collective-operations/broadcast.html">
+         Broadcast
+        </a>
+       </li>
+       <li class="toctree-l4">
+        <a class="reference internal" href="../api/operations/collective-operations/reduce.html">
+         Reduce
+        </a>
+       </li>
+       <li class="toctree-l4">
+        <a class="reference internal" href="../api/operations/collective-operations/reduce-scatter.html">
+         ReduceScatter
+        </a>
+       </li>
+       <li class="toctree-l4">
+        <a class="reference internal" href="../api/operations/collective-operations/sparse-allreduce.html">
+         SparseAllreduce
+        </a>
+       </li>
+      </ul>
+     </li>
+    </ul>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../env-variables.html">
+   Environment Variables
+  </a>
+ </li>
+</ul>
+<p class="caption">
+ <span class="caption-text">
+  Notices and Disclaimers
+ </span>
+</p>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../legal.html">
+   Notices and Disclaimers
+  </a>
+ </li>
+</ul>
 
-  
-  <hr/>
+    </div>
+</nav> <!-- To handle the deprecated key -->
+
+<div class="navbar_extra_footer">
+  Theme by the <a href="https://ebp.jupyterbook.org">Executable Book Project</a>
 </div>
-          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
-           <div itemprop="articleBody">
+
+</div>
+
+
+          
+
+
+          
+<main class="col py-md-3 pl-md-4 bd-content overflow-auto" role="main">
+    
+    <div class="topbar container-xl fixed-top">
+    <div class="topbar-contents row">
+        <div class="col-12 col-md-3 bd-topbar-whitespace site-navigation show"></div>
+        <div class="col pl-md-4 topbar-main">
             
+            <button id="navbar-toggler" class="navbar-toggler ml-0" type="button" data-toggle="collapse"
+                data-toggle="tooltip" data-placement="bottom" data-target=".site-navigation" aria-controls="navbar-menu"
+                aria-expanded="true" aria-label="Toggle navigation" aria-controls="site-navigation"
+                title="Toggle navigation" data-toggle="tooltip" data-placement="left">
+                <i class="fas fa-bars"></i>
+                <i class="fas fa-arrow-left"></i>
+                <i class="fas fa-arrow-up"></i>
+            </button>
+            
+            
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn" aria-label="Download this page"><i
+            class="fas fa-download"></i></button>
+
+    <div class="dropdown-buttons">
+        <!-- ipynb file if we had a myst markdown file -->
+        
+        <!-- Download raw file -->
+        <a class="dropdown-buttons" href="../_sources/general-configuration/transport-selection.rst.txt"><button type="button"
+                class="btn btn-secondary topbarbtn" title="Download source file" data-toggle="tooltip"
+                data-placement="left">.rst</button></a>
+        <!-- Download PDF via print -->
+        <button type="button" id="download-print" class="btn btn-secondary topbarbtn" title="Print to PDF"
+            onClick="window.print()" data-toggle="tooltip" data-placement="left">.pdf</button>
+    </div>
+</div>
+
+            <!-- Source interaction buttons -->
+
+<div class="dropdown-buttons-trigger">
+    <button id="dropdown-buttons-trigger" class="btn btn-secondary topbarbtn"
+        aria-label="Connect with source repository"><i class="fab fa-github"></i></button>
+    <div class="dropdown-buttons sourcebuttons">
+        
+        <a class="issues-button"
+            href="https://github.com/oneapi-src/oneCCL/issues/new?title=Issue%20on%20page%20%2Fgeneral-configuration/transport-selection.html&body=Your%20issue%20content%20here."><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="Open an issue"><i class="fas fa-lightbulb"></i>open issue</button></a>
+        <a class="edit-button" href="https://github.com/oneapi-src/oneCCL/edit/master/doc/source/general-configuration/transport-selection.rst"><button
+                type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
+                title="Edit this page"><i class="fas fa-pencil-alt"></i>suggest edit</button></a>
+    </div>
+</div>
+
+            <!-- Full screen (wrap in <a> to have style consistency -->
+
+<a class="full-screen-button"><button type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip"
+        data-placement="bottom" onclick="toggleFullScreen()" aria-label="Fullscreen mode"
+        title="Fullscreen mode"><i
+            class="fas fa-expand"></i></button></a>
+
+            <!-- Launch buttons -->
+
+        </div>
+
+        <!-- Table of contents -->
+        <div class="d-none d-md-block col-md-2 bd-toc show">
+            
+        </div>
+    </div>
+</div>
+    <div id="main-content" class="row">
+        <div class="col-12 col-md-9 pl-md-3 pr-md-0">
+        
+              <div>
+                
   <div class="section" id="transport-selection">
 <h1>Transport selection<a class="headerlink" href="#transport-selection" title="Permalink to this headline">¶</a></h1>
 <p>oneCCL supports two transports for inter-node communication: <a class="reference external" href="https://software.intel.com/content/www/us/en/develop/tools/mpi-library.html">Intel® MPI Library</a> and <a class="reference external" href="https://github.com/ofiwg/libfabric">Libfabric*</a>.</p>
@@ -288,66 +446,36 @@ the selection of specific Libfabric provider is controlled by the <code class="d
 </div>
 
 
-           </div>
-           
-          </div>
-          <footer>
-  
-    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="../advanced-configuration.html" class="btn btn-neutral float-right" title="Advanced Configuration" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
-      
-      
-        <a href="operation-execution.html" class="btn btn-neutral float-left" title="Execution of Communication Operations" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
-      
-    </div>
-  
-
-  <hr/>
-
-  <div role="contentinfo">
-    <p>
+              </div>
+              
         
-        &copy; Copyright 2019–2021
-
-    </p>
-  </div>
-    
-    
-    
-    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
-    
-    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
-    
-    provided by <a href="https://readthedocs.org">Read the Docs</a>.
-<br>
-<div>
-  <p>
-      For more complete information about compiler optimizations, see our <a href="../optimization_notice.html">Optimization Notice</a>.
-  </p>  
-</div>
-
-
-</footer>
+        <div class='prev-next-bottom'>
+            
+    <a class='left-prev' id="prev-link" href="operation-execution.html" title="previous page">Execution of Communication Operations</a>
+    <a class='right-next' id="next-link" href="../advanced-configuration.html" title="next page">Advanced Configuration</a>
 
         </div>
+        
+        </div>
+    </div>
+    <footer class="footer mt-5 mt-md-0">
+    <div class="container">
+      <p>
+        
+          By Intel<br/>
+        
+            &copy; Copyright 2019–2021.<br/>
+      </p>
+    </div>
+  </footer>
+</main>
+
+
       </div>
-
-    </section>
-
-  </div>
+    </div>
   
-
-  <script type="text/javascript">
-      jQuery(function () {
-          SphinxRtdTheme.Navigation.enable(true);
-      });
-  </script>
+  <script src="../_static/js/index.1c5a1a01449ed65a7b51.js"></script>
 
   
-  
-    
-   
-
-</body>
+  </body>
 </html>
