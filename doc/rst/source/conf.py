@@ -112,7 +112,7 @@ html_favicon = '_static/favicons.png'
 # Theme options
 html_theme_options = {
     'repository_url': 'https://github.com/oneapi-src/oneCCL',
-    'path_to_docs': 'doc/source',
+    'path_to_docs': 'doc/rst/source',
     'use_issues_button': True,
     'use_edit_page_button': True,
     'repository_branch': 'master'
