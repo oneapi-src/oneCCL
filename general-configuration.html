@@ -39,6 +39,18 @@
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Execution of Communication Operations" href="general-configuration/operation-execution.html" />
     <link rel="prev" title="Limitations" href="programming-model/limitations.html" />
+    <script defer type="text/javascript" src="https://www.intel.com/content/dam/www/global/wap/performance-config.js" ></script>
+    <script type="text/javascript">
+        // Configure TMS settings
+        var wapLocalCode = 'us-en'; // Dynamically set per localized site, see mapping table for values
+        var wapSection = "oneapi-ccl"; // WAP team will give you a unique section for your site
+        // Load TMS
+        (function () {
+        var url = 'https://www.intel.com/content/dam/www/global/wap/tms-loader.js'; // WAP file URL
+        var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true; po.src = url;
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+        })();
+    </script>
     <link href="_static/style.css" rel="stylesheet" type="text/css">
 
   </head>
@@ -187,6 +199,11 @@
    <li class="toctree-l2">
     <a class="reference internal" href="advanced-configuration/sparse-collectives.html">
      Sparse collective operations
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="advanced-configuration/dmabuf.html">
+     Enabling OFI/verbs dmabuf support
     </a>
    </li>
   </ul>

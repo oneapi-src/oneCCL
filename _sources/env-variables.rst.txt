@@ -369,8 +369,11 @@ CCL_FUSION_CYCLE_MS
 Set this environment variable to specify the frequency of checking for collectives operations to be fused.
 
 
+ATL
+###
+
 CCL_ATL_TRANSPORT
-#################
+*****************
 **Syntax**
 
 :: 
@@ -393,7 +396,36 @@ CCL_ATL_TRANSPORT
 
 **Description**
 
-Set this environment variable to select the transport for inter-node communications.
+Set this environment variable to select the transport for inter-process communications.
+
+
+CCL_ATL_HMEM
+************
+**Syntax**
+
+::
+
+  CCL_ATL_HMEM=<value>
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``1``
+     - Enable heterogeneous memory support on the transport layer.
+   * - ``0``
+     - Disable heterogeneous memory support on the transport layer (**default**).
+
+**Description**
+
+Set this environment variable to enable handling of HMEM/GPU buffers by the transport layer.
+The actual HMEM support depends on the limitations on the transport level and system configuration.
+
 
 CCL_UNORDERED_COLL
 ##################
@@ -483,7 +515,7 @@ CCL_WORKER_AFFINITY
 
 :: 
 
-  CCL_WORKER_AFFINITY=<proclist>
+  CCL_WORKER_AFFINITY=<cpulist>
 
 **Arguments**
 
@@ -492,19 +524,52 @@ CCL_WORKER_AFFINITY
    :header-rows: 1
    :align: left
    
-   * - <proclist> 
+   * - <cpulist> 
      - Description
    * - ``auto``
      - Workers are automatically pinned to last cores of pin domain.
        Pin domain depends from process launcher.
        If ``mpirun`` from |product_short| package is used then pin domain is MPI process pin domain.
        Otherwise, pin domain is all cores on the node.
-   * - ``n1,n2,..``
-     - Affinity is explicitly specified for all local workers.
+   * - ``<cpulist>``
+     - A comma-separated list of core numbers and/or ranges of core numbers for all local workers, one number per worker.
+       The i-th local worker is pinned to the i-th core in the list.
+       For example <a>,<b>-<c> defines list of cores contaning core with number <a>
+       and range of cores with numbers from <b> to <c>.
+       The number should not exceed the number of cores available on the system.
 
 **Description**
 
 Set this environment variable to specify cpu affinity for |product_short| worker threads.
+
+
+CCL_WORKER_MEM_AFFINITY
+#######################
+**Syntax**
+
+:: 
+
+  CCL_WORKER_MEM_AFFINITY=<nodelist>
+
+**Arguments**
+
+.. list-table:: 
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+   
+   * - <nodelist> 
+     - Description
+   * - ``auto``
+     - Workers are automatically pinned to NUMA nodes that correspond to CPU affinity of workers.
+   * - ``<nodelist>``
+     - A comma-separated list of NUMA node numbers for all local workers, one number per worker.
+       The i-th local worker is pinned to the i-th NUMA node in the list.
+       The number should not exceed the number of NUMA nodes available on the system.
+
+**Description**
+
+Set this environment variable to specify memory affinity for |product_short| worker threads.
 
 
 CCL_LOG_LEVEL
@@ -558,8 +623,16 @@ CCL_MAX_SHORT_SIZE
 Set this environment variable to specify the threshold of the number of bytes for a collective operation to be split.
 
 
+Multi-NIC
+#########
+
+
+CCL_MNIC, CCL_MNIC_NAME and CCL_MNIC_COUNT define filters to select multiple NICs.
+|product_short| workers will be pinned on selected NICs in a round-robin way.
+
+
 CCL_MNIC
-########
+********
 **Syntax**
 
 ::
@@ -584,12 +657,39 @@ CCL_MNIC
 
 **Description**
 
-Set this environment variable to control multi-NIC selection policy.
-|product_short| workers will be pinned on selected NICs in a round-robin way.
+Set this environment variable to control multi-NIC selection by NIC locality.
+
+
+CCL_MNIC_NAME
+*************
+**Syntax**
+
+::
+
+  CCL_MNIC_NAME=<namelist>
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+
+   * - <namelist>
+     - Description
+   * - ``<namelist>``
+     - A comma-separated list of NIC full names or prefixes to filter NICs.
+       Use the ``^`` symbol to exclude NICs starting with the specified prefixes. For example,
+       if you provide a list ``mlx5_0,mlx5_1,^mlx5_2``, NICs with the names ``mlx5_0`` and ``mlx5_1``
+       will be selected, while ``mlx5_2`` will be excluded from the selection.
+
+**Description**
+
+Set this environment variable to control multi-NIC selection by NIC names.
 
 
 CCL_MNIC_COUNT
-##############
+**************
 **Syntax**
 
 ::

@@ -4,7 +4,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Selection of Collective Algorithms &#8212; oneCCL  documentation</title>
+    <title>Enabling OFI/verbs dmabuf support &#8212; oneCCL  documentation</title>
     
   <link href="../_static/css/theme.css" rel="stylesheet" />
   <link href="../_static/css/index.c5995385ac14fb8791e8eb36b4908be2.css" rel="stylesheet" />
@@ -37,8 +37,8 @@
     <link rel="shortcut icon" href="../_static/favicons.png"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Caching of Communication Operations" href="operation-caching.html" />
-    <link rel="prev" title="Advanced Configuration" href="../advanced-configuration.html" />
+    <link rel="next" title="oneCCL API" href="../api.html" />
+    <link rel="prev" title="Sparse collective operations" href="sparse-collectives.html" />
     <script defer type="text/javascript" src="https://www.intel.com/content/dam/www/global/wap/performance-config.js" ></script>
     <script type="text/javascript">
         // Configure TMS settings
@@ -171,8 +171,8 @@
    </i>
   </label>
   <ul class="current">
-   <li class="toctree-l2 current active">
-    <a class="current reference internal" href="#">
+   <li class="toctree-l2">
+    <a class="reference internal" href="collective-algorithms-selection.html">
      Selection of Collective Algorithms
     </a>
    </li>
@@ -201,8 +201,8 @@
      Sparse collective operations
     </a>
    </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="dmabuf.html">
+   <li class="toctree-l2 current active">
+    <a class="current reference internal" href="#">
      Enabling OFI/verbs dmabuf support
     </a>
    </li>
@@ -406,7 +406,7 @@
         <!-- ipynb file if we had a myst markdown file -->
         
         <!-- Download raw file -->
-        <a class="dropdown-buttons" href="../_sources/advanced-configuration/collective-algorithms-selection.rst.txt"><button type="button"
+        <a class="dropdown-buttons" href="../_sources/advanced-configuration/dmabuf.rst.txt"><button type="button"
                 class="btn btn-secondary topbarbtn" title="Download source file" data-toggle="tooltip"
                 data-placement="left">.rst</button></a>
         <!-- Download PDF via print -->
@@ -423,10 +423,10 @@
     <div class="dropdown-buttons sourcebuttons">
         
         <a class="issues-button"
-            href="https://github.com/oneapi-src/oneCCL/issues/new?title=Issue%20on%20page%20%2Fadvanced-configuration/collective-algorithms-selection.html&body=Your%20issue%20content%20here."><button
+            href="https://github.com/oneapi-src/oneCCL/issues/new?title=Issue%20on%20page%20%2Fadvanced-configuration/dmabuf.html&body=Your%20issue%20content%20here."><button
                 type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
                 title="Open an issue"><i class="fas fa-lightbulb"></i>open issue</button></a>
-        <a class="edit-button" href="https://github.com/oneapi-src/oneCCL/edit/master/doc/source/advanced-configuration/collective-algorithms-selection.rst"><button
+        <a class="edit-button" href="https://github.com/oneapi-src/oneCCL/edit/master/doc/source/advanced-configuration/dmabuf.rst"><button
                 type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
                 title="Edit this page"><i class="fas fa-pencil-alt"></i>suggest edit</button></a>
     </div>
@@ -446,6 +446,46 @@
         <!-- Table of contents -->
         <div class="d-none d-md-block col-md-2 bd-toc show">
             
+            <div class="tocsection onthispage pt-5 pb-3">
+                <i class="fas fa-list"></i> Contents
+            </div>
+            <nav id="bd-toc-nav">
+                <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#requirements">
+   Requirements
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#limitations">
+   Limitations
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#build-instructions">
+   Build instructions
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#ofi">
+     OFI
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#product-short">
+     oneCCL
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#run-instructions">
+   Run instructions
+  </a>
+ </li>
+</ul>
+
+            </nav>
         </div>
     </div>
 </div>
@@ -454,10 +494,60 @@
         
               <div>
                 
-  <div class="section" id="selection-of-collective-algorithms">
-<h1>Selection of Collective Algorithms<a class="headerlink" href="#selection-of-collective-algorithms" title="Permalink to this headline">¶</a></h1>
-<p>oneCCL supports manual selection of collective algorithms for different message size ranges.
-Please refer to the <a class="reference internal" href="../env-variables.html#collective-algorithms-selection"><span class="std std-ref">Collective algorithms selection</span></a> section for details.</p>
+  <div class="section" id="enabling-ofi-verbs-dmabuf-support">
+<h1>Enabling OFI/verbs dmabuf support<a class="headerlink" href="#enabling-ofi-verbs-dmabuf-support" title="Permalink to this headline">¶</a></h1>
+<p>oneCCL provides experimental support for device memory transfers using Linux dmabuf,
+which is exposed through OFI API for verbs provider.</p>
+<div class="section" id="requirements">
+<h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p>Linux kernel version &gt;= 5.12</p></li>
+<li><p>RDMA core version &gt;= 34.0</p></li>
+<li><p>level-zero-devel package</p></li>
+</ul>
+</div>
+<div class="section" id="limitations">
+<h2>Limitations<a class="headerlink" href="#limitations" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p>Only first tile should be used from each GPU card.
+For example, if GPU with 2 tiles is used then set ZE_AFFINITY_MASK=0.0.
+More information about GPU selection can be found in level-zero <a class="reference external" href="https://one-api.gitlab-pages.devtools.intel.com/level_zero/core/PROG.html#affinity-mask">documentation</a>.</p></li>
+</ul>
+</div>
+<div class="section" id="build-instructions">
+<h2>Build instructions<a class="headerlink" href="#build-instructions" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="ofi">
+<h3>OFI<a class="headerlink" href="#ofi" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="o">--</span><span class="n">single</span><span class="o">-</span><span class="n">branch</span> <span class="o">--</span><span class="n">branch</span> <span class="n">v1</span><span class="mf">.13.1</span> <span class="nl">https</span><span class="p">:</span><span class="c1">//github.com/ofiwg/libfabric.git</span>
+<span class="n">cd</span> <span class="n">libfabric</span>
+<span class="p">.</span><span class="o">/</span><span class="n">autogen</span><span class="p">.</span><span class="n">sh</span>
+<span class="p">.</span><span class="o">/</span><span class="n">configure</span> <span class="o">--</span><span class="n">prefix</span><span class="o">=&lt;</span><span class="n">ofi_install_dir</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">enable</span><span class="o">-</span><span class="n">verbs</span><span class="o">=&lt;</span><span class="n">rdma_core_install_dir</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">enable</span><span class="o">-</span><span class="n">ze</span><span class="o">-</span><span class="n">dlopen</span><span class="o">=</span><span class="n">yes</span>
+<span class="n">make</span> <span class="o">-</span><span class="n">j</span> <span class="n">install</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>You may also get OFI release package directly from <a class="reference external" href="https://github.com/ofiwg/libfabric/releases/tag/v1.13.1">here</a>.
+No need to run autogen.sh if using the release package.</p>
+</div>
+</div>
+<div class="section" id="product-short">
+<h3>oneCCL<a class="headerlink" href="#product-short" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">cmake</span> <span class="o">-</span><span class="n">DCMAKE_INSTALL_PREFIX</span><span class="o">=&lt;</span><span class="n">ccl_install_dir</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">DLIBFABRIC_DIR</span><span class="o">=&lt;</span><span class="n">ofi_install_dir</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">DCMAKE_C_COMPILER</span><span class="o">=</span><span class="n">clang</span> <span class="o">-</span><span class="n">DCMAKE_CXX_COMPILER</span><span class="o">=</span><span class="n">dpcpp</span> <span class="o">-</span><span class="n">DCOMPUTE_BACKEND</span><span class="o">=</span><span class="n">dpcpp_level_zero</span> <span class="o">-</span><span class="n">DENABLE_OFI_HMEM</span><span class="o">=</span><span class="mi">1</span> <span class="p">..</span>
+<span class="n">make</span> <span class="o">-</span><span class="n">j</span> <span class="n">install</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="run-instructions">
+<h2>Run instructions<a class="headerlink" href="#run-instructions" title="Permalink to this headline">¶</a></h2>
+<p>Run allreduce test with ring algorithm and SYCL USM device buffers.</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span>source &lt;ccl_install_dir&gt;/env/setvars.sh
+export LD_LIBRARY_PATH=&lt;ofi_install_path&gt;/lib:${LD_LIBRARY_PATH}
+CCL_ATL_TRANSPORT=ofi CCL_ATL_HMEM=1 CCL_ALLREDUCE=ring FI_PROVIDER=verbs mpiexec -n 2 &lt;ccl_install_dir&gt;/examples/sycl/sycl_allreduce_usm_test gpu device
+</pre></div>
+</div>
+</div>
 </div>
 
 
@@ -466,8 +556,8 @@ Please refer to the <a class="reference internal" href="../env-variables.html#co
         
         <div class='prev-next-bottom'>
             
-    <a class='left-prev' id="prev-link" href="../advanced-configuration.html" title="previous page">Advanced Configuration</a>
-    <a class='right-next' id="next-link" href="operation-caching.html" title="next page">Caching of Communication Operations</a>
+    <a class='left-prev' id="prev-link" href="sparse-collectives.html" title="previous page">Sparse collective operations</a>
+    <a class='right-next' id="next-link" href="../api.html" title="next page">oneCCL API</a>
 
         </div>
         

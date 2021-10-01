@@ -39,6 +39,18 @@
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Notices and Disclaimers" href="legal.html" />
     <link rel="prev" title="SparseAllreduce" href="api/operations/collective-operations/sparse-allreduce.html" />
+    <script defer type="text/javascript" src="https://www.intel.com/content/dam/www/global/wap/performance-config.js" ></script>
+    <script type="text/javascript">
+        // Configure TMS settings
+        var wapLocalCode = 'us-en'; // Dynamically set per localized site, see mapping table for values
+        var wapSection = "oneapi-ccl"; // WAP team will give you a unique section for your site
+        // Load TMS
+        (function () {
+        var url = 'https://www.intel.com/content/dam/www/global/wap/tms-loader.js'; // WAP file URL
+        var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true; po.src = url;
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+        })();
+    </script>
     <link href="_static/style.css" rel="stylesheet" type="text/css">
 
   </head>
@@ -187,6 +199,11 @@
    <li class="toctree-l2">
     <a class="reference internal" href="advanced-configuration/sparse-collectives.html">
      Sparse collective operations
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="advanced-configuration/dmabuf.html">
+     Enabling OFI/verbs dmabuf support
     </a>
    </li>
   </ul>
@@ -586,9 +603,21 @@
   </ul>
  </li>
  <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#ccl-atl-transport">
-   CCL_ATL_TRANSPORT
+  <a class="reference internal nav-link" href="#atl">
+   ATL
   </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#ccl-atl-transport">
+     CCL_ATL_TRANSPORT
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#ccl-atl-hmem">
+     CCL_ATL_HMEM
+    </a>
+   </li>
+  </ul>
  </li>
  <li class="toc-h2 nav-item toc-entry">
   <a class="reference internal nav-link" href="#ccl-unordered-coll">
@@ -611,6 +640,11 @@
   </a>
  </li>
  <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#ccl-worker-mem-affinity">
+   CCL_WORKER_MEM_AFFINITY
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
   <a class="reference internal nav-link" href="#ccl-log-level">
    CCL_LOG_LEVEL
   </a>
@@ -621,14 +655,26 @@
   </a>
  </li>
  <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#ccl-mnic">
-   CCL_MNIC
+  <a class="reference internal nav-link" href="#multi-nic">
+   Multi-NIC
   </a>
- </li>
- <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#ccl-mnic-count">
-   CCL_MNIC_COUNT
-  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#ccl-mnic">
+     CCL_MNIC
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#ccl-mnic-name">
+     CCL_MNIC_NAME
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#ccl-mnic-count">
+     CCL_MNIC_COUNT
+    </a>
+   </li>
+  </ul>
  </li>
 </ul>
 
@@ -1059,8 +1105,10 @@ oneCCL can fuse together no more than <code class="docutils literal notranslate"
 <p>Set this environment variable to specify the frequency of checking for collectives operations to be fused.</p>
 </div>
 </div>
+<div class="section" id="atl">
+<h2>ATL<a class="headerlink" href="#atl" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="ccl-atl-transport">
-<h2>CCL_ATL_TRANSPORT<a class="headerlink" href="#ccl-atl-transport" title="Permalink to this headline">¶</a></h2>
+<h3>CCL_ATL_TRANSPORT<a class="headerlink" href="#ccl-atl-transport" title="Permalink to this headline">¶</a></h3>
 <p><strong>Syntax</strong></p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_ATL_TRANSPORT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
 </pre></div>
@@ -1086,7 +1134,38 @@ oneCCL can fuse together no more than <code class="docutils literal notranslate"
 </tbody>
 </table>
 <p><strong>Description</strong></p>
-<p>Set this environment variable to select the transport for inter-node communications.</p>
+<p>Set this environment variable to select the transport for inter-process communications.</p>
+</div>
+<div class="section" id="ccl-atl-hmem">
+<h3>CCL_ATL_HMEM<a class="headerlink" href="#ccl-atl-hmem" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_ATL_HMEM</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given table">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+<td><p>Enable heterogeneous memory support on the transport layer.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Disable heterogeneous memory support on the transport layer (<strong>default</strong>).</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to enable handling of HMEM/GPU buffers by the transport layer.
+The actual HMEM support depends on the limitations on the transport level and system configuration.</p>
+</div>
 </div>
 <div class="section" id="ccl-unordered-coll">
 <h2>CCL_UNORDERED_COLL<a class="headerlink" href="#ccl-unordered-coll" title="Permalink to this headline">¶</a></h2>
@@ -1179,7 +1258,7 @@ You have to additionally specify <code class="docutils literal notranslate"><spa
 <div class="section" id="ccl-worker-affinity">
 <h2>CCL_WORKER_AFFINITY<a class="headerlink" href="#ccl-worker-affinity" title="Permalink to this headline">¶</a></h2>
 <p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_WORKER_AFFINITY</span><span class="o">=&lt;</span><span class="n">proclist</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_WORKER_AFFINITY</span><span class="o">=&lt;</span><span class="n">cpulist</span><span class="o">&gt;</span>
 </pre></div>
 </div>
 <p><strong>Arguments</strong></p>
@@ -1189,7 +1268,7 @@ You have to additionally specify <code class="docutils literal notranslate"><spa
 <col style="width: 67%" />
 </colgroup>
 <thead>
-<tr class="row-odd"><th class="head"><p>&lt;proclist&gt;</p></th>
+<tr class="row-odd"><th class="head"><p>&lt;cpulist&gt;</p></th>
 <th class="head"><p>Description</p></th>
 </tr>
 </thead>
@@ -1200,13 +1279,48 @@ Pin domain depends from process launcher.
 If <code class="docutils literal notranslate"><span class="pre">mpirun</span></code> from oneCCL package is used then pin domain is MPI process pin domain.
 Otherwise, pin domain is all cores on the node.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">n1,n2,..</span></code></p></td>
-<td><p>Affinity is explicitly specified for all local workers.</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">&lt;cpulist&gt;</span></code></p></td>
+<td><p>A comma-separated list of core numbers and/or ranges of core numbers for all local workers, one number per worker.
+The i-th local worker is pinned to the i-th core in the list.
+For example &lt;a&gt;,&lt;b&gt;-&lt;c&gt; defines list of cores contaning core with number &lt;a&gt;
+and range of cores with numbers from &lt;b&gt; to &lt;c&gt;.
+The number should not exceed the number of cores available on the system.</p></td>
 </tr>
 </tbody>
 </table>
 <p><strong>Description</strong></p>
 <p>Set this environment variable to specify cpu affinity for oneCCL worker threads.</p>
+</div>
+<div class="section" id="ccl-worker-mem-affinity">
+<h2>CCL_WORKER_MEM_AFFINITY<a class="headerlink" href="#ccl-worker-mem-affinity" title="Permalink to this headline">¶</a></h2>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_WORKER_MEM_AFFINITY</span><span class="o">=&lt;</span><span class="n">nodelist</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given table">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;nodelist&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">auto</span></code></p></td>
+<td><p>Workers are automatically pinned to NUMA nodes that correspond to CPU affinity of workers.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">&lt;nodelist&gt;</span></code></p></td>
+<td><p>A comma-separated list of NUMA node numbers for all local workers, one number per worker.
+The i-th local worker is pinned to the i-th NUMA node in the list.
+The number should not exceed the number of NUMA nodes available on the system.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify memory affinity for oneCCL worker threads.</p>
 </div>
 <div class="section" id="ccl-log-level">
 <h2>CCL_LOG_LEVEL<a class="headerlink" href="#ccl-log-level" title="Permalink to this headline">¶</a></h2>
@@ -1265,8 +1379,12 @@ Otherwise, pin domain is all cores on the node.</p></td>
 <p><strong>Description</strong></p>
 <p>Set this environment variable to specify the threshold of the number of bytes for a collective operation to be split.</p>
 </div>
+<div class="section" id="multi-nic">
+<h2>Multi-NIC<a class="headerlink" href="#multi-nic" title="Permalink to this headline">¶</a></h2>
+<p>CCL_MNIC, CCL_MNIC_NAME and CCL_MNIC_COUNT define filters to select multiple NICs.
+oneCCL workers will be pinned on selected NICs in a round-robin way.</p>
 <div class="section" id="ccl-mnic">
-<h2>CCL_MNIC<a class="headerlink" href="#ccl-mnic" title="Permalink to this headline">¶</a></h2>
+<h3>CCL_MNIC<a class="headerlink" href="#ccl-mnic" title="Permalink to this headline">¶</a></h3>
 <p><strong>Syntax</strong></p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_MNIC</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
 </pre></div>
@@ -1295,11 +1413,39 @@ Otherwise, pin domain is all cores on the node.</p></td>
 </tbody>
 </table>
 <p><strong>Description</strong></p>
-<p>Set this environment variable to control multi-NIC selection policy.
-oneCCL workers will be pinned on selected NICs in a round-robin way.</p>
+<p>Set this environment variable to control multi-NIC selection by NIC locality.</p>
+</div>
+<div class="section" id="ccl-mnic-name">
+<h3>CCL_MNIC_NAME<a class="headerlink" href="#ccl-mnic-name" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_MNIC_NAME</span><span class="o">=&lt;</span><span class="n">namelist</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given table">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;namelist&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">&lt;namelist&gt;</span></code></p></td>
+<td><p>A comma-separated list of NIC full names or prefixes to filter NICs.
+Use the <code class="docutils literal notranslate"><span class="pre">^</span></code> symbol to exclude NICs starting with the specified prefixes. For example,
+if you provide a list <code class="docutils literal notranslate"><span class="pre">mlx5_0,mlx5_1,^mlx5_2</span></code>, NICs with the names <code class="docutils literal notranslate"><span class="pre">mlx5_0</span></code> and <code class="docutils literal notranslate"><span class="pre">mlx5_1</span></code>
+will be selected, while <code class="docutils literal notranslate"><span class="pre">mlx5_2</span></code> will be excluded from the selection.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to control multi-NIC selection by NIC names.</p>
 </div>
 <div class="section" id="ccl-mnic-count">
-<h2>CCL_MNIC_COUNT<a class="headerlink" href="#ccl-mnic-count" title="Permalink to this headline">¶</a></h2>
+<h3>CCL_MNIC_COUNT<a class="headerlink" href="#ccl-mnic-count" title="Permalink to this headline">¶</a></h3>
 <p><strong>Syntax</strong></p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_MNIC_COUNT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
 </pre></div>
@@ -1325,6 +1471,7 @@ If not specified then equal to the number of oneCCL workers.</p></td>
 <p><strong>Description</strong></p>
 <p>Set this environment variable to specify the maximum number of NICs to be selected.
 The actual number of NICs selected may be smaller due to limitations on transport level or system configuration.</p>
+</div>
 </div>
 </div>
 
