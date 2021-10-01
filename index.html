@@ -4,7 +4,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Intel® oneAPI Collective Communications Library &#8212; oneCCL  documentation</title>
+    <title>oneAPI Collective Communications Library &#8212; oneCCL  documentation</title>
     
   <link href="_static/css/theme.css" rel="stylesheet" />
   <link href="_static/css/index.c5995385ac14fb8791e8eb36b4908be2.css" rel="stylesheet" />
@@ -38,6 +38,18 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Release Notes" href="introduction/release-notes.html" />
+    <script defer type="text/javascript" src="https://www.intel.com/content/dam/www/global/wap/performance-config.js" ></script>
+    <script type="text/javascript">
+        // Configure TMS settings
+        var wapLocalCode = 'us-en'; // Dynamically set per localized site, see mapping table for values
+        var wapSection = "oneapi-ccl"; // WAP team will give you a unique section for your site
+        // Load TMS
+        (function () {
+        var url = 'https://www.intel.com/content/dam/www/global/wap/tms-loader.js'; // WAP file URL
+        var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true; po.src = url;
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+        })();
+    </script>
     <link href="_static/style.css" rel="stylesheet" type="text/css">
 
   </head>
@@ -186,6 +198,11 @@
    <li class="toctree-l2">
     <a class="reference internal" href="advanced-configuration/sparse-collectives.html">
      Sparse collective operations
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="advanced-configuration/dmabuf.html">
+     Enabling OFI/verbs dmabuf support
     </a>
    </li>
   </ul>
@@ -437,8 +454,8 @@
               <div>
                 
   <div class="section" id="product-full">
-<h1>Intel® oneAPI Collective Communications Library<a class="headerlink" href="#product-full" title="Permalink to this headline">¶</a></h1>
-<p>Intel® oneAPI Collective Communications Library (oneCCL) provides an efficient implementation of communication patterns used in deep learning.</p>
+<h1>oneAPI Collective Communications Library<a class="headerlink" href="#product-full" title="Permalink to this headline">¶</a></h1>
+<p>oneAPI Collective Communications Library (oneCCL) provides an efficient implementation of communication patterns used in deep learning.</p>
 <p>oneCCL features include:</p>
 <ul class="simple">
 <li><p>Built on top of lower-level communication middleware – <a class="reference external" href="https://software.intel.com/content/www/us/en/develop/tools/mpi-library.html">Intel® MPI Library</a> and <a class="reference external" href="https://github.com/ofiwg/libfabric">libfabrics</a>.</p></li>
@@ -490,6 +507,7 @@
 <li class="toctree-l2"><a class="reference internal" href="advanced-configuration/operation-fusion.html">Fusion of Communication Operations</a></li>
 <li class="toctree-l2"><a class="reference internal" href="advanced-configuration/unordered-collectives.html">Unordered collectives support</a></li>
 <li class="toctree-l2"><a class="reference internal" href="advanced-configuration/sparse-collectives.html">Sparse collective operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced-configuration/dmabuf.html">Enabling OFI/verbs dmabuf support</a></li>
 </ul>
 </li>
 </ul>
@@ -508,15 +526,15 @@
 <li class="toctree-l1"><a class="reference internal" href="env-variables.html">Environment Variables</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="env-variables.html#collective-algorithms-selection">Collective algorithms selection</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env-variables.html#fusion">Fusion</a></li>
-<li class="toctree-l2"><a class="reference internal" href="env-variables.html#ccl-atl-transport">CCL_ATL_TRANSPORT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env-variables.html#atl">ATL</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env-variables.html#ccl-unordered-coll">CCL_UNORDERED_COLL</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env-variables.html#ccl-priority">CCL_PRIORITY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env-variables.html#ccl-worker-count">CCL_WORKER_COUNT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env-variables.html#ccl-worker-affinity">CCL_WORKER_AFFINITY</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env-variables.html#ccl-worker-mem-affinity">CCL_WORKER_MEM_AFFINITY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env-variables.html#ccl-log-level">CCL_LOG_LEVEL</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env-variables.html#ccl-max-short-size">CCL_MAX_SHORT_SIZE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="env-variables.html#ccl-mnic">CCL_MNIC</a></li>
-<li class="toctree-l2"><a class="reference internal" href="env-variables.html#ccl-mnic-count">CCL_MNIC_COUNT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env-variables.html#multi-nic">Multi-NIC</a></li>
 </ul>
 </li>
 </ul>
