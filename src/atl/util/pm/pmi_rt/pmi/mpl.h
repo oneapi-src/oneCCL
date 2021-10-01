@@ -181,4 +181,4 @@ static inline int MPL_internal_error_printf(const char *str, ...) {
     return n;
 }
 
-#endif /* MPL_H */
+#endif // MPL_H

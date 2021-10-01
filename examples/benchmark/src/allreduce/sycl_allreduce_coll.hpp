@@ -87,4 +87,4 @@ struct sycl_allreduce_coll : sycl_base_coll<Dtype, allreduce_strategy_impl> {
         }
     }
 };
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL

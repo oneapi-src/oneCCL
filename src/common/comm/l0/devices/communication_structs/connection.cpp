@@ -82,7 +82,7 @@ ssize_t connection::send_msg_with_pid_data(const std::vector<uint8_t>& data,
     }
 
     // fill regular data
-    struct msghdr msg = { 0 };
+    struct msghdr msg = {};
     struct iovec io = { .iov_base = const_cast<void*>(static_cast<const void*>(data.data())),
                         .iov_len = data.size() * sizeof(uint8_t) };
 
@@ -141,7 +141,7 @@ ssize_t connection::recv_msg_with_pid_data(std::vector<uint8_t>& out_data_resize
     msg_buffer.iov_len = out_data_resized.size();
 
     // prepare control data
-    struct msghdr msg_header = { 0 };
+    struct msghdr msg_header = {};
     msg_header.msg_iov = &msg_buffer;
     msg_header.msg_iovlen = 1;
     msg_header.msg_controllen = CMSG_SPACE(sizeof(fd_t) * out_pids_resized.size()); //sizeof(u.buf);

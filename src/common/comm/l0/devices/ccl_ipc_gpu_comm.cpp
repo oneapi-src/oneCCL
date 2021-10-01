@@ -18,7 +18,7 @@
 #include <set>
 #include "common/comm/l0/devices/ccl_ipc_gpu_comm.hpp"
 #include "sched/sched.hpp"
-#include "sched/entry/l0/l0_entry.hpp"
+// #include "sched/entry/l0/l0_entry.hpp"
 #include "common/comm/l0/modules/specific_modules_source_data.hpp"
 
 namespace native {
@@ -68,11 +68,11 @@ ccl_ipc_gpu_comm::ccl_ipc_gpu_comm(ccl_device& assigned_device,
         }
     }
 
-    LOG_INFO("Created ", name_impl(), ", addr: ", reinterpret_cast<void*>(this));
+    LOG_DEBUG("Created ", name_impl(), ", addr: ", reinterpret_cast<void*>(this));
 }
 
 ccl_ipc_gpu_comm::~ccl_ipc_gpu_comm() {
-    LOG_INFO("Destroyed ", name_impl(), ", addr: ", reinterpret_cast<void*>(this));
+    LOG_DEBUG("Destroyed ", name_impl(), ", addr: ", reinterpret_cast<void*>(this));
 }
 
 ccl_ipc_gpu_comm::supported_modules& ccl_ipc_gpu_comm::get_registered_modules() {

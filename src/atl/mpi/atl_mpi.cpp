@@ -13,6 +13,8 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#ifdef CCL_ENABLE_MPI
+
 #include "atl_mpi.hpp"
 #include "atl_mpi_impl.cpp"
 
@@ -195,3 +197,5 @@ atl_mpi::~atl_mpi() {
     if (!is_finalized)
         atl_finalize();
 }
+
+#endif // CCL_ENABLE_MPI

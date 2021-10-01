@@ -18,6 +18,7 @@
 #include "common/global/global.hpp"
 #include "sched/entry/entry.hpp"
 #include "sched/queue/queue.hpp"
+#include "sched/entry/copy/copy_entry.hpp"
 
 class send_entry : public sched_entry,
                    public postponed_fields<send_entry,
@@ -42,27 +43,78 @@ public:
               dst(dst),
               comm(comm) {}
 
-    void start() override {
-        update_fields();
-
+    void start_send() {
         int global_dst = comm->get_global_rank(dst);
         int global_rank = comm->get_global_rank(comm->rank());
 
         atl_tag = comm->atl->tag->create(
-            sched->get_comm_id(), global_rank, sched->sched_id, sched->get_op_id());
+            global_rank, sched->get_comm_id(), sched->sched_id, sched->get_op_id());
         size_t bytes = cnt * dtype.size();
 
         LOG_DEBUG(
             "SEND entry dst ", global_dst, ", tag ", atl_tag, ", req ", &req, ", bytes ", bytes);
 
         atl_status_t atl_status = comm->atl->atl_ep_send(
-            sched->bin->get_atl_ep(), buf.get_ptr(bytes), bytes, global_dst, atl_tag, &req);
+            sched->bin->get_atl_ep(), send_buf.get_ptr(bytes), bytes, global_dst, atl_tag, &req);
 
         update_status(atl_status);
     }
 
+    void reset(size_t idx) override {
+        sched_entry::reset(idx);
+#ifdef CCL_ENABLE_SYCL
+        if (proxy_copy_entry) {
+            proxy_copy_entry->reset(idx);
+        }
+#endif // CCL_ENABLE_SYCL
+    }
+
+    void start() override {
+        update_fields();
+
+        send_buf = buf;
+
+#ifdef CCL_ENABLE_SYCL
+        if (sched->coll_param.stream && cnt &&
+            (ccl::global_data::env().atl_send_proxy != ccl_atl_send_proxy_none) &&
+            (proxy_mode == proxy_copy_mode::unknown)) {
+            sycl::usm::alloc ptr_type = sycl::usm::alloc::unknown;
+            if (sched->coll_param.stream->get_type() == stream_type::gpu) {
+                auto sycl_queue = sched->coll_param.stream->get_native_stream();
+                ptr_type = sycl::get_pointer_type(buf.get_ptr(), sycl_queue.get_context());
+            }
+            proxy_mode = (ptr_type == sycl::usm::alloc::device) ? proxy_copy_mode::enabled
+                                                                : proxy_copy_mode::disabled;
+        }
+
+        if (proxy_mode == proxy_copy_mode::enabled) {
+            if (!proxy_buf) {
+                ccl_sched_buf_type buf_type =
+                    (ccl::global_data::env().atl_send_proxy == ccl_atl_send_proxy_regular)
+                        ? ccl_sched_buf_system
+                        : ccl_sched_buf_runtime;
+                send_buf = proxy_buf = sched->alloc_buffer(cnt * dtype.size(), buf_type);
+            }
+            if (!proxy_copy_entry) {
+                proxy_copy_entry =
+                    std::shared_ptr<copy_entry>(new copy_entry(sched, buf, proxy_buf, cnt, dtype));
+            }
+
+            proxy_copy_entry->do_progress();
+
+            if (proxy_copy_entry->get_status() != ccl_sched_entry_status_complete) {
+                status = ccl_sched_entry_status_again;
+                return;
+            }
+        }
+#endif // CCL_ENABLE_SYCL
+
+        start_send();
+    }
+
     void update() override {
         int req_status;
+
         atl_status_t atl_status =
             comm->atl->atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
 
@@ -116,4 +168,13 @@ private:
     ccl_comm* comm;
     uint64_t atl_tag = 0;
     atl_req_t req{};
+
+    ccl_buffer send_buf;
+
+#ifdef CCL_ENABLE_SYCL
+    enum class proxy_copy_mode { unknown, enabled, disabled };
+    proxy_copy_mode proxy_mode = proxy_copy_mode::unknown;
+    std::shared_ptr<copy_entry> proxy_copy_entry;
+    ccl_buffer proxy_buf{};
+#endif // CCL_ENABLE_SYCL
 };

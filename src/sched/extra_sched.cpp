@@ -36,16 +36,6 @@ void ccl_extra_sched::dump(std::ostream& out) const {
         entries[i]->dump(msg, i);
     }
     out << msg.str();
-#ifdef ENABLE_TIMERS
-    ccl_logger::format(
-        out,
-        "\nlife time [us] ",
-        std::setw(5),
-        std::setbase(10),
-        std::chrono::duration_cast<std::chrono::microseconds>(exec_complete_time - exec_start_time)
-            .count(),
-        "\n");
-#endif
 
     ccl_logger::format(out, "--------------------------------\n");
 }

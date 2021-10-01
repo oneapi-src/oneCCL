@@ -31,6 +31,7 @@
 using ccl_rank2rank_map = std::vector<int>;
 
 namespace ccl {
+class host_communicator;
 namespace v1 {
 class kvs_interface;
 }
@@ -38,7 +39,12 @@ class kvs_interface;
 
 class alignas(CACHELINE_SIZE) ccl_comm {
 public:
-    //TODO
+    static constexpr int invalid_rank = -1;
+
+    ccl::host_communicator* get_host_comm() {
+        return host_comm;
+    }
+
     static void ccl_comm_reset_thread_barrier();
     ccl_comm() = delete;
     ccl_comm(const ccl_comm& other) = delete;
@@ -48,13 +54,16 @@ public:
              int size,
              ccl_comm_id_storage::comm_id&& id,
              std::shared_ptr<atl_wrapper> atl,
-             bool share_resources = false);
+             bool share_resources = false,
+             ccl::host_communicator* host_comm = nullptr);
+
     ccl_comm(int rank,
              int size,
              ccl_comm_id_storage::comm_id&& id,
              ccl_rank2rank_map&& ranks,
              std::shared_ptr<atl_wrapper> atl,
-             bool share_resources = false);
+             bool share_resources = false,
+             ccl::host_communicator* host_comm = nullptr);
 
     //TODO non-implemented
     //1) cluster_devices_count (devices 1000) -> (processes 10)
@@ -70,7 +79,8 @@ public:
              int comm_size,
              std::shared_ptr<ccl::kvs_interface> kvs_instance,
              ccl_comm_id_storage::comm_id&& id,
-             bool share_resources = false);
+             bool share_resources = false,
+             ccl::host_communicator* host_comm = nullptr);
 
     ~ccl_comm() = default;
 
@@ -178,4 +188,5 @@ private:
 
     size_t thread_number;
     size_t on_process_ranks_number;
+    ccl::host_communicator* host_comm;
 };

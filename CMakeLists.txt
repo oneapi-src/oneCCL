@@ -48,6 +48,10 @@ option(BUILD_EXAMPLES "Build examples" TRUE)
 option(BUILD_FT "Build functional tests" TRUE)
 option(BUILD_UT "Build unit tests" FALSE)
 option(BUILD_CONFIG "Build cmake configs" TRUE)
+option(ENABLE_MPI "Enable MPI for library" TRUE)
+option(ENABLE_MPI_TESTS "Enable MPI for tests" TRUE)
+option(ENABLE_SYCL_INTEROP_EVENT "Enable support for interop event functionality" TRUE)
+option(ENABLE_OFI_HMEM "Enable support for OFI HMEM" FALSE)
 
 option(USE_CODECOV_FLAGS "Calculate code coverage" FALSE)
 option(WITH_ASAN "Use address sanitizer, can only be used in Debug build" FALSE)
@@ -55,11 +59,11 @@ option(WITH_ASAN "Use address sanitizer, can only be used in Debug build" FALSE)
 #installation path variables
 include(GNUInstallDirs)
 
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/_install" CACHE PATH "Default install path" FORCE)
 endif()
 
-#show build info
+# show build info
 message(STATUS "Installation directory: ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE_CASE_INSENSITIVE}")
 message(STATUS "C compiler : ${CMAKE_C_COMPILER}")
@@ -68,6 +72,10 @@ message(STATUS "Build examples: ${BUILD_EXAMPLES}")
 message(STATUS "Build functional tests: ${BUILD_FT}")
 message(STATUS "Build unit tests: ${BUILD_UT}")
 message(STATUS "Build cmake configs: ${BUILD_CONFIG}")
+message(STATUS "Enable MPI for library: ${ENABLE_MPI}")
+message(STATUS "Enable MPI for tests: ${ENABLE_MPI_TESTS}")
+message(STATUS "Enable support for interop event functionality: ${ENABLE_SYCL_INTEROP_EVENT}")
+message(STATUS "Enable support for OFI HMEM: ${ENABLE_OFI_HMEM}")
 
 add_definitions(-DCCL_C_COMPILER="${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 add_definitions(-DCCL_CXX_COMPILER="${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
@@ -91,35 +99,28 @@ set(CCL_INSTALL_KERNELS "${CMAKE_INSTALL_PREFIX}/lib/kernels")
 
 set(CCL_UNIT_TESTS_BUILD "${CMAKE_BINARY_DIR}/tests/unit")
 
-
 # setup dependency directories
-
 set(DEPS_DIR "${PROJECT_SOURCE_DIR}/deps")
 
 set(MPI_INCLUDE_DIR "${DEPS_DIR}/mpi/include/")
 set(MPI_LIB_DIR "${DEPS_DIR}/mpi/lib/")
-if ( "${LIBFABRIC_DIR}" STREQUAL "")
+message(STATUS "MPI_INCLUDE_DIR: ${MPI_INCLUDE_DIR}")
+message(STATUS "MPI_LIB_DIR: ${MPI_LIB_DIR}")
+
+if ("${LIBFABRIC_DIR}" STREQUAL "")
     set(LIBFABRIC_INCLUDE_DIR "${DEPS_DIR}/ofi/include")
     set(LIBFABRIC_LIB_DIR "${DEPS_DIR}/ofi/lib/")
 else()
     set(LIBFABRIC_INCLUDE_DIR "${LIBFABRIC_DIR}/include/")
     set(LIBFABRIC_LIB_DIR "${LIBFABRIC_DIR}/lib")
 endif()
-set(HWLOC_INCLUDE_DIR "${DEPS_DIR}/hwloc/include/")
-set(HWLOC_LIB_DIR "${DEPS_DIR}/hwloc/lib/")
-
-message(STATUS "MPI_INCLUDE_DIR: ${MPI_INCLUDE_DIR}")
-message(STATUS "MPI_LIB_DIR: ${MPI_LIB_DIR}")
 message(STATUS "LIBFABRIC_LIB_DIR: ${LIBFABRIC_LIB_DIR}")
 message(STATUS "LIBFABRIC_INCLUDE_DIR: ${LIBFABRIC_INCLUDE_DIR}")
+
+set(HWLOC_INCLUDE_DIR "${DEPS_DIR}/hwloc/include/")
+set(HWLOC_LIB_DIR "${DEPS_DIR}/hwloc/lib/")
 message(STATUS "HWLOC_INCLUDE_DIR: ${HWLOC_INCLUDE_DIR}")
 message(STATUS "HWLOC_LIB_DIR: ${HWLOC_LIB_DIR}")
-
-include_directories(${MPI_INCLUDE_DIR})
-include_directories(${LIBFABRIC_INCLUDE_DIR})
-
-link_directories(${MPI_LIB_DIR})
-link_directories(${LIBFABRIC_LIB_DIR})
 
 
 set(CMAKE_SKIP_INSTALL_RPATH TRUE)
@@ -132,36 +133,9 @@ if (${CMAKE_VERSION} VERSION_LESS 3.1)
     set(C_COMPILER_FLAGS "-std=gnu99")
 endif()
 
-# special flags for CCL library only
-set(SRC_C_FLAGS "")
-set(SRC_CXX_FLAGS "")
-set(SRC_SHARED_LINKER_FLAGS "")
+# TODO: add -Wextra to c/cxx flags
 
-#common settings of security options
-if(USE_SECURITY_FLAGS)
-    set(SRC_C_FLAGS "${SRC_C_FLAGS} -Wformat -Wformat-security -D_FORTIFY_SOURCE=2 -fstack-protector")
-    set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -Wformat -Wformat-security -D_FORTIFY_SOURCE=2 -fstack-protector")
-    set(SRC_SHARED_LINKER_FLAGS "${SRC_SHARED_LINKER_FLAGS} -fPIE -fPIC -z noexecstack -z relro -z now")
-    if(${CMAKE_C_COMPILER_ID} STREQUAL "GNU" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
-        if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.9)
-            set(SRC_C_FLAGS "${SRC_C_FLAGS} -fstack-protector-strong")
-            set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -fstack-protector-strong")
-        endif()
-    endif()
-endif()
-
-set(SRC_SHARED_LINKER_FLAGS "${SRC_SHARED_LINKER_FLAGS} -Wl,--version-script=${PROJECT_SOURCE_DIR}/ccl.map")
-
-if(${CMAKE_C_COMPILER_ID} STREQUAL "Intel" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
-    if (USE_CODECOV_FLAGS)
-        set(SRC_C_FLAGS "${SRC_C_FLAGS} -prof-gen=srcpos -prof-src-root-cwd")
-        set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -prof-gen=srcpos -prof-src-root-cwd")
-    endif()
-endif()
-
-#TODO: add -Wextra to c/cxx flags
-
-#common release/debug compilation settings
+# common release/debug compilation settings
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_COMPILER_FLAGS} -Wall -Werror -D_GNU_SOURCE -fvisibility=internal")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} ${C_COMPILER_FLAGS} -O0 -g -DENABLE_DEBUG")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${C_COMPILER_FLAGS} -O3")
@@ -182,25 +156,35 @@ set(COMMON_CMAKE_DIR ${PROJECT_SOURCE_DIR}/cmake)
 if (COMPUTE_BACKEND)
     message(STATUS "COMPUTE_BACKEND: ${COMPUTE_BACKEND}")
     set_compute_backend(${COMMON_CMAKE_DIR})
+    if (${COMPUTE_BACKEND} STREQUAL "dpcpp_level_zero" AND ENABLE_OFI_HMEM)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCCL_ENABLE_OFI_HMEM=1")
+        message(STATUS "Enable OFI HMEM support for compute backend ${COMPUTE_BACKEND}")
+    endif()
 endif()
 
-if(${CMAKE_C_COMPILER_ID} STREQUAL "GNU" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
+if (${CMAKE_C_COMPILER_ID} STREQUAL "GNU" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
     if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0)
         #c++17 introduces algined new operator, use it
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -faligned-new")
     endif()
 endif()
 
+# This is a temporal workaround until we fully switch to a new version of the compiler
+# that supports the functionality
+if (${ENABLE_SYCL_INTEROP_EVENT})
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCCL_ENABLE_SYCL_INTEROP_EVENT=1")
+endif()
+
 # Clang doesn't automatically detects ninja processes as supporting colored output
 # due to the way they are spawned. In order to fix the issue we need to use the option
 # to force colored output
-if(${CMAKE_GENERATOR} STREQUAL "Ninja")
+if (${CMAKE_GENERATOR} STREQUAL "Ninja")
     if (${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
         add_compile_options(-fcolor-diagnostics)
     endif()
 endif()
 
-if(WITH_ASAN AND ${CMAKE_BUILD_TYPE_CASE_INSENSITIVE} STREQUAL "debug")
+if (WITH_ASAN AND ${CMAKE_BUILD_TYPE_CASE_INSENSITIVE} STREQUAL "debug")
     message(STATUS "Compiling with address sanitizer")
     set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address -fno-omit-frame-pointer")
     set(CMAKE_C_FLAGS_DEBUG  "${CMAKE_C_FLAGS_DEBUG} -fsanitize=address -fno-omit-frame-pointer")
@@ -214,14 +198,16 @@ set(CCL_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/src)
 enable_testing()
 
 set(EXTERNAL_LIBS "")
+
 set(EXAMPLES_INC_DIRS ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/examples/include ${MPI_INCLUDE_DIR})
+set(EXAMPLES_LIB_DIRS ${MPI_LIB_DIR} ${LIBFABRIC_LIB_DIR})
 
 # allow `deprecated`
 set(CMAKE_CLANG_FLAGS "${CMAKE_CLANG_FLAGS}")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
-#generate & install vars.sh
+# generate & install vars.sh
 configure_file(cmake/vars.sh.in ${CMAKE_CURRENT_BINARY_DIR}/vars.sh @ONLY)
 configure_file(cmake/setvars.sh.in ${CMAKE_CURRENT_BINARY_DIR}/setvars.sh @ONLY)
 configure_file(cmake/ccl ${CMAKE_CURRENT_BINARY_DIR}/ccl @ONLY)
@@ -233,15 +219,15 @@ install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/third-party-programs.txt DESTINATIO
 install(PROGRAMS ${PROJECT_SOURCE_DIR}/LICENSE DESTINATION ${CCL_INSTALL_LICENSE})
 
 # copy kernels
-if(COMPUTE_BACKEND AND EXISTS "${PROJECT_SOURCE_DIR}/src/kernels")
-file(GLOB spv_kernels "${PROJECT_SOURCE_DIR}/src/kernels/ring_*.spv")
+if (COMPUTE_BACKEND AND EXISTS "${PROJECT_SOURCE_DIR}/src/kernels")
+file(GLOB spv_kernels "${PROJECT_SOURCE_DIR}/src/kernels/kernels.spv")
     install(PROGRAMS ${spv_kernels}
             DESTINATION ${CCL_INSTALL_KERNELS}
             PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ)
 endif()
 
 set(CCL_MAJOR_VERSION     "2021")
-set(CCL_MINOR_VERSION     "3")
+set(CCL_MINOR_VERSION     "4")
 set(CCL_UPDATE_VERSION    "0")
 set(CCL_PRODUCT_STATUS    "Gold")
 string(TIMESTAMP CCL_PRODUCT_BUILD_DATE "%Y-%m-%dT %H:%M:%SZ")
@@ -262,24 +248,24 @@ if (BUILD_CONFIG)
                    @ONLY)
 endif()
 
-#include other CMakeLists
+# include other CMakeLists
 
 add_subdirectory(src)
 
-if (BUILD_EXAMPLES)
-    add_subdirectory(examples/benchmark)
-    add_subdirectory(examples/common)
-    add_subdirectory(examples/cpu)
-    add_subdirectory(examples/external_launcher)
-    if (CCL_ENABLE_SYCL)
-        add_subdirectory(examples/sycl)
+if (ENABLE_MPI_TESTS)
+    if (BUILD_EXAMPLES)
+        add_subdirectory(examples/benchmark)
+        add_subdirectory(examples/common)
+        add_subdirectory(examples/cpu)
+        add_subdirectory(examples/external_launcher)
+        if (CCL_ENABLE_SYCL)
+            add_subdirectory(examples/sycl)
+        endif()
     endif()
-endif()
-
-if (BUILD_FT)
-    add_subdirectory(tests/functional)
-endif()
-
-if (BUILD_UT AND EXISTS "${PROJECT_SOURCE_DIR}/tests/unit")
-    add_subdirectory(tests/unit)
+    if (BUILD_FT)
+        add_subdirectory(tests/functional)
+    endif()
+    if (BUILD_UT AND EXISTS "${PROJECT_SOURCE_DIR}/tests/unit")
+        add_subdirectory(tests/unit)
+    endif()
 endif()

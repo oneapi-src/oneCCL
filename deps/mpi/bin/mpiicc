@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright 2003-2020 Intel Corporation.
+# Copyright Intel Corporation.
 # 
 # This software and the related documents are Intel copyrighted materials, and
 # your use of them is governed by the express license under which they were
@@ -81,28 +81,13 @@
 #
 # Directory locations: Fixed for any MPI implementation.
 # Set from the directory arguments to configure (e.g., --prefix=/usr/local)
-prefix=/usr/local
+prefix=../_install
 # The environment variable I_MPI_ROOT may be used to override installation folder path
-if [ -n "$I_MPI_ROOT" ] ; then
-    prefix=$I_MPI_ROOT;
+if [ -n "${I_MPI_ROOT}" ] ; then
+    prefix="${I_MPI_ROOT}";
 fi
-# Recognize the '-mmic' compiler switch.
-for arg in "$@" ; do
-{
- if [ "${arg}" = "-mmic" ] ; then
-  . ${prefix}/mic/bin/mpivars.sh
-  if [ -n "$VT_ROOT" ]; then
-    if [ -f "$VT_ROOT/mic/bin/itacvars.sh" ]; then
-      . "$VT_ROOT/mic/bin/itacvars.sh" ""
-    fi
-  fi
-  exec mpiicc "$@"
- fi
-}
-done
 
 PLATFORM=""
-exec_prefix=${prefix}
 sysconfdir=${prefix}/etc
 # The environment variable I_MPI_COMPILER_CONFIG_DIR may be used to override
 # folder where *.conf files are placed
@@ -119,10 +104,9 @@ CC="icc"
 CFLAGS=""
 LDFLAGS="-ldl"
 MPILIBNAME="mpi"
-PMPILIBNAME="pmpi"
 
 # MPIVERSION is the version of the MPICH2 library that mpicc is intended for
-MPIVERSION="2021.3"
+MPIVERSION="2021.4"
 #
 # Internal variables
 # Show is set to echo to cause the compilation command to be echoed instead
@@ -132,9 +116,7 @@ static_mpi=no
 strip_debug_info=
 handle_executable=
 executable=a.out
-static_log=yes
 ilp64=no
-trace_opt=no
 no_rpath=no
 #
 # End of initialization of variables
@@ -149,14 +131,14 @@ no_rpath=no
 # script (defined above)
 if [ -n "$I_MPI_CC" ] ; then
     CC="$I_MPI_CC"
-    CCname=`echo $CC | sed 's/ /-/g'`
+    CCname=$(echo "$CC" | sed 's/ /-/g')
     if [ -s $sysconfdir/mpicc-$(basename $CCname).conf ] ; then
-    . $sysconfdir/mpicc-$(basename $CCname).conf
+        . $sysconfdir/mpicc-$(basename $CCname).conf
     fi
 else
     if [ -n "$MPICH_CC" ] ; then
         CC="$MPICH_CC"
-        CCname=`echo $CC | sed 's/ /-/g'`
+        CCname=$(echo $CC | sed 's/ /-/g')
         if [ -s $sysconfdir/mpicc-$(basename $CCname).conf ] ; then
             . $sysconfdir/mpicc-$(basename $CCname).conf
         fi
@@ -198,239 +180,227 @@ fi
 
 linking=yes
 allargs=""
-argno=0
 for arg in "$@" ; do
     # Set addarg to no if this arg should be ignored by the C compiler
     addarg=yes
     qarg=$arg
     if [ "x$handle_executable" = "xyes" ] ; then
-    executable=$arg
-    handle_executable=
+        executable=$arg
+        handle_executable=
     fi
     case "$arg" in
     # ----------------------------------------------------------------
     # Compiler options that affect whether we are linking or no
     -c|-S|-E|-M|-MM)
     # The compiler links by default
-    linking=no
-    ;;
+        linking=no
+        ;;
     -o )
-    handle_executable=yes
-    addarg=yes
-    ;;
+        handle_executable=yes
+        addarg=yes
+        ;;
     # ----------------------------------------------------------------
     # Options that control how we use mpicc (e.g., -show,
     # -cc=* -config=*
     -echo)
-    addarg=no
-    set -x
-    ;;
+        addarg=no
+        set -x
+        ;;
     -cc=*)
-    CC=`echo A$arg | sed -e 's/A-cc=//g'`
-    addarg=no
-    ;;
+        CC=$(echo A$arg | sed -e 's/A-cc=//g')
+        addarg=no
+        ;;
     -show)
-    addarg=no
-    Show=echo
-    ;;
+        addarg=no
+        Show=echo
+        ;;
     -show_env)
-    show_env=yes
-    ;;
+        show_env=yes
+        ;;
     -config=*)
-    addarg=no
-    CCname=`echo A$arg | sed -e 's/A-config=//g'`
-    if [ -s "$sysconfdir/mpicc-$CCname.conf" ] ; then
-        . "$sysconfdir/mpicc-$CCname.conf"
-    else
-    echo "Configuration file mpicc-$CCname.conf not found"
-    fi
-    ;;
+        addarg=no
+        CCname=$(echo A$arg | sed -e 's/A-config=//g')
+        if [ -s "$sysconfdir/mpicc-$CCname.conf" ] ; then
+            . "$sysconfdir/mpicc-$CCname.conf"
+        else
+            echo "Configuration file mpicc-$CCname.conf not found"
+        fi
+        ;;
     -compile-info|-compile_info)
-    # -compile_info included for backward compatibility
-    Show=echo
-    addarg=no
-    ;;
+        # -compile_info included for backward compatibility
+        Show=echo
+        addarg=no
+        ;;
     -link-info|-link_info)
-    # -link_info included for backward compatibility
-    Show=echo
-    addarg=no
-    ;;
+        # -link_info included for backward compatibility
+        Show=echo
+        addarg=no
+        ;;
     -v)
-    # Pass this argument to the compiler as well.
-    echo "$(basename $0) for the Intel(R) MPI Library $MPIVERSION for Linux*"
-    echo "Copyright 2003-2020, Intel Corporation."
-    # if there is only 1 argument, it must be -v.
-    if [ "$#" -eq "1" ] ; then
-        linking=no
-    fi
-    ;;
+        # Pass this argument to the compiler as well.
+        echo "$(basename $0) for the Intel(R) MPI Library $MPIVERSION for Linux*"
+        echo "Copyright Intel Corporation."
+        # if there is only 1 argument, it must be -v.
+        if [ "$#" -eq "1" ] ; then
+            linking=no
+        fi
+        ;;
     -V)
-    # Pass this argument to the compiler to query the compiler version.
-    if [ "$#" -eq "1" ] ; then
-        linking=no
-    fi
-    ;;
+        # Pass this argument to the compiler to query the compiler version.
+        if [ "$#" -eq "1" ] ; then
+            linking=no
+        fi
+        ;;
     -profile=*)
-    # Pass the name of a profiling configuration.  As
-    # a special case, lib<name>.so or lib<name>.la may be used
-    # if the library is in $libdir
-    profConf=`echo A$arg | sed -e 's/A-profile=//g'`
-    addarg=no
-    # Loading the profConf file is handled below
-    ;;
+        # Pass the name of a profiling configuration.  As
+        # a special case, lib<name>.so or lib<name>.la may be used
+        # if the library is in $libdir
+        # Loading the profConf file is handled below
+        profConf=$(echo A$arg | sed -e 's/A-profile=//g')
+        addarg=no
+        ;;
     -help)
-    # Print mini-help if started without parameters
-    echo "Simple script to compile and/or link MPI programs."
-    echo "Usage: `basename $0` [options] <files>"
-    echo "----------------------------------------------------------------------------"
-    echo "The following options are supported:"
-    echo "   -cc=<name>      specify a C compiler name: i.e. -cc=icc"
-    echo "   -echo           print the scripts during their execution"
-    echo "   -show           show command lines without real calling"
-    echo "   -show_env       show environment variables"
-    echo "   -config=<name>  specify a configuration file: i.e. -config=icc for mpicc-icc.conf file"
-#    echo "   -compile-info   show compiler command line"
-#    echo "   -link-info      show linker command line"
-    echo "   -v              print version info of $(basename $0) and its native compiler"
-    echo "   -profile=<name> specify a profile configuration file (an MPI profiling"
-    echo "                   library): i.e. -profile=myprofile for the myprofile.cfg file."
-    echo "                   As a special case, lib<name>.so or lib<name>.a may be used"
-    echo "                   if the library is found"
-    echo "   -check_mpi      link against the Intel(R) Trace Collector (-profile=vtmc)."
-    echo "   -static_mpi     link the Intel(R) MPI Library statically"
-    echo "   -mt_mpi         link the thread safe version of the Intel(R) MPI Library"
-    echo "   -ilp64          link the ILP64 support of the Intel(R) MPI Library"
-    echo "   -t or -trace"
-    echo "                   link against the Intel(R) Trace Collector"
-    echo "   -trace-imbalance"
-    echo "                   link against the Intel(R) Trace Collector imbalance library"
-    echo "                   (-profile=vtim)"
-    echo "   -dynamic_log    link against the Intel(R) Trace Collector dynamically"
-    echo "   -static         use static linkage method"
-    echo "   -nostrip        turn off the debug information stripping during static linking"
-    echo "   -fast           the same as -static_mpi + pass -fast option to a compiler"
-    echo "   -O              enable optimization"
-    echo "   -link_mpi=<name>"
-    echo "                   link against the specified version of the Intel(R) MPI Library"
-    echo "                   i.e -link_mpi=opt|opt_mt|dbg|dbg_mt"
-    echo "   -norpath        disable rpath for compiler wrapper of the Intel(R) MPI Library"
-    echo "All other options will be passed to the compiler without changing."
-    echo "----------------------------------------------------------------------------"
-    echo "The following environment variables are used:"
-    echo "   I_MPI_ROOT      the Intel(R) MPI Library installation directory path"
-    echo "   I_MPI_CC or MPICH_CC"
-    echo "                   the path/name of the underlying compiler to be used"
-    echo "   I_MPI_CC_PROFILE or MPICC_PROFILE"
-    echo "                   the name of profile file (without extension)"
-    echo "   I_MPI_COMPILER_CONFIG_DIR"
-    echo "                   the folder which contains configuration files *.conf"
-    echo "   I_MPI_TRACE_PROFILE"
-    echo "                   specify a default profile for the -trace option"
-    echo "   I_MPI_CHECK_PROFILE"
-    echo "                   specify a default profile for the -check_mpi option"
-    echo "   I_MPI_LINK      specify the version of the Intel(R) MPI Library"
-    echo "   I_MPI_DEBUG_INFO_STRIP"
-    echo "                   turn on/off the debug information stripping during static linking"
-    echo "----------------------------------------------------------------------------"
-    exit 0
-    ;;
+        # Print mini-help if started without parameters
+        echo "Simple script to compile and/or link MPI programs."
+        echo "Usage: $(basename $0) [options] <files>"
+        echo "----------------------------------------------------------------------------"
+        echo "The following options are supported:"
+        echo "   -cc=<name>      specify a C compiler name: i.e. -cc=icc"
+        echo "   -echo           print the scripts during their execution"
+        echo "   -show           show command lines without real calling"
+        echo "   -show_env       show environment variables"
+        echo "   -config=<name>  specify a configuration file: i.e. -config=icc for mpicc-icc.conf file"
+        echo "   -v              print version info of $(basename $0) and its native compiler"
+        echo "   -profile=<name> specify a profile configuration file (an MPI profiling"
+        echo "                   library): i.e. -profile=myprofile for the myprofile.cfg file."
+        echo "                   As a special case, lib<name>.so or lib<name>.a may be used"
+        echo "                   if the library is found"
+        echo "   -check_mpi      link against the Intel(R) Trace Collector (-profile=vtmc)."
+        echo "   -static_mpi     link the Intel(R) MPI Library statically"
+        echo "   -mt_mpi         link the thread safe version of the Intel(R) MPI Library"
+        echo "   -ilp64          link the ILP64 support of the Intel(R) MPI Library"
+        echo "   -t or -trace"
+        echo "                   link against the Intel(R) Trace Collector"
+        echo "   -trace-imbalance"
+        echo "                   link against the Intel(R) Trace Collector imbalance library"
+        echo "                   (-profile=vtim)"
+        echo "   -dynamic_log    link against the Intel(R) Trace Collector dynamically"
+        echo "   -static         use static linkage method"
+        echo "   -nostrip        turn off the debug information stripping during static linking"
+        echo "   -fast           the same as -static_mpi + pass -fast option to a compiler"
+        echo "   -O              enable optimization"
+        echo "   -link_mpi=<name>"
+        echo "                   link against the specified version of the Intel(R) MPI Library"
+        echo "                   i.e -link_mpi=opt|opt_mt|dbg|dbg_mt"
+        echo "   -norpath        disable rpath for compiler wrapper of the Intel(R) MPI Library"
+        echo "All other options will be passed to the compiler without changing."
+        echo "----------------------------------------------------------------------------"
+        echo "The following environment variables are used:"
+        echo "   I_MPI_ROOT      the Intel(R) MPI Library installation directory path"
+        echo "   I_MPI_CC or MPICH_CC"
+        echo "                   the path/name of the underlying compiler to be used"
+        echo "   I_MPI_CC_PROFILE or MPICC_PROFILE"
+        echo "                   the name of profile file (without extension)"
+        echo "   I_MPI_COMPILER_CONFIG_DIR"
+        echo "                   the folder which contains configuration files *.conf"
+        echo "   I_MPI_TRACE_PROFILE"
+        echo "                   specify a default profile for the -trace option"
+        echo "   I_MPI_CHECK_PROFILE"
+        echo "                   specify a default profile for the -check_mpi option"
+        echo "   I_MPI_LINK      specify the version of the Intel(R) MPI Library"
+        echo "   I_MPI_DEBUG_INFO_STRIP"
+        echo "                   turn on/off the debug information stripping during static linking"
+        echo "----------------------------------------------------------------------------"
+        exit 0
+        ;;
     -nolinkage)
-    # This internal option is used by wrapper driver scripts mpicc, mpicxx, mpifc when -v option is used.
-    linking=no
-    addarg=no
-    ;;
+        # This internal option is used by wrapper driver scripts mpicc, mpicxx, mpifc when -v option is used.
+        linking=no
+        addarg=no
+        ;;
     -g)
-    MPILIBDIR="/release"
-    ;;
+        MPILIBDIR="/release"
+        ;;
     -static_mpi)
-    static_mpi=yes
-    CFLAGS="$CFLAGS -Xlinker --export-dynamic"
-    addarg=no
-    ;;
-    -static_log)
-    static_log=yes
-    addarg=no
-    ;;
-    -dynamic_log)
-    static_log=no
-    addarg=no
-    ;;
+        static_mpi=yes
+        CFLAGS="$CFLAGS -Xlinker --export-dynamic"
+        addarg=no
+        ;;
     -static)
-    static_mpi=yes
-    static_log=yes
-    CFLAGS="$CFLAGS -Xlinker --export-dynamic"
-    addarg=yes
-    ;;
+        static_mpi=yes
+        CFLAGS="$CFLAGS -Xlinker --export-dynamic"
+        addarg=yes
+        ;;
     -mt_mpi)
-    addarg=no
-    ;;
+        addarg=no
+        ;;
     -ilp64)
-    ilp64=yes
-    addarg=no
-    ;;
+        ilp64=yes
+        addarg=no
+        ;;
     -check_mpi)
-    if [ -z "$profConf" ]; then
-        if [ -z "$I_MPI_CHECK_PROFILE" ]; then
-            profConf="vtmc"
+        if [ -z "$profConf" ]; then
+            if [ -z "$I_MPI_CHECK_PROFILE" ]; then
+                profConf="vtmc"
+            else
+                profConf="$I_MPI_CHECK_PROFILE"
+            fi
         else
-            profConf="$I_MPI_CHECK_PROFILE"
+            echo "Warning: the -check_mpi option will be ignored because the profile was set."
         fi
-    else
-        echo "Warning: the -check_mpi option will be ignored because the profile was set."
-    fi
-    addarg=no
-    ;;
+        addarg=no
+        ;;
     -trace-imbalance)
-    if [ -z "$profConf" ]; then
-        profConf="vtim"
-    else
-        echo "Warning: the -trace-imbalance option will be ignored because the profile was set."
-    fi
-    addarg=no
-    ;;
-    -t | -trace | -t=* | -trace=* )
-    if [ -z "$profConf" ]; then
-        if [ -z "$I_MPI_TRACE_PROFILE" ]; then
-            profConf="vt"
+        if [ -z "$profConf" ]; then
+            profConf="vtim"
         else
-            profConf="$I_MPI_TRACE_PROFILE"
+            echo "Warning: the -trace-imbalance option will be ignored because the profile was set."
         fi
-    else
-        echo "Warning: the -trace option will be ignored because the profile was set."
-    fi
-    # Disable strip to prevent debug symbols into separate dbg file in case of static linking IMPI-1493
-    strip_debug_info=no
-    addarg=no
-    ;;
+        addarg=no
+        ;;
+    -t | -trace | -t=* | -trace=* )
+        if [ -z "$profConf" ]; then
+            if [ -z "$I_MPI_TRACE_PROFILE" ]; then
+                profConf="vt"
+            else
+                profConf="$I_MPI_TRACE_PROFILE"
+            fi
+        else
+            echo "Warning: the -trace option will be ignored because the profile was set."
+        fi
+        # Disable strip to prevent debug symbols into separate dbg file in case of static linking IMPI-1493
+        strip_debug_info=no
+        addarg=no
+        ;;
     -fast)
-    echo "Warning: the -fast option forces static linkage method for the Intel(R) MPI Library."
-    static_mpi=yes
-    CFLAGS="$CFLAGS -Xlinker --export-dynamic"
-    ;;
+        echo "Warning: the -fast option forces static linkage method for the Intel(R) MPI Library."
+        static_mpi=yes
+        CFLAGS="$CFLAGS -Xlinker --export-dynamic"
+        ;;
     -link_mpi=* )
-    mpilib_override=`echo A$arg | sed -e 's/A-link_mpi=//g'`
-    addarg=no
-    ;;
+        mpilib_override=`echo A$arg | sed -e 's/A-link_mpi=//g'`
+        addarg=no
+        ;;
     -nostrip )
-    strip_debug_info=no
-    addarg=no
-    ;;
+        strip_debug_info=no
+        addarg=no
+        ;;
     -norpath )
-    no_rpath=yes
-    addarg=no
-    ;;
+        no_rpath=yes
+        addarg=no
+        ;;
     # Other arguments.  We are careful to handle arguments with
     # quotes (we try to quote all arguments in case they include
     # any spaces)
     *\"*)
-    qarg="'$arg'"
-    ;;
+        qarg="'$arg'"
+        ;;
     *\'*)
-    qarg=`echo \"$arg\"`
-    ;;
+        qarg=$(echo \"$arg\")
+        ;;
     *)
-    qarg="'$arg'"
-    ;;
+        qarg="'$arg'"
+        ;;
     esac
     if [ $addarg = yes ] ; then
         allargs="$allargs $qarg"
@@ -468,30 +438,30 @@ fi
 # -----------------------------------------------------------------------
 case "$MPILIBDIR" in
     release | /release | debug | /debug)
-    if [ ! -z "$MPILIBDIR_MT" ]; then
-        MPILIBDIR=${MPILIBDIR}_${MPILIBDIR_MT}
-    fi
-    ;;
+        if [ -n "$MPILIBDIR_MT" ]; then
+            MPILIBDIR=${MPILIBDIR}_${MPILIBDIR_MT}
+        fi
+        ;;
     "" )
-    MPILIBDIR="/release"
-    ;;
+        MPILIBDIR="/release"
+        ;;
 esac
 if [ "$static_mpi" = yes ] ; then
     mpilibs="${libdir}/libmpifort.a ${libdir}${MPILIBDIR}/lib${MPILIBNAME}.a"
     I_MPI_OTHERLIBS=""
-    MPI_OTHERLIBS=" -lrt -lpthread -lfabric "
+    MPI_OTHERLIBS=" -lrt -lpthread "
     if [ "$ilp64" = yes ]; then
-    mpilibs="$libdir/libmpi_ilp64.a $mpilibs"
+        mpilibs="$libdir/libmpi_ilp64.a $mpilibs"
     fi
     if [ "x$strip_debug_info" = "x" ] ; then
-    strip_debug_info=yes
+        strip_debug_info=yes
     fi
 else
     mpilibs="-lmpifort -l$MPILIBNAME"
     I_MPI_OTHERLIBS=""
     MPI_OTHERLIBS=" -lrt -lpthread "
     if [ "$ilp64" = yes ]; then
-    mpilibs="-lmpi_ilp64 $mpilibs"
+        mpilibs="-lmpi_ilp64 $mpilibs"
     fi
 fi
 # Derived variables.  These are assembled from variables set from the
@@ -502,27 +472,27 @@ fi
 # Handle the case of a profile switch
 if [ -n "$profConf" ] ; then
     profConffile=
-    if [ -s "$libdir/lib$profConf.a" -o -s "$libdir/lib$profConf.so" ] ; then
-    mpilibs="-l$profConf $mpilibs"
+    if [ -s "$libdir/lib$profConf.a" ] || [ -s "$libdir/lib$profConf.so" ] ; then
+        mpilibs="-l$profConf $mpilibs"
     elif [ -s "$sysconfdir/$profConf.conf" ] ; then
-    profConffile="$sysconfdir/$profConf.conf"
+        profConffile="$sysconfdir/$profConf.conf"
     elif [ -s "$profConf.conf" ] ; then
         profConffile="$profConf.conf"
     else
         echo "Profiling configuration file $profConf.conf not found in $sysconfdir"
     fi
-    if [ -n "$profConffile" -a -s "$profConffile" ] ; then
-    . $profConffile
-    if [ -n "$PROFILE_INCPATHS" ] ; then
-        CFLAGS="$PROFILE_INCPATHS $CFLAGS"
+    if [ -n "$profConffile" ] && [ -s "$profConffile" ] ; then
+        . $profConffile
+        if [ -n "$PROFILE_INCPATHS" ] ; then
+            CFLAGS="$PROFILE_INCPATHS $CFLAGS"
+            fi
+            if [ -n "$PROFILE_PRELIB" ] ; then
+                mpilibs="$PROFILE_PRELIB $mpilibs"
+            fi
+            if [ -n "$PROFILE_POSTLIB" ] ; then
+                mpilibs="$mpilibs $PROFILE_POSTLIB"
+            fi
         fi
-        if [ -n "$PROFILE_PRELIB" ] ; then
-        mpilibs="$PROFILE_PRELIB $mpilibs"
-        fi
-        if [ -n "$PROFILE_POSTLIB" ] ; then
-        mpilibs="$mpilibs $PROFILE_POSTLIB"
-        fi
-    fi
 fi
 
 # -----------------------------------------------------------------------
@@ -546,27 +516,27 @@ fi
 if [ "$no_rpath" = "yes" ]; then
     rpath_opt="-Xlinker --enable-new-dtags"
 else
-    rpath_opt="-Xlinker --enable-new-dtags -Xlinker -rpath -Xlinker ${libdir}${MPILIBDIR} -Xlinker -rpath -Xlinker $libdir"
+    rpath_opt="-Xlinker --enable-new-dtags -Xlinker -rpath -Xlinker \"${libdir}${MPILIBDIR}\" -Xlinker -rpath -Xlinker \"${libdir}\""
 fi
 if [ "$linking" = yes ] ; then
-    cmd_line="$CC $CFLAGS $allargs -I$includedir -L${libdir}${MPILIBDIR} -L$libdir $rpath_opt $mpilibs $I_MPI_OTHERLIBS $LDFLAGS $MPI_OTHERLIBS"
+    cmd_line="$CC $CFLAGS $allargs -I\"${includedir}\" -L\"${libdir}${MPILIBDIR}\" -L\"${libdir}\" $rpath_opt $mpilibs $I_MPI_OTHERLIBS $LDFLAGS $MPI_OTHERLIBS"
     if [ "$Show" = echo ] ; then
         echo $cmd_line
     else
-        eval `echo $cmd_line`
+        eval $(echo $cmd_line)
     fi
     rc=$?
-    if [ $rc -eq 0 -a "x$strip_debug_info" = "xyes" ] ; then
-    $Show objcopy --only-keep-debug ${executable} ${executable}.dbg
-    $Show objcopy --strip-debug ${executable}
-    $Show objcopy --add-gnu-debuglink=${executable}.dbg ${executable}
+    if [ $rc -eq 0 ] && [ "x$strip_debug_info" = "xyes" ] ; then
+        $Show objcopy --only-keep-debug ${executable} ${executable}.dbg
+        $Show objcopy --strip-debug ${executable}
+        $Show objcopy --add-gnu-debuglink=${executable}.dbg ${executable}
     fi
 else
-    cmd_line="$CC $CFLAGS $allargs -I$includedir"
+    cmd_line="$CC $CFLAGS $allargs -I\"${includedir}\""
     if [ "$Show" = echo ] ; then
-        echo $cmd_line
+        echo "$cmd_line"
     else
-        eval `echo $cmd_line`
+        eval $(echo $cmd_line)
     fi
     rc=$?
 fi

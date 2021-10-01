@@ -176,15 +176,12 @@ std::string CCL_BE_API to_string(const ze_memory_allocation_properties_t& prop) 
 
 std::string CCL_BE_API to_string(const ze_device_mem_alloc_desc_t& mem_descr) {
     std::stringstream ss;
-    std::string flag;
+    std::string flag = "0";
 
     if (mem_descr.flags & ZE_DEVICE_MEM_ALLOC_FLAG_BIAS_CACHED) {
         flag = "ZE_DEVICE_MEM_ALLOC_FLAG_BIAS_CACHED";
     }
-    if (mem_descr.flags & ZE_DEVICE_MEM_ALLOC_FLAG_BIAS_UNCACHED) {
-        flag += flag.empty() ? "" : "|";
-        flag = flag + "ZE_DEVICE_MEM_ALLOC_FLAG_BIAS_UNCACHED";
-    }
+
     if (flag.empty()) {
         CCL_THROW("unknown ze_device_mem_alloc_flags_t flag: " +
                   std::to_string(static_cast<int>(mem_descr.flags)));

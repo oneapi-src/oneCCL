@@ -35,7 +35,7 @@ public:
     void start() override {
         int global_src = comm->get_global_rank(src);
         atl_tag = comm->atl->tag->create(
-            sched->get_comm_id(), global_src, sched->sched_id, sched->get_op_id());
+            global_src, sched->get_comm_id(), sched->sched_id, sched->get_op_id());
         LOG_DEBUG("PROBE entry src ", src, ", tag ", atl_tag);
         status = ccl_sched_entry_status_started;
     }

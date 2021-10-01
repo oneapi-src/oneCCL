@@ -297,7 +297,7 @@ function(set_compute_backend COMMON_CMAKE_DIR)
         set(MULTI_GPU_SUPPORT ON)
     endif()
     if (MULTI_GPU_SUPPORT)
-        message(STATUS "Enable multi GPU support using L0")
+        message(STATUS "Enable GPU support using level-zero")
     endif()
 
     # need to pass these variables to overlying function

@@ -37,7 +37,7 @@
 #include <CL/sycl.hpp>
 using namespace cl::sycl;
 using namespace cl::sycl::access;
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 
 #include "base.hpp"
 #include "base_utils.hpp"
@@ -59,18 +59,18 @@ void print_help_usage(const char* app) {
           "\t[-f,--min_elem_count <minimum number of elements for single collective>]: %d\n"
           "\t[-t,--max_elem_count <maximum number of elements for single collective>]: %d\n"
           "\t[-y,--elem_counts <list of element counts for single collective>]: [%d-%d]\n"
-          "\t[-c,--check <check result correctness>]: %d\n"
+          "\t[-c,--check <check result correctness>]: %s\n"
           "\t[-p,--cache <use persistent operations>]: %d\n"
           "\t[-q,--inplace <use same buffer as send and recv buffer>]: %d\n"
           "\t[-k,--ranks_per_proc <number of ranks per process>]: %d\n"
 #ifdef CCL_ENABLE_NUMA
           "\t[-s,--numa_node <numa node for allocation of send and recv buffers>]: %s\n"
-#endif /* CCL_ENABLE_NUMA */
+#endif // CCL_ENABLE_NUMA
 #ifdef CCL_ENABLE_SYCL
           "\t[-a,--sycl_dev_type <sycl device type>]: %s\n"
           "\t[-m,--sycl_mem_type <sycl memory type>]: %s\n"
           "\t[-u,--sycl_usm_type <sycl usm type>]: %s\n"
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
           "\t[-l,--coll <collectives list/all>]: %s\n"
           "\t[-d,--dtype <datatypes list/all>]: %s\n"
           "\t[-r,--reduction <reductions list/all>]: %s\n"
@@ -89,18 +89,18 @@ void print_help_usage(const char* app) {
           DEFAULT_MAX_ELEM_COUNT,
           DEFAULT_MIN_ELEM_COUNT,
           DEFAULT_MAX_ELEM_COUNT,
-          DEFAULT_CHECK_VALUES,
+          check_values_names[DEFAULT_CHECK_VALUES].c_str(),
           DEFAULT_CACHE_OPS,
           DEFAULT_INPLACE,
           DEFAULT_RANKS_PER_PROC,
 #ifdef CCL_ENABLE_NUMA
           DEFAULT_NUMA_NODE_STR,
-#endif /* CCL_ENABLE_NUMA */
+#endif // CCL_ENABLE_NUMA
 #ifdef CCL_ENABLE_SYCL
           sycl_dev_names[DEFAULT_SYCL_DEV_TYPE].c_str(),
           sycl_mem_names[DEFAULT_SYCL_MEM_TYPE].c_str(),
           sycl_usm_names[DEFAULT_SYCL_USM_TYPE].c_str(),
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
           DEFAULT_COLL_LIST,
           DEFAULT_DTYPES_LIST,
           DEFAULT_REDUCTIONS_LIST,
@@ -125,6 +125,13 @@ bool find_key_val(ccl::reduction& key, Container& mp, const Dtype& val) {
         }
     }
     return false;
+}
+
+bool is_check_values_enabled(check_values_t check_values) {
+    bool ret = false;
+    if (check_values == CHECK_LAST_ITER || check_values == CHECK_ALL_ITERS)
+        return true;
+    return ret;
 }
 
 int check_supported_options(const std::string& option_name,
@@ -192,6 +199,29 @@ int set_iter_policy(const std::string& option_value, iter_policy_t& policy) {
     return 0;
 }
 
+int set_check_values(const std::string& option_value, check_values_t& check) {
+    std::string option_name = "check";
+
+    std::set<std::string> supported_option_values{ check_values_names[CHECK_OFF],
+                                                   check_values_names[CHECK_LAST_ITER],
+                                                   check_values_names[CHECK_ALL_ITERS] };
+
+    if (check_supported_options(option_name, option_value, supported_option_values))
+        return -1;
+
+    if (option_value == check_values_names[CHECK_OFF]) {
+        check = CHECK_OFF;
+    }
+    else if (option_value == check_values_names[CHECK_LAST_ITER]) {
+        check = CHECK_LAST_ITER;
+    }
+    else if (option_value == check_values_names[CHECK_ALL_ITERS]) {
+        check = CHECK_ALL_ITERS;
+    }
+
+    return 0;
+}
+
 #ifdef CCL_ENABLE_SYCL
 int set_sycl_dev_type(const std::string& option_value, sycl_dev_type_t& dev) {
     std::string option_name = "sycl_dev_type";
@@ -237,12 +267,14 @@ int set_sycl_usm_type(const std::string& option_value, sycl_usm_type_t& usm) {
 
     return 0;
 }
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 
-int set_datatypes(std::string option_value, int check_values, std::list<std::string>& datatypes) {
+int set_datatypes(std::string option_value,
+                  check_values_t check_values,
+                  std::list<std::string>& datatypes) {
     datatypes.clear();
     if (option_value == "all") {
-        if (check_values) {
+        if (is_check_values_enabled(check_values)) {
             datatypes = tokenize<std::string>(ALL_DTYPES_LIST_WITH_CHECK, ',');
         }
         else {
@@ -257,7 +289,7 @@ int set_datatypes(std::string option_value, int check_values, std::list<std::str
 
         for (auto p : dtype_names) {
             if ((p.first == ccl::datatype::float16 || p.first == ccl::datatype::bfloat16) &&
-                check_values)
+                is_check_values_enabled(check_values))
                 continue;
             supported_option_values.insert(p.second);
         }
@@ -266,7 +298,7 @@ int set_datatypes(std::string option_value, int check_values, std::list<std::str
             if (check_supported_options(option_name, dt, supported_option_values)) {
                 if ((dt == dtype_names[ccl::datatype::float16] ||
                      dt == dtype_names[ccl::datatype::bfloat16]) &&
-                    check_values) {
+                    is_check_values_enabled(check_values)) {
                     PRINT("WARN: correctness checking is not implemented for '%s'", dt.c_str());
                 }
             }
@@ -275,10 +307,12 @@ int set_datatypes(std::string option_value, int check_values, std::list<std::str
     return 0;
 }
 
-int set_reductions(std::string option_value, int check_values, std::list<std::string>& reductions) {
+int set_reductions(std::string option_value,
+                   check_values_t check_values,
+                   std::list<std::string>& reductions) {
     reductions.clear();
     if (option_value == "all") {
-        if (check_values) {
+        if (is_check_values_enabled(check_values)) {
             reductions = tokenize<std::string>(ALL_REDUCTIONS_LIST_WITH_CHECK, ',');
         }
         else {
@@ -292,14 +326,15 @@ int set_reductions(std::string option_value, int check_values, std::list<std::st
         std::set<std::string> supported_option_values;
 
         for (auto p : reduction_names) {
-            if ((p.first != ccl::reduction::sum) && check_values)
+            if ((p.first != ccl::reduction::sum) && is_check_values_enabled(check_values))
                 continue;
             supported_option_values.insert(p.second);
         }
 
         for (auto r : reductions) {
             if (check_supported_options(option_name, r, supported_option_values)) {
-                if ((r != reduction_names[ccl::reduction::sum]) && check_values) {
+                if ((r != reduction_names[ccl::reduction::sum]) &&
+                    is_check_values_enabled(check_values)) {
                     PRINT("WARN: correctness checking is not implemented for '%s'", r.c_str());
                 }
             }
@@ -533,12 +568,12 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
 #ifdef CCL_ENABLE_NUMA
     const char* numa_options = "s:";
     memcpy(short_options + strlen(short_options), numa_options, strlen(numa_options));
-#endif /* CCL_ENABLE_NUMA */
+#endif // CCL_ENABLE_NUMA
 
 #ifdef CCL_ENABLE_SYCL
     const char* sycl_options = "a:m:u:";
     memcpy(short_options + strlen(short_options), sycl_options, strlen(sycl_options));
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 
     struct option getopt_options[] = {
         { "backend", required_argument, nullptr, 'b' },
@@ -556,12 +591,12 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
         { "ranks_per_proc", required_argument, nullptr, 'k' },
 #ifdef CCL_ENABLE_NUMA
         { "numa_node", required_argument, nullptr, 's' },
-#endif /* CCL_ENABLE_NUMA */
+#endif // CCL_ENABLE_NUMA
 #ifdef CCL_ENABLE_SYCL
         { "sycl_dev_type", required_argument, nullptr, 'a' },
         { "sycl_mem_type", required_argument, nullptr, 'm' },
         { "sycl_usm_type", required_argument, nullptr, 'u' },
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
         { "coll", required_argument, nullptr, 'l' },
         { "dtype", required_argument, nullptr, 'd' },
         { "reduction", required_argument, nullptr, 'r' },
@@ -639,7 +674,12 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
                 else
                     errors++;
                 break;
-            case 'c': options.check_values = atoi(optarg); break;
+            case 'c':
+                if (set_check_values(optarg, options.check_values)) {
+                    PRINT("failed to parse 'check' option");
+                    errors++;
+                }
+                break;
             case 'p': options.cache_ops = atoi(optarg); break;
             case 'q': options.inplace = atoi(optarg); break;
             case 'k':
@@ -675,7 +715,7 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
                     errors++;
                 }
                 break;
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
             case 'l':
                 if (strcmp("all", optarg) == 0) {
                     options.coll_names = tokenize<std::string>(ALL_COLLS_LIST, ',');
@@ -786,6 +826,7 @@ void print_user_options(const user_options_t& options, const ccl::communicator& 
     std::string backend_str = find_str_val(backend_names, options.backend);
     std::string loop_str = find_str_val(loop_names, options.loop);
     std::string iter_policy_str = find_str_val(iter_policy_names, options.iter_policy);
+    std::string check_values_str = find_str_val(check_values_names, options.check_values);
 
 #ifdef CCL_ENABLE_SYCL
     std::string sycl_dev_type_str = find_str_val(sycl_dev_names, options.sycl_dev_type);
@@ -805,18 +846,18 @@ void print_user_options(const user_options_t& options, const ccl::communicator& 
                   "\n  min_elem_count: %zu"
                   "\n  max_elem_count: %zu"
                   "\n  elem_counts:    %s"
-                  "\n  check:          %d"
+                  "\n  check:          %s"
                   "\n  cache:          %d"
                   "\n  inplace:        %d"
                   "\n  ranks_per_proc: %zu"
 #ifdef CCL_ENABLE_NUMA
                   "\n  numa_node:      %s"
-#endif /* CCL_ENABLE_NUMA */
+#endif // CCL_ENABLE_NUMA
 #ifdef CCL_ENABLE_SYCL
                   "\n  sycl_dev_type:  %s"
                   "\n  sycl_mem_type:  %s"
                   "\n  sycl_usm_type:  %s"
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
                   "\n  collectives:    %s"
                   "\n  datatypes:      %s"
                   "\n  reductions:     %s"
@@ -831,7 +872,7 @@ void print_user_options(const user_options_t& options, const ccl::communicator& 
                   options.min_elem_count,
                   options.max_elem_count,
                   elem_counts_str.c_str(),
-                  options.check_values,
+                  check_values_str.c_str(),
                   options.cache_ops,
                   options.inplace,
                   options.ranks_per_proc,
@@ -839,12 +880,12 @@ void print_user_options(const user_options_t& options, const ccl::communicator& 
                   (options.numa_node == DEFAULT_NUMA_NODE)
                       ? DEFAULT_NUMA_NODE_STR
                       : std::to_string(options.numa_node).c_str(),
-#endif /* CCL_ENABLE_NUMA */
+#endif // CCL_ENABLE_NUMA
 #ifdef CCL_ENABLE_SYCL
                   sycl_dev_type_str.c_str(),
                   sycl_mem_type_str.c_str(),
                   sycl_usm_type_str.c_str(),
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
                   collectives_str.c_str(),
                   datatypes_str.c_str(),
                   reductions_str.c_str(),

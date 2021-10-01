@@ -58,7 +58,7 @@ void ccl_convert_fp16_to_fp32(const void* src, void* dst) {
     _mm256_storeu_si256((__m256i*)dst, (__m256i)_mm256_cvtph_ps(_mm_loadu_si128((__m128i*)src)));
 }
 
-#else /* CCL_FP16_COMPILER */
+#else // CCL_FP16_COMPILER
 
 void ccl_fp16_reduce(const void* in_buf,
                      size_t in_cnt,
@@ -76,4 +76,4 @@ void ccl_convert_fp16_to_fp32(const void* src, void* dst) {
     CCL_FATAL("FP16->FP32 conversion was requested but CCL was compiled w/o FP16 support");
 }
 
-#endif /* CCL_FP16_COMPILER */
+#endif // CCL_FP16_COMPILER

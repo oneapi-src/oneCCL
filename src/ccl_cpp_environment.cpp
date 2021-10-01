@@ -25,8 +25,6 @@
 
 #include <memory>
 
-#include "common/comm/single_device_communicator/single_device_communicator.hpp"
-
 namespace ccl {
 
 namespace detail {
@@ -102,49 +100,7 @@ size_t environment::get_datatype_size(ccl::datatype dtype) const {
     return ccl::global_data::get().dtypes->get(dtype).size();
 }
 
-/******************** STREAM ********************/
-
-stream environment::create_stream(typename unified_device_type::ccl_native_t device) {
-    auto version = utils::get_library_version();
-    return stream{ stream_provider_dispatcher::create(device, version) };
-}
-
-stream environment::create_stream(typename unified_device_type::ccl_native_t device,
-                                  typename unified_context_type::ccl_native_t context) {
-    auto version = utils::get_library_version();
-    return stream{ stream_provider_dispatcher::create(device, context, version) };
-}
-
 /******************** COMMUNICATOR ********************/
-
-#ifdef CCL_ENABLE_SYCL
-communicator environment::create_single_device_communicator(
-    const int comm_size,
-    const int rank,
-    const cl::sycl::device& device,
-    const cl::sycl::context& context,
-    ccl::shared_ptr_class<kvs_interface> kvs) const {
-    LOG_TRACE("Create single device communicator from SYCL device");
-
-    std::shared_ptr<ikvs_wrapper> kvs_wrapper(new users_kvs(kvs));
-    std::shared_ptr<atl_wrapper> atl =
-        std::shared_ptr<atl_wrapper>(new atl_wrapper(comm_size, { rank }, kvs_wrapper));
-
-    ccl::communicator_interface_ptr impl =
-        ccl::communicator_interface::create_communicator_impl(device,
-                                                              context,
-                                                              rank,
-                                                              comm_size,
-                                                              create_comm_split_attr(),
-                                                              atl,
-                                                              ccl::group_split_type::single);
-
-    //TODO use gpu_comm_attr to automatically visit()
-    auto single_dev_comm = std::dynamic_pointer_cast<single_device_communicator>(impl);
-    //single_dev_comm->set_context(context);
-    return communicator(std::move(impl));
-}
-#endif
 
 communicator environment::create_communicator(const comm_attr& attr) const {
     return communicator::create_communicator(attr);
@@ -169,15 +125,11 @@ communicator environment::create_communicator(const size_t size,
 
 /******************** TypeGenerations ********************/
 
-CREATE_DEV_COMM_INSTANTIATION(ccl::device, ccl::context)
-CREATE_DEV_COMM_INSTANTIATION(typename ccl::unified_device_type::ccl_native_t,
-                              typename ccl::unified_context_type::ccl_native_t)
-CREATE_DEV_COMM_INSTANTIATION(ccl::device_index_type,
-                              typename ccl::unified_context_type::ccl_native_t)
+CREATE_COMM_INSTANTIATION(ccl::device, ccl::context)
+CREATE_COMM_INSTANTIATION(typename ccl::unified_device_type::ccl_native_t,
+                          typename ccl::unified_context_type::ccl_native_t)
+CREATE_COMM_INSTANTIATION(ccl::device_index_type, typename ccl::unified_context_type::ccl_native_t)
 
 CREATE_STREAM_INSTANTIATION(typename ccl::unified_stream_type::ccl_native_t)
-CREATE_STREAM_EXT_INSTANTIATION(typename ccl::unified_device_type::ccl_native_t,
-                                typename ccl::unified_context_type::ccl_native_t)
-
 CREATE_CONTEXT_INSTANTIATION(typename ccl::unified_context_type::ccl_native_t)
 CREATE_DEVICE_INSTANTIATION(typename ccl::unified_device_type::ccl_native_t)

@@ -43,18 +43,18 @@ void ipc_ctx<TEMPLATE_DEF_ARG>::initialize_ctx(
     (void)communicator;
     //send_stop();
     stop.store(false);
-    LOG_INFO("IPC context Initialized for mpi rank: (",
-             std::to_string(communicator->rank()),
-             "/",
-             std::to_string(communicator->size()),
-             ")");
+    LOG_DEBUG("IPC context Initialized for mpi rank: (",
+              std::to_string(communicator->rank()),
+              "/",
+              std::to_string(communicator->size()),
+              ")");
 }
 
 template <TEMPLATE_DECL_ARG>
 template <ccl::device_topology_type class_id, class device_t>
 void ipc_ctx<TEMPLATE_DEF_ARG>::register_observer_impl(size_t rank_addr,
                                                        observer_t<device_t>* observer_ptr) {
-    LOG_INFO(
+    LOG_DEBUG(
         "device rank addr: ", std::to_string(rank_addr), ", device: ", observer_ptr->to_string());
     observer::container_t<observer_t<device_t>>& container =
         scaling_ctx_base_t::template get_types_container<observer_t<device_t>, class_id>(
@@ -110,10 +110,10 @@ template <TEMPLATE_DECL_ARG>
 template <ccl::device_topology_type class_id>
 void ipc_ctx<TEMPLATE_DEF_ARG>::register_observer_impl(size_t rank_addr,
                                                        ccl_ipc_gpu_comm* observer_ptr) {
-    LOG_INFO("DST device rank addr: ",
-             std::to_string(rank_addr),
-             ", DST device: ",
-             observer_ptr->to_string());
+    LOG_DEBUG("DST device rank addr: ",
+              std::to_string(rank_addr),
+              ", DST device: ",
+              observer_ptr->to_string());
     observer::container_t<ccl_ipc_gpu_comm>& container =
         scaling_ctx_base_t::template get_types_container<ccl_ipc_gpu_comm, class_id>(observables);
     auto cont_it = container.find(observer_ptr);
@@ -151,7 +151,7 @@ void ipc_ctx<TEMPLATE_DEF_ARG>::register_observer_impl(size_t rank_addr,
 
     //Start IPC server for each DST device for listening incoming conections from SRC devices
     std::string addr = create_ipc_addr_for_rank(rank_addr);
-    LOG_INFO("Start IPC listener for device:\n", observer_ptr->to_string(), "\nAddr: ", addr);
+    LOG_DEBUG("Start IPC listener for device:\n", observer_ptr->to_string(), "\nAddr: ", addr);
     try {
         observer_ptr->start(addr);
         auto it = listener_thread_map.find(observer_ptr);
@@ -163,7 +163,7 @@ void ipc_ctx<TEMPLATE_DEF_ARG>::register_observer_impl(size_t rank_addr,
         listener_thread_map.emplace(
             observer_ptr,
             new std::thread(&ipc_ctx<TEMPLATE_DEF_ARG>::listener, this, observer_ptr));
-        LOG_INFO("Listener thread started on addr: ", addr);
+        LOG_DEBUG("Listener thread started on addr: ", addr);
     }
     catch (const std::exception& ex) {
         LOG_ERROR("Cannot start IPC listener on: ",
@@ -206,7 +206,7 @@ void ipc_ctx<TEMPLATE_DEF_ARG>::send_stop() {
 
 template <TEMPLATE_DECL_ARG>
 void ipc_ctx<TEMPLATE_DEF_ARG>::listener(ccl_ipc_gpu_comm* listener_device) {
-    LOG_INFO("Start IPC context listener worker, Listener device: ", listener_device->to_string());
+    LOG_DEBUG("Start IPC context listener worker, Listener device: ", listener_device->to_string());
 
     // TODO ring only, peer-to-peer case: one SRC connects to one DST
     std::unique_ptr<net::ipc_rx_connection> incoming_connection;
@@ -214,24 +214,24 @@ void ipc_ctx<TEMPLATE_DEF_ARG>::listener(ccl_ipc_gpu_comm* listener_device) {
         try {
             auto incoming = listener_device->process_connection();
             if (incoming) {
-                LOG_INFO("Got connection on device: ", listener_device->to_string());
+                LOG_DEBUG("Got connection on device: ", listener_device->to_string());
                 incoming_connection = std::move(incoming);
             }
         }
         catch (const std::exception& ex) {
-            LOG_INFO("Stop requested at serving connection stage");
+            LOG_DEBUG("Stop requested at serving connection stage");
             return;
         }
 
         if (stop.load()) {
-            LOG_INFO("Stop requested at serving connection stage");
+            LOG_DEBUG("Stop requested at serving connection stage");
             return;
         }
     }
 
     // processing incoming data from connected clients
-    LOG_INFO("Start IPC context processing worker, Listener device: ",
-             listener_device->to_string());
+    LOG_DEBUG("Start IPC context processing worker, Listener device: ",
+              listener_device->to_string());
     while (!stop.load()) {
         //TODO choose std::list
         decltype(processing_queue) sessions_to_execute;

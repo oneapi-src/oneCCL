@@ -21,8 +21,6 @@ using namespace sycl;
 int main(int argc, char *argv[]) {
     const size_t count = 10 * 1024 * 1024;
 
-    int i = 0;
-    int j = 0;
     int size = 0;
     int rank = 0;
     size_t send_buf_count = 0;
@@ -79,15 +77,15 @@ int main(int argc, char *argv[]) {
         host_accessor recv_buf_acc(recv_buf, write_only);
         host_accessor expected_acc_buf(expected_buf, write_only);
 
-        for (i = 0; i < send_buf_count; i++) {
+        for (size_t i = 0; i < send_buf_count; i++) {
             send_buf_acc[i] = rank;
         }
-        for (i = 0; i < recv_buf_count; i++) {
+        for (size_t i = 0; i < recv_buf_count; i++) {
             recv_buf_acc[i] = -1;
         }
         size_t idx = 0;
-        for (i = 0; i < size; i++) {
-            for (j = 0; j < count + i; j++) {
+        for (int i = 0; i < size; i++) {
+            for (size_t j = 0; j < count + i; j++) {
                 expected_acc_buf[idx + j] = i + 1;
             }
             idx += count + i;
@@ -97,7 +95,7 @@ int main(int argc, char *argv[]) {
     /* open send_buf and modify it on the device side */
     /* make in-place updates in the appropriate place */
     size_t rbuf_idx = 0;
-    for (i = 0; i < rank; i++)
+    for (int i = 0; i < rank; i++)
         rbuf_idx += recv_counts[i];
 
     q.submit([&](auto &h) {
@@ -132,6 +130,7 @@ int main(int argc, char *argv[]) {
     /* print out the result of the test on the host side */
     {
         host_accessor recv_buf_acc(recv_buf, read_only);
+        size_t i;
         for (i = 0; i < recv_buf_count; i++) {
             if (recv_buf_acc[i] == -1) {
                 cout << "FAILED\n";

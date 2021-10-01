@@ -82,14 +82,14 @@ void convert_fp16_to_fp32(const void* src, void* dst) {
     // _mm512_storeu_si512(dst, (__m512i)(_mm512_cvtph_ps(_mm256_loadu_si256((__m256i*)src))));
     _mm256_storeu_si256((__m256i*)dst, (__m256i)(_mm256_cvtph_ps(_mm_loadu_si128((__m128i*)src))));
 }
-#else /* CCL_FP16_COMPILER */
+#else // CCL_FP16_COMPILER
 void convert_fp32_to_fp16(const void* src, void* dst) {
     ASSERT(0, "FP16 is unsupported");
 }
 void convert_fp16_to_fp32(const void* src, void* dst) {
     ASSERT(0, "FP16 is unsupported");
 }
-#endif /* CCL_FP16_COMPILER */
+#endif // CCL_FP16_COMPILER
 
 #ifdef CCL_BF16_COMPILER
 void convert_fp32_to_bf16(const void* src, void* dst) {
@@ -105,14 +105,14 @@ void convert_bf16_to_fp32(const void* src, void* dst) {
     __m512i y = _mm512_cvtepu16_epi32(_mm256_loadu_si256((__m256i const*)src));
     _mm512_storeu_si512(dst, _mm512_bslli_epi128(y, 2));
 }
-#else /* CCL_BF16_COMPILER */
+#else // CCL_BF16_COMPILER
 void convert_fp32_to_bf16(const void* src, void* dst) {
     ASSERT(0, "BF16 is unsupported");
 }
 void convert_bf16_to_fp32(const void* src, void* dst) {
     ASSERT(0, "BF16 is unsupported");
 }
-#endif /* CCL_BF16_COMPILER */
+#endif // CCL_BF16_COMPILER
 
 void convert_lp_to_fp32(const void* src, void* dst, ccl_data_type dtype) {
     if (dtype == DATATYPE_FLOAT16) {

@@ -49,7 +49,7 @@ ccl::communicator_interface_ptr ccl::comm_group::create_communicator_from_group(
 
     auto host_comm = pimpl->get_host_communicator();
 
-    if (device_count_per_process == 1 && !ccl::global_data::env().enable_comm_kernels) {
+    if (device_count_per_process == 1 /*&& !ccl::global_data::env().enable_comm_kernels*/) {
         /* special single device case */
         LOG_TRACE("create single device communicator from SYCL device");
         //TODO

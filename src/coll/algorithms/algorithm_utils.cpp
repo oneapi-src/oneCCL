@@ -36,6 +36,7 @@ const char* ccl_coll_type_to_str(ccl_coll_type type) {
         case ccl_coll_reduce_scatter: return "reduce_scatter";
         case ccl_coll_sparse_allreduce: return "sparse_allreduce";
         case ccl_coll_internal: return "internal";
+        case ccl_coll_partial: return "partial";
         default: return "unknown";
     }
     return "unknown";

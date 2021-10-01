@@ -32,11 +32,6 @@ ccl_algorithm_selector<ccl_coll_barrier>::ccl_algorithm_selector() {
 }
 
 template <>
-bool ccl_algorithm_selector_helper<ccl_coll_barrier_algo>::is_direct(ccl_coll_barrier_algo algo) {
-    return (algo == ccl_coll_barrier_direct) ? true : false;
-}
-
-template <>
 bool ccl_algorithm_selector_helper<ccl_coll_barrier_algo>::can_use(
     ccl_coll_barrier_algo algo,
     const ccl_selector_param& param,

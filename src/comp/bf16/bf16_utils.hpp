@@ -59,7 +59,7 @@ __attribute__((__always_inline__)) inline std::set<ccl_bf16_impl_type> ccl_bf16_
                          : "=a"(reg[0]), "=b"(reg[1]), "=c"(reg[2]), "=d"(reg[3])
                          : "a"(7), "c"(1));
     is_avx512bf_enabled = (reg[0] & (1 << 5)) >> 5;
-#endif /* CCL_BF16_AVX512BF_COMPILER */
+#endif // CCL_BF16_AVX512BF_COMPILER
 
     if (is_avx512f_enabled)
         result.insert(ccl_bf16_avx512f);

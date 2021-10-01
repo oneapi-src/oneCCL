@@ -31,13 +31,6 @@ enum class stream_attr_id : int {
     version,
 
     native_handle,
-    device,
-    context,
-    ordinal,
-    index,
-    flags,
-    mode,
-    priority,
 };
 
 } // namespace v1

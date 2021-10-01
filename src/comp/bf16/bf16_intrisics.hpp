@@ -42,7 +42,7 @@
 #define BF16_INLINE_TARGET_ATTRIBUTE_ALL \
     __attribute__((__always_inline__, target(BF16_ALL_ATTRS))) inline
 
-#else /* CCL_BF16_TARGET_ATTRIBUTES */
+#else // CCL_BF16_TARGET_ATTRIBUTES
 
 #define BF16_TARGET_ATTRIBUTE_BWF
 #define BF16_TARGET_ATTRIBUTE_ALL
@@ -50,7 +50,7 @@
 #define BF16_INLINE_TARGET_ATTRIBUTE     __attribute__((__always_inline__)) inline
 #define BF16_INLINE_TARGET_ATTRIBUTE_ALL __attribute__((__always_inline__)) inline
 
-#endif /* CCL_BF16_TARGET_ATTRIBUTES */
+#endif // CCL_BF16_TARGET_ATTRIBUTES
 
 typedef __m512 (*ccl_bf16_reduction_func_ptr)(__m512 a, __m512 b);
 BF16_TARGET_ATTRIBUTE_BWF __m512 bf16_sum_wrap(__m512 a, __m512 b);
@@ -141,4 +141,4 @@ BF16_INLINE_TARGET_ATTRIBUTE_ALL void ccl_bf16_reduce_impl(const void* in_buf,
 #endif
 }
 
-#endif /* CCL_BF16_COMPILER */
+#endif // CCL_BF16_COMPILER

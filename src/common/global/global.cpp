@@ -23,7 +23,13 @@
 #include "exec/exec.hpp"
 #include "fusion/fusion.hpp"
 #include "parallelizer/parallelizer.hpp"
+#include "sched/buffer_cache.hpp"
 #include "sched/cache/cache.hpp"
+
+#ifdef MULTI_GPU_SUPPORT
+#include "sched/entry/gpu/ze_cache.hpp"
+#include "sched/entry/gpu/ze_primitives.hpp"
+#endif // MULTI_GPU_SUPPORT
 
 namespace ccl {
 
@@ -34,8 +40,7 @@ global_data::global_data() {
        to ensure static objects construction/destruction rule */
     LOG_INFO("create global_data object");
 
-    //TODO new_api configure thread wait timeout
-    thread_barrier_wait_timeout_sec = 5;
+    kernel_counter = 0;
 }
 
 global_data::~global_data() {
@@ -60,12 +65,20 @@ ccl::status global_data::reset() {
     reset_resize_dependent_objects();
     reset_resize_independent_objects();
 
+#ifdef MULTI_GPU_SUPPORT
+    finalize_gpu();
+#endif // MULTI_GPU_SUPPORT
+
     return ccl::status::success;
 }
 
 ccl::status global_data::init() {
     env_object.parse();
     env_object.set_internal_env();
+
+#ifdef MULTI_GPU_SUPPORT
+    init_gpu();
+#endif // MULTI_GPU_SUPPORT
 
     init_resize_dependent_objects();
     init_resize_independent_objects();
@@ -77,6 +90,8 @@ void global_data::init_resize_dependent_objects() {
     dtypes = std::unique_ptr<ccl_datatype_storage>(new ccl_datatype_storage());
 
     sched_cache = std::unique_ptr<ccl_sched_cache>(new ccl_sched_cache());
+    buffer_cache =
+        std::unique_ptr<ccl::buffer_cache>(new ccl::buffer_cache(env_object.worker_count));
 
     if (env_object.enable_fusion) {
         /* create fusion_manager before executor because service_worker uses fusion_manager */
@@ -94,20 +109,41 @@ void global_data::init_resize_independent_objects() {
 
     algorithm_selector = std::unique_ptr<ccl_algorithm_selector_wrapper<CCL_COLL_LIST>>(
         new ccl_algorithm_selector_wrapper<CCL_COLL_LIST>());
-
     algorithm_selector->init();
+
+    hwloc_wrapper = std::unique_ptr<ccl_hwloc_wrapper>(new ccl_hwloc_wrapper());
 }
 
 void global_data::reset_resize_dependent_objects() {
     comm_ids.reset();
     fusion_manager.reset();
     sched_cache.reset();
+    buffer_cache.reset();
     dtypes.reset();
 }
 
 void global_data::reset_resize_independent_objects() {
     parallelizer.reset();
     algorithm_selector.reset();
+    hwloc_wrapper.reset();
 }
 
-} /* namespace ccl */
+#ifdef MULTI_GPU_SUPPORT
+void global_data::init_gpu() {
+    LOG_INFO("initializing level-zero");
+    ze_result_t res = zeInit(ZE_INIT_FLAG_GPU_ONLY);
+    if (res != ZE_RESULT_SUCCESS) {
+        CCL_THROW("error at zeInit, code: ", ccl::ze::to_string(res));
+    }
+    ze_cache = std::unique_ptr<ccl::ze::cache>(new ccl::ze::cache(env_object.worker_count));
+    LOG_INFO("initialized level-zero");
+}
+
+void global_data::finalize_gpu() {
+    LOG_INFO("finalizing level-zero");
+    ze_cache.reset();
+    LOG_INFO("finalized level-zero");
+}
+#endif // MULTI_GPU_SUPPORT
+
+} // namespace ccl

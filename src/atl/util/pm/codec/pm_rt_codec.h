@@ -67,4 +67,4 @@ static inline int decode(const char *inval, void *outval, int outvallen) {
     return 0;
 }
 
-#endif /* PMI_RT_CODEC_H */
+#endif // PMI_RT_CODEC_H

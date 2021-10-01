@@ -154,7 +154,9 @@ struct execution_kernel : public kernel_data_storage<arg<main_kernel_args::rank_
                       ", kernel: ",
                       name(),
                       ", handle: ",
-                      handle);
+                      handle,
+                      ", result: ",
+                      result);
         }
 
         base::template set_arg<kernel_argument>(new_val);
@@ -182,7 +184,11 @@ struct execution_kernel : public kernel_data_storage<arg<main_kernel_args::rank_
                       ", kernel: ",
                       name(),
                       ", handle: ",
-                      handle);
+                      handle,
+                      ", result: ",
+                      result,
+                      "value: ",
+                      new_val);
         }
 
         base::template set_arg<kernel_argument>(new_val);

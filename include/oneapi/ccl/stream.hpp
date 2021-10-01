@@ -85,25 +85,16 @@ private:
     friend struct ccl::ccl_empty_attr;
     friend struct ccl::v1::impl_dispatch;
 
-    template <class... attr_val_type>
-    friend stream create_stream_from_attr(typename unified_device_type::ccl_native_t device,
-                                          typename unified_context_type::ccl_native_t context,
-                                          attr_val_type&&... avs);
-    template <class... attr_val_type>
-    friend stream create_stream_from_attr(typename unified_device_type::ccl_native_t device,
-                                          attr_val_type&&... avs);
-
     stream(impl_value_t&& impl);
 
     /**
-     *Parametrized stream creation helper
+     * Parameterized stream creation helper
      */
     template <stream_attr_id attrId,
               class Value/*,
               class = typename std::enable_if<is_attribute_value_supported<attrId, Value>()>::type*/>
     typename detail::ccl_api_type_attr_traits<stream_attr_id, attrId>::return_type set(const Value& v);
 
-    void build_from_params();
     stream(const typename detail::ccl_api_type_attr_traits<stream_attr_id,
                                                            stream_attr_id::version>::type& version);
 
@@ -113,20 +104,6 @@ private:
     template <class native_stream_type,
               class = typename std::enable_if<is_stream_supported<native_stream_type>()>::type>
     static stream create_stream(native_stream_type& native_stream);
-
-    template <class native_stream_type,
-              class native_context_type,
-              class = typename std::enable_if<is_stream_supported<native_stream_type>()>::type>
-    static stream create_stream(native_stream_type& native_stream, native_context_type& native_ctx);
-
-    template <class... attr_val_type>
-    static stream create_stream_from_attr(typename unified_device_type::ccl_native_t device,
-                                          attr_val_type&&... avs);
-
-    template <class... attr_val_type>
-    static stream create_stream_from_attr(typename unified_device_type::ccl_native_t device,
-                                          typename unified_context_type::ccl_native_t context,
-                                          attr_val_type&&... avs);
 };
 
 /**

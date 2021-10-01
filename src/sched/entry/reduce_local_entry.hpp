@@ -14,11 +14,19 @@
  limitations under the License.
 */
 #pragma once
-
+#include "common/global/global.hpp"
 #include "comp/comp.hpp"
 #include "sched/entry/entry.hpp"
 
+#if defined(CCL_ENABLE_SYCL) && defined(MULTI_GPU_SUPPORT)
+#include "sched/entry/gpu/ze_base_entry.hpp"
+#endif // CCL_ENABLE_SYCL && MULTI_GPU_SUPPORT
+
+#if defined(CCL_ENABLE_SYCL) && defined(MULTI_GPU_SUPPORT)
+class reduce_local_entry : public ze_base_entry {
+#else
 class reduce_local_entry : public sched_entry {
+#endif // CCL_ENABLE_SYCL && MULTI_GPU_SUPPORT
 public:
     static constexpr const char* class_name() noexcept {
         return "REDUCE_LOCAL";
@@ -32,19 +40,38 @@ public:
                        size_t* out_cnt,
                        const ccl_datatype& dtype,
                        ccl::reduction reduction_op)
-            : sched_entry(sched),
+            :
+#if defined(CCL_ENABLE_SYCL) && defined(MULTI_GPU_SUPPORT)
+              ze_base_entry(sched),
+#else // CCL_ENABLE_SYCL && MULTI_GPU_SUPPORT
+              sched_entry(sched),
+#endif // CCL_ENABLE_SYCL && MULTI_GPU_SUPPORT
               in_buf(in_buf),
               in_cnt(in_cnt),
               inout_buf(inout_buf),
               out_cnt(out_cnt),
               dtype(dtype),
               op(reduction_op),
-              fn(sched->coll_attr.reduction_fn) {
+              fn(sched->coll_attr.reduction_fn),
+              use_device(false) {
         CCL_THROW_IF_NOT(op != ccl::reduction::custom || fn,
                          "custom reduction requires user provided callback");
     }
 
-    void start() override {
+#if defined(CCL_ENABLE_SYCL) && defined(MULTI_GPU_SUPPORT)
+    ~reduce_local_entry() override {
+        finalize();
+    }
+    void init();
+    void finalize();
+    void update() override;
+    void check_use_device();
+    void start_on_device();
+#else // CCL_ENABLE_SYCL && MULTI_GPU_SUPPORT
+    void check_use_device() {}
+    void start_on_device() {}
+#endif // CCL_ENABLE_SYCL && MULTI_GPU_SUPPORT
+    void start_on_host() {
         size_t bytes = in_cnt * dtype.size();
         size_t offset = inout_buf.get_offset();
         const ccl::fn_context context = { sched->coll_attr.match_id.c_str(), offset };
@@ -62,7 +89,19 @@ public:
         status = ccl_sched_entry_status_complete;
     }
 
-    const char* name() const override {
+    void start() override {
+        check_use_device();
+        if (use_device) {
+            LOG_DEBUG("start on device");
+            start_on_device();
+        }
+        else {
+            LOG_DEBUG("start on host");
+            start_on_host();
+        }
+    }
+
+    const char* name() const noexcept override {
         return class_name();
     }
 
@@ -94,4 +133,15 @@ private:
     ccl_datatype dtype;
     ccl::reduction op;
     ccl::reduction_fn fn;
+    void* in_buf_ptr;
+    void* inout_buf_ptr;
+
+    bool use_device;
+
+#if defined(CCL_ENABLE_SYCL) && defined(MULTI_GPU_SUPPORT)
+    ze_module_handle_t module;
+    ze_kernel_handle_t kernel;
+    std::string kernel_name;
+    ze_group_count_t group_count;
+#endif // CCL_ENABLE_SYCL && MULTI_GPU_SUPPORT
 };

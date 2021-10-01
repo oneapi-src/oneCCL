@@ -17,8 +17,8 @@
 #pragma once
 #include "common/utils/spinlock.hpp"
 #include "sched/gpu_concurrent_sched.hpp"
-#include "sched/entry/l0/l0_allreduce_typed_entry.hpp"
-#include "sched/entry/l0/l0_allgather_handles_entry.hpp"
+// #include "sched/entry/l0/l0_allreduce_typed_entry.hpp"
+// #include "sched/entry/l0/l0_allgather_handles_entry.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
 #include "common/comm/l0/device_community.hpp"
 #include "common/comm/l0/scheduler/thread_group_scheduler.hpp"
@@ -42,8 +42,9 @@ struct allied_process_group_scheduler : public thread_group_scheduler {
                                    std::shared_ptr<ccl::host_communicator> communicator,
                                    device_storage& node_devices)
             : base(threads_count),
-              ccl_communicator(communicator),
-              node_total_devices(node_devices) {}
+              ccl_communicator(communicator) /*,
+              node_total_devices(node_devices)*/
+    {}
 
     template <class EntryType,
               ccl_sched_add_mode mode,
@@ -153,8 +154,10 @@ struct allied_process_group_scheduler : public thread_group_scheduler {
                 thread_id, device_topology.get_device_storage(), comm_data.size);
         }
 
+        return thread_schedule_ptr();
+
         // create entry
-        auto created_entry =
+        /*auto created_entry =
             entry_factory::make_ordered_entry<EntryType, mode>(current_thread_schedule.get(),
                                                                device,
                                                                device_topology.get_device_storage(),
@@ -194,11 +197,12 @@ struct allied_process_group_scheduler : public thread_group_scheduler {
         auto req = submit_entry<EntryType, mode, group_id, class_id>(
             process_id, thread_id, device_topology, device, ctx, std::forward<Arguments>(args)...);
         return req;
+        */
     }
 
 private:
     std::shared_ptr<ccl::host_communicator> ccl_communicator;
-    device_storage& node_total_devices;
+    // device_storage& node_total_devices;
 };
 
 } // namespace native

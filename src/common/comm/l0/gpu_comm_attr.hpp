@@ -40,12 +40,6 @@ struct communicator_interface;
 
 struct gpu_comm_attr {
 public:
-    friend class device_group_ring_communicator;
-    friend class device_group_a2a_communicator;
-    friend class thread_device_group_ring_communicator;
-    friend class thread_device_group_a2a_communicator;
-    friend class process_ring_communicator;
-    friend class process_a2a_communicator;
     friend class comm_group;
 
     using thread_comm_storage = std::multimap<size_t, std::shared_ptr<communicator_interface>>;

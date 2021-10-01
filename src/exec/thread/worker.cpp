@@ -63,11 +63,10 @@ ccl::status ccl_worker::do_work(size_t& processed_count) {
     if (ret != ccl::status::success)
         return ret;
 
-#ifdef ENABLE_DEBUG
-    if (processed_count == 0 && (do_work_counter % CCL_WORKER_PROCESS_ALL_ITERS * 1024) == 0) {
-        //sched_queue->dump(std::cout);
+    if ((do_work_counter % (4 * CCL_WORKER_PROCESS_ALL_ITERS) == 0) &&
+        ccl::global_data::env().queue_dump) {
+        sched_queue->dump(std::cout);
     }
-#endif
 
     return ccl::status::success;
 }
@@ -84,11 +83,12 @@ ccl::status ccl_worker::process_strict_sched_queue() {
         ccl_sched* sched = *sched_it;
 
         if (sched->get_in_bin_status() == ccl_sched_in_bin_erased) {
-            CCL_ASSERT(!sched->bin);
+            CCL_THROW_IF_NOT(!sched->bin, "erased sched should be without bin");
             erased_scheds++;
 
-            /* only single sched in active strict queue can be erased since previous call */
-            CCL_ASSERT(erased_scheds == 1);
+            CCL_THROW_IF_NOT(
+                erased_scheds == 1,
+                "only single sched in active strict queue can be erased since previous call");
 
             /* now it is safe to release this sched */
             sched->req->complete();
@@ -96,17 +96,17 @@ ccl::status ccl_worker::process_strict_sched_queue() {
         }
 
         if (sched->get_in_bin_status() == ccl_sched_in_bin_none) {
-            CCL_ASSERT(!sched->bin, "unexpected bin ", sched->bin);
+            CCL_THROW_IF_NOT(!sched->bin, "unexpected bin ", sched->bin);
             /* here we add sched from strict_queue to regular queue for real execution */
             LOG_DEBUG("add sched ", sched, " from strict_queue to exec_queue, req ", sched->req);
             sched_queue->add(sched);
         }
 
-        CCL_ASSERT(sched->get_in_bin_status() == ccl_sched_in_bin_added,
-                   "sched ",
-                   sched,
-                   " unexpected in_bin_status ",
-                   sched->get_in_bin_status());
+        CCL_THROW_IF_NOT(sched->get_in_bin_status() == ccl_sched_in_bin_added,
+                         "sched ",
+                         sched,
+                         " unexpected in_bin_status ",
+                         sched->get_in_bin_status());
 
         sched->do_progress();
 
@@ -162,7 +162,9 @@ ccl::status ccl_worker::process_sched_bin(ccl_sched_bin* bin, size_t& completed_
     completed_sched_count = 0;
 
     size_t bin_size = bin->size();
-    CCL_ASSERT(bin_size > 0);
+
+    if (bin_size == 0)
+        return ccl::status::success;
 
     LOG_TRACE("bin ", bin, ", sched_count ", bin_size);
 
@@ -279,15 +281,15 @@ bool ccl_worker::check_stop_condition(size_t iter) {
 
 bool ccl_worker::check_affinity_condition(size_t iter) {
     if ((iter % CCL_WORKER_CHECK_AFFINITY_ITERS) == 0) {
-        int start_affinity = get_start_affinity();
-        int affinity = get_affinity();
-        if (start_affinity != affinity) {
+        int start_cpu_affinity = get_start_cpu_affinity();
+        int real_cpu_affinity = get_real_cpu_affinity();
+        if (start_cpu_affinity != real_cpu_affinity) {
             LOG_ERROR("worker ",
                       get_idx(),
-                      " unexpectedly changed affinity from ",
-                      start_affinity,
+                      " unexpectedly changed CPU affinity from ",
+                      start_cpu_affinity,
                       " to ",
-                      affinity);
+                      real_cpu_affinity);
         }
     }
 
@@ -299,7 +301,18 @@ static void* ccl_worker_func(void* args) {
 
     auto worker_idx = worker->get_idx();
 
-    LOG_DEBUG("worker_idx ", worker_idx);
+    int cpu_core = worker->get_start_cpu_affinity();
+    int numa_node = worker->get_start_mem_affinity();
+
+    LOG_DEBUG("worker: ",
+              "idx: ",
+              worker_idx,
+              ", cpu: ",
+              cpu_core,
+              ", numa: ",
+              ccl::global_data::get().hwloc_wrapper->get_numa_node(numa_node).to_string());
+
+    ccl::global_data::get().hwloc_wrapper->membind_thread(numa_node);
 
     size_t iter = 0;
     size_t processed_count = 0;

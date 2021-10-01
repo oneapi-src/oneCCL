@@ -115,7 +115,7 @@ const typename cl_base<TEMPLATE_DEF_ARG>::context_ptr_t cl_base<TEMPLATE_DEF_ARG
 
 template <TEMPLATE_DECL_ARG>
 constexpr size_t cl_base<TEMPLATE_DEF_ARG>::get_size_for_serialize() {
-    return resource_owner::get_size_for_serialize() + sizeof(handle_t);
+    return resource_owner::get_size_for_serialize() + sizeof(handle_t) + sizeof(size_t);
 }
 
 template <TEMPLATE_DECL_ARG>
@@ -129,14 +129,21 @@ size_t cl_base<TEMPLATE_DEF_ARG>::serialize(std::vector<uint8_t>& out,
         throw std::runtime_error("cannot serialize without owner");
     }
 
-    constexpr size_t expected_bytes = sizeof(handle_t);
+    constexpr size_t expected_bytes = sizeof(handle_t) + sizeof(size_t);
 
     // serialize from position
     size_t serialized_bytes =
         lock->serialize(out, from_pos, expected_bytes, args...); //resize vector inside
 
     uint8_t* data_start = out.data() + from_pos + serialized_bytes;
+
+    // Looks like this method is only used with ipc handles, so we can safely downcast to the corresponding
+    // child class
+    auto* handle_ptr = static_cast<const ipc_memory_handle<resource_owner, cl_context>*>(this);
+    assert(handle_ptr != nullptr);
+
     *(reinterpret_cast<handle_t*>(data_start)) = handle;
+    *(reinterpret_cast<size_t*>(data_start + sizeof(handle_t))) = handle_ptr->get_offset();
     serialized_bytes += expected_bytes;
     return serialized_bytes;
 }
@@ -147,7 +154,7 @@ std::shared_ptr<type> cl_base<TEMPLATE_DEF_ARG>::deserialize(const uint8_t** dat
                                                              size_t& size,
                                                              std::shared_ptr<cl_context> ctx,
                                                              helpers&... args) {
-    constexpr size_t expected_bytes = sizeof(handle);
+    constexpr size_t expected_bytes = sizeof(handle) + sizeof(size_t);
     size_t initial_size = size;
 
     // recover parent handle at first
@@ -163,9 +170,11 @@ std::shared_ptr<type> cl_base<TEMPLATE_DEF_ARG>::deserialize(const uint8_t** dat
     }
 
     handle_t h = *(reinterpret_cast<const handle_t*>(*data));
+    size_t off = *(reinterpret_cast<const size_t*>(*data + sizeof(handle_t)));
+
     *data += expected_bytes;
     size -= expected_bytes;
-    return std::shared_ptr<type>{ new type(h, owner, ctx) };
+    return std::shared_ptr<type>{ new type(h, owner, ctx, off) };
 }
 
 #undef TEMPLATE_DEF_ARG

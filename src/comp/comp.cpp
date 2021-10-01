@@ -13,18 +13,19 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "oneapi/ccl/types.hpp"
 #include "comp/bf16/bf16.hpp"
 #include "comp/comp.hpp"
 #include "comp/fp16/fp16.hpp"
 #include "common/log/log.hpp"
 #include "common/global/global.hpp"
 #include "common/utils/enums.hpp"
+#include "common/utils/sycl_utils.hpp"
+#include "oneapi/ccl/types.hpp"
 #include "sched/queue/queue.hpp"
 
 #ifdef CCL_ENABLE_SYCL
 #include <CL/sycl.hpp>
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 
 #define CCL_REDUCE(type) \
     do { \
@@ -111,6 +112,10 @@ ccl::status ccl_comp_reduce(ccl_sched* sched,
                             ccl::reduction reduction,
                             ccl::reduction_fn reduction_fn,
                             const ccl::fn_context* context) {
+    if (!in_count) {
+        return ccl::status::success;
+    }
+
 #ifdef CCL_ENABLE_SYCL
     ccl_stream* stream = (ccl_stream*)sched->coll_param.stream;
 
@@ -125,9 +130,9 @@ ccl::status ccl_comp_reduce(ccl_sched* sched,
     auto inout_ptr_type = sycl::get_pointer_type(inout_buf, q->get_context());
 
     LOG_DEBUG("in_ptr_type: ",
-              native::detail::usm_to_string(in_ptr_type),
+              ccl::utils::usm_type_to_str(in_ptr_type),
               ", inout_ptr_type: ",
-              native::detail::usm_to_string(inout_ptr_type),
+              ccl::utils::usm_type_to_str(inout_ptr_type),
               ", native_stream: ",
               stream->to_string(),
               ", in_count: ",
@@ -143,12 +148,12 @@ ccl::status ccl_comp_reduce(ccl_sched* sched,
     size_t bytes = in_count * dtype.size();
 
     if (in_ptr_type == sycl::usm::alloc::device) {
-        host_in_buf = CCL_MALLOC(bytes, "host_in_buf");
+        host_in_buf = sched->alloc_buffer_unmanaged(bytes, ccl_sched_buf_runtime);
         q->memcpy(host_in_buf, in_buf, bytes).wait();
     }
 
     if (inout_ptr_type == sycl::usm::alloc::device) {
-        host_inout_buf = CCL_MALLOC(bytes, "host_inout_buf");
+        host_inout_buf = sched->alloc_buffer_unmanaged(bytes, ccl_sched_buf_runtime);
         q->memcpy(host_inout_buf, inout_buf, bytes).wait();
     }
 
@@ -156,20 +161,20 @@ ccl::status ccl_comp_reduce(ccl_sched* sched,
         host_in_buf, in_count, host_inout_buf, out_count, dtype, reduction, reduction_fn, context);
 
     if (host_in_buf != in_buf) {
-        CCL_FREE(host_in_buf);
+        sched->free_buffer_unmanaged(host_in_buf, bytes, ccl_sched_buf_runtime);
     }
 
     if (host_inout_buf != inout_buf) {
         q->memcpy(inout_buf, host_inout_buf, bytes).wait();
-        CCL_FREE(host_inout_buf);
+        sched->free_buffer_unmanaged(host_inout_buf, bytes, ccl_sched_buf_runtime);
     }
 
     return ccl::status::success;
 
-#else /* CCL_ENABLE_SYCL */
+#else // CCL_ENABLE_SYCL
     return ccl_comp_reduce_regular(
         in_buf, in_count, inout_buf, out_count, dtype, reduction, reduction_fn, context);
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 }
 
 ccl::status ccl_comp_batch_reduce(const void* in_buf,
@@ -223,11 +228,11 @@ ccl::status ccl_comp_batch_reduce(const void* in_buf,
 
 const char* ccl_reduction_to_str(ccl::reduction type) {
     switch (type) {
-        case ccl::reduction::sum: return "SUM";
-        case ccl::reduction::prod: return "PROD";
-        case ccl::reduction::min: return "MIN";
-        case ccl::reduction::max: return "MAX";
-        case ccl::reduction::custom: return "CUSTOM";
-        default: return "UNKNOWN";
+        case ccl::reduction::sum: return "sum";
+        case ccl::reduction::prod: return "prod";
+        case ccl::reduction::min: return "min";
+        case ccl::reduction::max: return "max";
+        case ccl::reduction::custom: return "custom";
+        default: return "unknown";
     }
 }

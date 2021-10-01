@@ -37,13 +37,7 @@ ccl_algorithm_selector<ccl_coll_alltoallv>::ccl_algorithm_selector() {
            CCL_SELECTION_MAX_COLL_SIZE,
            ccl_coll_alltoallv_scatter_barrier);
 
-    insert(fallback_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_alltoallv_naive);
-}
-
-template <>
-bool ccl_algorithm_selector_helper<ccl_coll_alltoallv_algo>::is_direct(
-    ccl_coll_alltoallv_algo algo) {
-    return (algo == ccl_coll_alltoallv_direct) ? true : false;
+    insert(fallback_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_alltoallv_scatter_barrier);
 }
 
 template <>
@@ -53,7 +47,10 @@ bool ccl_algorithm_selector_helper<ccl_coll_alltoallv_algo>::can_use(
     const ccl_selection_table_t<ccl_coll_alltoallv_algo>& table) {
     bool can_use = true;
 
-    if (algo == ccl_coll_alltoallv_direct && (ccl::global_data::env().atl_transport == ccl_atl_ofi))
+    if (param.is_vector_buf && algo != ccl_coll_alltoallv_scatter_barrier)
+        can_use = false;
+    else if (algo == ccl_coll_alltoallv_direct &&
+             (ccl::global_data::env().atl_transport == ccl_atl_ofi))
         can_use = false;
 
     return can_use;

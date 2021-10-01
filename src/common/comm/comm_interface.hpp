@@ -161,6 +161,6 @@ struct communicator_interface : public communicator_interface_dispatcher {
     COMM_INTERFACE_COLL_METHODS(DECLARATION);
 #ifdef CCL_ENABLE_SYCL
     SYCL_COMM_INTERFACE_COLL_METHODS(DECLARATION);
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 };
 } // namespace ccl

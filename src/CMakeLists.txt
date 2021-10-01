@@ -22,15 +22,11 @@ if (CCL_ENABLE_SYCL)
                     native_device_api/l0/utils.cpp
                     native_device_api/sycl/export.cpp
                     native_device_api/interop_utils.cpp
-                    #common/comm/l0/comm_context.cpp
-                    #common/comm/l0/comm_context_storage.cpp
-                    common/comm/single_device_communicator/single_device_communicator.cpp
         )
 endif(CCL_ENABLE_SYCL)
 
 if (MULTI_GPU_SUPPORT)
 list (APPEND EXTENSIONS_SRC
-                    ccl_gpu_modules.cpp
                     ccl_cpp_utils.cpp
 
                     native_device_api/l0/base.cpp
@@ -44,9 +40,6 @@ list (APPEND EXTENSIONS_SRC
                     native_device_api/l0/utils.cpp
                     native_device_api/l0/primitives.cpp
                     native_device_api/interop_utils.cpp
-                    sched/gpu_sched.cpp
-                    sched/gpu_concurrent_sched.cpp
-                    common/event/impls/gpu_event.cpp
 
                     common/comm/l0/comm_context.cpp
                     common/comm/l0/comm_context_storage.cpp
@@ -61,14 +54,6 @@ list (APPEND EXTENSIONS_SRC
                     common/comm/l0/devices/communication_structs/ipc_connection.cpp
                     common/comm/l0/devices/communication_structs/ipc_server.cpp
                     common/comm/l0/devices/communication_structs/ipc_client.cpp
-
-                    common/comm/single_device_communicator/single_device_communicator.cpp
-                    common/comm/l0/communicator/device_group/device_ring_communicator.cpp
-                    common/comm/l0/communicator/device_group/device_a2a_communicator.cpp
-                    common/comm/l0/communicator/thread_group/thread_ring_communicator.cpp
-                    common/comm/l0/communicator/thread_group/thread_a2a_communicator.cpp
-                    common/comm/l0/communicator/process_group/process_ring_communicator.cpp
-                    common/comm/l0/communicator/process_group/process_a2a_communicator.cpp
 
                     common/comm/l0/context/process_group_ctx.cpp
                     common/comm/l0/context/thread_group_ctx.cpp
@@ -91,8 +76,28 @@ list (APPEND EXTENSIONS_SRC
                     common/comm/l0/gpu_comm_attr.cpp
                     common/comm/l0/modules/base_entry_module.cpp
                     common/comm/l0/modules/modules_source_data.cpp
-                    common/comm/l0/modules/kernel_utils.cpp)
+                    common/comm/l0/modules/kernel_utils.cpp
+
+                    sched/gpu_sched.cpp
+                    sched/gpu_concurrent_sched.cpp
+                    sched/entry/gpu/ze_cache.cpp
+                    sched/entry/gpu/ze_call.cpp
+                    sched/entry/gpu/ze_primitives.cpp)
 endif(MULTI_GPU_SUPPORT)
+
+if (CCL_ENABLE_SYCL AND MULTI_GPU_SUPPORT)
+    list (APPEND EXTENSIONS_SRC
+                    sched/entry/gpu/ze_base_entry.cpp
+                    sched/entry/gpu/ze_allreduce_entry.cpp
+                    sched/entry/gpu/ze_copy_entry.cpp
+                    sched/entry/gpu/ze_handle_exchange_entry.cpp
+                    sched/entry/gpu/ze_event_signal_entry.cpp
+                    sched/entry/gpu/ze_event_wait_entry.cpp
+                    sched/entry/gpu/ze_reduce_entry.cpp
+                    sched/entry/reduce_local_entry.cpp
+                    sched/ze_handle_manager.cpp
+        )
+endif(CCL_ENABLE_SYCL AND MULTI_GPU_SUPPORT)
 
 set(CCL_SRC
     ccl_cpp_communicator.cpp
@@ -122,6 +127,7 @@ set(CCL_SRC
     atl/atl_wrapper.cpp
     atl/mpi/atl_mpi.cpp
     atl/ofi/atl_ofi.cpp
+    atl/ofi/atl_ofi_helper.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable_simple.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable_simple_internal.cpp
@@ -162,6 +168,8 @@ set(CCL_SRC
     coll/algorithms/reduce.cpp
     coll/algorithms/reduce_scatter.cpp
     coll/coll.cpp
+    coll/coll_check.cpp
+    coll/selection/selection.cpp
     coll/selection/selector_allgatherv.cpp
     coll/selection/selector_allreduce.cpp
     coll/selection/selector_alltoall.cpp
@@ -176,11 +184,13 @@ set(CCL_SRC
     comp/comp.cpp
     comp/fp16/fp16.cpp
     comp/fp16/fp16_intrisics.cpp
-    hwloc/hwloc_wrapper.c
+    hwloc/hwloc_wrapper.cpp
     sched/sched.cpp
+    sched/buffer_cache.cpp
     sched/extra_sched.cpp
     sched/master_sched.cpp
     sched/sched_base.cpp
+    sched/sched_timer.cpp
     sched/cache/cache.cpp
     sched/cache/key.cpp
     sched/queue/flow_control.cpp
@@ -188,6 +198,7 @@ set(CCL_SRC
     sched/queue/queue.cpp
     sched/entry/coll/coll_entry.cpp
     sched/entry/coll/coll_entry_helper.cpp
+    sched/entry/copy/copy_entry.cpp
     sched/entry/copy/copy_helper.cpp
     sched/entry/entry.cpp
     sched/entry/factory/chunked_entry_factory.cpp
@@ -224,59 +235,98 @@ set(CCL_SRC
 
     ${EXTENSIONS_SRC})
 
-list(APPEND CCL_INC_DIRS
+set(SRC_C_FLAGS)
+set(SRC_CXX_FLAGS)
+set(SRC_SHARED_LINKER_FLAGS)
+set(SRC_INCLUDE_DIRS)
+set(SRC_LINK_DIRS)
+set(SRC_LINK_LIBS)
+
+# common settings of security options
+if (USE_SECURITY_FLAGS)
+    set(SRC_C_FLAGS "${SRC_C_FLAGS} -Wformat -Wformat-security -D_FORTIFY_SOURCE=2 -fstack-protector")
+    set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -Wformat -Wformat-security -D_FORTIFY_SOURCE=2 -fstack-protector")
+    set(SRC_SHARED_LINKER_FLAGS "${SRC_SHARED_LINKER_FLAGS} -fPIE -fPIC -z noexecstack -z relro -z now")
+    if (${CMAKE_C_COMPILER_ID} STREQUAL "GNU" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
+        if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.9)
+            set(SRC_C_FLAGS "${SRC_C_FLAGS} -fstack-protector-strong")
+            set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -fstack-protector-strong")
+        endif()
+    endif()
+endif()
+
+set(SRC_SHARED_LINKER_FLAGS "${SRC_SHARED_LINKER_FLAGS} -Wl,--version-script=${PROJECT_SOURCE_DIR}/ccl.map")
+
+if (${CMAKE_C_COMPILER_ID} STREQUAL "Intel" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
+    if (USE_CODECOV_FLAGS)
+        set(SRC_C_FLAGS "${SRC_C_FLAGS} -prof-gen=srcpos -prof-src-root-cwd")
+        set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -prof-gen=srcpos -prof-src-root-cwd")
+    endif()
+endif()
+
+list(APPEND SRC_INCLUDE_DIRS
      ${PROJECT_SOURCE_DIR}/include
-     ${MPI_INCLUDE_DIR}
-     ${LIBFABRIC_INCLUDE_DIR}
-     ${HWLOC_INCLUDE_DIR}
      ${PROJECT_SOURCE_DIR}/src
-     ${PROJECT_SOURCE_DIR}/src/atl)
+     ${PROJECT_SOURCE_DIR}/src/atl
+     ${LIBFABRIC_INCLUDE_DIR}
+     ${HWLOC_INCLUDE_DIR})
+
+list(APPEND SRC_LINK_DIRS ${LIBFABRIC_LIB_DIR})
+
+list(APPEND SRC_LINK_LIBS
+     dl
+     pthread
+     ${EXTERNAL_LIBS}
+     ${COMPUTE_BACKEND_TARGET_NAME}
+     fabric
+     ${HWLOC_LIB_DIR}/libhwloc.a)
+
+if (ENABLE_MPI)
+    set(SRC_C_FLAGS "${SRC_C_FLAGS} -DCCL_ENABLE_MPI")
+    set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -DCCL_ENABLE_MPI")
+    list(APPEND SRC_INCLUDE_DIRS ${MPI_INCLUDE_DIR})
+    list(APPEND SRC_LINK_DIRS ${MPI_LIB_DIR})
+    list(APPEND SRC_LINK_LIBS mpi)
+endif()
+
+link_directories(${SRC_LINK_DIRS})
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SRC_C_FLAGS} -pthread")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SRC_CXX_FLAGS} -pthread")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${SRC_SHARED_LINKER_FLAGS}")
 
-message(STATUS "SRC C_FLAGS: ${CMAKE_C_FLAGS}")
-message(STATUS "SRC CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
-message(STATUS "SRC SHARED_LINKER_FLAGS: ${CMAKE_SHARED_LINKER_FLAGS}")
-message(STATUS "SRC INC_DIRS: ${CCL_INC_DIRS}")
-
-#special library that holds objects only
+# special library that holds objects only
 add_library(ccl-objects OBJECT ${CCL_SRC})
 set_target_properties(ccl-objects PROPERTIES POSITION_INDEPENDENT_CODE 1)
-target_include_directories(ccl-objects PRIVATE ${CCL_INC_DIRS})
+target_include_directories(ccl-objects PRIVATE ${SRC_INCLUDE_DIRS})
 
-if(COMPUTE_BACKEND_TARGET_NAME)
+if (COMPUTE_BACKEND_TARGET_NAME)
     target_include_directories(ccl-objects PRIVATE $<TARGET_PROPERTY:${COMPUTE_BACKEND_TARGET_NAME},INTERFACE_INCLUDE_DIRECTORIES>)
 endif()
 
-# add library search directory
-link_directories(${MPI_LIB_DIR})
-link_directories(${LIBFABRIC_LIB_DIR})
-
 # shared library
 add_library(ccl SHARED $<TARGET_OBJECTS:ccl-objects>)
-target_include_directories(ccl PUBLIC ${CCL_INC_DIRS})
+target_include_directories(ccl PUBLIC ${SRC_INCLUDE_DIRS})
 
 # link with release_mt libmpi.so for oneAPI Base toolkit
 # libccl.so -> cpu_icc/cpu_gpu_dpcpp -> lib -> latest -> ccl -> mpi -> ...
 set(ONEAPI_IMPI_RPATH "'$ORIGIN'/../../../../mpi/latest/lib/release_mt/")
 set_target_properties(ccl PROPERTIES LINK_FLAGS "-Wl,-rpath,${ONEAPI_IMPI_RPATH}")
 
-target_link_libraries(ccl PUBLIC
-                      dl
-                      pthread
-                      fabric
-                      mpi
-                      ${HWLOC_LIB_DIR}/libhwloc.a
-                      ${EXTERNAL_LIBS}
-                      ${COMPUTE_BACKEND_TARGET_NAME})
+target_link_libraries(ccl PUBLIC ${SRC_LINK_LIBS})
 
 if (NOT LIB_SO_VERSION AND NOT LIB_MAJOR_VERSION)
-        set_target_properties(ccl PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CCL_BUILD_DIR})
+    set_target_properties(ccl PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CCL_BUILD_DIR})
 else()
-        set_target_properties(ccl PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CCL_BUILD_DIR} VERSION ${LIB_SO_VERSION} SOVERSION ${LIB_MAJOR_VERSION})
+    set_target_properties(ccl PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CCL_BUILD_DIR} VERSION ${LIB_SO_VERSION} SOVERSION ${LIB_MAJOR_VERSION})
 endif()
+
+message(STATUS "SRC C_FLAGS: ${CMAKE_C_FLAGS}")
+message(STATUS "SRC CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+message(STATUS "SRC SHARED_LINKER_FLAGS: ${CMAKE_SHARED_LINKER_FLAGS}")
+message(STATUS "SRC INCLUDE_DIRS: ${SRC_INCLUDE_DIRS}")
+message(STATUS "SRC LINK_DIRS: ${SRC_LINK_DIRS}")
+message(STATUS "SRC LINK_LIBS: ${SRC_LINK_LIBS}")
 
 install(TARGETS ccl LIBRARY DESTINATION ${CCL_INSTALL_LIB})
 install(FILES
@@ -299,21 +349,21 @@ install(TARGETS ccl-static ARCHIVE DESTINATION ${CCL_INSTALL_LIB} OPTIONAL)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
         DESTINATION ${CCL_INSTALL_INCLUDE} FILES_MATCHING REGEX ".*\\.(h|hpp)$")
 
-# MPI and OFI runtimes
-file(GLOB mpi_bins "${DEPS_DIR}/mpi/bin/*")
-install(PROGRAMS ${mpi_bins} DESTINATION ${CCL_INSTALL_BIN})
+if ("${LIBFABRIC_DIR}" STREQUAL "")
+    # internal libfabric is used, install it into package
+    install(DIRECTORY ${DEPS_DIR}/ofi/lib/
+            DESTINATION ${CCL_INSTALL_LIB})
+endif()
 
-install(DIRECTORY ${DEPS_DIR}/ofi/lib/
-        DESTINATION ${CCL_INSTALL_LIB})
-
-install(DIRECTORY ${DEPS_DIR}/mpi/include/
-        DESTINATION ${CCL_INSTALL_INCLUDE})
-
-install(DIRECTORY ${DEPS_DIR}/mpi/lib/
-        DESTINATION ${CCL_INSTALL_LIB})
-
-install(DIRECTORY ${DEPS_DIR}/mpi/etc/
-        DESTINATION ${CCL_INSTALL_ETC})
-
-install(DIRECTORY ${DEPS_DIR}/mpi/licensing/
-        DESTINATION ${CCL_INSTALL_LICENSE}/mpi/)
+if (ENABLE_MPI)
+    file(GLOB mpi_bins "${DEPS_DIR}/mpi/bin/*")
+    install(PROGRAMS ${mpi_bins} DESTINATION ${CCL_INSTALL_BIN})
+    install(DIRECTORY ${DEPS_DIR}/mpi/include/
+            DESTINATION ${CCL_INSTALL_INCLUDE})
+    install(DIRECTORY ${DEPS_DIR}/mpi/lib/
+           DESTINATION ${CCL_INSTALL_LIB})
+    install(DIRECTORY ${DEPS_DIR}/mpi/etc/
+            DESTINATION ${CCL_INSTALL_ETC})
+    install(DIRECTORY ${DEPS_DIR}/mpi/licensing/
+            DESTINATION ${CCL_INSTALL_LICENSE}/mpi/)
+endif()

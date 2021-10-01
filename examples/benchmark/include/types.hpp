@@ -24,7 +24,7 @@
     if (comm.rank() == 0) { \
         printf(fmt "\n", ##__VA_ARGS__); \
     }
-#endif /* PRINT_BY_ROOT */
+#endif // PRINT_BY_ROOT
 
 constexpr std::initializer_list<ccl::datatype> all_dtypes = {
     ccl::datatype::int8,    ccl::datatype::int32,   ccl::datatype::int64,   ccl::datatype::uint64,
@@ -34,6 +34,7 @@ constexpr std::initializer_list<ccl::datatype> all_dtypes = {
 typedef enum { BACKEND_HOST, BACKEND_SYCL } backend_type_t;
 typedef enum { LOOP_REGULAR, LOOP_UNORDERED } loop_type_t;
 typedef enum { ITER_POLICY_OFF, ITER_POLICY_AUTO } iter_policy_t;
+typedef enum { CHECK_OFF, CHECK_LAST_ITER, CHECK_ALL_ITERS } check_values_t;
 
 typedef enum { SYCL_DEV_HOST, SYCL_DEV_CPU, SYCL_DEV_GPU } sycl_dev_type_t;
 typedef enum { SYCL_MEM_USM, SYCL_MEM_BUF } sycl_mem_type_t;
@@ -48,6 +49,12 @@ std::map<loop_type_t, std::string> loop_names = { std::make_pair(LOOP_REGULAR, "
 std::map<iter_policy_t, std::string> iter_policy_names = { std::make_pair(ITER_POLICY_OFF, "off"),
                                                            std::make_pair(ITER_POLICY_AUTO,
                                                                           "auto") };
+
+std::map<check_values_t, std::string> check_values_names = {
+    std::make_pair(CHECK_OFF, "off"),
+    std::make_pair(CHECK_LAST_ITER, "last"),
+    std::make_pair(CHECK_ALL_ITERS, "all")
+};
 
 #ifdef CCL_ENABLE_SYCL
 std::map<sycl_dev_type_t, std::string> sycl_dev_names = { std::make_pair(SYCL_DEV_HOST, "host"),
@@ -115,7 +122,7 @@ typedef struct user_options_t {
     size_t min_elem_count;
     size_t max_elem_count;
     std::list<size_t> elem_counts;
-    int check_values;
+    check_values_t check_values;
     int cache_ops;
     int inplace;
     size_t ranks_per_proc;

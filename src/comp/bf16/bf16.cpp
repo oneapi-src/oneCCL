@@ -113,7 +113,7 @@ void ccl_convert_bf16_to_fp32_arrays(void* bf16_buf, float* fp32_buf, size_t cou
     }
 }
 
-#else /* CCL_BF16_COMPILER */
+#else // CCL_BF16_COMPILER
 
 void ccl_bf16_reduce(const void* in_buf,
                      size_t in_cnt,
@@ -131,4 +131,4 @@ void ccl_convert_bf16_to_fp32_arrays(void* bf16_buf, float* fp32_buf, size_t cou
     CCL_FATAL("BF16->FP32 conversion was requested but CCL was compiled w/o BF16 support");
 }
 
-#endif /* CCL_BF16_COMPILER */
+#endif // CCL_BF16_COMPILER

@@ -79,7 +79,7 @@ public:
     COMM_INTERFACE_COLL_METHODS(DEFINITION);
 #ifdef CCL_ENABLE_SYCL
     SYCL_COMM_INTERFACE_COLL_METHODS(DEFINITION);
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 
     // Device community interface
     /*    template<class device_t>

@@ -73,13 +73,13 @@ bool gpu_comm_attr::sync_register_communicator(std::shared_ptr<communicator_inte
         //SlAVE threads or non-completed ccommunicators count
         if (barrier.communicator_ready) {
             // SLAVE thread
-            LOG_INFO("Process Group for thread(SLAVE) id: ", thread_id, " is ready");
+            LOG_DEBUG("Process Group for thread(SLAVE) id: ", thread_id, " is ready");
         }
         return false;
     }
 
     // MASTER thread
-    LOG_INFO("Process Group for thread(MASTER) id: ", thread_id, " is ready");
+    LOG_DEBUG("Process Group for thread(MASTER) id: ", thread_id, " is ready");
     return true;
 }
 

@@ -39,6 +39,7 @@ std::ostream& operator<<(std::ostream& os, ccl_streambuf& buf) {
 
 void ccl_logger::write_prefix(std::ostream& str) {
     constexpr size_t time_buf_size = 20;
+    constexpr size_t tid_width = 5;
     time_t timer;
     char time_buf[time_buf_size]{};
     struct tm time_info {};
@@ -47,7 +48,7 @@ void ccl_logger::write_prefix(std::ostream& str) {
         strftime(time_buf, time_buf_size, "%Y:%m:%d-%H:%M:%S", &time_info);
         str << time_buf;
     }
-    str << ":(" << gettid() << ") ";
+    str << ":(" << std::setw(tid_width) << gettid() << ") ";
 }
 
 void ccl_logger::write_backtrace(std::ostream& str) {

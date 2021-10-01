@@ -15,6 +15,7 @@
 */
 #pragma once
 #include "util/pm/pmi_resizable_rt/pmi_resizable/def.h"
+#include "internal_kvs.h"
 
 typedef enum kvs_access_mode {
     AM_PUT = 2,
@@ -39,7 +40,7 @@ typedef struct kvs_request {
 
 typedef struct server_args {
     int sock_listener;
-    struct sockaddr_in* args;
+    std::shared_ptr<isockaddr> args;
 } server_args_t;
 
 void* kvs_server_init(void* args);

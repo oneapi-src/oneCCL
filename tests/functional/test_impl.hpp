@@ -42,7 +42,7 @@ void copy_buffer(void* dst, void* src, size_t bytes) {
 void fill_buffer(void* ptr, int value, size_t bytes) {
     transport_data::instance().get_stream().get_native().memset(ptr, value, bytes).wait();
 }
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 
 template <typename T>
 template <class coll_attr_type>
@@ -215,7 +215,7 @@ void base_test<T>::free_buffers(test_operation<T>& op) {
         free_buffer(op.device_send_bufs[buf_idx]);
         free_buffer(op.device_recv_bufs[buf_idx]);
     }
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 }
 
 template <typename T>
@@ -234,7 +234,7 @@ void base_test<T>::alloc_buffers_base(test_operation<T>& op) {
         op.device_send_bufs[buf_idx] = alloc_buffer(op.elem_count * sizeof(T) * op.comm_size);
         op.device_recv_bufs[buf_idx] = alloc_buffer(op.elem_count * sizeof(T) * op.comm_size);
     }
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 }
 
 template <typename T>
@@ -364,7 +364,7 @@ void base_test<T>::change_buffers(test_operation<T>& op) {
         void* new_device_recv_buf = op.device_recv_bufs[0];
         ASSERT(device_send_buf != new_device_send_buf, "device send buffers should differ");
         ASSERT(device_recv_buf != new_device_recv_buf, "device recv buffers should differ");
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
     }
 }
 
@@ -376,12 +376,12 @@ void base_test<T>::copy_to_device_send_buffers(test_operation<T>& op) {
 #ifdef TEST_CCL_BCAST
         void* host_buf = op.recv_bufs[buf_idx].data();
         void* device_buf = op.device_recv_bufs[buf_idx];
-#else /* TEST_CCL_BCAST */
+#else // TEST_CCL_BCAST
         void* host_buf = (op.param.place_type == PLACE_IN) ? op.recv_bufs[buf_idx].data()
                                                            : op.send_bufs[buf_idx].data();
         void* device_buf = (op.param.place_type == PLACE_IN) ? op.device_recv_bufs[buf_idx]
                                                              : op.device_send_bufs[buf_idx];
-#endif /* TEST_CCL_BCAST */
+#endif // TEST_CCL_BCAST
         size_t bytes = op.send_bufs[buf_idx].size() * sizeof(T);
         copy_buffer(device_buf, host_buf, bytes);
     }
@@ -395,10 +395,11 @@ void base_test<T>::copy_from_device_recv_buffers(test_operation<T>& op) {
                     op.recv_bufs[buf_idx].size() * sizeof(T));
     }
 }
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 
 template <typename T>
 int base_test<T>::run(test_operation<T>& op) {
+    static int run_counter = 0;
     size_t iter = 0, result = 0;
 
     char* algo = getenv(ALGO_SELECTION_ENV);
@@ -441,7 +442,7 @@ int base_test<T>::run(test_operation<T>& op) {
 
 #ifdef CCL_ENABLE_SYCL
             copy_to_device_send_buffers(op);
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 
             op.define_start_order(rand_engine);
             run_derived(op);
@@ -449,14 +450,18 @@ int base_test<T>::run(test_operation<T>& op) {
 
 #ifdef CCL_ENABLE_SYCL
             copy_from_device_recv_buffers(op);
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 
             if (is_lp_datatype(op.param.datatype)) {
                 make_lp_epilogue(op, op.comm_size * op.elem_count);
             }
 
             result += check(op);
+            if ((run_counter % 10) == 0) {
+                ccl::barrier(transport_data::instance().get_service_comm());
+            }
         }
+        run_counter++;
         free_buffers(op);
     }
     catch (const std::exception& ex) {

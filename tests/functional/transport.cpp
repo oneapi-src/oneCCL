@@ -17,7 +17,7 @@
 
 #ifdef CCL_ENABLE_SYCL
 #include <CL/sycl.hpp>
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 
 #include "transport.hpp"
 
@@ -79,7 +79,8 @@ void transport_data::init_comms() {
 #ifdef CCL_ENABLE_SYCL
     auto sycl_queues = create_sycl_queues("gpu", local_ranks);
     ASSERT(!sycl_queues.empty(), "queues should contain at least one queue");
-    ASSERT(ranks_per_proc == sycl_queues.size(), "ranks and queues sizes should match");
+    ASSERT(static_cast<size_t>(ranks_per_proc) == sycl_queues.size(),
+           "ranks and queues sizes should match");
 
     auto sycl_context = sycl_queues[0].get_context();
     context = ccl::create_context(sycl_context);
@@ -89,12 +90,12 @@ void transport_data::init_comms() {
         devices.push_back(ccl::create_device(sycl_queues[idx].get_device()));
         allocators.push_back(buf_allocator<char>(streams[0].get_native()));
     }
-#else /* CCL_ENABLE_SYCL */
+#else // CCL_ENABLE_SYCL
     for (int idx = 0; idx < ranks_per_proc; idx++) {
         streams.push_back(ccl::create_stream());
         devices.push_back(ccl::create_device());
     }
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 
     for (int idx = 0; idx < ranks_per_proc; idx++) {
         r2d_map.emplace(local_ranks[idx], devices[idx]);
@@ -109,6 +110,7 @@ void transport_data::init_comms() {
 }
 
 void transport_data::reset_comms() {
+    ccl::barrier(get_service_comm());
     comms.clear();
     service_comms.clear();
 }
@@ -141,4 +143,4 @@ ccl::stream& transport_data::get_stream() {
 buf_allocator<char>& transport_data::get_allocator() {
     return allocators[0];
 }
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL

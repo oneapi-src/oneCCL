@@ -13,7 +13,10 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#include <numeric>
+
 #include "coll/algorithms/algorithms.hpp"
+#include "sched/entry/coll/coll_entry_helper.hpp"
 #include "sched/entry/factory/chunked_entry_factory.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
 
@@ -130,4 +133,176 @@ ccl::status ccl_coll_build_ring_allgatherv(ccl_sched* sched,
 
     CCL_FREE(offsets);
     return status;
+}
+
+ccl::status ccl_coll_get_allgatherv_bufs_and_offsets(const ccl_coll_param& coll_param,
+                                                     std::vector<ccl_buffer>& recv_bufs,
+                                                     std::vector<size_t>& recv_offsets) {
+    int comm_size = coll_param.comm->size();
+    size_t dtype_size = coll_param.dtype.size();
+
+    recv_bufs.resize(comm_size);
+    recv_offsets.resize(comm_size);
+
+    if (coll_param.recv_bufs.size() > 1) {
+        CCL_THROW_IF_NOT((int)coll_param.recv_bufs.size() == comm_size,
+                         "unexpected recv_bufs.size ",
+                         coll_param.recv_bufs.size(),
+                         ", expected ",
+                         comm_size);
+
+        for (int idx = 0; idx < comm_size; idx++) {
+            recv_bufs[idx].set(coll_param.get_recv_buf_ptr(idx),
+                               coll_param.get_recv_count(idx) * dtype_size,
+                               ccl_buffer_type::INDIRECT);
+            recv_offsets[idx] = 0;
+        }
+    }
+    else {
+        size_t offset = 0;
+        size_t dtype_size = coll_param.dtype.size();
+        for (int idx = 0; idx < comm_size; idx++) {
+            size_t bytes = coll_param.get_recv_count(idx) * dtype_size;
+            recv_bufs[idx].set(
+                coll_param.get_recv_buf_ptr(), offset + bytes, offset, ccl_buffer_type::INDIRECT);
+            recv_offsets[idx] = offset;
+            offset += bytes;
+        }
+    }
+
+    return ccl::status::success;
+}
+
+ccl::status ccl_coll_build_flat_allgatherv(ccl_master_sched* main_sched,
+                                           std::vector<ccl_sched*>& scheds,
+                                           const ccl_coll_param& coll_param) {
+    LOG_DEBUG("build flat allgatherv");
+
+    ccl_comm* comm = coll_param.comm;
+    const ccl_datatype& dtype = coll_param.dtype;
+
+    int comm_rank = comm->rank();
+    int comm_size = comm->size();
+    size_t sched_count = scheds.size();
+    size_t dtype_size = dtype.size();
+
+    bool inplace = coll_param.is_inplace();
+
+    std::vector<ccl_buffer> recv_bufs;
+    std::vector<size_t> recv_offsets;
+    ccl_coll_get_allgatherv_bufs_and_offsets(coll_param, recv_bufs, recv_offsets);
+
+    auto send_seg = ccl_buffer(coll_param.get_send_buf_ptr(),
+                               coll_param.get_send_count() * dtype_size,
+                               ccl_buffer_type::INDIRECT);
+
+    if (!inplace) {
+        entry_factory::make_entry<copy_entry>(scheds[2 * comm_rank % sched_count],
+                                              ccl_buffer(coll_param.get_send_buf_ptr(),
+                                                         coll_param.get_send_count() * dtype_size,
+                                                         ccl_buffer_type::INDIRECT),
+                                              recv_bufs[comm_rank],
+                                              coll_param.get_recv_count(comm_rank),
+                                              dtype);
+    }
+    else {
+        size_t total_recv_bytes =
+            std::accumulate(coll_param.recv_counts.begin(), coll_param.recv_counts.end(), 0) *
+            dtype_size;
+        send_seg = ccl_buffer(coll_param.get_send_buf_ptr(),
+                              total_recv_bytes,
+                              recv_offsets[comm_rank],
+                              ccl_buffer_type::INDIRECT);
+    }
+
+    CCL_THROW_IF_NOT(static_cast<int>(sched_count) == comm_size,
+                     "unexpected sched_count ",
+                     sched_count,
+                     ", expected ",
+                     comm_size);
+
+    for (size_t idx = 0; idx < sched_count; idx++) {
+        if (static_cast<int>(idx) == comm_rank)
+            continue;
+
+        entry_factory::make_entry<recv_entry>(scheds[(comm_rank + idx) % sched_count],
+                                              recv_bufs[idx],
+                                              coll_param.get_recv_count(idx),
+                                              dtype,
+                                              idx,
+                                              comm);
+
+        entry_factory::make_entry<send_entry>(scheds[(comm_rank + idx) % sched_count],
+                                              send_seg,
+                                              coll_param.get_recv_count(comm_rank),
+                                              dtype,
+                                              idx,
+                                              comm);
+    }
+    main_sched->sync_partial_scheds();
+
+    return ccl::status::success;
+}
+
+ccl::status ccl_coll_build_multi_bcast_allgatherv(ccl_master_sched* main_sched,
+                                                  std::vector<ccl_sched*>& scheds,
+                                                  const ccl_coll_param& coll_param,
+                                                  size_t data_partition_count) {
+    LOG_DEBUG("build multi_bcast allgatherv");
+
+    CCL_THROW_IF_NOT(data_partition_count > 0, "data_partition_count should be > 0 ");
+
+    ccl_comm* comm = coll_param.comm;
+    const ccl_datatype& dtype = coll_param.dtype;
+
+    int comm_rank = comm->rank();
+    int comm_size = comm->size();
+    size_t sched_count = scheds.size();
+    size_t dtype_size = dtype.size();
+
+    bool inplace = coll_param.is_inplace();
+
+    std::vector<ccl_buffer> recv_bufs;
+    std::vector<size_t> recv_offsets;
+    ccl_coll_get_allgatherv_bufs_and_offsets(coll_param, recv_bufs, recv_offsets);
+
+    if (!inplace) {
+        std::vector<size_t> copy_counts(data_partition_count);
+        std::vector<size_t> copy_offsets(data_partition_count);
+        for (size_t idx = 0; idx < data_partition_count; idx++) {
+            copy_counts[idx] = coll_param.get_recv_count(comm_rank) / data_partition_count;
+            copy_offsets[idx] = idx * copy_counts[idx] * dtype_size;
+        }
+        copy_counts[data_partition_count - 1] +=
+            coll_param.get_recv_count(comm_rank) % data_partition_count;
+
+        CCL_ASSERT(scheds.size() >= data_partition_count);
+
+        for (size_t idx = 0; idx < data_partition_count; idx++) {
+            entry_factory::make_entry<copy_entry>(
+                scheds[idx],
+                ccl_buffer(coll_param.get_send_buf_ptr(),
+                           coll_param.get_send_count() * dtype_size,
+                           copy_offsets[idx],
+                           ccl_buffer_type::INDIRECT),
+                recv_bufs[comm_rank] + copy_offsets[idx],
+                copy_counts[idx],
+                dtype);
+        }
+        main_sched->sync_partial_scheds();
+    }
+
+    for (int idx = 0; idx < comm_size; idx++) {
+        ccl_coll_entry_param param{};
+        param.ctype = ccl_coll_bcast;
+        param.recv_buf = recv_bufs[idx];
+        param.count = coll_param.get_recv_count(idx);
+        param.dtype = dtype;
+        param.root = idx;
+        param.comm = comm;
+        param.stream = coll_param.stream;
+        coll_entry_helper::add_coll_entry<ccl_coll_bcast>(scheds[idx % sched_count], param);
+    }
+
+    return ccl::status::success;
 }

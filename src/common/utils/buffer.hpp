@@ -23,7 +23,7 @@
 enum class ccl_buffer_type { DIRECT, INDIRECT };
 
 inline std::ostream& operator<<(std::ostream& os, const ccl_buffer_type& type) {
-    os << static_cast<std::underlying_type<ccl_buffer_type>::type>(type);
+    os << static_cast<typename std::underlying_type<ccl_buffer_type>::type>(type);
     return os;
 }
 
@@ -68,7 +68,16 @@ public:
               size(size),
               offset(offset),
               type(type) {
-        LOG_DEBUG("create: src ", src, ", size ", size, ", offset ", offset, ", type ", type);
+        LOG_DEBUG("create: src ",
+                  src,
+                  ", size ",
+                  size,
+                  ", offset ",
+                  offset,
+                  ", type ",
+                  type,
+                  ", ptr ",
+                  get_ptr());
         CCL_ASSERT(check_offset());
     }
 
@@ -212,7 +221,8 @@ public:
 
     friend std::ostream& operator<<(std::ostream& out, const ccl_buffer& buf) {
         out << "(src: " << buf.get_src() << ", size " << buf.get_size() << ", off "
-            << buf.get_offset() << ", type: " << buf.get_type() << ")";
+            << buf.get_offset() << ", type: " << buf.get_type() << ", ptr: " << buf.get_ptr()
+            << ")";
         return out;
     }
 };

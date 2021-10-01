@@ -98,7 +98,7 @@ void ipc_server::start(const std::string& path, int expected_backlog_size) {
 bool ipc_server::stop() {
     bool ret = false;
     if (is_ready()) {
-        LOG_INFO("Gracefully stop listener: ", listen_fd);
+        LOG_DEBUG("Gracefully stop listener: ", listen_fd);
         shutdown(listen_fd, SHUT_RDWR);
         close(listen_fd);
         listen_fd = -1;

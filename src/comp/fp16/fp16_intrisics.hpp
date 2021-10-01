@@ -38,14 +38,14 @@
     __attribute__((__always_inline__, target("avx512f"))) inline
 #define FP16_INLINE_TARGET_ATTRIBUTE_ALL \
     __attribute__((__always_inline__, target(FP16_ALL_ATTRS))) inline
-#else /* CCL_FP16_TARGET_ATTRIBUTES */
+#else // CCL_FP16_TARGET_ATTRIBUTES
 #define FP16_TARGET_ATTRIBUTE_F16C
 #define FP16_TARGET_ATTRIBUTE_AVX512
 #define FP16_TARGET_ATTRIBUTE_ALL
 #define FP16_INLINE_TARGET_ATTRIBUTE_F16C    __attribute__((__always_inline__)) inline
 #define FP16_INLINE_TARGET_ATTRIBUTE_AVX512F __attribute__((__always_inline__)) inline
 #define FP16_INLINE_TARGET_ATTRIBUTE_ALL     __attribute__((__always_inline__)) inline
-#endif /* CCL_FP16_TARGET_ATTRIBUTES */
+#endif // CCL_FP16_TARGET_ATTRIBUTES
 
 #define FP16_TARGET_ATTRIBUTE_256 FP16_TARGET_ATTRIBUTE_F16C
 #define FP16_TARGET_ATTRIBUTE_512 FP16_TARGET_ATTRIBUTE_AVX512
@@ -187,4 +187,4 @@ FP16_INLINE_TARGET_ATTRIBUTE_ALL void ccl_fp16_reduce_impl(const void* in_buf,
     }
 }
 
-#endif /* CCL_FP16_COMPILER */
+#endif // CCL_FP16_COMPILER

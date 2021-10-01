@@ -15,7 +15,9 @@
 */
 #pragma once
 
+#include "atl/atl_wrapper.h"
 #include "common/comm/comm.hpp"
+#include "common/stream/stream.hpp"
 #include "oneapi/ccl/types.hpp"
 #include "oneapi/ccl/types_policy.hpp"
 #include "oneapi/ccl/comm_split_attr_ids.hpp"
@@ -24,7 +26,6 @@
 #include "oneapi/ccl/types.hpp"
 #include "oneapi/ccl/type_traits.hpp"
 #include "oneapi/ccl/types_policy.hpp"
-
 #include "oneapi/ccl/event.hpp"
 #include "oneapi/ccl/coll_attr_ids.hpp"
 #include "oneapi/ccl/coll_attr_ids_traits.hpp"
@@ -33,10 +34,16 @@
 #include "common/comm/communicator_traits.hpp"
 #include "common/comm/comm_interface.hpp"
 #include "types_generator_defines.hpp"
-#include "atl/atl_wrapper.h"
 
 class ikvs_wrapper;
 namespace ccl {
+
+inline ccl_stream* get_stream_ptr(const ccl::stream::impl_value_t& stream) {
+    if (stream.get() && stream->is_sycl_device_stream())
+        return stream.get();
+    else
+        return nullptr;
+}
 
 class host_communicator : public ccl::communicator_interface {
 public:
@@ -111,7 +118,7 @@ public:
     COMM_INTERFACE_COLL_METHODS(DEFINITION);
 #ifdef CCL_ENABLE_SYCL
     SYCL_COMM_INTERFACE_COLL_METHODS(DEFINITION);
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 
     COMM_IMPL_DECLARATION;
     COMM_IMPL_CLASS_DECLARATION
@@ -121,33 +128,49 @@ public:
     host_communicator();
     host_communicator(int size, shared_ptr_class<ikvs_wrapper> kvs);
     host_communicator(int size, int rank, shared_ptr_class<ikvs_wrapper> kvs);
+    host_communicator(ccl::unified_device_type&& device,
+                      ccl::unified_context_type&& context,
+                      std::shared_ptr<atl_wrapper> atl);
     host_communicator(std::shared_ptr<atl_wrapper> atl);
-    host_communicator(std::shared_ptr<ccl_comm> impl);
+    host_communicator(std::shared_ptr<ccl_comm> impl, bool is_sub_communicator = false);
     host_communicator(host_communicator& src) = delete;
     host_communicator(host_communicator&& src) = default;
     host_communicator& operator=(host_communicator& src) = delete;
     host_communicator& operator=(host_communicator&& src) = default;
     ~host_communicator() = default;
     std::shared_ptr<atl_wrapper> get_atl();
+    std::shared_ptr<host_communicator> get_r2r_comm();
+    std::shared_ptr<host_communicator> get_node_comm();
+    std::shared_ptr<host_communicator> get_even_comm();
+    std::shared_ptr<host_communicator> get_pair_comm();
+    std::shared_ptr<ccl_comm> get_ccl_comm();
 
     // troubleshooting
     std::string to_string() const;
 
 private:
     friend struct group_context;
+
     std::shared_ptr<ccl_comm> comm_impl;
+
+    ccl::unified_device_type device;
+    //ccl::unified_context_type context;
+
+    std::shared_ptr<host_communicator> r2r_comm;
+    std::shared_ptr<host_communicator> node_comm;
+    std::shared_ptr<host_communicator> even_comm;
+    std::shared_ptr<host_communicator> pair_comm;
     ccl::comm_split_attr comm_attr;
     int comm_rank;
     int comm_size;
     ccl::group_unique_key owner_id;
-    // ccl::unified_device_type device;
-    // ccl::unified_context_type context;
 
     host_communicator* get_impl() {
         return this;
     }
 
     void exchange_colors(std::vector<int>& colors);
+    void create_sub_comms(std::shared_ptr<atl_wrapper> atl);
     ccl_comm* create_with_color(int color,
                                 ccl_comm_id_storage* comm_ids,
                                 const ccl_comm* parent_comm);

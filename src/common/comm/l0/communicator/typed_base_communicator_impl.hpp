@@ -41,18 +41,18 @@ typed_base_communicator<TEMPLATE_DEF_ARG>::typed_base_communicator(
                             process_idx /*, comm_attr*/,
                             attr) {
     try {
-        LOG_INFO("sheduled for create, device id: ",
-                 device.get_id(),
-                 ", thread_id: ",
-                 thread_idx,
-                 ", process id:",
-                 process_idx);
+        LOG_DEBUG("sheduled for create, device id: ",
+                  device.get_id(),
+                  ", thread_id: ",
+                  thread_idx,
+                  ", process id:",
+                  process_idx);
     }
     catch (...) {
-        LOG_INFO("sheduled for create single device communicator , thread_id: ",
-                 thread_idx,
-                 ", process id:",
-                 process_idx);
+        LOG_DEBUG("sheduled for create single device communicator , thread_id: ",
+                  thread_idx,
+                  ", process id:",
+                  process_idx);
     }
 }
 
@@ -83,18 +83,18 @@ void typed_base_communicator<TEMPLATE_DEF_ARG>::initialize_comm_addr(
     comm_rank = registered_addr.comm_rank;
     comm_size = registered_addr.comm_size;
 
-    LOG_INFO("Communicator finalized. Rank (",
-             comm_rank,
-             "/",
-             comm_size,
-             ") on {dev: ",
-             device_id,
-             ", thr: ",
-             thread_id,
-             ", proc: ",
-             process_id,
-             "} on device:\n",
-             p.to_string());
+    LOG_DEBUG("Communicator finalized. Rank (",
+              comm_rank,
+              "/",
+              comm_size,
+              ") on {dev: ",
+              device_id,
+              ", thr: ",
+              thread_id,
+              ", proc: ",
+              process_id,
+              "} on device:\n",
+              p.to_string());
 }
 
 template <TEMPLATE_DECL_ARG>

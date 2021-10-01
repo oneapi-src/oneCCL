@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2003-2020 Intel Corporation.
+# Copyright Intel Corporation.
 # 
 # This software and the related documents are Intel copyrighted materials, and
 # your use of them is governed by the express license under which they were
@@ -28,7 +28,7 @@ if [ -z "$1" ] ; then
 fi
 
 #------------------------------------------------------------------------------ 
-dir=`dirname $0`
+dir=$(dirname "$0")
 compiler_name=${I_MPI_CC:-${MPICH_CC:-${default_compiler_name:?}}}
 
 for arg in "$@" ; do
@@ -49,9 +49,9 @@ fi
 
 if [ x"$opt_args" == x"" ]; then
     case "${compiler_short_name}" in
-    icc|icx)    $dir/mpiicc -cc=$compiler_name "$@" ;;
-    cc|*gcc*|clang*) $dir/mpigcc -cc=$compiler_name "$@" ;;
-    mpicc)  $dir/mpigcc "$@" ;;    
+    icc|icx)    "$dir"/mpiicc -cc=$compiler_name "$@" ;;
+    cc|*gcc*|clang*) "$dir"/mpigcc -cc=$compiler_name "$@" ;;
+    mpicc)  "$dir"/mpigcc "$@" ;;    
     *)  
             echo "Error: unsupported compiler name '$compiler_name'."
             echo "Check -cc=<compiler_name> command line option and I_MPI_CC='$I_MPI_CC' and MPICH_CC='$MPICH_CC' variables."; 
@@ -59,9 +59,9 @@ if [ x"$opt_args" == x"" ]; then
     esac
 else
     case "${compiler_short_name}" in
-    icc|icx)    $dir/mpiicc -cc=$compiler_name "$@" $opt_args ;;
-    cc|*gcc*|clang*) $dir/mpigcc -cc=$compiler_name "$@" $opt_args ;;
-    mpicc)  $dir/mpigcc "$@" $opt_args ;;    
+    icc|icx)    "$dir"/mpiicc -cc=$compiler_name "$@" $opt_args ;;
+    cc|*gcc*|clang*) "$dir"/mpigcc -cc=$compiler_name "$@" $opt_args ;;
+    mpicc)  "$dir"/mpigcc "$@" $opt_args ;;    
     *)  
             echo "Error: unsupported compiler name '$compiler_name'."
             echo "Check -cc=<compiler_name> command line option and I_MPI_CC='$I_MPI_CC' and MPICH_CC='$MPICH_CC' variables."; 

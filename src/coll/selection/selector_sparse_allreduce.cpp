@@ -36,12 +36,6 @@ ccl_algorithm_selector<ccl_coll_sparse_allreduce>::ccl_algorithm_selector() {
 }
 
 template <>
-bool ccl_algorithm_selector_helper<ccl_coll_sparse_allreduce_algo>::is_direct(
-    ccl_coll_sparse_allreduce_algo algo) {
-    return false;
-}
-
-template <>
 bool ccl_algorithm_selector_helper<ccl_coll_sparse_allreduce_algo>::can_use(
     ccl_coll_sparse_allreduce_algo algo,
     const ccl_selector_param& param,

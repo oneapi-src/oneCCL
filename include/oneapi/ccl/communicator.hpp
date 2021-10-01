@@ -99,12 +99,6 @@ public:
      */
     context get_context() const;
 
-    template <class... attr_val_type>
-    stream create_stream(attr_val_type&&... avs) {
-        // return stream::create_stream_from_attr(get_device(), get_context(), std::forward<attr_val_type>(avs)...);
-        throw ccl::unsupported("API", "create_stream");
-    }
-
     communicator split(const comm_split_attr& attr);
 
 private:

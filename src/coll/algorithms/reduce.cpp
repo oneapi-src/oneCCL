@@ -21,6 +21,7 @@
  */
 
 #include "coll/algorithms/algorithms.hpp"
+#include "sched/entry/coll/coll_entry_helper.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
 
 /* An implementation of Rabenseifner's reduce algorithm (see
@@ -447,3 +448,56 @@ ccl::status ccl_coll_build_binomial_reduce(ccl_sched* sched,
 
     return status;
 }
+
+#if defined(CCL_ENABLE_SYCL) && defined(MULTI_GPU_SUPPORT)
+
+ccl::status ccl_coll_build_gpu_reduce(ccl_sched* sched,
+                                      ccl_buffer send_buf,
+                                      ccl_buffer recv_buf,
+                                      size_t count,
+                                      const ccl_datatype& dtype,
+                                      ccl::reduction reduction,
+                                      int root,
+                                      ccl_comm* comm) {
+    LOG_DEBUG("build gpu reduce");
+
+    int skip_rank = -1;
+
+    const std::vector<ze_handle_exchange_entry::mem_desc_t> in_buffers{
+        { send_buf.get_ptr(), ccl::ze::ipc_mem_type::memory }, // 0
+    };
+
+    ccl_coll_entry_param barrier_param{};
+    barrier_param.ctype = ccl_coll_barrier;
+    barrier_param.comm = comm;
+    barrier_param.hint_algo.barrier = ccl_coll_barrier_ring;
+
+    if (sched->coll_attr.to_cache) {
+        sched->set_entry_exec_mode(ccl_sched_entry_exec_once);
+        entry_factory::make_entry<ze_handle_exchange_entry>(sched, comm, in_buffers, skip_rank);
+        sched->add_barrier();
+        sched->set_entry_exec_mode(ccl_sched_entry_exec_regular);
+
+        // TODO: no need barrier for the first iteration where ze_handle_exchange_entry exists
+        // TODO: think about the right way
+        coll_entry_helper::add_coll_entry<ccl_coll_barrier>(sched, barrier_param);
+    }
+    else {
+        entry_factory::make_entry<ze_handle_exchange_entry>(sched, comm, in_buffers, skip_rank);
+    }
+
+    sched->add_barrier();
+
+    if (comm->rank() == root) {
+        entry_factory::make_entry<ze_reduce_entry>(
+            sched, send_buf, recv_buf, count, dtype, reduction, root, comm);
+        sched->add_barrier();
+    }
+
+    // TODO: think about the right way
+    coll_entry_helper::add_coll_entry<ccl_coll_barrier>(sched, barrier_param);
+
+    return ccl::status::success;
+}
+
+#endif // CCL_ENABLE_SYCL && MULTI_GPU_SUPPORT

@@ -189,4 +189,4 @@ public:
     virtual size_t get_ranks_per_process() = 0;
 };
 #endif
-#endif /* PM_RT_H */
+#endif // PM_RT_H

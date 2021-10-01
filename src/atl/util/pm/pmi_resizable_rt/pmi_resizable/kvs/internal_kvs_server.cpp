@@ -78,22 +78,26 @@ private:
     std::map<std::string, std::map<std::string, std::string>> requests;
     const int free_socket = -1;
     std::vector<struct pollfd> poll_fds;
+
+    sa_family_t address_family{ AF_UNSPEC };
 };
 
 void server::try_to_connect_new() {
     if (poll_fds[FDI_LISTENER].revents != 0) {
-        struct sockaddr_in addr;
+        std::shared_ptr<isockaddr> addr;
 
-        memset(&addr, 0, sizeof(addr));
+        if (address_family == AF_INET) {
+            addr = std::shared_ptr<isockaddr>(new sockaddr_v4());
+        }
+        else {
+            addr = std::shared_ptr<isockaddr>(new sockaddr_v6());
+        }
 
-        addr.sin_family = AF_INET;
-        addr.sin_addr.s_addr = INADDR_ANY;
-        addr.sin_port = 0;
         int new_socket;
-        socklen_t peer_addr_size = sizeof(addr);
-        if ((new_socket = accept(
-                 poll_fds[FDI_LISTENER].fd, (struct sockaddr*)&addr, (socklen_t*)&peer_addr_size)) <
-            0) {
+        socklen_t peer_addr_size = addr->size();
+        if ((new_socket = accept(poll_fds[FDI_LISTENER].fd,
+                                 addr->get_sock_addr_ptr(),
+                                 (socklen_t*)&peer_addr_size)) < 0) {
             perror("server: server_listen_sock accept");
             exit(EXIT_FAILURE);
         }
@@ -379,19 +383,13 @@ bool server::check_finalize() {
 void server::run(void* args) {
     bool should_stop = false;
     int so_reuse = 1;
-    struct sockaddr_in addr;
     poll_fds.resize(client_count_increase);
     for (auto& it : poll_fds) {
         it.fd = free_socket;
         it.events = POLLIN;
     }
     poll_fds[FDI_LISTENER].fd = ((server_args_t*)args)->sock_listener;
-
-    memset(&addr, 0, sizeof(addr));
-
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = INADDR_ANY;
-    addr.sin_port = 0;
+    address_family = ((server_args_t*)args)->args->sin_family();
 
 #ifdef SO_REUSEPORT
     setsockopt(poll_fds[FDI_LISTENER].fd, SOL_SOCKET, SO_REUSEPORT, &so_reuse, sizeof(so_reuse));
@@ -404,14 +402,14 @@ void server::run(void* args) {
         exit(EXIT_FAILURE);
     }
 
-    if ((poll_fds[FDI_CONTROL].fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    if ((poll_fds[FDI_CONTROL].fd = socket(address_family, SOCK_STREAM, 0)) < 0) {
         perror("server: server_control_sock init");
         exit(EXIT_FAILURE);
     }
 
     while (connect(poll_fds[FDI_CONTROL].fd,
-                   (struct sockaddr*)(((server_args_t*)args)->args),
-                   sizeof(addr)) < 0) {
+                   ((server_args_t*)args)->args->get_sock_addr_ptr(),
+                   ((server_args_t*)args)->args->size()) < 0) {
     }
     while (!should_stop || client_count > 0) {
         if (poll(poll_fds.data(), poll_fds.size(), -1) < 0) {

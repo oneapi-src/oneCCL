@@ -16,6 +16,7 @@
 #include "atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs/users_kvs.h"
 #include "exec/exec.hpp"
 #include "common/comm/comm.hpp"
+#include "common/comm/host_communicator/host_communicator.hpp"
 #include "common/global/global.hpp"
 #include "sched/sched.hpp"
 #include "oneapi/ccl/types.hpp"
@@ -43,21 +44,30 @@ ccl_comm::ccl_comm(int rank,
                    int size,
                    ccl_comm_id_storage::comm_id&& id,
                    std::shared_ptr<atl_wrapper> atl,
-                   bool share_resources)
-        : ccl_comm(rank, size, std::move(id), ccl_rank2rank_map{}, atl, share_resources) {}
+                   bool share_resources,
+                   ccl::host_communicator* host_comm)
+        : ccl_comm(rank,
+                   size,
+                   std::move(id),
+                   ccl_rank2rank_map{},
+                   atl,
+                   share_resources,
+                   host_comm) {}
 
 ccl_comm::ccl_comm(int rank,
                    int size,
                    ccl_comm_id_storage::comm_id&& id,
                    ccl_rank2rank_map&& rank_map,
                    std::shared_ptr<atl_wrapper> atl,
-                   bool share_resources)
+                   bool share_resources,
+                   ccl::host_communicator* host_comm)
         : atl(atl),
           m_id(std::move(id)),
           m_local2global_map(std::move(rank_map)),
           m_dtree(size, rank),
           thread_number(1),
-          on_process_ranks_number(1) {
+          on_process_ranks_number(1),
+          host_comm(host_comm) {
     reset(rank, size);
 
     if (!share_resources) {
@@ -79,10 +89,12 @@ ccl_comm::ccl_comm(const std::vector<int>& local_ranks,
                    int comm_size,
                    std::shared_ptr<ccl::kvs_interface> kvs_instance,
                    ccl_comm_id_storage::comm_id&& id,
-                   bool share_resources)
+                   bool share_resources,
+                   ccl::host_communicator* host_comm)
         : m_id(std::move(id)),
           m_local2global_map(),
-          m_dtree(local_ranks.size(), comm_size) {
+          m_dtree(local_ranks.size(), comm_size),
+          host_comm(host_comm) {
     std::shared_ptr<ikvs_wrapper> kvs_wrapper(new users_kvs(kvs_instance));
 
     atl = std::shared_ptr<atl_wrapper>(new atl_wrapper(comm_size, local_ranks, kvs_wrapper));
@@ -148,8 +160,13 @@ ccl_comm* ccl_comm::create_with_colors(const std::vector<int>& colors,
 
 std::shared_ptr<ccl_comm> ccl_comm::clone_with_new_id(ccl_comm_id_storage::comm_id&& id) {
     ccl_rank2rank_map rank_map{ m_local2global_map };
-    return std::make_shared<ccl_comm>(
-        m_rank, m_size, std::move(id), std::move(rank_map), atl, true /*share_resources*/);
+    return std::make_shared<ccl_comm>(m_rank,
+                                      m_size,
+                                      std::move(id),
+                                      std::move(rank_map),
+                                      atl,
+                                      true /*share_resources*/,
+                                      get_host_comm());
 }
 
 int ccl_comm::get_global_rank(int rank) const {

@@ -32,12 +32,6 @@ ccl_algorithm_selector<ccl_coll_reduce_scatter>::ccl_algorithm_selector() {
 }
 
 template <>
-bool ccl_algorithm_selector_helper<ccl_coll_reduce_scatter_algo>::is_direct(
-    ccl_coll_reduce_scatter_algo algo) {
-    return (algo == ccl_coll_reduce_scatter_direct) ? true : false;
-}
-
-template <>
 bool ccl_algorithm_selector_helper<ccl_coll_reduce_scatter_algo>::can_use(
     ccl_coll_reduce_scatter_algo algo,
     const ccl_selector_param& param,
