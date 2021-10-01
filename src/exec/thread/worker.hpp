@@ -32,7 +32,12 @@ public:
     ccl_worker(const ccl_worker& other) = delete;
     ccl_worker& operator=(const ccl_worker& other) = delete;
     ccl_worker(size_t idx, std::unique_ptr<ccl_sched_queue> queue);
-    virtual ~ccl_worker() = default;
+
+    virtual ~ccl_worker() {
+        strict_sched_queue.reset();
+        sched_queue.reset();
+    }
+
     virtual void* get_this() override {
         return static_cast<void*>(this);
     };

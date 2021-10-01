@@ -41,6 +41,8 @@ struct communicator_interface_dispatcher {
     using device_t = typename ccl::unified_device_type::ccl_native_t;
     using context_t = typename ccl::unified_context_type::ccl_native_t;
 
+    virtual ~communicator_interface_dispatcher() = default;
+
 #ifdef MULTI_GPU_SUPPORT
     virtual void visit(ccl::gpu_comm_attr& comm_attr) = 0;
 #endif //MULTI_GPU_SUPPORT

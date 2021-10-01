@@ -126,7 +126,7 @@ CCL_CLASS_TYPE_TRAITS(ccl::datatype::bfloat16,
                       cl::sycl::buffer<bfloat16 COMMA 1>,
                       sizeof(bfloat16),
                       bfloat16)
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 
 /**
  * Checks for supporting @c type in ccl API

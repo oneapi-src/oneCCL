@@ -15,8 +15,12 @@
 */
 #include <iostream>
 #include <memory>
+#include <rdma/fi_domain.h>
+#include <unordered_map>
 
 #include "atl.h"
+#include "atl_ofi_helper.hpp"
+#include "common/utils/hash.hpp"
 
 class atl_ofi final : public iatl {
 public:
@@ -153,7 +157,49 @@ public:
     }
 
 private:
+    atl_status_t atl_ep_progress(atl_ep_t* ep);
+    void atl_process_comps(atl_ep_t* ep, struct fi_cq_tagged_entry* entries, ssize_t ret);
+    atl_status_t atl_prov_ep_handle_cq_err(atl_ofi_prov_ep_t* ep);
+
     atl_ctx_t* ctx = nullptr;
+
+    class mr_cache {
+    public:
+        mr_cache() = default;
+        ~mr_cache();
+
+        void clear();
+        void get(fid_domain* domain, void* buf, size_t bytes, fid_mr** mr);
+        void push(fid_mr* mr);
+
+    private:
+        size_t mr_key = 0;
+
+        using key_t = typename std::tuple<fid_domain*, void*, size_t>;
+        using value_t = fid_mr*;
+        std::unordered_multimap<key_t, value_t, ccl::utils::tuple_hash> cache{};
+    };
+
+    class fi_cache {
+    public:
+        fi_cache() = default;
+        fi_cache(const fi_cache&) = delete;
+        fi_cache& operator=(const fi_cache&) = delete;
+        ~fi_cache();
+
+        void clear();
+
+        void init(size_t instance_count, int enable_hmem);
+        void get(size_t idx, fid_domain* domain, void* buf, size_t bytes, fid_mr** mr);
+        void push(size_t idx, fid_mr* mr);
+
+    private:
+        int enable_hmem;
+        std::vector<mr_cache> memory_regions;
+    };
+
+    fi_cache cache{};
+
     bool is_finalized{ false };
     bool inited{ false };
 };

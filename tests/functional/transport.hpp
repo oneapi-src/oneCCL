@@ -22,7 +22,7 @@
 #include "oneapi/ccl.hpp"
 #ifdef CCL_ENABLE_SYCL
 #include "sycl_base.hpp"
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 
 class transport_data {
 public:
@@ -41,7 +41,7 @@ public:
 
 #ifdef CCL_ENABLE_SYCL
     buf_allocator<char>& get_allocator();
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 
 private:
     transport_data();
@@ -60,7 +60,7 @@ private:
 
 #ifdef CCL_ENABLE_SYCL
     std::vector<buf_allocator<char>> allocators;
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 
     const int ranks_per_proc = 1;
 };

@@ -49,6 +49,7 @@ public:
                                        size_t cluster_rank_offset,
                                        size_t cluster_size,
                                        const ccl::context_comm_addr& comm_addr = {});
+    virtual ~allied_process_group_ring_topology() = default;
     static std::pair<size_t, size_t> calculate_rank_offset_with_size(
         size_t process_id,
         const std::string& host_id,

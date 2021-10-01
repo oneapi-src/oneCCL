@@ -15,6 +15,8 @@
 #
 file(GLOB sources "*.c" "*.cpp")
 
+link_directories(${EXAMPLES_LIB_DIRS})
+
 foreach(src ${sources})
     get_filename_component(executable ${src} NAME_WE)
     add_executable(${executable} ${src})

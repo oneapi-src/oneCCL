@@ -37,4 +37,4 @@ BF16_TARGET_ATTRIBUTE_BWF __m512 bf16_reduce(__m512 a, __m512 b, ccl_bf16_reduct
     return (*op)(a, b);
 }
 
-#endif /* CCL_BF16_COMPILER */
+#endif // CCL_BF16_COMPILER

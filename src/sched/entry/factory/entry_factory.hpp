@@ -28,9 +28,6 @@
 #include "sched/entry/factory/entry_factory.h"
 
 #include "sched/entry/copy/copy_entry.hpp"
-#ifdef CCL_ENABLE_SYCL
-#include "sched/entry/copy/sycl_copy_entry.hpp"
-#endif /* CCL_ENABLE_SYCL */
 #include "sched/entry/deps_entry.hpp"
 #include "sched/entry/deregister_entry.hpp"
 #include "sched/entry/epilogue_entry.hpp"
@@ -47,6 +44,15 @@
 #include "sched/entry/sync_entry.hpp"
 #include "sched/entry/wait_value_entry.hpp"
 #include "sched/entry/write_entry.hpp"
+
+#if defined(MULTI_GPU_SUPPORT) && defined(CCL_ENABLE_SYCL)
+#include "sched/entry/gpu/ze_allreduce_entry.hpp"
+#include "sched/entry/gpu/ze_copy_entry.hpp"
+#include "sched/entry/gpu/ze_handle_exchange_entry.hpp"
+#include "sched/entry/gpu/ze_event_signal_entry.hpp"
+#include "sched/entry/gpu/ze_event_wait_entry.hpp"
+#include "sched/entry/gpu/ze_reduce_entry.hpp"
+#endif // MULTI_GPU_SUPPORT && CCL_ENABLE_SYCL
 
 #include "sched/sched.hpp"
 

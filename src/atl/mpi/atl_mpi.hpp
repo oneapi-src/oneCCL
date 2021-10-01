@@ -13,6 +13,8 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#ifdef CCL_ENABLE_MPI
+
 #include "atl.h"
 
 class atl_mpi final : public iatl {
@@ -159,3 +161,5 @@ private:
     bool is_finalized{ false };
     bool inited{ false };
 };
+
+#endif // CCL_ENABLE_MPI

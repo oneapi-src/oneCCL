@@ -30,21 +30,5 @@ struct ccl_coll_entry_param {
     int root;
     ccl_comm* comm;
     ccl_stream* stream;
-
-    ccl_coll_param to_coll_param() const {
-        ccl_coll_param param;
-        param.ctype = ctype;
-        param.send_buf = send_buf.get_ptr();
-        param.recv_buf = recv_buf.get_ptr();
-        param.count = count;
-        param.send_count = send_count;
-        param.send_counts = send_counts;
-        param.recv_counts = recv_counts;
-        param.dtype = dtype;
-        param.reduction = reduction;
-        param.root = root;
-        param.comm = comm;
-        param.stream = stream;
-        return param;
-    }
+    ccl_coll_algo hint_algo;
 };

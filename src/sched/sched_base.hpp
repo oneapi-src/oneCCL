@@ -26,6 +26,10 @@
 #include "common/utils/buffer.hpp"
 #include "sched/entry/entry.hpp"
 
+#if defined(CCL_ENABLE_SYCL) && defined(MULTI_GPU_SUPPORT)
+#include "sched/ze_handle_manager.hpp"
+#endif // CCL_ENABLE_SYCL && MULTI_GPU_SUPPORT
+
 class ccl_sched_queue;
 class ccl_sched_bin;
 class ccl_request;
@@ -45,6 +49,13 @@ enum ccl_sched_add_mode {
     ccl_sched_add_mode_last_value
 };
 
+enum ccl_sched_buf_type {
+    ccl_sched_buf_system,
+    ccl_sched_buf_runtime,
+
+    ccl_sched_buf_last_value
+};
+
 std::string to_string(ccl_sched_add_mode mode);
 
 struct ccl_sched_buffer_handler {
@@ -62,7 +73,7 @@ struct ccl_sched_sycl_buffer_handler : public ccl_sched_buffer_handler {
             : ccl_sched_buffer_handler(buffer, size),
               ctx(ctx) {}
 };
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 
 struct ccl_sched_memory {
     std::list<ccl_sched_buffer_handler> buf_list;
@@ -70,7 +81,16 @@ struct ccl_sched_memory {
 
 #ifdef CCL_ENABLE_SYCL
     std::list<ccl_sched_sycl_buffer_handler> sycl_buf_list;
-#endif /* CCL_ENABLE_SYCL */
+#ifdef MULTI_GPU_SUPPORT
+    ccl::ze::ipc_handle_manager handle_manager;
+    // sync event which we use to signal to the user about collective completion
+    // and the pool it's created from(need to keep it to know what to return to the cache)
+    // TODO: this is not the best place for these objects, think about moving them
+    // to ccl_master_sched where they actually used
+    ze_event_handle_t sync_event;
+    ze_event_pool_handle_t sync_pool;
+#endif // MULTI_GPU_SUPPORT
+#endif // CCL_ENABLE_SYCL
 };
 
 static size_t lifo_priority = 0;
@@ -89,18 +109,28 @@ struct ccl_sched_base {
 
     size_t get_priority() const;
 
-    ccl_buffer alloc_buffer(size_t bytes);
+    void* alloc_buffer_unmanaged(size_t bytes, ccl_sched_buf_type buf_type = ccl_sched_buf_system);
+    void free_buffer_unmanaged(void* ptr,
+                               size_t bytes,
+                               ccl_sched_buf_type buf_type = ccl_sched_buf_system);
+
+    ccl_buffer alloc_buffer(size_t bytes, ccl_sched_buf_type buf_type = ccl_sched_buf_system);
 
 #ifdef CCL_ENABLE_SYCL
     ccl_buffer alloc_staging_buffer(size_t bytes);
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 
-    void free_buffers();
+    void add_memory_region(atl_mr_t* mr);
+    void free_memory_regions();
+
+    void free_memory();
 
     ccl_buffer update_buffer(ccl_buffer buffer, size_t new_size);
     ccl_buffer find_and_realloc_buffer(void* buffer, size_t new_size, size_t expected_size = 0);
 
-    void add_memory_region(atl_mr_t* mr);
+    void get_pre_post_copy_counts(std::vector<size_t>& d2h_counts,
+                                  std::vector<size_t>& h2d_counts,
+                                  bool& reuse_buffers);
 
     void alloc_buffers_for_pre_post_copy();
 
@@ -116,9 +146,15 @@ struct ccl_sched_base {
         add_mode = mode;
     }
 
+    ccl_sched_memory& get_memory() {
+        return memory;
+    }
+
     ccl_coll_param coll_param{};
     ccl_coll_attr coll_attr{};
-    ccl_coll_param_copy coll_param_copy{};
+
+    /* TODO: schedule doesn't necessarily map on single algo */
+    ccl_coll_algo hint_algo{};
 
     /* sequence number of the schedule in the communicator */
     ccl_sched_id_t sched_id = 0;
@@ -131,13 +167,13 @@ struct ccl_sched_base {
     }
 
 protected:
-    ~ccl_sched_base() = default;
+    ~ccl_sched_base();
 
     ccl_sched_base() {
         CCL_THROW("unsupported");
     }
 
-    ccl_sched_base(const ccl_coll_param& coll_param) : coll_param(coll_param) {}
+    ccl_sched_base(const ccl_coll_param& coll_param);
 
     void update_id();
 

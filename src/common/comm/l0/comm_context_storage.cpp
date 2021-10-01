@@ -31,7 +31,7 @@ group_context::comm_group_t group_context::group_by_kvs(
     const std::vector<int>& local_thread_device_group_ranks,
     int cluster_device_group_size,
     std::shared_ptr<ikvs_wrapper> kvs) {
-    LOG_INFO("thread acquire by barrier");
+    LOG_DEBUG("thread acquire by barrier");
     std::shared_ptr<atl_wrapper> atl = std::shared_ptr<atl_wrapper>(
         new atl_wrapper(cluster_device_group_size, local_thread_device_group_ranks, kvs));
 
@@ -40,42 +40,43 @@ group_context::comm_group_t group_context::group_by_kvs(
      * Most of the cases are handled in communicator_impl_details.hpp, but here we check the case
      * when we have multiple threads and each of them has 1 device. And we don't know the total number
      * of ranks in the process until we sync them above */
-    if (atl->get_ranks_per_process() > 1 && !ccl::global_data::env().enable_comm_kernels) {
+    if (atl->get_ranks_per_process() > 1 /* && !ccl::global_data::env().enable_comm_kernels*/) {
         throw ccl::unimplemented("API", "create_communicators", "for multiple devices");
     }
 
-    LOG_INFO("thread released by barrier");
-    LOG_INFO("cluster_device_group size: ",
-             cluster_device_group_size,
-             "\nThread device group ranks size: ",
-             local_thread_device_group_ranks.size());
+    LOG_DEBUG("thread released by barrier");
+    LOG_DEBUG("cluster_device_group size: ",
+              cluster_device_group_size,
+              "\nthread device group ranks size: ",
+              local_thread_device_group_ranks.size());
     for (size_t i = 0; i < local_thread_device_group_ranks.size(); i++) {
-        LOG_INFO("\nLocal thread device group ranks: ", local_thread_device_group_ranks[i]);
+        LOG_DEBUG("\nlocal thread device group ranks: ", local_thread_device_group_ranks[i]);
     }
+
     // register group slot in global context table, based on communicator id
     comm_group_t group = group_context::group_by_comm(atl);
 
-    // sync existing group: blocking operation - wait for all groups
-    LOG_INFO("group thread barrier acquired: ", static_cast<void*>(group.get()));
-    group->sync_group_size(local_thread_device_group_ranks.size());
-    LOG_INFO("group thread barrier released: ", static_cast<void*>(group.get()));
+    // if (ccl::global_data::env().enable_comm_kernels) {
+    //     // sync existing group: blocking operation - wait for all groups
+    //     LOG_DEBUG("group thread barrier acquired: ", static_cast<void*>(group.get()));
+    //     group->sync_group_size(local_thread_device_group_ranks.size());
+    //     LOG_DEBUG("group thread barrier released: ", static_cast<void*>(group.get()));
+    // }
+
     return group;
 }
 
 group_context::comm_group_t group_context::group_by_comm(std::shared_ptr<atl_wrapper> atl) {
-    LOG_INFO("\n",
-             "\nATL info:",
-             "\n  threads per process: ",
-             atl->get_threads_per_process(),
-             "\n  ranks per process:   ",
-             atl->get_ranks_per_process(),
-             "\n  atl size:            ",
-             atl->get_size(),
-             "\n  rank:                ",
-             atl->get_rank(),
-             "\n  unique id of atl:    ",
-             atl->get_id(),
-             "\n")
+    std::stringstream ss;
+    ss << "\n{\n"
+       << "  ATL info:\n"
+       << "    rank: " << atl->get_rank() << "\n"
+       << "    size: " << atl->get_size() << "\n"
+       << "    id: " << atl->get_id() << "\n"
+       << "    ranks per process: " << atl->get_ranks_per_process() << "\n"
+       << "    threads per process: " << atl->get_threads_per_process() << "\n"
+       << "}";
+    LOG_INFO(ss.str());
 
     comm_group_t group;
     {
@@ -91,21 +92,21 @@ group_context::comm_group_t group_context::group_by_comm(std::shared_ptr<atl_wra
             group.reset(
                 new ccl::comm_group(host_comm, threads_per_process, ranks_per_process, unique_id));
             communicator_group_map.insert({ unique_id, group });
-            LOG_INFO("comm group: ",
-                     static_cast<void*>(group.get()),
-                     " has been created for unique_id: ",
-                     unique_id,
-                     ", threads per process: ",
-                     threads_per_process,
-                     ", ranks per process: ",
-                     ranks_per_process);
+            LOG_DEBUG("comm group: ",
+                      static_cast<void*>(group.get()),
+                      " has been created for unique_id: ",
+                      unique_id,
+                      ", threads per process: ",
+                      threads_per_process,
+                      ", ranks per process: ",
+                      ranks_per_process);
         }
         else {
             group = ctx_it->second;
-            LOG_INFO("get existing comm group: ",
-                     static_cast<void*>(group.get()),
-                     " for unique_id: ",
-                     unique_id);
+            LOG_DEBUG("get existing comm group: ",
+                      static_cast<void*>(group.get()),
+                      " for unique_id: ",
+                      unique_id);
         }
     }
     return group;

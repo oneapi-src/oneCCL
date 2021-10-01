@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright 2003-2020 Intel Corporation.
+# Copyright Intel Corporation.
 # 
 # This software and the related documents are Intel copyrighted materials, and
 # your use of them is governed by the express license under which they were
@@ -22,15 +22,15 @@ if [ -n "$I_MPI_TMPDIR" ]; then
 fi
 
 np_boot=
-username=`whoami`
+username=$(whoami)
 rc=0
 
-if [ -z "$I_MPI_ROOT" -a -z "`uname -m | grep 1om`" ] ; then
+if [ -z "$I_MPI_ROOT" -a -z "$(uname -m | grep 1om)" ] ; then
     if [ -f ${0%/*}/mpivars.sh ]; then
         . ${0%/*}/mpivars.sh ""
-    else
+    elif [ -f ${0%/*}/../env/vars.sh ]; then
         . ${0%/*}/../env/vars.sh ""
-    fi
+    fi # else it can be a runtime package without any scripts to source
 fi
 
 ##### mpirun detection #####
@@ -41,12 +41,12 @@ export I_MPI_MPIRUN="mpirun"
 #######  Job Scheduler autodetection  #######
 #############################################
 # PBS
-if [ -n "$PBS_ENVIRONMENT" -a -z "$I_MPI_HYDRA_RMK" ] ; then
+if [ -n "$PBS_ENVIRONMENT" ] && [ -z "$I_MPI_HYDRA_RMK" ] ; then
     export I_MPI_HYDRA_RMK=pbs
-elif [ -n "$LSB_JOBID" -a -z "$I_MPI_HYDRA_RMK" ]; then
+elif [ -n "$LSB_JOBID" ] && [ -z "$I_MPI_HYDRA_RMK" ]; then
     export I_MPI_HYDRA_RMK=lsf
 fi
-if [ -z "$I_MPI_HYDRA_BOOTSTRAP" -a -z "$I_MPI_HYDRA_BOOTSTRAP_EXEC" ]; then 
+if [ -z "$I_MPI_HYDRA_BOOTSTRAP" ] && [ -z "$I_MPI_HYDRA_BOOTSTRAP_EXEC" ]; then 
     # SLURM
     if [ -n "$SLURM_JOBID" ]; then
         export I_MPI_HYDRA_BOOTSTRAP=slurm
@@ -57,7 +57,7 @@ if [ -z "$I_MPI_HYDRA_BOOTSTRAP" -a -z "$I_MPI_HYDRA_BOOTSTRAP_EXEC" ]; then
     elif [ -n "$PE_HOSTFILE" ]; then
         export I_MPI_HYDRA_BOOTSTRAP=sge
     # Fujitsu NQS (Network Queuing System)
-    elif [ -n "$ENVIRONMENT" -a -n "$QSUB_REQID" -a -n "$QSUB_NODEINF" ] ; then
+    elif [ -n "$ENVIRONMENT" ] && [ -n "$QSUB_REQID" ] && [ -n "$QSUB_NODEINF" ] ; then
         if [ -z "$I_MPI_HYDRA_HOST_FILE" ]; then
             export I_MPI_HYDRA_HOST_FILE=$QSUB_NODEINF
         fi
@@ -65,12 +65,14 @@ if [ -z "$I_MPI_HYDRA_BOOTSTRAP" -a -z "$I_MPI_HYDRA_BOOTSTRAP_EXEC" ]; then
             export I_MPI_HYDRA_BOOTSTRAP=rsh
             export I_MPI_HYDRA_BOOTSTRAP_EXEC=/usr/bin/plesh
         fi
+    # TORQUE
+    elif [ -n "${PBS_NODEFILE}" ]; then
+        export I_MPI_HYDRA_BOOTSTRAP=pbs
     fi
 fi
 
 # Slurm, LoadLeveler, LSF, SGE
-if [ -n "$LOADL_HOSTFILE" -o \
-     -n "$PE_HOSTFILE" ]; then
+if [ -n "$LOADL_HOSTFILE" ] || [ -n "$PE_HOSTFILE" ]; then
     # Create a host file
     if [ -n "$LOADL_HOSTFILE" ]; then
         mpiexec.hydra "$@" <&0
@@ -80,8 +82,8 @@ if [ -n "$LOADL_HOSTFILE" -o \
         > $machinefile
             while read line; do
             if [ -n "$line" ]; then
-                host_name=`echo $line | sed -e "s/ .*//"`
-                num_of_processes=`expr match "$line" '.* \([0-9]\+\) .*'`
+                host_name=$(echo $line | sed -e "s/ .*//")
+                num_of_processes=$(expr match "$line" '.* \([0-9]\+\) .*')
                 echo "$host_name:$num_of_processes" >> $machinefile
                 np_boot=$(( np_boot + 1 ))
             fi
@@ -96,8 +98,8 @@ elif [ "x$I_MPI_YARN" = "xyes" -o "x$I_MPI_YARN" = "xenable" -o "x$I_MPI_YARN" =
     rc=$?
 # Netbatch
 elif [ -n "$NB_PARALLEL_JOB_HOSTS" ]; then
-    hosts_opt=`echo $NB_PARALLEL_JOB_HOSTS | tr ' ' ','`
-    hosts_opt="-hosts `hostname -s`,$hosts_opt"
+    hosts_opt=$(echo $NB_PARALLEL_JOB_HOSTS | tr ' ' ',')
+    hosts_opt="-hosts $(hostname -s),$hosts_opt"
     mpiexec.hydra $hosts_opt "$@" <&0
     rc=$?
 # PBS or ordinary job

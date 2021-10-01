@@ -19,6 +19,7 @@
 #include "common/env/env.hpp"
 #include "common/utils/utils.hpp"
 #include "common/comm/l0/comm_context_storage.hpp"
+#include "hwloc/hwloc_wrapper.hpp"
 #include "internal_types.hpp"
 
 #include <memory>
@@ -46,30 +47,17 @@ class ccl_executor;
 class ccl_sched_cache;
 class ccl_parallelizer;
 class ccl_fusion_manager;
-struct ccl_group_context;
 
 template <ccl_coll_type... registered_types_id>
 class ccl_algorithm_selector_wrapper;
 
 namespace ccl {
 
-// class comm_group;
-// using comm_group_t = std::shared_ptr<comm_group>;
+class buffer_cache;
 
-// struct ccl_group_context {
-//      TODO
-//      * In multithreading scenario we use different comm_group_t objects in different threads.
-//      * But we need to match different groups created for the same world in different threads
-//      * The assumption is done: if different groups created from the same communicator color, than they
-//      * should be interpreted as the same groups in the same world.
-//      *
-//      *
-//      * In the final solution the 'group_unique_key' should be equal to unique KVS idenditifier
-
-//     using group_unique_key = typename ccl::ccl_host_attributes_traits<ccl_host_color>::type;
-//     std::map<group_unique_key, comm_group_t> communicator_group_map;
-//     ccl_spinlock mutex;
-// };
+namespace ze {
+class cache;
+} // namespace ze
 
 class global_data {
 public:
@@ -96,22 +84,30 @@ public:
     std::unique_ptr<ccl_datatype_storage> dtypes;
     std::unique_ptr<ccl_executor> executor;
     std::unique_ptr<ccl_sched_cache> sched_cache;
+    std::unique_ptr<ccl::buffer_cache> buffer_cache;
     std::unique_ptr<ccl_parallelizer> parallelizer;
     std::unique_ptr<ccl_fusion_manager> fusion_manager;
     std::unique_ptr<ccl_algorithm_selector_wrapper<CCL_COLL_LIST>> algorithm_selector;
-    std::unique_ptr<group_context> global_ctx;
+    std::unique_ptr<ccl_hwloc_wrapper> hwloc_wrapper;
+    std::atomic<size_t> kernel_counter;
+
+#ifdef MULTI_GPU_SUPPORT
+    std::unique_ptr<ze::cache> ze_cache;
+#endif // MULTI_GPU_SUPPORT
 
     static thread_local bool is_worker_thread;
     bool is_ft_enabled;
-
-    //TODO new_api configure thread wait timeout
-    size_t thread_barrier_wait_timeout_sec = 5;
 
 private:
     global_data();
 
     void init_resize_independent_objects();
     void reset_resize_independent_objects();
+
+#ifdef MULTI_GPU_SUPPORT
+    void init_gpu();
+    void finalize_gpu();
+#endif // MULTI_GPU_SUPPORT
 
     env_data env_object;
 };
@@ -125,4 +121,4 @@ private:
         } while (0); \
     }
 
-} /* namespace ccl */
+} // namespace ccl

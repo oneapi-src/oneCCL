@@ -24,16 +24,18 @@
         ccl_coll_sparse_allreduce
 
 enum ccl_coll_allgatherv_algo {
+    ccl_coll_allgatherv_undefined = 0,
+
     ccl_coll_allgatherv_direct,
     ccl_coll_allgatherv_naive,
     ccl_coll_allgatherv_ring,
     ccl_coll_allgatherv_flat,
-    ccl_coll_allgatherv_multi_bcast,
-
-    ccl_coll_allgatherv_last_value
+    ccl_coll_allgatherv_multi_bcast
 };
 
 enum ccl_coll_allreduce_algo {
+    ccl_coll_allreduce_undefined = 0,
+
     ccl_coll_allreduce_direct,
     ccl_coll_allreduce_rabenseifner,
     ccl_coll_allreduce_starlike,
@@ -42,66 +44,84 @@ enum ccl_coll_allreduce_algo {
     ccl_coll_allreduce_double_tree,
     ccl_coll_allreduce_recursive_doubling,
     ccl_coll_allreduce_2d,
-
-    ccl_coll_allreduce_last_value
+    ccl_coll_allreduce_topo_ring
 };
 
 enum ccl_coll_alltoall_algo {
+    ccl_coll_alltoall_undefined = 0,
+
     ccl_coll_alltoall_direct,
     ccl_coll_alltoall_naive,
     ccl_coll_alltoall_scatter,
-    ccl_coll_alltoall_scatter_barrier,
-
-    ccl_coll_alltoall_last_value
+    ccl_coll_alltoall_scatter_barrier
 };
 
 enum ccl_coll_alltoallv_algo {
+    ccl_coll_alltoallv_undefined = 0,
+
     ccl_coll_alltoallv_direct,
     ccl_coll_alltoallv_naive,
     ccl_coll_alltoallv_scatter,
-    ccl_coll_alltoallv_scatter_barrier,
-
-    ccl_coll_alltoallv_last_value
+    ccl_coll_alltoallv_scatter_barrier
 };
 
 enum ccl_coll_barrier_algo {
-    ccl_coll_barrier_direct,
-    ccl_coll_barrier_ring,
+    ccl_coll_barrier_undefined = 0,
 
-    ccl_coll_barrier_last_value
+    ccl_coll_barrier_direct,
+    ccl_coll_barrier_ring
 };
 
 enum ccl_coll_bcast_algo {
+    ccl_coll_bcast_undefined = 0,
+
     ccl_coll_bcast_direct,
     ccl_coll_bcast_ring,
     ccl_coll_bcast_double_tree,
     ccl_coll_bcast_naive,
-
-    ccl_coll_bcast_last_value
+    ccl_coll_bcast_topo_ring
 };
 
 enum ccl_coll_reduce_algo {
+    ccl_coll_reduce_undefined = 0,
+
     ccl_coll_reduce_direct,
     ccl_coll_reduce_rabenseifner,
     ccl_coll_reduce_tree,
     ccl_coll_reduce_double_tree,
-
-    ccl_coll_reduce_last_value
+    ccl_coll_reduce_topo_ring
 };
 
 enum ccl_coll_reduce_scatter_algo {
-    ccl_coll_reduce_scatter_direct,
-    ccl_coll_reduce_scatter_ring,
+    ccl_coll_reduce_scatter_undefined = 0,
 
-    ccl_coll_reduce_scatter_last_value
+    ccl_coll_reduce_scatter_direct,
+    ccl_coll_reduce_scatter_ring
 };
 
 enum ccl_coll_sparse_allreduce_algo {
+    ccl_coll_sparse_allreduce_undefined = 0,
+
     ccl_coll_sparse_allreduce_ring,
     ccl_coll_sparse_allreduce_mask,
-    ccl_coll_sparse_allreduce_3_allgatherv,
+    ccl_coll_sparse_allreduce_3_allgatherv
+};
 
-    ccl_coll_sparse_allreduce_last_value
+union ccl_coll_algo {
+    ccl_coll_allgatherv_algo allgatherv;
+    ccl_coll_allreduce_algo allreduce;
+    ccl_coll_alltoall_algo alltoall;
+    ccl_coll_alltoallv_algo alltoallv;
+    ccl_coll_barrier_algo barrier;
+    ccl_coll_bcast_algo bcast;
+    ccl_coll_reduce_algo reduce;
+    ccl_coll_reduce_scatter_algo reduce_scatter;
+    int value;
+
+    ccl_coll_algo() : value(0) {}
+    bool has_value() const {
+        return (value != 0);
+    }
 };
 
 enum ccl_coll_type {
@@ -114,7 +134,10 @@ enum ccl_coll_type {
     ccl_coll_reduce,
     ccl_coll_reduce_scatter,
     ccl_coll_sparse_allreduce,
+    ccl_coll_last_regular = ccl_coll_sparse_allreduce,
+
     ccl_coll_internal,
+    ccl_coll_partial,
 
     ccl_coll_last_value
 };
@@ -158,7 +181,9 @@ enum ccl_coll_reduction {
     ccl::reduction::sum, ccl::reduction::prod, ccl::reduction::min, \
         ccl::reduction::max /*, ccl::reduction::custom*/
 
-using ccl_reductions = utils::enum_to_str<static_cast<int>(ccl::reduction::custom)>;
+using ccl_reductions =
+    utils::enum_to_str<static_cast<typename std::underlying_type<ccl::reduction>::type>(
+        ccl::reduction::custom)>;
 inline const std::string reduction_to_str(ccl::reduction reduction_type) {
     return ccl_reductions({ "sum", "prod", "min", "max" }).choose(reduction_type, "INVALID_VALUE");
 }

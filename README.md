@@ -49,7 +49,7 @@ cmake ..
 make -j install
 ```
 
-If you need a clean build, create a new build directory and invoke `cmake` within it. Refer to FAQ to learn [when you might need a clean build](#when-do-i-need-a-clean-build-when-should-i-remove-my-favorite-build-directory).
+If you need a clean build, create a new build directory and invoke `cmake` within it.
 
 You can also do the following during installation:
 - [Specify installation directory](INSTALL.md#specify-installation-directory)
@@ -57,7 +57,6 @@ You can also do the following during installation:
 - [Specify `SYCL` cross-platform abstraction level](INSTALL.md#specify-sycl-cross-platform-abstraction-level)
 - [Specify the build type](INSTALL.md#specify-the-build-type)
 - [Enable `make` verbose output](INSTALL.md#enable-make-verbose-output)
-- [Build with address sanitizer](INSTALL.md#build-with-address-sanitizer)
 
 ## Usage
 
@@ -138,16 +137,6 @@ cmake [-DOUTPUT_DIR=<output_dir>] -P cmake/script/config_generation.cmake
 ### Workshop Materials
 
 - oneAPI, oneCCL and OFI: Path to Heterogeneous Architecure Programming with Scalable Collective Communications: [recording](https://www.youtube.com/watch?v=ksiZ90EtP98&feature=youtu.be) and [slides](https://www.openfabrics.org/wp-content/uploads/2020-workshop-presentations/502.-OFA-Virtual-Workshop-2020-oneCCL-v5.pdf)
-
-## FAQ <!-- omit in toc -->
-
-### When do I need a clean build? When should I remove my favorite build directory? <!-- omit in toc -->
-
-In most cases, there is no need to remove the current build directory. You can just run `make` to
-compile and link changed files. 
-
-However, if you see some suspicious build errors after a significant
-change in code (for example, after rebase or a change of branch), it is a hint for you to clean the build directory.
 
 ## Contribute <!-- omit in toc -->
 

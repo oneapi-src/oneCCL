@@ -47,7 +47,12 @@ public:
     void update() override;
 
     bool is_strict_order_satisfied() override {
+#ifdef CCL_ENABLE_SYCL
+        /* use more strict condition for SYCL build to handle async execution */
+        return (coll_sched) ? coll_sched->is_completed() : false;
+#else // CCL_ENABLE_SYCL
         return (coll_sched) ? coll_sched->is_strict_order_satisfied() : false;
+#endif // CCL_ENABLE_SYCL
     }
 
     const char* name() const override {

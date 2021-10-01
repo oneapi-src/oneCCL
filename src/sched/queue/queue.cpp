@@ -77,14 +77,24 @@ ccl_sched_queue::ccl_sched_queue(size_t idx, std::vector<size_t> atl_eps)
 }
 
 ccl_sched_queue::~ccl_sched_queue() {
-    if (!bins.empty())
-        LOG_WARN("unexpected bins size ", bins.size(), ", expected 0");
+    size_t expected_max_priority = 0;
+    ccl_sched_bin* expected_cached_max_priority_bin = nullptr;
 
-    if (max_priority != 0)
-        LOG_WARN("unexpected max_priority ", max_priority, ", expected 0");
+    if (bins.size() >= 1) {
+        ccl_sched_bin* bin = &(bins.begin()->second);
+        expected_max_priority = bin->priority;
+        expected_cached_max_priority_bin = bin;
+        if (bins.size() > 1)
+            LOG_WARN("unexpected bins size ", bins.size(), ", expected <= 1");
+    }
 
-    if (cached_max_priority_bin)
+    if (max_priority != expected_max_priority)
+        LOG_WARN("unexpected max_priority ", max_priority, ", expected ", expected_max_priority);
+
+    if (cached_max_priority_bin != expected_cached_max_priority_bin)
         LOG_WARN("unexpected cached_max_priority_bin");
+
+    clear();
 }
 
 void ccl_sched_queue::add(ccl_sched* sched) {
@@ -156,7 +166,7 @@ size_t ccl_sched_queue::erase(ccl_sched_bin* bin, size_t idx) {
         std::lock_guard<sched_queue_lock_t> lock{ bins_guard };
         {
             // no need to lock 'bin' here, because all adding are under bins_guard protection
-            if (bin->sched_list.elems.empty()) {
+            if (bin->sched_list.elems.empty() /* && (bins.size() > 1)*/) {
                 bins.erase(bin_priority);
 
                 // change priority

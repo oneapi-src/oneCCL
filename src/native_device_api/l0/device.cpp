@@ -471,7 +471,24 @@ CCL_BE_API ccl_device::device_ipc_memory_handle ccl_device::create_ipc_memory_ha
     if (ret != ZE_RESULT_SUCCESS) {
         CCL_THROW("cannot get ipc mem handle, error: " + native::to_string(ret));
     }
-    return device_ipc_memory_handle(ipc_handle, get_ptr(), ctx);
+
+    void* base_ptr = nullptr;
+    size_t alloc_size = 0;
+    ret = zeMemGetAddressRange(ctx->get(), device_mem_ptr, &base_ptr, &alloc_size);
+    if (ret != ZE_RESULT_SUCCESS) {
+        CCL_THROW("zeMemGetAddressRange failed, error: " + native::to_string(ret));
+    }
+
+    LOG_DEBUG("Retrieved memory info for ",
+              device_mem_ptr,
+              ", base ptr: ",
+              base_ptr,
+              ", size ",
+              alloc_size,
+              ", offset ",
+              ((char*)device_mem_ptr) - ((char*)base_ptr));
+    return device_ipc_memory_handle(
+        ipc_handle, get_ptr(), ctx, ((char*)device_mem_ptr) - ((char*)base_ptr));
 }
 
 CCL_BE_API std::shared_ptr<ccl_device::device_ipc_memory_handle>
@@ -496,7 +513,7 @@ ccl_device::create_shared_ipc_memory_handle(void* device_mem_ptr,
     return ipc_storage
         .insert({ device_mem_ptr,
                   std::shared_ptr<device_ipc_memory_handle>(
-                      new device_ipc_memory_handle(ipc_handle, get_ptr(), ctx)) })
+                      new device_ipc_memory_handle(ipc_handle, get_ptr(), ctx, 0)) })
         .first->second;
 }
 
@@ -528,10 +545,8 @@ CCL_BE_API ccl_device::device_ipc_memory ccl_device::get_ipc_memory(
     std::shared_ptr<device_ipc_memory_handle>&& ipc_handle,
     std::shared_ptr<ccl_context> ctx) {
     assert(ipc_handle->get_owner().lock().get() == this && "IPC handle doesn't belong to device: ");
-    //, this,
-    // ", expected device: ", ipc_handle.get_owner());
 
-    ze_ipc_memory_flags_t flag = ZE_DEVICE_MEM_ALLOC_FLAG_BIAS_UNCACHED;
+    ze_ipc_memory_flags_t flag = 0;
     ip_memory_elem_t ipc_memory{};
 
     if (!ctx) {
@@ -552,6 +567,13 @@ CCL_BE_API ccl_device::device_ipc_memory ccl_device::get_ipc_memory(
     //ipc_handle.handle = nullptr;
     ipc_handle->owner.reset();
 
+    LOG_DEBUG("Open ipc handle, got ptr(w/o offset): ",
+              ipc_memory.pointer,
+              " and offset: ",
+              ipc_handle->get_offset());
+
+    ipc_memory.pointer = (void*)((char*)ipc_memory.pointer + ipc_handle->get_offset());
+    ipc_memory.offset = ipc_handle->get_offset();
     return device_ipc_memory(ipc_memory, get_ptr(), ctx);
 }
 
@@ -559,7 +581,7 @@ CCL_BE_API std::shared_ptr<ccl_device::device_ipc_memory> ccl_device::restore_sh
     std::shared_ptr<device_ipc_memory_handle>&& ipc_handle,
     std::shared_ptr<ccl_context> ctx) {
     assert(ipc_handle->get_owner().lock().get() == this && "IPC handle doesn't belong to device: ");
-    ze_ipc_memory_flags_t flag = ZE_DEVICE_MEM_ALLOC_FLAG_BIAS_UNCACHED;
+    ze_ipc_memory_flags_t flag = 0;
     ip_memory_elem_t ipc_memory{};
 
     if (!ctx) {
@@ -583,9 +605,14 @@ CCL_BE_API std::shared_ptr<ccl_device::device_ipc_memory> ccl_device::restore_sh
 }
 
 void CCL_BE_API ccl_device::on_delete(ip_memory_elem_t& ipc_mem, ze_context_handle_t& ctx) {
-    ze_result_t ret = zeMemCloseIpcHandle(ctx, ipc_mem.pointer);
+    // There are cases when we call this function on the same pointers(e.g. there are 2 ipc handles for
+    // the same L0 allocation, so subtracting their offsets results in the same ptr), and the function
+    // can return an error on the second run. Technically, this function is like free() meaning we
+    // can skip the error without throwing an exception without any affect on the execution.
+    // And just in case report the error in the debug log
+    ze_result_t ret = zeMemCloseIpcHandle(ctx, (void*)((char*)ipc_mem.pointer - ipc_mem.offset));
     if (ret != ZE_RESULT_SUCCESS) {
-        CCL_THROW("cannot close ipc mem handle, error: " + native::to_string(ret));
+        LOG_DEBUG("Cannot close ipc mem handle, ignoring error: " + native::to_string(ret));
     }
 }
 

@@ -63,7 +63,7 @@ void context_descr::init(size_t staged_buffer_elem_count,
     ze_device_mem_alloc_desc_t mem_descr = ccl_device::get_default_mem_alloc_desc();
 
     // create total aggregated memory in device context
-    mem_descr.flags = ZE_DEVICE_MEM_ALLOC_FLAG_BIAS_UNCACHED;
+    mem_descr.flags = 0;
     dev_mem_consumer = device.template alloc_memory_ptr<uint8_t>(
         (staged_buffer_elem_count * observer_domain_count) *
             ccl::get_datatype_size(kernel_params.get_datatype()),

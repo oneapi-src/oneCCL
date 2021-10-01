@@ -48,7 +48,7 @@ struct test_operation {
 #ifdef CCL_ENABLE_SYCL
     std::vector<void*> device_send_bufs;
     std::vector<void*> device_recv_bufs;
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 
     std::vector<ccl::event> events;
     ccl::string_class match_id;
@@ -83,17 +83,17 @@ struct test_operation {
     void* get_send_buf(size_t buf_idx) {
 #ifdef CCL_ENABLE_SYCL
         return device_send_bufs[buf_idx];
-#else /* CCL_ENABLE_SYCL */
+#else // CCL_ENABLE_SYCL
         return send_bufs[buf_idx].data();
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
     }
 
     void* get_recv_buf(size_t buf_idx) {
 #ifdef CCL_ENABLE_SYCL
         return device_recv_bufs[buf_idx];
-#else /* CCL_ENABLE_SYCL */
+#else // CCL_ENABLE_SYCL
         return recv_bufs[buf_idx].data();
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
     }
 
     size_t get_check_step(size_t elem_idx) {
@@ -129,6 +129,7 @@ public:
     }
 
     base_test();
+    virtual ~base_test() = default;
 
     void alloc_buffers_base(test_operation<T>& op);
     virtual void alloc_buffers(test_operation<T>& op);
@@ -141,7 +142,7 @@ public:
 #ifdef CCL_ENABLE_SYCL
     void copy_to_device_send_buffers(test_operation<T>& op);
     void copy_from_device_recv_buffers(test_operation<T>& op);
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 
     virtual T calculate_reduce_value(test_operation<T>& op, size_t buf_idx, size_t elem_idx);
 

@@ -13,8 +13,10 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#include "coll/coll_check.hpp"
 #include "common/global/global.hpp"
 #include "common/utils/sync_object.hpp"
+#include "common/utils/sycl_utils.hpp"
 #include "parallelizer/parallelizer.hpp"
 #include "sched/cache/cache.hpp"
 #include "sched/cache/key.hpp"
@@ -23,13 +25,92 @@
 #include "sched/master_sched.hpp"
 #include "sched/queue/queue.hpp"
 
+#ifdef CCL_ENABLE_SYCL
+#include <CL/sycl.hpp>
+#include <CL/sycl/backend/level_zero.hpp>
+
+#ifdef MULTI_GPU_SUPPORT
+#include "sched/entry/gpu/ze_cache.hpp"
+#include "sched/entry/gpu/ze_primitives.hpp"
+#endif // MULTI_GPU_SUPPORT
+#endif // CCL_ENABLE_SYCL
+
+#ifdef CCL_ENABLE_SYCL
+constexpr ze_event_pool_desc_t get_event_pool_desc() {
+    auto desc = ccl::ze::default_event_pool_desc;
+
+    desc.count = 1;
+    desc.flags = ZE_EVENT_POOL_FLAG_HOST_VISIBLE;
+
+    return desc;
+}
+#endif
+
+ccl_master_sched::ccl_master_sched(const ccl_coll_param& coll_param)
+        : ccl_sched_base(coll_param),
+          ccl_request(),
+          partial_scheds() {
+#ifdef ENABLE_DEBUG
+    set_dump_callback([this](std::ostream& out) {
+        dump(out);
+    });
+#endif
+
+#if defined(CCL_ENABLE_SYCL) && defined(MULTI_GPU_SUPPORT)
+    if (ccl::utils::should_use_sycl_output_event(coll_param.stream)) {
+        auto l0_context = coll_param.stream->get_native_stream()
+                              .get_context()
+                              .template get_native<cl::sycl::backend::level_zero>();
+
+        auto pool_desc = get_event_pool_desc();
+
+        ccl::global_data::get().ze_cache->get(0, l0_context, pool_desc, &get_memory().sync_pool);
+
+        ze_event_desc_t event_desc = ccl::ze::default_event_desc;
+        event_desc.signal = ZE_EVENT_SCOPE_FLAG_HOST;
+        event_desc.wait = ZE_EVENT_SCOPE_FLAG_HOST;
+        event_desc.index = 0;
+
+        ZE_CALL(zeEventCreate, (get_memory().sync_pool, &event_desc, &get_memory().sync_event));
+        LOG_DEBUG("created sync event: ", get_memory().sync_event);
+    }
+    else {
+        LOG_DEBUG("skip sync event creation");
+    }
+#endif
+}
+
 ccl_master_sched::~ccl_master_sched() {
     for (auto& part_sched : partial_scheds) {
         part_sched.reset();
     }
+    if (!memory.mr_list.empty())
+        LOG_WARN("memory region list should be empty for master sched");
 
-    CCL_ASSERT(memory.mr_list.empty(), "memory list is not empty");
-    free_buffers();
+#if defined(CCL_ENABLE_SYCL) && defined(MULTI_GPU_SUPPORT)
+    if (ccl::utils::should_use_sycl_output_event(coll_param.stream)) {
+        auto l0_context = coll_param.stream->get_native_stream()
+                              .get_context()
+                              .template get_native<cl::sycl::backend::level_zero>();
+
+        // Sycl event might call wait on destruction meaning that it should be valid at that time
+        // The problem is that the sync event is stored in request, which descrutor is called
+        // after ccl_master_sched, which means its underlying l0 event will be already destroyed
+        // by that time. As a workaround, reset the event, essentially calling its destructor before
+        // destroying the corresponding l0 event
+        set_sync_event(sycl::event());
+
+        LOG_DEBUG("destroying sync event: ", get_memory().sync_event);
+        ZE_CALL(zeEventDestroy, (get_memory().sync_event));
+
+        auto pool_desc = get_event_pool_desc();
+
+        ccl::global_data::get().ze_cache->push(0, l0_context, pool_desc, get_memory().sync_pool);
+    }
+    else {
+        LOG_DEBUG("skip sync event destruction");
+    }
+#endif
 }
 
 void ccl_master_sched::commit(ccl_parallelizer* parallelizer) {
@@ -63,6 +144,19 @@ void ccl_master_sched::commit(ccl_parallelizer* parallelizer) {
               partial_scheds.size());
 }
 
+void ccl_master_sched::reset_state() {
+    reset_request();
+
+#if defined(CCL_ENABLE_SYCL) && defined(MULTI_GPU_SUPPORT)
+    if (ccl::utils::should_use_sycl_output_event(coll_param.stream)) {
+        // Reset sycl event while it's in complete state, similar case to destruction in ~ccl_master_sched
+        set_sync_event(sycl::event());
+        LOG_DEBUG("reset sync event: ", get_memory().sync_event);
+        ZE_CALL(zeEventHostReset, (get_memory().sync_event));
+    }
+#endif
+}
+
 ccl_request* ccl_master_sched::start(ccl_executor* exec, bool reset_sched) {
     /* sanity check the schedule */
     CCL_ASSERT(coll_param.comm);
@@ -72,14 +166,35 @@ ccl_request* ccl_master_sched::start(ccl_executor* exec, bool reset_sched) {
     prepare_partial_scheds();
 
     if (reset_sched) {
-        reset_request();
+        reset_state();
     }
 
     if (ccl::global_data::env().sched_dump) {
         std::stringstream ostream;
         dump(ostream);
-        LOG_INFO(ostream.str());
+        logger.info(ostream.str());
     }
+
+#if defined(CCL_ENABLE_SYCL) && defined(MULTI_GPU_SUPPORT)
+    if (ccl::utils::should_use_sycl_output_event(coll_param.stream)) {
+        LOG_DEBUG("convert L0 event: ",
+                  get_memory().sync_event,
+                  "into a SYCL event and submit a barrier");
+        auto q = coll_param.stream->get_native_stream();
+        auto context = q.get_context();
+#ifdef CCL_ENABLE_SYCL_INTEROP_EVENT
+        auto e = sycl::level_zero::make<sycl::event>(
+            context, get_memory().sync_event, sycl::level_zero::ownership::keep);
+        set_sync_event(e);
+
+        set_native_event(q.submit_barrier({ e }));
+#else
+        CCL_THROW(
+            "interop event functionality is not available with current configuration, please rebuild oneCCL using ENABLE_SYCL_INTEROP_EVENT option"
+            "and a DPCPP compiler that supports that feature");
+#endif
+    }
+#endif
 
     exec->start(this);
     return this;
@@ -90,7 +205,7 @@ ccl_request* ccl_master_sched::reset_request() {
     return this;
 }
 
-void ccl_master_sched::add_partial_sched(ccl_coll_param& coll_param) {
+void ccl_master_sched::add_partial_sched(const ccl_coll_param& coll_param) {
     partial_scheds.emplace_back(std::make_shared<ccl_sched>(coll_param, this));
     partial_scheds.back()->internal_type = internal_type;
 }
@@ -160,70 +275,11 @@ void ccl_master_sched::dump(std::ostream& out) const {
         sched->dump(out);
     }
 
-#ifdef ENABLE_TIMERS
-    ccl_logger::format(
-        out,
-        "\nlife time [us] ",
-        std::setw(5),
-        std::setbase(10),
-        std::chrono::duration_cast<std::chrono::microseconds>(exec_complete_time - exec_start_time)
-            .count(),
-        "\n");
-#endif
-
     ccl_logger::format(out, "--------------------------------\n");
 }
 
 ccl_master_sched::ccl_master_sched_ptr ccl_master_sched::create(const ccl_coll_param& param,
                                                                 const ccl_coll_attr& attr) {
-    /* check contracts at first */
-
-    CCL_THROW_IF_NOT(ccl::global_data::env().atl_transport == ccl_atl_ofi || !(attr.reduction_fn),
-                     "custom reduction is supported for OFI transport only");
-
-    CCL_THROW_IF_NOT(ccl_datatype_storage::is_predefined_datatype(param.dtype.idx()) ||
-                         ccl::global_data::env().atl_transport == ccl_atl_ofi,
-                     "custom datatype is supported for OFI transport only");
-
-    CCL_THROW_IF_NOT((param.ctype != ccl_coll_allreduce && param.ctype != ccl_coll_reduce &&
-                      param.ctype != ccl_coll_sparse_allreduce) ||
-                         ccl_datatype_storage::is_predefined_datatype(param.dtype.idx()) ||
-                         attr.reduction_fn,
-                     "custom datatype requires custom reduction");
-
-    CCL_THROW_IF_NOT(param.ctype == ccl_coll_allreduce ||
-                         !(attr.prologue_fn || attr.epilogue_fn || attr.reduction_fn),
-                     "prologue/epilogue/custom reduction is supported for allreduce only");
-
-    CCL_THROW_IF_NOT(param.ctype == ccl_coll_allgatherv || !(attr.vector_buf),
-                     "vector buffer is supported for allgatherv only");
-
-    if (param.ctype == ccl_coll_sparse_allreduce) {
-        CCL_THROW_IF_NOT(
-            ccl::global_data::env().sparse_allreduce_algo_raw != "mask" || !(attr.reduction_fn),
-            "mask algorithm for sparse_allreduce does not support custom reduction");
-
-        CCL_THROW_IF_NOT(
-            (attr.sparse_allreduce_completion_fn || attr.sparse_allreduce_alloc_fn) &&
-                !(reinterpret_cast<uintptr_t>(attr.sparse_allreduce_completion_fn) &
-                  reinterpret_cast<uintptr_t>(attr.sparse_allreduce_alloc_fn)),
-            "sparse_allreduce requires completion callback only or allocation callback only");
-    }
-
-    if (param.dtype.idx() == ccl::datatype::float16) {
-        CCL_THROW_IF_NOT(ccl::global_data::env().fp16_impl_type != ccl_fp16_no_compiler_support,
-                         "FP16 datatype is requested but not supported by CCL compiler");
-        CCL_THROW_IF_NOT(ccl::global_data::env().fp16_impl_type != ccl_fp16_no_hardware_support,
-                         "FP16 datatype is requested but not supported by hardware");
-    }
-
-    if (param.dtype.idx() == ccl::datatype::bfloat16) {
-        CCL_THROW_IF_NOT(ccl::global_data::env().bf16_impl_type != ccl_bf16_no_compiler_support,
-                         "BF16 datatype is requested but not supported by CCL compiler");
-        CCL_THROW_IF_NOT(ccl::global_data::env().bf16_impl_type != ccl_bf16_no_hardware_support,
-                         "BF16 datatype is requested but not supported by hardware");
-    }
-
     ccl_sched_key key;
     ccl_master_sched_ptr sched;
     bool is_created = false;

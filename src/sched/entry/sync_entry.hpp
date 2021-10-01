@@ -49,7 +49,7 @@ public:
             status = ccl_sched_entry_status_complete;
         }
         else {
-            LOG_TRACE("waiting SYNC entry cnt ", counter);
+            // LOG_TRACE("waiting SYNC entry cnt ", counter);
             ccl_yield(ccl::global_data::env().yield_type);
         }
     }

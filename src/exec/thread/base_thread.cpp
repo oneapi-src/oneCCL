@@ -17,17 +17,18 @@
 #include "common/utils/yield.hpp"
 #include "exec/thread/base_thread.hpp"
 
-ccl::status ccl_base_thread::start(int affinity) {
+ccl::status ccl_base_thread::start(int cpu_affinity, int mem_affinity) {
     LOG_DEBUG(name(), " ", idx);
 
-    start_affinity = affinity;
+    start_cpu_affinity = cpu_affinity;
+    start_mem_affinity = mem_affinity;
 
-    /* start thread with initial affinity */
+    /* start thread with initial CPU affinity */
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     cpu_set_t cpuset;
     __CPU_ZERO_S(sizeof(cpu_set_t), &cpuset);
-    __CPU_SET_S(affinity, sizeof(cpu_set_t), &cpuset);
+    __CPU_SET_S(cpu_affinity, sizeof(cpu_set_t), &cpuset);
     pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset);
 
     int err = pthread_create(&thread, &attr, thread_function, get_this());
@@ -77,29 +78,31 @@ ccl::status ccl_base_thread::stop() {
     return ccl::status::success;
 }
 
-ccl::status ccl_base_thread::set_affinity(int affinity) {
-    LOG_DEBUG(name(), " # ", idx, ", affinity ", affinity);
+ccl::status ccl_base_thread::set_cpu_affinity(int cpu_affinity) {
+    /* unused, cpu affinity is set on thread start */
+
+    LOG_DEBUG(name(), " # ", idx, ", CPU affinity ", cpu_affinity);
 
     int pthread_err;
     cpu_set_t cpuset;
 
     __CPU_ZERO_S(sizeof(cpu_set_t), &cpuset);
-    __CPU_SET_S(affinity, sizeof(cpu_set_t), &cpuset);
+    __CPU_SET_S(cpu_affinity, sizeof(cpu_set_t), &cpuset);
 
     if ((pthread_err = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset)) != 0) {
         LOG_ERROR("pthread_setaffinity_np failed, err ", pthread_err);
         return ccl::status::runtime_error;
     }
 
-    if (get_affinity() != affinity) {
-        LOG_ERROR(name(), " ", idx, " is not pinned ", affinity);
+    if (get_real_cpu_affinity() != cpu_affinity) {
+        LOG_ERROR(name(), " ", idx, " is not pinned to CPU ", cpu_affinity);
         return ccl::status::runtime_error;
     }
 
     return ccl::status::success;
 }
 
-int ccl_base_thread::get_affinity() {
+int ccl_base_thread::get_real_cpu_affinity() {
     int pthread_err;
     int result = CCL_UNDEFINED_CPU_ID;
     cpu_set_t cpuset;
@@ -121,7 +124,7 @@ int ccl_base_thread::get_affinity() {
         }
     }
 
-    CCL_THROW_IF_NOT(result != CCL_UNDEFINED_CPU_ID, "can't retrieve affinity");
+    CCL_THROW_IF_NOT(result != CCL_UNDEFINED_CPU_ID, "can't retrieve CPU affinity");
 
     return result;
 }

@@ -30,7 +30,7 @@ namespace ccl {
 } // namespace ccl
 
 using device_group_split_type_names =
-    utils::enum_to_str<static_cast<typename std::underlying_type<ccl::group_split_type>::type>(
+    ::utils::enum_to_str<static_cast<typename std::underlying_type<ccl::group_split_type>::type>(
         ccl::group_split_type::last_value)>;
 inline std::string to_string(ccl::group_split_type type) {
     return device_group_split_type_names({
@@ -41,7 +41,8 @@ inline std::string to_string(ccl::group_split_type type) {
         .choose(type, "INVALID_VALUE");
 }
 
-using device_topology_type_names = utils::enum_to_str<ccl::device_topology_type::last_class_value>;
+using device_topology_type_names =
+    ::utils::enum_to_str<ccl::device_topology_type::last_class_value>;
 inline std::string to_string(ccl::device_topology_type class_value) {
     return device_topology_type_names({ "RING_CLASS", "A2A_CLASS" })
         .choose(class_value, "INVALID_VALUE");

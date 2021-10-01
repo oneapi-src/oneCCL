@@ -49,6 +49,12 @@ CCL_BE_API generic_device_type<cl_backend_type::dpcpp_sycl>::generic_device_type
     device_index_type id,
     cl::sycl::info::device_type type)
         : device() {
+    if ((std::get<0>(id) == ccl::unused_index_value) &&
+        (std::get<1>(id) == ccl::unused_index_value) &&
+        (std::get<2>(id) == ccl::unused_index_value)) {
+        return;
+    }
+
     LOG_DEBUG("Try to find SYCL device by index: ",
               id,
               ", type: ",

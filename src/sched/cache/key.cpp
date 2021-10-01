@@ -19,6 +19,7 @@
 #include "common/utils/enums.hpp"
 
 #include <cstring>
+#include <numeric>
 
 std::map<ccl_cache_key_type, std::string> ccl_sched_key::key_type_names = {
     std::make_pair(ccl_cache_key_full, "full"),
@@ -45,28 +46,31 @@ void ccl_sched_key::set(const ccl_coll_param& param, const ccl_coll_attr& attr) 
     f.comm = param.comm;
 
     switch (f.ctype) {
-        case ccl_coll_allgatherv: f.count1 = param.send_count; break;
+        case ccl_coll_allgatherv:
+            f.count1 = param.get_send_count();
+            vec1 = param.recv_counts;
+            break;
         case ccl_coll_allreduce:
-            f.count1 = param.count;
+            f.count1 = param.get_send_count();
             f.reduction = param.reduction;
             break;
-        case ccl_coll_alltoall: f.count1 = param.count; break;
+        case ccl_coll_alltoall: f.count1 = param.get_send_count(); break;
         case ccl_coll_alltoallv:
-            f.buf1 = (void*)param.send_counts;
-            f.buf2 = (void*)param.recv_counts;
+            vec1 = param.send_counts;
+            vec2 = param.recv_counts;
             break;
         case ccl_coll_barrier: break;
         case ccl_coll_bcast:
-            f.count1 = param.count;
+            f.count1 = param.get_send_count();
             f.root = param.root;
             break;
         case ccl_coll_reduce:
-            f.count1 = param.count;
+            f.count1 = param.get_send_count();
             f.reduction = param.reduction;
             f.root = param.root;
             break;
         case ccl_coll_reduce_scatter:
-            f.count1 = param.count;
+            f.count1 = param.get_send_count();
             f.reduction = param.reduction;
             break;
         case ccl_coll_sparse_allreduce:
@@ -89,22 +93,26 @@ bool ccl_sched_key::check(const ccl_coll_param& param, const ccl_coll_attr& attr
                param.dtype.idx() == f.dtype || param.comm == f.comm);
 
     switch (f.ctype) {
-        case ccl_coll_allgatherv: result &= (param.send_count == f.count1); break;
-        case ccl_coll_allreduce:
-            result &= (param.count == f.count1 && param.reduction == f.reduction);
+        case ccl_coll_allgatherv:
+            result &= (param.get_send_count() == f.count1 && param.recv_counts == vec1);
             break;
-        case ccl_coll_alltoall: result &= (param.count == f.count1); break;
+        case ccl_coll_allreduce:
+            result &= (param.get_send_count() == f.count1 && param.reduction == f.reduction);
+            break;
+        case ccl_coll_alltoall: result &= (param.get_send_count() == f.count1); break;
         case ccl_coll_alltoallv:
-            result &= (param.send_counts == f.buf1 && param.recv_counts == f.buf2);
+            result &= (param.send_counts == vec1 && param.recv_counts == vec2);
             break;
         case ccl_coll_barrier: break;
-        case ccl_coll_bcast: result &= (param.count == f.count1 && param.root == f.root); break;
+        case ccl_coll_bcast:
+            result &= (param.get_send_count() == f.count1 && param.root == f.root);
+            break;
         case ccl_coll_reduce:
-            result &=
-                (param.count == f.count1 && param.reduction == f.reduction && param.root == f.root);
+            result &= (param.get_send_count() == f.count1 && param.reduction == f.reduction &&
+                       param.root == f.root);
             break;
         case ccl_coll_reduce_scatter:
-            result &= (param.count == f.count1 && param.reduction == f.reduction);
+            result &= (param.get_send_count() == f.count1 && param.reduction == f.reduction);
             break;
         case ccl_coll_sparse_allreduce:
             result &= (param.sparse_param.send_ind_count == f.count1 &&
@@ -120,9 +128,13 @@ bool ccl_sched_key::check(const ccl_coll_param& param, const ccl_coll_attr& attr
 }
 
 bool ccl_sched_key::operator==(const ccl_sched_key& k) const {
-    bool are_fields_equal = (ccl::global_data::env().cache_key_type == ccl_cache_key_full)
-                                ? !memcmp(&f, &(k.f), sizeof(ccl_sched_key_inner_fields))
-                                : 1;
+    bool are_fields_equal = 1;
+    if (ccl::global_data::env().cache_key_type == ccl_cache_key_full) {
+        are_fields_equal = !memcmp(&f, &(k.f), sizeof(ccl_sched_key_inner_fields));
+        are_fields_equal &= (vec1 == k.vec1) ? 1 : 0;
+        are_fields_equal &= (vec2 == k.vec2) ? 1 : 0;
+    }
+
     bool are_keys_equal = are_fields_equal && !match_id.compare(k.match_id);
 
     LOG_DEBUG("are_keys_equal ", are_keys_equal);
@@ -133,7 +145,7 @@ bool ccl_sched_key::operator==(const ccl_sched_key& k) const {
 }
 
 void ccl_sched_key::print() const {
-    LOG_DEBUG("ctype ",
+    LOG_DEBUG("coll ",
               ccl_coll_type_to_str(f.ctype),
               ", dtype ",
               ccl::global_data::get().dtypes->name(f.dtype),
@@ -163,6 +175,10 @@ void ccl_sched_key::print() const {
               (void*)f.epilogue_fn,
               ", reduction_fn ",
               (void*)f.reduction_fn,
+              ", vec1.size ",
+              vec1.size(),
+              ", vec2.size ",
+              vec2.size(),
               ", match_id ",
               match_id);
 }
@@ -173,12 +189,16 @@ size_t ccl_sched_key_hasher::operator()(const ccl_sched_key& k) const {
 
     size_t hash_value = string_hasher(k.match_id);
     if (ccl::global_data::env().cache_key_type == ccl_cache_key_full) {
+        /* TODO: improve hashing for vec fields to reduce probability of collisions
+           e.g. sum(a[idx]*(idx+1)) */
+        size_t vec1_sum = std::accumulate(k.vec1.begin(), k.vec1.end(), 0);
+        size_t vec2_sum = std::accumulate(k.vec2.begin(), k.vec2.end(), 0);
         hash_value += k.f.ctype + utils::enum_to_underlying(k.f.dtype) +
                       utils::enum_to_underlying(k.f.itype) +
                       utils::enum_to_underlying(k.f.reduction) + k.f.count1 + k.f.count2 +
                       k.f.root + (size_t)k.f.buf1 + (size_t)k.f.buf2 + (size_t)k.f.count3 +
                       (size_t)k.f.count4 + (size_t)k.f.comm + (size_t)k.f.prologue_fn +
-                      (size_t)k.f.epilogue_fn + (size_t)k.f.reduction_fn;
+                      (size_t)k.f.epilogue_fn + (size_t)k.f.reduction_fn + vec1_sum + vec2_sum;
     }
 
     const_cast<ccl_sched_key&>(k).set_hasher_result(hash_value);

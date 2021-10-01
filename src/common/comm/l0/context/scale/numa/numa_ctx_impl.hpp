@@ -27,7 +27,7 @@ template <TEMPLATE_DECL_ARG>
 template <ccl::device_topology_type class_id, class device_t>
 void numa_ctx<TEMPLATE_DEF_ARG>::register_observer_impl(size_t rank_addr,
                                                         observer_t<device_t>* observer_ptr) {
-    LOG_INFO(
+    LOG_DEBUG(
         "device rank addr: ", std::to_string(rank_addr), ", device: ", observer_ptr->to_string());
     observer::container_t<observer_t<device_t>>& container =
         scaling_ctx_base_t::template get_types_container<observer_t<device_t>, class_id>(

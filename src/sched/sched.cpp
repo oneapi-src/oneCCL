@@ -16,7 +16,6 @@
 #include "common/global/global.hpp"
 #include "common/utils/sync_object.hpp"
 #include "parallelizer/parallelizer.hpp"
-#include "sched/entry/factory/entry_factory.hpp"
 #include "sched/extra_sched.hpp"
 #include "sched/queue/queue.hpp"
 #include "sched/sched.hpp"
@@ -34,35 +33,6 @@ ccl_sched::~ccl_sched() {
     if (finalize_fn) {
         finalize_fn(this, finalize_fn_ctx);
     }
-
-    if (!memory.mr_list.empty()) {
-        /* perform deregistration in worker thread */
-        {
-            ccl_coll_param param{};
-            param.ctype = ccl_coll_internal;
-            param.comm = coll_param.comm;
-            std::unique_ptr<ccl_extra_sched> dereg_sched(new ccl_extra_sched(param, sched_id));
-            entry_factory::make_entry<deregister_entry>(
-                dereg_sched.get(), memory.mr_list, param.comm);
-            if (ccl::global_data::get().is_worker_thread ||
-                !ccl::global_data::env().worker_offload) {
-                dereg_sched->do_progress();
-            }
-            else {
-                /* release ownership, because ccl_wait_impl use delete inside */
-                ccl_wait_impl<ccl_extra_sched>(ccl::global_data::get().executor.get(),
-                                               start_subsched(dereg_sched.release()));
-            }
-        }
-
-        if (!memory.mr_list.empty()) {
-            LOG_ERROR("memory list is not empty");
-        }
-
-        CCL_ASSERT(memory.mr_list.empty());
-    }
-
-    free_buffers();
 }
 
 void ccl_sched::do_progress() {
@@ -125,13 +95,37 @@ bool ccl_sched::is_strict_order_satisfied() {
 }
 
 void ccl_sched::complete() {
-#ifdef ENABLE_TIMERS
-    exec_complete_time = timer_type::now();
-    if (ccl::global_data::env().sched_dump) {
-        dump(std::cout);
-    }
-#endif
     CCL_ASSERT(req, "ccl_sched must have req");
+
+    if (ccl::global_data::env().sched_profile) {
+        timer.stop();
+        if (entries.size() > 0) {
+            std::stringstream ss;
+            ss << "\ncoll:";
+
+            ccl_coll_param* profile_param = &(static_cast<ccl_master_sched*>(req)->coll_param);
+            ss << ccl_coll_type_to_str(profile_param->ctype);
+
+            /* TODO: tmp check, replace ccl_coll_entry_param by ccl_coll_param */
+            if (!profile_param->send_counts.empty()) {
+                ss << " count:" << profile_param->get_send_count();
+            }
+
+            ss << " time(uses):\ntotal: " << timer.str() << "\n";
+            for (size_t idx = 0; idx < entries.size(); ++idx) {
+                ss << "[" << idx << "] " << entries[idx]->name() << ": "
+                   << entries[idx]->timer.str() << "\n";
+            }
+            ss << "-----------------------------";
+            logger.info(ss.str());
+        }
+    }
+
+    if (!coll_attr.to_cache) {
+        /* don't wait sched dtor to free memory */
+        free_memory();
+    }
+
     req->complete();
 }
 
@@ -139,10 +133,9 @@ void ccl_sched::renew(bool need_update_id /* = false*/) {
     if (need_update_id) {
         update_id();
     }
-#ifdef ENABLE_TIMERS
-    exec_start_time = timer_type::now();
-    exec_complete_time = exec_start_time;
-#endif
+    if (ccl::global_data::env().sched_profile) {
+        timer.start();
+    }
     start_idx = 0;
     for (size_t idx = 0; idx < entries.size(); idx++) {
         entries[idx].get()->reset(idx);
@@ -171,12 +164,13 @@ ccl_request* ccl_sched::start_subsched(ccl_extra_sched* subsched) {
 
     ccl::global_data::get().executor->update_wait_condition(
         queue->get_idx(), ccl_base_thread::wait_data::update_type::increment, 1);
+
     queue->add(subsched);
 
     if (ccl::global_data::env().sched_dump) {
         std::stringstream ostream;
         subsched->dump(ostream);
-        LOG_INFO(ostream.str());
+        logger.info(ostream.str());
     }
 
     return subsched->req;

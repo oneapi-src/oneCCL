@@ -43,7 +43,7 @@ bool flow_control::take_credit() {
     if (credits) {
         credits--;
         CCL_THROW_IF_NOT(
-            credits >= 0, "unexpected credits ", credits, ", max_credits ", max_credits);
+            credits <= max_credits, "unexpected credits ", credits, ", max_credits ", max_credits);
         min_credits = std::min(min_credits, credits);
         return true;
     }

@@ -36,14 +36,22 @@ enum ccl_selection_border_type {
 };
 
 struct ccl_selector_param {
-    ccl_coll_type ctype;
-    size_t count;
-    ccl_datatype dtype;
-    ccl_comm* comm;
+    ccl_coll_type ctype = ccl_coll_last_value;
+    size_t count = 0;
+    ccl_datatype dtype = ccl_datatype_int8;
+    ccl_comm* comm = nullptr;
+    ccl_stream* stream = nullptr;
+    void* buf = nullptr;
 
-    const size_t* send_counts;
-    const size_t* recv_counts;
-    int vector_buf;
+    const size_t* send_counts = nullptr;
+    const size_t* recv_counts = nullptr;
+    int is_vector_buf = 0;
+
+#ifdef CCL_ENABLE_SYCL
+    int is_sycl_buf = 0;
+#endif // CCL_ENABLE_SYCL
+
+    ccl_coll_algo hint_algo = {};
 
     /* tmp fields to avoid selection of algorithms which don't support all coalesce modes or alloc_fn */
     ccl::sparse_coalesce_mode sparse_coalesce_mode;
@@ -73,7 +81,6 @@ using ccl_selection_table_iter_t = typename ccl_selection_table_t<algo_group_typ
                     size_t left, \
                     size_t right, \
                     algo_group_type algo_id); \
-        bool is_direct(const ccl_selector_param& param) const; \
     };
 
 #define CCL_SELECTION_DECLARE_ALGO_SELECTOR(coll_id, algo_group_type) \

@@ -1,12 +1,12 @@
 /*
  Copyright 2016-2020 Intel Corporation
-
+ 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
  You may obtain a copy of the License at
-
+ 
      http://www.apache.org/licenses/LICENSE-2.0
-
+ 
  Unless required by applicable law or agreed to in writing, software
  distributed under the License is distributed on an "AS IS" BASIS,
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -68,4 +68,4 @@ static inline size_t ring_reduce_scatter_tmp_buffer_size(size_t elems_count, siz
     return 2 * ring_reduce_scatter_get_segment_size(elems_count, comm_size);
 }
 
-#endif /* SHARED_H */
+#endif // SHARED_H

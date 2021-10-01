@@ -37,8 +37,17 @@ std::map<ccl_priority_mode, std::string> env_data::priority_mode_names = {
 };
 
 std::map<ccl_atl_transport, std::string> env_data::atl_transport_names = {
-    std::make_pair(ccl_atl_ofi, "ofi"),
+    std::make_pair(ccl_atl_ofi, "ofi")
+#ifdef CCL_ENABLE_MPI
+        ,
     std::make_pair(ccl_atl_mpi, "mpi")
+#endif // CCL_ENABLE_MPI
+};
+
+std::map<ccl_atl_send_proxy, std::string> env_data::atl_send_proxy_names = {
+    std::make_pair(ccl_atl_send_proxy_none, "none"),
+    std::make_pair(ccl_atl_send_proxy_regular, "regular"),
+    std::make_pair(ccl_atl_send_proxy_usm, "usm")
 };
 
 std::map<ccl_staging_buffer, std::string> env_data::staging_buffer_names = {
@@ -52,22 +61,35 @@ std::map<atl_mnic_t, std::string> env_data::mnic_type_names = {
     std::make_pair(ATL_MNIC_GLOBAL, "global")
 };
 
+std::map<ccl_ze_copy_engine_mode, std::string> env_data::ze_copy_engine_names = {
+    std::make_pair(ccl_ze_copy_engine_none, "none"),
+    std::make_pair(ccl_ze_copy_engine_main, "main"),
+    std::make_pair(ccl_ze_copy_engine_link, "link")
+};
+
 env_data::env_data()
         : was_printed(false),
 
           log_level(ccl_log_level::warn),
+          queue_dump(0),
           sched_dump(0),
+          sched_profile(0),
 
           fw_type(ccl_framework_none),
 
           worker_count(1),
           worker_offload(1),
           worker_wait(1),
-
+#ifdef CCL_ENABLE_MPI
           atl_transport(ccl_atl_mpi),
+#else // CCL_ENABLE_MPI
+          atl_transport(ccl_atl_ofi),
+#endif // CCL_ENABLE_MPI
           enable_shm(0),
           enable_rma(0),
-          enable_device_buf(0),
+          enable_hmem(0),
+          atl_send_proxy(ccl_atl_send_proxy_none),
+          enable_atl_cache(1),
           enable_sync_coll(0),
           enable_extra_ep(0),
 
@@ -88,9 +110,15 @@ env_data::env_data()
           max_short_size(0),
           bcast_part_count(CCL_ENV_SIZET_NOT_SPECIFIED),
           cache_key_type(ccl_cache_key_match_id),
+#ifdef CCL_ENABLE_SYCL
+          enable_cache_flush(1),
+#else // CCL_ENABLE_SYCL
           enable_cache_flush(0),
+#endif // CCL_ENABLE_SYCL
+          enable_buffer_cache(1),
           enable_strict_order(0),
           staging_buffer(ccl_staging_usm),
+          enable_op_sync(0),
 
           chunk_count(1),
           min_chunk_size(65536),
@@ -105,18 +133,29 @@ env_data::env_data()
           alltoall_scatter_max_ops(CCL_ENV_SIZET_NOT_SPECIFIED),
           alltoall_scatter_plain(0),
 
-          enable_comm_kernels(0),
-          comm_kernels_path(),
-          comm_kernels_debug(0),
-          gpu_thread_count(CCL_ENV_SIZET_NOT_SPECIFIED),
+          kernel_path(),
+          kernel_debug(0),
+          enable_kernel_cache(1),
+          kernel_group_size(CCL_ENV_SIZET_NOT_SPECIFIED),
+          kernel_group_count(CCL_ENV_SIZET_NOT_SPECIFIED),
+          enable_kernel_sync(1),
+          kernel_1s_lead(0),
+          enable_kernel_1s_copy_ops(0),
+          enable_kernel_1s_ipc_wa(0),
+          enable_kernel_output_event(0),
+          ze_serialize_mode(0),
+          ze_copy_engine(ccl_ze_copy_engine_none),
 
           bf16_impl_type(ccl_bf16_no_compiler_support),
-          fp16_impl_type(ccl_fp16_no_compiler_support) {}
+          fp16_impl_type(ccl_fp16_no_compiler_support) {
+}
 
 void env_data::parse() {
     env_2_enum(CCL_LOG_LEVEL, ccl_logger::level_names, log_level);
     ccl_logger::set_log_level(log_level);
+    env_2_type(CCL_QUEUE_DUMP, queue_dump);
     env_2_type(CCL_SCHED_DUMP, sched_dump);
+    env_2_type(CCL_SCHED_PROFILE, sched_profile);
 
     if (fw_type == ccl_framework_none) {
         /* try to automatically detect framework */
@@ -149,11 +188,17 @@ void env_data::parse() {
     env_2_atl_transport();
     env_2_type(CCL_ATL_SHM, enable_shm);
     env_2_type(CCL_ATL_RMA, enable_rma);
-    env_2_type(CCL_ATL_DEVICE_BUF, enable_device_buf);
+    env_2_type(CCL_ATL_HMEM, enable_hmem);
+    if (atl_transport == ccl_atl_mpi && enable_hmem) {
+        worker_count = 1;
+    }
+    env_2_enum(CCL_ATL_SEND_PROXY, atl_send_proxy_names, atl_send_proxy);
+    env_2_type(CCL_ATL_CACHE, enable_atl_cache);
     env_2_type(CCL_ATL_SYNC_COLL, enable_sync_coll);
     env_2_type(CCL_ATL_EXTRA_EP, enable_extra_ep);
 
     env_2_enum(CCL_MNIC, mnic_type_names, mnic_type);
+    env_2_type(CCL_MNIC_NAME, mnic_name_raw);
     env_2_type(CCL_MNIC_COUNT, mnic_count);
     if (mnic_count == CCL_ENV_SIZET_NOT_SPECIFIED) {
         mnic_count = worker_count;
@@ -204,8 +249,14 @@ void env_data::parse() {
     env_2_type(CCL_BCAST_PART_COUNT, (size_t&)bcast_part_count);
     env_2_enum(CCL_CACHE_KEY, ccl_sched_key::key_type_names, cache_key_type);
     env_2_type(CCL_CACHE_FLUSH, enable_cache_flush);
+    env_2_type(CCL_BUFFER_CACHE, enable_buffer_cache);
     env_2_type(CCL_STRICT_ORDER, enable_strict_order);
+    if (enable_unordered_coll && enable_strict_order) {
+        LOG_INFO("unordered collectives are requested, disable strict order");
+        enable_strict_order = 0;
+    }
     env_2_enum(CCL_STAGING_BUFFER, staging_buffer_names, staging_buffer);
+    env_2_type(CCL_OP_SYNC, enable_op_sync);
 
     env_2_type(CCL_CHUNK_COUNT, chunk_count);
     CCL_THROW_IF_NOT(chunk_count >= 1, "incorrect ", CCL_CHUNK_COUNT, " ", chunk_count);
@@ -231,17 +282,24 @@ void env_data::parse() {
     env_2_type(CCL_ALLTOALL_SCATTER_MAX_OPS, (size_t&)alltoall_scatter_max_ops);
     env_2_type(CCL_ALLTOALL_SCATTER_PLAIN, alltoall_scatter_plain);
 
-    env_2_type(CCL_COMM_KERNELS, enable_comm_kernels);
-    if (enable_comm_kernels) {
-        env_2_type(CCL_COMM_KERNELS_PATH, comm_kernels_path);
-        if (comm_kernels_path.empty()) {
-            std::string ccl_root = getenv("CCL_ROOT");
-            CCL_THROW_IF_NOT(!ccl_root.empty(), "incorrect comm kernels path, CCL_ROOT not found!");
-            comm_kernels_path = ccl_root + "/lib/kernels/";
-        }
-        env_2_type(CCL_COMM_KERNELS_DEBUG, comm_kernels_debug);
+    env_2_type(CCL_KERNEL_PATH, kernel_path);
+    if (kernel_path.empty()) {
+        std::string ccl_root = getenv("CCL_ROOT");
+        CCL_THROW_IF_NOT(!ccl_root.empty(), "incorrect comm kernels path, CCL_ROOT not found!");
+        kernel_path = ccl_root + "/lib/kernels/";
     }
-    env_2_type(CCL_GPU_THREAD_COUNT, gpu_thread_count);
+
+    env_2_type(CCL_KERNEL_DEBUG, kernel_debug);
+    env_2_type(CCL_KERNEL_CACHE, enable_kernel_cache);
+    env_2_type(CCL_KERNEL_GROUP_SIZE, kernel_group_size);
+    env_2_type(CCL_KERNEL_GROUP_COUNT, kernel_group_count);
+    env_2_type(CCL_KERNEL_SYNC, enable_kernel_sync);
+    env_2_type(CCL_KERNEL_1S_LEAD, kernel_1s_lead);
+    env_2_type(CCL_KERNEL_1S_USE_COPY_OPS, enable_kernel_1s_copy_ops);
+    env_2_type(CCL_KERNEL_1S_IPC_WA, enable_kernel_1s_ipc_wa);
+    env_2_type(CCL_KERNEL_OUTPUT_EVENT, enable_kernel_output_event);
+    env_2_type(CCL_ZE_SERIALIZE, ze_serialize_mode);
+    env_2_enum(CCL_ZE_COPY_ENGINE, ze_copy_engine_names, ze_copy_engine);
 
     auto bf16_impl_types = ccl_bf16_get_impl_types();
     ccl_bf16_impl_type bf16_env_impl_type;
@@ -276,39 +334,42 @@ void env_data::print(int rank) {
     else
         was_printed = true;
 
+    auto& global_data = ccl::global_data::get();
+
     if (rank == 0) {
         auto version = utils::get_library_version();
         LOG_INFO("library version: ", version.full);
         LOG_INFO("specification version: ", ONECCL_SPEC_VERSION);
 #ifdef CCL_ENABLE_SYCL
         LOG_INFO("compute backend: ", version.cl_backend_name);
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 
 #ifdef ENABLE_DEBUG
         const char* build_mode = "debug";
-#else /* ENABLE_DEBUG */
+#else // ENABLE_DEBUG
         const char* build_mode = "release";
-#endif /* ENABLE_DEBUG */
+#endif // ENABLE_DEBUG
         LOG_INFO("build mode: ", build_mode);
         LOG_INFO("C compiler: ", CCL_C_COMPILER);
         LOG_INFO("C++ compiler: ", CCL_CXX_COMPILER);
+        LOG_INFO(global_data.hwloc_wrapper->to_string());
     }
 
-    auto& global_data = ccl::global_data::get();
     auto local_proc_idx = global_data.executor->get_local_proc_idx();
     auto local_proc_count = global_data.executor->get_local_proc_count();
 
-    if (rank < (int)local_proc_count) {
+    if (rank < local_proc_count) {
         for (size_t w_idx = 0; w_idx < worker_count; w_idx++) {
-            LOG_INFO(CCL_WORKER_AFFINITY,
-                     ": local process [",
+            LOG_INFO("local process [",
                      local_proc_idx,
                      ":",
                      local_proc_count,
                      "]: worker: ",
                      w_idx,
-                     ", core: ",
-                     worker_affinity[local_proc_idx * worker_count + w_idx]);
+                     ", cpu: ",
+                     worker_affinity[local_proc_idx * worker_count + w_idx],
+                     ", numa: ",
+                     worker_mem_affinity[local_proc_idx * worker_count + w_idx]);
         }
     }
 
@@ -320,18 +381,24 @@ void env_data::print(int rank) {
     LOG_INFO(CCL_WORKER_WAIT, ": ", worker_wait);
 
     LOG_INFO(CCL_LOG_LEVEL, ": ", str_by_enum(ccl_logger::level_names, log_level));
+    LOG_INFO(CCL_QUEUE_DUMP, ": ", queue_dump);
     LOG_INFO(CCL_SCHED_DUMP, ": ", sched_dump);
+    LOG_INFO(CCL_SCHED_PROFILE, ": ", sched_profile);
 
     LOG_INFO(CCL_FRAMEWORK, ": ", str_by_enum(ccl_framework_type_names, fw_type));
 
     LOG_INFO(CCL_ATL_TRANSPORT, ": ", str_by_enum(atl_transport_names, atl_transport));
     LOG_INFO(CCL_ATL_SHM, ": ", enable_shm);
     LOG_INFO(CCL_ATL_RMA, ": ", enable_rma);
-    LOG_INFO(CCL_ATL_DEVICE_BUF, ": ", enable_device_buf);
+    LOG_INFO(CCL_ATL_HMEM, ": ", enable_hmem);
+    LOG_INFO(CCL_ATL_SEND_PROXY, ": ", str_by_enum(atl_send_proxy_names, atl_send_proxy));
+    LOG_INFO(CCL_ATL_CACHE, ": ", enable_atl_cache);
     LOG_DEBUG(CCL_ATL_SYNC_COLL, ": ", enable_sync_coll);
     LOG_DEBUG(CCL_ATL_EXTRA_EP, ": ", enable_extra_ep);
 
     LOG_INFO(CCL_MNIC, ": ", str_by_enum(mnic_type_names, mnic_type));
+    LOG_INFO(
+        CCL_MNIC_NAME, ": ", (mnic_name_raw.length()) ? mnic_name_raw : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_MNIC_COUNT, ": ", mnic_count);
 
     LOG_INFO(CCL_ALLGATHERV,
@@ -379,8 +446,10 @@ void env_data::print(int rank) {
                                                                : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_CACHE_KEY, ": ", str_by_enum(ccl_sched_key::key_type_names, cache_key_type));
     LOG_INFO(CCL_CACHE_FLUSH, ": ", enable_cache_flush);
+    LOG_INFO(CCL_BUFFER_CACHE, ": ", enable_buffer_cache);
     LOG_INFO(CCL_STRICT_ORDER, ": ", enable_strict_order);
     LOG_INFO(CCL_STAGING_BUFFER, ": ", str_by_enum(staging_buffer_names, staging_buffer));
+    LOG_INFO(CCL_OP_SYNC, ": ", enable_op_sync);
 
     LOG_INFO(CCL_CHUNK_COUNT, ": ", chunk_count);
     LOG_INFO(CCL_MIN_CHUNK_SIZE, ": ", min_chunk_size);
@@ -404,16 +473,27 @@ void env_data::print(int rank) {
     LOG_INFO(CCL_ALLTOALL_SCATTER_PLAIN, ": ", alltoall_scatter_plain);
 
 #ifdef CCL_ENABLE_SYCL
-    LOG_INFO(CCL_COMM_KERNELS, ": ", enable_comm_kernels);
-    LOG_INFO(CCL_COMM_KERNELS_PATH,
+    LOG_INFO(
+        CCL_KERNEL_PATH, ": ", (!kernel_path.empty()) ? kernel_path : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_KERNEL_DEBUG, ": ", kernel_debug);
+    LOG_INFO(CCL_KERNEL_CACHE, ": ", enable_kernel_cache);
+    LOG_INFO(CCL_KERNEL_GROUP_SIZE,
              ": ",
-             (!comm_kernels_path.empty()) ? comm_kernels_path : CCL_ENV_STR_NOT_SPECIFIED);
-    LOG_INFO(CCL_COMM_KERNELS_DEBUG, ": ", comm_kernels_debug);
-    LOG_INFO(CCL_GPU_THREAD_COUNT,
+             (kernel_group_size != CCL_ENV_SIZET_NOT_SPECIFIED) ? std::to_string(kernel_group_size)
+                                                                : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_KERNEL_GROUP_COUNT,
              ": ",
-             (gpu_thread_count != CCL_ENV_SIZET_NOT_SPECIFIED) ? std::to_string(gpu_thread_count)
-                                                               : CCL_ENV_STR_NOT_SPECIFIED);
-#endif /* CCL_ENABLE_SYCL  */
+             (kernel_group_count != CCL_ENV_SIZET_NOT_SPECIFIED)
+                 ? std::to_string(kernel_group_count)
+                 : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_KERNEL_SYNC, ": ", enable_kernel_sync);
+    LOG_INFO(CCL_KERNEL_1S_LEAD, ": ", kernel_1s_lead);
+    LOG_INFO(CCL_KERNEL_1S_USE_COPY_OPS, ": ", enable_kernel_1s_copy_ops);
+    LOG_INFO(CCL_KERNEL_1S_IPC_WA, ": ", enable_kernel_1s_ipc_wa);
+    LOG_INFO(CCL_KERNEL_OUTPUT_EVENT, ": ", enable_kernel_output_event);
+    LOG_INFO(CCL_ZE_SERIALIZE, ": ", ze_serialize_mode);
+    LOG_INFO(CCL_ZE_COPY_ENGINE, ": ", str_by_enum(ze_copy_engine_names, ze_copy_engine));
+#endif // CCL_ENABLE_SYCL
 
     LOG_INFO(CCL_BF16, ": ", str_by_enum(bf16_impl_names, bf16_impl_type));
     LOG_INFO(CCL_FP16, ": ", str_by_enum(fp16_impl_names, fp16_impl_type));
@@ -442,7 +522,7 @@ void env_data::set_internal_env() {
     }
 }
 
-int env_data::env_2_worker_affinity_auto(size_t local_proc_idx, size_t workers_per_process) {
+int env_data::env_2_worker_affinity_auto(int local_proc_idx, size_t workers_per_process) {
     char* available_cores = std::getenv(I_MPI_AVAILABLE_CORES_ENV);
     CCL_THROW_IF_NOT(available_cores && strlen(available_cores) != 0,
                      "auto pinning requires ",
@@ -497,46 +577,104 @@ int env_data::env_2_worker_affinity_auto(size_t local_proc_idx, size_t workers_p
     return 1;
 }
 
-int env_data::parse_core_id(const std::string& core_id_str, size_t& result) {
+int env_data::parse_number(const std::string& number_str, size_t& result) {
     char* end_ptr;
-    const char* core_id_str_ptr = core_id_str.c_str();
+    const char* number_str_ptr = number_str.c_str();
 
     errno = 0;
-    auto core_id = std::strtol(core_id_str_ptr, &end_ptr, 10);
+    auto core_id = std::strtol(number_str_ptr, &end_ptr, 10);
 
     if ((errno == ERANGE && (core_id == LONG_MAX || core_id == LONG_MIN)) ||
         (errno != 0 && core_id == 0)) {
-        LOG_ERROR("core id value is invalid in string: ", core_id_str);
+        LOG_ERROR("core id value is invalid in string: ", number_str);
         return 0;
     }
-    if (end_ptr == core_id_str_ptr) {
-        LOG_ERROR("no digits were found in string: ", core_id_str);
+    if (end_ptr == number_str_ptr) {
+        LOG_ERROR("no digits were found in string: ", number_str);
         return 0;
     }
     if (core_id < 0) {
-        LOG_ERROR(
-            "core id cannot be less than zero but got ", core_id, " in string: ", core_id_str);
+        LOG_ERROR("core id cannot be less than zero but got ", core_id, " in string: ", number_str);
         return 0;
     }
     result = core_id;
     return 1;
 }
 
-int env_data::env_2_worker_affinity(size_t local_proc_idx, size_t local_proc_count) {
+int env_data::parse_affinity(const std::string& input,
+                             std::vector<ssize_t>& output,
+                             size_t expected_output_size) {
+    size_t idx;
+    char* range_str;
+
+    /* create copy of input string because it will be modified in strsep */
+    std::string input_copy(input.c_str());
+    char* input_str = (char*)input_copy.c_str();
+
+    output.clear();
+
+    while (input_str) {
+        range_str = strsep(&input_str, ",");
+        if (!range_str) {
+            break;
+        }
+
+        auto range = tokenize<std::vector<std::string>>(std::string(range_str), '-');
+
+        if ((range.size() != 2) && (range.size() != 1)) {
+            LOG_ERROR(
+                "unexpected format in input: ",
+                input,
+                ", specify range values using <first_value>-<last_value> or single value using <value>");
+            return 0;
+        }
+
+        if (range.size() == 1) {
+            /* to unify logic below */
+            range.push_back(*range.begin());
+        }
+
+        CCL_ASSERT(range.size() == 2, "unexpected number of values in range");
+
+        size_t first_value, last_value;
+        if (!parse_number(range[0], first_value) || !parse_number(range[1], last_value)) {
+            return 0;
+        }
+
+        if (first_value > last_value) {
+            LOG_ERROR("unexpected first and last values in range: ",
+                      range_str,
+                      ", first value should be less or equal to last value");
+            return 0;
+        }
+
+        for (idx = first_value; idx <= last_value; idx++) {
+            output.push_back(idx);
+        }
+    }
+
+    if (output.size() < expected_output_size) {
+        LOG_ERROR("unexpected number of values in input: ",
+                  input,
+                  ", expected at least ",
+                  expected_output_size,
+                  " values");
+        return 0;
+    }
+
+    return 1;
+}
+
+int env_data::env_2_worker_affinity(int local_proc_idx, int local_proc_count) {
     CCL_THROW_IF_NOT(local_proc_count > 0);
 
     size_t idx;
-    std::unique_ptr<char> affinity_copy;
-    char* affinity_to_parse = getenv(CCL_WORKER_AFFINITY);
-    char* core_range_str;
-    char* tmp;
+    char* env_to_parse = getenv(CCL_WORKER_AFFINITY);
     size_t system_core_count;
-
     size_t affinity_size = local_proc_count * worker_count;
 
-    if (!affinity_to_parse || (strlen(affinity_to_parse) == 0) ||
-        (strcmp(affinity_to_parse, "auto") == 0)) {
-        worker_affinity.assign(affinity_size, 0);
+    if (!env_to_parse || (strlen(env_to_parse) == 0) || (strcmp(env_to_parse, "auto") == 0)) {
+        worker_affinity.assign(affinity_size, CCL_UNDEFINED_CPU_ID);
         if (std::getenv(I_MPI_AVAILABLE_CORES_ENV)) {
             /* generate auto affinity based on IMPI process pinning */
             return env_2_worker_affinity_auto(local_proc_idx, worker_count);
@@ -556,63 +694,37 @@ int env_data::env_2_worker_affinity(size_t local_proc_idx, size_t local_proc_cou
         }
     }
 
-    /* create copy of original buffer because it will be modified in strsep */
-    size_t affinity_len = strlen(affinity_to_parse);
-    affinity_copy =
-        std::unique_ptr<char>(static_cast<char*>(CCL_CALLOC(affinity_len + 1, "affinity_copy")));
-    CCL_MEMCPY(affinity_copy.get(), affinity_to_parse, affinity_len);
-    tmp = affinity_copy.get();
+    CCL_THROW_IF_NOT(parse_affinity(env_to_parse, worker_affinity, affinity_size),
+                     "failed to parse worker affinity");
 
-    while (tmp) {
-        core_range_str = strsep(&tmp, ",");
-        if (!core_range_str) {
-            break;
+    return 1;
+}
+
+int env_data::env_2_worker_mem_affinity() {
+    CCL_THROW_IF_NOT(worker_affinity.size() > 0);
+
+    size_t idx;
+    char* env_to_parse = getenv(CCL_WORKER_MEM_AFFINITY);
+    size_t affinity_size = worker_affinity.size();
+
+    if (!env_to_parse || (strlen(env_to_parse) == 0) || (strcmp(env_to_parse, "auto") == 0)) {
+        worker_mem_affinity.assign(affinity_size, CCL_UNDEFINED_NUMA_NODE);
+        /* generate list of default numa nodes, local wrt worker cores */
+        for (idx = 0; idx < affinity_size; idx++) {
+            worker_mem_affinity[idx] =
+                ccl::global_data::get().hwloc_wrapper->get_numa_node_by_cpu(worker_affinity[idx]);
         }
-
-        auto core_range = tokenize<std::vector<std::string>>(std::string(core_range_str), '-');
-
-        if ((core_range.size() != 2) && (core_range.size() != 1)) {
-            LOG_ERROR(
-                "unexpected format in affinity: ",
-                affinity_to_parse,
-                ", specify core range using <first_core>-<last_core> or single core using <core>");
-            return 0;
-        }
-
-        if (core_range.size() == 1) {
-            /* to unify logic below */
-            core_range.push_back(*core_range.begin());
-        }
-
-        CCL_ASSERT(core_range.size() == 2, "unexpected number of cores in range");
-
-        size_t first_core, last_core;
-        if (!parse_core_id(core_range[0], first_core) || !parse_core_id(core_range[1], last_core)) {
-            return 0;
-        }
-
-        if (first_core > last_core) {
-            LOG_ERROR("unexpected first and last cores in range: ",
-                      core_range_str,
-                      ", first core should be less or equal to last core");
-            return 0;
-        }
-
-        for (idx = first_core; idx <= last_core; idx++) {
-            worker_affinity.push_back(idx);
-        }
+        return 1;
     }
 
-    if (worker_affinity.size() < affinity_size) {
-        LOG_ERROR("unexpected number of cores in affinity: ",
-                  affinity_to_parse,
-                  ", specify 1 core per 1 worker thread");
-        return 0;
-    }
+    CCL_THROW_IF_NOT(parse_affinity(env_to_parse, worker_mem_affinity, affinity_size),
+                     "failed to parse worker memory affinity");
+
     return 1;
 }
 
 void env_data::env_2_atl_transport() {
+#ifdef CCL_ENABLE_MPI
     if (!getenv(CCL_ATL_TRANSPORT) && !with_mpirun()) {
         LOG_WARN("did not find MPI-launcher specific variables, switch to ATL/OFI, "
                  "to force enable ATL/MPI set CCL_ATL_TRANSPORT=mpi");
@@ -620,6 +732,7 @@ void env_data::env_2_atl_transport() {
         atl_transport = ccl_atl_ofi;
     }
     else
+#endif // CCL_ENABLE_MPI
         env_2_enum(CCL_ATL_TRANSPORT, atl_transport_names, atl_transport);
 }
 
@@ -630,4 +743,4 @@ bool env_data::with_mpirun() {
                : false;
 }
 
-} /* namespace ccl */
+} // namespace ccl

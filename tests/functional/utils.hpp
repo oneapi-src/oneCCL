@@ -50,7 +50,7 @@
         printf("\n(%ld): %s: " fmt "\n", GETTID(), __FUNCTION__, ##__VA_ARGS__); \
         fflush(stdout); \
     } while (0)
-#endif /* PRINT */
+#endif // PRINT
 
 #define OUTPUT_NAME_ARG "--gtest_output="
 #define PATCH_OUTPUT_NAME_ARG(argc, argv, comm) \

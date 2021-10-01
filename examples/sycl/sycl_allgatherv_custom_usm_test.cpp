@@ -26,7 +26,6 @@ struct custom_data_type {
 int main(int argc, char *argv[]) {
     const size_t count = 10 * 1024 * 1024;
 
-    int i = 0;
     int size = 0;
     int rank = 0;
 
@@ -125,6 +124,7 @@ int main(int argc, char *argv[]) {
     /* print out the result of the test on the host side */
     {
         host_accessor check_buf_acc(check_buf, read_only);
+        size_t i;
         for (i = 0; i < size * send_count; i++) {
             if (check_buf_acc[i] == -1) {
                 cout << "FAILED\n";

@@ -12,16 +12,24 @@ public:
     deps_entry(ccl_sched* sched) : sched_entry(sched) {}
 
     void start() override {
+        status = ccl_sched_entry_status_started;
+    }
+
+    void update() override {
+        bool all_completed = true;
         std::vector<ccl::event>& deps = sched->get_deps();
+
+        // Note: ccl event caches the true result of test() method, so we can just iterate over whole
+        // array of deps each update() call without any overhead.
         for (size_t idx = 0; idx < deps.size(); idx++) {
-#ifdef CCL_ENABLE_SYCL
-            /* TODO: detect pure sycl::event and ccl::event for device op */
-            deps[idx].get_native().wait();
-#else /* CCL_ENABLE_SYCL */
-            deps[idx].wait();
-#endif /* CCL_ENABLE_SYCL */
+            bool completed = deps[idx].test();
+
+            all_completed = all_completed && completed;
         }
-        status = ccl_sched_entry_status_complete;
+
+        if (all_completed) {
+            status = ccl_sched_entry_status_complete;
+        }
     }
 
     const char* name() const override {

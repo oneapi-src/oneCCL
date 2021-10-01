@@ -250,7 +250,8 @@ std::vector<uint8_t> ipc_tx_connection::send_ipc_memory_ext(
     for (const auto& ipc_handle : handles) {
         serialize_offset += ipc_handle.serialize(out_raw_data, serialize_offset);
         pids_offset_bytes.push_back(serialize_offset -
-                                    sizeof(native::ccl_device::device_ipc_memory_handle::handle_t));
+                                    sizeof(native::ccl_device::device_ipc_memory_handle::handle_t) -
+                                    sizeof(size_t));
 
         LOG_DEBUG("Serialized bytes: ",
                   serialize_offset,

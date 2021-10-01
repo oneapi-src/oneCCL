@@ -55,7 +55,7 @@ public:
 
         int global_src = comm->get_global_rank(src);
         atl_tag = comm->atl->tag->create(
-            sched->get_comm_id(), global_src, sched->sched_id, sched->get_op_id());
+            global_src, sched->get_comm_id(), sched->sched_id, sched->get_op_id());
         size_t bytes = cnt * dtype.size();
 
         LOG_DEBUG(

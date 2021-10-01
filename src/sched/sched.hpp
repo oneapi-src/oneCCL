@@ -16,6 +16,7 @@
 #pragma once
 
 #include "sched/sched_base.hpp"
+#include "sched/sched_timer.hpp"
 #include "sched/queue/flow_control.hpp"
 #include "internal_types.hpp"
 
@@ -58,10 +59,6 @@ public:
     void do_progress();
 
     virtual void complete();
-
-    void clear() {
-        entries.clear();
-    }
 
     size_t get_start_idx() const {
         return start_idx;
@@ -147,7 +144,7 @@ public:
     ccl_sched_queue* queue = nullptr; /* cached pointer to queue, valid even after execution */
     size_t start_idx = 0; /* index to start */
 
-    /* 
+    /*
       used for unique ATL tag creation in algorithms with multiple parallel sub-schedules
       set once and then used for all entries
     */
@@ -161,10 +158,10 @@ public:
 
     /* whether sched should be executed in the same order as in user code */
     /* currently applicable for start phase only */
-    bool strict_order;
+    bool strict_order = false;
 
     /*
-      limits number of active entries 
+      limits number of active entries
       mostly makes sense for ATL entries
     */
     ccl::flow_control flow_control;
@@ -181,9 +178,5 @@ private:
     ccl_sched_finalize_fn_t finalize_fn = nullptr;
     void* finalize_fn_ctx = nullptr;
 
-#ifdef ENABLE_TIMERS
-    using timer_type = std::chrono::system_clock;
-    timer_type::time_point exec_start_time{};
-    timer_type::time_point exec_complete_time{};
-#endif
+    ccl::sched_timer timer;
 };

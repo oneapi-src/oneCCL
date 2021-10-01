@@ -55,7 +55,7 @@ If your CXX compiler requires SYCL, it is possible to specify it (DPC++ is suppo
 Modify `cmake` command as follows:
 
 ```
-cmake .. -DCMAKE_C_COMPILER=your_c_compiler -DCMAKE_CXX_COMPILER=dpcpp -DCOMPUTE_BACKEND=dpcpp
+cmake .. -DCMAKE_C_COMPILER=your_c_compiler -DCMAKE_CXX_COMPILER=dpcpp -DCOMPUTE_BACKEND=dpcpp_level_zero
 ```
 
 ## Specify the build type

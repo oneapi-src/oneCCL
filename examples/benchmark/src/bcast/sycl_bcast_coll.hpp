@@ -91,7 +91,7 @@ struct sycl_bcast_coll : sycl_base_coll<Dtype, bcast_strategy_impl> {
 
             for (size_t e_idx = 0; e_idx < elem_count; e_idx++) {
                 value = host_recv_buf[e_idx];
-                if (value != b_idx) {
+                if (value != static_cast<Dtype>(b_idx)) { // comparison float16 with size_t ??
                     std::cout << this->name() << " recv_bufs: buf_idx " << b_idx << ", rank_idx "
                               << rank_idx << ", elem_idx " << e_idx << ", expected " << (Dtype)b_idx
                               << ", got " << value << std::endl;
@@ -101,4 +101,4 @@ struct sycl_bcast_coll : sycl_base_coll<Dtype, bcast_strategy_impl> {
         }
     }
 };
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL

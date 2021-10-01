@@ -185,42 +185,7 @@ public:
               class = typename std::enable_if<is_stream_supported<native_stream_type>()>::type>
     stream create_stream(native_stream_type& native_stream);
 
-    template <class native_stream_type,
-              class native_context_type,
-              class = typename std::enable_if<is_stream_supported<native_stream_type>()>::type>
-    stream create_stream(native_stream_type& native_stream, native_context_type& native_ctx);
-
-    template <class... attr_val_type>
-    stream create_stream_from_attr(typename unified_device_type::ccl_native_t device,
-                                   attr_val_type&&... avs) {
-        stream str = create_stream(device);
-        int expander[]{ (str.template set<attr_val_type::idx()>(avs.val()), 0)... };
-        (void)expander;
-        str.build_from_params();
-        return str;
-    }
-
-    template <class... attr_val_type>
-    stream create_stream_from_attr(typename unified_device_type::ccl_native_t device,
-                                   typename unified_context_type::ccl_native_t context,
-                                   attr_val_type&&... avs) {
-        stream str = create_stream(device, context);
-        int expander[]{ (str.template set<attr_val_type::idx()>(avs.val()), 0)... };
-        (void)expander;
-        str.build_from_params();
-        return str;
-    }
-
     /******************** COMMUNICATOR ********************/
-
-#ifdef CCL_ENABLE_SYCL
-    communicator create_single_device_communicator(int comm_size,
-                                                   int rank,
-                                                   const cl::sycl::device& device,
-                                                   const cl::sycl::context& context,
-                                                   shared_ptr_class<kvs_interface> kvs) const;
-#endif
-
     template <class... attr_val_type>
     static comm_split_attr create_comm_split_attr(attr_val_type&&... avs) {
         auto split_attr = create_postponed_api_type<comm_split_attr>();
@@ -280,11 +245,6 @@ private:
         auto version = get_library_version();
         return ccl_api_type(std::forward<args_type>(args)..., version);
     }
-
-    stream create_stream(typename unified_device_type::ccl_native_t device);
-
-    stream create_stream(typename unified_device_type::ccl_native_t device,
-                         typename unified_context_type::ccl_native_t context);
 };
 
 } // namespace detail

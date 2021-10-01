@@ -18,7 +18,7 @@
 #include <set>
 #include "common/comm/l0/devices/ccl_gpu_comm.hpp"
 #include "sched/sched.hpp"
-#include "sched/entry/l0/l0_entry.hpp"
+// #include "sched/entry/l0/l0_entry.hpp"
 #include "common/comm/l0/modules/specific_modules_source_data.hpp"
 
 namespace native {

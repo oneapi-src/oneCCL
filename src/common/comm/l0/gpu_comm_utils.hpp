@@ -84,8 +84,7 @@ private:
         module_description.stype = ZE_STRUCTURE_TYPE_MODULE_DESC;
         module_description.pNext = nullptr;
         module_description.format = ZE_MODULE_FORMAT_IL_SPIRV;
-        module_description.inputSize =
-            static_cast<uint32_t>(module_data.size()); //Ask L0: why not size_t?
+        module_description.inputSize = module_data.size();
         module_description.pInputModule = module_data.data();
         module_description.pBuildFlags = nullptr;
         module_description.pConstants = nullptr;

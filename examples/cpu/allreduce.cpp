@@ -21,7 +21,7 @@ void run_collective(const char* cmd_name,
                     const ccl::communicator& comm,
                     const ccl::allreduce_attr& attr) {
     std::chrono::system_clock::duration exec_time{ 0 };
-    float expected = (comm.size() - 1) * (static_cast<float>(comm.size()) / 2);
+    float expected = (static_cast<float>(comm.size()) + 1) / 2 * static_cast<float>(comm.size());
 
     ccl::barrier(comm);
 
@@ -80,7 +80,7 @@ int main() {
         std::terminate();
     }
 
-    MSG_LOOP(comm, std::vector<float> send_buf(msg_count, static_cast<float>(comm.rank()));
+    MSG_LOOP(comm, std::vector<float> send_buf(msg_count, static_cast<float>(comm.rank() + 1));
              std::vector<float> recv_buf(msg_count);
              attr.set<ccl::operation_attr_id::to_cache>(false);
              run_collective("warmup allreduce", send_buf, recv_buf, comm, attr);

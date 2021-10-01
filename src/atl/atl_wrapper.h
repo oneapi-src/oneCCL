@@ -242,6 +242,14 @@ public:
         return size;
     }
 
+    int get_r2r_color() {
+        return transport->atl_get_proc_coord()->local_idx;
+    }
+
+    int get_host_color() {
+        return transport->atl_get_proc_coord()->hostname_hash;
+    }
+
     /*
      * TODO: Temporary change.
      * Need to define correct to unique id

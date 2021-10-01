@@ -29,14 +29,12 @@
 
 class ccl_datatype {
 public:
-    ccl_datatype(ccl::datatype idx, size_t size);
     ccl_datatype() = default;
-    ~ccl_datatype() = default;
+    ccl_datatype(ccl::datatype idx, size_t size);
+    ccl_datatype(const ccl_datatype& other) = default;
     ccl_datatype& operator=(const ccl_datatype& other) = default;
 
-    ccl_datatype(const ccl_datatype& other) = default;
-
-    ccl::datatype idx() const {
+    ccl::datatype idx() const noexcept {
         return m_idx;
     }
 
@@ -46,8 +44,8 @@ public:
     }
 
 private:
-    ccl::datatype m_idx;
-    size_t m_size;
+    ccl::datatype m_idx = ccl::datatype::int8;
+    size_t m_size = sizeof(int8_t);
 };
 
 /* frequently used in multiple places */

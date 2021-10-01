@@ -18,6 +18,8 @@ file(GLOB sources "*.c" "*.cpp")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+link_directories(${EXAMPLES_LIB_DIRS})
+
 foreach(src ${sources})
     get_filename_component(executable ${src} NAME_WE)
     add_executable(${executable} ${src})

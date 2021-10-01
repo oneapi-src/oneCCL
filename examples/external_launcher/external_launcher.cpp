@@ -22,7 +22,7 @@
 
 #define ELEM_COUNT        (256 * 1024)
 #define ITER_COUNT        10
-#define REINIT_COUNT      20
+#define REINIT_COUNT      10
 #define STORE_TIMEOUT_SEC 120
 #define MAX_SLEEP_MSEC    500
 

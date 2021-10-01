@@ -20,6 +20,7 @@
 
 #include <map>
 #include <unordered_map>
+#include <vector>
 
 enum ccl_cache_key_type {
     ccl_cache_key_full,
@@ -76,6 +77,9 @@ public:
 
     /* inner structure for bit comparison */
     ccl_sched_key_inner_fields f;
+
+    std::vector<size_t> vec1;
+    std::vector<size_t> vec2;
 
     std::string match_id{};
 

@@ -274,7 +274,6 @@ std::map<size_t, T> device_path_deserializer::deserialize_generic_indices_map_im
     size_t stride) {
     std::map<size_t, T> global;
     size_t global_size = 0;
-    size_t deserialized_bytes_count = 0;
 
     // preconditions
     if (data.size() < sizeof(global_size)) {
@@ -286,7 +285,6 @@ std::map<size_t, T> device_path_deserializer::deserialize_generic_indices_map_im
 
     auto data_it = data.begin();
     std::advance(data_it, sizeof(global_size));
-    deserialized_bytes_count += sizeof(global_size);
 
     size_t deserialized_processes_count = 0;
     for (; data_it != data.end();) {
@@ -303,7 +301,6 @@ std::map<size_t, T> device_path_deserializer::deserialize_generic_indices_map_im
         }
         memcpy(&process_id, &(*data_it), expected_count);
         std::advance(data_it, expected_count);
-        deserialized_bytes_count += expected_count;
 
         //get graph_data for process
         size_t process_deserialized_count = 0;
@@ -311,8 +308,6 @@ std::map<size_t, T> device_path_deserializer::deserialize_generic_indices_map_im
             typename T::value_type>(
             raw_data_t(data_it, data.end()), process_deserialized_count, 0, stride);
         std::advance(data_it, process_deserialized_count);
-        deserialized_bytes_count += process_deserialized_count;
-
         if (!global.emplace(process_id, std::move(process_list)).second) {
             throw std::runtime_error(
                 std::string(__FUNCTION__) +

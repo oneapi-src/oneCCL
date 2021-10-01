@@ -134,6 +134,6 @@ struct sycl_sparse_allreduce_coll : base_sparse_allreduce_coll<cl::sycl::buffer<
     }
 };
 
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 
 #endif

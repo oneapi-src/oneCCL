@@ -24,7 +24,7 @@ void coll_entry::start() {
 
     if (!coll_sched) {
         ccl_coll_param coll_param{};
-        coll_param.ctype = param.ctype;
+        coll_param.ctype = sched->coll_param.ctype;
         coll_param.comm = sched->coll_param.comm;
         coll_param.stream = sched->coll_param.stream;
         coll_sched.reset(new ccl_extra_sched(coll_param, sched->sched_id));
@@ -36,7 +36,7 @@ void coll_entry::start() {
 
     LOG_DEBUG("starting COLL entry: ", this, ", subsched: ", coll_sched.get());
     auto req = sched->start_subsched(coll_sched.get());
-    LOG_DEBUG(" started COLL entry: ", this, ", subsched ", coll_sched.get(), ", req ", req);
+    LOG_DEBUG("started COLL entry: ", this, ", subsched ", coll_sched.get(), ", req ", req);
 
     status = ccl_sched_entry_status_started;
 }

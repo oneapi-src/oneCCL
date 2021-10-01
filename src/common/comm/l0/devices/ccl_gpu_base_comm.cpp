@@ -43,7 +43,8 @@ void cmd_list_proxy_base::close_and_execute(std::shared_ptr<ccl_context> ctx,
     }
 
     auto& cmd_queue = device.get_cmd_queue(ccl_device::get_default_queue_desc(), ctx);
-    LOG_INFO("Execute list:", cmd_list.get(), ", queue: ", cmd_queue.get(), ", go to submit entry");
+    LOG_DEBUG(
+        "Execute list:", cmd_list.get(), ", queue: ", cmd_queue.get(), ", go to submit entry");
     res = zeCommandQueueExecuteCommandLists(cmd_queue.get(), 1, get_ptr(), fence);
     if (res != ZE_RESULT_SUCCESS) {
         throw ccl::exception(std::string("cannot execute command list, error: ") +

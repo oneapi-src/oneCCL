@@ -35,7 +35,7 @@
 #include <CL/sycl.hpp>
 using namespace cl::sycl;
 using namespace cl::sycl::access;
-#endif /* CCL_ENABLE_SYCL */
+#endif // CCL_ENABLE_SYCL
 
 #define GETTID() syscall(SYS_gettid)
 

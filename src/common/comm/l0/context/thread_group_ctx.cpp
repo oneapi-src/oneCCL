@@ -64,7 +64,7 @@ bool thread_group_context::sync_barrier(const ccl::device_indices_type& device_i
     }
 
     //Current thread finalize communicator creation
-    LOG_INFO("Thread ", comm_addr.to_string(), " starts hardware topologies creation");
+    LOG_DEBUG("Thread ", comm_addr.to_string(), " starts hardware topologies creation");
     {
         std::stringstream ss;
         thread_group_ring_topology top(*this, devices);
@@ -78,16 +78,16 @@ bool thread_group_context::sync_barrier(const ccl::device_indices_type& device_i
 
     {
         //TODO Create A2A topology
-        LOG_INFO("Thread Context Topologies A2A TODO");
+        LOG_DEBUG("Thread Context Topologies A2A TODO");
     }
 
     {
         std::stringstream out;
         dump_thread_topologies(out);
-        LOG_INFO("Thread (MASTER): ",
-                 comm_addr.to_string(),
-                 " finalized thread topology creation\n",
-                 out.str());
+        LOG_DEBUG("Thread (MASTER): ",
+                  comm_addr.to_string(),
+                  " finalized thread topology creation\n",
+                  out.str());
     }
     // create scheduler in final step
     scheduler_impl.reset(new thread_group_scheduler(comm_addr.thread_count));

@@ -17,7 +17,7 @@
 
 #ifdef CCL_ENABLE_NUMA
 #include <numa.h>
-#endif /* CCL_ENABLE_NUMA */
+#endif // CCL_ENABLE_NUMA
 
 #include "coll.hpp"
 
@@ -139,7 +139,7 @@ struct cpu_base_coll : base_coll, protected strategy {
                 ptr, "failed to allocate buffer with size %zu on NUMA node %d", bytes, numa_node);
         }
         else
-#endif /* CCL_ENABLE_NUMA */
+#endif // CCL_ENABLE_NUMA
         {
             size_t alignment = REG_MSG_ALIGNMENT;
             if (bytes >= LARGE_MSG_THRESHOLD)
@@ -160,7 +160,7 @@ struct cpu_base_coll : base_coll, protected strategy {
             numa_free(ptr, bytes);
         }
         else
-#endif /* CCL_ENABLE_NUMA */
+#endif // CCL_ENABLE_NUMA
         {
             free(ptr);
         }

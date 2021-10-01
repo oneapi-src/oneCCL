@@ -13,53 +13,77 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#include "common/global/global.hpp"
+#include "common/log/log.hpp"
 #include "sched/entry/entry.hpp"
 #include "sched/sched.hpp"
-#include "common/log/log.hpp"
 
 void sched_entry::do_progress() {
     if (is_completed())
         return;
 
-    // TODO: fix this tempropary workaround
-    // For l0 entry take_credit & return_credit isn't needed
-    // That's why we'd skip it
-    bool is_l0_entry = false;
-    const char* name_entry = this->name();
-
-    //  in case if entry is empty name or its  length = 1
-    if (strlen(name_entry) >= 2)
-        is_l0_entry = name_entry[0] == 'L' && name_entry[1] == '0';
-
     if (status < ccl_sched_entry_status_started) {
-        CCL_ASSERT(
+        CCL_THROW_IF_NOT(
             status == ccl_sched_entry_status_not_started || status == ccl_sched_entry_status_again,
             "bad status ",
-            status);
+            status,
+            "(",
+            status_to_str(status),
+            ")");
 
-        if (is_l0_entry || sched->flow_control.take_credit()) {
-            start();
-            CCL_ASSERT(status >= ccl_sched_entry_status_again, "bad status ", status);
+        bool took_credits = false;
+        if (status == ccl_sched_entry_status_not_started) {
+            took_credits = sched->flow_control.take_credit();
+            if (took_credits && ccl::global_data::env().sched_profile) {
+                timer.start();
+            }
         }
-        else {
-            status = ccl_sched_entry_status_again;
+        else if (status == ccl_sched_entry_status_again) {
+            took_credits = true;
         }
+
+        if (!took_credits) {
+            return;
+        }
+
+        start();
+        CCL_THROW_IF_NOT(status >= ccl_sched_entry_status_again,
+                         "bad status ",
+                         status,
+                         "(",
+                         status_to_str(status),
+                         ")");
     }
     else if (status == ccl_sched_entry_status_started) {
         LOG_TRACE("update entry ", name());
         update();
-        CCL_ASSERT(status >= ccl_sched_entry_status_started, "bad status ", status);
+        CCL_THROW_IF_NOT(status >= ccl_sched_entry_status_started,
+                         "bad status ",
+                         status,
+                         "(",
+                         status_to_str(status),
+                         ")");
     }
 
-    if (status == ccl_sched_entry_status_complete && !is_l0_entry) {
+    if (status == ccl_sched_entry_status_complete) {
+        if (ccl::global_data::env().sched_profile) {
+            timer.stop();
+        }
+
+        if (exec_mode == ccl_sched_entry_exec_once) {
+            status = ccl_sched_entry_status_complete_once;
+        }
+
         sched->flow_control.return_credit();
     }
 
-    if (status == ccl_sched_entry_status_complete && exec_mode == ccl_sched_entry_exec_once) {
-        status = ccl_sched_entry_status_complete_once;
-    }
-
-    // TODO: what if status is ccl_sched_entry_status_failed or ccl_sched_entry_status_invalid?
+    CCL_THROW_IF_NOT(
+        status != ccl_sched_entry_status_failed && status != ccl_sched_entry_status_invalid,
+        "bad status ",
+        status,
+        "(",
+        status_to_str(status),
+        ")");
 }
 
 bool sched_entry::is_completed() {
@@ -69,12 +93,16 @@ bool sched_entry::is_completed() {
 
 void sched_entry::update() {
     /*
-       update is required for communication/synchronization/wait_value ops
+       update is required for async ops (atl, ze, sync)
        for other ops it is empty method
     */
 }
 
 void sched_entry::reset(size_t idx) {
+    if (ccl::global_data::env().sched_profile) {
+        timer.reset();
+    }
+
     if (status == ccl_sched_entry_status_complete_once) {
         return;
     }
@@ -84,7 +112,7 @@ void sched_entry::reset(size_t idx) {
 }
 
 bool sched_entry::is_strict_order_satisfied() {
-    return (status > ccl_sched_entry_status_not_started);
+    return (status >= ccl_sched_entry_status_started);
 }
 
 void sched_entry::dump(std::stringstream& str, size_t idx) const {

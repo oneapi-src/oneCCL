@@ -29,7 +29,7 @@ using sched_bin_list_t = std::unordered_map<size_t, ccl_sched_bin>; // key - pri
 using sched_queue_lock_t = ccl_spinlock;
 
 /* ATL EP is limited resource, each priority bucket consumes single ATL EP and uses it for all bins in bucket */
-#define CCL_PRIORITY_BUCKET_COUNT (4)
+#define CCL_PRIORITY_BUCKET_COUNT (1)
 
 /* the size of priority bucket, each bin in bucket use the same ATL EP although bins have different priorities */
 #define CCL_PRIORITY_BUCKET_SIZE (8)
@@ -52,13 +52,13 @@ public:
     }
 
     ~ccl_sched_list() {
-        if (elems.size() != 0 && !ccl::global_data::get().is_ft_enabled) {
+        if (!elems.empty()) {
             LOG_WARN("unexpected elem_count ", elems.size(), ", expected 0");
         }
+        clear();
+    }
 
-        for (size_t i = 0; i < elems.size(); i++) {
-            elems[i]->clear();
-        }
+    void clear() {
         elems.clear();
     }
 
@@ -88,7 +88,7 @@ public:
         }
     }
 
-    size_t size() {
+    size_t size() const {
         {
             std::lock_guard<sched_queue_lock_t> lock(elem_guard);
             return elems.size();
@@ -127,9 +127,18 @@ public:
 
     void dump(std::ostream& out) const {
         {
+            auto sched_dump = ccl::global_data::env().sched_dump;
             std::lock_guard<sched_queue_lock_t> lock(elem_guard);
-            for (auto& e : elems) {
-                e->dump(out);
+            if (sched_dump) {
+                for (auto& e : elems) {
+                    e->dump(out);
+                }
+            }
+            else {
+                for (size_t idx = 0; idx < elems.size(); idx++) {
+                    out << "    [" << idx
+                        << "]: " << ccl_coll_type_to_str(elems[idx]->coll_param.ctype) << "\n";
+                }
             }
         }
     }
@@ -154,14 +163,17 @@ public:
         sched->queue = queue;
     }
 
-    ~ccl_sched_bin() = default;
+    ~ccl_sched_bin() {
+        sched_list.clear();
+    }
+
     ccl_sched_bin() = delete;
     ccl_sched_bin& operator=(const ccl_sched_bin& other) = delete;
 
     ccl_sched_bin(ccl_sched_bin&& src) = default;
     ccl_sched_bin& operator=(ccl_sched_bin&& other) = default;
 
-    size_t size() {
+    size_t size() const {
         return sched_list.size();
     }
     size_t get_priority() {
@@ -218,14 +230,15 @@ public:
     void dump(std::ostream& out) const {
         {
             std::lock_guard<sched_queue_lock_t> lock(bins_guard);
-            if (bins.empty()) {
-                out << "empty sched_queue";
+            out << "{\n";
+            out << "  sched_queue: idx: " << idx << " size: " << bins.size() << "\n";
+            size_t idx = 0;
+            for (auto& bin : bins) {
+                out << "   bin: idx: " << idx << " priority: " << bin.first
+                    << " size: " << bin.second.size() << "\n";
+                bin.second.dump(out);
             }
-            else {
-                for (auto& b : bins) {
-                    b.second.dump(out);
-                }
-            }
+            out << "}\n";
         }
     }
 

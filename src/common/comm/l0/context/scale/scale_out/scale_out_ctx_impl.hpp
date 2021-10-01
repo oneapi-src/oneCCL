@@ -28,11 +28,11 @@ void scale_out_ctx<TEMPLATE_DEF_ARG>::initialize_ctx(
     std::shared_ptr<ccl::host_communicator> communicator) {
     process_communicator = communicator;
 
-    LOG_INFO("SCALE-OUT context Initialized for mpi rank: (",
-             std::to_string(communicator->rank()),
-             "/",
-             std::to_string(communicator->size()),
-             ")");
+    LOG_DEBUG("SCALE-OUT context Initialized for mpi rank: (",
+              std::to_string(communicator->rank()),
+              "/",
+              std::to_string(communicator->size()),
+              ")");
 }
 
 // observer_ptr interface implementations
@@ -40,10 +40,10 @@ template <TEMPLATE_DECL_ARG>
 template <ccl::device_topology_type class_id, class device_t>
 void scale_out_ctx<TEMPLATE_DEF_ARG>::register_observer_impl(size_t rank_addr,
                                                              observer_t<device_t>* observer_ptr) {
-    LOG_INFO("scaleout device rank addr: ",
-             std::to_string(rank_addr),
-             ", device: ",
-             observer_ptr->to_string());
+    LOG_DEBUG("scaleout device rank addr: ",
+              std::to_string(rank_addr),
+              ", device: ",
+              observer_ptr->to_string());
     observer::container_t<observer_t<device_t>>& container =
         scaling_ctx_base_t::template get_types_container<observer_t<device_t>, class_id>(
             observables);

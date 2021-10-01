@@ -98,7 +98,7 @@ endif()
 include_directories(include)
 
 add_subdirectory(cpu)
-if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
+if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "IntelLLVM")
     add_subdirectory(sycl)
 endif()
 add_subdirectory(common)

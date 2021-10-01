@@ -15,6 +15,15 @@
 */
 #pragma once
 
+#include <cerrno>
+#include <cstring>
+#include <cstdio>
+#include <cstdlib>
+#include <csignal>
+#include <stdexcept>
+
+#include "common/log/log.hpp"
+
 //TODO: change exit to something more useful
 #define SET_STR(dst, size, ...) \
     do { \
@@ -140,13 +149,6 @@
 
 extern char my_hostname[MAX_KVS_VAL_LENGTH];
 
-#include <cerrno>
-#include <cstring>
-#include <cstdio>
-#include <cstdlib>
-#include <csignal>
-#include <stdexcept>
-
 void inline kvs_str_copy(char* dst, const char* src, size_t bytes) {
     strncpy(dst, src, bytes - 1);
     dst[bytes - 1] = '\0';
@@ -158,21 +160,20 @@ void inline kvs_str_copy_known_sizes(char* dst, const char* src, size_t bytes) {
 }
 
 long int inline safe_strtol(const char* str, char** endptr, int base) {
+    errno = 0;
     auto val = strtol(str, endptr, base);
-    if (val == 0) {
-        /* if a conversion error occurred, display a message and exit */
-        if (errno == EINVAL) {
-            throw std::runtime_error(
-                std::string(__PRETTY_FUNCTION__) +
-                ": conversion error occurred from: " + std::to_string((int)val));
-        }
 
-        /* if the value provided was out of range, display a warning message */
-        if (errno == ERANGE) {
-            throw std::runtime_error(
-                std::string(__PRETTY_FUNCTION__) +
-                ": the value provided was out of range, value: " + std::to_string((int)val));
+    if (errno != 0) {
+        if (errno == EINVAL) {
+            CCL_THROW("conversion error occurred from: ", str);
+        }
+        else if (errno == ERANGE) {
+            CCL_THROW("the value provided was out of range: ", str);
+        }
+        else {
+            CCL_THROW("strtol error: ", strerror(errno), ", str: ", str);
         }
     }
+
     return val;
 }

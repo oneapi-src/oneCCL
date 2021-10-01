@@ -98,6 +98,8 @@ if (COMPUTE_BACKEND)
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${COMPUTE_BACKEND_LIBRARIES}")
 endif()
 
+link_directories(${EXAMPLES_LIB_DIRS})
+
 foreach(src ${sources})
     get_filename_component(executable ${src} NAME_WE)
     add_executable(${executable} ${src} ${SERVICE_SRC})
@@ -107,6 +109,7 @@ foreach(src ${sources})
     if (${executable} MATCHES ".*bcast.*")
         target_compile_definitions(${executable} PRIVATE TEST_CCL_BCAST)
     endif()
+    target_include_directories(${executable} PRIVATE ${EXAMPLES_INC_DIRS})
     target_link_libraries(${executable} PUBLIC gtest_main)
     target_link_libraries(${executable} PUBLIC gtest)
     target_link_libraries(${executable} PRIVATE ccl)
@@ -129,8 +132,19 @@ endforeach()
 
 add_test (NAME allreduce_fusion CONFIGURATIONS allreduce_fusion COMMAND mpiexec.hydra -l -n 2 -ppn 1 ${CCL_INSTALL_TESTS}/allreduce_test --gtest_output=xml:${CCL_INSTALL_TESTS}/allreduce_fusion_report.junit.xml)
 
-foreach(algo direct; rabenseifner; starlike; ring; ring_rma; double_tree; recursive_doubling; 2d)
-add_test (NAME allreduce_${algo} CONFIGURATIONS allreduce_${algo} COMMAND mpiexec.hydra -l -n 2 -ppn 1 ${CCL_INSTALL_TESTS}/allreduce_test --gtest_output=xml:${CCL_INSTALL_TESTS}/allreduce_${algo}_report.junit.xml)
+foreach(ppn 1; 2)
+    foreach(algo direct; rabenseifner; starlike; ring; ring_rma; double_tree; recursive_doubling; 2d; topo_ring)
+        add_test (NAME allreduce_${algo}_${ppn} CONFIGURATIONS allreduce_${algo}_${ppn} COMMAND mpiexec.hydra -l -n 2 -ppn ${ppn} ${CCL_INSTALL_TESTS}/allreduce_test --gtest_output=xml:${CCL_INSTALL_TESTS}/allreduce_${algo}_${ppn}_report.junit.xml)
+    endforeach()
+
+    foreach(algo direct; ring; double_tree; naive; topo_ring)
+        add_test (NAME bcast_${algo}_${ppn} CONFIGURATIONS bcast_${algo}_${ppn} COMMAND mpiexec.hydra -l -n 2 -ppn ${ppn} ${CCL_INSTALL_TESTS}/bcast_test --gtest_output=xml:${CCL_INSTALL_TESTS}/bcast_${algo}_${ppn}_report.junit.xml)
+    endforeach()
+
+    foreach(algo direct; rabenseifner; tree; double_tree; topo_ring)
+        add_test (NAME reduce_${algo}_${ppn} CONFIGURATIONS reduce_${algo}_${ppn} COMMAND mpiexec.hydra -l -n 2 -ppn ${ppn} ${CCL_INSTALL_TESTS}/reduce_test --gtest_output=xml:${CCL_INSTALL_TESTS}/reduce_${algo}_${ppn}_report.junit.xml)
+    endforeach()
+
 endforeach()
 
 foreach(algo starlike; ring; 2d)
@@ -153,19 +167,6 @@ foreach(algo scatter_barrier)
 add_test (NAME alltoallv_${algo}_chunked CONFIGURATIONS alltoallv_${algo}_chunked COMMAND mpiexec.hydra -l -n 2 -ppn 1 ${CCL_INSTALL_TESTS}/alltoallv_test --gtest_output=xml:${CCL_INSTALL_TESTS}/alltoallv_${algo}_chunked_report.junit.xml)
 endforeach()
 
-foreach(algo direct; ring; double_tree; naive)
-add_test (NAME bcast_${algo} CONFIGURATIONS bcast_${algo} COMMAND mpiexec.hydra -l -n 2 -ppn 1 ${CCL_INSTALL_TESTS}/bcast_test --gtest_output=xml:${CCL_INSTALL_TESTS}/bcast_${algo}_report.junit.xml)
-endforeach()
-
-foreach(algo direct; rabenseifner; tree; double_tree)
-add_test (NAME reduce_${algo} CONFIGURATIONS reduce_${algo} COMMAND mpiexec.hydra -l -n 2 -ppn 1 ${CCL_INSTALL_TESTS}/reduce_test --gtest_output=xml:${CCL_INSTALL_TESTS}/reduce_${algo}_report.junit.xml)
-endforeach()
-
 foreach(algo direct; ring)
 add_test (NAME reduce_scatter_${algo} CONFIGURATIONS reduce_scatter_${algo} COMMAND mpiexec.hydra -l -n 2 -ppn 1 ${CCL_INSTALL_TESTS}/reduce_scatter_test --gtest_output=xml:${CCL_INSTALL_TESTS}/reduce_scatter_${algo}_report.junit.xml)
 endforeach()
-
-if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
-    # right now all regression tests require dpcpp, might be changed in the future
-    add_subdirectory(regression)
-endif()
