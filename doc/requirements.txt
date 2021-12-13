@@ -20,7 +20,7 @@ importlib-metadata==0.19
 isort==4.3.21
 Jinja2==2.11.3
 lazy-object-proxy==1.4.1
-lxml==4.6.3
+lxml==4.6.5
 MarkupSafe==1.1.1
 mccabe==0.6.1
 more-itertools==7.2.0
