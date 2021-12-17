@@ -676,6 +676,11 @@
    </li>
   </ul>
  </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#ccl-sycl-output-event">
+   CCL_SYCL_OUTPUT_EVENT
+  </a>
+ </li>
 </ul>
 
             </nav>
@@ -771,7 +776,7 @@ To see the actual table values set <code class="docutils literal notranslate"><s
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">rabenseifner</span></code></p></td>
 <td><p>Rabenseifner’s algorithm</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">starlike</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">nreduce</span></code></p></td>
 <td><p>May be beneficial for imbalanced workloads</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ring</span></code></p></td>
@@ -779,16 +784,13 @@ To see the actual table values set <code class="docutils literal notranslate"><s
 Use <code class="docutils literal notranslate"><span class="pre">CCL_RS_CHUNK_COUNT</span></code> and <code class="docutils literal notranslate"><span class="pre">CCL_RS_MIN_CHUNK_SIZE</span></code>
 to control pipelining on reduce_scatter phase.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ring_rma</span></code></p></td>
-<td><p>reduce_scatter+allgather ring using RMA communications</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">double_tree</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">double_tree</span></code></p></td>
 <td><p>Double-tree algorithm</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">recursive_doubling</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">recursive_doubling</span></code></p></td>
 <td><p>Recursive doubling algorithm</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">2d</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">2d</span></code></p></td>
 <td><p>Two-dimensional algorithm (reduce_scatter + allreduce + allgather)</p></td>
 </tr>
 </tbody>
@@ -1472,6 +1474,37 @@ If not specified then equal to the number of oneCCL workers.</p></td>
 <p>Set this environment variable to specify the maximum number of NICs to be selected.
 The actual number of NICs selected may be smaller due to limitations on transport level or system configuration.</p>
 </div>
+</div>
+<div class="section" id="ccl-sycl-output-event">
+<h2>CCL_SYCL_OUTPUT_EVENT<a class="headerlink" href="#ccl-sycl-output-event" title="Permalink to this headline">¶</a></h2>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_SYCL_OUTPUT_EVENT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given table">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+<td><p>Enable support for SYCL output event.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Disable support for SYCL output event (<strong>default</strong>).</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to control support for SYCL output event.
+Once the support is enabled, you can retrieve SYCL output event from oneCCL event using <code class="docutils literal notranslate"><span class="pre">get_native()</span></code> method.
+oneCCL event must be associated with oneCCL communication operation.</p>
 </div>
 </div>
 

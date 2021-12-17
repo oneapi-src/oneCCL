@@ -543,7 +543,7 @@ oneCCL supports different installation scenarios using command line interface.</
 <li><p>To enable <code class="docutils literal notranslate"><span class="pre">SYCL</span></code> devices communication support, specify <code class="docutils literal notranslate"><span class="pre">SYCL</span></code> compiler and set <code class="docutils literal notranslate"><span class="pre">-DCOMPUTE_BACKEND</span></code> (only DPC++ is supported):</p></li>
 </ul>
 <blockquote>
-<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake .. -DCMAKE_C_COMPILER<span class="o">=</span>clang -DCMAKE_CXX_COMPILER<span class="o">=</span>dpcpp -DCOMPUTE_BACKEND<span class="o">=</span>dpcpp_level_zero
+<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake .. -DCMAKE_C_COMPILER<span class="o">=</span>icx -DCMAKE_CXX_COMPILER<span class="o">=</span>dpcpp -DCOMPUTE_BACKEND<span class="o">=</span>dpcpp_level_zero
 </pre></div>
 </div>
 </div></blockquote>
@@ -572,7 +572,7 @@ There are two ways to set up the environment:</p>
 span.prompt1:before {
   content: "$ ";
 }
-</style><span class="prompt1"><span class="nb">source</span> &lt;ccl_install_dir&gt;/setvars.sh</span>
+</style><span class="prompt1"><span class="nb">source</span> &lt;ccl_install_dir&gt;/env/setvars.sh</span>
 </pre></div></div></div></blockquote>
 </li>
 <li><p>Using oneCCL from Intel® oneAPI Base Toolkit installed into <code class="docutils literal notranslate"><span class="pre">&lt;toolkit_install_dir&gt;</span></code> (<code class="docutils literal notranslate"><span class="pre">/opt/intel/inteloneapi</span></code> by default):</p>

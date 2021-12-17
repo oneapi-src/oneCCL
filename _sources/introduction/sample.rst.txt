@@ -24,11 +24,11 @@ Build details
 
 #. :ref:`Set up <prerequisites>` the library environment.
 
-#. Use ``clang++`` compiler to build the sample:
+#. Use ``dpcpp`` compiler to build the sample:
 
    ::
 
-      clang++ -I${CCL_ROOT}/include -L${CCL_ROOT}/lib/ -lsycl -lccl -o sample sample.cpp
+      dpcpp -I${CCL_ROOT}/examples/include -I${CCL_ROOT}/include/ -L${CCL_ROOT}/lib/ -lccl -lmpi -o sample sample.cpp
 
 
 Run the sample

@@ -586,7 +586,7 @@
 <span class="k">using</span> <span class="k">namespace</span> <span class="n">std</span><span class="p">;</span>
 <span class="k">using</span> <span class="k">namespace</span> <span class="n">sycl</span><span class="p">;</span>
 
-<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span> <span class="p">{</span>
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span> <span class="p">{</span>
     <span class="k">const</span> <span class="kt">size_t</span> <span class="n">count</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">;</span>
 
     <span class="kt">int</span> <span class="n">size</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
@@ -622,10 +622,10 @@
     <span class="k">if</span> <span class="p">(</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
         <span class="n">kvs</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">::</span><span class="n">create_main_kvs</span><span class="p">();</span>
         <span class="n">main_addr</span> <span class="o">=</span> <span class="n">kvs</span><span class="o">-&gt;</span><span class="n">get_address</span><span class="p">();</span>
-        <span class="n">MPI_Bcast</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">main_addr</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="n">main_addr</span><span class="p">.</span><span class="n">size</span><span class="p">(),</span> <span class="n">MPI_BYTE</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">MPI_COMM_WORLD</span><span class="p">);</span>
+        <span class="n">MPI_Bcast</span><span class="p">((</span><span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="n">main_addr</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="n">main_addr</span><span class="p">.</span><span class="n">size</span><span class="p">(),</span> <span class="n">MPI_BYTE</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">MPI_COMM_WORLD</span><span class="p">);</span>
     <span class="p">}</span>
     <span class="k">else</span> <span class="p">{</span>
-        <span class="n">MPI_Bcast</span><span class="p">((</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="n">main_addr</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="n">main_addr</span><span class="p">.</span><span class="n">size</span><span class="p">(),</span> <span class="n">MPI_BYTE</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">MPI_COMM_WORLD</span><span class="p">);</span>
+        <span class="n">MPI_Bcast</span><span class="p">((</span><span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="n">main_addr</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="n">main_addr</span><span class="p">.</span><span class="n">size</span><span class="p">(),</span> <span class="n">MPI_BYTE</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">MPI_COMM_WORLD</span><span class="p">);</span>
         <span class="n">kvs</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">::</span><span class="n">create_kvs</span><span class="p">(</span><span class="n">main_addr</span><span class="p">);</span>
     <span class="p">}</span>
 
@@ -642,12 +642,17 @@
     <span class="k">auto</span> <span class="n">recv_buf</span> <span class="o">=</span> <span class="n">allocator</span><span class="p">.</span><span class="n">allocate</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="n">usm_alloc_type</span><span class="p">);</span>
 
     <span class="cm">/* open buffers and modify them on the device side */</span>
-    <span class="k">auto</span> <span class="n">e</span> <span class="o">=</span> <span class="n">q</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="k">auto</span> <span class="o">&amp;</span><span class="n">h</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">auto</span> <span class="n">e</span> <span class="o">=</span> <span class="n">q</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="k">auto</span><span class="o">&amp;</span> <span class="n">h</span><span class="p">)</span> <span class="p">{</span>
         <span class="n">h</span><span class="p">.</span><span class="n">parallel_for</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="p">[</span><span class="o">=</span><span class="p">](</span><span class="k">auto</span> <span class="n">id</span><span class="p">)</span> <span class="p">{</span>
-            <span class="n">send_buf</span><span class="p">[</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">rank</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+            <span class="n">send_buf</span><span class="p">[</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">rank</span> <span class="o">+</span> <span class="n">id</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
             <span class="n">recv_buf</span><span class="p">[</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
         <span class="p">});</span>
     <span class="p">});</span>
+
+    <span class="kt">int</span> <span class="n">check_sum</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;=</span> <span class="n">size</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">check_sum</span> <span class="o">+=</span> <span class="n">i</span><span class="p">;</span>
+    <span class="p">}</span>
 
     <span class="cm">/* do not wait completion of kernel and provide it as dependency for operation */</span>
     <span class="n">vector</span><span class="o">&lt;</span><span class="n">ccl</span><span class="o">::</span><span class="n">event</span><span class="o">&gt;</span> <span class="n">deps</span><span class="p">;</span>
@@ -659,10 +664,10 @@
 
     <span class="cm">/* open recv_buf and check its correctness on the device side */</span>
     <span class="n">buffer</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">check_buf</span><span class="p">(</span><span class="n">count</span><span class="p">);</span>
-    <span class="n">q</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="k">auto</span> <span class="o">&amp;</span><span class="n">h</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">q</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="k">auto</span><span class="o">&amp;</span> <span class="n">h</span><span class="p">)</span> <span class="p">{</span>
         <span class="n">accessor</span> <span class="n">check_buf_acc</span><span class="p">(</span><span class="n">check_buf</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">write_only</span><span class="p">);</span>
         <span class="n">h</span><span class="p">.</span><span class="n">parallel_for</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="p">[</span><span class="o">=</span><span class="p">](</span><span class="k">auto</span> <span class="n">id</span><span class="p">)</span> <span class="p">{</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">recv_buf</span><span class="p">[</span><span class="n">id</span><span class="p">]</span> <span class="o">!=</span> <span class="n">size</span> <span class="o">*</span> <span class="p">(</span><span class="n">size</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">recv_buf</span><span class="p">[</span><span class="n">id</span><span class="p">]</span> <span class="o">!=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">(</span><span class="n">check_sum</span> <span class="o">+</span> <span class="n">size</span> <span class="o">*</span> <span class="n">id</span><span class="p">))</span> <span class="p">{</span>
                 <span class="n">check_buf_acc</span><span class="p">[</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
             <span class="p">}</span>
         <span class="p">});</span>
@@ -696,8 +701,8 @@
 <ol class="arabic">
 <li><p><a class="reference internal" href="installation.html#enable-sycl"><span class="std std-ref">Build</span></a> oneCCL with <code class="docutils literal notranslate"><span class="pre">SYCL</span></code> support (only DPC++ is supported).</p></li>
 <li><p><a class="reference internal" href="installation.html#prerequisites"><span class="std std-ref">Set up</span></a> the library environment.</p></li>
-<li><p>Use <code class="docutils literal notranslate"><span class="pre">clang++</span></code> compiler to build the sample:</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span>clang++ -I${CCL_ROOT}/include -L${CCL_ROOT}/lib/ -lsycl -lccl -o sample sample.cpp
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">dpcpp</span></code> compiler to build the sample:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span>dpcpp -I${CCL_ROOT}/examples/include -I${CCL_ROOT}/include/ -L${CCL_ROOT}/lib/ -lccl -lmpi -o sample sample.cpp
 </pre></div>
 </div>
 </li>
