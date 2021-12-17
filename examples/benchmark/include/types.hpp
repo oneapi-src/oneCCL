@@ -16,6 +16,7 @@
 #pragma once
 
 #include "oneapi/ccl.hpp"
+#include "lp.hpp"
 
 #define PRINT(fmt, ...) printf(fmt "\n", ##__VA_ARGS__);
 
@@ -173,16 +174,6 @@ typedef struct user_options_t {
         show_additional_info = false;
     }
 } user_options_t;
-
-std::ostream& operator<<(std::ostream& out, const ccl::bfloat16& v) {
-    out << v.get_data();
-    return out;
-}
-
-std::ostream& operator<<(std::ostream& out, const ccl::float16& v) {
-    out << v.get_data();
-    return out;
-}
 
 template <class Dtype>
 ccl::datatype get_ccl_dtype() {

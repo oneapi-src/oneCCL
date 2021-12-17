@@ -28,7 +28,7 @@ public:
     virtual in_port_t get_sin_port() = 0;
     virtual void set_sin_port(in_port_t) = 0;
     virtual const void* get_sin_addr_ptr() = 0;
-    virtual void set_sin_addr(const char*) = 0;
+    virtual kvs_status_t set_sin_addr(const char*) = 0;
     virtual struct sockaddr* get_sock_addr_ptr() = 0;
     virtual sa_family_t sin_family() = 0;
     virtual size_t size() = 0;
@@ -40,35 +40,40 @@ protected:
 
 class internal_kvs final : public ikvs_wrapper {
 public:
-    size_t kvs_set_value(const char* kvs_name, const char* kvs_key, const char* kvs_val) override;
+    kvs_status_t kvs_set_value(const char* kvs_name,
+                               const char* kvs_key,
+                               const char* kvs_val) override;
 
-    size_t kvs_remove_name_key(const char* kvs_name, const char* kvs_key) override;
+    kvs_status_t kvs_remove_name_key(const char* kvs_name, const char* kvs_key) override;
 
-    size_t kvs_get_value_by_name_key(const char* kvs_name,
-                                     const char* kvs_key,
-                                     char* kvs_val) override;
+    kvs_status_t kvs_get_value_by_name_key(const char* kvs_name,
+                                           const char* kvs_key,
+                                           char* kvs_val) override;
 
-    size_t kvs_register(const char* kvs_name, const char* kvs_key, char* kvs_val);
+    kvs_status_t kvs_register(const char* kvs_name, const char* kvs_key, char* kvs_val);
 
-    size_t kvs_set_size(const char* kvs_name, const char* kvs_key, const char* kvs_val);
+    kvs_status_t kvs_set_size(const char* kvs_name, const char* kvs_key, const char* kvs_val);
 
-    size_t kvs_barrier_register(const char* kvs_name, const char* kvs_key, const char* kvs_val);
+    kvs_status_t kvs_barrier_register(const char* kvs_name,
+                                      const char* kvs_key,
+                                      const char* kvs_val);
 
-    void kvs_barrier(const char* kvs_name, const char* kvs_key, const char* kvs_val);
+    kvs_status_t kvs_barrier(const char* kvs_name, const char* kvs_key, const char* kvs_val);
 
-    size_t kvs_init(const char* main_addr) override;
+    kvs_status_t kvs_init(const char* main_addr) override;
 
-    size_t kvs_main_server_address_reserve(char* main_addr) override;
+    kvs_status_t kvs_main_server_address_reserve(char* main_addr) override;
 
-    size_t kvs_get_count_names(const char* kvs_name) override;
+    kvs_status_t kvs_get_count_names(const char* kvs_name, int& count_names) override;
 
-    size_t kvs_finalize() override;
+    kvs_status_t kvs_finalize() override;
 
-    size_t kvs_get_keys_values_by_name(const char* kvs_name,
-                                       char*** kvs_keys,
-                                       char*** kvs_values) override;
+    kvs_status_t kvs_get_keys_values_by_name(const char* kvs_name,
+                                             char*** kvs_keys,
+                                             char*** kvs_values,
+                                             size_t& count) override;
 
-    size_t kvs_get_replica_size() override;
+    kvs_status_t kvs_get_replica_size(size_t& replica_size) override;
 
     ~internal_kvs() override;
 
@@ -80,11 +85,11 @@ public:
     static const char SCOPE_ID_DELIM = '%';
 
 private:
-    size_t init_main_server_by_string(const char* main_addr);
-    size_t init_main_server_by_env();
-    size_t init_main_server_by_k8s();
-    size_t init_main_server_address(const char* main_addr);
-    int fill_local_host_ip();
+    kvs_status_t init_main_server_by_string(const char* main_addr);
+    kvs_status_t init_main_server_by_env();
+    kvs_status_t init_main_server_by_k8s();
+    kvs_status_t init_main_server_address(const char* main_addr);
+    kvs_status_t fill_local_host_ip();
     bool is_inited{ false };
 
     pthread_t kvs_thread = 0;
@@ -151,7 +156,7 @@ public:
     const void* get_sin_addr_ptr() override {
         return &(addr.sin_addr);
     }
-    void set_sin_addr(const char* src) override;
+    kvs_status_t set_sin_addr(const char* src) override;
     sa_family_t sin_family() override {
         return addr.sin_family;
     }
@@ -180,7 +185,7 @@ public:
     const void* get_sin_addr_ptr() override {
         return &(addr.sin6_addr);
     }
-    void set_sin_addr(const char* src) override;
+    kvs_status_t set_sin_addr(const char* src) override;
     struct sockaddr* get_sock_addr_ptr() override {
         return (struct sockaddr*)&addr;
     }

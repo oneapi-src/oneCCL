@@ -30,15 +30,14 @@ struct cpu_alltoall_coll : cpu_base_coll<Dtype, alltoall_strategy_impl> {
                                    ccl::communicator& comm,
                                    ccl::stream& stream,
                                    size_t rank_idx) override {
-        Dtype sbuf_expected = comm.rank();
-        Dtype rbuf_expected;
+        Dtype sbuf_expected = get_val<Dtype>(static_cast<float>(comm.rank()));
         Dtype value;
         int comm_size = comm.size();
 
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
             for (size_t e_idx = 0; e_idx < elem_count * comm_size; e_idx++) {
                 value = ((Dtype*)send_bufs[b_idx][rank_idx])[e_idx];
-                rbuf_expected = e_idx / elem_count;
+                Dtype rbuf_expected = get_val<Dtype>(static_cast<float>(e_idx / elem_count));
                 if (value != sbuf_expected) {
                     std::cout << this->name() << " send_bufs: buf_idx " << b_idx << ", rank_idx "
                               << rank_idx << ", elem_idx " << e_idx << ", expected "

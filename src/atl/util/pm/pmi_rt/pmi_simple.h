@@ -31,9 +31,9 @@ public:
 
     atl_status_t pmrt_wait_notification() override;
 
-    void pmrt_finalize() override;
+    atl_status_t pmrt_finalize() override;
 
-    void pmrt_barrier() override;
+    atl_status_t pmrt_barrier() override;
 
     atl_status_t pmrt_kvs_put(char *kvs_key,
                               int proc_idx,
@@ -51,9 +51,9 @@ public:
 
     size_t get_local_thread_idx() override;
 
-    size_t get_local_kvs_id() override;
+    atl_status_t get_local_kvs_id(size_t &res) override;
 
-    void set_local_kvs_id(size_t local_kvs_id) override;
+    atl_status_t set_local_kvs_id(size_t local_kvs_id) override;
 
     size_t get_threads_per_process() override {
         return 1;
@@ -62,6 +62,8 @@ public:
     size_t get_ranks_per_process() override {
         return 1;
     }
+
+    atl_status_t pmrt_init() override;
 
 private:
     int rank;

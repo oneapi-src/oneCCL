@@ -88,6 +88,38 @@ function(set_lp_env)
 
 endfunction(set_lp_env)
 
+function(set_avx_env)
+
+    set(GCC_AVX_MIN_SUPPORTED "4.9.0")
+    set(CLANG_AVX_MIN_SUPPORTED "9.0.0")
+
+    if (${CMAKE_C_COMPILER_ID} STREQUAL "Intel"
+        OR (${CMAKE_C_COMPILER_ID} STREQUAL "Clang"
+            AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${CLANG_AVX_MIN_SUPPORTED})
+        OR (${CMAKE_C_COMPILER_ID} STREQUAL "GNU"
+            AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${GCC_AVX_MIN_SUPPORTED})
+        )
+        add_definitions(-DCCL_AVX_COMPILER)
+        set(CCL_AVX_COMPILER ON)
+    else()
+        set(CCL_AVX_COMPILER OFF)
+    endif()
+    message(STATUS "AVX compiler: ${CCL_AVX_COMPILER}")
+
+    if (CCL_AVX_COMPILER)
+        if ((${CMAKE_C_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_C_COMPILER_ID} STREQUAL "GNU"))
+            add_definitions(-DCCL_AVX_TARGET_ATTRIBUTES)
+            set(CCL_AVX_TARGET_ATTRIBUTES ON)
+        else()
+            set(CCL_AVX_TARGET_ATTRIBUTES OFF)
+        endif()
+        message(STATUS "AVX target attributes: ${CCL_AVX_TARGET_ATTRIBUTES}")
+    endif()
+
+    set(AVX_ENV_DEFINED 1 PARENT_SCOPE)
+
+endfunction(set_avx_env)
+
 function(check_compiler_version)
 
     set(GCC_MIN_SUPPORTED "4.8")
@@ -293,11 +325,11 @@ function(set_compute_backend COMMON_CMAKE_DIR)
     endif()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMPUTE_BACKEND_FLAGS}")
     if (${COMPUTE_BACKEND_TARGET_NAME} STREQUAL "Intel::SYCL_level_zero" OR ${COMPUTE_BACKEND_TARGET_NAME} STREQUAL "ze_loader")
-        set(MULTI_GPU_SUPPORT ON PARENT_SCOPE)
-        set(MULTI_GPU_SUPPORT ON)
+        set(CCL_ENABLE_ZE ON PARENT_SCOPE)
+        set(CCL_ENABLE_ZE ON)
     endif()
-    if (MULTI_GPU_SUPPORT)
-        message(STATUS "Enable GPU support using level-zero")
+    if (CCL_ENABLE_ZE)
+        message(STATUS "Enable Level Zero support")
     endif()
 
     # need to pass these variables to overlying function

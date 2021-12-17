@@ -149,7 +149,6 @@ public:
                              std::forward<T>(first),
                              std::forward<Tpackage>(others)...);
 
-        write_backtrace(out_stream);
         std::cerr << streambuf;
         std::flush(std::cerr);
 

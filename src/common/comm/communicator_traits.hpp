@@ -47,15 +47,4 @@ struct host_communicator_traits : base_communicator_traits<host_sign, empty, emp
     }
 };
 
-struct cpu_communicator_traits : base_communicator_traits<empty, cpu_sign, empty, empty> {
-    static constexpr const char* name() {
-        return "cpu communicator";
-    }
-};
-
-struct gpu_communicator_traits : base_communicator_traits<empty, empty, gpu_sign, empty> {
-    static constexpr const char* name() {
-        return "gpu communicator";
-    }
-};
 } // namespace ccl

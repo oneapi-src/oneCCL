@@ -17,6 +17,7 @@
 
 #include "coll/coll_param.hpp"
 #include "common/global/global.hpp"
+#include "common/utils/sycl_utils.hpp"
 
 #define COPY_COMMON_OP_ATTRS(from, to) \
     to->prologue_fn = nullptr; /*from.get<ccl::operation_attr_id::prologue_fn>().get();*/ \
@@ -72,20 +73,6 @@ ccl_coll_attr::ccl_coll_attr(const ccl::sparse_allreduce_attr& attr) {
     sparse_allreduce_alloc_fn = attr.get<ccl::sparse_allreduce_attr_id::alloc_fn>().get();
     sparse_allreduce_fn_ctx = attr.get<ccl::sparse_allreduce_attr_id::fn_ctx>();
     sparse_coalesce_mode = attr.get<ccl::sparse_allreduce_attr_id::coalesce_mode>();
-}
-
-bool operator==(const coll_param_gpu& lhs, const coll_param_gpu& rhs) {
-    CCL_ASSERT((lhs.is_reduction() && rhs.is_reduction()) ||
-               (!lhs.is_reduction() && !rhs.is_reduction()));
-
-    bool res =
-        lhs.get_coll_type() == rhs.get_coll_type() && lhs.get_datatype() == rhs.get_datatype();
-
-    if (lhs.is_reduction()) {
-        res = res && (lhs.get_reduction() == rhs.get_reduction());
-    }
-
-    return res;
 }
 
 std::string ccl_coll_attr::to_string() const {
@@ -144,14 +131,19 @@ std::string ccl_coll_param::to_string() const {
     ss << "{ ";
     ss << "coll: " << ccl_coll_type_to_str(ctype);
 
-    if (!send_bufs.empty())
-        ss << ", sb: " << get_send_buf() << ", sc: " << get_send_count();
+    if (!send_bufs.empty()) {
+        ss << ", sb: " << get_send_buf()
+           << ", sc: " << std::accumulate(send_counts.begin(), send_counts.end(), 0);
+    }
 
-    if (!recv_bufs.empty())
-        ss << ", rb: " << get_recv_buf() << ", rc: " << get_recv_count();
+    if (!recv_bufs.empty()) {
+        ss << ", rb: " << get_recv_buf()
+           << ", rc: " << std::accumulate(recv_counts.begin(), recv_counts.end(), 0);
+    }
 
-    if (ctype != ccl_coll_barrier)
+    if (ctype != ccl_coll_barrier) {
         ss << ", dt: " << ccl::global_data::get().dtypes->name(dtype);
+    }
 
     if (ctype == ccl_coll_allreduce || ctype == ccl_coll_reduce ||
         ctype == ccl_coll_reduce_scatter) {
@@ -223,7 +215,15 @@ bool ccl_coll_param::is_inplace(buf_type type) const {
     }
 
     void* send_buf = get_send_buf(0, type);
-    void* recv_buf = get_recv_buf(0, type);
+    void* recv_buf = nullptr;
+
+    if ((ctype == ccl_coll_allgatherv) && (recv_bufs.size() > 1)) {
+        recv_buf = get_recv_buf(comm->rank(), type);
+    }
+    else {
+        recv_buf = get_recv_buf(0, type);
+    }
+
     return (send_buf && (send_buf == recv_buf)) ? true : false;
 }
 
@@ -468,7 +468,7 @@ void ccl_coll_param::sync_deps(const ccl_stream* s, const std::vector<ccl::event
         // do anything and just return an empty event as opposed to submit_barrier without paramers
         // which submits a full queue barrier. And there is a bug which leads to a crash if
         // empty sycl event is passed to the function.
-        auto sycl_ev = s->get_native_stream().submit_barrier();
+        auto sycl_ev = ccl::utils::submit_barrier(s->get_native_stream());
         auto e = ccl::create_event(sycl_ev);
         copy_deps(ds, &e);
         return;

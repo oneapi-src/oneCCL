@@ -38,7 +38,7 @@ struct sycl_bcast_coll : sycl_base_coll<Dtype, bcast_strategy_impl> {
         size_t bytes = count * base_coll::get_dtype_size();
 
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
-            std::fill(host_recv_buf.begin(), host_recv_buf.end(), b_idx);
+            host_recv_buf = base_coll::get_initial_values<Dtype>(count, static_cast<int>(b_idx));
 
             if (base_coll::get_sycl_mem_type() == SYCL_MEM_USM) {
                 if (comm_rank == COLL_ROOT)
@@ -88,12 +88,12 @@ struct sycl_bcast_coll : sycl_base_coll<Dtype, bcast_strategy_impl> {
             }
 
             Dtype value;
-
             for (size_t e_idx = 0; e_idx < elem_count; e_idx++) {
                 value = host_recv_buf[e_idx];
-                if (value != static_cast<Dtype>(b_idx)) { // comparison float16 with size_t ??
+                Dtype expected = get_val<Dtype>(static_cast<float>(b_idx));
+                if (value != expected) {
                     std::cout << this->name() << " recv_bufs: buf_idx " << b_idx << ", rank_idx "
-                              << rank_idx << ", elem_idx " << e_idx << ", expected " << (Dtype)b_idx
+                              << rank_idx << ", elem_idx " << e_idx << ", expected " << expected
                               << ", got " << value << std::endl;
                     ASSERT(0, "unexpected value");
                 }

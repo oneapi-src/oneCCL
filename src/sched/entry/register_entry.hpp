@@ -42,7 +42,7 @@ public:
         CCL_THROW_IF_NOT(
             size > 0 && ptr && mr, "incorrect input, size ", size, ", ptr ", ptr, " mr ", mr);
 
-        atl_status_t atl_status = comm->atl->atl_mr_reg(ptr.get_ptr(size), size, mr);
+        atl_status_t atl_status = comm->get_atl_comm()->mr_reg(ptr.get_ptr(size), size, mr);
 
         sched->add_memory_region(*mr);
 

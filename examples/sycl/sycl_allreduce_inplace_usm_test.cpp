@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
     auto attr = ccl::create_operation_attr<ccl::allreduce_attr>();
     ccl::allreduce(buf, buf, count, ccl::reduction::sum, comm, stream, attr, deps).wait();
 
-    /* open recv_buf and check its correctness on the device side */
+    /* open buf and check its correctness on the device side */
     buffer<int> check_buf(count);
     q.submit([&](auto &h) {
         accessor check_buf_acc(check_buf, h, write_only);

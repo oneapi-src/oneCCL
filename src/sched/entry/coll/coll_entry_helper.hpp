@@ -37,13 +37,14 @@ public:
         selector_param.dtype = param.dtype;
         selector_param.comm = param.comm;
         selector_param.stream = param.stream;
+        selector_param.buf = (param.send_buf) ? param.send_buf.get_ptr() : param.recv_buf.get_ptr();
         selector_param.is_vector_buf = sched->coll_attr.is_vector_buf;
 #ifdef CCL_ENABLE_SYCL
         selector_param.is_sycl_buf = sched->coll_attr.is_sycl_buf;
 #endif // CCL_ENABLE_SYCL
         selector_param.hint_algo = param.hint_algo;
 
-        if (ccl_is_topo_ring_algo(selector_param)) {
+        if (ccl_is_device_side_algo(selector_param)) {
             sched->strict_order = true;
         }
 
@@ -65,7 +66,7 @@ public:
         }
 
         /* for remaining cases use regular coll_entry to get schedule filling offload */
-        return entry_factory::make_entry<coll_entry>(sched, param);
+        return entry_factory::create<coll_entry>(sched, param);
     }
 
     static ccl::status build_schedule(ccl_sched* sched,

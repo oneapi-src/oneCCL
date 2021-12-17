@@ -38,20 +38,36 @@ public:
             LOG_DEBUG("subsched name: ", subsched_name);
         }
 
-        subsched.reset(new ccl_extra_sched(sched->coll_param, sched->sched_id));
-        subsched->coll_param.ctype = ccl_coll_internal;
-        subsched->set_op_id(this->op_id);
-        subsched->flow_control.set_max_credits(sched->flow_control.get_max_credits());
+        subsched.reset(new ccl_extra_sched({ sched->sched_id, sched->coll_param }));
 
-        if (sched->coll_param.ctype == ccl_coll_allreduce ||
-            sched->coll_param.ctype == ccl_coll_reduce ||
-            sched->coll_param.ctype == ccl_coll_reduce_scatter) {
-            subsched->coll_attr.reduction_fn = sched->coll_attr.reduction_fn;
-            /* required to create ccl_fn_context in reduce/recv_reduce entries */
-            subsched->coll_attr.match_id = sched->coll_attr.match_id;
-        }
+        inherit_params(subsched.get(), sched, sched->coll_param.ctype);
+
+        subsched->coll_param.ctype = ccl_coll_undefined;
+        subsched->set_op_id(this->op_id);
 
         fill_fn(subsched.get());
+    }
+
+    static void inherit_params(ccl_sched* sched,
+                               const ccl_sched* parent_sched,
+                               ccl_coll_type ctype) {
+        if (sched == parent_sched) {
+            return;
+        }
+
+        if (ctype == ccl_coll_allreduce || ctype == ccl_coll_reduce ||
+            ctype == ccl_coll_reduce_scatter) {
+            sched->coll_attr.reduction_fn = parent_sched->coll_attr.reduction_fn;
+            /* required to create ccl_fn_context in reduce/recv_reduce entries */
+            sched->coll_attr.match_id = parent_sched->coll_attr.match_id;
+        }
+        sched->coll_attr.to_cache = parent_sched->coll_attr.to_cache;
+
+#ifdef CCL_ENABLE_SYCL
+        sched->coll_attr.is_sycl_buf = parent_sched->coll_attr.is_sycl_buf;
+#endif // CCL_ENABLE_SYCL
+
+        sched->flow_control.set_max_credits(parent_sched->flow_control.get_max_credits());
     }
 
     ~subsched_entry() {

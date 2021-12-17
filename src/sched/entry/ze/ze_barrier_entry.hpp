@@ -1,0 +1,68 @@
+/*
+ Copyright 2016-2020 Intel Corporation
+ 
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+ 
+     http://www.apache.org/licenses/LICENSE-2.0
+ 
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+*/
+#pragma once
+
+#include "sched/entry/factory/entry_factory.hpp"
+
+#include <ze_api.h>
+
+class ze_barrier_entry : public sched_entry {
+public:
+    static constexpr const char* class_name() noexcept {
+        return "ZE_BARRIER";
+    }
+
+    const char* name() const noexcept override {
+        return class_name();
+    }
+
+    ze_barrier_entry() = delete;
+    explicit ze_barrier_entry(ccl_sched* sched,
+                              ccl_comm* comm,
+                              ze_event_pool_handle_t& local_pool,
+                              size_t event_idx);
+    ~ze_barrier_entry();
+
+    void start() override;
+    void update() override;
+
+    void finalize() override;
+
+protected:
+    void dump_detail(std::stringstream& str) const override {
+        ccl_logger::format(str,
+                           "rank ",
+                           rank,
+                           ", comm_size ",
+                           comm_size,
+                           ", comm_id ",
+                           sched->get_comm_id(),
+                           "wait_events: ",
+                           wait_events.size(),
+                           "\n");
+    }
+
+private:
+    ccl_comm* comm;
+    const int rank;
+    const int comm_size;
+    size_t last_completed_event_idx{};
+    size_t event_idx{};
+
+    ze_event_pool_handle_t local_pool{};
+    ze_event_handle_t signal_event{};
+    std::vector<std::pair<int, ze_event_handle_t>> wait_events{};
+};

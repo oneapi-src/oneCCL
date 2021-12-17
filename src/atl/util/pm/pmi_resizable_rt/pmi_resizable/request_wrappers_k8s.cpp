@@ -55,6 +55,14 @@ char master_addr[MAX_KVS_NAME_LENGTH];
 #define GET_KEY "| sed -r 's/\"[a-zA-Z0-9_]*-|: \"[a-zA-Z0-9_-]*|,|\"| |//g'"
 #define GET_VAL "| sed -r 's/[a-zA-Z0-9_-]*\":|,|\"| |//g'"
 
+#define CHECK_STR(expr, str) \
+    do { \
+        if (!(expr)) { \
+            LOG_ERROR("wrong str: ", str); \
+            return KVS_STATUS_FAILURE; \
+        } \
+    } while (0)
+
 char run_get_template[RUN_TEMPLATE_SIZE];
 char run_set_template[RUN_TEMPLATE_SIZE];
 char job_name[MAX_KVS_NAME_LENGTH];
@@ -66,19 +74,22 @@ typedef enum manager_type {
 
 manager_type_t manager;
 
-size_t request_k8s_get_keys_values_by_name(const char* kvs_name,
-                                           char*** kvs_key,
-                                           char*** kvs_values);
+kvs_status_t request_k8s_get_keys_values_by_name(const char* kvs_name,
+                                                 char*** kvs_key,
+                                                 char*** kvs_values,
+                                                 int& values_count);
 
-size_t request_k8s_get_count_names(const char* kvs_name);
+kvs_status_t request_k8s_get_count_names(const char* kvs_name, size_t& res);
 
-size_t request_k8s_get_val_by_name_key(const char* kvs_name, const char* kvs_key, char* kvs_val);
+kvs_status_t request_k8s_get_val_by_name_key(const char* kvs_name,
+                                             const char* kvs_key,
+                                             char* kvs_val);
 
-size_t request_k8s_remove_name_key(const char* kvs_name, const char* kvs_key);
+kvs_status_t request_k8s_remove_name_key(const char* kvs_name, const char* kvs_key);
 
-size_t request_k8s_set_val(const char* kvs_name, const char* kvs_key, const char* kvs_val);
+kvs_status_t request_k8s_set_val(const char* kvs_name, const char* kvs_key, const char* kvs_val);
 
-void json_get_val(FILE* fp, const char** keys, size_t keys_count, char* val) {
+kvs_status_t json_get_val(FILE* fp, const char** keys, size_t keys_count, char* val) {
     char cur_kvs_str[MAX_KVS_STR_LENGTH];
     char* res;
     char last_char;
@@ -101,26 +112,33 @@ void json_get_val(FILE* fp, const char** keys, size_t keys_count, char* val) {
                 wrong_namespace_depth--;
         }
     }
-    res = strstr(cur_kvs_str, ":");
-    res++;
-    while (res[0] == ' ')
+    CHECK_STR(res = strstr(cur_kvs_str, ":"), cur_kvs_str);
+    do {
         res++;
+        CHECK_STR(res, cur_kvs_str);
+    } while (res[0] == ' ');
 
-    if (res[0] == '"' || res[0] == '\'')
+    if (res[0] == '"' || res[0] == '\'') {
         res++;
+        CHECK_STR(res, cur_kvs_str);
+    }
 
-    last_char = res[strlen(res) - 1];
+    int str_len = strlen(res) - 1;
+    last_char = res[str_len];
     while (last_char == '\n' || last_char == ',' || last_char == ' ' || last_char == '"' ||
            last_char == ' ') {
-        res[strlen(res) - 1] = '\0';
-        last_char = res[strlen(res) - 1];
+        res[str_len] = '\0';
+        str_len--;
+        CHECK_STR(str_len, cur_kvs_str);
+        last_char = res[str_len];
     }
     kvs_str_copy(val, res, MAX_KVS_VAL_LENGTH);
     while (fgets(cur_kvs_str, MAX_KVS_STR_LENGTH, fp)) {
     }
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t k8s_init_with_manager() {
+kvs_status_t k8s_init_with_manager() {
     FILE* fp;
     FILE* fp_name;
     FILE* fp_type;
@@ -137,16 +155,21 @@ size_t k8s_init_with_manager() {
     char pod_name[MAX_KVS_VAL_LENGTH];
     memset(pod_name, '\0', MAX_KVS_VAL_LENGTH);
     if ((fp = popen("hostname", READ_ONLY)) == NULL) {
-        printf("Can't get hostname\n");
-        exit(1);
+        LOG_ERROR("Can't get hostname\n");
+        return KVS_STATUS_FAILURE;
     }
     CHECK_FGETS(fgets(pod_name, MAX_KVS_VAL_LENGTH, fp), pod_name);
     pclose(fp);
-    while (pod_name[strlen(pod_name) - 1] == '\n' || pod_name[strlen(pod_name) - 1] == ' ')
-        pod_name[strlen(pod_name) - 1] = '\0';
+    int str_len = strlen(pod_name) - 1;
+    CHECK_STR(str_len, "hostname");
+    while (pod_name[str_len] == '\n' || pod_name[str_len] == ' ') {
+        pod_name[str_len] = '\0';
+        str_len--;
+        CHECK_STR(str_len, "hostname");
+    }
     if (kube_api_addr == NULL) {
-        printf("%s not set\n", CCL_K8S_API_ADDR_ENV);
-        return 1;
+        LOG_ERROR("%s not set\n", CCL_K8S_API_ADDR_ENV);
+        return KVS_STATUS_FAILURE;
     }
 
     SET_STR(connect_api_template, RUN_TEMPLATE_SIZE, ADDR_STR_V1_TEMPLATE, kube_api_addr);
@@ -156,10 +179,10 @@ size_t k8s_init_with_manager() {
 
     memset(kind_type, NULL_CHAR, MAX_KVS_NAME_LENGTH);
     if ((fp_name = popen(run_str, READ_ONLY)) == NULL) {
-        printf("Can't get kind_type\n");
-        exit(1);
+        LOG_ERROR("Can't get kind_type\n");
+        return KVS_STATUS_FAILURE;
     }
-    json_get_val(fp_name, kind_type_key, 3, kind_type);
+    KVS_CHECK_STATUS(json_get_val(fp_name, kind_type_key, 3, kind_type), "failed to get type");
 
     /*we must use the plural to access to statefulset/deployment KVS*/
     kind_type_size = strlen(kind_type);
@@ -170,10 +193,10 @@ size_t k8s_init_with_manager() {
 
     memset(kind_name, NULL_CHAR, MAX_KVS_NAME_LENGTH);
     if ((fp_type = popen(run_str, READ_ONLY)) == NULL) {
-        printf("Can't get kind_name\n");
-        exit(1);
+        LOG_ERROR("Can't get kind_name\n");
+        return KVS_STATUS_FAILURE;
     }
-    json_get_val(fp_type, kind_name_key, 3, kind_name);
+    KVS_CHECK_STATUS(json_get_val(fp_type, kind_name_key, 3, kind_name), "filed to get name");
 
     SET_STR(kind_path, MAX_KVS_NAME_LENGTH, "%s/%s", kind_type, kind_name);
     SET_STR(connect_api_template, RUN_TEMPLATE_SIZE, ADDR_STR_V2_TEMPLATE, kube_api_addr);
@@ -193,10 +216,10 @@ size_t k8s_init_with_manager() {
 
     pclose(fp_name);
     pclose(fp_type);
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-void get_my_job_name(const char* connect_api_template) {
+kvs_status_t get_my_job_name(const char* connect_api_template) {
     FILE* fp;
     char run_str[RUN_REQUEST_SIZE];
     char grep_kvs_name_key[REQUEST_POSTFIX_SIZE];
@@ -204,13 +227,18 @@ void get_my_job_name(const char* connect_api_template) {
     char pod_name[MAX_KVS_VAL_LENGTH];
     memset(pod_name, '\0', MAX_KVS_VAL_LENGTH);
     if ((fp = popen("hostname", READ_ONLY)) == NULL) {
-        printf("Can't get hostname\n");
-        exit(1);
+        LOG_ERROR("Can't get hostname\n");
+        return KVS_STATUS_FAILURE;
     }
     CHECK_FGETS(fgets(pod_name, MAX_KVS_VAL_LENGTH, fp), pod_name);
     pclose(fp);
-    while (pod_name[strlen(pod_name) - 1] == '\n' || pod_name[strlen(pod_name) - 1] == ' ')
-        pod_name[strlen(pod_name) - 1] = '\0';
+    int str_len = strlen(pod_name) - 1;
+    CHECK_STR(str_len, "hostname");
+    while (pod_name[str_len] == '\n' || pod_name[str_len] == ' ') {
+        pod_name[str_len] = '\0';
+        str_len--;
+        CHECK_STR(str_len, "hostname");
+    }
 
     SET_STR(grep_kvs_name_key, REQUEST_POSTFIX_SIZE, GREP_TEMPLATE, JOB_NAME);
     SET_STR(
@@ -224,8 +252,8 @@ void get_my_job_name(const char* connect_api_template) {
             get_kvs_val);
 
     if ((fp = popen(run_str, READ_ONLY)) == NULL) {
-        printf("Can't get %s", strerror(errno));
-        exit(1);
+        LOG_ERROR("Can't get %s", strerror(errno));
+        return KVS_STATUS_FAILURE;
     }
     CHECK_FGETS(fgets(job_name, MAX_KVS_NAME_LENGTH, fp), job_name);
     pclose(fp);
@@ -236,26 +264,32 @@ void get_my_job_name(const char* connect_api_template) {
     else {
         job_name[strlen(job_name) - 1] = '_';
     }
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t k8s_init_without_manager() {
+kvs_status_t k8s_init_without_manager() {
     FILE* fp;
     char* kube_api_addr = getenv(CCL_K8S_API_ADDR_ENV);
     char connect_api_template[RUN_TEMPLATE_SIZE];
     char pod_name[MAX_KVS_VAL_LENGTH];
     memset(pod_name, '\0', MAX_KVS_VAL_LENGTH);
     if ((fp = popen("hostname", READ_ONLY)) == NULL) {
-        printf("Can't get hostname\n");
-        exit(1);
+        LOG_ERROR("Can't get hostname\n");
+        return KVS_STATUS_FAILURE;
     }
     CHECK_FGETS(fgets(pod_name, MAX_KVS_VAL_LENGTH, fp), pod_name);
     pclose(fp);
-    while (pod_name[strlen(pod_name) - 1] == '\n' || pod_name[strlen(pod_name) - 1] == ' ')
-        pod_name[strlen(pod_name) - 1] = '\0';
+    int str_len = strlen(pod_name) - 1;
+    CHECK_STR(str_len, "hostname");
+    while (pod_name[str_len] == '\n' || pod_name[str_len] == ' ') {
+        pod_name[str_len] = '\0';
+        str_len--;
+        CHECK_STR(str_len, "hostname");
+    }
 
     if (kube_api_addr == NULL) {
-        printf("%s not set\n", CCL_K8S_API_ADDR_ENV);
-        return 1;
+        LOG_ERROR("%s not set\n", CCL_K8S_API_ADDR_ENV);
+        return KVS_STATUS_FAILURE;
     }
 
     SET_STR(connect_api_template, RUN_TEMPLATE_SIZE, ADDR_STR_V1_TEMPLATE, kube_api_addr);
@@ -272,13 +306,12 @@ size_t k8s_init_without_manager() {
             pod_name,
             "%s");
 
-    get_my_job_name(connect_api_template);
+    KVS_CHECK_STATUS(get_my_job_name(connect_api_template), "failed to get job name");
 
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t request_k8s_kvs_init() {
-    size_t res = 1;
+kvs_status_t request_k8s_kvs_init() {
     char* manager_type_env = getenv(CCL_K8S_MANAGER_TYPE_ENV);
 
     if (!manager_type_env || strstr(manager_type_env, "none")) {
@@ -288,7 +321,7 @@ size_t request_k8s_kvs_init() {
         manager = MT_K8S;
     }
     else {
-        printf(
+        LOG_WARN(
             "Unknown %s = %s, running with \"none\"\n", CCL_K8S_MANAGER_TYPE_ENV, manager_type_env);
         manager = MT_NONE;
     }
@@ -296,8 +329,11 @@ size_t request_k8s_kvs_init() {
     memset(job_name, NULL_CHAR, MAX_KVS_NAME_LENGTH);
 
     switch (manager) {
-        case MT_NONE: res = k8s_init_without_manager(); break;
-        case MT_K8S: res = k8s_init_with_manager(); break;
+        case MT_NONE:
+            KVS_CHECK_STATUS(k8s_init_without_manager(), "failed to initialize k8z");
+            break;
+        case MT_K8S: KVS_CHECK_STATUS(k8s_init_with_manager(), "failed to initialize k8z"); break;
+        default: LOG_ERROR("unknown k8s manager"); return KVS_STATUS_FAILURE;
     }
 
     memset(ccl_kvs_ip, NULL_CHAR, MAX_KVS_NAME_LENGTH);
@@ -310,35 +346,51 @@ size_t request_k8s_kvs_init() {
     SET_STR(req_kvs_ip, MAX_KVS_NAME_LENGTH, KVS_NAME_TEMPLATE_S, job_name, REQ_KVS_IP);
     SET_STR(master_addr, MAX_KVS_NAME_LENGTH, KVS_NAME_TEMPLATE_S, job_name, MASTER_ADDR);
 
-    return res;
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t request_k8s_kvs_get_master(const char* local_host_ip, char* main_host_ip, char* port_str) {
+kvs_status_t request_k8s_kvs_get_master(const char* local_host_ip,
+                                        char* main_host_ip,
+                                        char* port_str) {
     char** kvs_values = NULL;
     char** kvs_keys = NULL;
     int values_count = 0;
 
-    request_k8s_set_val(ccl_kvs_ip, my_hostname, local_host_ip);
-    request_k8s_set_val(ccl_kvs_port, my_hostname, port_str);
-
-    if (!request_k8s_get_count_names(master_addr)) {
-        values_count = request_k8s_get_keys_values_by_name(ccl_kvs_ip, &kvs_keys, &kvs_values);
+    KVS_CHECK_STATUS(request_k8s_set_val(ccl_kvs_ip, my_hostname, local_host_ip),
+                     "failed to set IP");
+    KVS_CHECK_STATUS(request_k8s_set_val(ccl_kvs_port, my_hostname, port_str),
+                     "failed to set port");
+    size_t count;
+    KVS_CHECK_STATUS(request_k8s_get_count_names(master_addr, count), "failed to get names count");
+    if (count == 0) {
+        KVS_CHECK_STATUS(
+            request_k8s_get_keys_values_by_name(ccl_kvs_ip, &kvs_keys, &kvs_values, values_count),
+            "failed to get keys");
         if (strstr(kvs_keys[0], my_hostname)) {
-            request_k8s_set_val(req_kvs_ip, my_hostname, local_host_ip);
-            while (!request_k8s_get_count_names(master_addr)) {
-                values_count =
-                    request_k8s_get_keys_values_by_name(req_kvs_ip, &kvs_keys, &kvs_values);
+            KVS_CHECK_STATUS(request_k8s_set_val(req_kvs_ip, my_hostname, local_host_ip),
+                             "failed to set IP");
+            KVS_CHECK_STATUS(request_k8s_get_count_names(master_addr, count),
+                             "failed to get names count");
+            while (count == 0) {
+                KVS_CHECK_STATUS(request_k8s_get_keys_values_by_name(
+                                     req_kvs_ip, &kvs_keys, &kvs_values, values_count),
+                                 "failed to get keys values");
                 if (values_count > 1) {
                     if (!strstr(kvs_keys[0], my_hostname)) {
                         break;
                     }
                 }
                 else {
-                    request_k8s_set_val(master_addr, KVS_IP, local_host_ip);
-                    request_k8s_set_val(master_addr, KVS_PORT, port_str);
+                    KVS_CHECK_STATUS(request_k8s_set_val(master_addr, KVS_IP, local_host_ip),
+                                     "failed to set IP");
+                    KVS_CHECK_STATUS(request_k8s_set_val(master_addr, KVS_PORT, port_str),
+                                     "failed to set port");
                 }
+                KVS_CHECK_STATUS(request_k8s_get_count_names(master_addr, count),
+                                 "failed to get names count");
             }
-            request_k8s_remove_name_key(req_kvs_ip, my_hostname);
+            KVS_CHECK_STATUS(request_k8s_remove_name_key(req_kvs_ip, my_hostname),
+                             "failed to remove host info");
         }
         if (kvs_keys != NULL) {
             for (int i = 0; i < values_count; i++) {
@@ -353,29 +405,36 @@ size_t request_k8s_kvs_get_master(const char* local_host_ip, char* main_host_ip,
             free(kvs_values);
         }
     }
-    while (!request_k8s_get_count_names(master_addr)) {
+    do {
+        KVS_CHECK_STATUS(request_k8s_get_count_names(master_addr, count),
+                         "failed to get names count");
         sleep(1);
-    }
-    request_k8s_get_val_by_name_key(master_addr, KVS_IP, main_host_ip);
-    request_k8s_get_val_by_name_key(master_addr, KVS_PORT, port_str);
-    return 0;
+    } while (count == 0);
+    KVS_CHECK_STATUS(request_k8s_get_val_by_name_key(master_addr, KVS_IP, main_host_ip),
+                     "failed to get IP");
+    KVS_CHECK_STATUS(request_k8s_get_val_by_name_key(master_addr, KVS_PORT, port_str),
+                     "failed to get port");
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t request_k8s_kvs_finalize(size_t is_master) {
-    request_k8s_remove_name_key(ccl_kvs_ip, my_hostname);
-    request_k8s_remove_name_key(ccl_kvs_port, my_hostname);
+kvs_status_t request_k8s_kvs_finalize(size_t is_master) {
+    KVS_CHECK_STATUS(request_k8s_remove_name_key(ccl_kvs_ip, my_hostname), "failed to remove IP");
+    KVS_CHECK_STATUS(request_k8s_remove_name_key(ccl_kvs_port, my_hostname),
+                     "failed to remove port");
     if (is_master) {
-        request_k8s_remove_name_key(master_addr, KVS_IP);
-        request_k8s_remove_name_key(master_addr, KVS_PORT);
+        KVS_CHECK_STATUS(request_k8s_remove_name_key(master_addr, KVS_IP),
+                         "failed to remove master IP");
+        KVS_CHECK_STATUS(request_k8s_remove_name_key(master_addr, KVS_PORT),
+                         "failed to remove master IP");
     }
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t get_by_template(char*** kvs_entry,
-                       const char* request,
-                       const char* template_str,
-                       int count,
-                       int max_count) {
+kvs_status_t get_by_template(char*** kvs_entry,
+                             const char* request,
+                             const char* template_str,
+                             int count,
+                             int max_count) {
     FILE* fp;
     char get_val[REQUEST_POSTFIX_SIZE];
     char run_str[RUN_REQUEST_SIZE];
@@ -386,14 +445,14 @@ size_t get_by_template(char*** kvs_entry,
 
     *kvs_entry = (char**)malloc(sizeof(char*) * count);
     if (*kvs_entry == NULL) {
-        printf("Memory allocation failed\n");
-        exit(1);
+        LOG_ERROR("Memory allocation failed\n");
+        return KVS_STATUS_FAILURE;
     }
     for (i = 0; i < count; i++) {
         (*kvs_entry)[i] = (char*)malloc(sizeof(char) * max_count);
         if ((*kvs_entry)[i] == NULL) {
-            printf("Memory allocation failed\n");
-            exit(1);
+            LOG_ERROR("Memory allocation failed\n");
+            return KVS_STATUS_FAILURE;
         }
     }
 
@@ -402,8 +461,8 @@ size_t get_by_template(char*** kvs_entry,
     SET_STR(get_val, REQUEST_POSTFIX_SIZE, CONCAT_TWO_COMMAND_TEMPLATE, request, template_str);
     SET_STR(run_str, RUN_REQUEST_SIZE, run_get_template, get_val);
     if ((fp = popen(run_str, READ_ONLY)) == NULL) {
-        printf("Can't get by template\n");
-        exit(1);
+        LOG_ERROR("Can't get by template\n");
+        return KVS_STATUS_FAILURE;
     }
     while ((fgets((*kvs_entry)[i], max_count, fp) != NULL) && (i < count)) {
         while ((*kvs_entry)[i][strlen((*kvs_entry)[i]) - 1] == '\n' ||
@@ -412,18 +471,19 @@ size_t get_by_template(char*** kvs_entry,
         i++;
     }
     pclose(fp);
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t request_k8s_get_keys_values_by_name(const char* kvs_name,
-                                           char*** kvs_keys,
-                                           char*** kvs_values) {
+kvs_status_t request_k8s_get_keys_values_by_name(const char* kvs_name,
+                                                 char*** kvs_keys,
+                                                 char*** kvs_values,
+                                                 int& values_count) {
     FILE* fp;
     char run_str[RUN_REQUEST_SIZE];
     char grep_name_str[REQUEST_POSTFIX_SIZE];
     char get_name_count[REQUEST_POSTFIX_SIZE];
     char values_count_str[INT_STR_SIZE];
-    size_t values_count;
+    values_count = 0;
 
     SET_STR(get_name_count, REQUEST_POSTFIX_SIZE, GREP_COUNT_TEMPLATE, kvs_name);
 
@@ -431,30 +491,36 @@ size_t request_k8s_get_keys_values_by_name(const char* kvs_name,
     SET_STR(run_str, RUN_REQUEST_SIZE, run_get_template, get_name_count);
 
     if ((fp = popen(run_str, READ_ONLY)) == NULL) {
-        printf("Can't get keys-values by name: %s\n", kvs_name);
-        exit(1);
+        LOG_ERROR("Can't get keys-values by name: %s\n", kvs_name);
+        return KVS_STATUS_SUCCESS;
     }
     CHECK_FGETS(fgets(values_count_str, INT_STR_SIZE, fp), values_count_str);
     pclose(fp);
 
-    if ((values_count = safe_strtol(values_count_str, NULL, 10)) == 0)
-        return 0;
+    KVS_CHECK_STATUS(safe_strtol(values_count_str, values_count), "failed to convert count");
+    if (values_count == 0)
+        return KVS_STATUS_SUCCESS;
 
     SET_STR(grep_name_str, REQUEST_POSTFIX_SIZE, GREP_TEMPLATE, kvs_name);
     if (kvs_values != NULL) {
-        get_by_template(kvs_values, grep_name_str, GET_VAL, values_count, MAX_KVS_VAL_LENGTH);
+        KVS_CHECK_STATUS(
+            get_by_template(kvs_values, grep_name_str, GET_VAL, values_count, MAX_KVS_VAL_LENGTH),
+            "failed to get val");
     }
     if (kvs_keys != NULL) {
-        get_by_template(kvs_keys, grep_name_str, GET_KEY, values_count, MAX_KVS_KEY_LENGTH);
+        KVS_CHECK_STATUS(
+            get_by_template(kvs_keys, grep_name_str, GET_KEY, values_count, MAX_KVS_KEY_LENGTH),
+            "failed to get key");
     }
-    return values_count;
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t request_k8s_get_count_names(const char* kvs_name) {
+kvs_status_t request_k8s_get_count_names(const char* kvs_name, size_t& res) {
     FILE* fp;
     char run_str[RUN_REQUEST_SIZE];
     char get_count_str[REQUEST_POSTFIX_SIZE];
     char count_names[INT_STR_SIZE];
+    res = 0;
 
     SET_STR(get_count_str, REQUEST_POSTFIX_SIZE, GREP_COUNT_TEMPLATE, kvs_name);
 
@@ -462,16 +528,19 @@ size_t request_k8s_get_count_names(const char* kvs_name) {
     SET_STR(run_str, RUN_REQUEST_SIZE, run_get_template, get_count_str);
 
     if ((fp = popen(run_str, READ_ONLY)) == NULL) {
-        printf("Can't get names count: %s\n", kvs_name);
-        exit(1);
+        LOG_ERROR("Can't get names count: %s\n", kvs_name);
+        return KVS_STATUS_FAILURE;
     }
     CHECK_FGETS(fgets(count_names, INT_STR_SIZE, fp), count_names);
     pclose(fp);
 
-    return safe_strtol(count_names, NULL, 10);
+    KVS_CHECK_STATUS(safe_strtol(count_names, res), "failed to convert cont names");
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t request_k8s_get_val_by_name_key(const char* kvs_name, const char* kvs_key, char* kvs_val) {
+kvs_status_t request_k8s_get_val_by_name_key(const char* kvs_name,
+                                             const char* kvs_key,
+                                             char* kvs_val) {
     FILE* fp;
     char run_str[RUN_REQUEST_SIZE];
     char grep_kvs_name_key[REQUEST_POSTFIX_SIZE];
@@ -487,16 +556,16 @@ size_t request_k8s_get_val_by_name_key(const char* kvs_name, const char* kvs_key
     SET_STR(run_str, RUN_REQUEST_SIZE, run_get_template, get_kvs_val);
 
     if ((fp = popen(run_str, READ_ONLY)) == NULL) {
-        printf("Can't get value by name-key: %s\n", kvs_name_key);
-        exit(1);
+        LOG_ERROR("Can't get value by name-key: %s\n", kvs_name_key);
+        return KVS_STATUS_FAILURE;
     }
     CHECK_FGETS(fgets(kvs_val, MAX_KVS_VAL_LENGTH, fp), kvs_val);
     pclose(fp);
     kvs_val[strlen(kvs_val) - 1] = NULL_CHAR;
-    return strlen(kvs_val);
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t request_k8s_remove_name_key(const char* kvs_name, const char* kvs_key) {
+kvs_status_t request_k8s_remove_name_key(const char* kvs_name, const char* kvs_key) {
     FILE* fp;
     char run_str[RUN_REQUEST_SIZE];
     char patch[REQUEST_POSTFIX_SIZE];
@@ -509,14 +578,14 @@ size_t request_k8s_remove_name_key(const char* kvs_name, const char* kvs_key) {
     SET_STR(run_str, RUN_REQUEST_SIZE, run_set_template, patch);
 
     if ((fp = popen(run_str, READ_ONLY)) == NULL) {
-        printf("Can't remove name-key: %s\n", kvs_name_key);
-        exit(1);
+        LOG_ERROR("Can't remove name-key: %s\n", kvs_name_key);
+        return KVS_STATUS_FAILURE;
     }
     pclose(fp);
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t request_k8s_set_val(const char* kvs_name, const char* kvs_key, const char* kvs_val) {
+kvs_status_t request_k8s_set_val(const char* kvs_name, const char* kvs_key, const char* kvs_val) {
     FILE* fp;
     char run_str[RUN_REQUEST_SIZE];
     char patch[REQUEST_POSTFIX_SIZE];
@@ -529,21 +598,21 @@ size_t request_k8s_set_val(const char* kvs_name, const char* kvs_key, const char
     SET_STR(run_str, RUN_REQUEST_SIZE, run_set_template, patch);
 
     if ((fp = popen(run_str, READ_ONLY)) == NULL) {
-        printf("Can't set name-key-val: %s-%s\n", kvs_name_key, kvs_val);
-        exit(1);
+        LOG_ERROR("Can't set name-key-val: %s-%s\n", kvs_name_key, kvs_val);
+        return KVS_STATUS_FAILURE;
     }
     pclose(fp);
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t request_k8s_get_replica_size(void) {
+kvs_status_t request_k8s_get_replica_size(size_t& res) {
     FILE* fp;
     char run_str[RUN_REQUEST_SIZE];
     char replica_size_str[MAX_KVS_VAL_LENGTH];
     const char* replica_keys[] = { "spec", "replicas" };
 
     switch (manager) {
-        case MT_NONE: return request_k8s_get_count_names(ccl_kvs_ip);
+        case MT_NONE: return request_k8s_get_count_names(ccl_kvs_ip, res);
         case MT_K8S:
             /*get full output*/
             SET_STR(run_str, RUN_REQUEST_SIZE, run_get_template, "");
@@ -552,9 +621,12 @@ size_t request_k8s_get_replica_size(void) {
                 printf("Can't get replica size\n");
                 exit(1);
             }
-            json_get_val(fp, replica_keys, 2, replica_size_str);
+            KVS_CHECK_STATUS(json_get_val(fp, replica_keys, 2, replica_size_str),
+                             "failed to get replica size");
             pclose(fp);
-            return safe_strtol(replica_size_str, NULL, 10);
+            KVS_CHECK_STATUS(safe_strtol(replica_size_str, res), "failed to convert replica size");
+            return KVS_STATUS_SUCCESS;
+        default: LOG_ERROR("unknown k8s manager"); return KVS_STATUS_FAILURE;
     }
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }

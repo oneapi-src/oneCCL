@@ -68,7 +68,7 @@ public:
               size(size),
               offset(offset),
               type(type) {
-        LOG_DEBUG("create: src ",
+        LOG_TRACE("create: src ",
                   src,
                   ", size ",
                   size,
@@ -107,7 +107,7 @@ public:
     }
 
     void set(void* src, ssize_t size, size_t offset, ccl_buffer_type type) {
-        LOG_DEBUG("set: src ",
+        LOG_TRACE("set: src ",
                   src,
                   ", size ",
                   size,

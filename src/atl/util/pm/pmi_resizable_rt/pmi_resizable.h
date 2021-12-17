@@ -48,10 +48,9 @@ class helper;
 class pmi_resizable final : public ipmi {
 public:
     pmi_resizable() = delete;
-    explicit pmi_resizable(std::shared_ptr<ikvs_wrapper> k, const char* main_addr = nullptr) {
+    explicit pmi_resizable(std::shared_ptr<ikvs_wrapper> k, const char* main_addr = "")
+            : main_addr(main_addr) {
         h = std::shared_ptr<helper>(new helper(k));
-        //TODO: move it in one func
-        pmrt_init(main_addr);
     }
 
     ~pmi_resizable() override;
@@ -66,7 +65,7 @@ public:
 
     atl_status_t pmrt_wait_notification() override;
 
-    void pmrt_barrier() override;
+    atl_status_t pmrt_barrier() override;
 
     atl_status_t pmrt_kvs_put(char* kvs_key,
                               int proc_idx,
@@ -78,7 +77,7 @@ public:
                               void* kvs_val,
                               size_t kvs_val_len) override;
 
-    void Hard_finilize(int sig);
+    kvs_status_t hard_finalize(int sig);
 
     int get_rank() override;
 
@@ -86,9 +85,9 @@ public:
 
     size_t get_local_thread_idx() override;
 
-    size_t get_local_kvs_id() override;
+    atl_status_t get_local_kvs_id(size_t& res) override;
 
-    void set_local_kvs_id(size_t local_kvs_id) override;
+    atl_status_t set_local_kvs_id(size_t local_kvs_id) override;
 
     size_t get_threads_per_process() override {
         return 1;
@@ -97,49 +96,51 @@ public:
     size_t get_ranks_per_process() override {
         return 1;
     }
-    void pmrt_finalize() override;
+    atl_status_t pmrt_finalize() override;
+
+    atl_status_t pmrt_init() override;
 
 private:
     bool is_finalized{ false };
-    atl_status_t pmrt_init(const char* main_addr = nullptr);
     /*Was in API ->*/
-    int PMIR_Main_Addr_Reserve(char* main_addr);
+    kvs_status_t PMIR_Main_Addr_Reserve(char* main_addr);
 
-    int PMIR_Init(const char* main_addr);
+    kvs_status_t PMIR_Init(const char* main_addr);
 
-    int PMIR_Finalize(void);
+    kvs_status_t PMIR_Finalize(void);
 
-    int PMIR_Get_size(int* size);
+    kvs_status_t PMIR_Get_size(int* size);
 
-    int PMIR_Get_rank(int* rank);
+    kvs_status_t PMIR_Get_rank(int* rank);
 
-    int PMIR_KVS_Get_my_name(char* kvs_name, size_t length);
+    kvs_status_t PMIR_KVS_Get_my_name(char* kvs_name, size_t length);
 
-    int PMIR_KVS_Get_name_length_max(size_t* length);
+    kvs_status_t PMIR_KVS_Get_name_length_max(size_t* length);
 
-    int PMIR_Barrier(void);
+    kvs_status_t PMIR_Barrier(void);
 
-    int PMIR_Update(void);
+    kvs_status_t PMIR_Update(void);
 
-    int PMIR_KVS_Get_key_length_max(size_t* length);
+    kvs_status_t PMIR_KVS_Get_key_length_max(size_t* length);
 
-    int PMIR_KVS_Get_value_length_max(size_t* length);
+    kvs_status_t PMIR_KVS_Get_value_length_max(size_t* length);
 
-    int PMIR_KVS_Put(const char* kvs_name, const char* key, const char* value);
+    kvs_status_t PMIR_KVS_Put(const char* kvs_name, const char* key, const char* value);
 
-    int PMIR_KVS_Commit(const char* kvs_name);
+    kvs_status_t PMIR_KVS_Commit(const char* kvs_name);
 
-    int PMIR_KVS_Get(const char* kvs_name, const char* key, char* value, size_t length);
+    kvs_status_t PMIR_KVS_Get(const char* kvs_name, const char* key, char* value, size_t length);
 
-    int PMIR_set_resize_function(pmir_resize_fn_t resize_fn);
+    kvs_status_t PMIR_set_resize_function(pmir_resize_fn_t resize_fn);
 
-    int PMIR_Wait_notification(void);
+    kvs_status_t PMIR_Wait_notification(void);
     /* <- Was in API*/
     kvs_resize_action_t default_checker(int comm_size);
     kvs_resize_action_t call_resize_fn(int comm_size);
 
     int rank;
     int size;
+    std::string main_addr;
 
     pmir_resize_fn_t resize_function = nullptr;
     std::shared_ptr<helper> h;

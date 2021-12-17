@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
     if (!handle_exception(q))
         return -1;
 
-    /* invoke alltoall */
+    /* invoke alltoallv */
     ccl::alltoallv(send_buf, send_counts, recv_buf, recv_counts, comm, stream).wait();
 
     /* open recv_buf and check its correctness on the device side */

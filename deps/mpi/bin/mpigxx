@@ -97,11 +97,8 @@ fi
 
 # Default settings for compiler, flags, and libraries
 CXX="g++"
-MPICH_VERSION="3.3"
-CXXFLAGS=""
-LDFLAGS=" -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl "
-LIBS="-lm   -lpthread  -lfabric -lrt "
-MPIVERSION="2021.4"
+MPICH_VERSION="3.4a2"
+MPIVERSION="2021.5"
 MPILIBNAME="mpi"
 MPICXXLIBNAME="mpicxx"
 
@@ -606,10 +603,6 @@ fi
 final_cppflags=" "
 final_ldflags="  -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl "
 final_libs="-lpthread -lrt "
-if test "no" = "no" -o "${interlib_deps}" = "no" ; then
-    final_ldflags="${final_ldflags}  -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl -L/p/pdsd/scratch/jenkins/artefacts_impi_2019/hcoll/lib -L/p/pdsd/scratch/Uploads/IMPI/other/software/libfabric/linux/v1.9.0/lib"
-    final_libs="${final_libs}  -lm   -lpthread  -lfabric -lrt "
-fi
 
 # A temporary statement to invoke the compiler
 # Place the -L before any args incase there are any mpi libraries in there.
@@ -625,7 +618,7 @@ if [ "$linking" = yes ] ; then
         $Show $CXX ${final_cppflags} $PROFILE_INCPATHS ${final_cxxflags} ${final_ldflags} $allargs -I\"${includedir}\"
         rc=$?
     else
-        $Show $CXX $CXXFLAGS $allargs -I\"${includedir}\" -L\"${libdir}${MPILIBDIR}\" -L\"${libdir}\" $rpath_opt $shllibpath $cxxlibs $mpilibs $I_MPI_OTHERLIBS $LDFLAGS
+        $Show $CXX $CXXFLAGS $allargs -I\"${includedir}\" -L\"${libdir}${MPILIBDIR}\" -L\"${libdir}\" $rpath_opt $shllibpath $cxxlibs $mpilibs $I_MPI_OTHERLIBS ${final_ldflags}
         rc=$?
         if [ $rc -eq 0 -a "x$strip_debug_info" = "xyes" ] ; then
             $Show objcopy --only-keep-debug ${executable} ${executable}.dbg

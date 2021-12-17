@@ -23,35 +23,30 @@ ccl_allreduce_2d_builder::ccl_allreduce_2d_builder(size_t base_size,
                                                    ccl_comm* comm) {
     parent_comm = comm;
 
-    size_t vector_size = comm->size();
-    std::vector<int> first_dim_colors(vector_size), second_dim_colors(vector_size);
+    int first_dim_color, second_dim_color;
 
-    for (size_t idx = 0; idx < vector_size; idx++) {
-        if (switch_dims) {
-            first_dim_colors[idx] = idx / base_size;
-            second_dim_colors[idx] = idx % base_size;
-        }
-        else {
-            first_dim_colors[idx] = idx % base_size;
-            second_dim_colors[idx] = idx / base_size;
-        }
+    if (switch_dims) {
+        first_dim_color = comm->rank() / base_size;
+        second_dim_color = comm->rank() % base_size;
+    }
+    else {
+        first_dim_color = comm->rank() % base_size;
+        second_dim_color = comm->rank() / base_size;
     }
 
-    first_dim_comm = std::shared_ptr<ccl_comm>(ccl_comm::create_with_colors(
-        first_dim_colors, ccl::global_data::get().comm_ids.get(), comm, true /*share_resources*/));
+    first_dim_comm = std::shared_ptr<ccl_comm>(comm->create_with_color(
+        first_dim_color, ccl::global_data::get().comm_ids.get(), true /*share_resources*/));
 
-    second_dim_comm = std::shared_ptr<ccl_comm>(ccl_comm::create_with_colors(
-        second_dim_colors, ccl::global_data::get().comm_ids.get(), comm, true /*share_resources*/));
+    second_dim_comm = std::shared_ptr<ccl_comm>(comm->create_with_color(
+        second_dim_color, ccl::global_data::get().comm_ids.get(), true /*share_resources*/));
 
     if (comm->rank() == 0) {
         std::string first_dim_ranks, second_dim_ranks;
         for (int idx = 0; idx < first_dim_comm->size(); idx++) {
-            first_dim_ranks +=
-                ((idx) ? " " : "") + std::to_string(first_dim_comm->get_global_rank(idx));
+            first_dim_ranks += ((idx) ? " " : "") + std::to_string(idx);
         }
         for (int idx = 0; idx < second_dim_comm->size(); idx++) {
-            second_dim_ranks +=
-                ((idx) ? " " : "") + std::to_string(second_dim_comm->get_global_rank(idx));
+            second_dim_ranks += ((idx) ? " " : "") + std::to_string(idx);
         }
 
         std::stringstream ss;
@@ -79,8 +74,8 @@ static void ccl_allreduce_2d_add_allreduce_allgather(ccl_sched* sched,
                                                      ccl_comm* comm,
                                                      size_t chunk_idx,
                                                      size_t chunk_count) {
-    ccl_comm* first_dim_comm = comm->allreduce_2d_builder->get_first_dim_comm();
-    ccl_comm* second_dim_comm = comm->allreduce_2d_builder->get_second_dim_comm();
+    ccl_comm* first_dim_comm = comm->get_allreduce_2d_builder()->get_first_dim_comm();
+    ccl_comm* second_dim_comm = comm->get_allreduce_2d_builder()->get_second_dim_comm();
 
     size_t dtype_size = dtype.size();
     size_t main_chunk_size = count / chunk_count;
@@ -96,7 +91,7 @@ static void ccl_allreduce_2d_add_allreduce_allgather(ccl_sched* sched,
     if (ar_count) {
         /* TODO: add second level selection to distinguish high and low level algorithms */
         ccl_buffer ar_buf = rbuf + first_dim_comm->rank() * main_block_count * dtype_size;
-        ccl_coll_build_starlike_allreduce(
+        ccl_coll_build_nreduce_allreduce(
             sched, ar_buf, ar_buf, ar_count, dtype, op, second_dim_comm);
         sched->add_barrier();
     }
@@ -116,7 +111,7 @@ static void ccl_allreduce_2d_add_reduce_scatter_allreduce_allgather(ccl_sched* s
                                                                     ccl_comm* comm,
                                                                     size_t chunk_idx,
                                                                     size_t chunk_count) {
-    ccl_comm* first_dim_comm = comm->allreduce_2d_builder->get_first_dim_comm();
+    ccl_comm* first_dim_comm = comm->get_allreduce_2d_builder()->get_first_dim_comm();
 
     size_t dtype_size = dtype.size();
     size_t main_chunk_size = count / chunk_count;
@@ -133,7 +128,7 @@ static void ccl_allreduce_2d_add_reduce_scatter_allreduce_allgather(ccl_sched* s
             sched, send_buf, recv_buf, count, dtype, op, comm, chunk_idx, chunk_count);
     }
     else {
-        entry_factory::make_entry<subsched_entry>(
+        entry_factory::create<subsched_entry>(
             sched,
             chunk_idx,
             [send_buf, recv_buf, count, &dtype, op, comm, chunk_idx, chunk_count](ccl_sched* s) {
@@ -142,7 +137,7 @@ static void ccl_allreduce_2d_add_reduce_scatter_allreduce_allgather(ccl_sched* s
             },
             "AR_AG");
 
-        entry_factory::make_entry<subsched_entry>(
+        entry_factory::create<subsched_entry>(
             sched,
             chunk_idx + 1,
             [send_buf, recv_buf, count, &dtype, op, comm, chunk_idx, chunk_count](ccl_sched* s) {

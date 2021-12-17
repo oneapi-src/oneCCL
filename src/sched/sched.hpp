@@ -40,6 +40,7 @@ enum ccl_sched_in_bin_status {
 typedef ccl::status (*ccl_sched_finalize_fn_t)(ccl_sched*, const void*);
 
 class ccl_extra_sched;
+class ccl_master_sched;
 
 class alignas(CACHELINE_SIZE) ccl_sched : public ccl_sched_base {
 public:
@@ -47,7 +48,9 @@ public:
         return "worker_sched";
     }
 
-    ccl_sched(const ccl_coll_param& coll_param, ccl_request* master_request);
+    ccl_sched(const ccl_sched_create_param& param,
+              ccl_request* master_request,
+              ccl_master_sched* master_sched = nullptr);
     ccl_sched() = delete;
     ccl_sched(const ccl_sched& other) = delete;
     ccl_sched& operator=(const ccl_sched& other) = delete;
@@ -171,6 +174,13 @@ public:
         finalize_fn_ctx = ctx;
     }
     ccl_request* req = nullptr;
+    // pointer to a master schedule this sched belongs to. If this sched is a partial sched, then
+    // it's the same as the req ptr above. But it's going to be different if the sched is created
+    // as part of extra_sched.
+    // Currently we only set this ptr to non-null when we need it, i.e. these are the cases when we
+    // construct sched and entries to run collective. There are some other cases where we don't need
+    // master_sched, so it's not set there.
+    ccl_master_sched* master_sched = nullptr;
     void dump(std::ostream& out) const;
     size_t entries_count() const;
 

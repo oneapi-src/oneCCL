@@ -74,22 +74,19 @@ inline bool check_sycl_usm(queue& q, usm::alloc alloc_type) {
 }
 
 inline std::string get_preferred_gpu_platform_name() {
-    std::string filter;
     std::string result;
 
-    if (getenv("SYCL_DEVICE_FILTER") == nullptr) {
-        filter = "level-zero";
-    }
-    else if (getenv("SYCL_DEVICE_FILTER") != nullptr) {
-        if (std::strstr(getenv("SYCL_DEVICE_FILTER"), "level_zero") != NULL) {
+    std::string filter = "level-zero";
+    char* env = getenv("SYCL_DEVICE_FILTER");
+    if (env) {
+        if (std::strstr(env, "level_zero")) {
             filter = "level-zero";
         }
-        else if (std::strstr(getenv("SYCL_DEVICE_FILTER"), "opencl") != NULL) {
+        else if (std::strstr(env, "opencl")) {
             filter = "opencl";
         }
         else {
-            throw std::runtime_error("invalid device filter: " +
-                                     std::string(getenv("SYCL_DEVICE_FILTER")));
+            throw std::runtime_error("invalid device filter: " + std::string(env));
         }
     }
 
@@ -131,31 +128,27 @@ inline std::string get_preferred_gpu_platform_name() {
 }
 
 inline std::vector<sycl::device> create_sycl_gpu_devices() {
-    constexpr char dev_prefix[] = "-- ";
-    constexpr char sub_dev_prefix[] = "---- ";
+    constexpr char prefix[] = "-- ";
 
     std::vector<sycl::device> result;
     auto plaform_list = sycl::platform::get_platforms();
     auto preferred_platform_name = get_preferred_gpu_platform_name();
 
     std::stringstream ss;
-    ss << "preferred platform: [" << preferred_platform_name << "]\n";
+    std::stringstream ss_warn;
 
     for (const auto& platform : plaform_list) {
         auto platform_name = platform.get_info<sycl::info::platform::name>();
-
-        if (platform_name.compare(preferred_platform_name) != 0)
+        if (platform_name.compare(preferred_platform_name) != 0) {
             continue;
-
-        ss << "platform: [" << platform_name << "]\n";
+        }
 
         auto device_list = platform.get_devices();
-
         for (const auto& device : device_list) {
             auto device_name = device.get_info<cl::sycl::info::device::name>();
 
             if (!device.is_gpu()) {
-                ss << dev_prefix << "device [" << device_name << "] is not GPU, skipping\n";
+                ss_warn << prefix << "device [" << device_name << "] is not GPU, skipping\n";
                 continue;
             }
 
@@ -165,9 +158,9 @@ inline std::vector<sycl::device> create_sycl_gpu_devices() {
                           part_props.end(),
                           info::partition_property::partition_by_affinity_domain) ==
                 part_props.end()) {
-                ss << dev_prefix << "device [" << device_name
-                   << "] does not support partition by affinity domain"
-                   << ", use root device\n";
+                ss_warn << prefix << "device [" << device_name
+                        << "] does not support partition by affinity domain"
+                        << ", use root device\n";
                 result.push_back(device);
                 continue;
             }
@@ -179,37 +172,32 @@ inline std::vector<sycl::device> create_sycl_gpu_devices() {
                           part_affinity_domains.end(),
                           info::partition_affinity_domain::next_partitionable) ==
                 part_affinity_domains.end()) {
-                ss << dev_prefix << "device [" << device_name
-                   << "] does not support next_partitionable affinity domain"
-                   << ", use root device\n";
+                ss_warn << prefix << "device [" << device_name
+                        << "] does not support next_partitionable affinity domain"
+                        << ", use root device\n";
                 result.push_back(device);
                 continue;
             }
-
-            ss << dev_prefix << "device [" << device_name << "] should provide "
-               << device.template get_info<info::device::partition_max_sub_devices>()
-               << " sub-devices\n";
 
             auto sub_devices =
                 device.create_sub_devices<info::partition_property::partition_by_affinity_domain>(
                     info::partition_affinity_domain::next_partitionable);
 
+            size_t sub_devices_max =
+                device.template get_info<info::device::partition_max_sub_devices>();
+            if (sub_devices.size() != sub_devices_max) {
+                ss_warn << prefix << "device [" << device_name << "] expected " << sub_devices_max
+                        << " sub-devices, but got " << sub_devices.size();
+            }
+
             if (sub_devices.empty()) {
-                /* TODO: remove when SYCL/L0 sub-devices will be supported */
-                ss << dev_prefix << "device [" << device_name << "] does not provide sub-devices"
-                   << ", use root device\n";
+                ss_warn << prefix << "device [" << device_name << "] does not provide sub-devices"
+                        << ", use root device\n";
                 result.push_back(device);
                 continue;
             }
 
-            ss << dev_prefix << "device [" << device_name << "] provides " << sub_devices.size()
-               << " sub-devices\n";
             result.insert(result.end(), sub_devices.begin(), sub_devices.end());
-
-            for (size_t idx = 0; idx < sub_devices.size(); idx++) {
-                ss << sub_dev_prefix << "sub-device " << idx << ": ["
-                   << sub_devices[idx].get_info<cl::sycl::info::device::name>() << "]\n";
-            }
         }
     }
 
@@ -217,7 +205,9 @@ inline std::vector<sycl::device> create_sycl_gpu_devices() {
         throw std::runtime_error("no GPU devices found");
     }
 
-    ss << "found: " << result.size() << " GPU device(s)\n";
+    ss << "preferred platform: " << preferred_platform_name << ", found: " << result.size()
+       << " GPU device(s)\n";
+    ss << ss_warn.str();
     printf("%s", ss.str().c_str());
 
     return result;
@@ -441,96 +431,4 @@ struct buf_allocator {
 
     queue q;
     set<T*> memory_storage;
-};
-
-template <class data_native_type, usm::alloc... types>
-struct usm_polymorphic_allocator {
-    using native_type = data_native_type;
-    using allocator_types = tuple<usm_allocator<native_type, types>...>;
-    using integer_usm_type = typename underlying_type<usm::alloc>::type;
-    using self_t = usm_polymorphic_allocator<data_native_type, types...>;
-
-    usm_polymorphic_allocator(queue& q)
-            : allocators{ make_tuple(usm_allocator<native_type, types>(q)...) } {}
-
-    ~usm_polymorphic_allocator() {
-        for (auto& v : memory_storage) {
-            data_native_type* mem = v.first;
-            deallocate(mem, v.second.size, v.second.type);
-        }
-    }
-
-private:
-    struct alloc_info {
-        size_t size;
-        usm::alloc type;
-    };
-    map<data_native_type*, alloc_info> memory_storage;
-
-    struct alloc_impl {
-        alloc_impl(native_type** out_ptr, size_t count, usm::alloc type, self_t* parent)
-                : out_usm_memory_pointer(out_ptr),
-                  size(count),
-                  alloc_index(0),
-                  requested_alloc_type(type),
-                  owner(parent) {}
-
-        template <class specific_allocator>
-        void operator()(specific_allocator& al) {
-            if (alloc_index++ == static_cast<integer_usm_type>(requested_alloc_type)) {
-                *out_usm_memory_pointer = al.allocate(size);
-
-                alloc_info info{ size, requested_alloc_type };
-                owner->memory_storage.emplace(*out_usm_memory_pointer, info);
-            }
-        }
-        native_type** out_usm_memory_pointer;
-        size_t size{};
-        int alloc_index{};
-        usm::alloc requested_alloc_type;
-        self_t* owner;
-    };
-
-    struct dealloc_impl {
-        dealloc_impl(native_type** in_ptr, size_t count, usm::alloc type, self_t* parent)
-                : in_usm_memory_pointer(in_ptr),
-                  size(count),
-                  alloc_index(0),
-                  requested_alloc_type(type),
-                  owner(parent) {}
-
-        template <class specific_allocator>
-        void operator()(specific_allocator& al) {
-            if (alloc_index++ == static_cast<integer_usm_type>(requested_alloc_type)) {
-                auto it = owner->memory_storage.find(*in_usm_memory_pointer);
-                if (it == owner->memory_storage.end()) {
-                    throw std::runtime_error(string(__PRETTY_FUNCTION__) +
-                                             " - not owns memory object");
-                }
-
-                al.deallocate(*in_usm_memory_pointer, size);
-                *in_usm_memory_pointer = nullptr;
-
-                owner->memory_storage.erase(it);
-            }
-        }
-        native_type** in_usm_memory_pointer;
-        size_t size;
-        int alloc_index;
-        usm::alloc requested_alloc_type;
-        self_t* owner;
-    };
-
-public:
-    allocator_types allocators;
-
-    native_type* allocate(size_t size, usm::alloc type) {
-        native_type* ret = nullptr;
-        ccl_tuple_for_each(allocators, alloc_impl{ &ret, size, type, this });
-        return ret;
-    }
-
-    void deallocate(native_type* in_ptr, size_t size, usm::alloc type) {
-        ccl_tuple_for_each(allocators, dealloc_impl{ &in_ptr, size, type, this });
-    }
 };

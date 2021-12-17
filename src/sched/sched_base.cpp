@@ -15,25 +15,32 @@
 */
 #include <numeric>
 
-#include "coll/algorithms/algorithms_enum.hpp"
+#include "coll/algorithms/algorithm_utils.hpp"
 #include "coll/coll_param.hpp"
 #include "coll/selection/selection.hpp"
 #include "common/global/global.hpp"
 #include "common/comm/comm.hpp"
-#include "common/comm/host_communicator/host_communicator.hpp"
-#include "sched/buffer_cache.hpp"
+#include "common/utils/sycl_utils.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
 #include "sched/sched_base.hpp"
 
-ccl_sched_base::ccl_sched_base(const ccl_coll_param& coll_param) : coll_param(coll_param) {
-#if defined(CCL_ENABLE_SYCL) && defined(MULTI_GPU_SUPPORT)
-    if (coll_param.stream) {
-        ccl_comm* node_comm =
-            coll_param.comm->get_host_comm()->get_node_comm().get()->get_ccl_comm().get();
+ccl_sched_base::ccl_sched_base(const ccl_sched_create_param& param)
+        : sched_type(param.type),
+          sched_id(param.id),
+          coll_param(param.coll_param) {
+    memory.buffer_manager.init(sched_id);
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    if (coll_param.stream &&
+        coll_param.stream->get_backend() == ccl::utils::get_level_zero_backend()) {
+        memory.event_manager.reset(new ccl::ze::event_manager(coll_param.stream));
+        auto node_comm = coll_param.comm->get_node_comm().get();
         memory.handle_manager.init(node_comm, coll_param.stream);
+        memory.ipc_event_pool_manager.init(coll_param.stream);
+        memory.list_manager.reset(new ccl::ze::list_manager(coll_param.stream));
     }
-#endif // CCL_ENABLE_SYCL && MULTI_GPU_SUPPORT
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 }
+
 std::string to_string(ccl_sched_add_mode mode) {
     switch (mode) {
         case ccl_sched_add_front: return "FRONT";
@@ -44,7 +51,7 @@ std::string to_string(ccl_sched_add_mode mode) {
 }
 
 ccl_sched_base::~ccl_sched_base() {
-    free_memory();
+    clear_memory();
 }
 
 void ccl_sched_base::set_coll_attr(const ccl_coll_attr& attr) {
@@ -125,197 +132,83 @@ size_t ccl_sched_base::get_priority() const {
     return priority;
 }
 
-void* ccl_sched_base::alloc_buffer_unmanaged(size_t bytes, ccl_sched_buf_type buf_type) {
-    LOG_DEBUG("try to allocate buffer size: ", bytes);
-    CCL_THROW_IF_NOT(bytes > 0, "incorrect buffer size: ", bytes);
+ccl_buffer ccl_sched_base::alloc_buffer(const ccl::alloc_param& user_param) {
+    ccl::alloc_param param = user_param;
 
-    void* ptr = nullptr;
-    if (buf_type == ccl_sched_buf_system) {
-        ccl::global_data::get().buffer_cache->get(sched_id, bytes, &ptr);
+    if (!param.stream) {
+        param.stream = coll_param.stream;
     }
+
 #ifdef CCL_ENABLE_SYCL
-    else if (buf_type == ccl_sched_buf_runtime) {
-        CCL_THROW_IF_NOT(coll_param.stream, "null stream");
-        sycl::context ctx = coll_param.stream->get_native_stream().get_context();
-        ccl::global_data::get().buffer_cache->get(sched_id, bytes, ctx, &ptr);
-    }
-#endif // CCL_ENABLE_SYCL
-    else {
-        CCL_THROW("unexpected buf_type ", buf_type);
-    }
-
-    LOG_DEBUG("allocated buffer: ", ptr, ", size: ", bytes);
-    return ptr;
-}
-
-void ccl_sched_base::free_buffer_unmanaged(void* ptr, size_t bytes, ccl_sched_buf_type buf_type) {
-    LOG_DEBUG("free buffer: ", ptr, ", buf_type: ", buf_type);
-
-    if (buf_type == ccl_sched_buf_system) {
-        ccl::global_data::get().buffer_cache->push(sched_id, bytes, ptr);
-    }
-#ifdef CCL_ENABLE_SYCL
-    else if (buf_type == ccl_sched_buf_runtime) {
-        CCL_THROW_IF_NOT(coll_param.stream, "null stream");
-        sycl::context ctx = coll_param.stream->get_native_stream().get_context();
-        ccl::global_data::get().buffer_cache->push(sched_id, bytes, ctx, ptr);
-    }
-#endif // CCL_ENABLE_SYCL
-    else {
-        CCL_THROW("unexpected buf_type ", buf_type);
-    }
-}
-
-ccl_buffer ccl_sched_base::alloc_buffer(size_t bytes, ccl_sched_buf_type buf_type) {
-    ccl_buffer buffer =
-        ccl_buffer(alloc_buffer_unmanaged(bytes, buf_type), bytes, 0, ccl_buffer_type::DIRECT);
-
-    if (buf_type == ccl_sched_buf_system) {
-        memory.buf_list.emplace_back(buffer, bytes);
-    }
-#ifdef CCL_ENABLE_SYCL
-    else if (buf_type == ccl_sched_buf_runtime) {
-        CCL_THROW_IF_NOT(coll_param.stream, "null stream");
-        sycl::context ctx = coll_param.stream->get_native_stream().get_context();
-        memory.sycl_buf_list.emplace_back(buffer, bytes, ctx);
-        LOG_DEBUG(
-            "allocated host usm buffer ptr: ", buffer.get_ptr(), ", size: ", buffer.get_size());
+    if ((param.buf_type == ccl::buffer_type::unknown) && param.stream && param.hint_ptr) {
+        auto ptr_type =
+            sycl::get_pointer_type(param.hint_ptr, param.stream->get_native_stream().get_context());
+        if (ptr_type == sycl::usm::alloc::device) {
+            param.buf_type = ccl::buffer_type::ze;
+            param.buf_place = ccl::buffer_place::device;
+        }
     }
 #endif // CCL_ENABLE_SYCL
 
-    CCL_THROW_IF_NOT(buffer.get_ptr(), "null ptr");
-    return buffer;
+    if (param.buf_type == ccl::buffer_type::unknown) {
+        param.buf_type = ccl::buffer_type::regular;
+        param.buf_place = ccl::buffer_place::host;
+    }
+
+    return ccl_buffer(memory.buffer_manager.alloc(param), param.bytes);
 }
+
+void ccl_sched_base::dealloc_buffer(const ccl::dealloc_param& user_param) {
+    ccl::dealloc_param param = user_param;
 
 #ifdef CCL_ENABLE_SYCL
-ccl_buffer ccl_sched_base::alloc_staging_buffer(size_t bytes) {
-    LOG_DEBUG("try to allocate usm host buffer size: ", bytes);
-    CCL_THROW_IF_NOT(bytes > 0, "incorrect buffer size: ", bytes);
-
-    ccl_sched_buf_type buf_type = ccl_sched_buf_system;
-    if (ccl::global_data::env().staging_buffer == ccl_staging_usm) {
-        buf_type = ccl_sched_buf_runtime;
+    if (!param.stream) {
+        param.stream = coll_param.stream;
     }
-    ccl_buffer buffer = alloc_buffer(bytes, buf_type);
-
-    CCL_THROW_IF_NOT(buffer.get_ptr(), "null ptr");
-
-    return buffer;
-}
 #endif // CCL_ENABLE_SYCL
 
-void ccl_sched_base::free_memory() {
-    std::list<ccl_sched_buffer_handler>::iterator it;
-    for (it = memory.buf_list.begin(); it != memory.buf_list.end(); it++) {
-        free_buffer_unmanaged(it->buffer.get_ptr(), it->size, ccl_sched_buf_system);
-    }
-    memory.buf_list.clear();
+    memory.buffer_manager.dealloc(param);
+}
 
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+bool ccl_sched_base::enable_ze_single_list() {
+    memory.use_single_list =
+        ccl::global_data::env().enable_ze_single_list &&
+        ccl::global_data::env().kernel_debug == 0 &&
+        ((ccl::global_data::env().ze_serialize_mode & ze_call::serialize_mode::block) == 0) &&
+        !ccl::global_data::env().enable_fusion;
+    return memory.use_single_list;
+}
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+
+void ccl_sched_base::clear_memory() {
+    memory.buffer_manager.clear();
+#ifdef CCL_ENABLE_ZE
+    if (coll_param.stream &&
+        coll_param.stream->get_backend() == ccl::utils::get_level_zero_backend()) {
+        if (memory.event_manager) {
+            memory.event_manager->clear();
+        }
+        memory.handle_manager.clear();
+        memory.ipc_event_pool_manager.clear();
+        if (memory.list_manager) {
+            memory.list_manager->clear();
+        }
+        memory.ze_entries.clear();
+    }
+#endif // CCL_ENABLE_ZE
     free_memory_regions();
-
-#ifdef CCL_ENABLE_SYCL
-    std::list<ccl_sched_sycl_buffer_handler>::iterator sycl_it;
-    for (sycl_it = memory.sycl_buf_list.begin(); sycl_it != memory.sycl_buf_list.end(); sycl_it++) {
-        LOG_DEBUG("free host usm ", sycl_it->buffer.get_ptr());
-        ccl::global_data::get().buffer_cache->push(
-            sched_id, sycl_it->size, sycl_it->ctx, sycl_it->buffer.get_ptr());
-    }
-    memory.sycl_buf_list.clear();
-
-#ifdef MULTI_GPU_SUPPORT
-    memory.handle_manager.clear();
-#endif // MULTI_GPU_SUPPORT
-
-#endif // CCL_ENABLE_SYCL
 }
 
 ccl_buffer ccl_sched_base::update_buffer(ccl_buffer buffer, size_t new_size) {
-    LOG_DEBUG("update pointer data size: ",
-              buffer.get_ptr(),
-              ", from: ",
-              buffer.get_size(),
-              ", to: ",
-              new_size);
-    CCL_THROW_IF_NOT(new_size > 0, "incorrect buffer size: ", new_size);
-
-    /* in case old_ptr will be freed */
-    void* aux_ptr = buffer.get_ptr();
-
-    ccl_buffer new_buf = ccl_buffer(
-        CCL_REALLOC(
-            buffer.get_ptr(), (size_t)buffer.get_size(), new_size, CACHELINE_SIZE, "sched_buffer"),
-        new_size,
-        0,
-        ccl_buffer_type::DIRECT);
-    bool updated = false;
-    for (auto& it : memory.buf_list) {
-        if (it.buffer.get_ptr() == aux_ptr) {
-            /* assign ptr unconditionally, because realloc can return the same pointer */
-            it.buffer = new_buf;
-            it.size = new_size;
-            updated = true;
-            break;
-        }
-    }
-
-    CCL_THROW_IF_NOT(updated, "Cannot update memory in buf_list for addres: ", new_buf.get_ptr());
-    return new_buf;
+    CCL_THROW("unsupported");
+    return ccl_buffer();
 }
 
 ccl_buffer ccl_sched_base::find_and_realloc_buffer(void* in_ptr,
                                                    size_t new_size,
                                                    size_t expected_size) {
-    LOG_DEBUG("sched: ", this, ", contains buffer objects: ", memory.buf_list.size());
-    for (auto& it : memory.buf_list) {
-        if (it.buffer.get_ptr() == in_ptr) {
-#ifdef ENABLE_DEBUG_SPARSE
-            if (expected_size != 0 && (it.buffer.get_size() < expected_size)) {
-                std::stringstream ss;
-                ss << "Unexpected realloc buffer by pointer: " << in_ptr
-                   << ", cur size: " << it.buffer.get_size() << ", to: " << new_size
-                   << ", expected: " << expected_size;
-                ss << "\nbuffers:\n";
-                for (const auto& it : memory.buf_list) {
-                    ss << it.buffer << ", ";
-                }
-                LOG_ERROR(ss.str());
-                CCL_ASSERT(false, ss.str());
-                CCL_THROW_IF_NOT(
-                    false, "Cannot fin buffer by ptr: ", in_ptr, ", available buffers: ", ss.str());
-            }
-#endif //ENABLE_DEBUG_SPARSE
-            if ((it.buffer.get_size() < 0) ||
-                (static_cast<size_t>(it.buffer.get_size()) < new_size)) {
-                LOG_DEBUG("try to realloc buffer by pointer: ",
-                          in_ptr,
-                          ", from: ",
-                          it.buffer.get_size(),
-                          ", to: ",
-                          new_size,
-                          ", expected: ",
-                          expected_size);
-
-                it.buffer = ccl_buffer(CCL_REALLOC(in_ptr,
-                                                   (size_t)it.buffer.get_size(),
-                                                   new_size,
-                                                   CACHELINE_SIZE,
-                                                   "sched_buffer"),
-                                       new_size,
-                                       0,
-                                       ccl_buffer_type::DIRECT);
-                it.size = new_size;
-            }
-            return it.buffer;
-        }
-    }
-
-    /* throw expection */
-    std::stringstream ss;
-    for (const auto& it : memory.buf_list) {
-        ss << it.buffer << ", ";
-    }
-    CCL_THROW_IF_NOT(
-        false, "cannot find buffer by ptr: ", in_ptr, ", available buffers: ", ss.str());
+    CCL_THROW("unsupported");
     return ccl_buffer();
 }
 
@@ -332,10 +225,11 @@ void ccl_sched_base::free_memory_regions() {
     /* perform deregistration in worker thread */
 
     ccl_coll_param param{};
-    param.ctype = ccl_coll_internal;
+    param.ctype = ccl_coll_undefined;
     param.comm = coll_param.comm;
-    std::unique_ptr<ccl_extra_sched> dereg_sched(new ccl_extra_sched(param, sched_id));
-    entry_factory::make_entry<deregister_entry>(dereg_sched.get(), memory.mr_list, param.comm);
+    std::unique_ptr<ccl_extra_sched> dereg_sched(
+        new ccl_extra_sched({ ccl_sched_regular, sched_id, param }));
+    entry_factory::create<deregister_entry>(dereg_sched.get(), memory.mr_list, param.comm);
 
     if (ccl::global_data::get().is_worker_thread || !ccl::global_data::env().worker_offload) {
         dereg_sched->do_progress();
@@ -430,7 +324,6 @@ void ccl_sched_base::alloc_buffers_for_pre_post_copy() {
     param.device_send_bufs.clear();
     param.device_recv_bufs.clear();
 
-    // TODO: WA skip sycl pre_post_copy for allreduce gpu algo
     ccl_selector_param selector_param;
     selector_param.ctype = param.ctype;
     selector_param.count = param.get_send_count();
@@ -438,9 +331,10 @@ void ccl_sched_base::alloc_buffers_for_pre_post_copy() {
     selector_param.comm = param.comm;
     selector_param.stream = param.stream;
     selector_param.is_sycl_buf = coll_attr.is_sycl_buf;
+    selector_param.recv_counts = param.recv_counts.data();
 
     if (!param.stream || !param.stream->is_sycl_device_stream() ||
-        ccl_is_topo_ring_algo(selector_param)) {
+        ccl_is_device_side_algo(selector_param)) {
         return;
     }
 
@@ -452,7 +346,7 @@ void ccl_sched_base::alloc_buffers_for_pre_post_copy() {
             auto usm_type =
                 sycl::get_pointer_type(bufs[0], param.stream->get_native_stream().get_context());
             if ((usm_type == sycl::usm::alloc::host) || (usm_type == sycl::usm::alloc::shared) ||
-                ((usm_type == sycl::usm::alloc::device) && atl_wrapper::attr.out.enable_hmem)) {
+                ((usm_type == sycl::usm::alloc::device) && atl_base_comm::attr.out.enable_hmem)) {
                 should_alloc_buffers = false;
             }
         }
@@ -496,18 +390,26 @@ void ccl_sched_base::alloc_buffers_for_pre_post_copy() {
         h2d_counts.clear();
     }
 
+    ccl::buffer_type buf_type = ccl::buffer_type::regular;
+    if (ccl::global_data::env().staging_buffer == ccl_staging_usm) {
+        buf_type = ccl::buffer_type::sycl;
+    }
+    ccl::alloc_param alloc_param(0, buf_type, ccl::buffer_place::host, true, param.stream);
+
     for (size_t idx = 0; idx < d2h_counts.size(); idx++) {
-        if (d2h_counts[idx])
-            param.send_bufs[idx] =
-                alloc_staging_buffer(d2h_counts[idx] * param.dtype.size()).get_ptr();
+        if (d2h_counts[idx]) {
+            alloc_param.bytes = d2h_counts[idx] * param.dtype.size();
+            param.send_bufs[idx] = alloc_buffer(alloc_param).get_ptr();
+        }
         else
             param.send_bufs[idx] = nullptr;
     }
 
     for (size_t idx = 0; idx < h2d_counts.size(); idx++) {
-        if (h2d_counts[idx])
-            param.recv_bufs[idx] =
-                alloc_staging_buffer(h2d_counts[idx] * param.dtype.size()).get_ptr();
+        if (h2d_counts[idx]) {
+            alloc_param.bytes = h2d_counts[idx] * param.dtype.size();
+            param.recv_bufs[idx] = alloc_buffer(alloc_param).get_ptr();
+        }
         else
             param.recv_bufs[idx] = nullptr;
     }
@@ -532,7 +434,7 @@ void ccl_sched_base::alloc_buffers_for_pre_post_copy() {
 }
 
 void ccl_sched_base::update_id() {
-    sched_id = coll_param.comm->get_sched_id(internal_type != ccl_sched_internal_none);
+    sched_id = coll_param.comm->get_sched_id(sched_type != ccl_sched_regular);
 }
 
 void ccl_sched_base::dump(std::ostream& out, const char* name) const {

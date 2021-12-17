@@ -184,11 +184,6 @@ void check_comm_split_identical_color(ccl::communicator& comm) {
 }
 
 int main() {
-    /**
-     * The example only works with CCL_ATL_TRANSPORT=ofi
-     */
-    setenv("CCL_ATL_TRANSPORT", "ofi", 0);
-
     ccl::init();
 
     int mpi_size, mpi_rank;

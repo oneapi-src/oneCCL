@@ -29,10 +29,10 @@
 #include <CL/sycl.hpp>
 #include <CL/sycl/backend/level_zero.hpp>
 
-#ifdef MULTI_GPU_SUPPORT
-#include "sched/entry/gpu/ze_cache.hpp"
-#include "sched/entry/gpu/ze_primitives.hpp"
-#endif // MULTI_GPU_SUPPORT
+#ifdef CCL_ENABLE_ZE
+#include "sched/entry/ze/ze_cache.hpp"
+#include "sched/entry/ze/ze_primitives.hpp"
+#endif // CCL_ENABLE_ZE
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_SYCL
@@ -46,8 +46,8 @@ constexpr ze_event_pool_desc_t get_event_pool_desc() {
 }
 #endif
 
-ccl_master_sched::ccl_master_sched(const ccl_coll_param& coll_param)
-        : ccl_sched_base(coll_param),
+ccl_master_sched::ccl_master_sched(const ccl_sched_create_param& param)
+        : ccl_sched_base(param),
           ccl_request(),
           partial_scheds() {
 #ifdef ENABLE_DEBUG
@@ -56,15 +56,11 @@ ccl_master_sched::ccl_master_sched(const ccl_coll_param& coll_param)
     });
 #endif
 
-#if defined(CCL_ENABLE_SYCL) && defined(MULTI_GPU_SUPPORT)
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
     if (ccl::utils::should_use_sycl_output_event(coll_param.stream)) {
-        auto l0_context = coll_param.stream->get_native_stream()
-                              .get_context()
-                              .template get_native<cl::sycl::backend::level_zero>();
-
+        auto ze_context = coll_param.stream->get_ze_context();
         auto pool_desc = get_event_pool_desc();
-
-        ccl::global_data::get().ze_cache->get(0, l0_context, pool_desc, &get_memory().sync_pool);
+        ccl::global_data::get().ze_cache->get(0, ze_context, pool_desc, &get_memory().sync_pool);
 
         ze_event_desc_t event_desc = ccl::ze::default_event_desc;
         event_desc.signal = ZE_EVENT_SCOPE_FLAG_HOST;
@@ -87,12 +83,8 @@ ccl_master_sched::~ccl_master_sched() {
     if (!memory.mr_list.empty())
         LOG_WARN("memory region list should be empty for master sched");
 
-#if defined(CCL_ENABLE_SYCL) && defined(MULTI_GPU_SUPPORT)
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
     if (ccl::utils::should_use_sycl_output_event(coll_param.stream)) {
-        auto l0_context = coll_param.stream->get_native_stream()
-                              .get_context()
-                              .template get_native<cl::sycl::backend::level_zero>();
-
         // Sycl event might call wait on destruction meaning that it should be valid at that time
         // The problem is that the sync event is stored in request, which descrutor is called
         // after ccl_master_sched, which means its underlying l0 event will be already destroyed
@@ -103,9 +95,9 @@ ccl_master_sched::~ccl_master_sched() {
         LOG_DEBUG("destroying sync event: ", get_memory().sync_event);
         ZE_CALL(zeEventDestroy, (get_memory().sync_event));
 
+        auto ze_context = coll_param.stream->get_ze_context();
         auto pool_desc = get_event_pool_desc();
-
-        ccl::global_data::get().ze_cache->push(0, l0_context, pool_desc, get_memory().sync_pool);
+        ccl::global_data::get().ze_cache->push(0, ze_context, pool_desc, get_memory().sync_pool);
     }
     else {
         LOG_DEBUG("skip sync event destruction");
@@ -123,8 +115,9 @@ void ccl_master_sched::commit(ccl_parallelizer* parallelizer) {
         update_id();
         if (parallelizer) {
             parallelizer->process(this);
-            CCL_ASSERT(!partial_scheds.empty(),
-                       "ccl_master_sched must have at least 1 partial sched after parallelized");
+            CCL_THROW_IF_NOT(
+                !partial_scheds.empty(),
+                "ccl_master_sched must have at least 1 partial sched after parallelized");
         }
     }
     else {
@@ -147,7 +140,7 @@ void ccl_master_sched::commit(ccl_parallelizer* parallelizer) {
 void ccl_master_sched::reset_state() {
     reset_request();
 
-#if defined(CCL_ENABLE_SYCL) && defined(MULTI_GPU_SUPPORT)
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
     if (ccl::utils::should_use_sycl_output_event(coll_param.stream)) {
         // Reset sycl event while it's in complete state, similar case to destruction in ~ccl_master_sched
         set_sync_event(sycl::event());
@@ -159,7 +152,7 @@ void ccl_master_sched::reset_state() {
 
 ccl_request* ccl_master_sched::start(ccl_executor* exec, bool reset_sched) {
     /* sanity check the schedule */
-    CCL_ASSERT(coll_param.comm);
+    CCL_THROW_IF_NOT(coll_param.comm);
 
     LOG_DEBUG("starting schedule ", this, ", type ", ccl_coll_type_to_str(coll_param.ctype));
 
@@ -175,7 +168,7 @@ ccl_request* ccl_master_sched::start(ccl_executor* exec, bool reset_sched) {
         logger.info(ostream.str());
     }
 
-#if defined(CCL_ENABLE_SYCL) && defined(MULTI_GPU_SUPPORT)
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
     if (ccl::utils::should_use_sycl_output_event(coll_param.stream)) {
         LOG_DEBUG("convert L0 event: ",
                   get_memory().sync_event,
@@ -183,20 +176,19 @@ ccl_request* ccl_master_sched::start(ccl_executor* exec, bool reset_sched) {
         auto q = coll_param.stream->get_native_stream();
         auto context = q.get_context();
 #ifdef CCL_ENABLE_SYCL_INTEROP_EVENT
-        auto e = sycl::level_zero::make<sycl::event>(
-            context, get_memory().sync_event, sycl::level_zero::ownership::keep);
+        auto e = ccl::utils::make_event(context, get_memory().sync_event);
         set_sync_event(e);
-
-        set_native_event(q.submit_barrier({ e }));
-#else
-        CCL_THROW(
-            "interop event functionality is not available with current configuration, please rebuild oneCCL using ENABLE_SYCL_INTEROP_EVENT option"
-            "and a DPCPP compiler that supports that feature");
-#endif
+        set_native_event(ccl::utils::submit_barrier(q, e));
+#else // CCL_ENABLE_SYCL_INTEROP_EVENT
+        CCL_THROW("interop event functionality is not available with current configuration, "
+                  "please rebuild oneCCL using ENABLE_SYCL_INTEROP_EVENT option "
+                  "and a DPCPP compiler that supports that feature");
+#endif // CCL_ENABLE_SYCL_INTEROP_EVENT
     }
-#endif
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
     exec->start(this);
+
     return this;
 }
 
@@ -206,8 +198,11 @@ ccl_request* ccl_master_sched::reset_request() {
 }
 
 void ccl_master_sched::add_partial_sched(const ccl_coll_param& coll_param) {
-    partial_scheds.emplace_back(std::make_shared<ccl_sched>(coll_param, this));
-    partial_scheds.back()->internal_type = internal_type;
+    partial_scheds.emplace_back(std::make_shared<ccl_sched>(
+        ccl_sched_create_param(
+            sched_type, coll_param.comm->get_sched_id(sched_type != ccl_sched_regular), coll_param),
+        this,
+        this));
 }
 
 void ccl_master_sched::prepare_partial_scheds() {
@@ -254,7 +249,7 @@ void ccl_master_sched::sync_partial_scheds() {
     if (add_sync_entry) {
         auto sync_obj = std::make_shared<sync_object>(partial_scheds.size());
         for (auto& sched : partial_scheds) {
-            entry_factory::make_entry<sync_entry>(sched.get(), sync_obj);
+            entry_factory::create<sync_entry>(sched.get(), sync_obj);
         }
     }
 }
@@ -284,7 +279,7 @@ ccl_master_sched::ccl_master_sched_ptr ccl_master_sched::create(const ccl_coll_p
     ccl_master_sched_ptr sched;
     bool is_created = false;
     auto create_fn = [param]() -> ccl_master_sched_ptr {
-        return new ccl_master_sched(param);
+        return new ccl_master_sched({ ccl_sched_regular, param.comm->get_sched_id(false), param });
     };
 
     if (attr.to_cache) {
@@ -315,3 +310,19 @@ ccl_master_sched::ccl_master_sched_ptr ccl_master_sched::create(const ccl_coll_p
 
     return sched;
 }
+
+#ifdef CCL_ENABLE_SYCL
+bool ccl_master_sched::print_kernel_timer() const {
+    if (ccl::global_data::env().enable_kernel_profile) {
+        return kernel_timer.print();
+    }
+
+    // if we don't have env variable set, just return false to say that we haven't printed
+    // anything so no more work would be done
+    return false;
+}
+
+void ccl_master_sched::reset_kernel_timer() {
+    kernel_timer.reset();
+}
+#endif // CCL_ENABLE_SYCL

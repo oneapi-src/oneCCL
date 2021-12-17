@@ -333,7 +333,6 @@ private:
     barrier_attr(
         const typename detail::ccl_api_type_attr_traits<operation_attr_id,
                                                         operation_attr_id::version>::type& version);
-    ;
 };
 
 /**
@@ -513,7 +512,6 @@ private:
     reduce_scatter_attr(
         const typename detail::ccl_api_type_attr_traits<operation_attr_id,
                                                         operation_attr_id::version>::type& version);
-    ;
 };
 
 /**
@@ -574,7 +572,6 @@ private:
     sparse_allreduce_attr(
         const typename detail::ccl_api_type_attr_traits<operation_attr_id,
                                                         operation_attr_id::version>::type& version);
-    ;
 };
 
 /**

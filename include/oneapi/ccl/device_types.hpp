@@ -27,7 +27,7 @@ namespace ccl {
 using process_id = size_t;
 using host_id = std::string;
 
-#ifdef MULTI_GPU_SUPPORT
+#ifdef CCL_ENABLE_ZE
 constexpr size_t CCL_GPU_DEVICES_AFFINITY_MASK_SIZE = 4;
 using device_mask_t = std::bitset<CCL_GPU_DEVICES_AFFINITY_MASK_SIZE>;
 using process_aggregated_device_mask_t = std::map<process_id, device_mask_t>;

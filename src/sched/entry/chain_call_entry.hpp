@@ -35,8 +35,8 @@ public:
         if (name) {
             LOG_DEBUG("entry object name: ", name);
         }
-        work_sched.reset(new ccl_extra_sched(sched->coll_param, sched->sched_id));
-        work_sched->coll_param.ctype = ccl_coll_internal;
+        work_sched.reset(new ccl_extra_sched({ sched->sched_id, sched->coll_param }));
+        work_sched->coll_param.ctype = ccl_coll_undefined;
         sched_fill_function(work_sched.get());
     }
 

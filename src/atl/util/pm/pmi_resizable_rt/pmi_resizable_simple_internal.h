@@ -45,7 +45,7 @@ public:
     pmi_resizable_simple_internal(int total_rank_count,
                                   const std::vector<int>& ranks,
                                   std::shared_ptr<internal_kvs> k,
-                                  const char* main_addr = nullptr);
+                                  const char* main_addr = "");
 
     ~pmi_resizable_simple_internal() override;
 
@@ -59,7 +59,7 @@ public:
 
     atl_status_t pmrt_wait_notification() override;
 
-    void pmrt_barrier() override;
+    atl_status_t pmrt_barrier() override;
 
     atl_status_t pmrt_kvs_put(char* kvs_key,
                               int proc_idx,
@@ -77,27 +77,28 @@ public:
 
     size_t get_local_thread_idx() override;
 
-    size_t get_local_kvs_id() override;
+    atl_status_t get_local_kvs_id(size_t& res) override;
 
-    void set_local_kvs_id(size_t local_kvs_id) override;
+    atl_status_t set_local_kvs_id(size_t local_kvs_id) override;
 
     size_t get_threads_per_process() override;
 
     size_t get_ranks_per_process() override;
 
-    void pmrt_finalize() override;
+    atl_status_t pmrt_finalize() override;
+
+    atl_status_t pmrt_init() override;
 
 private:
     bool is_finalized{ false };
-    atl_status_t pmrt_init(const char* main_addr = nullptr);
 
     int kvs_set_value(const char* kvs_name, const char* key, const char* value);
-    int kvs_get_value(const char* kvs_name, const char* key, char* value);
+    atl_status_t kvs_get_value(const char* kvs_name, const char* key, char* value);
 
-    void pmrt_barrier_full();
-    void barrier_full_reg();
-    void barrier_reg();
-    void registration();
+    atl_status_t pmrt_barrier_full();
+    atl_status_t barrier_full_reg();
+    atl_status_t barrier_reg();
+    atl_status_t registration();
 
     int proc_count = 0;
     int rank = 0;
@@ -109,6 +110,7 @@ private:
 
     std::vector<int> ranks;
     std::shared_ptr<internal_kvs> k;
+    std::string main_addr;
     size_t max_keylen;
     size_t max_vallen;
     char* val_storage = nullptr;

@@ -90,7 +90,7 @@ bool ccl_sched_key::check(const ccl_coll_param& param, const ccl_coll_attr& attr
 
     result &= (attr.prologue_fn == f.prologue_fn || attr.epilogue_fn == f.epilogue_fn ||
                attr.reduction_fn == f.reduction_fn || param.ctype == f.ctype ||
-               param.dtype.idx() == f.dtype || param.comm == f.comm);
+               param.dtype == f.dtype || param.comm == f.comm);
 
     switch (f.ctype) {
         case ccl_coll_allgatherv:

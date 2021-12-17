@@ -88,7 +88,7 @@ int main() {
         kvs = ccl::create_kvs(main_addr);
     }
 
-    auto ext_kvs = std::make_shared<external_kvs>(kvs);
+    auto ext_kvs = std::shared_ptr<external_kvs>(new external_kvs(kvs));
 
     auto comm = ccl::create_communicator(size, rank, ext_kvs);
     auto attr = ccl::create_operation_attr<ccl::allreduce_attr>();

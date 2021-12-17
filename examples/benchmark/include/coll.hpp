@@ -26,6 +26,9 @@ using sycl_buffer_t = cl::sycl::buffer<Dtype, 1>;
 
 #define COLL_ROOT (0)
 
+#define BF16_COEF 0.00001
+#define FP16_COEF 0.0001
+
 struct base_coll;
 
 using coll_list_t = std::vector<std::shared_ptr<base_coll>>;
@@ -97,6 +100,21 @@ typedef struct bench_init_attr {
 #endif
 } bench_init_attr;
 
+template <class OutDtype, class InDtype = OutDtype>
+inline OutDtype get_val(InDtype value) {
+    return value;
+}
+
+template <>
+inline ccl::bfloat16 get_val<ccl::bfloat16, float>(float value) {
+    return fp32_to_bf16(BF16_COEF * value);
+}
+
+template <>
+inline ccl::float16 get_val<ccl::float16, float>(float value) {
+    return fp32_to_fp16(FP16_COEF * value);
+}
+
 /* base polymorph collective wrapper class */
 struct base_coll {
     base_coll(bench_init_attr init_attr) : init_attr(init_attr) {
@@ -116,6 +134,30 @@ struct base_coll {
         return nullptr;
     };
 
+#ifdef CCL_ENABLE_SYCL
+    template <class T, class vector_t = aligned_vector<T>>
+#else // CCL_ENABLE_SYCL
+    template <class T, class vector_t = std::vector<T>>
+#endif // CCL_ENABLE_SYCL
+    vector_t get_initial_values(size_t elem_count, int fill_value) {
+        vector_t res(elem_count);
+        ccl::datatype dt = ccl::native_type_info<typename std::remove_pointer<T>::type>::dtype;
+        if (dt == ccl::datatype::bfloat16) {
+            for (size_t elem_idx = 0; elem_idx < elem_count; elem_idx++) {
+                res[elem_idx] = fp32_to_bf16(BF16_COEF * fill_value).get_data();
+            }
+        }
+        else if (dt == ccl::datatype::float16) {
+            for (size_t elem_idx = 0; elem_idx < elem_count; elem_idx++) {
+                res[elem_idx] = fp32_to_fp16(FP16_COEF * fill_value).get_data();
+            }
+        }
+        else {
+            std::fill(res.begin(), res.end(), fill_value);
+        }
+        return res;
+    }
+
     virtual void prepare(size_t elem_count) {
         auto& transport = transport_data::instance();
         auto& comms = transport.get_comms();
@@ -128,10 +170,6 @@ struct base_coll {
     }
 
     virtual void finalize(size_t elem_count) {
-        auto dtype = get_dtype();
-        if (dtype == ccl::datatype::float16 || dtype == ccl::datatype::bfloat16)
-            return;
-
         auto& transport = transport_data::instance();
         auto& comms = transport.get_comms();
         auto streams = transport.get_bench_streams();

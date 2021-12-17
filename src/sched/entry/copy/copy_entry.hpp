@@ -18,17 +18,17 @@
 #include "sched/entry/copy/copy_helper.hpp"
 #include "sched/entry/entry.hpp"
 
-#if defined(CCL_ENABLE_SYCL) && defined(MULTI_GPU_SUPPORT)
-#include "sched/entry/gpu/ze_copy_entry.hpp"
-#endif // CCL_ENABLE_SYCL && MULTI_GPU_SUPPORT
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+#include "sched/entry/ze/ze_copy_entry.hpp"
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
 enum class copy_type : int { regular, sycl, ze };
 
-#if defined(CCL_ENABLE_SYCL) && defined(MULTI_GPU_SUPPORT)
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
 class copy_entry : public ze_copy_entry,
 #else
 class copy_entry : public sched_entry,
-#endif // CCL_ENABLE_SYCL && MULTI_GPU_SUPPORT
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
                    public postponed_fields<copy_entry,
                                            ccl_sched_entry_field_in_buf,
                                            ccl_sched_entry_field_cnt,
@@ -70,6 +70,8 @@ protected:
                            out_buf,
                            ", in_buf_offset ",
                            attr.in_buf_offset,
+                           ", out_buf_offset ",
+                           attr.out_buf_offset,
                            "\n");
     }
 
@@ -80,10 +82,12 @@ private:
     const size_t count;
     const ccl_datatype dtype;
     copy_attr attr;
-    copy_type ctype{ copy_type::regular };
 
 #ifdef CCL_ENABLE_SYCL
     sycl_copier copier{};
+#ifdef CCL_ENABLE_ZE
+    copy_type ctype{ copy_type::regular };
+#endif // CCL_ENABLE_ZE
 #endif // CCL_ENABLE_SYCL
 
     void do_regular_copy();

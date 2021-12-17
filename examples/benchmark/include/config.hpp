@@ -21,8 +21,7 @@
 
 #define ALL_COLLS_LIST "allgatherv,allreduce,alltoall,alltoallv,bcast,reduce,reduce_scatter"
 
-#define ALL_DTYPES_LIST            "int8,int32,int64,uint64,float16,float32,float64,bfloat16"
-#define ALL_DTYPES_LIST_WITH_CHECK "int8,int32,int64,uint64,float32,float64"
+#define ALL_DTYPES_LIST "int8,int32,int64,uint64,float16,float32,float64,bfloat16"
 
 #define ALL_REDUCTIONS_LIST            "sum,prod,min,max"
 #define ALL_REDUCTIONS_LIST_WITH_CHECK "sum"

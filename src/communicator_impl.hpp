@@ -14,13 +14,13 @@
  limitations under the License.
 */
 #pragma once
+
 #include "oneapi/ccl/comm_split_attr_ids.hpp"
 #include "oneapi/ccl/comm_split_attr_ids_traits.hpp"
 #include "oneapi/ccl/comm_split_attr.hpp"
 #include "oneapi/ccl/communicator.hpp"
 
 #include "kvs_impl.hpp"
-#include "common/comm/l0/comm_context_id.hpp"
 #include "communicator_impl_details.hpp"
 
 //TODO
@@ -76,39 +76,21 @@ CCL_API vector_class<communicator> communicator::create_communicators(
     shared_ptr_class<kvs_interface> kvs) {
     shared_ptr_class<ikvs_wrapper> kvs_tmp;
     if (std::dynamic_pointer_cast<ccl::v1::kvs>(kvs) != nullptr) {
-        kvs_tmp = std::dynamic_pointer_cast<ccl::v1::kvs>(kvs)->get_impl().get();
+        kvs_tmp = std::dynamic_pointer_cast<v1::kvs>(kvs)->get_impl().get();
     }
     else {
         kvs_tmp = std::shared_ptr<ikvs_wrapper>(new users_kvs(kvs));
     }
-    return comm_impl_dispatch_selector<CL_BACKEND_TYPE>::create_communicators_selector(
-        size, devices, context, kvs_tmp);
-#if 0
-    vector_class<int> local_thread_ranks;
-    local_thread_ranks.reserve(devices.size());
-    std::transform(
-        devices.begin(),
-        devices.end(),
-        std::back_inserter(local_thread_ranks),
-        [](const typename vector_class<pair_class<int, DeviceType>>::value_type& val) {
-            return val.first;
-        });
-    group_context::comm_group_t thread_group =
-        group_context::instance().group_by_kvs(local_thread_ranks, size, kvs);
 
-    vector_class<DeviceType> local_thread_devices;
-    local_thread_devices.reserve(devices.size());
-    std::transform(
-        devices.begin(),
-        devices.end(),
-        std::back_inserter(local_thread_devices),
-        [](const typename vector_class<pair_class<int, DeviceType>>::value_type& val) {
-            return val.second;
-        });
+    CCL_THROW_IF_NOT(devices.size() == 1, "multiple devices per process are not supported");
 
-    auto ret = thread_group->create_communicators(local_thread_devices);
+    LOG_TRACE("create communicator");
+
+    ccl::communicator_interface_ptr impl = ccl::communicator_interface::create_communicator_impl(
+        size, devices.begin()->first, kvs_tmp);
+    ccl::vector_class<ccl::communicator> ret;
+    ret.push_back(ccl::communicator(std::move(impl)));
     return ret;
-#endif
 }
 
 template <class DeviceType, class ContextType>
@@ -116,48 +98,13 @@ CCL_API vector_class<communicator> communicator::create_communicators(
     const int size,
     const map_class<int, DeviceType>& devices,
     const ContextType& context,
-    shared_ptr_class<kvs_interface> kvs)
-
-{
-    shared_ptr_class<ikvs_wrapper> kvs_tmp;
-    if (std::dynamic_pointer_cast<ccl::v1::kvs>(kvs) != nullptr) {
-        kvs_tmp = std::dynamic_pointer_cast<v1::kvs>(kvs)->get_impl().get();
+    shared_ptr_class<kvs_interface> kvs) {
+    std::vector<pair_class<int, DeviceType>> vec_devices;
+    for (const auto& d : devices) {
+        vec_devices.push_back(std::make_pair(d.first, d.second));
     }
-    else {
-        kvs_tmp = std::shared_ptr<ikvs_wrapper>(new users_kvs(kvs));
-    }
-    return comm_impl_dispatch_selector<CL_BACKEND_TYPE>::create_communicators_selector(
-        size, devices, context, kvs_tmp);
-#if 0
-    vector_class<int> local_thread_ranks;
-    local_thread_ranks.reserve(devices.size());
-    std::transform(devices.begin(),
-                   devices.end(),
-                   std::back_inserter(local_thread_ranks),
-                   [](const typename map_class<int, DeviceType>::value_type& val) {
-                       return val.first;
-                   });
-    group_context::comm_group_t thread_group =
-        group_context::instance().group_by_kvs(local_thread_ranks, size, kvs);
-
-    vector_class<DeviceType> local_thread_devices;
-    local_thread_devices.reserve(devices.size());
-    std::transform(devices.begin(),
-                   devices.end(),
-                   std::back_inserter(local_thread_devices),
-                   [](const typename map_class<int, DeviceType>::value_type& val) {
-                       return val.second;
-                   });
-
-    auto ret = thread_group->create_communicators(local_thread_devices);
-    return ret;
-#endif
+    return create_communicators(size, vec_devices, context, kvs);
 }
-
-/*CCL_API bool communicator::is_ready() const
-{
-    return get_impl()->is_ready();
-}*/
 
 /**
  * Creates a new host communicator with externally provided size, rank and kvs.

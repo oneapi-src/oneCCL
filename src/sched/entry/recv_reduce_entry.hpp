@@ -34,36 +34,36 @@ public:
     recv_reduce_entry(ccl_sched* sched,
                       ccl_buffer inout_buf,
                       size_t cnt,
-                      size_t* out_cnt,
                       const ccl_datatype& dtype,
                       ccl::reduction reduction_op,
                       int src,
-                      ccl_buffer comm_buf,
                       ccl_comm* comm,
+                      ccl_buffer comm_buf = ccl_buffer(),
                       ccl_recv_reduce_result_buf_type result_buf_type = ccl_recv_reduce_local_buf)
             : sched_entry(sched),
               inout_buf(inout_buf),
               in_cnt(cnt),
-              out_cnt(out_cnt),
               dtype(dtype),
               op(reduction_op),
               src(src),
-              comm_buf(comm_buf),
               comm(comm),
+              comm_buf(comm_buf),
               result_buf_type(result_buf_type),
               fn(sched->coll_attr.reduction_fn) {
-        CCL_ASSERT(op != ccl::reduction::custom || fn,
-                   "custom reduction requires user provided callback");
+        CCL_THROW_IF_NOT(op != ccl::reduction::custom || fn,
+                         "custom reduction requires user provided callback",
+                         ", op ",
+                         ccl_reduction_to_str(op),
+                         ", fn ",
+                         fn);
 
-        CCL_ASSERT(
+        CCL_THROW_IF_NOT(
             (result_buf_type == ccl_recv_reduce_local_buf && inout_buf.get_ptr() != nullptr) ||
                 (result_buf_type == ccl_recv_reduce_comm_buf && comm_buf.get_ptr() != nullptr),
             "result buffer should be non null");
 
-        if (comm_buf.get_ptr() == nullptr || comm_buf == inout_buf) {
-            size_t comm_buf_size = in_cnt * dtype.size();
-            this->comm_buf.set(CCL_MALLOC(comm_buf_size, "recv_reduce.comm_buf"), comm_buf_size);
-            own_comm_buff = true;
+        if ((comm_buf.get_ptr() == nullptr || comm_buf == inout_buf) && in_cnt) {
+            this->comm_buf = sched->alloc_buffer({ in_cnt * dtype.size(), inout_buf });
         }
     }
 
@@ -72,21 +72,16 @@ public:
             size_t bytes = in_cnt * dtype.size();
             LOG_DEBUG(
                 "cancel RECV in RECV_REDUCE entry, src ", src, ", req ", &req, ", bytes", bytes);
-            comm->atl->atl_ep_cancel(sched->bin->get_atl_ep(), &req);
-        }
-
-        if (own_comm_buff) {
-            CCL_FREE(comm_buf.get_ptr());
+            comm->get_atl_comm()->cancel(sched->bin->get_atl_ep(), &req);
         }
     }
 
     void start() override {
-        int global_src = comm->get_global_rank(src);
-        atl_tag = comm->atl->tag->create(
-            global_src, sched->get_comm_id(), sched->sched_id, sched->get_op_id());
+        atl_tag = comm->get_atl_comm()->tag->create(
+            src, sched->get_comm_id(), sched->sched_id, sched->get_op_id());
         size_t bytes = in_cnt * dtype.size();
         LOG_DEBUG("starting RECV in RECV_REDUCE entry, src ",
-                  global_src,
+                  src,
                   ", tag ",
                   atl_tag,
                   ", req ",
@@ -94,48 +89,48 @@ public:
                   ", bytes ",
                   bytes);
 
-        atl_status_t atl_status = comm->atl->atl_ep_recv(
-            sched->bin->get_atl_ep(), comm_buf.get_ptr(bytes), bytes, global_src, atl_tag, &req);
+        atl_status_t atl_status = comm->get_atl_comm()->recv(
+            sched->bin->get_atl_ep(), comm_buf.get_ptr(bytes), bytes, src, atl_tag, &req);
 
         update_status(atl_status);
     }
 
     void update() override {
-        int req_status;
-        atl_status_t atl_status =
-            comm->atl->atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
+        atl_status_t atl_status = comm->get_atl_comm()->check(sched->bin->get_atl_ep(), &req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("RECV_REDUCE entry failed. atl_status: ", atl_status_to_str(atl_status));
         }
 
-        if (req_status) {
-            LOG_DEBUG("completed RECV in RECV_REDUCE entry, req=", &req, ", starting REDUCE");
-            size_t bytes = in_cnt * dtype.size();
-            size_t offset = inout_buf.get_offset();
-
-            const ccl::fn_context context = { sched->coll_attr.match_id.c_str(), offset };
-
-            ccl_buffer reduce_in_buf =
-                (result_buf_type == ccl_recv_reduce_local_buf) ? comm_buf : inout_buf;
-
-            ccl_buffer reduce_inout_buf =
-                (result_buf_type == ccl_recv_reduce_local_buf) ? inout_buf : comm_buf;
-
-            ccl::status comp_status = ccl_comp_reduce(sched,
-                                                      reduce_in_buf.get_ptr(bytes),
-                                                      in_cnt,
-                                                      reduce_inout_buf.get_ptr(bytes),
-                                                      out_cnt,
-                                                      dtype,
-                                                      op,
-                                                      fn,
-                                                      &context);
-
-            CCL_ASSERT(comp_status == ccl::status::success, "bad status ", comp_status);
-            status = ccl_sched_entry_status_complete;
-            LOG_DEBUG("completed REDUCE in RECV_REDUCE entry");
+        if (!req.is_completed) {
+            return;
         }
+
+        LOG_DEBUG("completed RECV in RECV_REDUCE entry, req=", &req, ", starting REDUCE");
+        size_t bytes = in_cnt * dtype.size();
+        size_t offset = inout_buf.get_offset();
+
+        const ccl::fn_context context = { sched->coll_attr.match_id.c_str(), offset };
+
+        ccl_buffer reduce_in_buf =
+            (result_buf_type == ccl_recv_reduce_local_buf) ? comm_buf : inout_buf;
+
+        ccl_buffer reduce_inout_buf =
+            (result_buf_type == ccl_recv_reduce_local_buf) ? inout_buf : comm_buf;
+
+        ccl::status comp_status = ccl_comp_reduce(sched,
+                                                  reduce_in_buf.get_ptr(bytes),
+                                                  in_cnt,
+                                                  reduce_inout_buf.get_ptr(bytes),
+                                                  nullptr, /* out_count */
+                                                  dtype,
+                                                  op,
+                                                  fn,
+                                                  &context);
+
+        CCL_ASSERT(comp_status == ccl::status::success, "bad status ", comp_status);
+        status = ccl_sched_entry_status_complete;
+        LOG_DEBUG("completed REDUCE in RECV_REDUCE entry");
     }
 
     const char* name() const override {
@@ -151,20 +146,18 @@ protected:
                            inout_buf,
                            ", in_cnt ",
                            in_cnt,
-                           ", out_cnt ",
-                           out_cnt,
                            ", op ",
                            ccl_reduction_to_str(op),
                            ", red_fn  ",
                            fn,
                            ", src ",
                            src,
-                           ", comm_buf ",
-                           comm_buf,
                            ", atl_tag ",
                            atl_tag,
                            ", comm_id ",
                            sched->get_comm_id(),
+                           ", comm_buf ",
+                           comm_buf,
                            ", result_buf_type ",
                            result_buf_type,
                            ", req ",
@@ -175,13 +168,11 @@ protected:
 private:
     ccl_buffer inout_buf;
     size_t in_cnt;
-    size_t* out_cnt;
     ccl_datatype dtype;
     ccl::reduction op;
     int src;
-    ccl_buffer comm_buf;
     ccl_comm* comm;
-    bool own_comm_buff = false;
+    ccl_buffer comm_buf;
     ccl_recv_reduce_result_buf_type result_buf_type;
     uint64_t atl_tag = 0;
     ccl::reduction_fn fn;

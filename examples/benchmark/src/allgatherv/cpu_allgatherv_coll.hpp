@@ -30,7 +30,7 @@ struct cpu_allgatherv_coll : cpu_base_coll<Dtype, allgatherv_strategy_impl> {
                                    ccl::communicator& comm,
                                    ccl::stream& stream,
                                    size_t rank_idx) override {
-        Dtype sbuf_expected = comm.rank();
+        Dtype sbuf_expected = get_val<Dtype>(static_cast<float>(comm.rank()));
         Dtype value;
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
             for (size_t e_idx = 0; e_idx < elem_count; e_idx++) {
@@ -44,7 +44,7 @@ struct cpu_allgatherv_coll : cpu_base_coll<Dtype, allgatherv_strategy_impl> {
             }
 
             for (int idx = 0; idx < comm.size(); idx++) {
-                Dtype rbuf_expected = idx;
+                Dtype rbuf_expected = get_val<Dtype>(static_cast<float>(idx));
                 for (size_t e_idx = 0; e_idx < elem_count; e_idx++) {
                     value = ((Dtype*)recv_bufs[b_idx][rank_idx])[idx * elem_count + e_idx];
                     if (value != rbuf_expected) {

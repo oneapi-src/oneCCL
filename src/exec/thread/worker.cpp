@@ -174,7 +174,7 @@ ccl::status ccl_worker::process_sched_bin(ccl_sched_bin* bin, size_t& completed_
         for (size_t sched_idx = 0; sched_idx < 1; sched_idx++) {
             ccl_sched* sched = bin->get(sched_idx);
             ccl_comm* comm = sched->coll_param.comm;
-            atl_status_t atl_status = comm->atl->atl_ep_poll(bin->get_atl_ep());
+            atl_status_t atl_status = comm->get_atl_comm()->poll(bin->get_atl_ep());
             CCL_THROW_IF_NOT(atl_status == ATL_STATUS_SUCCESS, "bad status ", atl_status);
         }
     }

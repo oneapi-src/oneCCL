@@ -99,12 +99,8 @@ fi
 # Determined by a combination of environment variables and tests within
 # configure (e.g., determining whehter -lsocket is needee)
 CC="gcc"
-MPICH_VERSION="3.3"
-CFLAGS=""
-CPPFLAGS=""
-LDFLAGS=" -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl "
-LIBS="-lm   -lpthread  -lfabric -lrt "
-MPIVERSION="2021.4"
+MPICH_VERSION="3.4a2"
+MPIVERSION="2021.5"
 MPILIBNAME="mpi"                           
 
 
@@ -594,10 +590,6 @@ fi
 final_cppflags=" "
 final_ldflags="  -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl "
 final_libs="-lpthread -lrt "
-if test "no" = "no" -o "${interlib_deps}" = "no" ; then
-    final_ldflags="${final_ldflags}  -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl -L/p/pdsd/scratch/jenkins/artefacts_impi_2019/hcoll/lib -L/p/pdsd/scratch/Uploads/IMPI/other/software/libfabric/linux/v1.9.0/lib"
-    final_libs="${final_libs}  -lm   -lpthread  -lfabric -lrt "
-fi
 
 # -----------------------------------------------------------------------
 #
@@ -622,7 +614,7 @@ if [ "$linking" = yes ] ; then
         $Show $CC ${final_cppflags} $PROFILE_INCPATHS ${final_cflags} ${final_ldflags} $allargs -I\"${includedir}\"
         rc=$?
     else
-        $Show $CC $CPPFLAGS $CFLAGS $allargs -I\"${includedir}\" -L\"${libdir}${MPILIBDIR}\" -L\"${libdir}\" $rpath_opt $mpilibs $I_MPI_OTHERLIBS $LDFLAGS
+        $Show $CC $CPPFLAGS $CFLAGS $allargs -I\"${includedir}\" -L\"${libdir}${MPILIBDIR}\" -L\"${libdir}\" $rpath_opt $mpilibs $I_MPI_OTHERLIBS ${final_ldflags}
         rc=$?
 
         if [ $rc -eq 0 -a "x$strip_debug_info" = "xyes" ] ; then

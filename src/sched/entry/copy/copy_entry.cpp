@@ -18,7 +18,8 @@
 
 #ifdef CCL_ENABLE_SYCL
 #include <CL/sycl.hpp>
-#include <CL/sycl/backend/level_zero.hpp>
+#include <CL/sycl/backend_types.hpp>
+#include "common/utils/sycl_utils.hpp"
 #endif // CCL_ENABLE_SYCL
 
 copy_entry::copy_entry(ccl_sched* sched,
@@ -28,11 +29,11 @@ copy_entry::copy_entry(ccl_sched* sched,
                        const ccl_datatype& dtype,
                        copy_attr attr)
         :
-#if defined(CCL_ENABLE_SYCL) && defined(MULTI_GPU_SUPPORT)
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
           ze_copy_entry(sched, in_buf, out_buf, count, dtype, attr),
-#else
+#else // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
           sched_entry(sched),
-#endif // CCL_ENABLE_SYCL && MULTI_GPU_SUPPORT
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
           sched(sched),
           in_buf(in_buf),
           out_buf(out_buf),
@@ -105,7 +106,7 @@ void copy_entry::start() {
     }
 
 #ifdef CCL_ENABLE_SYCL
-    if (q->get_backend() != cl::sycl::backend::level_zero || is_sycl_buf) {
+    if (q->get_backend() != ccl::utils::get_level_zero_backend() || is_sycl_buf) {
         ctype = copy_type::sycl;
         if (!is_sycl_buf) {
             if ((in_ptr_type != sycl::usm::alloc::device) &&
@@ -115,18 +116,24 @@ void copy_entry::start() {
             }
         }
 
-        copier = sycl_copier(
-            attr.direction, in_buf, out_buf, count, dtype, is_sycl_buf, attr.in_buf_offset);
+        copier = sycl_copier(attr.direction,
+                             in_buf,
+                             out_buf,
+                             count,
+                             dtype,
+                             is_sycl_buf,
+                             attr.in_buf_offset,
+                             attr.out_buf_offset);
         copier.set_queue(q);
         ccl_tuple_for_each_indexed<ccl_sycl_buffer_one_dim_types>(copier);
         status = ccl_sched_entry_status_started;
     }
-#ifdef MULTI_GPU_SUPPORT
+#ifdef CCL_ENABLE_ZE
     else {
         ctype = copy_type::ze;
         ze_copy_entry::start(); // status
     }
-#endif // MULTI_GPU_SUPPORT
+#endif // CCL_ENABLE_ZE
 #endif // CCL_ENABLE_SYCL
 }
 
@@ -137,17 +144,18 @@ void copy_entry::update() {
             status = ccl_sched_entry_status_complete;
         }
     }
-#ifdef MULTI_GPU_SUPPORT
+#ifdef CCL_ENABLE_ZE
     else {
         ze_copy_entry::update();
     }
-#endif // MULTI_GPU_SUPPORT
+#endif // CCL_ENABLE_ZE
 #endif // CCL_ENABLE_SYCL
 }
 
 void copy_entry::do_regular_copy() {
     size_t bytes = dtype.size() * count;
-    auto comp_status = ccl_comp_copy(in_buf.get_ptr(bytes), out_buf.get_ptr(bytes), count, dtype);
+    auto comp_status =
+        ccl_comp_copy(in_buf.get_ptr(bytes), out_buf.get_ptr(bytes), bytes, attr.use_nontemporal);
     CCL_ASSERT(comp_status == ccl::status::success, "bad status ", comp_status);
     status = ccl_sched_entry_status_complete;
 }

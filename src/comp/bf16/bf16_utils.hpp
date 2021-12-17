@@ -49,8 +49,8 @@ __attribute__((__always_inline__)) inline std::set<ccl_bf16_impl_type> ccl_bf16_
     __asm__ __volatile__("cpuid"
                          : "=a"(reg[0]), "=b"(reg[1]), "=c"(reg[2]), "=d"(reg[3])
                          : "a"(7), "c"(0));
-    is_avx512f_enabled =
-        ((reg[1] & (1 << 16)) >> 16) & ((reg[1] & (1 << 30)) >> 30) & ((reg[1] & (1 << 31)) >> 31);
+    is_avx512f_enabled = ((reg[1] & (1u << 16)) >> 16) & ((reg[1] & (1u << 30)) >> 30) &
+                         ((reg[1] & (1u << 31)) >> 31);
 
 #ifdef CCL_BF16_AVX512BF_COMPILER
     /* capabilities for optimized BF16/FP32 conversions */

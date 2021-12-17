@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "base.hpp"
+#include "base_utils.hpp"
 #include "oneapi/ccl.hpp"
 #ifdef CCL_ENABLE_SYCL
 #include "sycl_base.hpp"

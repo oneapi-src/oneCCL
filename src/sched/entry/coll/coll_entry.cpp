@@ -27,7 +27,7 @@ void coll_entry::start() {
         coll_param.ctype = sched->coll_param.ctype;
         coll_param.comm = sched->coll_param.comm;
         coll_param.stream = sched->coll_param.stream;
-        coll_sched.reset(new ccl_extra_sched(coll_param, sched->sched_id));
+        coll_sched.reset(new ccl_extra_sched({ sched->sched_id, coll_param }, sched->master_sched));
         coll_sched->set_op_id(coll_sched_op_id);
 
         auto res = coll_entry_helper::build_schedule(coll_sched.get(), sched, param);

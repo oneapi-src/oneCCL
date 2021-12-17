@@ -20,9 +20,6 @@
 #include "common/utils/spinlock.hpp"
 
 #include <functional>
-#include <iostream>
-#include <limits>
-#include <mutex>
 #include <vector>
 
 using ccl_comm_id_t = uint16_t;

@@ -65,7 +65,7 @@ template <typename T>
 void make_lp_epilogue(test_operation<T>& op, size_t count) {
     ccl_data_type dtype = op.param.datatype;
     for (size_t buf_idx = 0; buf_idx < op.buffer_count; buf_idx++) {
-        std::vector<T> tmp(op.recv_bufs[buf_idx]);
+        std::vector<T> tmp(op.recv_bufs[buf_idx].begin(), op.recv_bufs[buf_idx].end());
         convert_lp_to_fp32_arrays((short*)tmp.data(), op.recv_bufs[buf_idx].data(), count, dtype);
     }
 }

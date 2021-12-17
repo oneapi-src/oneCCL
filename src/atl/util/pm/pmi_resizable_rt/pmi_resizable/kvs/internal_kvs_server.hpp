@@ -32,10 +32,10 @@ typedef enum kvs_access_mode {
 } kvs_access_mode_t;
 
 typedef struct kvs_request {
-    kvs_access_mode_t mode;
-    char name[MAX_KVS_NAME_LENGTH];
-    char key[MAX_KVS_KEY_LENGTH];
-    char val[MAX_KVS_VAL_LENGTH];
+    kvs_access_mode_t mode{ AM_PUT };
+    char name[MAX_KVS_NAME_LENGTH]{};
+    char key[MAX_KVS_KEY_LENGTH]{};
+    char val[MAX_KVS_VAL_LENGTH]{};
 } kvs_request_t;
 
 typedef struct server_args {

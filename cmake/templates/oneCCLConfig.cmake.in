@@ -23,11 +23,11 @@ if (EXISTS "${CCL_CONFIGURATION}")
     set(_oneccl_subdir "${CCL_CONFIGURATION}")
 endif()
 
-if (_oneccl_subdir EQUAL "cpu_icc")
+if (_oneccl_subdir EQUAL "cpu")
     include(CheckCXXCompilerFlag)
     check_cxx_compiler_flag("-fsycl" _fsycl_option)
     if (_fsycl_option)
-        message(STATUS "STATUS: -fsycl not supported for CCL_CONFIGURATION=cpu_icc")
+        message(STATUS "STATUS: -fsycl not supported for CCL_CONFIGURATION=cpu")
     endif()
 endif()
 

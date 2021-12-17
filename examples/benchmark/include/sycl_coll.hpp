@@ -24,7 +24,6 @@
 #include "sycl_base.hpp" /* from examples/include */
 
 #ifdef CCL_ENABLE_SYCL
-
 #include <CL/sycl.hpp>
 
 using namespace sycl;
@@ -159,7 +158,7 @@ struct sycl_base_coll : base_coll, private strategy {
         size_t send_bytes = send_count * base_coll::get_dtype_size();
         size_t recv_bytes = recv_count * base_coll::get_dtype_size();
 
-        std::fill(host_send_buf.begin(), host_send_buf.end(), comm_rank);
+        host_send_buf = get_initial_values<Dtype>(send_count, comm_rank);
 
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
             if (base_coll::get_sycl_mem_type() == SYCL_MEM_USM) {
@@ -168,7 +167,7 @@ struct sycl_base_coll : base_coll, private strategy {
                     .wait();
 
                 if (!base_coll::get_inplace()) {
-                    stream.get_native().memset(recv_bufs[b_idx][rank_idx], 0, recv_bytes).wait();
+                    stream.get_native().memset(recv_bufs[b_idx][rank_idx], -1, recv_bytes).wait();
                 }
             }
             else {
@@ -188,7 +187,7 @@ struct sycl_base_coll : base_coll, private strategy {
                             (static_cast<sycl_buffer_t<Dtype>*>(recv_bufs[b_idx][rank_idx]));
                         auto recv_buf_acc =
                             recv_buf->template get_access<mode::write>(h, recv_count);
-                        h.fill(recv_buf_acc, static_cast<Dtype>(0));
+                        h.fill(recv_buf_acc, static_cast<Dtype>(-1));
                     })
                     .wait();
             }
@@ -200,8 +199,8 @@ struct sycl_base_coll : base_coll, private strategy {
     }
 
     /* used on fill/check phases */
-    std::vector<Dtype> host_send_buf;
-    std::vector<Dtype> host_recv_buf;
+    aligned_vector<Dtype> host_send_buf;
+    aligned_vector<Dtype> host_recv_buf;
 
 private:
     std::vector<buf_allocator<Dtype>> allocators;

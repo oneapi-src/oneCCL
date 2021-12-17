@@ -34,7 +34,7 @@ struct sycl_alltoall_coll : sycl_base_coll<Dtype, alltoall_strategy_impl> {
                                    ccl::communicator& comm,
                                    ccl::stream& stream,
                                    size_t rank_idx) override {
-        Dtype sbuf_expected = comm.rank();
+        Dtype sbuf_expected = get_val<Dtype>(static_cast<float>(comm.rank()));
         int comm_size = comm.size();
 
         size_t send_bytes = comm_size * elem_count * base_coll::get_dtype_size();
@@ -69,7 +69,7 @@ struct sycl_alltoall_coll : sycl_base_coll<Dtype, alltoall_strategy_impl> {
 
             for (size_t e_idx = 0; e_idx < elem_count * comm_size; e_idx++) {
                 value = host_send_buf[e_idx];
-                Dtype rbuf_expected = e_idx / elem_count;
+                Dtype rbuf_expected = get_val<Dtype>(static_cast<float>(e_idx / elem_count));
                 if (value != sbuf_expected) {
                     std::cout << this->name() << " send_bufs: buf_idx " << b_idx << ", rank_idx "
                               << rank_idx << ", elem_idx " << e_idx << ", expected "

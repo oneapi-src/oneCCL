@@ -148,7 +148,7 @@ static inline atl_status_t pmrt_kvs_get(pm_rt_desc_t *pmrt_desc,
 #ifdef __cplusplus
 class ipmi {
 public:
-    virtual ~ipmi() = default;
+    virtual ~ipmi() noexcept(false){};
 
     virtual int is_pm_resize_enabled() = 0;
 
@@ -160,9 +160,9 @@ public:
 
     virtual atl_status_t pmrt_wait_notification() = 0;
 
-    virtual void pmrt_finalize() = 0;
+    virtual atl_status_t pmrt_finalize() = 0;
 
-    virtual void pmrt_barrier() = 0;
+    virtual atl_status_t pmrt_barrier() = 0;
 
     virtual atl_status_t pmrt_kvs_put(char *kvs_key,
                                       int proc_idx,
@@ -180,13 +180,15 @@ public:
 
     virtual size_t get_local_thread_idx() = 0;
 
-    virtual size_t get_local_kvs_id() = 0;
+    virtual atl_status_t get_local_kvs_id(size_t &res) = 0;
 
-    virtual void set_local_kvs_id(size_t local_kvs_id) = 0;
+    virtual atl_status_t set_local_kvs_id(size_t local_kvs_id) = 0;
 
     virtual size_t get_threads_per_process() = 0;
 
     virtual size_t get_ranks_per_process() = 0;
+
+    virtual atl_status_t pmrt_init() = 0;
 };
 #endif
 #endif // PM_RT_H

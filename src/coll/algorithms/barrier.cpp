@@ -25,7 +25,7 @@
 ccl::status ccl_coll_build_direct_barrier(ccl_sched* sched, ccl_comm* comm) {
     LOG_DEBUG("build direct barrier");
 
-    entry_factory::make_entry<barrier_entry>(sched, comm);
+    entry_factory::create<barrier_entry>(sched, comm);
     return ccl::status::success;
 }
 
@@ -44,8 +44,8 @@ ccl::status ccl_coll_build_dissemination_barrier(ccl_sched* sched, ccl_comm* com
     while (mask < size) {
         dst = (rank + mask) % size;
         src = (rank - mask + size) % size;
-        entry_factory::make_entry<send_entry>(sched, ccl_buffer(), 0, ccl_datatype_int8, dst, comm);
-        entry_factory::make_entry<recv_entry>(sched, ccl_buffer(), 0, ccl_datatype_int8, src, comm);
+        entry_factory::create<send_entry>(sched, ccl_buffer(), 0, ccl_datatype_int8, dst, comm);
+        entry_factory::create<recv_entry>(sched, ccl_buffer(), 0, ccl_datatype_int8, src, comm);
         sched->add_barrier();
         mask <<= 1;
     }

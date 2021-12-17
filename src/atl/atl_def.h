@@ -15,9 +15,15 @@
 */
 #pragma once
 
+#include <cstring>
+#include <map>
+#include <memory>
+#include <vector>
 #include <stddef.h>
 #include <stdint.h>
 #include <string>
+
+#include "common/log/log.hpp"
 
 #ifndef container_of
 #define container_of(ptr, type, field) ((type*)((char*)ptr - offsetof(type, field)))
@@ -45,11 +51,36 @@
  * This is invoked by the ATL framework when the transport library is loaded.
  */
 
+#define ATL_CHECK_STATUS(expr, str) \
+    do { \
+        if (expr != ATL_STATUS_SUCCESS) { \
+            LOG_ERROR(str); \
+            return ATL_STATUS_FAILURE; \
+        } \
+    } while (0)
+
+#define KVS_2_ATL_CHECK_STATUS(expr, str) \
+    do { \
+        if (expr != KVS_STATUS_SUCCESS) { \
+            LOG_ERROR(str); \
+            return ATL_STATUS_FAILURE; \
+        } \
+    } while (0)
+
+#define ATL_SET_STR(dst, size, ...) \
+    do { \
+        if (snprintf(dst, size, __VA_ARGS__) > size) { \
+            printf("line too long (must be shorter %d)\n", size); \
+            printf(__VA_ARGS__); \
+            return ATL_STATUS_FAILURE; \
+        } \
+    } while (0)
+
 #define ATL_CALL(func, err_action) \
     do { \
         atl_status_t status = func; \
         if (status != FI_SUCCESS) { \
-            CCL_THROW(#func "\n fails with status: ", status); \
+            LOG_ERROR(#func "\n fails with status: ", status); \
             err_action; \
         } \
     } while (0)
@@ -107,6 +138,13 @@ typedef enum {
 } atl_reduction_t;
 
 typedef enum { ATL_MNIC_NONE, ATL_MNIC_LOCAL, ATL_MNIC_GLOBAL } atl_mnic_t;
+typedef enum { ATL_MNIC_OFFSET_NONE, ATL_MNIC_OFFSET_LOCAL_PROC_IDX } atl_mnic_offset_t;
+
+extern std::map<atl_mnic_t, std::string> mnic_type_names;
+extern std::map<atl_mnic_offset_t, std::string> mnic_offset_names;
+
+std::string to_string(atl_mnic_t type);
+std::string to_string(atl_mnic_offset_t offset);
 
 typedef struct {
     struct {
@@ -119,6 +157,7 @@ typedef struct {
         atl_mnic_t mnic_type;
         std::string mnic_name;
         size_t mnic_count;
+        atl_mnic_offset_t mnic_offset;
     } in;
     struct {
         int enable_shm;
@@ -147,17 +186,18 @@ typedef struct {
     size_t hostname_hash;
 } atl_proc_coord_t;
 
-typedef struct {
-    uint64_t tag;
-    size_t remote_proc_idx;
+typedef struct atl_req {
+    int is_completed;
     void* internal[ATL_REQ_SIZE];
-} atl_req_t __attribute__((aligned(ATL_CACHELINE_LEN)));
+    atl_req() : is_completed(0) {
+        memset(internal, 0, ATL_REQ_SIZE * sizeof(void*));
+    }
+} atl_req_t;
 
 struct atl_ctx {
     atl_proc_coord_t coord;
 
     size_t ep_count;
-    atl_ep_t** eps;
 };
 
 /*

@@ -31,13 +31,13 @@
 //
 //    while (true) {
 //        /*
-//         * atl_wait_notification return values:
+//         * wait_notification return values:
 //         * 0 - got notification, should do some updates
 //         * 1 - finished by timeout, should check whether thread should be stopped
 //                                    in another case should recall this function
 //         * TODO: replace numbers by enum values
 //         * */
-//        res = global_data.atl->atl_wait_notification();
+//        res = global_data.atl->wait_notification();
 //
 //        if (res == 1) {
 //            if (listener->should_stop.load(std::memory_order_acquire))
@@ -49,7 +49,7 @@
 //        ccl_executor::worker_guard guard = global_data.executor->get_worker_lock();
 //
 //        global_data.reset_resize_dependent_objects();
-//        global_data.atl->atl_update();
+//        global_data.atl->update();
 //        global_data.init_resize_dependent_objects();
 //
 //        global_data.executor->update_workers();

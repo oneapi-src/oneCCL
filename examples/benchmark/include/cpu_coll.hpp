@@ -96,7 +96,7 @@ struct cpu_base_coll : base_coll, protected strategy {
                                   ccl::communicator& comm,
                                   ccl::stream& stream,
                                   size_t rank_idx) override {
-        int local_rank = comm.rank();
+        int comm_rank = comm.rank();
 
         size_t send_count = coll_strategy::get_send_multiplier() * elem_count;
         size_t recv_count = coll_strategy::get_recv_multiplier() * elem_count;
@@ -104,13 +104,12 @@ struct cpu_base_coll : base_coll, protected strategy {
         size_t send_bytes = send_count * base_coll::get_dtype_size();
         size_t recv_bytes = recv_count * base_coll::get_dtype_size();
 
-        std::vector<Dtype> fill_vector(send_count);
-        std::fill(fill_vector.begin(), fill_vector.end(), local_rank);
+        auto fill_vector = get_initial_values<Dtype>(send_count, comm_rank);
 
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
             memcpy(send_bufs[b_idx][rank_idx], fill_vector.data(), send_bytes);
             if (!base_coll::get_inplace()) {
-                memset(recv_bufs[b_idx][rank_idx], 0, recv_bytes);
+                memset(recv_bufs[b_idx][rank_idx], -1, recv_bytes);
             }
         }
     }

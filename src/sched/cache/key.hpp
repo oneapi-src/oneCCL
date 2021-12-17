@@ -57,7 +57,7 @@ public:
     bool has_hasher_result = false;
 
     struct ccl_sched_key_inner_fields {
-        ccl_coll_type ctype = ccl_coll_internal;
+        ccl_coll_type ctype = ccl_coll_undefined;
         void* buf1 = nullptr; /* non-data buffer which can be used for caching */
         void* buf2 = nullptr; /* non-data buffer which can be used for caching */
         ccl::datatype dtype = ccl::datatype::int8;

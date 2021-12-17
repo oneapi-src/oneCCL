@@ -14,7 +14,7 @@
  limitations under the License.
 */
 #include "oneapi/ccl/config.h"
-#if defined(MULTI_GPU_SUPPORT) and !defined(CCL_ENABLE_SYCL)
+#if defined(CCL_ENABLE_ZE) and !defined(CCL_ENABLE_SYCL)
 
 #include "oneapi/ccl/native_device_api/l0/export.hpp"
 #include "common/log/log.hpp"
@@ -112,4 +112,4 @@ generic_platform_type<cl_backend_type::l0>::get() const noexcept {
     return native::get_platform();
 }
 } // namespace ccl
-#endif //MULTI_GPU_SUPPORT
+#endif //CCL_ENABLE_ZE

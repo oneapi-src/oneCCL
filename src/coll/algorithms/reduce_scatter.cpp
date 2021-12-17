@@ -21,7 +21,11 @@
  */
 
 #include "coll/algorithms/algorithms.hpp"
+#include "sched/entry/coll/coll_entry_helper.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
+#if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
+#include "coll/coll_util.hpp"
+#endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
 
 ccl::status ccl_coll_build_direct_reduce_scatter(ccl_sched* sched,
                                                  ccl_buffer send_buf,
@@ -32,7 +36,7 @@ ccl::status ccl_coll_build_direct_reduce_scatter(ccl_sched* sched,
                                                  ccl_comm* comm) {
     LOG_DEBUG("build direct reduce_scatter");
 
-    entry_factory::make_entry<reduce_scatter_entry>(
+    entry_factory::create<reduce_scatter_entry>(
         sched, send_buf, recv_buf, recv_count, dtype, reduction, comm);
     return ccl::status::success;
 }
@@ -70,12 +74,12 @@ ccl::status ccl_coll_build_ring_reduce_scatter_block(ccl_sched* sched,
 
     if (!inplace) {
         /* copy local data into recv_buf */
-        entry_factory::make_entry<copy_entry>(
+        entry_factory::create<copy_entry>(
             sched, send_buf + rank * recv_count * dtype_size, recv_buf, recv_count, dtype);
     }
 
     /* allocate temporary buffer to store incoming data */
-    ccl_buffer tmp_buf = sched->alloc_buffer(recv_count * dtype_size);
+    ccl_buffer tmp_buf = sched->alloc_buffer({ recv_count * dtype_size, recv_buf });
 
     for (idx = 1; idx < comm_size; idx++) {
         src = (comm_size + rank - idx) % comm_size;
@@ -84,39 +88,39 @@ ccl::status ccl_coll_build_ring_reduce_scatter_block(ccl_sched* sched,
         /* send the data that dst needs. recv data that this process
          * needs from src into tmp_recvbuf */
         if (!inplace) {
-            entry_factory::make_entry<send_entry>(
+            entry_factory::create<send_entry>(
                 sched, send_buf + dst * recv_count * dtype_size, recv_count, dtype, dst, comm);
 
-            entry_factory::make_entry<recv_entry>(sched, tmp_buf, recv_count, dtype, src, comm);
+            entry_factory::create<recv_entry>(sched, tmp_buf, recv_count, dtype, src, comm);
         }
         else {
-            entry_factory::make_entry<send_entry>(
+            entry_factory::create<send_entry>(
                 sched, recv_buf + dst * recv_count * dtype_size, recv_count, dtype, dst, comm);
 
-            entry_factory::make_entry<recv_entry>(sched, tmp_buf, recv_count, dtype, src, comm);
+            entry_factory::create<recv_entry>(sched, tmp_buf, recv_count, dtype, src, comm);
         }
 
         sched->add_barrier();
 
         if (!inplace) {
-            entry_factory::make_entry<reduce_local_entry>(
+            entry_factory::create<reduce_local_entry>(
                 sched, tmp_buf, recv_count, recv_buf, nullptr, dtype, op);
         }
         else {
-            entry_factory::make_entry<reduce_local_entry>(sched,
-                                                          tmp_buf,
-                                                          recv_count,
-                                                          recv_buf + rank * recv_count * dtype_size,
-                                                          nullptr,
-                                                          dtype,
-                                                          op);
+            entry_factory::create<reduce_local_entry>(sched,
+                                                      tmp_buf,
+                                                      recv_count,
+                                                      recv_buf + rank * recv_count * dtype_size,
+                                                      nullptr,
+                                                      dtype,
+                                                      op);
         }
     }
 
     /* if inplace, move output data to the beginning of
      * recv_buf. already done for rank 0 */
     if (inplace && (rank != 0)) {
-        entry_factory::make_entry<copy_entry>(
+        entry_factory::create<copy_entry>(
             sched, recv_buf + rank * recv_count * dtype_size, recv_buf, recv_count, dtype);
     }
 
@@ -127,7 +131,7 @@ ccl::status ccl_coll_build_ring_reduce_scatter_block(ccl_sched* sched,
 ccl::status ccl_coll_build_ring_reduce_scatter(ccl_sched* sched,
                                                ccl_buffer send_buf,
                                                ccl_buffer recv_buf,
-                                               size_t send_count,
+                                               size_t recv_count,
                                                const ccl_datatype& dtype,
                                                ccl::reduction op,
                                                ccl_comm* comm) {
@@ -151,7 +155,7 @@ ccl::status ccl_coll_build_ring_reduce_scatter(ccl_sched* sched,
     int src = (comm_size + rank - 1) % comm_size;
     int dst = (comm_size + rank + 1) % comm_size;
 
-    size_t count = send_count;
+    size_t count = recv_count;
     size_t bytes = count * dtype_size;
 
     size_t chunk_count =
@@ -178,7 +182,7 @@ ccl::status ccl_coll_build_ring_reduce_scatter(ccl_sched* sched,
 
     if (comm_size == 1) {
         if (!inplace) {
-            entry_factory::make_entry<copy_entry>(sched, send_buf, recv_buf, count, dtype);
+            entry_factory::create<copy_entry>(sched, send_buf, recv_buf, count, dtype);
             sched->add_barrier();
         }
         return ccl::status::success;
@@ -187,7 +191,7 @@ ccl::status ccl_coll_build_ring_reduce_scatter(ccl_sched* sched,
     ccl_buffer tmp_buf;
 
     if (inplace) {
-        tmp_buf = sched->alloc_buffer(count * dtype_size);
+        tmp_buf = sched->alloc_buffer({ count * dtype_size, recv_buf });
     }
 
     ccl_buffer sbuf, rbuf;
@@ -208,7 +212,7 @@ ccl::status ccl_coll_build_ring_reduce_scatter(ccl_sched* sched,
     size_t send_main_chunk_size, send_last_chunk_size;
     size_t recv_main_chunk_size, recv_last_chunk_size;
 
-    size_t send_chunk_size, recv_chunk_size, reduce_chunk_size;
+    size_t send_chunk_size, recv_chunk_size = 0, reduce_chunk_size;
     size_t send_chunk_offset, recv_chunk_offset = 0, reduce_chunk_offset;
 
     /* if chunk_count > 1 then make reduction with 1 chunk delay to get comp/comp overlapping */
@@ -278,33 +282,31 @@ ccl::status ccl_coll_build_ring_reduce_scatter(ccl_sched* sched,
             recv_reduce_local_buf += reduce_chunk_offset;
             recv_reduce_comm_buf += reduce_chunk_offset;
 
-            entry_factory::make_entry<send_entry>(sched, sbuf, send_chunk_size, dtype, dst, comm);
+            entry_factory::create<send_entry>(sched, sbuf, send_chunk_size, dtype, dst, comm);
 
             if (!use_prev) {
                 CCL_ASSERT(recv_chunk_size == reduce_chunk_size);
-                entry_factory::make_entry<recv_reduce_entry>(sched,
-                                                             recv_reduce_local_buf,
-                                                             recv_chunk_size,
-                                                             nullptr, /* out_cnt */
-                                                             dtype,
-                                                             op,
-                                                             src,
-                                                             recv_reduce_comm_buf,
-                                                             comm,
-                                                             recv_reduce_result_type);
+                entry_factory::create<recv_reduce_entry>(sched,
+                                                         recv_reduce_local_buf,
+                                                         recv_chunk_size,
+                                                         dtype,
+                                                         op,
+                                                         src,
+                                                         comm,
+                                                         recv_reduce_comm_buf,
+                                                         recv_reduce_result_type);
             }
             else {
-                entry_factory::make_entry<recv_entry>(
-                    sched, rbuf, recv_chunk_size, dtype, src, comm);
+                entry_factory::create<recv_entry>(sched, rbuf, recv_chunk_size, dtype, src, comm);
 
                 if (idx + chunk_idx > 0) {
-                    entry_factory::make_entry<reduce_local_entry>(sched,
-                                                                  reduce_in_buf,
-                                                                  reduce_chunk_size,
-                                                                  reduce_inout_buf,
-                                                                  nullptr,
-                                                                  dtype,
-                                                                  op);
+                    entry_factory::create<reduce_local_entry>(sched,
+                                                              reduce_in_buf,
+                                                              reduce_chunk_size,
+                                                              reduce_inout_buf,
+                                                              nullptr,
+                                                              dtype,
+                                                              op);
                     sched->add_barrier();
                 }
 
@@ -324,13 +326,13 @@ ccl::status ccl_coll_build_ring_reduce_scatter(ccl_sched* sched,
                     reduce_in_buf += recv_chunk_offset;
                     reduce_inout_buf += recv_chunk_offset;
 
-                    entry_factory::make_entry<reduce_local_entry>(sched,
-                                                                  reduce_in_buf,
-                                                                  recv_chunk_size,
-                                                                  reduce_inout_buf,
-                                                                  nullptr,
-                                                                  dtype,
-                                                                  op);
+                    entry_factory::create<reduce_local_entry>(sched,
+                                                              reduce_in_buf,
+                                                              recv_chunk_size,
+                                                              reduce_inout_buf,
+                                                              nullptr,
+                                                              dtype,
+                                                              op);
                 }
             }
 
@@ -343,3 +345,42 @@ ccl::status ccl_coll_build_ring_reduce_scatter(ccl_sched* sched,
 
     return status;
 }
+
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+
+ccl::status ccl_coll_build_topo_reduce_scatter(ccl_sched* sched,
+                                               ccl_buffer send_buf,
+                                               ccl_buffer recv_buf,
+                                               size_t recv_count,
+                                               const ccl_datatype& dtype,
+                                               ccl::reduction reduction,
+                                               ccl_comm* comm) {
+    LOG_DEBUG("build topo reduce_scatter, recv_count ", recv_count);
+
+    const std::vector<ze_handle_exchange_entry::mem_desc_t> in_buffers{
+        { send_buf.get_ptr(), ccl::ze::ipc_mem_type::memory }, // 0
+    };
+
+    size_t send_buf_idx = 0;
+
+    ccl::add_handle_exchange(sched, comm, in_buffers);
+
+    std::vector<ze_event_handle_t> wait_events;
+    std::vector<size_t> blocks_count(comm->size(), recv_count);
+    entry_factory::create<ze_a2a_reduce_scatter_entry>(sched,
+                                                       send_buf,
+                                                       recv_buf,
+                                                       blocks_count.data(),
+                                                       dtype,
+                                                       reduction,
+                                                       comm,
+                                                       wait_events,
+                                                       send_buf_idx);
+    sched->add_barrier();
+
+    ccl::add_comm_barrier(sched, comm);
+
+    return ccl::status::success;
+}
+
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE

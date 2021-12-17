@@ -82,7 +82,6 @@ int main(int argc, char *argv[]) {
         accessor expected_buf_acc(expected_buf, h, write_only);
         h.parallel_for(count, [=](auto id) {
             send_buf[id] = rank + 1;
-            recv_buf[id] = -1;
             for (int i = 0; i < size; i++) {
                 expected_buf_acc[i * count + id] = i + 1;
             }
@@ -93,7 +92,7 @@ int main(int argc, char *argv[]) {
     vector<ccl::event> deps;
     deps.push_back(ccl::create_event(e));
 
-    /* invoke allagtherv */
+    /* invoke allgatherv */
     auto attr = ccl::create_operation_attr<ccl::allgatherv_attr>();
     ccl::allgatherv(send_buf, count, recv_buf, recv_counts, comm, stream, attr, deps).wait();
 
@@ -104,6 +103,9 @@ int main(int argc, char *argv[]) {
         h.parallel_for(size * count, [=](auto id) {
             if (recv_buf[id] != expected_buf_acc[id]) {
                 check_buf_acc[id] = -1;
+            }
+            else {
+                check_buf_acc[id] = 0;
             }
         });
     });

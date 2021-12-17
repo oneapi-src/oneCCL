@@ -23,20 +23,21 @@ namespace ccl {
 host_event_impl::host_event_impl(ccl_request* r) : req(r) {
     if (!req) {
         // if the user calls collective with coll_attr->synchronous=1 then it will be progressed
-        // in place and API will return null event. In this case mark cpp wrapper as completed,
+        // in place and API will return null event. In this case mark request as completed,
         // all calls to wait() or test() will do nothing
         completed = true;
     }
 }
 
 host_event_impl::~host_event_impl() {
-    // TODO: need to find a way to syncronize these 2 statuses, right now there are
+    // TODO: need to find a way to synchronize these 2 statuses, right now there are
     // some issues, e.g. in case of pure host event get_native() is an empty sycl
     // event which always complete, this way LOG_ERROR is never called
     if (!completed
 #ifdef CCL_ENABLE_SYCL
-        && (!utils::is_sycl_event_completed(get_native()))
-#endif
+        && (ccl::global_data::env().enable_sycl_output_event &&
+            !utils::is_sycl_event_completed(get_native()))
+#endif // CCL_ENABLE_SYCL
     ) {
         LOG_ERROR("not completed event is destroyed");
     }
@@ -62,15 +63,15 @@ bool host_event_impl::cancel() {
 
 event::native_t& host_event_impl::get_native() {
 #ifdef CCL_ENABLE_SYCL
-    if (ccl::global_data::env().enable_kernel_output_event) {
+    if (ccl::global_data::env().enable_sycl_output_event) {
         return req->get_native_event();
     }
     else {
-        CCL_THROW("get_native() is not available without CCL_KERNEL_OUTPUT_EVENT=1 env variable");
+        CCL_THROW("get_native() is not available without CCL_SYCL_OUTPUT_EVENT=1 env variable");
     }
-#else
+#else // CCL_ENABLE_SYCL
     throw ccl::exception(std::string(__FUNCTION__) + " - is not implemented");
-#endif
+#endif // CCL_ENABLE_SYCL
 }
 
 } // namespace ccl

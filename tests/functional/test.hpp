@@ -42,12 +42,14 @@ struct test_operation {
 
     std::vector<size_t> buf_indexes;
 
-    std::vector<std::vector<T>> send_bufs;
-    std::vector<std::vector<T>> recv_bufs;
-
 #ifdef CCL_ENABLE_SYCL
+    std::vector<aligned_vector<T>> send_bufs;
+    std::vector<aligned_vector<T>> recv_bufs;
     std::vector<void*> device_send_bufs;
     std::vector<void*> device_recv_bufs;
+#else // CCL_ENABLE_SYCL
+    std::vector<std::vector<T>> send_bufs;
+    std::vector<std::vector<T>> recv_bufs;
 #endif // CCL_ENABLE_SYCL
 
     std::vector<ccl::event> events;

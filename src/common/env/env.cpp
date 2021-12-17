@@ -55,12 +55,6 @@ std::map<ccl_staging_buffer, std::string> env_data::staging_buffer_names = {
     std::make_pair(ccl_staging_usm, "usm")
 };
 
-std::map<atl_mnic_t, std::string> env_data::mnic_type_names = {
-    std::make_pair(ATL_MNIC_NONE, "none"),
-    std::make_pair(ATL_MNIC_LOCAL, "local"),
-    std::make_pair(ATL_MNIC_GLOBAL, "global")
-};
-
 std::map<ccl_ze_copy_engine_mode, std::string> env_data::ze_copy_engine_names = {
     std::make_pair(ccl_ze_copy_engine_none, "none"),
     std::make_pair(ccl_ze_copy_engine_main, "main"),
@@ -95,7 +89,9 @@ env_data::env_data()
 
           mnic_type(ATL_MNIC_NONE),
           mnic_count(CCL_ENV_SIZET_NOT_SPECIFIED),
+          mnic_offset(ATL_MNIC_OFFSET_NONE),
 
+          enable_algo_fallback(1),
           enable_unordered_coll(0),
 
           enable_fusion(0),
@@ -129,22 +125,35 @@ env_data::env_data()
 
           allreduce_2d_base_size(CCL_ENV_SIZET_NOT_SPECIFIED),
           allreduce_2d_switch_dims(0),
+          allreduce_nreduce_buffering(0),
+          allreduce_nreduce_segment_size(CCL_ENV_SIZET_NOT_SPECIFIED),
 
           alltoall_scatter_max_ops(CCL_ENV_SIZET_NOT_SPECIFIED),
           alltoall_scatter_plain(0),
 
+#ifdef CCL_ENABLE_SYCL
           kernel_path(),
           kernel_debug(0),
-          enable_kernel_cache(1),
           kernel_group_size(CCL_ENV_SIZET_NOT_SPECIFIED),
           kernel_group_count(CCL_ENV_SIZET_NOT_SPECIFIED),
           enable_kernel_sync(1),
           kernel_1s_lead(0),
           enable_kernel_1s_copy_ops(0),
           enable_kernel_1s_ipc_wa(0),
-          enable_kernel_output_event(0),
+          enable_kernel_profile(0),
+          enable_close_fd_wa(0),
+
+          enable_sycl_output_event(0),
+
+          enable_ze_barrier(0),
+          enable_ze_cache(1),
+          enable_ze_single_list(1),
+          disable_ze_family_check(0),
           ze_serialize_mode(0),
           ze_copy_engine(ccl_ze_copy_engine_none),
+          ze_queue_index(1),
+          ze_close_ipc_wa(0),
+#endif // CCL_ENABLE_SYCL
 
           bf16_impl_type(ccl_bf16_no_compiler_support),
           fp16_impl_type(ccl_fp16_no_compiler_support) {
@@ -203,7 +212,9 @@ void env_data::parse() {
     if (mnic_count == CCL_ENV_SIZET_NOT_SPECIFIED) {
         mnic_count = worker_count;
     }
+    env_2_enum(CCL_MNIC_OFFSET, mnic_offset_names, mnic_offset);
 
+    env_2_type(CCL_ALGO_FALLBACK, enable_algo_fallback);
     env_2_type(CCL_ALLGATHERV, allgatherv_algo_raw);
     env_2_type(CCL_ALLREDUCE, allreduce_algo_raw);
     env_2_type(CCL_ALLTOALL, alltoall_algo_raw);
@@ -278,28 +289,45 @@ void env_data::parse() {
 
     env_2_type(CCL_ALLREDUCE_2D_BASE_SIZE, (size_t&)allreduce_2d_base_size);
     env_2_type(CCL_ALLREDUCE_2D_SWITCH_DIMS, allreduce_2d_switch_dims);
+    env_2_type(CCL_ALLREDUCE_NREDUCE_BUFFERING, allreduce_nreduce_buffering);
+    env_2_type(CCL_ALLREDUCE_NREDUCE_SEGMENT_SIZE, (size_t&)allreduce_nreduce_segment_size);
 
     env_2_type(CCL_ALLTOALL_SCATTER_MAX_OPS, (size_t&)alltoall_scatter_max_ops);
     env_2_type(CCL_ALLTOALL_SCATTER_PLAIN, alltoall_scatter_plain);
 
+#ifdef CCL_ENABLE_SYCL
     env_2_type(CCL_KERNEL_PATH, kernel_path);
     if (kernel_path.empty()) {
-        std::string ccl_root = getenv("CCL_ROOT");
+        std::string ccl_root;
+        char* ccl_root_env_value = getenv("CCL_ROOT");
+        if (ccl_root_env_value) {
+            ccl_root = ccl_root_env_value;
+        }
         CCL_THROW_IF_NOT(!ccl_root.empty(), "incorrect comm kernels path, CCL_ROOT not found!");
         kernel_path = ccl_root + "/lib/kernels/";
     }
 
     env_2_type(CCL_KERNEL_DEBUG, kernel_debug);
-    env_2_type(CCL_KERNEL_CACHE, enable_kernel_cache);
     env_2_type(CCL_KERNEL_GROUP_SIZE, kernel_group_size);
     env_2_type(CCL_KERNEL_GROUP_COUNT, kernel_group_count);
     env_2_type(CCL_KERNEL_SYNC, enable_kernel_sync);
     env_2_type(CCL_KERNEL_1S_LEAD, kernel_1s_lead);
     env_2_type(CCL_KERNEL_1S_USE_COPY_OPS, enable_kernel_1s_copy_ops);
     env_2_type(CCL_KERNEL_1S_IPC_WA, enable_kernel_1s_ipc_wa);
-    env_2_type(CCL_KERNEL_OUTPUT_EVENT, enable_kernel_output_event);
+    env_2_type(CCL_KERNEL_PROFILE, enable_kernel_profile);
+    env_2_type(CCL_KERNEL_CLOSE_FD_WA, enable_close_fd_wa);
+
+    env_2_type(CCL_SYCL_OUTPUT_EVENT, enable_sycl_output_event);
+
+    env_2_type(CCL_ZE_BARRIER, enable_ze_barrier);
+    env_2_type(CCL_ZE_CACHE, enable_ze_cache);
+    env_2_type(CCL_ZE_SINGLE_LIST, enable_ze_single_list);
+    env_2_type(CCL_ZE_DISABLE_FAMILY_CHECK, disable_ze_family_check);
     env_2_type(CCL_ZE_SERIALIZE, ze_serialize_mode);
     env_2_enum(CCL_ZE_COPY_ENGINE, ze_copy_engine_names, ze_copy_engine);
+    env_2_type(CCL_ZE_QUEUE_INDEX, ze_queue_index);
+    env_2_type(CCL_ZE_CLOSE_IPC_WA, ze_close_ipc_wa);
+#endif // CCL_ENABLE_SYCL
 
     auto bf16_impl_types = ccl_bf16_get_impl_types();
     ccl_bf16_impl_type bf16_env_impl_type;
@@ -400,7 +428,9 @@ void env_data::print(int rank) {
     LOG_INFO(
         CCL_MNIC_NAME, ": ", (mnic_name_raw.length()) ? mnic_name_raw : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_MNIC_COUNT, ": ", mnic_count);
+    LOG_INFO(CCL_MNIC_OFFSET, ": ", str_by_enum(mnic_offset_names, mnic_offset));
 
+    LOG_INFO(CCL_ALGO_FALLBACK, ": ", enable_algo_fallback);
     LOG_INFO(CCL_ALLGATHERV,
              ": ",
              (allgatherv_algo_raw.length()) ? allgatherv_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
@@ -464,6 +494,12 @@ void env_data::print(int rank) {
                  ? std::to_string(allreduce_2d_base_size)
                  : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_ALLREDUCE_2D_SWITCH_DIMS, ": ", allreduce_2d_switch_dims);
+    LOG_INFO(CCL_ALLREDUCE_NREDUCE_BUFFERING, ": ", allreduce_nreduce_buffering);
+    LOG_INFO(CCL_ALLREDUCE_NREDUCE_SEGMENT_SIZE,
+             ": ",
+             (allreduce_nreduce_segment_size != CCL_ENV_SIZET_NOT_SPECIFIED)
+                 ? std::to_string(allreduce_nreduce_segment_size)
+                 : CCL_ENV_STR_NOT_SPECIFIED);
 
     LOG_INFO(CCL_ALLTOALL_SCATTER_MAX_OPS,
              ": ",
@@ -476,7 +512,6 @@ void env_data::print(int rank) {
     LOG_INFO(
         CCL_KERNEL_PATH, ": ", (!kernel_path.empty()) ? kernel_path : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_KERNEL_DEBUG, ": ", kernel_debug);
-    LOG_INFO(CCL_KERNEL_CACHE, ": ", enable_kernel_cache);
     LOG_INFO(CCL_KERNEL_GROUP_SIZE,
              ": ",
              (kernel_group_size != CCL_ENV_SIZET_NOT_SPECIFIED) ? std::to_string(kernel_group_size)
@@ -490,9 +525,19 @@ void env_data::print(int rank) {
     LOG_INFO(CCL_KERNEL_1S_LEAD, ": ", kernel_1s_lead);
     LOG_INFO(CCL_KERNEL_1S_USE_COPY_OPS, ": ", enable_kernel_1s_copy_ops);
     LOG_INFO(CCL_KERNEL_1S_IPC_WA, ": ", enable_kernel_1s_ipc_wa);
-    LOG_INFO(CCL_KERNEL_OUTPUT_EVENT, ": ", enable_kernel_output_event);
+    LOG_INFO(CCL_KERNEL_PROFILE, ": ", enable_kernel_profile);
+    LOG_INFO(CCL_KERNEL_CLOSE_FD_WA, ": ", enable_close_fd_wa);
+
+    LOG_INFO(CCL_SYCL_OUTPUT_EVENT, ": ", enable_sycl_output_event);
+
+    LOG_INFO(CCL_ZE_BARRIER, ": ", enable_ze_barrier);
+    LOG_INFO(CCL_ZE_CACHE, ": ", enable_ze_cache);
+    LOG_INFO(CCL_ZE_SINGLE_LIST, ": ", enable_ze_single_list);
+    LOG_INFO(CCL_ZE_DISABLE_FAMILY_CHECK, ": ", disable_ze_family_check);
     LOG_INFO(CCL_ZE_SERIALIZE, ": ", ze_serialize_mode);
     LOG_INFO(CCL_ZE_COPY_ENGINE, ": ", str_by_enum(ze_copy_engine_names, ze_copy_engine));
+    LOG_INFO(CCL_ZE_QUEUE_INDEX, ": ", ze_queue_index);
+    LOG_INFO(CCL_ZE_CLOSE_IPC_WA, ": ", ze_close_ipc_wa);
 #endif // CCL_ENABLE_SYCL
 
     LOG_INFO(CCL_BF16, ": ", str_by_enum(bf16_impl_names, bf16_impl_type));
@@ -516,7 +561,7 @@ void env_data::print(int rank) {
 
 void env_data::set_internal_env() {
     auto attr = ccl_executor::generate_atl_attr(*this);
-    atl_wrapper::set_internal_env(attr);
+    atl_comm_manager::set_internal_env(attr);
     if (log_level >= ccl_log_level::info) {
         setenv("I_MPI_DEBUG", "4", 0);
     }
@@ -700,12 +745,14 @@ int env_data::env_2_worker_affinity(int local_proc_idx, int local_proc_count) {
     return 1;
 }
 
-int env_data::env_2_worker_mem_affinity() {
+int env_data::env_2_worker_mem_affinity(int local_proc_count) {
     CCL_THROW_IF_NOT(worker_affinity.size() > 0);
+    CCL_THROW_IF_NOT(local_proc_count > 0);
 
     size_t idx;
     char* env_to_parse = getenv(CCL_WORKER_MEM_AFFINITY);
-    size_t affinity_size = worker_affinity.size();
+    size_t affinity_size = local_proc_count * worker_count;
+    CCL_THROW_IF_NOT(affinity_size <= worker_affinity.size());
 
     if (!env_to_parse || (strlen(env_to_parse) == 0) || (strcmp(env_to_parse, "auto") == 0)) {
         worker_mem_affinity.assign(affinity_size, CCL_UNDEFINED_NUMA_NODE);
