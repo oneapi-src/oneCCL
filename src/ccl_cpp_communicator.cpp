@@ -46,14 +46,12 @@
 #include "oneapi/ccl/event.hpp"
 
 #include "oneapi/ccl/communicator.hpp"
-#include "common/comm/l0/comm_context_storage.hpp"
 
 #include "common/global/global.hpp"
 
 //TODO
 #include "common/comm/comm.hpp"
 
-#include "common/comm/l0/comm_context.hpp"
 #include "communicator_impl.hpp"
 
 namespace ccl {

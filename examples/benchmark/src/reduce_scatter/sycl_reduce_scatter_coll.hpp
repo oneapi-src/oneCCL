@@ -34,8 +34,8 @@ struct sycl_reduce_scatter_coll : sycl_base_coll<Dtype, reduce_scatter_strategy_
                                    ccl::communicator& comm,
                                    ccl::stream& stream,
                                    size_t rank_idx) override {
-        Dtype sbuf_expected = comm.rank();
-        Dtype rbuf_expected = (comm.size() - 1) * ((float)comm.size() / 2);
+        Dtype sbuf_expected = get_val<Dtype>(static_cast<float>(comm.rank()));
+        Dtype rbuf_expected = get_val<Dtype>((comm.size() - 1) * ((float)comm.size() / 2));
 
         size_t recv_elem_count = elem_count / comm.size();
 

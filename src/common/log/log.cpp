@@ -42,7 +42,9 @@ void ccl_logger::write_prefix(std::ostream& str) {
     constexpr size_t tid_width = 5;
     time_t timer;
     char time_buf[time_buf_size]{};
-    struct tm time_info {};
+    struct tm time_info;
+    memset(&time_info, 0, sizeof(time_info));
+
     time(&timer);
     if (localtime_r(&timer, &time_info)) {
         strftime(time_buf, time_buf_size, "%Y:%m:%d-%H:%M:%S", &time_info);

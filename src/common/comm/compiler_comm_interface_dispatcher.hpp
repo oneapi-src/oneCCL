@@ -20,7 +20,7 @@
 #include "oneapi/ccl/types.hpp"
 #include "supported_topologies.hpp"
 #include "communicator_traits.hpp"
-#include "atl/atl_wrapper.h"
+#include "atl/atl_base_comm.hpp"
 
 namespace native {
 struct ccl_device;
@@ -30,9 +30,6 @@ namespace v1 {
 class comm_split_attr;
 }
 
-#ifdef MULTI_GPU_SUPPORT
-struct gpu_comm_attr;
-#endif
 struct communicator_interface;
 
 using communicator_interface_ptr = std::shared_ptr<communicator_interface>;
@@ -42,10 +39,6 @@ struct communicator_interface_dispatcher {
     using context_t = typename ccl::unified_context_type::ccl_native_t;
 
     virtual ~communicator_interface_dispatcher() = default;
-
-#ifdef MULTI_GPU_SUPPORT
-    virtual void visit(ccl::gpu_comm_attr& comm_attr) = 0;
-#endif //MULTI_GPU_SUPPORT
 
     virtual ccl::device_index_type get_device_path() const = 0;
     virtual device_t get_device() const = 0;
@@ -66,7 +59,7 @@ struct communicator_interface_dispatcher {
         size_t thread_idx,
         size_t process_idx,
         const comm_split_attr& attr,
-        std::shared_ptr<atl_wrapper> atl,
+        std::shared_ptr<atl_base_comm> atl,
         ccl::group_split_type preferred_topology_group = ccl::group_split_type::undetermined);
 
     // create communicator for device & cpu types (from device index)
@@ -81,7 +74,7 @@ struct communicator_interface_dispatcher {
         size_t thread_idx,
         size_t process_idx,
         const comm_split_attr& attr,
-        std::shared_ptr<atl_wrapper> atl,
+        std::shared_ptr<atl_base_comm> atl,
         ccl::group_split_type preferred_topology_group = ccl::group_split_type::undetermined);
 
     // create communicator for host
@@ -103,7 +96,7 @@ private:
         size_t thread_idx,
         size_t process_idx,
         const comm_split_attr& attr,
-        std::shared_ptr<atl_wrapper> atl,
+        std::shared_ptr<atl_base_comm> atl,
         ccl::group_split_type preferred_topology_group = ccl::group_split_type::undetermined);
 };
 } // namespace ccl

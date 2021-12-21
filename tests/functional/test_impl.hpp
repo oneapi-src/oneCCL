@@ -337,8 +337,14 @@ void base_test<T>::change_buffers(test_operation<T>& op) {
             as result buffers in updated vector will have original content
             but in new memory locations
         */
-        std::vector<std::vector<T>>(op.send_bufs.begin(), op.send_bufs.end()).swap(op.send_bufs);
-        std::vector<std::vector<T>>(op.recv_bufs.begin(), op.recv_bufs.end()).swap(op.recv_bufs);
+#ifdef CCL_ENABLE_SYCL
+        using vector_t = aligned_vector<T>;
+#else // CCL_ENABLE_SYCL
+        using vector_t = std::vector<T>;
+#endif // CCL_ENABLE_SYCL
+
+        std::vector<vector_t>(op.send_bufs.begin(), op.send_bufs.end()).swap(op.send_bufs);
+        std::vector<vector_t>(op.recv_bufs.begin(), op.recv_bufs.end()).swap(op.recv_bufs);
         void* new_send_buf = op.send_bufs[0].data();
         void* new_recv_buf = op.recv_bufs[0].data();
         ASSERT(send_buf != new_send_buf, "send buffers should differ");

@@ -16,12 +16,12 @@
 #include "common/comm/atl_tag.hpp"
 #include "exec/exec.hpp"
 
-void ccl_atl_tag::print() {
-    LOG_INFO("atl-tag:");
-    LOG_INFO("  bits: ", tag_bits);
-    LOG_INFO("  max: ", max_tag);
-    LOG_INFO("  mask: ", max_tag_mask);
-    LOG_INFO("  pof2: ", ccl_pof2(max_tag));
+std::string ccl_atl_tag::to_string() const {
+    std::stringstream ss;
+    ss << "{ "
+       << "bits: " << tag_bits << ", max: " << max_tag << ", mask: " << max_tag_mask
+       << ", pof2: " << ccl_pof2(max_tag) << " }";
+    return ss.str();
 }
 
 uint64_t ccl_atl_tag::create(int rank,

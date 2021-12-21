@@ -48,6 +48,22 @@ private:
     size_t m_size = sizeof(int8_t);
 };
 
+inline bool operator==(const ccl_datatype& lhs, const ccl::datatype& rhs) {
+    return lhs.idx() == rhs;
+}
+
+inline bool operator!=(const ccl_datatype& lhs, const ccl::datatype& rhs) {
+    return !(lhs == rhs);
+}
+
+inline bool operator==(const ccl_datatype& lhs, const ccl_datatype& rhs) {
+    return lhs.idx() == rhs.idx();
+}
+
+inline bool operator!=(const ccl_datatype& lhs, const ccl_datatype& rhs) {
+    return !(lhs == rhs);
+}
+
 /* frequently used in multiple places */
 extern ccl_datatype ccl_datatype_int8;
 

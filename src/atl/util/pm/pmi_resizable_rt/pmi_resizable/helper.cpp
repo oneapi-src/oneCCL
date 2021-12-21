@@ -24,14 +24,16 @@ size_t barrier_num = 0;
 size_t up_idx;
 size_t applied = 0;
 
-rank_list_t* killed_ranks = NULL;
+std::list<int> killed_ranks;
 int killed_ranks_count = 0;
 
-rank_list_t* new_ranks = NULL;
+std::list<int> new_ranks;
 int new_ranks_count = 0;
 
-size_t helper::replace_str(char* str, int old_rank, int new_rank) {
-    throw std::runtime_error("unexpected path");
+kvs_status_t helper::replace_str(char* str, int old_rank, int new_rank) {
+    //    throw std::runtime_error("unexpected path");
+    LOG_ERROR("unexpected path");
+    return KVS_STATUS_FAILURE;
 
     char old_str[INT_STR_SIZE];
     char new_str[INT_STR_SIZE];
@@ -43,8 +45,10 @@ size_t helper::replace_str(char* str, int old_rank, int new_rank) {
     SET_STR(new_str, INT_STR_SIZE, RANK_TEMPLATE, new_rank);
 
     point_to_replace = strstr(str, old_str);
-    if (point_to_replace == NULL)
-        return 1;
+    if (point_to_replace == NULL) {
+        LOG_ERROR("not found old rank(%d) in str(%s)", old_rank, str);
+        return KVS_STATUS_FAILURE;
+    }
 
     old_str_size = strlen(old_str);
     new_str_size = strlen(new_str);
@@ -54,25 +58,31 @@ size_t helper::replace_str(char* str, int old_rank, int new_rank) {
         memmove(point_to_replace + new_str_size, point_to_replace + old_str_size, rest_len);
     }
     memcpy(point_to_replace, new_str, new_str_size);
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-void helper::update_ranks(int* old_count, rank_list_t** origin_list, const char* kvs_name) {
+kvs_status_t helper::update_ranks(int* old_count,
+                                  std::list<int>& origin_list,
+                                  const char* kvs_name) {
     char** rank_nums = NULL;
-    size_t rank_count = get_keys_values_by_name(kvs_name, NULL, &rank_nums);
+    size_t rank_count;
+    KVS_CHECK_STATUS(get_keys_values_by_name(kvs_name, NULL, &rank_nums, rank_count),
+                     "failed to get values by name");
     size_t i;
     size_t cur_count = 0;
 
     if (rank_count == 0) {
         // *old_count = 0;
-        return;
+        return KVS_STATUS_SUCCESS;
     }
-
+    int rank_num;
     for (i = 0; i < rank_count; i++) {
-        if (rank_list_contains(*origin_list, safe_strtol(rank_nums[i], NULL, 10)))
+        KVS_CHECK_STATUS(safe_strtol(rank_nums[i], rank_num), "failed to to convert rank_num");
+
+        if (std::find(origin_list.begin(), origin_list.end(), rank_num) != origin_list.end())
             continue;
 
-        rank_list_add(origin_list, safe_strtol(rank_nums[i], NULL, 10));
+        origin_list.push_back(rank_num);
         cur_count++;
     }
 
@@ -82,91 +92,100 @@ void helper::update_ranks(int* old_count, rank_list_t** origin_list, const char*
     free(rank_nums);
 
     *old_count += cur_count;
+    return KVS_STATUS_SUCCESS;
 }
 
 void helper::keep_first_n_up(int prev_new_ranks_count, int prev_killed_ranks_count) {
-    rank_list_keep_first_n(&killed_ranks, prev_killed_ranks_count);
-    rank_list_keep_first_n(&new_ranks, prev_new_ranks_count);
+    killed_ranks.resize(prev_killed_ranks_count);
+    new_ranks.resize(prev_new_ranks_count);
 }
 
-void helper::get_update_ranks(void) {
-    update_ranks(&killed_ranks_count, &killed_ranks, KVS_APPROVED_DEAD_POD);
-    update_ranks(&new_ranks_count, &new_ranks, KVS_APPROVED_NEW_POD);
+kvs_status_t helper::get_update_ranks(void) {
+    KVS_CHECK_STATUS(update_ranks(&killed_ranks_count, killed_ranks, KVS_APPROVED_DEAD_POD),
+                     "failed to update killed ranks");
+    KVS_CHECK_STATUS(update_ranks(&new_ranks_count, new_ranks, KVS_APPROVED_NEW_POD),
+                     "failed to update new ranks");
+    return KVS_STATUS_SUCCESS;
 }
 
-void helper::get_shift(shift_list_t** list) {
+void helper::get_shift(std::list<shift_rank_t>& list) {
     int shift_pods_count = 0;
     int max_rank_survivor_pod = count_pods;
-    rank_list_t* cur_new = new_ranks;
-    rank_list_t* cur_killed = killed_ranks;
+    new_ranks.sort();
+    killed_ranks.sort();
+    auto cur_new = new_ranks.begin();
+    auto cur_killed = killed_ranks.begin();
 
-    if (killed_ranks != NULL)
-        rank_list_sort(killed_ranks);
-    if (new_ranks != NULL)
-        rank_list_sort(new_ranks);
-
-    while (cur_killed != NULL) {
-        if (cur_new != NULL) {
-            shift_list_add(list, cur_killed->rank, cur_killed->rank, CH_T_UPDATE);
-            cur_new = cur_new->next;
+    while (cur_killed != killed_ranks.end()) {
+        if (cur_new != new_ranks.end()) {
+            list.push_back({ *cur_killed, *cur_killed, CH_T_UPDATE });
+            cur_new++;
         }
         else {
-            while (rank_list_contains(cur_killed, max_rank_survivor_pod - shift_pods_count - 1) ==
-                   1)
+            while (std::find(cur_killed,
+                             killed_ranks.end(),
+                             max_rank_survivor_pod - shift_pods_count - 1) != killed_ranks.end()) {
                 max_rank_survivor_pod--;
+            }
 
-            if (cur_killed->rank < max_rank_survivor_pod - shift_pods_count) {
-                shift_list_add(list,
-                               max_rank_survivor_pod - shift_pods_count - 1,
-                               cur_killed->rank,
-                               CH_T_SHIFT);
+            if (*cur_killed < max_rank_survivor_pod - shift_pods_count) {
+                list.push_back(
+                    { max_rank_survivor_pod - shift_pods_count - 1, *cur_killed, CH_T_SHIFT });
                 shift_pods_count++;
             }
             else {
-                while (cur_killed != NULL) {
-                    shift_list_add(list, cur_killed->rank, cur_killed->rank, CH_T_DEAD);
-                    cur_killed = cur_killed->next;
+                while (cur_killed != killed_ranks.end()) {
+                    list.push_back({ *cur_killed, *cur_killed, CH_T_DEAD });
+                    cur_killed++;
                 }
                 break;
             }
         }
-        cur_killed = cur_killed->next;
+        cur_killed++;
     }
-    while (cur_new != NULL) {
-        shift_list_add(list, cur_new->rank, cur_new->rank, CH_T_NEW);
-        cur_new = cur_new->next;
+    while (cur_new != new_ranks.end()) {
+        list.push_back({ *cur_new, *cur_new, CH_T_NEW });
+        cur_new++;
     }
 }
 
-void helper::up_pods_count(void) {
-    count_pods = get_count_names(KVS_POD_NUM);
+kvs_status_t helper::up_pods_count(void) {
+    KVS_CHECK_STATUS(get_count_names(KVS_POD_NUM, count_pods), "failed to get count names");
+    return KVS_STATUS_SUCCESS;
 }
 
-void helper::wait_accept(void) {
+kvs_status_t helper::wait_accept(void) {
     char my_rank_str[MAX_KVS_VAL_LENGTH];
 
     my_rank = 0;
 
     while (1) {
-        if (get_value_by_name_key(KVS_ACCEPT, my_hostname, my_rank_str) != 0) {
-            my_rank = safe_strtol(my_rank_str, NULL, 10);
-            break;
-        }
+        KVS_CHECK_STATUS(get_value_by_name_key(KVS_ACCEPT, my_hostname, my_rank_str),
+                         "failed to get value");
+        if (strlen(my_rank_str) == 0)
+            continue;
+        KVS_CHECK_STATUS(safe_strtol(my_rank_str, my_rank), "failed to convert my_rank");
+        break;
     }
+    return KVS_STATUS_SUCCESS;
 }
 
-void helper::clean_dead_pods_info(rank_list_t* dead_up_idx) {
+kvs_status_t helper::clean_dead_pods_info(std::list<int>& dead_up_idx) {
     size_t i;
     size_t count_death;
     char** kvs_keys = NULL;
+    auto it = dead_up_idx.begin();
 
-    while (dead_up_idx != NULL) {
-        count_death = get_keys_values_by_name(KVS_APPROVED_DEAD_POD, &kvs_keys, NULL);
+    while (it != dead_up_idx.end()) {
+        KVS_CHECK_STATUS(
+            get_keys_values_by_name(KVS_APPROVED_DEAD_POD, &kvs_keys, NULL, count_death),
+            "failed to get keys and values");
 
         for (i = 0; i < count_death; i++) {
-            remove_name_key(KVS_APPROVED_DEAD_POD, kvs_keys[i]);
-            dead_up_idx = dead_up_idx->next;
-            if (dead_up_idx == NULL) {
+            KVS_CHECK_STATUS(remove_name_key(KVS_APPROVED_DEAD_POD, kvs_keys[i]),
+                             "failed to remove name and key");
+            it++;
+            if (it == dead_up_idx.end()) {
                 for (; i < count_death; i++) {
                     free(kvs_keys[i]);
                 }
@@ -177,9 +196,10 @@ void helper::clean_dead_pods_info(rank_list_t* dead_up_idx) {
     }
     if (kvs_keys != NULL)
         free(kvs_keys);
+    return KVS_STATUS_SUCCESS;
 }
 
-void helper::accept_new_ranks(shift_list_t* cur_list) {
+kvs_status_t helper::accept_new_ranks(const std::list<shift_rank_t>& list) {
     char new_rank_str[INT_STR_SIZE];
     char old_rank_str[INT_STR_SIZE];
     char** kvs_values = NULL;
@@ -187,16 +207,19 @@ void helper::accept_new_ranks(shift_list_t* cur_list) {
     size_t count_values;
     size_t i = 0;
 
-    while (cur_list != NULL) {
-        if (cur_list->shift.type == CH_T_UPDATE || cur_list->shift.type == CH_T_NEW) {
-            SET_STR(old_rank_str, INT_STR_SIZE, RANK_TEMPLATE, cur_list->shift.old_rank);
-            SET_STR(new_rank_str, INT_STR_SIZE, RANK_TEMPLATE, cur_list->shift.new_rank);
+    for (const auto& cur_list : list) {
+        if (cur_list.type == CH_T_UPDATE || cur_list.type == CH_T_NEW) {
+            SET_STR(old_rank_str, INT_STR_SIZE, RANK_TEMPLATE, cur_list.old_rank);
+            SET_STR(new_rank_str, INT_STR_SIZE, RANK_TEMPLATE, cur_list.new_rank);
 
-            count_values = get_keys_values_by_name(KVS_APPROVED_NEW_POD, &kvs_keys, &kvs_values);
+            KVS_CHECK_STATUS(
+                get_keys_values_by_name(KVS_APPROVED_NEW_POD, &kvs_keys, &kvs_values, count_values),
+                "failed to get keys and values");
 
             for (i = 0; i < count_values; i++) {
                 if (!strcmp(kvs_values[i], old_rank_str)) {
-                    set_value(KVS_ACCEPT, kvs_keys[i], new_rank_str);
+                    KVS_CHECK_STATUS(set_value(KVS_ACCEPT, kvs_keys[i], new_rank_str),
+                                     "failed to set value");
                     break;
                 }
             }
@@ -205,22 +228,24 @@ void helper::accept_new_ranks(shift_list_t* cur_list) {
                 free(kvs_values[i]);
             }
         }
-        cur_list = cur_list->next;
     }
 
-    while ((count_values = get_keys_values_by_name(KVS_ACCEPT, NULL, &kvs_values)) != 0) {
+    do {
+        KVS_CHECK_STATUS(get_keys_values_by_name(KVS_ACCEPT, NULL, &kvs_values, count_values),
+                         "failed to get keys and values");
         for (i = 0; i < count_values; i++) {
             free(kvs_values[i]);
         }
-    }
+    } while (count_values != 0);
 
     if (kvs_keys != NULL)
         free(kvs_keys);
     if (kvs_values != NULL)
         free(kvs_values);
+    return KVS_STATUS_SUCCESS;
 }
 
-void helper::update_kvs_info(int new_rank) {
+kvs_status_t helper::update_kvs_info(int new_rank) {
     char kvs_name[MAX_KVS_NAME_LENGTH];
     char kvs_key[MAX_KVS_KEY_LENGTH];
     char kvs_val[MAX_KVS_VAL_LENGTH];
@@ -230,61 +255,66 @@ void helper::update_kvs_info(int new_rank) {
     for (k = 0; k < kvs_list_size; k++) {
         cut_head(kvs_name, kvs_key, kvs_val, ST_CLIENT);
 
-        remove_name_key(kvs_name, kvs_key);
+        KVS_CHECK_STATUS(remove_name_key(kvs_name, kvs_key), "failed to remove name and key");
 
-        replace_str(kvs_key, my_rank, new_rank);
+        KVS_CHECK_STATUS(replace_str(kvs_key, my_rank, new_rank), "failed to replace str");
 
-        set_value(kvs_name, kvs_key, kvs_val);
+        KVS_CHECK_STATUS(set_value(kvs_name, kvs_key, kvs_val), "failed to set value");
 
         put_key(kvs_name, kvs_key, kvs_val, ST_CLIENT);
     }
+    return KVS_STATUS_SUCCESS;
 }
 
-void helper::move_to_new_rank(int new_rank) {
+kvs_status_t helper::move_to_new_rank(int new_rank) {
     char rank_str[INT_STR_SIZE];
 
-    update_kvs_info(new_rank);
+    KVS_CHECK_STATUS(update_kvs_info(new_rank), "failed to update kvs info");
     my_rank = new_rank;
 
-    SET_STR(rank_str, INT_STR_SIZE, RANK_TEMPLATE, my_rank);
+    SET_STR(rank_str, INT_STR_SIZE, RANK_TEMPLATE, new_rank);
 
     //    request_set_val(KVS_POD_REQUEST, my_hostname, rank_str);
 
-    set_value(KVS_POD_NUM, rank_str, my_hostname);
+    KVS_CHECK_STATUS(set_value(KVS_POD_NUM, rank_str, my_hostname), "failed to update kvs info");
+    return KVS_STATUS_SUCCESS;
 }
 
-void helper::update_my_info(shift_list_t* list) {
+kvs_status_t helper::update_my_info(const std::list<shift_rank_t>& list) {
     char rank_str[INT_STR_SIZE];
 
-    while (list != NULL) {
-        if (list->shift.old_rank == my_rank) {
+    for (const auto& it : list) {
+        if (it.old_rank == static_cast<int>(my_rank)) {
             int old_rank = my_rank;
-            move_to_new_rank(list->shift.new_rank);
+            KVS_CHECK_STATUS(move_to_new_rank(it.new_rank), "failed to move to new rank");
 
             SET_STR(rank_str, INT_STR_SIZE, RANK_TEMPLATE, old_rank);
 
-            remove_name_key(KVS_POD_NUM, rank_str);
+            KVS_CHECK_STATUS(remove_name_key(KVS_POD_NUM, rank_str),
+                             "failed to remove name and key");
 
             break;
         }
-        list = list->next;
     }
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t helper::get_barrier_idx(void) {
+kvs_status_t helper::get_barrier_idx(size_t& barrier_num_out) {
     char** kvs_values = NULL;
     size_t count_kvs_values = 0;
     size_t tmp_barrier_num;
     size_t min_barrier_num;
     size_t i = 0;
 
-    count_kvs_values = get_keys_values_by_name(KVS_BARRIER, NULL, &kvs_values);
+    KVS_CHECK_STATUS(get_keys_values_by_name(KVS_BARRIER, NULL, &kvs_values, count_kvs_values),
+                     "failed to get keys and values");
     if (count_kvs_values == 0)
-        return 0;
+        return KVS_STATUS_SUCCESS;
 
-    min_barrier_num = safe_strtol(kvs_values[0], NULL, 10);
+    KVS_CHECK_STATUS(safe_strtol(kvs_values[0], min_barrier_num), "failed to convert barrier num");
     for (i = 1; i < count_kvs_values; i++) {
-        tmp_barrier_num = safe_strtol(kvs_values[i], NULL, 10);
+        KVS_CHECK_STATUS(safe_strtol(kvs_values[i], tmp_barrier_num),
+                         "failed to convert tmp barrier num");
         if (min_barrier_num > tmp_barrier_num)
             min_barrier_num = tmp_barrier_num;
     }
@@ -292,10 +322,12 @@ size_t helper::get_barrier_idx(void) {
         free(kvs_values[i]);
     }
     free(kvs_values);
-    return min_barrier_num;
+
+    barrier_num_out = min_barrier_num;
+    return KVS_STATUS_SUCCESS;
 }
 
-void helper::post_my_info(void) {
+kvs_status_t helper::post_my_info(void) {
     char barrier_num_str[INT_STR_SIZE];
     char my_rank_str[INT_STR_SIZE];
 
@@ -303,106 +335,120 @@ void helper::post_my_info(void) {
 
     SET_STR(my_rank_str, INT_STR_SIZE, RANK_TEMPLATE, my_rank);
 
-    set_value(KVS_POD_NUM, my_rank_str, my_hostname);
+    KVS_CHECK_STATUS(set_value(KVS_POD_NUM, my_rank_str, my_hostname), "failed to set rank");
 
-    barrier_num = get_barrier_idx();
+    KVS_CHECK_STATUS(get_barrier_idx(barrier_num), "failed to get barrier idx");
 
     SET_STR(barrier_num_str, INT_STR_SIZE, SIZE_T_TEMPLATE, barrier_num);
 
-    set_value(KVS_BARRIER, my_hostname, barrier_num_str);
+    KVS_CHECK_STATUS(set_value(KVS_BARRIER, my_hostname, barrier_num_str),
+                     "failed to set barrier idx");
 
-    remove_name_key(KVS_ACCEPT, my_hostname);
+    KVS_CHECK_STATUS(remove_name_key(KVS_ACCEPT, my_hostname),
+                     "failed to remove accepted hostname");
 
-    remove_name_key(KVS_APPROVED_NEW_POD, my_hostname);
+    KVS_CHECK_STATUS(remove_name_key(KVS_APPROVED_NEW_POD, my_hostname),
+                     "failed to remove approved hostname");
 
     barrier_num++;
     if (barrier_num > BARRIER_NUM_MAX)
         barrier_num = 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t helper::update(shift_list_t** list, rank_list_t** dead_up_idx, int root_rank) {
+kvs_status_t helper::update(const std::list<shift_rank_t>& list,
+                            std::list<int>& dead_up_idx,
+                            int root_rank) {
     if (applied == 1) {
-        if ((*list) != NULL) {
-            if (my_rank == root_rank) {
-                if ((*dead_up_idx) != NULL)
-                    clean_dead_pods_info(*dead_up_idx);
-
-                accept_new_ranks(*list);
+        if (!list.empty()) {
+            if (static_cast<int>(my_rank) == root_rank) {
+                if (!dead_up_idx.empty()) {
+                    KVS_CHECK_STATUS(clean_dead_pods_info(dead_up_idx), "failed to clean dead pod");
+                }
+                KVS_CHECK_STATUS(accept_new_ranks(list), "failed to accept new ranks");
             }
-            update_my_info(*list);
+            KVS_CHECK_STATUS(update_my_info(list), "failed to update info");
         }
     }
-    else
-        post_my_info();
-
-    return 0;
+    else {
+        KVS_CHECK_STATUS(post_my_info(), "failed to post info");
+    }
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t helper::get_val_count(const char* name, const char* val) {
-    size_t res = 0;
+kvs_status_t helper::get_val_count(const char* name, const char* val, size_t& res) {
+    res = 0;
     char** kvs_values = NULL;
     size_t count_values;
     size_t i;
 
-    count_values = get_keys_values_by_name(name, NULL, &kvs_values);
+    KVS_CHECK_STATUS(get_keys_values_by_name(name, NULL, &kvs_values, count_values),
+                     "failed to get keys and values");
 
-    if (count_values == 0)
-        return res;
-
-    for (i = 0; i < count_values; i++) {
-        if (!strcmp(val, kvs_values[i])) {
-            res++;
+    if (count_values != 0) {
+        for (i = 0; i < count_values; i++) {
+            if (!strcmp(val, kvs_values[i])) {
+                res++;
+            }
+            free(kvs_values[i]);
         }
-        free(kvs_values[i]);
+        free(kvs_values);
     }
-    free(kvs_values);
 
-    return res;
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t helper::get_occupied_ranks_count(char* rank) {
+kvs_status_t helper::get_occupied_ranks_count(char* rank, size_t& res) {
     char occupied_rank_val_str[MAX_KVS_VAL_LENGTH];
     size_t is_occupied_rank;
     size_t count_new_pod = 0;
     size_t count_seen_new_pod = 0;
 
-    is_occupied_rank =
-        (get_value_by_name_key(KVS_POD_NUM, rank, occupied_rank_val_str) == 0) ? 0 : 1;
+    KVS_CHECK_STATUS(get_value_by_name_key(KVS_POD_NUM, rank, occupied_rank_val_str),
+                     "failed to get occupied rank");
 
-    count_new_pod = get_val_count(KVS_NEW_POD, rank);
+    is_occupied_rank = (strlen(occupied_rank_val_str) == 0) ? 0 : 1;
 
-    count_seen_new_pod = get_val_count(KVS_APPROVED_NEW_POD, rank);
+    KVS_CHECK_STATUS(get_val_count(KVS_NEW_POD, rank, count_new_pod), "failed to get mew rank");
 
-    return is_occupied_rank + count_new_pod + count_seen_new_pod;
+    KVS_CHECK_STATUS(get_val_count(KVS_APPROVED_NEW_POD, rank, count_seen_new_pod),
+                     "failed to get new approved rank");
+
+    res = is_occupied_rank + count_new_pod + count_seen_new_pod;
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t helper::get_count_requested_ranks(char* rank) {
-    size_t count_pods_with_my_rank = 0;
+kvs_status_t helper::get_count_requested_ranks(char* rank, size_t& count_pods_with_my_rank) {
+    count_pods_with_my_rank = 0;
 
-    count_pods_with_my_rank = get_val_count(KVS_POD_REQUEST, rank);
+    KVS_CHECK_STATUS(get_val_count(KVS_POD_REQUEST, rank, count_pods_with_my_rank),
+                     "failed tp get requested ranks");
 
-    return count_pods_with_my_rank;
+    return KVS_STATUS_SUCCESS;
 }
 
-void helper::occupied_rank(char* rank) {
+kvs_status_t helper::occupied_rank(char* rank) {
     char idx_val[MAX_KVS_VAL_LENGTH];
-    size_t is_inited;
 
-    is_inited = get_value_by_name_key(KVS_UP, KVS_IDX, idx_val);
+    KVS_CHECK_STATUS(get_value_by_name_key(KVS_UP, KVS_IDX, idx_val), "failed to get ID");
 
-    if ((is_inited == 0) && (my_rank == 0)) {
-        set_value(KVS_UP, KVS_IDX, INITIAL_UPDATE_IDX);
+    if ((strlen(idx_val) == 0) && (my_rank == 0)) {
+        KVS_CHECK_STATUS(set_value(KVS_UP, KVS_IDX, INITIAL_UPDATE_IDX),
+                         "failed to set initial ID");
 
         count_pods = 1;
 
-        update(NULL, NULL, 0);
+        std::list<int> clear_list{};
+        std::list<shift_rank_t> clear_shift_list{};
+        KVS_CHECK_STATUS(update(clear_shift_list, clear_list, 0), "failed to initial update");
     }
     else {
-        set_value(KVS_NEW_POD, my_hostname, rank);
+        KVS_CHECK_STATUS(set_value(KVS_NEW_POD, my_hostname, rank), "failed to set rank");
     }
+    return KVS_STATUS_SUCCESS;
 }
 
-void helper::reg_rank(void) {
+kvs_status_t helper::reg_rank(void) {
     char rank_str[INT_STR_SIZE];
     size_t wait_shift = 0;
     char** kvs_values = NULL;
@@ -412,7 +458,8 @@ void helper::reg_rank(void) {
     size_t i;
 
     my_rank = 0;
-    set_value(KVS_POD_REQUEST, my_hostname, INITIAL_RANK_NUM);
+    KVS_CHECK_STATUS(set_value(KVS_POD_REQUEST, my_hostname, INITIAL_RANK_NUM),
+                     "failed to set initial rank");
 
     SET_STR(rank_str, INT_STR_SIZE, RANK_TEMPLATE, my_rank);
 
@@ -420,7 +467,9 @@ void helper::reg_rank(void) {
         wait_shift = 0;
         my_num_in_pod_request_line = 0;
 
-        count_values = get_keys_values_by_name(KVS_POD_REQUEST, &kvs_keys, &kvs_values);
+        KVS_CHECK_STATUS(
+            get_keys_values_by_name(KVS_POD_REQUEST, &kvs_keys, &kvs_values, count_values),
+            "failed to get requested pods");
 
         for (i = 0; i < count_values; i++) {
             if (!strcmp(kvs_values[i], rank_str)) {
@@ -435,13 +484,18 @@ void helper::reg_rank(void) {
         }
 
         if (my_num_in_pod_request_line == 1) {
-            if (get_occupied_ranks_count(rank_str) != 0) {
+            size_t rank_count;
+            KVS_CHECK_STATUS(get_occupied_ranks_count(rank_str, rank_count),
+                             "failed to get occupied ranks count");
+            if (rank_count != 0) {
                 wait_shift = 0;
             }
             else {
                 wait_shift = 1;
-                if (get_count_requested_ranks(rank_str) == 1) {
-                    occupied_rank(rank_str);
+                KVS_CHECK_STATUS(get_count_requested_ranks(rank_str, rank_count),
+                                 "failed to get requested ranks count");
+                if (rank_count == 1) {
+                    KVS_CHECK_STATUS(occupied_rank(rank_str), "failed to get occupied rank");
                     break;
                 }
             }
@@ -450,33 +504,38 @@ void helper::reg_rank(void) {
         if (!wait_shift) {
             my_rank++;
             SET_STR(rank_str, INT_STR_SIZE, RANK_TEMPLATE, my_rank);
-            set_value(KVS_POD_REQUEST, my_hostname, rank_str);
+            KVS_CHECK_STATUS(set_value(KVS_POD_REQUEST, my_hostname, rank_str),
+                             "failed to set rank");
         }
     }
 
-    remove_name_key(KVS_POD_REQUEST, my_hostname);
+    KVS_CHECK_STATUS(remove_name_key(KVS_POD_REQUEST, my_hostname), "failed to remove host info");
 
     if (kvs_keys != NULL)
         free(kvs_keys);
     if (kvs_values != NULL)
         free(kvs_values);
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t helper::get_replica_size(void) {
-    return k->kvs_get_replica_size();
+kvs_status_t helper::get_replica_size(size_t& replica_size) {
+    return k->kvs_get_replica_size(replica_size);
 }
 
-void helper::up_kvs(const char* new_kvs_name, const char* old_kvs_name) {
+kvs_status_t helper::up_kvs(const char* new_kvs_name, const char* old_kvs_name) {
     char** kvs_values = NULL;
     char** kvs_keys = NULL;
     size_t i = 0;
     size_t count_values;
 
-    count_values = get_keys_values_by_name(old_kvs_name, &kvs_keys, &kvs_values);
+    KVS_CHECK_STATUS(get_keys_values_by_name(old_kvs_name, &kvs_keys, &kvs_values, count_values),
+                     "failed to get keys and values");
     for (i = 0; i < count_values; i++) {
-        remove_name_key(old_kvs_name, kvs_keys[i]);
+        KVS_CHECK_STATUS(remove_name_key(old_kvs_name, kvs_keys[i]),
+                         "failed to remove old kvs info");
 
-        set_value(new_kvs_name, kvs_keys[i], kvs_values[i]);
+        KVS_CHECK_STATUS(set_value(new_kvs_name, kvs_keys[i], kvs_values[i]),
+                         "failed to set new kvs info");
 
         free(kvs_keys[i]);
         free(kvs_values[i]);
@@ -485,48 +544,61 @@ void helper::up_kvs(const char* new_kvs_name, const char* old_kvs_name) {
         free(kvs_keys);
     if (kvs_values != NULL)
         free(kvs_values);
+    return KVS_STATUS_SUCCESS;
 }
 
-void helper::up_kvs_new_and_dead(void) {
-    up_kvs(KVS_APPROVED_NEW_POD, KVS_NEW_POD);
-    up_kvs(KVS_APPROVED_DEAD_POD, KVS_DEAD_POD);
+kvs_status_t helper::up_kvs_new_and_dead(void) {
+    KVS_CHECK_STATUS(up_kvs(KVS_APPROVED_NEW_POD, KVS_NEW_POD), "failed to update new");
+    KVS_CHECK_STATUS(up_kvs(KVS_APPROVED_DEAD_POD, KVS_DEAD_POD), "failed to update dead");
+    return KVS_STATUS_SUCCESS;
 }
 
-void helper::get_new_root(int* old_root) {
+kvs_status_t helper::get_new_root(int* old_root) {
     size_t i;
     char** rank_nums = NULL;
-    size_t rank_count = get_keys_values_by_name(KVS_DEAD_POD, NULL, &rank_nums);
+    size_t rank_count;
+    int rank_num;
+    KVS_CHECK_STATUS(get_keys_values_by_name(KVS_DEAD_POD, NULL, &rank_nums, rank_count),
+                     "failed to update new");
 
     for (i = 0; i < rank_count; i++) {
-        if (*old_root == (int)safe_strtol(rank_nums[i], NULL, 10))
+        KVS_CHECK_STATUS(safe_strtol(rank_nums[i], rank_num), "failed to update new");
+        if (*old_root == rank_num) {
             (*old_root)++;
+        }
         free(rank_nums[i]);
     }
     if (rank_nums != NULL)
         free(rank_nums);
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t helper::get_keys_values_by_name(const char* kvs_name, char*** kvs_keys, char*** kvs_values) {
-    return k->kvs_get_keys_values_by_name(kvs_name, kvs_keys, kvs_values);
+kvs_status_t helper::get_keys_values_by_name(const char* kvs_name,
+                                             char*** kvs_keys,
+                                             char*** kvs_values,
+                                             size_t& count) {
+    return k->kvs_get_keys_values_by_name(kvs_name, kvs_keys, kvs_values, count);
 }
-size_t helper::set_value(const char* kvs_name, const char* kvs_key, const char* kvs_val) {
+kvs_status_t helper::set_value(const char* kvs_name, const char* kvs_key, const char* kvs_val) {
     return k->kvs_set_value(kvs_name, kvs_key, kvs_val);
 }
-size_t helper::remove_name_key(const char* kvs_name, const char* kvs_key) {
+kvs_status_t helper::remove_name_key(const char* kvs_name, const char* kvs_key) {
     return k->kvs_remove_name_key(kvs_name, kvs_key);
 }
-size_t helper::get_value_by_name_key(const char* kvs_name, const char* kvs_key, char* kvs_val) {
+kvs_status_t helper::get_value_by_name_key(const char* kvs_name,
+                                           const char* kvs_key,
+                                           char* kvs_val) {
     return k->kvs_get_value_by_name_key(kvs_name, kvs_key, kvs_val);
 }
 size_t helper::init(const char* main_addr) {
     return k->kvs_init(main_addr);
 }
-size_t helper::main_server_address_reserve(char* main_addr) {
+kvs_status_t helper::main_server_address_reserve(char* main_addr) {
     return k->kvs_main_server_address_reserve(main_addr);
 }
-size_t helper::get_count_names(const char* kvs_name) {
-    return k->kvs_get_count_names(kvs_name);
+kvs_status_t helper::get_count_names(const char* kvs_name, int& count_names) {
+    return k->kvs_get_count_names(kvs_name, count_names);
 }
-size_t helper::finalize(void) {
+kvs_status_t helper::finalize(void) {
     return k->kvs_finalize();
 }

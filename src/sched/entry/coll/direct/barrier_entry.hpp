@@ -32,7 +32,7 @@ public:
     void start() override {
         LOG_DEBUG("BARRIER entry req ", &req);
 
-        atl_status_t atl_status = comm->atl->atl_ep_barrier(sched->bin->get_atl_ep(), &req);
+        atl_status_t atl_status = comm->get_atl_comm()->barrier(sched->bin->get_atl_ep(), &req);
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("BARRIER entry failed. atl_status: ", atl_status_to_str(atl_status));
         }
@@ -41,15 +41,13 @@ public:
     }
 
     void update() override {
-        int req_status;
-        atl_status_t atl_status =
-            comm->atl->atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
+        atl_status_t atl_status = comm->get_atl_comm()->check(sched->bin->get_atl_ep(), &req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("BARRIER entry failed. atl_status: ", atl_status_to_str(atl_status));
         }
 
-        if (req_status)
+        if (req.is_completed)
             status = ccl_sched_entry_status_complete;
     }
 

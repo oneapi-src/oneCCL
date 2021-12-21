@@ -45,7 +45,7 @@ public:
     pmi_resizable_simple(int total_rank_count,
                          const std::vector<int>& ranks,
                          std::shared_ptr<ikvs_wrapper> k,
-                         const char* main_addr = nullptr);
+                         const char* main_addr = "");
 
     ~pmi_resizable_simple() override;
 
@@ -59,7 +59,7 @@ public:
 
     atl_status_t pmrt_wait_notification() override;
 
-    void pmrt_barrier() override;
+    atl_status_t pmrt_barrier() override;
 
     atl_status_t pmrt_kvs_put(char* kvs_key,
                               int proc_idx,
@@ -77,9 +77,9 @@ public:
 
     size_t get_local_thread_idx() override;
 
-    size_t get_local_kvs_id() override;
+    atl_status_t get_local_kvs_id(size_t& res) override;
 
-    void set_local_kvs_id(size_t local_kvs_id) override;
+    atl_status_t set_local_kvs_id(size_t local_kvs_id) override;
 
     size_t get_threads_per_process() override {
         return threads_per_proc[assigned_proc_idx].size();
@@ -94,28 +94,29 @@ public:
         return res;
     }
 
-    void pmrt_finalize() override;
+    atl_status_t pmrt_finalize() override;
+
+    atl_status_t pmrt_init() override;
 
 private:
     bool is_finalized{ false };
-    atl_status_t pmrt_init(const char* main_addr = nullptr);
 
-    int kvs_set_value(const char* kvs_name, const char* key, const char* value);
-    int kvs_get_value(const char* kvs_name, const char* key, char* value);
-    int kvs_iget_value(const char* kvs_name, const char* key, char* value);
+    atl_status_t kvs_set_value(const char* kvs_name, const char* key, const char* value);
+    atl_status_t kvs_get_value(const char* kvs_name, const char* key, char* value);
+    atl_status_t kvs_iget_value(const char* kvs_name, const char* key, char* value);
 
-    size_t get_barrier_idx();
-    size_t get_barrier_full_idx();
+    atl_status_t get_barrier_idx(size_t& barrier_num_out);
+    atl_status_t get_barrier_full_idx(size_t& res);
 
     void calculate_local_thread_idx();
-    void register_first_rank_idx_and_rank_count();
-    void assign_thread_idx_and_fill_ranks_per_thread_map();
-    void register_my_proc_name();
-    void get_my_proc_idx_and_proc_count();
-    void make_requested_info();
-    void remove_initial_data();
-    void make_map_requested2global();
-    void pmrt_barrier_full();
+    atl_status_t register_first_rank_idx_and_rank_count();
+    atl_status_t assign_thread_idx_and_fill_ranks_per_thread_map();
+    atl_status_t register_my_proc_name();
+    atl_status_t get_my_proc_idx_and_proc_count();
+    atl_status_t make_requested_info();
+    atl_status_t remove_initial_data();
+    atl_status_t make_map_requested2global();
+    atl_status_t pmrt_barrier_full();
 
     int total_rank_count;
     int assigned_proc_idx;
@@ -127,6 +128,7 @@ private:
     std::vector<size_t> ranks_per_thread_map;
     std::map<size_t, std::list<size_t>> threads_per_proc;
     std::shared_ptr<ikvs_wrapper> k;
+    std::string main_addr;
     size_t max_keylen;
     size_t max_vallen;
     char* val_storage = nullptr;

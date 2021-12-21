@@ -45,8 +45,8 @@ int is_bf16_enabled() {
     __asm__ __volatile__("cpuid"
                          : "=a"(reg[0]), "=b"(reg[1]), "=c"(reg[2]), "=d"(reg[3])
                          : "a"(7), "c"(0));
-    is_avx512f_enabled =
-        ((reg[1] & (1 << 16)) >> 16) & ((reg[1] & (1 << 30)) >> 30) & ((reg[1] & (1 << 31)) >> 31);
+    is_avx512f_enabled = ((reg[1] & (1u << 16)) >> 16) & ((reg[1] & (1u << 30)) >> 30) &
+                         ((reg[1] & (1u << 31)) >> 31);
 
     return (is_avx512f_enabled) ? 1 : 0;
 #else

@@ -15,7 +15,7 @@
 */
 #pragma once
 
-#include "atl/atl.h"
+#include "atl/atl_base_comm.hpp"
 #include "coll/coll.hpp"
 #include "common/global/global.hpp"
 #include "common/request/request.hpp"

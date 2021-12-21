@@ -15,13 +15,14 @@
 */
 #pragma once
 
-#if defined(MULTI_GPU_SUPPORT)
+#if defined(CCL_ENABLE_ZE)
 #include "oneapi/ccl/native_device_api/export_api.hpp"
 #include "oneapi/ccl/native_device_api/l0/declarations.hpp"
 #include "oneapi/ccl/type_traits.hpp"
 
 #ifdef CCL_ENABLE_SYCL
 #include <CL/sycl/backend/level_zero.hpp>
+#include "common/utils/sycl_utils.hpp"
 //static cl::sycl::vector_class<cl::sycl::device> gpu_sycl_devices;
 #endif
 
@@ -69,7 +70,7 @@ template <class ContextType>
     static_assert(
         std::is_same<typename std::remove_cv<ContextType>::type, cl::sycl::context>::value,
         "Invalid ContextType");
-    auto l0_handle_ptr = ctx.template get_native<cl::sycl::backend::level_zero>();
+    auto l0_handle_ptr = sycl::get_native<ccl::utils::get_level_zero_backend()>(ctx);
     if (!l0_handle_ptr) {
         CCL_THROW("failed for sycl context: handle is nullptr");
     }
@@ -93,4 +94,4 @@ template native::ccl_device_driver::device_ptr native::get_runtime_device(
     const cl::sycl::device& device);
 #endif
 
-#endif //#if defined(MULTI_GPU_SUPPORT) || defined(CCL_ENABLE_SYCL)
+#endif //#if defined(CCL_ENABLE_ZE) || defined(CCL_ENABLE_SYCL)

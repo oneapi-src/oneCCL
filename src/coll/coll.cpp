@@ -51,7 +51,7 @@
 #include "common/global/global.hpp"
 
 #include "coll/algorithms/algorithms.hpp"
-#include "coll/algorithms/algorithms_enum.hpp"
+#include "coll/algorithms/algorithm_utils.hpp"
 #include "coll/algorithms/allreduce/allreduce_2d.hpp"
 #include "coll/algorithms/sparse_allreduce/sparse_allreduce.hpp"
 #include "coll/selection/selection.hpp"
@@ -62,6 +62,13 @@
 /* param is not const because param.comm can be updated for unordered colls */
 static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& in_attr) {
     ccl_coll_attr& attr = const_cast<ccl_coll_attr&>(in_attr);
+
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    uint64_t operation_create_time = 0;
+    if (ccl::global_data::env().enable_kernel_profile && param.stream) {
+        operation_create_time = ccl::ze::calculate_global_time(param.stream->get_ze_device());
+    }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
 #ifdef CCL_ENABLE_SYCL
     if (ccl::global_data::env().enable_op_sync)
@@ -85,8 +92,9 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
     bool postpone_schedule = false;
     if (ccl::global_data::env().enable_unordered_coll) {
         if (!attr.match_id.empty()) {
-            auto comm =
-                param.comm->unordered_coll_manager->get_comm(std::string(attr.match_id)).get();
+            auto comm = param.comm->get_unordered_coll_manager()
+                            ->get_comm(std::string(attr.match_id))
+                            .get();
             if (!comm) {
                 if (attr.synchronous) {
                     CCL_THROW("unsupported collective (synchronous && unordered && !communicator)");
@@ -106,6 +114,12 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
 
     /* 2. create or get schedule */
     ccl_master_sched* sched = ccl_master_sched::create(param, attr);
+
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    if (ccl::global_data::env().enable_kernel_profile && param.stream) {
+        sched->get_kernel_timer().set_operation_create_time(operation_create_time);
+    }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
     /* 3. fuse schedule */
     if (!postpone_schedule && ccl::global_data::env().enable_fusion) {
@@ -128,7 +142,7 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
             user has provided match_id that has not been resolved yet.
             schedule will be postponed until comm resolution
         */
-        return param.comm->unordered_coll_manager->postpone(sched);
+        return param.comm->get_unordered_coll_manager()->postpone(sched);
     }
 
     /* 6. regular schedule execution */
@@ -137,6 +151,13 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
         ccl_wait_impl<ccl_master_sched>(data.executor.get(), request);
         request = nullptr;
     }
+
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    if (ccl::global_data::env().enable_kernel_profile && sched->coll_param.stream) {
+        sched->get_kernel_timer().set_operation_start_time(
+            ccl::ze::calculate_global_time(sched->coll_param.stream->get_ze_device()));
+    }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
     return request;
 }
@@ -155,7 +176,12 @@ ccl::status ccl_coll_build_allgatherv(ccl_sched* sched,
     param.recv_counts = recv_counts;
     param.dtype = dtype;
     param.comm = comm;
+    param.stream = sched->coll_param.stream;
+    param.buf = send_buf.get_ptr();
     param.is_vector_buf = sched->coll_attr.is_vector_buf;
+#ifdef CCL_ENABLE_SYCL
+    param.is_sycl_buf = sched->coll_attr.is_sycl_buf;
+#endif // CCL_ENABLE_SYCL
     param.hint_algo = sched->hint_algo;
 
     auto algo = ccl::global_data::get().algorithm_selector->get<ccl_coll_allgatherv>(param);
@@ -173,6 +199,12 @@ ccl::status ccl_coll_build_allgatherv(ccl_sched* sched,
             CCL_CALL(ccl_coll_build_ring_allgatherv(
                 sched, send_buf, send_count, recv_buf, recv_counts, dtype, comm));
             break;
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+        case ccl_coll_allgatherv_topo:
+            CCL_CALL(ccl_coll_build_topo_allgatherv(
+                sched, send_buf, send_count, recv_buf, recv_counts, dtype, comm));
+            break;
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
         default:
             CCL_FATAL("unexpected allgatherv_algo ", ccl_coll_algorithm_to_str(algo));
             return ccl::status::invalid_arguments;
@@ -214,8 +246,8 @@ ccl::status ccl_coll_build_allreduce(ccl_sched* sched,
             CCL_CALL(ccl_coll_build_rabenseifner_allreduce(
                 sched, send_buf, recv_buf, count, dtype, reduction, comm));
             break;
-        case ccl_coll_allreduce_starlike:
-            CCL_CALL(ccl_coll_build_starlike_allreduce(
+        case ccl_coll_allreduce_nreduce:
+            CCL_CALL(ccl_coll_build_nreduce_allreduce(
                 sched, send_buf, recv_buf, count, dtype, reduction, comm));
             break;
         case ccl_coll_allreduce_ring:
@@ -242,15 +274,15 @@ ccl::status ccl_coll_build_allreduce(ccl_sched* sched,
                 sched, send_buf, recv_buf, count, dtype, reduction, comm));
             break;
         case ccl_coll_allreduce_2d:
-            CCL_CALL(comm->allreduce_2d_builder->build(
+            CCL_CALL(comm->get_allreduce_2d_builder()->build(
                 sched, send_buf, recv_buf, count, dtype, reduction));
             break;
-#if defined(CCL_ENABLE_SYCL) && defined(MULTI_GPU_SUPPORT)
-        case ccl_coll_allreduce_topo_ring:
-            CCL_CALL(ccl_coll_build_gpu_allreduce(
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+        case ccl_coll_allreduce_topo:
+            CCL_CALL(ccl_coll_build_topo_allreduce(
                 sched, send_buf, recv_buf, count, dtype, reduction, comm));
             break;
-#endif // CCL_ENABLE_SYCL && MULTI_GPU_SUPPORT
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
         default:
             CCL_FATAL("unexpected allreduce_algo ", ccl_coll_algorithm_to_str(algo));
             return ccl::status::invalid_arguments;
@@ -272,6 +304,10 @@ ccl::status ccl_coll_build_alltoall(ccl_sched* sched,
     param.count = count;
     param.dtype = dtype;
     param.comm = comm;
+    param.stream = sched->coll_param.stream;
+#ifdef CCL_ENABLE_SYCL
+    param.is_sycl_buf = sched->coll_attr.is_sycl_buf;
+#endif // CCL_ENABLE_SYCL
     param.hint_algo = sched->hint_algo;
 
     auto algo = ccl::global_data::get().algorithm_selector->get<ccl_coll_alltoall>(param);
@@ -301,6 +337,10 @@ ccl::status ccl_coll_build_alltoallv(ccl_sched* sched,
     param.ctype = ccl_coll_alltoallv;
     param.dtype = dtype;
     param.comm = comm;
+    param.stream = sched->coll_param.stream;
+#ifdef CCL_ENABLE_SYCL
+    param.is_sycl_buf = sched->coll_attr.is_sycl_buf;
+#endif // CCL_ENABLE_SYCL
     param.hint_algo = sched->hint_algo;
 
     auto algo = ccl::global_data::get().algorithm_selector->get<ccl_coll_alltoallv>(param);
@@ -357,6 +397,7 @@ ccl::status ccl_coll_build_bcast(ccl_sched* sched,
     param.dtype = dtype;
     param.comm = comm;
     param.stream = sched->coll_param.stream;
+    param.buf = buf.get_ptr();
 #ifdef CCL_ENABLE_SYCL
     param.is_sycl_buf = sched->coll_attr.is_sycl_buf;
 #endif // CCL_ENABLE_SYCL
@@ -387,11 +428,11 @@ ccl::status ccl_coll_build_bcast(ccl_sched* sched,
         case ccl_coll_bcast_naive:
             CCL_CALL(ccl_coll_build_naive_bcast(sched, buf, count, dtype, root, comm));
             break;
-#if defined(CCL_ENABLE_SYCL) && defined(MULTI_GPU_SUPPORT)
-        case ccl_coll_bcast_topo_ring:
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+        case ccl_coll_bcast_topo:
             CCL_CALL(ccl_coll_build_gpu_bcast(sched, buf, count, dtype, root, comm));
             break;
-#endif // CCL_ENABLE_SYCL && MULTI_GPU_SUPPORT
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
         default:
             CCL_FATAL("unexpected bcast_algo ", ccl_coll_algorithm_to_str(algo));
             return ccl::status::invalid_arguments;
@@ -408,6 +449,7 @@ ccl::status ccl_coll_build_reduce(ccl_sched* sched,
                                   int root,
                                   ccl_comm* comm) {
     ccl::status status = ccl::status::success;
+    CCL_THROW_IF_NOT(root >= 0 && root < comm->size(), "wrong root");
 
     ccl_selector_param param;
     param.ctype = ccl_coll_reduce;
@@ -415,6 +457,10 @@ ccl::status ccl_coll_build_reduce(ccl_sched* sched,
     param.dtype = dtype;
     param.comm = comm;
     param.stream = sched->coll_param.stream;
+    param.buf = send_buf.get_ptr();
+#ifdef CCL_ENABLE_SYCL
+    param.is_sycl_buf = sched->coll_attr.is_sycl_buf;
+#endif // CCL_ENABLE_SYCL
     param.hint_algo = sched->hint_algo;
 
     auto algo = ccl::global_data::get().algorithm_selector->get<ccl_coll_reduce>(param);
@@ -444,12 +490,12 @@ ccl::status ccl_coll_build_reduce(ccl_sched* sched,
                 root == 0 ? comm->dtree() : comm->dtree().copy_with_new_root(root),
                 comm));
             break;
-#if defined(CCL_ENABLE_SYCL) && defined(MULTI_GPU_SUPPORT)
-        case ccl_coll_reduce_topo_ring:
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+        case ccl_coll_reduce_topo:
             CCL_CALL(ccl_coll_build_gpu_reduce(
                 sched, send_buf, recv_buf, count, dtype, reduction, root, comm));
             break;
-#endif // CCL_ENABLE_SYCL && MULTI_GPU_SUPPORT
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
         default:
             CCL_FATAL("unexpected reduce_algo ", ccl_coll_algorithm_to_str(algo));
             return ccl::status::invalid_arguments;
@@ -473,6 +519,11 @@ ccl::status ccl_coll_build_reduce_scatter(ccl_sched* sched,
     param.count = count;
     param.dtype = dtype;
     param.comm = comm;
+    param.stream = sched->coll_param.stream;
+    param.buf = send_buf.get_ptr();
+#ifdef CCL_ENABLE_SYCL
+    param.is_sycl_buf = sched->coll_attr.is_sycl_buf;
+#endif // CCL_ENABLE_SYCL
     param.hint_algo = sched->hint_algo;
 
     auto algo = ccl::global_data::get().algorithm_selector->get<ccl_coll_reduce_scatter>(param);
@@ -494,6 +545,12 @@ ccl::status ccl_coll_build_reduce_scatter(ccl_sched* sched,
                     sched, send_buf, recv_buf, count, dtype, reduction, comm));
             }
             break;
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+        case ccl_coll_reduce_scatter_topo:
+            CCL_CALL(ccl_coll_build_topo_reduce_scatter(
+                sched, send_buf, recv_buf, count, dtype, reduction, comm));
+            break;
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
         default:
             CCL_FATAL("unexpected reduce_scatter_algo ", ccl_coll_algorithm_to_str(algo));
             return ccl::status::invalid_arguments;

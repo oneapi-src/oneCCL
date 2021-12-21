@@ -29,6 +29,8 @@
 #define CCL_SELECTION_ALGO_DELIMETER    ':'
 #define CCL_SELECTION_SIZE_DELIMETER    '-'
 
+std::string to_string(const ccl_selector_param& param);
+
 template <typename algo_group_type>
 void ccl_selection_unpack_elem(size_t& size,
                                algo_group_type& algo,
@@ -74,7 +76,7 @@ void ccl_algorithm_selector_base<algo_group_type>::init() {
         try {
             if (!std::getline(block_stream, algo_name_str, CCL_SELECTION_ALGO_DELIMETER))
                 CCL_THROW(
-                    "can't parse algorithm name from string: ", str_to_parse, ", block: ", block);
+                    "can not parse algorithm name from string: ", str_to_parse, ", block: ", block);
         }
         catch (const std::istream::failure& e) {
             LOG_ERROR("exception happened: ",
@@ -85,7 +87,8 @@ void ccl_algorithm_selector_base<algo_group_type>::init() {
                       block_stream.eof(),
                       "\nbadbit: ",
                       block_stream.bad());
-            CCL_THROW("can't parse algorithm name from string: ", str_to_parse, ", block: ", block);
+            CCL_THROW(
+                "can not parse algorithm name from string: ", str_to_parse, ", block: ", block);
         }
 
         LOG_TRACE("block ", block, ", algo_name_str ", algo_name_str);
@@ -103,7 +106,7 @@ void ccl_algorithm_selector_base<algo_group_type>::init() {
                 block_stream.str(block.substr(algo_name_str.length() + 1));
                 if (!std::getline(block_stream, size_str, CCL_SELECTION_SIZE_DELIMETER))
                     CCL_THROW(
-                        "can't parse left size from string: ", str_to_parse, ", block: ", block);
+                        "can not parse left size from string: ", str_to_parse, ", block: ", block);
                 if (!size_str.compare(CCL_SELECTION_MAX_COLL_SIZE_STR))
                     left_size = CCL_SELECTION_MAX_COLL_SIZE;
                 else
@@ -111,14 +114,17 @@ void ccl_algorithm_selector_base<algo_group_type>::init() {
             }
             catch (const std::exception& e) {
                 LOG_ERROR("exception happened during left size parsing: ", e.what());
-                CCL_THROW("can't parse left size from string: ", str_to_parse, ", block: ", block);
+                CCL_THROW(
+                    "can not parse left size from string: ", str_to_parse, ", block: ", block);
             }
 
             try {
                 block_stream.str(block.substr(algo_name_str.length() + size_str.length() + 2));
                 if (!std::getline(block_stream, size_str, CCL_SELECTION_SIZE_DELIMETER))
-                    CCL_THROW(
-                        "can't parse second size from string: ", str_to_parse, ", block: ", block);
+                    CCL_THROW("can not parse second size from string: ",
+                              str_to_parse,
+                              ", block: ",
+                              block);
                 if (!size_str.compare(CCL_SELECTION_MAX_COLL_SIZE_STR))
                     right_size = CCL_SELECTION_MAX_COLL_SIZE;
                 else
@@ -126,7 +132,8 @@ void ccl_algorithm_selector_base<algo_group_type>::init() {
             }
             catch (const std::exception& e) {
                 LOG_ERROR("exception happened during right size parsing: ", e.what());
-                CCL_THROW("can't parse right size from string: ", str_to_parse, ", block: ", block);
+                CCL_THROW(
+                    "can not parse right size from string: ", str_to_parse, ", block: ", block);
             }
 
             LOG_TRACE("algo ", algo_name_str, ", left ", left_size, ", right ", right_size);
@@ -238,13 +245,15 @@ algo_group_type ccl_algorithm_selector_base<algo_group_type>::get(
     algo_group_type elem_algo;
     ccl_selection_border_type elem_border;
 
+    LOG_DEBUG("param: ", ::to_string(param));
+
     size_t count = ccl_algorithm_selector_helper<algo_group_type>::get_count(param);
 
     if (param.hint_algo.has_value()) {
         elem_algo = static_cast<algo_group_type>(param.hint_algo.value);
         if (!ccl_algorithm_selector_helper<algo_group_type>::can_use(
                 elem_algo, param, main_table)) {
-            LOG_DEBUG("can't select hint algorithm: coll ",
+            LOG_DEBUG("can not select hint algorithm: coll ",
                       ccl_coll_type_to_str(param.ctype),
                       ", count ",
                       count,
@@ -269,16 +278,23 @@ algo_group_type ccl_algorithm_selector_base<algo_group_type>::get(
 
     if (lower_bound == main_table.end() ||
         !ccl_algorithm_selector_helper<algo_group_type>::can_use(elem_algo, param, main_table)) {
+        CCL_THROW_IF_NOT(ccl::global_data::env().enable_algo_fallback,
+                         "can not select algo from main table and fallback is disabled",
+                         ", coll ",
+                         ccl_coll_type_to_str(param.ctype),
+                         ", count ",
+                         count);
+
         lower_bound = fallback_table.lower_bound(size);
         ccl_selection_unpack_elem(elem_size, elem_algo, elem_border, lower_bound, fallback_table);
         CCL_THROW_IF_NOT(lower_bound != fallback_table.end(),
-                         "can't select algorithm: coll ",
+                         "can not select algorithm: coll ",
                          ccl_coll_type_to_str(param.ctype),
                          ", count ",
                          count);
         CCL_THROW_IF_NOT(ccl_algorithm_selector_helper<algo_group_type>::can_use(
                              elem_algo, param, fallback_table),
-                         "can't select algorithm in fallback_table: coll ",
+                         "can not select algorithm in fallback_table: coll ",
                          ccl_coll_type_to_str(param.ctype));
     }
 

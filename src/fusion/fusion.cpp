@@ -15,7 +15,7 @@
 */
 #include "exec/exec.hpp"
 #include "fusion/fusion.hpp"
-#include "sched/buffer_cache.hpp"
+#include "sched/buffer/buffer_cache.hpp"
 #include "sched/cache/cache.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
 
@@ -95,7 +95,7 @@ void ccl_fusion_manager::reset() {
 }
 
 bool ccl_fusion_manager::can_fuse(ccl_master_sched* sched) {
-    if (atl_wrapper::attr.out.enable_hmem) {
+    if (atl_base_comm::attr.out.enable_hmem) {
         /* TODO: implement fusion with D2D copies */
         return false;
     }
@@ -197,8 +197,7 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
                                                                                    coll_attr,
                                                                                    comm,
                                                                                    stream);
-                sched = new ccl_master_sched(coll_param);
-                sched->internal_type = ccl_sched_internal_fusion;
+                sched = new ccl_master_sched({ ccl_sched_fusion, coll_param });
             } break;
             default: CCL_FATAL("not supported"); break;
         }
@@ -290,7 +289,7 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
             size_t global_copy_idx = idx * copies_per_part + copy_idx;
 #ifdef CCL_ENABLE_SYCL
             if (stream && stream->is_sycl_device_stream())
-                entry_factory::make_entry<copy_entry>(
+                entry_factory::create<copy_entry>(
                     part_scheds[idx].get(),
                     ccl_buffer(
                         exec_queue[global_copy_idx]->coll_param.get_send_buf_ptr(
@@ -303,7 +302,7 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
                     copy_attr(copy_direction::d2h));
             else
 #endif // CCL_ENABLE_SYCL
-                entry_factory::make_entry<copy_entry>(
+                entry_factory::create<copy_entry>(
                     part_scheds[idx].get(),
                     ccl_buffer(
                         exec_queue[global_copy_idx]->coll_param.get_send_buf_ptr(),
@@ -330,7 +329,7 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
             size_t global_copy_idx = idx * copies_per_part + copy_idx;
 #ifdef CCL_ENABLE_SYCL
             if (stream && stream->is_sycl_device_stream())
-                entry_factory::make_entry<copy_entry>(
+                entry_factory::create<copy_entry>(
                     part_scheds[idx].get(),
                     ccl_buffer(fusion_buf, buffer_size, offset),
                     ccl_buffer(
@@ -343,7 +342,7 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
                     copy_attr(copy_direction::h2d));
             else
 #endif // CCL_ENABLE_SYCL
-                entry_factory::make_entry<copy_entry>(
+                entry_factory::create<copy_entry>(
                     part_scheds[idx].get(),
                     ccl_buffer(fusion_buf, buffer_size, offset),
                     ccl_buffer(
@@ -356,7 +355,7 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
             part_scheds[idx]->add_barrier();
 
             offset += exec_queue[global_copy_idx]->coll_param.get_recv_count() * dtype_size;
-            entry_factory::make_entry<function_entry>(
+            entry_factory::create<function_entry>(
                 part_scheds[idx].get(), complete_user_request, exec_queue[global_copy_idx]);
             CCL_THROW_IF_NOT(!exec_queue[global_copy_idx]->is_completed(),
                              "incorrect completion counter");
@@ -369,8 +368,7 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
         part_scheds[0]->set_finalize_fn(release_fusion_buf_for_cached_sched, fusion_buf);
     }
     else {
-        entry_factory::make_entry<function_entry>(
-            part_scheds[0].get(), release_fusion_buf, fusion_buf);
+        entry_factory::create<function_entry>(part_scheds[0].get(), release_fusion_buf, fusion_buf);
     }
 
     clear_exec_queue();
@@ -420,7 +418,7 @@ void ccl_fusion_manager::execute() {
 
             for (auto it = postponed_queue.begin(); it != postponed_queue.end();) {
                 auto s = *it;
-                if (s->coll_param.dtype.idx() == first_sched->coll_param.dtype.idx() &&
+                if (s->coll_param.dtype == first_sched->coll_param.dtype &&
                     s->coll_param.comm == first_sched->coll_param.comm &&
                     s->coll_param.ctype == first_sched->coll_param.ctype &&
                     s->coll_param.reduction == first_sched->coll_param.reduction &&

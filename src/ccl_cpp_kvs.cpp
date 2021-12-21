@@ -53,8 +53,10 @@ kvs::address_type kvs_impl::get_addr() {
 }
 
 vector_class<char> kvs_impl::get(const string_class& key) {
-    char ret[128];
-    inter_kvs->kvs_get_value_by_name_key(prefix.c_str(), key.c_str(), ret);
+    char ret[MAX_KVS_VAL_LENGTH];
+    CCL_THROW_IF_NOT(inter_kvs->kvs_get_value_by_name_key(prefix.c_str(), key.c_str(), ret) ==
+                         KVS_STATUS_SUCCESS,
+                     "kvs get failed");
     size_t ret_len = strlen(ret);
     vector_class<char> ret_vec;
     if (ret_len != 0) {

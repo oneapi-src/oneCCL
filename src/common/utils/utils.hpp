@@ -15,7 +15,7 @@
 */
 #pragma once
 
-#if defined(__INTEL_COMPILER) || defined(__ICC)
+#if defined(__INTEL_COMPILER) || defined(__ICC) || defined(__INTEL_LLVM_COMPILER)
 #include <immintrin.h>
 #endif
 
@@ -64,8 +64,6 @@
 #define CCL_REG_MSG_ALIGNMENT   (4096)
 #define CCL_LARGE_MSG_ALIGNMENT (2 * 1024 * 1024)
 #define CCL_LARGE_MSG_THRESHOLD (1 * 1024 * 1024)
-
-#define CCL_MEMCPY(dest, src, n) std::copy((char*)(src), (char*)(src) + (n), (char*)(dest))
 
 /* malloc/realloc/free */
 

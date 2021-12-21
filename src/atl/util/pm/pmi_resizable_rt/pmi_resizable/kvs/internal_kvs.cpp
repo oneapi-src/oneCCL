@@ -28,15 +28,15 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "util/pm/pmi_resizable_rt/pmi_resizable/def.h"
 #include "internal_kvs.h"
 #include "internal_kvs_server.hpp"
 #include "common/log/log.hpp"
 #include "util/pm/pmi_resizable_rt/pmi_resizable/request_wrappers_k8s.hpp"
 
-size_t internal_kvs::kvs_set_value(const char* kvs_name, const char* kvs_key, const char* kvs_val) {
+kvs_status_t internal_kvs::kvs_set_value(const char* kvs_name,
+                                         const char* kvs_key,
+                                         const char* kvs_val) {
     kvs_request_t request;
-    memset(&request, 0, sizeof(kvs_request_t));
     request.mode = AM_PUT;
     kvs_str_copy(request.name, kvs_name, MAX_KVS_NAME_LENGTH);
     kvs_str_copy(request.key, kvs_key, MAX_KVS_KEY_LENGTH);
@@ -49,12 +49,13 @@ size_t internal_kvs::kvs_set_value(const char* kvs_name, const char* kvs_key, co
              client_memory_mutex,
              "client: put_key_value");
 
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t internal_kvs::kvs_set_size(const char* kvs_name, const char* kvs_key, const char* kvs_val) {
+kvs_status_t internal_kvs::kvs_set_size(const char* kvs_name,
+                                        const char* kvs_key,
+                                        const char* kvs_val) {
     kvs_request_t request;
-    memset(&request, 0, sizeof(kvs_request_t));
     request.mode = AM_SET_SIZE;
     kvs_str_copy(request.name, kvs_name, MAX_KVS_NAME_LENGTH);
     kvs_str_copy(request.key, kvs_key, MAX_KVS_KEY_LENGTH);
@@ -67,14 +68,13 @@ size_t internal_kvs::kvs_set_size(const char* kvs_name, const char* kvs_key, con
              client_memory_mutex,
              "client: set_size");
 
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t internal_kvs::kvs_barrier_register(const char* kvs_name,
-                                          const char* kvs_key,
-                                          const char* kvs_val) {
+kvs_status_t internal_kvs::kvs_barrier_register(const char* kvs_name,
+                                                const char* kvs_key,
+                                                const char* kvs_val) {
     kvs_request_t request;
-    memset(&request, 0, sizeof(kvs_request_t));
     request.mode = AM_BARRIER_REGISTER;
     kvs_str_copy(request.name, kvs_name, MAX_KVS_NAME_LENGTH);
     kvs_str_copy(request.key, kvs_key, MAX_KVS_KEY_LENGTH);
@@ -87,13 +87,15 @@ size_t internal_kvs::kvs_barrier_register(const char* kvs_name,
              client_memory_mutex,
              "client: barrier_register");
 
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-void internal_kvs::kvs_barrier(const char* kvs_name, const char* kvs_key, const char* kvs_val) {
+kvs_status_t internal_kvs::kvs_barrier(const char* kvs_name,
+                                       const char* kvs_key,
+                                       const char* kvs_val) {
     kvs_request_t request;
     int is_done;
-    memset(&request, 0, sizeof(kvs_request_t));
+
     request.mode = AM_BARRIER;
     kvs_str_copy(request.name, kvs_name, MAX_KVS_NAME_LENGTH);
     kvs_str_copy(request.key, kvs_key, MAX_KVS_KEY_LENGTH);
@@ -108,11 +110,11 @@ void internal_kvs::kvs_barrier(const char* kvs_name, const char* kvs_key, const 
              sizeof(is_done),
              client_memory_mutex,
              "client: barrier read data");
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t internal_kvs::kvs_remove_name_key(const char* kvs_name, const char* kvs_key) {
+kvs_status_t internal_kvs::kvs_remove_name_key(const char* kvs_name, const char* kvs_key) {
     kvs_request_t request;
-    memset(&request, 0, sizeof(kvs_request_t));
     request.mode = AM_REMOVE;
     kvs_str_copy(request.name, kvs_name, MAX_KVS_NAME_LENGTH);
     kvs_str_copy(request.key, kvs_key, MAX_KVS_KEY_LENGTH);
@@ -124,12 +126,11 @@ size_t internal_kvs::kvs_remove_name_key(const char* kvs_name, const char* kvs_k
              client_memory_mutex,
              "client: remove_key");
 
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t internal_kvs::kvs_register(const char* kvs_name, const char* kvs_key, char* kvs_val) {
+kvs_status_t internal_kvs::kvs_register(const char* kvs_name, const char* kvs_key, char* kvs_val) {
     kvs_request_t request;
-    memset(&request, 0, sizeof(kvs_request_t));
     request.mode = AM_INTERNAL_REGISTER;
     kvs_str_copy(request.name, kvs_name, MAX_KVS_NAME_LENGTH);
     kvs_str_copy(request.key, kvs_key, MAX_KVS_KEY_LENGTH);
@@ -147,14 +148,13 @@ size_t internal_kvs::kvs_register(const char* kvs_name, const char* kvs_key, cha
              "client: register read data");
     kvs_str_copy(kvs_val, request.val, MAX_KVS_VAL_LENGTH);
 
-    return strlen(kvs_val);
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t internal_kvs::kvs_get_value_by_name_key(const char* kvs_name,
-                                               const char* kvs_key,
-                                               char* kvs_val) {
+kvs_status_t internal_kvs::kvs_get_value_by_name_key(const char* kvs_name,
+                                                     const char* kvs_key,
+                                                     char* kvs_val) {
     kvs_request_t request;
-    memset(&request, 0, sizeof(kvs_request_t));
     request.mode = AM_GET_VAL;
     size_t is_exist = 0;
     kvs_str_copy(request.name, kvs_name, MAX_KVS_NAME_LENGTH);
@@ -181,42 +181,37 @@ size_t internal_kvs::kvs_get_value_by_name_key(const char* kvs_name,
         kvs_str_copy(kvs_val, request.val, MAX_KVS_VAL_LENGTH);
     }
 
-    return strlen(kvs_val);
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t internal_kvs::kvs_get_count_names(const char* kvs_name) {
-    size_t count_names = 0;
+kvs_status_t internal_kvs::kvs_get_count_names(const char* kvs_name, int& count_names) {
+    count_names = 0;
     kvs_request_t request;
-    memset(&request, 0, sizeof(kvs_request_t));
     request.mode = AM_GET_COUNT;
     kvs_str_copy(request.name, kvs_name, MAX_KVS_NAME_LENGTH);
 
-    DO_RW_OP(write,
-             client_op_sock,
-             &request,
-             sizeof(kvs_request_t),
-             client_memory_mutex,
-             "client: get_count");
+    DO_RW_OP(
+        write, client_op_sock, &request, sizeof(request), client_memory_mutex, "client: get_count");
 
     DO_RW_OP(read,
              client_op_sock,
              &count_names,
-             sizeof(size_t),
+             sizeof(count_names),
              client_memory_mutex,
              "client: get_count read data");
 
-    return count_names;
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t internal_kvs::kvs_get_keys_values_by_name(const char* kvs_name,
-                                                 char*** kvs_keys,
-                                                 char*** kvs_values) {
-    size_t count = 0;
+kvs_status_t internal_kvs::kvs_get_keys_values_by_name(const char* kvs_name,
+                                                       char*** kvs_keys,
+                                                       char*** kvs_values,
+                                                       size_t& count) {
+    count = 0;
     size_t i;
     kvs_request_t request;
-    kvs_request_t* answers;
+    std::vector<kvs_request_t> answers;
 
-    memset(&request, 0, sizeof(kvs_request_t));
     request.mode = AM_GET_KEYS_VALUES;
     kvs_str_copy(request.name, kvs_name, MAX_KVS_NAME_LENGTH);
 
@@ -235,12 +230,12 @@ size_t internal_kvs::kvs_get_keys_values_by_name(const char* kvs_name,
              "client: get_keys_values read size");
 
     if (count == 0)
-        return count;
+        return KVS_STATUS_SUCCESS;
 
-    answers = (kvs_request_t*)calloc(count, sizeof(kvs_request_t));
+    answers.resize(count);
     DO_RW_OP(read,
              client_op_sock,
-             answers,
+             answers.data(),
              sizeof(kvs_request_t) * count,
              client_memory_mutex,
              "client: get_keys_values read data");
@@ -251,10 +246,14 @@ size_t internal_kvs::kvs_get_keys_values_by_name(const char* kvs_name,
         *kvs_keys = (char**)calloc(count, sizeof(char*));
         if ((*kvs_keys) == nullptr) {
             LOG_ERROR("Memory allocation failed");
-            exit(1);
+            return KVS_STATUS_FAILURE;
         }
         for (i = 0; i < count; i++) {
             (*kvs_keys)[i] = (char*)calloc(MAX_KVS_KEY_LENGTH, sizeof(char));
+            if ((*kvs_keys)[i] == nullptr) {
+                LOG_ERROR("Memory allocation failed");
+                return KVS_STATUS_FAILURE;
+            }
             kvs_str_copy((*kvs_keys)[i], answers[i].key, MAX_KVS_KEY_LENGTH);
         }
     }
@@ -265,27 +264,28 @@ size_t internal_kvs::kvs_get_keys_values_by_name(const char* kvs_name,
         *kvs_values = (char**)calloc(count, sizeof(char*));
         if ((*kvs_values) == nullptr) {
             LOG_ERROR("Memory allocation failed");
-            exit(1);
+            return KVS_STATUS_FAILURE;
         }
         for (i = 0; i < count; i++) {
             (*kvs_values)[i] = (char*)calloc(MAX_KVS_VAL_LENGTH, sizeof(char));
+            if ((*kvs_values)[i] == nullptr) {
+                LOG_ERROR("Memory allocation failed");
+                return KVS_STATUS_FAILURE;
+            }
             kvs_str_copy((*kvs_values)[i], answers[i].val, MAX_KVS_VAL_LENGTH);
         }
     }
 
-    free(answers);
-
-    return count;
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t internal_kvs::kvs_get_replica_size(void) {
-    size_t replica_size = 0;
+kvs_status_t internal_kvs::kvs_get_replica_size(size_t& replica_size) {
+    replica_size = 0;
     if (ip_getting_mode == IGT_K8S) {
-        replica_size = request_k8s_get_replica_size();
+        return request_k8s_get_replica_size(replica_size);
     }
     else {
         kvs_request_t request;
-        memset(&request, 0, sizeof(kvs_request_t));
         request.mode = AM_GET_REPLICA;
 
         DO_RW_OP(write,
@@ -302,24 +302,25 @@ size_t internal_kvs::kvs_get_replica_size(void) {
                  client_memory_mutex,
                  "client: get_replica read size");
     }
-    return replica_size;
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t internal_kvs::init_main_server_by_k8s() {
+kvs_status_t internal_kvs::init_main_server_by_k8s() {
     char port_str[MAX_KVS_VAL_LENGTH];
-    request_k8s_kvs_init();
+    KVS_CHECK_STATUS(request_k8s_kvs_init(), "failed to init k8s kvs");
 
     SET_STR(port_str, INT_STR_SIZE, "%d", local_server_address->get_sin_port());
 
-    request_k8s_kvs_get_master(local_host_ip, main_host_ip, port_str);
+    KVS_CHECK_STATUS(request_k8s_kvs_get_master(local_host_ip, main_host_ip, port_str),
+                     "failed to get port");
 
-    main_port = safe_strtol(port_str, nullptr, 10);
+    KVS_CHECK_STATUS(safe_strtol(port_str, main_port), "failed to convert main_port");
     main_server_address->set_sin_port(main_port);
-    main_server_address->set_sin_addr(main_host_ip);
-    return 0;
+    KVS_CHECK_STATUS(main_server_address->set_sin_addr(main_host_ip), "failed to set main_ip");
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t internal_kvs::init_main_server_by_env() {
+kvs_status_t internal_kvs::init_main_server_by_env() {
     char* port = nullptr;
 
     const char* tmp_host_ip = (!server_address.empty()) ? server_address.c_str()
@@ -327,7 +328,7 @@ size_t internal_kvs::init_main_server_by_env() {
 
     if (tmp_host_ip == nullptr) {
         LOG_ERROR("specify ", CCL_KVS_IP_PORT_ENV);
-        return 1;
+        return KVS_STATUS_FAILURE;
     }
 
     memset(main_host_ip, 0, CCL_IP_LEN);
@@ -335,25 +336,25 @@ size_t internal_kvs::init_main_server_by_env() {
     if ((port = strstr(main_host_ip, "_")) == nullptr) {
         if ((port = strstr(main_host_ip, ":")) == nullptr) {
             LOG_ERROR("set ", CCL_KVS_IP_PORT_ENV, " in format <ip>_<port>\n");
-            return 1;
+            return KVS_STATUS_FAILURE;
         }
     }
     port[0] = '\0';
     port++;
 
-    main_port = safe_strtol(port, nullptr, 10);
+    KVS_CHECK_STATUS(safe_strtol(port, main_port), "failed to convert main_port");
     main_server_address->set_sin_port(main_port);
-    main_server_address->set_sin_addr(main_host_ip);
-    return 0;
+    KVS_CHECK_STATUS(main_server_address->set_sin_addr(main_host_ip), "failed to set main_ip");
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t internal_kvs::init_main_server_by_string(const char* main_addr) {
+kvs_status_t internal_kvs::init_main_server_by_string(const char* main_addr) {
     char* port = nullptr;
-    local_server_address->set_sin_addr(local_host_ip);
+    KVS_CHECK_STATUS(local_server_address->set_sin_addr(local_host_ip), "failed to set main_ip");
 
     if ((server_listen_sock = socket(address_family, SOCK_STREAM, 0)) < 0) {
-        LOG_ERROR("init_main_server_by_string: server_listen_sock init");
-        exit(EXIT_FAILURE);
+        LOG_ERROR("server_listen_sock init");
+        return KVS_STATUS_FAILURE;
     }
 
     size_t sin_port = local_server_address->get_sin_port();
@@ -369,28 +370,28 @@ size_t internal_kvs::init_main_server_by_string(const char* main_addr) {
 
     if ((port = strstr(main_host_ip, "_")) == nullptr) {
         if ((port = strstr(main_host_ip, ":")) == nullptr) {
-            LOG_ERROR(
-                "init_main_server_by_string: set ", CCL_KVS_IP_PORT_ENV, " in format <ip>_<port>");
-            return 1;
+            LOG_ERROR("set ", CCL_KVS_IP_PORT_ENV, " in format <ip>_<port>");
+            return KVS_STATUS_FAILURE;
         }
     }
     port[0] = '\0';
     port++;
 
-    main_port = safe_strtol(port, nullptr, 10);
+    KVS_CHECK_STATUS(safe_strtol(port, main_port), "failed to convert main_port");
     main_server_address->set_sin_port(main_port);
-    main_server_address->set_sin_addr(main_host_ip);
-    return 0;
+    KVS_CHECK_STATUS(main_server_address->set_sin_addr(main_host_ip), "failed to set main_ip");
+
+    return KVS_STATUS_SUCCESS;
 }
 
-int internal_kvs::fill_local_host_ip() {
+kvs_status_t internal_kvs::fill_local_host_ip() {
     struct ifaddrs *ifaddr, *ifa;
     int family = AF_UNSPEC;
     char local_ip[CCL_IP_LEN];
     bool is_supported_iface = false;
     if (getifaddrs(&ifaddr) < 0) {
-        LOG_ERROR("fill_local_host_ip: can not get host IP");
-        return -1;
+        LOG_ERROR("can not get host IP");
+        return KVS_STATUS_FAILURE;
     }
 
     const char iface_name[] = "lo";
@@ -421,10 +422,10 @@ int internal_kvs::fill_local_host_ip() {
                     0,
                     NI_NUMERICHOST);
                 if (res != 0) {
-                    std::string s("fill_local_host_ip: getnameinfo error > ");
+                    std::string s("getnameinfo error > ");
                     s.append(gai_strerror(res));
                     LOG_ERROR(s.c_str());
-                    return -1;
+                    return KVS_STATUS_FAILURE;
                 }
 
                 local_host_ips.push_back(local_ip);
@@ -443,16 +444,18 @@ int internal_kvs::fill_local_host_ip() {
         }
     }
     if (local_host_ips.empty()) {
-        LOG_ERROR("fill_local_host_ip: can't find interface ",
-                  iface_name_env ? iface_name_env : "",
-                  " to get host IP");
-        return -1;
+        LOG_ERROR("can't find interface ", iface_name_env ? iface_name_env : "", " to get host IP");
+        return KVS_STATUS_FAILURE;
     }
 
     memset(local_host_ip, 0, CCL_IP_LEN);
 
     char* kvs_prefer_ipv6 = std::getenv(CCL_KVS_PREFER_IPV6_ENV.c_str());
-    size_t is_kvs_prefer_ipv6 = kvs_prefer_ipv6 ? safe_strtol(kvs_prefer_ipv6, nullptr, 10) : 0;
+    size_t is_kvs_prefer_ipv6 = 0;
+    if (kvs_prefer_ipv6) {
+        KVS_CHECK_STATUS(safe_strtol(kvs_prefer_ipv6, is_kvs_prefer_ipv6),
+                         "failed to set prefer_ip6");
+    }
 
     if (is_kvs_prefer_ipv6) {
         if (!local_host_ipv6s.empty()) {
@@ -480,25 +483,22 @@ int internal_kvs::fill_local_host_ip() {
     LOG_DEBUG("use ", address_family == AF_INET ? "ipv4" : "ipv6", ": ", local_host_ip);
 
     freeifaddrs(ifaddr);
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t internal_kvs::kvs_main_server_address_reserve(char* main_address) {
+kvs_status_t internal_kvs::kvs_main_server_address_reserve(char* main_address) {
     if (!server_address.empty())
-        return 0;
+        return KVS_STATUS_SUCCESS;
 
-    if (fill_local_host_ip() < 0) {
-        LOG_ERROR("reserve_main_address: failed to get local host IP");
-        exit(EXIT_FAILURE);
-    }
+    KVS_CHECK_STATUS(fill_local_host_ip(), "failed to get local host IP");
 
     if ((server_listen_sock = socket(address_family, SOCK_STREAM, 0)) < 0) {
-        LOG_ERROR("reserve_main_address: server_listen_sock init");
-        exit(EXIT_FAILURE);
+        LOG_ERROR("server_listen_sock init");
+        return KVS_STATUS_FAILURE;
     }
 
-    main_server_address->set_sin_addr(local_host_ip);
-    local_server_address->set_sin_addr(local_host_ip);
+    KVS_CHECK_STATUS(main_server_address->set_sin_addr(local_host_ip), "failed to set local_ip");
+    KVS_CHECK_STATUS(local_server_address->set_sin_addr(local_host_ip), "failed to set local_ip");
     size_t sin_port = main_server_address->get_sin_port();
 
     while (bind(server_listen_sock,
@@ -516,17 +516,14 @@ size_t internal_kvs::kvs_main_server_address_reserve(char* main_address) {
              "_%d",
              main_server_address->get_sin_port());
 
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t internal_kvs::init_main_server_address(const char* main_addr) {
+kvs_status_t internal_kvs::init_main_server_address(const char* main_addr) {
     char* ip_getting_type = std::getenv(CCL_KVS_IP_EXCHANGE_ENV.c_str());
 
     if (local_host_ips.empty()) {
-        if (fill_local_host_ip() < 0) {
-            LOG_ERROR("init_main_server_address: failed to get local host ip");
-            exit(EXIT_FAILURE);
-        }
+        KVS_CHECK_STATUS(fill_local_host_ip(), "failed to get local host ip");
     }
 
     if (ip_getting_type) {
@@ -538,28 +535,29 @@ size_t internal_kvs::init_main_server_address(const char* main_addr) {
         }
         else {
             LOG_ERROR("unknown ", CCL_KVS_IP_EXCHANGE_ENV, ": ", ip_getting_type);
-            return 1;
+            return KVS_STATUS_FAILURE;
         }
     }
 
     if (server_address.empty()) {
         if (main_addr != NULL) {
             ip_getting_mode = IGT_ENV;
-            if (server_listen_sock == 0)
-                init_main_server_by_string(main_addr);
-            return 0;
+            if (server_listen_sock == 0) {
+                KVS_CHECK_STATUS(init_main_server_by_string(main_addr),
+                                 "failed to init main server");
+            }
+            return KVS_STATUS_SUCCESS;
         }
     }
     else {
         ip_getting_mode = IGT_ENV;
     }
 
-    local_server_address->set_sin_addr(local_host_ip);
+    KVS_CHECK_STATUS(local_server_address->set_sin_addr(local_host_ip), "failed to set local_ip");
 
     if ((server_listen_sock = socket(address_family, SOCK_STREAM, 0)) < 0) {
-        ;
-        LOG_ERROR("init_main_server_address: server_listen_sock init");
-        exit(EXIT_FAILURE);
+        LOG_ERROR("server_listen_sock init");
+        return KVS_STATUS_FAILURE;
     }
 
     switch (ip_getting_mode) {
@@ -576,11 +574,9 @@ size_t internal_kvs::init_main_server_address(const char* main_addr) {
             return init_main_server_by_k8s();
         }
         case IGT_ENV: {
-            int res = init_main_server_by_env();
             int is_master_node = 0;
 
-            if (res)
-                return res;
+            KVS_CHECK_STATUS(init_main_server_by_env(), "failed to init_main_server_by_env");
 
             if (strstr(local_host_ip, main_host_ip)) {
                 is_master_node = 1;
@@ -592,7 +588,8 @@ size_t internal_kvs::init_main_server_address(const char* main_addr) {
                     is_master_node = 1;
                     memset(local_host_ip, 0, CCL_IP_LEN);
                     kvs_str_copy_known_sizes(local_host_ip, main_host_ip, CCL_IP_LEN);
-                    local_server_address->set_sin_addr(local_host_ip);
+                    KVS_CHECK_STATUS(local_server_address->set_sin_addr(local_host_ip),
+                                     "get sin add failed");
                 }
             }
             if (is_master_node) {
@@ -622,16 +619,16 @@ size_t internal_kvs::init_main_server_address(const char* main_addr) {
                 }
             }
 
-            return res;
+            return KVS_STATUS_SUCCESS;
         }
         default: {
             LOG_ERROR("unknown ", CCL_KVS_IP_EXCHANGE_ENV);
-            return 1;
+            return KVS_STATUS_FAILURE;
         }
     }
 }
 
-size_t internal_kvs::kvs_init(const char* main_addr) {
+kvs_status_t internal_kvs::kvs_init(const char* main_addr) {
     int err;
     socklen_t len = 0;
     std::shared_ptr<isockaddr> addr;
@@ -639,32 +636,32 @@ size_t internal_kvs::kvs_init(const char* main_addr) {
     time_t start_time;
     time_t connection_time = 0;
 
-    if (init_main_server_address(main_addr)) {
-        LOG_ERROR("kvs_init: init main server address error");
+    if (init_main_server_address(main_addr) != KVS_STATUS_SUCCESS) {
+        LOG_ERROR("init main server address error");
         close(client_op_sock);
         close(server_control_sock);
         client_op_sock = 0;
         server_control_sock = 0;
-        return 1;
+        return KVS_STATUS_FAILURE;
     }
 
     if (address_family == AF_INET) {
         addr = std::shared_ptr<isockaddr>(new sockaddr_v4());
-        addr->set_sin_addr("127.0.0.1");
+        KVS_CHECK_STATUS(addr->set_sin_addr("127.0.0.1"), "failed to set sin_addr(\"127.0.0.1\"");
     }
     else {
         addr = std::shared_ptr<isockaddr>(new sockaddr_v6());
-        addr->set_sin_addr("::1");
+        KVS_CHECK_STATUS(addr->set_sin_addr("::1"), "failed to set sin_addr(\"::1\"");
     }
 
     if ((client_op_sock = socket(address_family, SOCK_STREAM, 0)) < 0) {
-        LOG_ERROR("kvs_init: client_op_sock init");
-        return 1;
+        LOG_ERROR("client_op_sock init");
+        return KVS_STATUS_FAILURE;
     }
 
     if ((server_control_sock = socket(address_family, SOCK_STREAM, 0)) < 0) {
-        LOG_ERROR("kvs_init: server_control_sock init");
-        return 1;
+        LOG_ERROR("server_control_sock init");
+        return KVS_STATUS_FAILURE;
     }
 
     size_t sin_port = addr->get_sin_port();
@@ -674,8 +671,8 @@ size_t internal_kvs::kvs_init(const char* main_addr) {
     }
 
     if (listen(server_control_sock, 1) < 0) {
-        LOG_ERROR("kvs_init: server_control_sock listen");
-        exit(EXIT_FAILURE);
+        LOG_ERROR("server_control_sock listen");
+        return KVS_STATUS_FAILURE;
     }
 
     getsockname(server_control_sock, addr->get_sock_addr_ptr(), &len);
@@ -684,13 +681,13 @@ size_t internal_kvs::kvs_init(const char* main_addr) {
     args.sock_listener = server_listen_sock;
     err = pthread_create(&kvs_thread, nullptr, kvs_server_init, &args);
     if (err) {
-        LOG_ERROR("kvs_init: failed to create kvs server thread, pthread_create returns ", err);
-        return 1;
+        LOG_ERROR("failed to create kvs server thread, pthread_create returns ", err);
+        return KVS_STATUS_FAILURE;
     }
 
     if ((client_control_sock = accept(server_control_sock, nullptr, nullptr)) < 0) {
-        LOG_ERROR("kvs_init: server_control_sock accept");
-        exit(EXIT_FAILURE);
+        LOG_ERROR("server_control_sock accept");
+        return KVS_STATUS_FAILURE;
     }
 
     /* Wait connection to master */
@@ -702,11 +699,8 @@ size_t internal_kvs::kvs_init(const char* main_addr) {
     } while ((err < 0) && (connection_time < CONNECTION_TIMEOUT));
 
     if (connection_time >= CONNECTION_TIMEOUT) {
-        LOG_ERROR("kvs_init: connection error: timeout limit (",
-                  connection_time,
-                  " > ",
-                  CONNECTION_TIMEOUT);
-        exit(EXIT_FAILURE);
+        LOG_ERROR("connection time (", connection_time, ") >= limit (", CONNECTION_TIMEOUT, ")");
+        return KVS_STATUS_FAILURE;
     }
 
     if (strstr(main_host_ip, local_host_ip) && local_port == main_port) {
@@ -714,13 +708,11 @@ size_t internal_kvs::kvs_init(const char* main_addr) {
     }
     is_inited = true;
 
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t internal_kvs::kvs_finalize(void) {
+kvs_status_t internal_kvs::kvs_finalize(void) {
     kvs_request_t request;
-    memset(&request, 0, sizeof(kvs_request_t));
-
     close(client_op_sock);
     client_op_sock = 0;
     if (kvs_thread != 0) {
@@ -743,7 +735,8 @@ size_t internal_kvs::kvs_finalize(void) {
 
         err = pthread_join(kvs_thread, &exit_code);
         if (err) {
-            LOG_ERROR("kvs_finalize: failed to stop kvs server thread, pthread_join returns ", err);
+            LOG_ERROR("failed to stop kvs server thread, pthread_join returns ", err);
+            return KVS_STATUS_FAILURE;
         }
 
         kvs_thread = 0;
@@ -755,19 +748,21 @@ size_t internal_kvs::kvs_finalize(void) {
         server_control_sock = 0;
     }
 
-    if (ip_getting_mode == IGT_K8S)
-        request_k8s_kvs_finalize(is_master);
+    if (ip_getting_mode == IGT_K8S) {
+        KVS_CHECK_STATUS(request_k8s_kvs_finalize(is_master), "failed to finaluze k8s kvs");
+    }
     is_inited = false;
 
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
 internal_kvs::~internal_kvs() {
-    if (is_inited)
-        kvs_finalize();
+    if (is_inited) {
+        CCL_THROW_IF_NOT(kvs_finalize() == KVS_STATUS_SUCCESS, "failed to finalize kvs");
+    }
 }
 
-void sockaddr_v4::set_sin_addr(const char* src) {
+kvs_status_t sockaddr_v4::set_sin_addr(const char* src) {
     int ret = inet_pton(addr.sin_family, src, &(addr.sin_addr));
     if (ret <= 0) {
         if (ret == 0) {
@@ -782,17 +777,19 @@ void sockaddr_v4::set_sin_addr(const char* src) {
                       ", error: ",
                       strerror(errno));
         }
-        exit(1);
+        return KVS_STATUS_FAILURE;
     }
+    return KVS_STATUS_SUCCESS;
 }
 
-void sockaddr_v6::set_sin_addr(const char* src) {
+kvs_status_t sockaddr_v6::set_sin_addr(const char* src) {
     char src_copy[internal_kvs::CCL_IP_LEN] = { 0 };
     kvs_str_copy(src_copy, src, internal_kvs::CCL_IP_LEN);
 
     char* scope_id_ptr = nullptr;
     if ((scope_id_ptr = strchr(src_copy, internal_kvs::SCOPE_ID_DELIM))) {
-        addr.sin6_scope_id = safe_strtol(scope_id_ptr + 1, nullptr, 10);
+        KVS_CHECK_STATUS(safe_strtol(scope_id_ptr + 1, addr.sin6_scope_id),
+                         "failed to ged sin6_id");
         *scope_id_ptr = '\0';
     }
 
@@ -812,8 +809,9 @@ void sockaddr_v6::set_sin_addr(const char* src) {
                       ", error: ",
                       strerror(errno));
         }
-        exit(1);
+        return KVS_STATUS_FAILURE;
     }
 
-    LOG_DEBUG("addr: ", src_copy, ", scope_id: ", addr.sin6_scope_id);
+    LOG_DEBUG("", src_copy, ", scope_id: ", addr.sin6_scope_id);
+    return KVS_STATUS_SUCCESS;
 }

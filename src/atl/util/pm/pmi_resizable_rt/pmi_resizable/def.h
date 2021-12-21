@@ -24,13 +24,22 @@
 
 #include "common/log/log.hpp"
 
+typedef enum { KVS_STATUS_SUCCESS, KVS_STATUS_FAILURE, KVS_STATUS_UNSUPPORTED } kvs_status_t;
+
+#define KVS_CHECK_STATUS(expr, str) \
+    do { \
+        if (expr != KVS_STATUS_SUCCESS) { \
+            LOG_ERROR(str); \
+            return KVS_STATUS_FAILURE; \
+        } \
+    } while (0)
+
 //TODO: change exit to something more useful
 #define SET_STR(dst, size, ...) \
     do { \
         if (snprintf(dst, size, __VA_ARGS__) > size) { \
-            printf("line too long (must be shorter %d)\n", size); \
-            printf(__VA_ARGS__); \
-            exit(1); \
+            LOG_ERROR("line too long, must be shorter ", size); \
+            return KVS_STATUS_FAILURE; \
         } \
     } while (0)
 
@@ -38,8 +47,8 @@
     do { \
         char* res = expr; \
         if (!res || res != str) { \
-            printf("fgets error\n"); \
-            exit(EXIT_FAILURE); \
+            LOG_ERROR("fgets error: ", strerror(errno)); \
+            return KVS_STATUS_FAILURE; \
         } \
     } while (0)
 
@@ -61,15 +70,16 @@
                                buf, \
                                size, \
                                shift); \
-                        perror("read/write error"); \
-                        exit(EXIT_FAILURE); \
+                        LOG_ERROR("read/write error: ", strerror(errno)); \
+                        return KVS_STATUS_FAILURE; \
                     } \
                 } \
                 else if (res == 0) { \
-                    printf("" #msg ": " #op ": can not process all data, size %zu, shift %zu\n", \
-                           size, \
-                           shift); \
-                    exit(EXIT_FAILURE); \
+                    LOG_ERROR("" #msg ": " #op \
+                              ": can not process all data, size %zu, shift %zu\n", \
+                              size, \
+                              shift); \
+                    return KVS_STATUS_FAILURE; \
                 } \
                 else { \
                     shift += res; \
@@ -94,8 +104,8 @@
                            buf, \
                            size, \
                            shift); \
-                    perror("read/write error"); \
-                    exit(EXIT_FAILURE); \
+                    LOG_ERROR("read/write error: ", strerror(errno)); \
+                    return KVS_STATUS_FAILURE; \
                 } \
             } \
             else { \
@@ -159,21 +169,23 @@ void inline kvs_str_copy_known_sizes(char* dst, const char* src, size_t bytes) {
     dst[bytes - 1] = '\0';
 }
 
-long int inline safe_strtol(const char* str, char** endptr, int base) {
+template <typename T>
+kvs_status_t inline safe_strtol(const char* str, T& val) {
     errno = 0;
-    auto val = strtol(str, endptr, base);
+    val = strtol(str, nullptr, 10);
 
     if (errno != 0) {
         if (errno == EINVAL) {
-            CCL_THROW("conversion error occurred from: ", str);
+            LOG_ERROR("conversion error occurred from: ", str);
         }
         else if (errno == ERANGE) {
-            CCL_THROW("the value provided was out of range: ", str);
+            LOG_ERROR("the value provided was out of range: ", str);
         }
         else {
-            CCL_THROW("strtol error: ", strerror(errno), ", str: ", str);
+            LOG_ERROR("strtol error: ", strerror(errno), ", str: ", str);
         }
+        return KVS_STATUS_FAILURE;
     }
 
-    return val;
+    return KVS_STATUS_SUCCESS;
 }

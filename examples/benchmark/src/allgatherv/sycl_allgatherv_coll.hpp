@@ -35,7 +35,7 @@ struct sycl_allgatherv_coll : sycl_base_coll<Dtype, allgatherv_strategy_impl> {
                                    ccl::stream& stream,
                                    size_t rank_idx) override {
         int comm_size = comm.size();
-        Dtype sbuf_expected = comm.rank();
+        Dtype sbuf_expected = get_val<Dtype>(static_cast<float>(comm.rank()));
 
         size_t send_bytes = elem_count * base_coll::get_dtype_size();
         size_t recv_bytes = comm_size * elem_count * base_coll::get_dtype_size();
@@ -78,7 +78,7 @@ struct sycl_allgatherv_coll : sycl_base_coll<Dtype, allgatherv_strategy_impl> {
             }
 
             for (int idx = 0; idx < comm.size(); idx++) {
-                Dtype rbuf_expected = idx;
+                Dtype rbuf_expected = get_val<Dtype>(static_cast<float>(idx));
                 for (size_t e_idx = 0; e_idx < elem_count; e_idx++) {
                     value = host_recv_buf[idx * elem_count + e_idx];
                     if (value != rbuf_expected) {

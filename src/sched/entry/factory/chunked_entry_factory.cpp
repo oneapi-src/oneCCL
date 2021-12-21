@@ -26,7 +26,7 @@ void make_chunked_send_entry(ccl_sched* sched,
         "send",
         dtype,
         cnt,
-        make_entry<send_entry>(chunk_sched, buf + chunk_offset, chunk_size, dtype, dst, comm),
+        create<send_entry>(chunk_sched, buf + chunk_offset, chunk_size, dtype, dst, comm),
         { chunk_sched = sched; });
 }
 
@@ -40,33 +40,31 @@ void make_chunked_recv_entry(ccl_sched* sched,
         "recv",
         dtype,
         cnt,
-        make_entry<recv_entry>(chunk_sched, buf + chunk_offset, chunk_size, dtype, src, comm),
+        create<recv_entry>(chunk_sched, buf + chunk_offset, chunk_size, dtype, src, comm),
         { chunk_sched = sched; });
 }
 
 void make_chunked_recv_reduce_entry(ccl_sched* sched,
                                     ccl_buffer inout_buf,
                                     size_t cnt,
-                                    size_t* out_cnt,
                                     const ccl_datatype& dtype,
                                     ccl::reduction reduction_op,
                                     int src,
-                                    ccl_buffer comm_buf,
                                     ccl_comm* comm,
+                                    ccl_buffer comm_buf,
                                     ccl_recv_reduce_result_buf_type result_buf_type) {
     CCL_CHUNKED_ENTRY_FUNCTION("recv_reduce",
                                dtype,
                                cnt,
-                               make_entry<recv_reduce_entry>(chunk_sched,
-                                                             inout_buf + chunk_offset,
-                                                             chunk_size,
-                                                             out_cnt,
-                                                             dtype,
-                                                             reduction_op,
-                                                             src,
-                                                             comm_buf + chunk_offset,
-                                                             comm,
-                                                             result_buf_type),
+                               create<recv_reduce_entry>(chunk_sched,
+                                                         inout_buf + chunk_offset,
+                                                         chunk_size,
+                                                         dtype,
+                                                         reduction_op,
+                                                         src,
+                                                         comm,
+                                                         comm_buf + chunk_offset,
+                                                         result_buf_type),
                                { chunk_sched = sched; });
 }
 
@@ -81,7 +79,7 @@ void make_chunked_send_entry(std::vector<ccl_sched*>& scheds,
         "send",
         dtype,
         cnt,
-        make_entry<send_entry>(chunk_sched, buf + chunk_offset, chunk_size, dtype, dst, comm),
+        create<send_entry>(chunk_sched, buf + chunk_offset, chunk_size, dtype, dst, comm),
         { chunk_sched = scheds[(first_sched_idx + chunk_idx) % scheds.size()]; });
 }
 
@@ -96,7 +94,7 @@ void make_chunked_recv_entry(std::vector<ccl_sched*>& scheds,
         "recv",
         dtype,
         cnt,
-        make_entry<recv_entry>(chunk_sched, buf + chunk_offset, chunk_size, dtype, src, comm),
+        create<recv_entry>(chunk_sched, buf + chunk_offset, chunk_size, dtype, src, comm),
         { chunk_sched = scheds[(first_sched_idx + chunk_idx) % scheds.size()]; });
 }
 
@@ -110,7 +108,7 @@ void make_chunked_copy_entry(std::vector<ccl_sched*>& scheds,
         "copy",
         dtype,
         cnt,
-        make_entry<copy_entry>(
+        create<copy_entry>(
             chunk_sched, in_buf + chunk_offset, out_buf + chunk_offset, chunk_size, dtype),
         { chunk_sched = scheds[(first_sched_idx + chunk_idx) % scheds.size()]; });
 }

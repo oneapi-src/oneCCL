@@ -15,7 +15,7 @@
 */
 #pragma once
 
-#include "atl/atl.h"
+#include "atl/atl_base_comm.hpp"
 #include "common/datatype/datatype.hpp"
 #include "common/utils/utils.hpp"
 #include "sched/sched_timer.hpp"
@@ -78,6 +78,9 @@ public:
     static const char* status_to_str(ccl_sched_entry_status status);
 
     ccl::sched_timer timer;
+
+    virtual void init(){};
+    virtual void finalize(){};
 
 protected:
     virtual void start() = 0;

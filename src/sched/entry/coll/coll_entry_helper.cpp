@@ -14,25 +14,14 @@
  limitations under the License.
 */
 #include "sched/entry/coll/coll_entry_helper.hpp"
+#include "sched/entry/subsched_entry.hpp"
 
 ccl::status coll_entry_helper::build_schedule(ccl_sched* sched,
                                               const ccl_sched* parent_sched,
                                               const ccl_coll_entry_param& param) {
     ccl::status res = ccl::status::success;
 
-    if (param.ctype == ccl_coll_allreduce || param.ctype == ccl_coll_reduce ||
-        param.ctype == ccl_coll_reduce_scatter) {
-        if (sched != parent_sched) {
-            sched->coll_attr.reduction_fn = parent_sched->coll_attr.reduction_fn;
-            /* required to create ccl_fn_context in reduce/recv_reduce entries */
-            sched->coll_attr.match_id = parent_sched->coll_attr.match_id;
-        }
-    }
-    sched->coll_attr.to_cache = parent_sched->coll_attr.to_cache;
-
-#ifdef CCL_ENABLE_SYCL
-    sched->coll_attr.is_sycl_buf = parent_sched->coll_attr.is_sycl_buf;
-#endif // CCL_ENABLE_SYCL
+    subsched_entry::inherit_params(sched, parent_sched, param.ctype);
 
     sched->hint_algo = param.hint_algo;
 

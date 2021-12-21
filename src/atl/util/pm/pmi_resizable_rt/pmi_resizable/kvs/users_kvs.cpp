@@ -20,70 +20,80 @@
 
 users_kvs::users_kvs(std::shared_ptr<ccl::kvs_interface> kvs) : kvs(kvs) {}
 
-size_t users_kvs::kvs_set_value(const char* kvs_name, const char* kvs_key, const char* kvs_val) {
+kvs_status_t users_kvs::kvs_set_value(const char* kvs_name,
+                                      const char* kvs_key,
+                                      const char* kvs_val) {
     ccl::string_class name(kvs_name), key(kvs_key);
     ccl::vector_class<char> vec_val(kvs_val, kvs_val + strlen(kvs_val) + 1);
     vec_val[strlen(kvs_val)] = '\0';
     kvs->set(name + key, vec_val);
 
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t users_kvs::kvs_remove_name_key(const char* kvs_name, const char* kvs_key) {
+kvs_status_t users_kvs::kvs_remove_name_key(const char* kvs_name, const char* kvs_key) {
     ccl::vector_class<char> kvs_val = { '\0' };
     ccl::string_class name(kvs_name), key(kvs_key);
     kvs->set(name + key, kvs_val);
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t users_kvs::kvs_get_value_by_name_key(const char* kvs_name,
-                                            const char* kvs_key,
-                                            char* kvs_val) {
+kvs_status_t users_kvs::kvs_get_value_by_name_key(const char* kvs_name,
+                                                  const char* kvs_key,
+                                                  char* kvs_val) {
     ccl::string_class name(kvs_name), key(kvs_key);
     ccl::vector_class<char> res = kvs->get(name + key);
 
+    memset(kvs_val, 0, MAX_KVS_VAL_LENGTH);
     if (res.data())
         SET_STR(kvs_val, MAX_KVS_VAL_LENGTH, "%s", res.data());
     else
         SET_STR(kvs_val, MAX_KVS_VAL_LENGTH, "%s", "");
 
-    return strlen(kvs_val);
+    return KVS_STATUS_SUCCESS;
 }
 
-size_t users_kvs::kvs_get_count_names(const char* kvs_name) {
+kvs_status_t users_kvs::kvs_get_count_names(const char* kvs_name, int& count_names) {
     /*TODO: Unsupported*/
     (void)kvs_name;
-    return 0;
+    LOG_ERROR("unsupported");
+    return KVS_STATUS_UNSUPPORTED;
 }
 
-size_t users_kvs::kvs_get_keys_values_by_name(const char* kvs_name,
-                                              char*** kvs_keys,
-                                              char*** kvs_values) {
+kvs_status_t users_kvs::kvs_get_keys_values_by_name(const char* kvs_name,
+                                                    char*** kvs_keys,
+                                                    char*** kvs_values,
+                                                    size_t& count) {
     /*TODO: Unsupported*/
     (void)kvs_name;
     (void)kvs_keys;
     (void)kvs_values;
-    return 0;
+    LOG_ERROR("unsupported");
+    return KVS_STATUS_UNSUPPORTED;
 }
 
-size_t users_kvs::kvs_get_replica_size(void) {
+kvs_status_t users_kvs::kvs_get_replica_size(size_t& replica_size) {
     /*TODO: Unsupported*/
-    return 0;
+    LOG_ERROR("unsupported");
+    return KVS_STATUS_UNSUPPORTED;
 }
 
-size_t users_kvs::kvs_main_server_address_reserve(char* main_address) {
+kvs_status_t users_kvs::kvs_main_server_address_reserve(char* main_address) {
     /*TODO: Unsupported*/
     (void)main_address;
-    return 0;
+    LOG_ERROR("unsupported");
+    return KVS_STATUS_UNSUPPORTED;
 }
 
-size_t users_kvs::kvs_init(const char* main_addr) {
+kvs_status_t users_kvs::kvs_init(const char* main_addr) {
     /*TODO: Unsupported*/
     (void)main_addr;
-    return 0;
+    LOG_ERROR("unsupported");
+    return KVS_STATUS_UNSUPPORTED;
 }
 
-size_t users_kvs::kvs_finalize(void) {
+kvs_status_t users_kvs::kvs_finalize(void) {
     /*TODO: Unsupported*/
-    return 0;
+    LOG_ERROR("unsupported");
+    return KVS_STATUS_UNSUPPORTED;
 }

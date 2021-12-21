@@ -27,21 +27,31 @@ char my_hostname[MAX_KVS_VAL_LENGTH];
 // TODO: rework it for multi kvs
 static pmi_resizable* pmi_object;
 
-void Call_Hard_finilize(int sig) {
-    pmi_object->Hard_finilize(sig);
+void call_hard_finalize(int sig) {
+    if (pmi_object->hard_finalize(sig) != KVS_STATUS_SUCCESS) {
+        LOG_ERROR("failed to hard finalize");
+    }
 }
 
 kvs_resize_action_t pmi_resizable::default_checker(int comm_size) {
     char* comm_size_to_start_env;
-    int comm_size_to_start;
+    size_t comm_size_to_start;
 
     comm_size_to_start_env = getenv(CCL_WORLD_SIZE_ENV);
 
-    if (comm_size_to_start_env != NULL)
-        comm_size_to_start = safe_strtol(comm_size_to_start_env, NULL, 10);
-    else
-        comm_size_to_start = h->get_replica_size();
-    if (comm_size >= comm_size_to_start)
+    if (comm_size_to_start_env != NULL) {
+        if (safe_strtol(comm_size_to_start_env, comm_size_to_start) != KVS_STATUS_SUCCESS) {
+            LOG_ERROR("failed to convert comm_size");
+            return KVS_RA_FINALIZE;
+        }
+    }
+    else {
+        if (h->get_replica_size(comm_size_to_start) != KVS_STATUS_SUCCESS) {
+            LOG_ERROR("failed to get comm_size");
+            return KVS_RA_FINALIZE;
+        }
+    }
+    if (comm_size >= static_cast<int>(comm_size_to_start))
         return KVS_RA_RUN;
 
     return KVS_RA_WAIT;
@@ -54,27 +64,29 @@ kvs_resize_action_t pmi_resizable::call_resize_fn(int comm_size) {
     return default_checker(comm_size);
 }
 
-int pmi_resizable::PMIR_Update(void) {
+kvs_status_t pmi_resizable::PMIR_Update(void) {
     char up_idx_str[MAX_KVS_VAL_LENGTH];
     int prev_new_ranks_count = 0;
     int prev_killed_ranks_count = 0;
     int prev_idx = -1;
     kvs_resize_action_t answer;
-    rank_list_t* dead_up_idx = NULL;
-    shift_list_t* list = NULL;
+    std::list<int> dead_up_idx{};
+    std::list<shift_rank_t> list{};
 
     new_ranks_count = 0;
     killed_ranks_count = 0;
     if (finalized == 1) {
-        return 1;
+        LOG_ERROR("is finalized");
+        return KVS_STATUS_FAILURE;
     }
     if (applied == 1) {
         size_t is_wait = 1;
         size_t is_first_collect = 0;
 
-        h->get_value_by_name_key(KVS_UP, KVS_IDX, up_idx_str);
+        KVS_CHECK_STATUS(h->get_value_by_name_key(KVS_UP, KVS_IDX, up_idx_str),
+                         "failed to get KVS IDx");
 
-        up_idx = safe_strtol(up_idx_str, NULL, 10);
+        KVS_CHECK_STATUS(safe_strtol(up_idx_str, up_idx), "failed to convert KVS IDx");
         if (up_idx == 0)
             is_first_collect = 1;
 
@@ -84,9 +96,10 @@ int pmi_resizable::PMIR_Update(void) {
             do {
                 /*Waiting new pods*/
                 usleep(10000);
-                h->get_value_by_name_key(KVS_UP, KVS_IDX, up_idx_str);
+                KVS_CHECK_STATUS(h->get_value_by_name_key(KVS_UP, KVS_IDX, up_idx_str),
+                                 "failed to get KVS IDx");
 
-                up_idx = safe_strtol(up_idx_str, NULL, 10);
+                KVS_CHECK_STATUS(safe_strtol(up_idx_str, up_idx), "failed to convert KVS IDx");
                 if (prev_idx == (int)up_idx) {
                     count_clean_checks = 0;
 
@@ -101,7 +114,7 @@ int pmi_resizable::PMIR_Update(void) {
                     //                    while (int_list_is_contained(killed_ranks, root_rank) == 1)
                     {
                         int old_root = root_rank;
-                        h->get_new_root(&root_rank);
+                        KVS_CHECK_STATUS(h->get_new_root(&root_rank), "failed to new root rank");
 
                         if (my_rank == root_rank && old_root != root_rank)
                             is_new_root = 1;
@@ -114,27 +127,29 @@ int pmi_resizable::PMIR_Update(void) {
                     prev_new_ranks_count = new_ranks_count;
                     prev_killed_ranks_count = killed_ranks_count;
 
-                    h->get_update_ranks();
+                    KVS_CHECK_STATUS(h->get_update_ranks(), "failed to update ranks");
                     if (killed_ranks_count != prev_killed_ranks_count)
-                        rank_list_add(&dead_up_idx, up_idx);
+                        dead_up_idx.push_back(up_idx);
                 }
-                PMIR_Barrier();
+                KVS_CHECK_STATUS(PMIR_Barrier(), "barrier failed");
                 if (my_rank == root_rank && is_new_root == 0) {
                     up_idx++;
                     if (up_idx > 0 && up_idx > MAX_UP_IDX)
                         up_idx = 1;
 
                     SET_STR(up_idx_str, INT_STR_SIZE, SIZE_T_TEMPLATE, up_idx);
-                    h->set_value(KVS_UP, KVS_IDX, up_idx_str);
-                    h->up_kvs_new_and_dead();
+                    KVS_CHECK_STATUS(h->set_value(KVS_UP, KVS_IDX, up_idx_str),
+                                     "failed to set KVS IDx");
+                    KVS_CHECK_STATUS(h->up_kvs_new_and_dead(), "failed to update KVS");
                 }
-                PMIR_Barrier();
+                KVS_CHECK_STATUS(PMIR_Barrier(), "barrier failed");
 
                 if (finalized == 1) {
-                    rank_list_clean(&killed_ranks);
-                    rank_list_clean(&new_ranks);
-                    rank_list_clean(&dead_up_idx);
-                    return 1;
+                    killed_ranks.clear();
+                    new_ranks.clear();
+                    dead_up_idx.clear();
+                    LOG_ERROR("is finalized")
+                    return KVS_STATUS_FAILURE;
                 }
 
                 is_new_root = 0;
@@ -151,7 +166,9 @@ int pmi_resizable::PMIR_Update(void) {
             if (!is_first_collect || ask_only_framework == 1)
                 answer = call_resize_fn(count_pods - killed_ranks_count + new_ranks_count);
             else {
-                if ((int)(h->get_replica_size()) !=
+                size_t replica_size;
+                KVS_CHECK_STATUS(h->get_replica_size(replica_size), "failed to get replica size");
+                if (static_cast<int>(replica_size) !=
                     count_pods - killed_ranks_count + new_ranks_count)
                     answer = KVS_RA_WAIT;
                 else
@@ -167,60 +184,60 @@ int pmi_resizable::PMIR_Update(void) {
                     break;
                 }
                 case KVS_RA_FINALIZE: {
-                    PMIR_Finalize();
-                    return 1;
+                    KVS_CHECK_STATUS(PMIR_Finalize(), "failed to finalize");
                 }
                 default: {
-                    printf("Unknown resize action: %d\n", answer);
-                    PMIR_Finalize();
-                    return 1;
+                    LOG_ERROR("Unknown resize action: %d\n", answer);
+                    KVS_CHECK_STATUS(PMIR_Finalize(), "failed to finalize");
+                    return KVS_STATUS_FAILURE;
                 }
             }
             listener.set_applied_count(count_applied_changes);
         } while (is_wait == 1);
     }
     else {
-        listener.send_notification(0, h);
-        h->wait_accept();
+        KVS_CHECK_STATUS(listener.send_notification(0, h), "failed to send notification");
+        KVS_CHECK_STATUS(h->wait_accept(), "failed to wait accept");
     }
 
-    h->get_shift(&list);
+    h->get_shift(list);
     count_pods = count_pods - killed_ranks_count + new_ranks_count;
-    h->update(&list, &dead_up_idx, root_rank);
+    KVS_CHECK_STATUS(h->update(list, dead_up_idx, root_rank), "failed to update root");
 
     root_rank = 0;
 
-    PMIR_Barrier();
-    h->up_pods_count();
+    KVS_CHECK_STATUS(PMIR_Barrier(), "barrier failed");
+    KVS_CHECK_STATUS(h->up_pods_count(), "failed to update pods count");
 
-    rank_list_clean(&killed_ranks);
-    rank_list_clean(&new_ranks);
-    rank_list_clean(&dead_up_idx);
-    shift_list_clean(&list);
-    return 0;
+    killed_ranks.clear();
+    new_ranks.clear();
+    dead_up_idx.clear();
+    list.clear();
+    return KVS_STATUS_SUCCESS;
 }
 
-void pmi_resizable::Hard_finilize(int sig) {
+kvs_status_t pmi_resizable::hard_finalize(int sig) {
     char rank_str[INT_STR_SIZE];
 
     SET_STR(rank_str, INT_STR_SIZE, RANK_TEMPLATE, my_rank);
 
-    h->set_value(KVS_DEAD_POD, my_hostname, rank_str);
+    KVS_CHECK_STATUS(h->set_value(KVS_DEAD_POD, my_hostname, rank_str), "failed to set dead rank");
 
-    listener.send_notification(sig, h);
+    KVS_CHECK_STATUS(listener.send_notification(sig, h), "failed to send notification");
 
     extreme_finalize = 1;
-    PMIR_Finalize();
+    KVS_CHECK_STATUS(PMIR_Finalize(), "failed to finalize");
     if (old_act.sa_handler != NULL)
         old_act.sa_handler(sig);
+
+    return KVS_STATUS_SUCCESS;
 }
 
-int pmi_resizable::PMIR_Main_Addr_Reserve(char* main_addr) {
-    h->main_server_address_reserve(main_addr);
-    return 0;
+kvs_status_t pmi_resizable::PMIR_Main_Addr_Reserve(char* main_addr) {
+    return h->main_server_address_reserve(main_addr);
 }
 
-int pmi_resizable::PMIR_Init(const char* main_addr) {
+kvs_status_t pmi_resizable::PMIR_Init(const char* main_addr) {
     struct sigaction act;
     FILE* fp;
     finalized = 0;
@@ -240,34 +257,34 @@ int pmi_resizable::PMIR_Init(const char* main_addr) {
             "-%d",
             getpid());
 
-    if (h->init(main_addr)) {
-        return 1;
-    }
+    KVS_CHECK_STATUS(h->init(main_addr), "failed to init");
 
-    h->reg_rank();
+    KVS_CHECK_STATUS(h->reg_rank(), "failed to rank register");
 
-    h->up_pods_count();
+    KVS_CHECK_STATUS(h->up_pods_count(), "failed to update pods count");
 
     // TODO: rework it for multi kvs
     pmi_object = this;
     memset(&act, 0, sizeof(act));
-    act.sa_handler = &Call_Hard_finilize;
+    act.sa_handler = &call_hard_finalize;
     act.sa_flags = 0;
     sigaction(SIGTERM, &act, &old_act);
 
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-int pmi_resizable::PMIR_Finalize(void) {
+kvs_status_t pmi_resizable::PMIR_Finalize(void) {
     char kvs_name[MAX_KVS_NAME_LENGTH];
     char kvs_key[MAX_KVS_KEY_LENGTH];
     char kvs_val[MAX_KVS_VAL_LENGTH];
     char rank_str[INT_STR_SIZE];
-    if (finalized)
-        return 0;
+    if (finalized) {
+        return KVS_STATUS_SUCCESS;
+    }
 
-    if (my_rank == 0)
-        PMIR_Barrier();
+    if (my_rank == 0) {
+        KVS_CHECK_STATUS(PMIR_Barrier(), "barrier failed");
+    }
 
     finalized = 1;
 
@@ -275,101 +292,106 @@ int pmi_resizable::PMIR_Finalize(void) {
 
     SET_STR(rank_str, INT_STR_SIZE, RANK_TEMPLATE, my_rank);
 
-    h->remove_name_key(KVS_POD_NUM, rank_str);
+    KVS_CHECK_STATUS(h->remove_name_key(KVS_POD_NUM, rank_str), "failed to remove rank");
 
     while (cut_head(kvs_name, kvs_key, kvs_val, ST_CLIENT)) {
-        h->remove_name_key(kvs_name, kvs_key);
+        KVS_CHECK_STATUS(h->remove_name_key(kvs_name, kvs_key), "failed to remove info");
     }
 
     if (my_rank == 0 && extreme_finalize != 1) {
-        h->remove_name_key(KVS_UP, KVS_IDX);
+        KVS_CHECK_STATUS(h->remove_name_key(KVS_UP, KVS_IDX), "failed to remove IDx");
     }
-    h->remove_name_key(KVS_BARRIER, my_hostname);
+    KVS_CHECK_STATUS(h->remove_name_key(KVS_BARRIER, my_hostname), "failed to remove barrier info");
 
-    h->finalize();
+    KVS_CHECK_STATUS(h->finalize(), "failed to finalize");
 
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-int pmi_resizable::PMIR_Barrier(void) {
+kvs_status_t pmi_resizable::PMIR_Barrier(void) {
     size_t min_barrier_num;
     char barrier_num_str[INT_STR_SIZE];
 
     if (finalized)
-        return 0;
+        return KVS_STATUS_SUCCESS;
 
     SET_STR(barrier_num_str, INT_STR_SIZE, SIZE_T_TEMPLATE, barrier_num);
 
-    h->set_value(KVS_BARRIER, my_hostname, barrier_num_str);
+    KVS_CHECK_STATUS(h->set_value(KVS_BARRIER, my_hostname, barrier_num_str),
+                     "failed to set barrier info");
 
-    min_barrier_num = h->get_barrier_idx();
+    KVS_CHECK_STATUS(h->get_barrier_idx(min_barrier_num), "failed to get barrier IDx");
     while (min_barrier_num != barrier_num && finalized != 1) {
-        min_barrier_num = h->get_barrier_idx();
+        KVS_CHECK_STATUS(h->get_barrier_idx(min_barrier_num), "failed to get barrier IDx");
     }
 
     barrier_num++;
     if (barrier_num > BARRIER_NUM_MAX)
         barrier_num = 0;
 
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-int pmi_resizable::PMIR_Get_size(int* size) {
+kvs_status_t pmi_resizable::PMIR_Get_size(int* size) {
     *size = count_pods;
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-int pmi_resizable::PMIR_Get_rank(int* rank) {
+kvs_status_t pmi_resizable::PMIR_Get_rank(int* rank) {
     *rank = my_rank;
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-int pmi_resizable::PMIR_KVS_Get_my_name(char* kvs_name, size_t length) {
+kvs_status_t pmi_resizable::PMIR_KVS_Get_my_name(char* kvs_name, size_t length) {
     kvs_str_copy(kvs_name, KVS_NAME, length);
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-int pmi_resizable::PMIR_KVS_Get_name_length_max(size_t* length) {
+kvs_status_t pmi_resizable::PMIR_KVS_Get_name_length_max(size_t* length) {
     *length = MAX_KVS_NAME_LENGTH;
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-int pmi_resizable::PMIR_KVS_Get_key_length_max(size_t* length) {
+kvs_status_t pmi_resizable::PMIR_KVS_Get_key_length_max(size_t* length) {
     *length = MAX_KVS_KEY_LENGTH;
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-int pmi_resizable::PMIR_KVS_Get_value_length_max(size_t* length) {
+kvs_status_t pmi_resizable::PMIR_KVS_Get_value_length_max(size_t* length) {
     *length = MAX_KVS_VAL_LENGTH;
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-int pmi_resizable::PMIR_KVS_Commit(const char* kvs_name) {
+kvs_status_t pmi_resizable::PMIR_KVS_Commit(const char* kvs_name) {
     (void)kvs_name;
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-int pmi_resizable::PMIR_KVS_Put(const char* kvs_name, const char* key, const char* value) {
+kvs_status_t pmi_resizable::PMIR_KVS_Put(const char* kvs_name, const char* key, const char* value) {
     put_key(kvs_name, key, value, ST_CLIENT);
 
-    h->set_value(kvs_name, key, value);
-    return 0;
+    KVS_CHECK_STATUS(h->set_value(kvs_name, key, value), "failed to set value");
+    return KVS_STATUS_SUCCESS;
 }
 
-int pmi_resizable::PMIR_KVS_Get(const char* kvs_name, const char* key, char* value, size_t length) {
+kvs_status_t pmi_resizable::PMIR_KVS_Get(const char* kvs_name,
+                                         const char* key,
+                                         char* value,
+                                         size_t length) {
     (void)length;
-    while (h->get_value_by_name_key(kvs_name, key, value) == 0) {
-    }
+    do {
+        KVS_CHECK_STATUS(h->get_value_by_name_key(kvs_name, key, value), "failed to get value");
+    } while (strlen(value) == 0);
 
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-int pmi_resizable::PMIR_set_resize_function(pmir_resize_fn_t resize_fn) {
+kvs_status_t pmi_resizable::PMIR_set_resize_function(pmir_resize_fn_t resize_fn) {
     resize_function = resize_fn;
-    return 0;
+    return KVS_STATUS_SUCCESS;
 }
 
-int pmi_resizable::PMIR_Wait_notification(void) {
+kvs_status_t pmi_resizable::PMIR_Wait_notification(void) {
     return listener.run_listener(h);
 }
 
@@ -384,11 +406,15 @@ int pmi_resizable::get_size() {
 size_t pmi_resizable::get_local_thread_idx() {
     return 0;
 }
-size_t pmi_resizable::get_local_kvs_id() {
-    return 0;
+atl_status_t pmi_resizable::get_local_kvs_id(size_t& res) {
+    res = 0;
+    return ATL_STATUS_SUCCESS;
 }
-void pmi_resizable::set_local_kvs_id(size_t local_kvs_id) {}
+atl_status_t pmi_resizable::set_local_kvs_id(size_t local_kvs_id) {
+    return ATL_STATUS_SUCCESS;
+}
 pmi_resizable::~pmi_resizable() {
-    if (!is_finalized)
-        pmrt_finalize();
+    if (!is_finalized) {
+        CCL_THROW_IF_NOT(pmrt_finalize(), "pmi finalize failed");
+    }
 }

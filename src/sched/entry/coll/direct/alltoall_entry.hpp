@@ -45,11 +45,11 @@ public:
         bytes = cnt * dt_size;
 
         LOG_DEBUG("ALLTOALL entry req ", &req, ", bytes ", bytes);
-        atl_status_t atl_status = comm->atl->atl_ep_alltoall(sched->bin->get_atl_ep(),
-                                                             send_buf.get_ptr(bytes),
-                                                             recv_buf.get_ptr(bytes),
-                                                             bytes,
-                                                             &req);
+        atl_status_t atl_status = comm->get_atl_comm()->alltoall(sched->bin->get_atl_ep(),
+                                                                 send_buf.get_ptr(bytes),
+                                                                 recv_buf.get_ptr(bytes),
+                                                                 bytes,
+                                                                 &req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("ALLTOALL entry failed. atl_status: ", atl_status_to_str(atl_status));
@@ -59,15 +59,13 @@ public:
     }
 
     void update() override {
-        int req_status;
-        atl_status_t atl_status =
-            comm->atl->atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
+        atl_status_t atl_status = comm->get_atl_comm()->check(sched->bin->get_atl_ep(), &req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("ALLTOALL entry failed. atl_status: ", atl_status_to_str(atl_status));
         }
 
-        if (req_status) {
+        if (req.is_completed) {
             status = ccl_sched_entry_status_complete;
         }
     }

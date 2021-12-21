@@ -32,10 +32,10 @@
 class server {
 public:
     server() = default;
-    void run(void*);
-    bool check_finalize();
-    void make_client_request(int& socket);
-    void try_to_connect_new();
+    kvs_status_t run(void*);
+    kvs_status_t check_finalize(bool& to_finalize);
+    kvs_status_t make_client_request(int& socket);
+    kvs_status_t try_to_connect_new();
 
 private:
     struct clients_info {
@@ -82,7 +82,7 @@ private:
     sa_family_t address_family{ AF_UNSPEC };
 };
 
-void server::try_to_connect_new() {
+kvs_status_t server::try_to_connect_new() {
     if (poll_fds[FDI_LISTENER].revents != 0) {
         std::shared_ptr<isockaddr> addr;
 
@@ -98,8 +98,8 @@ void server::try_to_connect_new() {
         if ((new_socket = accept(poll_fds[FDI_LISTENER].fd,
                                  addr->get_sock_addr_ptr(),
                                  (socklen_t*)&peer_addr_size)) < 0) {
-            perror("server: server_listen_sock accept");
-            exit(EXIT_FAILURE);
+            LOG_ERROR("server_listen_sock accept, %s", strerror(errno));
+            return KVS_STATUS_FAILURE;
         }
         for (size_t i = FDI_LAST; i < poll_fds.size(); i++) {
             if (poll_fds[i].fd == free_socket) {
@@ -117,16 +117,17 @@ void server::try_to_connect_new() {
             }
         }
     }
+    return KVS_STATUS_SUCCESS;
 }
 
-void server::make_client_request(int& socket) {
+kvs_status_t server::make_client_request(int& socket) {
     DO_RW_OP_1(
         read, socket, &request, sizeof(kvs_request_t), ret, "server: get command from client");
     if (ret == 0) {
         close(socket);
         socket = free_socket;
         client_count--;
-        return;
+        return KVS_STATUS_SUCCESS;
     }
 
     switch (request.mode) {
@@ -184,8 +185,10 @@ void server::make_client_request(int& socket) {
         }
         case AM_GET_REPLICA: {
             char* replica_size_str = getenv(CCL_WORLD_SIZE_ENV);
-            count = (replica_size_str != nullptr) ? safe_strtol(replica_size_str, nullptr, 10)
-                                                  : client_count;
+            count = client_count;
+            if (replica_size_str != nullptr) {
+                KVS_CHECK_STATUS(safe_strtol(replica_size_str, count), "failed to convert count");
+            }
             DO_RW_OP(
                 write, socket, &count, sizeof(size_t), server_memory_mutex, "server: get_replica");
             break;
@@ -236,8 +239,8 @@ void server::make_client_request(int& socket) {
                                           });
             if (client_it == clients.end()) {
                 // TODO: Look deeper to fix this error
-                printf("Server error: Unregister Barrier request!");
-                exit(1);
+                LOG_ERROR("Server error: Unregister Barrier request!");
+                return KVS_STATUS_FAILURE;
             }
             auto client_inf = client_it->get();
             client_inf->in_barrier = true;
@@ -275,9 +278,14 @@ void server::make_client_request(int& socket) {
             else {
                 local_size[0] = '\0';
                 local_size++;
-                barrier.local_size += safe_strtol(local_size, nullptr, 10);
+                size_t local_size_tmp;
+
+                KVS_CHECK_STATUS(safe_strtol(local_size, local_size_tmp),
+                                 "failed to convert local_size");
+                barrier.local_size += local_size_tmp;
             }
-            barrier.global_size = safe_strtol(glob_size, nullptr, 10);
+            KVS_CHECK_STATUS(safe_strtol(glob_size, barrier.global_size),
+                             "failed to convert global_size");
 
             barrier.clients.push_back(
                 std::shared_ptr<clients_info>(new clients_info(socket, false)));
@@ -285,7 +293,8 @@ void server::make_client_request(int& socket) {
         }
         case AM_SET_SIZE: {
             char* glob_size = request.val;
-            communicators[request.key].global_size = safe_strtol(glob_size, nullptr, 10);
+            KVS_CHECK_STATUS(safe_strtol(glob_size, communicators[request.key].global_size),
+                             "failed to convert global_size");
 
             break;
         }
@@ -301,7 +310,9 @@ void server::make_client_request(int& socket) {
             char* thread_id = strstr(proc_id, "_");
             thread_id[0] = '\0';
             thread_id++;
-            size_t rank_count = safe_strtol(rank_count_str, nullptr, 10);
+            size_t rank_count;
+            KVS_CHECK_STATUS(safe_strtol(rank_count_str, rank_count),
+                             "failed to convert rank_count");
             communicators[request.key].local_size += rank_count;
             socket_info sock_info{ socket, proc_id, { rank, rank_count, thread_id } };
             communicator.processes[proc_id].push_back(sock_info.process_info);
@@ -351,15 +362,16 @@ void server::make_client_request(int& socket) {
         }
         default: {
             if (request.name[0] == '\0')
-                return;
-            printf("server: unknown request mode - %d.\n", request.mode);
-            exit(EXIT_FAILURE);
+                return KVS_STATUS_SUCCESS;
+            LOG_ERROR("unknown request mode - %d.\n", request.mode);
+            return KVS_STATUS_FAILURE;
         }
     }
+    return KVS_STATUS_SUCCESS;
 }
 
-bool server::check_finalize() {
-    bool to_finalize = false;
+kvs_status_t server::check_finalize(bool& to_finalize) {
+    to_finalize = false;
     if (poll_fds[FDI_CONTROL].revents != 0) {
         DO_RW_OP_1(read,
                    poll_fds[FDI_CONTROL].fd,
@@ -372,15 +384,15 @@ bool server::check_finalize() {
             poll_fds[FDI_CONTROL].fd = free_socket;
         }
         if (request.mode != AM_FINALIZE) {
-            printf("server: invalid access mode for local socket\n");
-            exit(EXIT_FAILURE);
+            LOG_ERROR("invalid access mode for local socket\n");
+            return KVS_STATUS_FAILURE;
         }
         to_finalize = true;
     }
-    return to_finalize;
+    return KVS_STATUS_SUCCESS;
 }
 
-void server::run(void* args) {
+kvs_status_t server::run(void* args) {
     bool should_stop = false;
     int so_reuse = 1;
     poll_fds.resize(client_count_increase);
@@ -398,13 +410,13 @@ void server::run(void* args) {
 #endif
 
     if (listen(poll_fds[FDI_LISTENER].fd, max_client_queue_size) < 0) {
-        LOG_ERROR("server: server_listen_sock listen");
-        exit(EXIT_FAILURE);
+        LOG_ERROR("server_listen_sock listen(%s)", strerror(errno));
+        return KVS_STATUS_FAILURE;
     }
 
     if ((poll_fds[FDI_CONTROL].fd = socket(address_family, SOCK_STREAM, 0)) < 0) {
-        perror("server: server_control_sock init");
-        exit(EXIT_FAILURE);
+        LOG_ERROR("server_control_sock init(%s)", strerror(errno));
+        return KVS_STATUS_FAILURE;
     }
 
     while (connect(poll_fds[FDI_CONTROL].fd,
@@ -414,8 +426,8 @@ void server::run(void* args) {
     while (!should_stop || client_count > 0) {
         if (poll(poll_fds.data(), poll_fds.size(), -1) < 0) {
             if (errno != EINTR) {
-                perror("server: poll");
-                exit(EXIT_FAILURE);
+                LOG_ERROR("poll(%s)", strerror(errno));
+                return KVS_STATUS_FAILURE;
             }
             else {
                 /* restart select */
@@ -425,12 +437,12 @@ void server::run(void* args) {
 
         for (size_t i = FDI_LAST; i < poll_fds.size(); i++) {
             if (poll_fds[i].fd != free_socket && poll_fds[i].revents != 0) {
-                make_client_request(poll_fds[i].fd);
+                KVS_CHECK_STATUS(make_client_request(poll_fds[i].fd), "failed to make request");
             }
         }
-        try_to_connect_new();
+        KVS_CHECK_STATUS(try_to_connect_new(), "failed to connect new");
         if (!should_stop) {
-            should_stop = check_finalize();
+            KVS_CHECK_STATUS(check_finalize(should_stop), "failed to check finalize");
         }
     }
 
@@ -455,12 +467,15 @@ void server::run(void* args) {
 
     close(poll_fds[FDI_LISTENER].fd);
     poll_fds[FDI_LISTENER].fd = free_socket;
+    return KVS_STATUS_SUCCESS;
 }
 
 void* kvs_server_init(void* args) {
     server s;
 
-    s.run(args);
+    if (s.run(args) != KVS_STATUS_SUCCESS) {
+        LOG_ERROR("failed");
+    }
 
     return nullptr;
 }

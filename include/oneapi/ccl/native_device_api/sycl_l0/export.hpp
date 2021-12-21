@@ -30,7 +30,7 @@ struct backend_info<CL_BACKEND_TYPE> {
         return CL_BACKEND_TYPE;
     }
     static constexpr const char* name() {
-        return "DPCPP_LEVEL_ZERO_BACKEND";
+        return "DPCPP_LEVEL_ZERO";
     }
 };
 

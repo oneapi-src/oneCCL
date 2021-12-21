@@ -17,28 +17,29 @@
 
 #include "coll/coll_common_attributes.hpp"
 #include "common/stream/stream_provider_dispatcher.hpp"
-#include "common/utils/enums.hpp"
 #include "common/utils/utils.hpp"
-#include "internal_types.hpp"
 #include "oneapi/ccl/stream_attr_ids.hpp"
 #include "oneapi/ccl/stream_attr_ids_traits.hpp"
-#include "oneapi/ccl/types_policy.hpp"
 #include "oneapi/ccl/types.hpp"
 #include "oneapi/ccl/type_traits.hpp"
 
+#ifdef CCL_ENABLE_SYCL
+#include <CL/sycl/backend_types.hpp>
+#endif // CCL_ENABLE_SYCL
+
 namespace ccl {
-namespace detail {
-class environment;
-}
+
+enum class device_family { unknown, family1, family2 };
+
+std::string to_string(device_family family);
+
 } // namespace ccl
 
-using stream_str_enum = utils::enum_to_str<utils::enum_to_underlying(stream_type::last_value)>;
 std::string to_string(const stream_type& type);
 
 class alignas(CACHELINE_SIZE) ccl_stream : public stream_provider_dispatcher {
 public:
     friend class stream_provider_dispatcher;
-    friend class ccl::detail::environment;
 
     using stream_native_t = stream_provider_dispatcher::stream_native_t;
 
@@ -48,26 +49,19 @@ public:
 
     ~ccl_stream() = default;
 
-    using stream_provider_dispatcher::get_native_stream;
-
     std::string to_string() const;
 
-    stream_type get_type() const {
-        return type;
-    }
-
-    bool is_sycl_device_stream() const {
-        return (type == stream_type::cpu || type == stream_type::gpu);
-    }
-
-    bool is_gpu() const {
-        return type == stream_type::gpu;
-    }
+    stream_type get_type() const;
+    ccl::device_family get_device_family() const;
+    bool is_sycl_device_stream() const;
+    bool is_gpu() const;
 
 #ifdef CCL_ENABLE_SYCL
-    cl::sycl::backend get_backend() const noexcept {
-        return backend;
-    }
+    cl::sycl::backend get_backend() const;
+#ifdef CCL_ENABLE_ZE
+    ze_device_handle_t get_ze_device() const;
+    ze_context_handle_t get_ze_context() const;
+#endif // CCL_ENABLE_ZE
 #endif // CCL_ENBALE_SYCL
 
     static std::unique_ptr<ccl_stream> create(stream_native_t& native_stream,
@@ -93,9 +87,17 @@ private:
                stream_native_t& native_stream,
                const ccl::library_version& version);
 
+    const ccl::library_version version;
+
     stream_type type;
+    ccl::device_family device_family;
+
 #ifdef CCL_ENABLE_SYCL
     cl::sycl::backend backend;
+
+#ifdef CCL_ENABLE_ZE
+    ze_device_handle_t device{};
+    ze_context_handle_t context{};
+#endif // CCL_ENABLE_ZE
 #endif // CCL_ENBALE_SYCL
-    const ccl::library_version version;
 };

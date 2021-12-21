@@ -34,11 +34,11 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include "atl.h"
+#include "atl/util/pm/pm_rt.h"
 #include "common/global/global.hpp"
 #include "hwloc/hwloc_wrapper.hpp"
 #ifdef CCL_ENABLE_OFI_HMEM
-#include "sched/entry/gpu/ze_primitives.hpp"
+#include "sched/entry/ze/ze_primitives.hpp"
 #endif // CCL_ENABLE_OFI_HMEM
 
 #define ATL_OFI_BASE_PM_KEY     "atl-ofi"
@@ -113,7 +113,7 @@
                 CCL_THROW("OFI function error"); \
                 break; \
             } \
-            (void)atl_ep_poll(ep); \
+            (void)poll(ep); \
             retry_count++; \
         } while (((ret_val) == -FI_EAGAIN) && (retry_count < max_retry_count)); \
     } while (0)
@@ -213,6 +213,7 @@ typedef struct {
     std::vector<std::string> mnic_include_names;
     std::vector<std::string> mnic_exclude_names;
     size_t mnic_count;
+    atl_mnic_offset_t mnic_offset;
     int enable_hmem;
 } atl_ofi_ctx_t;
 
@@ -275,14 +276,14 @@ std::string atl_ofi_get_short_nic_name(const struct fi_info* prov);
 std::string atl_ofi_get_nic_name(const struct fi_info* prov);
 atl_ofi_prov_t* atl_ofi_get_prov(atl_ep_t* ep, int peer_proc_idx, size_t msg_size);
 fi_addr_t atl_ofi_get_addr(atl_ctx_t* ctx, atl_ofi_prov_t* prov, int proc_idx, size_t ep_idx);
-atl_status_t atl_ofi_get_local_proc_coord(atl_ofi_ctx_t* ofi_ctx, std::unique_ptr<ipmi>& pmi);
+atl_status_t atl_ofi_get_local_proc_coord(atl_ofi_ctx_t* ofi_ctx, std::shared_ptr<ipmi> pmi);
 atl_status_t atl_ofi_prov_update_addr_table(atl_ofi_ctx_t* ofi_ctx,
                                             size_t prov_idx,
-                                            std::unique_ptr<ipmi>& pmi);
+                                            std::shared_ptr<ipmi> pmi);
 atl_status_t atl_ofi_prov_ep_get_name(atl_ofi_prov_t* prov, size_t ep_idx);
 atl_status_t atl_ofi_prov_eps_connect(atl_ofi_ctx_t* ofi_ctx,
                                       size_t prov_idx,
-                                      std::unique_ptr<ipmi>& pmi);
+                                      std::shared_ptr<ipmi> pmi);
 void atl_ofi_prov_ep_destroy(atl_ofi_prov_t* prov, atl_ofi_prov_ep_t* ep);
 void atl_ofi_prov_destroy(atl_ctx_t* ctx, atl_ofi_prov_t* prov);
 int atl_ofi_wait_cancel_cq(struct fid_cq* cq);
@@ -300,13 +301,12 @@ atl_status_t atl_ofi_prov_init(atl_ctx_t* ctx,
                                struct fi_info* info,
                                atl_ofi_prov_t* prov,
                                atl_attr_t* attr,
-                               std::unique_ptr<ipmi>& pmi);
+                               std::shared_ptr<ipmi> pmi);
 atl_status_t atl_ofi_adjust_out_tag(atl_ofi_prov_t* prov, atl_attr_t* attr);
-int atl_ofi_nic_already_used(const struct fi_info* prov, struct fi_info** others, size_t nic_count);
-int atl_ofi_is_nic_local(struct fi_info* info);
 atl_status_t atl_ofi_parse_mnic_name(atl_ctx_t* ctx, std::string str_to_parse);
 int atl_ofi_is_allowed_nic_name(atl_ofi_ctx_t* ofi_ctx, struct fi_info* info);
 atl_status_t atl_ofi_open_nw_provs(atl_ctx_t* ctx,
                                    struct fi_info* base_hints,
                                    atl_attr_t* attr,
-                                   std::unique_ptr<ipmi>& pmi);
+                                   std::shared_ptr<ipmi> pmi);
+void atl_ofi_init_req(atl_req_t* req, atl_ofi_prov_ep_t* prov_ep, struct fid_ep* fi_ep);

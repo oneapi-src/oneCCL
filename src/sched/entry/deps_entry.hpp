@@ -13,6 +13,12 @@ public:
 
     void start() override {
         status = ccl_sched_entry_status_started;
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+        if (ccl::global_data::env().enable_kernel_profile && sched->coll_param.stream) {
+            sched->master_sched->get_kernel_timer().set_deps_start_time(
+                ccl::ze::calculate_global_time(sched->coll_param.stream->get_ze_device()));
+        }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
     }
 
     void update() override {
@@ -29,6 +35,12 @@ public:
 
         if (all_completed) {
             status = ccl_sched_entry_status_complete;
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+            if (ccl::global_data::env().enable_kernel_profile && sched->coll_param.stream) {
+                sched->master_sched->get_kernel_timer().set_deps_end_time(
+                    ccl::ze::calculate_global_time(sched->coll_param.stream->get_ze_device()));
+            }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
         }
     }
 

@@ -13,89 +13,35 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "sched/entry/reduce_local_entry.hpp"
-
-#include "common/comm/l0/modules/kernel_utils.hpp"
+#include "comp/comp.hpp"
 #include "common/datatype/datatype.hpp"
 #include "common/stream/stream.hpp"
-#include "common/utils/sycl_utils.hpp"
-#include "sched/entry/gpu/ze_primitives.hpp"
-#include "sched/entry/gpu/ze_cache.hpp"
+#include "sched/entry/reduce_local_entry.hpp"
 #include "sched/queue/queue.hpp"
 
-#include <string>
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+#include "common/utils/sycl_utils.hpp"
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
 using namespace ccl;
+
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+
 using namespace ccl::ze;
-
-void reduce_local_entry::init() {
-    if (ze_base_entry::is_initialized) {
-        return;
-    }
-
-    LOG_DEBUG("initialization");
-
-    ze_base_entry::init(init_mode::compute);
-
-    ccl::global_data::get().ze_cache->get(context, device, "kernels.spv", &module);
-
-    kernel_name =
-        "reduce_local_inplace_kernel_" + to_string(dtype.idx()) + "_" + ccl_reduction_to_str(op);
-    ccl::global_data::get().ze_cache->get(worker_idx, module, kernel_name, &kernel);
-    LOG_DEBUG("get kernel: name: ", kernel_name);
-
-    ze_group_size_t group_size;
-    get_suggested_group_size(kernel, in_cnt, &group_size);
-    LOG_DEBUG("suggested group size: ", to_string(group_size));
-
-    get_suggested_group_count(group_size, in_cnt, &group_count);
-    LOG_DEBUG("suggested group count: ", to_string(group_count));
-
-    ZE_CALL(zeKernelSetGroupSize,
-            (kernel, group_size.groupSizeX, group_size.groupSizeY, group_size.groupSizeZ));
-
-    size_t bytes = in_cnt * dtype.size();
-    in_buf_ptr = in_buf.get_ptr(bytes);
-    inout_buf_ptr = inout_buf.get_ptr(bytes);
-    ze_kernel_args_t kernel_args = { { sizeof(in_cnt), &in_cnt },
-                                     { sizeof(in_buf_ptr), &in_buf_ptr },
-                                     { sizeof(inout_buf_ptr), &inout_buf_ptr } };
-
-    LOG_DEBUG("kernel ", kernel, " args:\n", to_string(kernel_args));
-    set_kernel_args(kernel, kernel_args);
-
-    ZE_CALL(zeCommandListAppendLaunchKernel,
-            (ze_base_entry::comp_primitives.list,
-             kernel,
-             &group_count,
-             ze_base_entry::entry_event,
-             0,
-             nullptr));
-    ZE_CALL(zeCommandListClose, (ze_base_entry::comp_primitives.list));
-
-    LOG_DEBUG("initialization complete");
-}
-
-void reduce_local_entry::update() {
-    CCL_THROW_IF_NOT(use_device);
-
-    ze_base_entry::update();
-    if (status == ccl_sched_entry_status_complete && !sched->coll_attr.to_cache) {
-        finalize();
-    }
-}
 
 void reduce_local_entry::check_use_device() {
     use_device = false;
-    ccl_stream* stream = (ccl_stream*)sched->coll_param.stream;
-    if (fn || !stream)
+    ccl_stream* stream = sched->coll_param.stream;
+    if (fn || !stream) {
         return;
+    }
 
     size_t bytes = in_cnt * dtype.size();
-    sycl::queue* q = stream->get_native_stream(sched->queue->get_idx());
-    CCL_THROW_IF_NOT(q, "null sycl queue");
-    auto in_ptr_type = sycl::get_pointer_type(in_buf.get_ptr(bytes), q->get_context());
-    auto inout_ptr_type = sycl::get_pointer_type(inout_buf.get_ptr(bytes), q->get_context());
+    auto sycl_stream = stream->get_native_stream(worker_idx);
+    CCL_THROW_IF_NOT(sycl_stream, "null sycl queue");
+    auto in_ptr_type = sycl::get_pointer_type(in_buf.get_ptr(bytes), sycl_stream->get_context());
+    auto inout_ptr_type =
+        sycl::get_pointer_type(inout_buf.get_ptr(bytes), sycl_stream->get_context());
 
     LOG_DEBUG("in_ptr_type: ",
               ccl::utils::usm_type_to_str(in_ptr_type),
@@ -112,23 +58,65 @@ void reduce_local_entry::check_use_device() {
 }
 
 void reduce_local_entry::start_on_device() {
-    init();
-
-    ze_base_entry::start();
-    status = ccl_sched_entry_status_started;
+    ze_reduce_local_entry::start();
 }
 
-void reduce_local_entry::finalize() {
-    if (!ze_base_entry::is_initialized) {
-        return;
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+
+reduce_local_entry::reduce_local_entry(ccl_sched* sched,
+                                       const ccl_buffer in_buf,
+                                       size_t in_cnt,
+                                       ccl_buffer inout_buf,
+                                       size_t* out_cnt,
+                                       const ccl_datatype& dtype,
+                                       ccl::reduction op)
+        :
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+          ze_reduce_local_entry(sched, in_buf, in_cnt, inout_buf, out_cnt, dtype, op),
+#else // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+          sched_entry(sched),
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+          in_buf(in_buf),
+          in_cnt(in_cnt),
+          inout_buf(inout_buf),
+          out_cnt(out_cnt),
+          dtype(dtype),
+          op(op),
+          fn(sched->coll_attr.reduction_fn) {
+    CCL_THROW_IF_NOT(op != ccl::reduction::custom || fn,
+                     "custom reduction requires user provided callback",
+                     ", op ",
+                     ccl_reduction_to_str(op),
+                     ", fn ",
+                     fn);
+}
+
+void reduce_local_entry::start_on_host() {
+    size_t bytes = in_cnt * dtype.size();
+    size_t offset = inout_buf.get_offset();
+    const fn_context context = { sched->coll_attr.match_id.c_str(), offset };
+    ccl::status comp_status = ccl_comp_reduce(sched,
+                                              in_buf.get_ptr(bytes),
+                                              in_cnt,
+                                              inout_buf.get_ptr(bytes),
+                                              const_cast<size_t*>(out_cnt),
+                                              dtype,
+                                              op,
+                                              fn,
+                                              &context);
+    CCL_ASSERT(comp_status == ccl::status::success, "bad status ", comp_status);
+
+    status = ccl_sched_entry_status_complete;
+}
+
+void reduce_local_entry::start() {
+    check_use_device();
+    if (use_device) {
+        LOG_DEBUG("start on device");
+        start_on_device();
     }
-
-    LOG_DEBUG("finalization");
-
-    // kernel cache
-    ccl::global_data::get().ze_cache->push(worker_idx, module, kernel_name, kernel);
-
-    ze_base_entry::finalize();
-
-    LOG_DEBUG("finalization complete");
+    else {
+        LOG_DEBUG("start on host");
+        start_on_host();
+    }
 }

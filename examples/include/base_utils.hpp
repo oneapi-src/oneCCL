@@ -16,10 +16,13 @@
 #pragma once
 
 #include <algorithm>
+#include <cstdlib>
 #include <iterator>
+#include <new>
 #include <sstream>
 #include <tuple>
 #include <utility>
+#include <vector>
 
 template <int CurIndex, class T, class U, class... Args>
 struct get_tuple_elem_index {
@@ -108,6 +111,38 @@ void ccl_tuple_for_each_indexed(functor f, const FunctionArgs&... args) {
     ccl_tuple_for_each_indexed_impl<specific_tuple, 0, functor, FunctionArgs...>(
         f, is_tuple_finished_t{}, args...);
 }
+
+template <class T, size_t align>
+struct aligned_allocator {
+    using value_type = T;
+    using pointer = T*;
+
+    template <class U>
+    struct rebind {
+        using other = aligned_allocator<U, align>;
+    };
+
+    aligned_allocator() = default;
+    ~aligned_allocator() = default;
+
+    template <class U, size_t Ualign>
+    constexpr aligned_allocator(const aligned_allocator<U, Ualign>&) noexcept {}
+
+    inline pointer allocate(size_t n) {
+        void* ptr = aligned_alloc(align, sizeof(value_type) * n);
+        if (!ptr) {
+            throw std::bad_alloc();
+        }
+        return reinterpret_cast<pointer>(ptr);
+    }
+
+    inline void deallocate(pointer ptr, size_t size) noexcept {
+        free(ptr);
+    }
+};
+
+template <class T, size_t align = 4 * 1024>
+using aligned_vector = std::vector<T, aligned_allocator<T, align>>;
 
 namespace utils {
 

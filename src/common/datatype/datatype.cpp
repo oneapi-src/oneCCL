@@ -109,10 +109,9 @@ ccl_datatype_storage::ccl_datatype_storage() {
         const ccl_datatype& dtype = get(idx);
         const std::string& dtype_name = name(dtype);
 
+        CCL_THROW_IF_NOT(dtype == idx, "unexpected datatype idx ", dtype.idx(), ", expected ", idx);
         CCL_THROW_IF_NOT(
-            dtype.idx() == idx, "unexpected datatype idx ", dtype.idx(), ", expected ", idx);
-        CCL_THROW_IF_NOT(
-            dtype.idx() == idx, "unexpected datatype size ", dtype.size(), ", expected ", size);
+            dtype.size() == size, "unexpected datatype size ", dtype.size(), ", expected ", size);
         CCL_THROW_IF_NOT(!dtype_name.compare(name_str),
                          "unexpected datatype name ",
                          dtype_name,

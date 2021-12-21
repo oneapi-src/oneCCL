@@ -21,7 +21,7 @@
 class alltoallv_entry : public base_coll_entry {
 public:
     static constexpr const char* class_name() noexcept {
-        return "alltoallv";
+        return "ALLTOALLV";
     }
 
     alltoallv_entry() = delete;
@@ -79,14 +79,14 @@ public:
 
         LOG_DEBUG("alltoallv entry req ", &req, ", sum_send_bytes ", sum_send_bytes);
 
-        atl_status_t atl_status = comm->atl->atl_ep_alltoallv(sched->bin->get_atl_ep(),
-                                                              send_buf.get_ptr(sum_send_bytes),
-                                                              send_bytes,
-                                                              send_offsets,
-                                                              recv_buf.get_ptr(sum_recv_bytes),
-                                                              recv_bytes,
-                                                              recv_offsets,
-                                                              &req);
+        atl_status_t atl_status = comm->get_atl_comm()->alltoallv(sched->bin->get_atl_ep(),
+                                                                  send_buf.get_ptr(sum_send_bytes),
+                                                                  send_bytes,
+                                                                  send_offsets,
+                                                                  recv_buf.get_ptr(sum_recv_bytes),
+                                                                  recv_bytes,
+                                                                  recv_offsets,
+                                                                  &req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("alltoallv entry failed. atl_status: ", atl_status_to_str(atl_status));
@@ -96,15 +96,13 @@ public:
     }
 
     void update() override {
-        int req_status;
-        atl_status_t atl_status =
-            comm->atl->atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
+        atl_status_t atl_status = comm->get_atl_comm()->check(sched->bin->get_atl_ep(), &req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("alltoallv entry failed. atl_status: ", atl_status_to_str(atl_status));
         }
 
-        if (req_status) {
+        if (req.is_completed) {
             status = ccl_sched_entry_status_complete;
         }
     }

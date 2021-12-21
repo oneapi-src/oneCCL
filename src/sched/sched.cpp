@@ -20,9 +20,12 @@
 #include "sched/queue/queue.hpp"
 #include "sched/sched.hpp"
 
-ccl_sched::ccl_sched(const ccl_coll_param& coll_param, ccl_request* master_request)
-        : ccl_sched_base(coll_param) {
-    req = master_request;
+ccl_sched::ccl_sched(const ccl_sched_create_param& param,
+                     ccl_request* master_request,
+                     ccl_master_sched* master_sched)
+        : ccl_sched_base(param),
+          req(master_request),
+          master_sched(master_sched) {
     strict_order = ccl::global_data::env().enable_strict_order;
 }
 
@@ -111,7 +114,7 @@ void ccl_sched::complete() {
                 ss << " count:" << profile_param->get_send_count();
             }
 
-            ss << " time(uses):\ntotal: " << timer.str() << "\n";
+            ss << " time(usec):\ntotal: " << timer.str() << "\n";
             for (size_t idx = 0; idx < entries.size(); ++idx) {
                 ss << "[" << idx << "] " << entries[idx]->name() << ": "
                    << entries[idx]->timer.str() << "\n";
@@ -122,21 +125,40 @@ void ccl_sched::complete() {
     }
 
     if (!coll_attr.to_cache) {
-        /* don't wait sched dtor to free memory */
-        free_memory();
+        /* don't wait sched dtor to clear memory */
+        clear_memory();
     }
+
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    // we keep time measurements in our master sched, if this sched belongs to it
+    // and all the timestamps are ready, print the data.
+    // also check for stream parameter in order to skip non-kernel runs
+    if (ccl::global_data::env().enable_kernel_profile && master_sched && coll_param.stream) {
+        // here we reset the timer every time a corresponding sched is completed
+        // the last one will indicate the actual timestamp(previous ones won't be
+        // printed as not all the measurements are set by that time)
+        master_sched->get_kernel_timer().set_operation_end_time(
+            ccl::ze::calculate_global_time(coll_param.stream->get_ze_device()));
+
+        if (master_sched->print_kernel_timer())
+            master_sched->reset_kernel_timer();
+    }
+#endif // CCL_ENABLE_SYCL
 
     req->complete();
 }
 
-void ccl_sched::renew(bool need_update_id /* = false*/) {
+void ccl_sched::renew(bool need_update_id) {
     if (need_update_id) {
         update_id();
     }
+
+    start_idx = 0;
+
     if (ccl::global_data::env().sched_profile) {
         timer.start();
     }
-    start_idx = 0;
+
     for (size_t idx = 0; idx < entries.size(); idx++) {
         entries[idx].get()->reset(idx);
     }

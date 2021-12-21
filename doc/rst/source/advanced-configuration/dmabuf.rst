@@ -1,12 +1,11 @@
-.. _`here`: https://github.com/ofiwg/libfabric/releases/tag/v1.13.1
+.. _`here`: https://github.com/ofiwg/libfabric/releases/tag/v1.13.2
 .. _`documentation`: https://one-api.gitlab-pages.devtools.intel.com/level_zero/core/PROG.html#affinity-mask
 
 =====================================
 Enabling OFI/verbs dmabuf support
 =====================================
 
-|product_short| provides experimental support for device memory transfers using Linux dmabuf,
-which is exposed through OFI API for verbs provider.
+|product_short| provides experimental support for data transfers between Intel GPU memory and NIC using Linux dmabuf, which is exposed through OFI API for verbs provider.
 
 
 Requirements
@@ -17,12 +16,12 @@ Requirements
 - level-zero-devel package
 
 
-Limitations
-###########
+Usage
+#####
 
-- Only first tile should be used from each GPU card.
-  For example, if GPU with 2 tiles is used then set ZE_AFFINITY_MASK=0.0.
-  More information about GPU selection can be found in level-zero `documentation`_.
+|product_short|, OFI and OFI/verbs from |base_tk| support device memory transfers. Refer to `Run instructions`__ for usage.
+
+If you want to build software components from sources, refer to `Build instructions`__.
 
 
 Build instructions
@@ -33,10 +32,10 @@ OFI
 
 ::
 
-    git clone --single-branch --branch v1.13.1 https://github.com/ofiwg/libfabric.git
+    git clone --single-branch --branch v1.13.2 https://github.com/ofiwg/libfabric.git
     cd libfabric
     ./autogen.sh
-    ./configure --prefix=<ofi_install_dir> --enable-verbs=<rdma_core_install_dir> --enable-ze-dlopen=yes
+    ./configure --prefix=<ofi_install_dir> --enable-verbs=<rdma_core_install_dir> --with-ze=<level_zero_install_dir> --enable-ze-dlopen=yes
     make -j install
 
 .. note::
@@ -48,17 +47,34 @@ OFI
 
 ::
 
-    cmake -DCMAKE_INSTALL_PREFIX=<ccl_install_dir> -DLIBFABRIC_DIR=<ofi_install_dir> -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=dpcpp -DCOMPUTE_BACKEND=dpcpp_level_zero -DENABLE_OFI_HMEM=1 ..
+    cmake -DCMAKE_INSTALL_PREFIX=<ccl_install_dir> -DLIBFABRIC_DIR=<ofi_install_dir> -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=dpcpp -DCOMPUTE_BACKEND=dpcpp_level_zero -DENABLE_OFI_HMEM=1 ..
     make -j install
 
 
 Run instructions
 ################
 
-Run allreduce test with ring algorithm and SYCL USM device buffers.
+1. Set the environment.
 
-::
+   If |base_tk| is used:
 
-    source <ccl_install_dir>/env/setvars.sh
-    export LD_LIBRARY_PATH=<ofi_install_path>/lib:${LD_LIBRARY_PATH}
-    CCL_ATL_TRANSPORT=ofi CCL_ATL_HMEM=1 CCL_ALLREDUCE=ring FI_PROVIDER=verbs mpiexec -n 2 <ccl_install_dir>/examples/sycl/sycl_allreduce_usm_test gpu device
+   ::
+
+       source <toolkit_install_dir>/setvars.sh
+
+   If software components are built from sources:
+
+   ::
+
+       source <ccl_install_dir>/env/setvars.sh
+       export LD_LIBRARY_PATH=<ofi_install_path>/lib:${LD_LIBRARY_PATH}
+
+2. Run allreduce test with ring algorithm and SYCL USM device buffers:
+
+   ::
+
+       export CCL_ATL_TRANSPORT=ofi
+       export CCL_ATL_HMEM=1
+       export CCL_ALLREDUCE=ring
+       export FI_PROVIDER=verbs
+       mpiexec -n 2 <ccl_install_dir>/examples/sycl/sycl_allreduce_usm_test gpu device

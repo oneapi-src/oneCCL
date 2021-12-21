@@ -19,112 +19,63 @@ set (EXTENSIONS_SRC)
 
 if (CCL_ENABLE_SYCL)
     list (APPEND EXTENSIONS_SRC
-                    native_device_api/l0/utils.cpp
-                    native_device_api/sycl/export.cpp
-                    native_device_api/interop_utils.cpp
+        native_device_api/l0/utils.cpp
+        native_device_api/sycl/export.cpp
+        native_device_api/interop_utils.cpp
         )
 endif(CCL_ENABLE_SYCL)
 
-if (MULTI_GPU_SUPPORT)
-list (APPEND EXTENSIONS_SRC
-                    ccl_cpp_utils.cpp
-
-                    native_device_api/l0/base.cpp
-                    native_device_api/l0/device.cpp
-                    native_device_api/l0/context.cpp
-                    native_device_api/l0/event_pool.cpp
-                    native_device_api/l0/subdevice.cpp
-                    native_device_api/l0/driver.cpp
-                    native_device_api/l0/export.cpp
-                    native_device_api/l0/platform.cpp
-                    native_device_api/l0/utils.cpp
-                    native_device_api/l0/primitives.cpp
-                    native_device_api/interop_utils.cpp
-
-                    common/comm/l0/comm_context.cpp
-                    common/comm/l0/comm_context_storage.cpp
-                    common/comm/l0/context_comm_addr.cpp
-
-                    common/comm/l0/devices/ccl_gpu_base_comm.cpp
-                    common/comm/l0/devices/ccl_gpu_comm.cpp
-                    common/comm/l0/devices/ccl_virtual_gpu_comm.cpp
-                    common/comm/l0/devices/ccl_ipc_gpu_comm.cpp
-
-                    common/comm/l0/devices/communication_structs/connection.cpp
-                    common/comm/l0/devices/communication_structs/ipc_connection.cpp
-                    common/comm/l0/devices/communication_structs/ipc_server.cpp
-                    common/comm/l0/devices/communication_structs/ipc_client.cpp
-
-                    common/comm/l0/context/process_group_ctx.cpp
-                    common/comm/l0/context/thread_group_ctx.cpp
-                    common/comm/l0/context/device_group_ctx.cpp
-                    common/comm/l0/context/device_storage.cpp
-
-                    common/comm/l0/topology/topology_serializer.cpp
-                    common/comm/l0/topology/ring/device_group_ring_creator.cpp
-                    common/comm/l0/topology/ring/thread_group_ring_creator.cpp
-                    common/comm/l0/topology/ring/process_group_ring_creator.cpp
-                    common/comm/l0/topology/topology_construction_utils.cpp
-
-                    common/comm/l0/context/scale/ipc/ipc_ctx_session.cpp
-                    common/comm/l0/context/scale/ipc/ipc_ctx_utils.cpp
-                    common/comm/l0/context/scale/ipc/ipc_session_key.cpp
-
-                    common/comm/l0/context/scale/base/base_session.cpp
-                    common/comm/l0/context/scale/scale_out/scale_out_session.cpp
-
-                    common/comm/l0/gpu_comm_attr.cpp
-                    common/comm/l0/modules/base_entry_module.cpp
-                    common/comm/l0/modules/modules_source_data.cpp
-                    common/comm/l0/modules/kernel_utils.cpp
-
-                    sched/gpu_sched.cpp
-                    sched/gpu_concurrent_sched.cpp
-                    sched/entry/gpu/ze_cache.cpp
-                    sched/entry/gpu/ze_call.cpp
-                    sched/entry/gpu/ze_primitives.cpp)
-endif(MULTI_GPU_SUPPORT)
-
-if (CCL_ENABLE_SYCL AND MULTI_GPU_SUPPORT)
+if (CCL_ENABLE_SYCL AND CCL_ENABLE_ZE)
     list (APPEND EXTENSIONS_SRC
-                    sched/entry/gpu/ze_base_entry.cpp
-                    sched/entry/gpu/ze_allreduce_entry.cpp
-                    sched/entry/gpu/ze_copy_entry.cpp
-                    sched/entry/gpu/ze_handle_exchange_entry.cpp
-                    sched/entry/gpu/ze_event_signal_entry.cpp
-                    sched/entry/gpu/ze_event_wait_entry.cpp
-                    sched/entry/gpu/ze_reduce_entry.cpp
-                    sched/entry/reduce_local_entry.cpp
-                    sched/ze_handle_manager.cpp
+
+        ccl_cpp_utils.cpp
+
+        native_device_api/l0/base.cpp
+        native_device_api/l0/device.cpp
+        native_device_api/l0/context.cpp
+        native_device_api/l0/event_pool.cpp
+        native_device_api/l0/subdevice.cpp
+        native_device_api/l0/driver.cpp
+        native_device_api/l0/export.cpp
+        native_device_api/l0/platform.cpp
+        native_device_api/l0/utils.cpp
+        native_device_api/l0/primitives.cpp
+        native_device_api/interop_utils.cpp
+
+        sched/entry/ze/allreduce/ze_a2a_allreduce_entry.cpp
+        sched/entry/ze/allreduce/ze_onesided_allreduce_entry.cpp
+        sched/entry/ze/allreduce/ze_ring_allreduce_entry.cpp
+        sched/entry/ze/ze_a2a_allgatherv_entry.cpp
+        sched/entry/ze/ze_a2a_gatherv_entry.cpp
+        sched/entry/ze/ze_a2a_reduce_scatter_entry.cpp
+        sched/entry/ze/ze_base_entry.cpp
+        sched/entry/ze/ze_barrier_entry.cpp
+        sched/entry/ze/ze_cache.cpp
+        sched/entry/ze/ze_call.cpp
+        sched/entry/ze/ze_copy_entry.cpp
+        sched/entry/ze/ze_handle_exchange_entry.cpp
+        sched/entry/ze/ze_event_signal_entry.cpp
+        sched/entry/ze/ze_event_wait_entry.cpp
+        sched/entry/ze/ze_onesided_reduce_entry.cpp
+        sched/entry/ze/ze_primitives.cpp
+        sched/entry/ze/ze_reduce_local_entry.cpp
+
+        sched/ze/ze_event_manager.cpp
+        sched/ze/ze_handle_manager.cpp
+        sched/ze/ze_ipc_event_pool_manager.cpp
+        sched/ze/ze_list_manager.cpp
+
+        coll/coll_util.cpp
         )
-endif(CCL_ENABLE_SYCL AND MULTI_GPU_SUPPORT)
+endif(CCL_ENABLE_SYCL AND CCL_ENABLE_ZE)
 
 set(CCL_SRC
-    ccl_cpp_communicator.cpp
-    ccl_cpp_environment.cpp
-    ccl_api_functions.cpp
-    ccl_app_api_coll_attr.cpp
-    ccl_app_api_comm_attr.cpp
-    ccl_app_api_comm_split_attr.cpp
-    ccl_app_api_datatype_attr.cpp
-    ccl_app_api_kvs_attr.cpp
-    ccl_app_api_event.cpp
-    ccl_app_api_init_attr.cpp
-    ccl_cpp_kvs.cpp
-    ccl_cpp_device.cpp
-    ccl_cpp_stream.cpp
-    ccl_cpp_context.cpp
-    ccl_cpp_utils.cpp
-    ccl_empty_attr.cpp
-    ccl_empty_coll_attr.cpp
-    ccl_empty_comm_attr.cpp
-    ccl_empty_init_attr.cpp
-    ccl_empty_comm_split_attr.cpp
-    ccl_empty_kvs_attr.cpp
-    ccl_empty_stream.cpp
-    native_device_api/sycl_l0/export.cpp
-    native_device_api/empty/export.cpp
-    atl/atl_wrapper.cpp
+
+    atl/atl_base_comm.cpp
+    atl/atl_def.cpp
+    atl/ofi/atl_ofi_comm.cpp
+    atl/mpi/atl_mpi_comm.cpp
+    atl/mpi/atl_mpi_global_data.cpp
     atl/mpi/atl_mpi.cpp
     atl/ofi/atl_ofi.cpp
     atl/ofi/atl_ofi_helper.cpp
@@ -134,16 +85,15 @@ set(CCL_SRC
     atl/util/pm/pmi_resizable_rt/pmi_resizable/helper.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs_keeper.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable/pmi_listener.cpp
-    atl/util/pm/pmi_resizable_rt/pmi_resizable/rank_list.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable/request_wrappers_k8s.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable/resizable_pmi.cpp
-    atl/util/pm/pmi_resizable_rt/pmi_resizable/shift_list.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs/internal_kvs.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs/internal_kvs_server.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs/users_kvs.cpp
     atl/util/pm/pmi_rt/pmi_simple.cpp
     atl/util/pm/pmi_rt/pmi/simple_pmi.c
     atl/util/pm/pmi_rt/pmi/simple_pmiutil.c
+
     coll/coll_common_attributes.cpp
     coll/ccl_allgather_op_attr.cpp
     coll/ccl_allreduce_op_attr.cpp
@@ -179,59 +129,93 @@ set(CCL_SRC
     coll/selection/selector_reduce.cpp
     coll/selection/selector_reduce_scatter.cpp
     coll/selection/selector_sparse_allreduce.cpp
+
+    common/comm/atl_tag.cpp
+    common/comm/comm.cpp
+    common/comm/compiler_comm_interface_dispatcher.cpp
+    common/context/context.cpp
+    common/datatype/datatype.cpp
+    common/device/device.cpp
+    common/env/env.cpp
+    common/event/ccl_event.cpp
+    common/event/impls/host_event.cpp
+    common/event/impls/native_event.cpp
+    common/framework/framework.cpp
+    common/global/global.cpp
+    common/log/log.cpp
+    common/request/request.cpp
+    common/stream/stream.cpp
+    common/utils/memcpy.cpp
+    common/utils/spinlock.cpp
+    common/utils/version.cpp
+    common/utils/yield.cpp
+
     comp/bf16/bf16.cpp
     comp/bf16/bf16_intrisics.cpp
     comp/comp.cpp
     comp/fp16/fp16.cpp
     comp/fp16/fp16_intrisics.cpp
+
+    exec/exec.cpp
+    exec/thread/base_thread.cpp
+    exec/thread/listener.cpp
+    exec/thread/service_worker.cpp
+    exec/thread/worker.cpp
+
+    fusion/fusion.cpp
+
     hwloc/hwloc_wrapper.cpp
-    sched/sched.cpp
-    sched/buffer_cache.cpp
-    sched/extra_sched.cpp
-    sched/master_sched.cpp
-    sched/sched_base.cpp
-    sched/sched_timer.cpp
+
+    native_device_api/sycl_l0/export.cpp
+    native_device_api/empty/export.cpp
+
+    parallelizer/parallelizer.cpp
+
+    sched/buffer/buffer_cache.cpp
+    sched/buffer/buffer_manager.cpp
     sched/cache/cache.cpp
     sched/cache/key.cpp
-    sched/queue/flow_control.cpp
-    sched/queue/strict_queue.cpp
-    sched/queue/queue.cpp
     sched/entry/coll/coll_entry.cpp
     sched/entry/coll/coll_entry_helper.cpp
     sched/entry/copy/copy_entry.cpp
     sched/entry/copy/copy_helper.cpp
     sched/entry/entry.cpp
     sched/entry/factory/chunked_entry_factory.cpp
-    exec/exec.cpp
-    exec/thread/base_thread.cpp
-    exec/thread/listener.cpp
-    exec/thread/service_worker.cpp
-    exec/thread/worker.cpp
-    fusion/fusion.cpp
-    parallelizer/parallelizer.cpp
+    sched/entry/recv_copy_entry.cpp
+    sched/entry/reduce_local_entry.cpp
+    sched/queue/flow_control.cpp
+    sched/queue/queue.cpp
+    sched/queue/strict_queue.cpp
+    sched/extra_sched.cpp
+    sched/master_sched.cpp
+    sched/sched.cpp
+    sched/sched_base.cpp
+    sched/sched_timer.cpp
+
     unordered_coll/unordered_coll.cpp
 
-    common/comm/atl_tag.cpp
-    common/comm/comm.cpp
-    common/comm/compiler_comm_interface_dispatcher.cpp
-    common/comm/host_communicator/host_communicator.cpp
-
-    common/context/context.cpp
-    common/datatype/datatype.cpp
-    common/device/device.cpp
-    common/event/ccl_event.cpp
-    common/stream/stream.cpp
-
-    common/env/env.cpp
-    common/global/global.cpp
-    common/log/log.cpp
-    common/event/impls/host_event.cpp
-    common/event/impls/native_event.cpp
-    common/framework/framework.cpp
-    common/request/request.cpp
-    common/utils/spinlock.cpp
-    common/utils/version.cpp
-    common/utils/yield.cpp
+    ccl_api_functions.cpp
+    ccl_app_api_coll_attr.cpp
+    ccl_app_api_comm_attr.cpp
+    ccl_app_api_comm_split_attr.cpp
+    ccl_app_api_datatype_attr.cpp
+    ccl_app_api_event.cpp
+    ccl_app_api_init_attr.cpp
+    ccl_app_api_kvs_attr.cpp
+    ccl_cpp_communicator.cpp
+    ccl_cpp_context.cpp
+    ccl_cpp_device.cpp
+    ccl_cpp_environment.cpp
+    ccl_cpp_kvs.cpp
+    ccl_cpp_stream.cpp
+    ccl_cpp_utils.cpp
+    ccl_empty_attr.cpp
+    ccl_empty_coll_attr.cpp
+    ccl_empty_comm_attr.cpp
+    ccl_empty_comm_split_attr.cpp
+    ccl_empty_init_attr.cpp
+    ccl_empty_kvs_attr.cpp
+    ccl_empty_stream.cpp
 
     ${EXTENSIONS_SRC})
 
@@ -262,6 +246,8 @@ if (${CMAKE_C_COMPILER_ID} STREQUAL "Intel" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL
         set(SRC_C_FLAGS "${SRC_C_FLAGS} -prof-gen=srcpos -prof-src-root-cwd")
         set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -prof-gen=srcpos -prof-src-root-cwd")
     endif()
+    #To suppress for 'offsetof applied to non-POD (Plain Old Data) types is nonstandar'
+    set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -diag-disable=1875")
 endif()
 
 list(APPEND SRC_INCLUDE_DIRS
@@ -308,11 +294,6 @@ endif()
 add_library(ccl SHARED $<TARGET_OBJECTS:ccl-objects>)
 target_include_directories(ccl PUBLIC ${SRC_INCLUDE_DIRS})
 
-# link with release_mt libmpi.so for oneAPI Base toolkit
-# libccl.so -> cpu_icc/cpu_gpu_dpcpp -> lib -> latest -> ccl -> mpi -> ...
-set(ONEAPI_IMPI_RPATH "'$ORIGIN'/../../../../mpi/latest/lib/release_mt/")
-set_target_properties(ccl PROPERTIES LINK_FLAGS "-Wl,-rpath,${ONEAPI_IMPI_RPATH}")
-
 target_link_libraries(ccl PUBLIC ${SRC_LINK_LIBS})
 
 if (NOT LIB_SO_VERSION AND NOT LIB_MAJOR_VERSION)
@@ -330,7 +311,6 @@ message(STATUS "SRC LINK_LIBS: ${SRC_LINK_LIBS}")
 
 install(TARGETS ccl LIBRARY DESTINATION ${CCL_INSTALL_LIB})
 install(FILES
-    "${PROJECT_SOURCE_DIR}/cmake/FindComputeCpp.cmake"
     "${PROJECT_SOURCE_DIR}/cmake/FindIntelSYCL.cmake"
     "${PROJECT_SOURCE_DIR}/cmake/FindIntelSYCL_level_zero.cmake"
     "${PROJECT_SOURCE_DIR}/cmake/Findlevel_zero.cmake"

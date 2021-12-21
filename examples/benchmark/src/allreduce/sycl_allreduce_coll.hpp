@@ -34,8 +34,8 @@ struct sycl_allreduce_coll : sycl_base_coll<Dtype, allreduce_strategy_impl> {
                                    ccl::communicator& comm,
                                    ccl::stream& stream,
                                    size_t rank_idx) override {
-        Dtype sbuf_expected = comm.rank();
-        Dtype rbuf_expected = (comm.size() - 1) * ((float)comm.size() / 2);
+        Dtype sbuf_expected = get_val<Dtype>(static_cast<float>(comm.rank()));
+        Dtype rbuf_expected = get_val<Dtype>((comm.size() - 1) * ((float)comm.size() / 2));
 
         size_t send_bytes = elem_count * base_coll::get_dtype_size();
         size_t recv_bytes = elem_count * base_coll::get_dtype_size();
@@ -66,7 +66,6 @@ struct sycl_allreduce_coll : sycl_base_coll<Dtype, allreduce_strategy_impl> {
             }
 
             Dtype value;
-
             for (size_t e_idx = 0; e_idx < elem_count; e_idx++) {
                 value = host_send_buf[e_idx];
                 if (!base_coll::get_inplace() && (value != sbuf_expected)) {

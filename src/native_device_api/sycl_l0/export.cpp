@@ -14,7 +14,7 @@
  limitations under the License.
 */
 #include "oneapi/ccl/config.h"
-#if defined(CCL_ENABLE_SYCL) && defined(MULTI_GPU_SUPPORT)
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
 
 #include "oneapi/ccl/native_device_api/sycl_l0/export.hpp"
 #include "oneapi/ccl/type_traits.hpp"
@@ -66,7 +66,7 @@ generic_device_type<cl_backend_type::dpcpp_sycl_l0>::generic_device_type(
         std::find_if(platforms.begin(), platforms.end(), [](const cl::sycl::platform& pl) {
             return pl.get_info<cl::sycl::info::platform::name>().find("Level-Zero") !=
                    std::string::npos;
-            //or platform.get_backend() == cl::sycl::backend::level_zero
+            //or platform.get_backend() == cl::sycl::backend::ext_oneapi_level_zero
         });
     if (platform_it == platforms.end()) {
         std::stringstream ss;
@@ -181,4 +181,4 @@ generic_platform_type<cl_backend_type::dpcpp_sycl_l0>::get() const noexcept {
     return platform;
 }
 } // namespace ccl
-#endif //#if defined(CCL_ENABLE_SYCL) && defined (MULTI_GPU_SUPPORT)
+#endif //#if defined(CCL_ENABLE_SYCL) && defined (CCL_ENABLE_ZE)

@@ -17,13 +17,13 @@
 #include "oneapi/ccl/config.h"
 
 #ifdef CCL_ENABLE_SYCL
-#ifdef MULTI_GPU_SUPPORT
+#ifdef CCL_ENABLE_ZE
 #include "sycl_l0/export.hpp"
 #else
 #include "sycl/export.hpp"
 #endif
 #else
-#ifdef MULTI_GPU_SUPPORT
+#ifdef CCL_ENABLE_ZE
 #include "l0/export.hpp"
 #else
 #include "empty/export.hpp"

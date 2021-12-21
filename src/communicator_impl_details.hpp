@@ -62,59 +62,18 @@ struct comm_impl_base_dispatch {
         //     throw ccl::unimplemented("API", "create_communicators", "for multiple devices");
         // }
     }
-
-    template <class DeviceType, class ContextType>
-    static vector_class<communicator> create_communicators_selector(
-        const size_t cluster_devices_size, /*global devices count*/
-        const vector_class<pair_class<int, DeviceType>>& local_rank_device_map,
-        const ContextType& context,
-        shared_ptr_class<ikvs_wrapper> kvs) {
-        map_class<int, DeviceType> converted_map;
-        std::transform(local_rank_device_map.begin(),
-                       local_rank_device_map.end(),
-                       std::inserter(converted_map, converted_map.end()),
-                       [](const pair_class<int, DeviceType>& val) {
-                           return std::make_pair(val.first, val.second);
-                       });
-        if (local_rank_device_map.size() != converted_map.size()) {
-            std::stringstream ss;
-            ss << "found duplicated ranks in `local_rank_device_map`:\n";
-            for (const auto& v : local_rank_device_map) {
-                ss << std::to_string(v.first) << ", ";
-            }
-            throw ccl::invalid_argument("API", "create_communicators", ss.str());
-        }
-        return impl::template create_communicators_selector(
-            cluster_devices_size,
-            converted_map,
-            context_extractor<ContextType>::extract(context),
-            kvs);
-    }
 };
 
 template <cl_backend_type type>
 struct comm_impl_dispatch_selector {};
 
-#if !defined(CCL_ENABLE_SYCL) and !defined(MULTI_GPU_SUPPORT)
+#if !defined(CCL_ENABLE_SYCL) and !defined(CCL_ENABLE_ZE)
 template <>
 struct comm_impl_dispatch_selector<cl_backend_type::empty_backend>
         : public comm_impl_base_dispatch<
               comm_impl_dispatch_selector<cl_backend_type::empty_backend>> {
     using base_t =
         comm_impl_base_dispatch<comm_impl_dispatch_selector<cl_backend_type::empty_backend>>;
-
-    template <class DeviceType, class ContextType>
-    static vector_class<communicator> create_communicators_selector(
-        const size_t cluster_devices_size, /*global devices count*/
-        const vector_class<pair_class<int, DeviceType>>& local_rank_device_map,
-        const ContextType& context,
-        shared_ptr_class<ikvs_wrapper> kvs) {
-        return base_t::template create_communicators_selector<DeviceType>(
-            cluster_devices_size,
-            local_rank_device_map,
-            context_extractor<ContextType>::extract(context),
-            kvs);
-    }
 
     template <class DeviceType, class ContextType>
     static vector_class<communicator> create_communicators_selector(
@@ -143,66 +102,12 @@ struct comm_impl_dispatch_selector<cl_backend_type::empty_backend>
 };
 #endif
 
-#if defined(CCL_ENABLE_SYCL) and !defined(MULTI_GPU_SUPPORT)
+#if defined(CCL_ENABLE_SYCL) and !defined(CCL_ENABLE_ZE)
 template <>
 struct comm_impl_dispatch_selector<cl_backend_type::dpcpp_sycl>
         : public comm_impl_base_dispatch<comm_impl_dispatch_selector<cl_backend_type::dpcpp_sycl>> {
     using base_t =
         comm_impl_base_dispatch<comm_impl_dispatch_selector<cl_backend_type::dpcpp_sycl>>;
-
-    template <class DeviceType, class ContextType>
-    static vector_class<communicator> create_communicators_selector(
-        const size_t cluster_devices_size, /*global devices count*/
-        const vector_class<pair_class<int, DeviceType>>& local_rank_device_map,
-        const ContextType& context,
-        shared_ptr_class<ikvs_wrapper> kvs) {
-        return base_t::template create_communicators_selector<DeviceType>(
-            cluster_devices_size,
-            local_rank_device_map,
-            context_extractor<ContextType>::extract(context),
-            kvs);
-    }
-
-    template <class ContextType>
-    static vector_class<communicator> create_communicators_selector(
-        const size_t cluster_devices_size, /*global devices count*/
-        const map_class<int, ccl::device_index_type>& local_rank_device_map,
-        const ContextType& context,
-        shared_ptr_class<ikvs_wrapper> kvs) {
-        base_t::validate_contract(cluster_devices_size, local_rank_device_map.size());
-
-        map_class<int, cl::sycl::device> converted_device_map;
-        std::transform(local_rank_device_map.begin(),
-                       local_rank_device_map.end(),
-                       std::inserter(converted_device_map, converted_device_map.end()),
-                       [](const typename map_class<int, ccl::device_index_type>::value_type& val) {
-                           return std::make_pair(val.first,
-                                                 ccl::unified_device_type{ val.second }.get());
-                       });
-        return create_communicators_selector(cluster_devices_size,
-                                             converted_device_map,
-                                             context_extractor<ContextType>::extract(context),
-                                             kvs);
-    }
-
-    template <class ContextType>
-    static vector_class<communicator> create_communicators_selector(
-        const size_t cluster_devices_size, /*global devices count*/
-        const map_class<int, ccl::device>& local_rank_device_map,
-        const ContextType& context,
-        shared_ptr_class<ikvs_wrapper> kvs) {
-        map_class<int, cl::sycl::device> converted_device_map;
-        std::transform(local_rank_device_map.begin(),
-                       local_rank_device_map.end(),
-                       std::inserter(converted_device_map, converted_device_map.end()),
-                       [](const typename map_class<int, ccl::device>::value_type& val) {
-                           return std::make_pair(val.first, val.second.get_native());
-                       });
-        return create_communicators_selector(cluster_devices_size,
-                                             converted_device_map,
-                                             context_extractor<ContextType>::extract(context),
-                                             kvs);
-    }
 
     template <class ContextType>
     static vector_class<communicator> create_communicators_selector(
@@ -287,8 +192,8 @@ struct comm_impl_dispatch_selector<cl_backend_type::dpcpp_sycl>
             "Create single device communicator from SYCL device (sycl and !mgpu), after find_if rank ",
             rank);
 
-        std::shared_ptr<atl_wrapper> atl =
-            std::shared_ptr<atl_wrapper>(new atl_wrapper(cluster_devices_size, { rank }, kvs));
+        std::shared_ptr<atl_base_comm> atl =
+            atl_comm_manager::create_atl_comm(cluster_devices_size, { rank }, kvs);
 
         ccl::communicator_interface_ptr impl =
             ccl::communicator_interface::create_communicator_impl(device,
@@ -302,241 +207,25 @@ struct comm_impl_dispatch_selector<cl_backend_type::dpcpp_sycl>
         ccl::vector_class<ccl::communicator> ret;
         ret.push_back(ccl::communicator(std::move(impl)));
         return ret;
-
-        /*
-    //collect ranks
-    vector_class<int> local_thread_ranks;
-    local_thread_ranks.reserve(local_rank_device_map.size());
-    std::transform(
-        local_rank_device_map.begin(),
-        local_rank_device_map.end(),
-        std::back_inserter(local_thread_ranks),
-        [](const typename vector_class<pair_class<int, DeviceType>>::value_type& val) {
-            return val.first;
-        });
-
-    vector_class<DeviceType> local_thread_devices;
-    local_thread_devices.reserve(local_rank_device_map.size());
-    std::transform(
-        local_rank_device_map.begin(),
-        local_rank_device_map.end(),
-        std::back_inserter(local_thread_devices),
-        [](const typename vector_class<pair_class<int, DeviceType>>::value_type& val) {
-            return val.second;
-        });
-    if ()
-    auto ret = thread_group->create_communicators_group(local_thread_devices);
-    return ret;
-    return {};
-    */
     }
 };
-#endif //defined(CCL_ENABLE_SYCL) and !defined(MULTI_GPU_SUPPORT)
+#endif //defined(CCL_ENABLE_SYCL) and !defined(CCL_ENABLE_ZE)
 
-#if defined(MULTI_GPU_SUPPORT) and !defined(CCL_ENABLE_SYCL)
+#if defined(CCL_ENABLE_ZE) and !defined(CCL_ENABLE_SYCL)
 template <>
 struct comm_impl_dispatch_selector<cl_backend_type::l0>
         : public comm_impl_base_dispatch<comm_impl_dispatch_selector<cl_backend_type::l0>> {
     using base_t = comm_impl_base_dispatch<comm_impl_dispatch_selector<cl_backend_type::l0>>;
-
-    template <class DeviceType, class ContextType>
-    static vector_class<communicator> create_communicators_selector(
-        const size_t cluster_devices_size, /*global devices count*/
-        const vector_class<pair_class<int, DeviceType>>& local_rank_device_map,
-        const ContextType& context,
-        shared_ptr_class<ikvs_wrapper> kvs) {
-        return base_t::template create_communicators_selector<DeviceType>(
-            cluster_devices_size,
-            local_rank_device_map,
-            context_extractor<ContextType>::extract(context),
-            kvs);
-    }
-
-    template <class ContextType>
-    static vector_class<communicator> create_communicators_selector(
-        const size_t cluster_devices_size, /*global devices count*/
-        const map_class<int, ccl::device>& local_rank_device_map,
-        const ContextType& context,
-        shared_ptr_class<ikvs_wrapper> kvs) {
-        map_class<int, ccl::device_index_type> converted_device_map;
-        std::transform(local_rank_device_map.begin(),
-                       local_rank_device_map.end(),
-                       std::inserter(converted_device_map, converted_device_map.end()),
-                       [](const typename map_class<int, ccl::device>::value_type& val) {
-                           return std::make_pair(val.first,
-                                                 val.second.get_native()->get_device_path());
-                       });
-        return create_communicators_selector(cluster_devices_size,
-                                             converted_device_map,
-                                             context_extractor<ContextType>::extract(context),
-                                             kvs);
-    }
-
-    template <class ContextType>
-    static vector_class<communicator> create_communicators_selector(
-        const size_t cluster_devices_size, /*global devices count*/
-        const map_class<int, typename unified_device_type::ccl_native_t>& local_rank_device_map,
-        const ContextType& context,
-        shared_ptr_class<ikvs_wrapper> kvs) {
-        map_class<int, ccl::device_index_type> converted_device_map;
-        std::transform(
-            local_rank_device_map.begin(),
-            local_rank_device_map.end(),
-            std::inserter(converted_device_map, converted_device_map.end()),
-            [](const typename map_class<int, typename unified_device_type::ccl_native_t>::
-                   value_type& val) {
-                return std::make_pair(val.first, val.second->get_device_path());
-            });
-        return create_communicators_selector(cluster_devices_size,
-                                             converted_device_map,
-                                             context_extractor<ContextType>::extract(context),
-                                             kvs);
-    }
-
-    template <class ContextType>
-    static vector_class<communicator> create_communicators_selector(
-        const size_t cluster_devices_size, /*global devices count*/
-        const map_class<int, ccl::device_index_type>& local_rank_device_map,
-        const ContextType& context,
-        shared_ptr_class<ikvs_wrapper> kvs) {
-        base_t::validate_contract(cluster_devices_size, local_rank_device_map.size());
-
-        //collect ranks
-        vector_class<int> local_thread_ranks;
-        local_thread_ranks.reserve(local_rank_device_map.size());
-        std::transform(local_rank_device_map.begin(),
-                       local_rank_device_map.end(),
-                       std::back_inserter(local_thread_ranks),
-                       [](const typename map_class<int, ccl::device_index_type>::value_type& val) {
-                           return val.first;
-                       });
-        group_context::comm_group_t thread_group =
-            group_context::instance().group_by_kvs(local_thread_ranks, cluster_devices_size, kvs);
-
-        vector_class<ccl::device_index_type> local_thread_devices;
-        local_thread_devices.reserve(local_rank_device_map.size());
-        std::transform(local_rank_device_map.begin(),
-                       local_rank_device_map.end(),
-                       std::back_inserter(local_thread_devices),
-                       [](const typename map_class<int, ccl::device_index_type>::value_type& val) {
-                           return val.second;
-                       });
-
-        auto ret = thread_group->create_communicators_group(
-            local_thread_devices, context_extractor<ContextType>::extract(context));
-        return ret;
-    }
 };
-#endif //defined(MULTI_GPU_SUPPORT) and !defined(CCL_ENABLE_SYCL)
+#endif //defined(CCL_ENABLE_ZE) and !defined(CCL_ENABLE_SYCL)
 
-#if defined(MULTI_GPU_SUPPORT) and defined(CCL_ENABLE_SYCL)
+#if defined(CCL_ENABLE_ZE) and defined(CCL_ENABLE_SYCL)
 template <>
 struct comm_impl_dispatch_selector<cl_backend_type::dpcpp_sycl_l0>
         : public comm_impl_base_dispatch<
               comm_impl_dispatch_selector<cl_backend_type::dpcpp_sycl_l0>> {
     using base_t =
         comm_impl_base_dispatch<comm_impl_dispatch_selector<cl_backend_type::dpcpp_sycl_l0>>;
-
-    template <class DeviceType, class ContextType>
-    static vector_class<communicator> create_communicators_selector(
-        const size_t cluster_devices_size, /*global devices count*/
-        const vector_class<pair_class<int, DeviceType>>& local_rank_device_map,
-        const ContextType& context,
-        shared_ptr_class<ikvs_wrapper> kvs) {
-        return base_t::template create_communicators_selector<DeviceType>(
-            cluster_devices_size,
-            local_rank_device_map,
-            context_extractor<ContextType>::extract(context),
-            kvs);
-    }
-
-    template <class ContextType>
-    static vector_class<communicator> create_communicators_selector(
-        const size_t cluster_devices_size, /*global devices count*/
-        const map_class<int, ccl::device>& local_rank_device_map,
-        const ContextType& context,
-        shared_ptr_class<ikvs_wrapper> kvs) {
-        map_class<int, cl::sycl::device> converted_device_map;
-        std::transform(local_rank_device_map.begin(),
-                       local_rank_device_map.end(),
-                       std::inserter(converted_device_map, converted_device_map.end()),
-                       [](const typename map_class<int, ccl::device>::value_type& val) {
-                           return std::make_pair(val.first, val.second.get_native());
-                       });
-        return create_communicators_selector(cluster_devices_size,
-                                             converted_device_map,
-                                             context_extractor<ContextType>::extract(context),
-                                             kvs);
-    }
-
-    // TODO: try to combine these 2 overload below
-    template <class ContextType>
-    static vector_class<communicator> create_communicators_selector(
-        const size_t cluster_devices_size, /*global devices count*/
-        const map_class<int, cl::sycl::device>& local_rank_device_map,
-        const ContextType& context,
-        shared_ptr_class<ikvs_wrapper> kvs) {
-        base_t::validate_contract(cluster_devices_size, local_rank_device_map.size());
-
-        //collect ranks
-        vector_class<int> local_thread_ranks;
-        local_thread_ranks.reserve(local_rank_device_map.size());
-        std::transform(local_rank_device_map.begin(),
-                       local_rank_device_map.end(),
-                       std::back_inserter(local_thread_ranks),
-                       [](const typename map_class<int, cl::sycl::device>::value_type& val) {
-                           return val.first;
-                       });
-        group_context::comm_group_t thread_group =
-            group_context::instance().group_by_kvs(local_thread_ranks, cluster_devices_size, kvs);
-
-        vector_class<cl::sycl::device> local_thread_devices;
-        local_thread_devices.reserve(local_rank_device_map.size());
-        std::transform(local_rank_device_map.begin(),
-                       local_rank_device_map.end(),
-                       std::back_inserter(local_thread_devices),
-                       [](const typename map_class<int, cl::sycl::device>::value_type& val) {
-                           return val.second;
-                       });
-
-        auto ret = thread_group->create_communicators_group(
-            local_thread_devices, context_extractor<ContextType>::extract(context));
-        return ret;
-    }
-
-    template <class ContextType>
-    static vector_class<communicator> create_communicators_selector(
-        const size_t cluster_devices_size, /*global devices count*/
-        const map_class<int, ccl::device_index_type>& local_rank_device_map,
-        const ContextType& context,
-        shared_ptr_class<ikvs_wrapper> kvs) {
-        base_t::validate_contract(cluster_devices_size, local_rank_device_map.size());
-
-        //collect ranks
-        vector_class<int> local_thread_ranks;
-        local_thread_ranks.reserve(local_rank_device_map.size());
-        std::transform(local_rank_device_map.begin(),
-                       local_rank_device_map.end(),
-                       std::back_inserter(local_thread_ranks),
-                       [](const typename map_class<int, ccl::device_index_type>::value_type& val) {
-                           return val.first;
-                       });
-        group_context::comm_group_t thread_group =
-            group_context::instance().group_by_kvs(local_thread_ranks, cluster_devices_size, kvs);
-
-        vector_class<ccl::device_index_type> local_thread_devices;
-        local_thread_devices.reserve(local_rank_device_map.size());
-        std::transform(local_rank_device_map.begin(),
-                       local_rank_device_map.end(),
-                       std::back_inserter(local_thread_devices),
-                       [](const typename map_class<int, ccl::device_index_type>::value_type& val) {
-                           return val.second;
-                       });
-
-        auto ret = thread_group->create_communicators_group(
-            local_thread_devices, context_extractor<ContextType>::extract(context));
-        return ret;
-    }
 };
-#endif //defined(MULTI_GPU_SUPPORT) and defined(CCL_ENABLE_SYCL)
+#endif //defined(CCL_ENABLE_ZE) and defined(CCL_ENABLE_SYCL)
 } // namespace ccl

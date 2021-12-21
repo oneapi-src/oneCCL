@@ -57,6 +57,7 @@ atl_attr_t ccl_executor::generate_atl_attr(const ccl::env_data& env) {
     attr.in.mnic_type = env.mnic_type;
     attr.in.mnic_name = env.mnic_name_raw;
     attr.in.mnic_count = env.mnic_count;
+    attr.in.mnic_offset = env.mnic_offset;
 
     memset(&attr.out, 0, sizeof(attr.out));
 
@@ -79,15 +80,15 @@ ccl_executor::ccl_executor(const char* main_addr) {
                             : &ccl_executor::get_worker_idx_round_robin;
 
     /* generate ATL attr for all future communicators */
-    atl_wrapper::attr = generate_atl_attr(env);
-    atl_wrapper::set_exec(this);
+    atl_comm_manager::set_internal_env(generate_atl_attr(env));
+    atl_comm_manager::set_exec(this);
 }
 
 void ccl_executor::start_workers(int proc_idx, int proc_count) {
     set_local_coord(proc_idx, proc_count);
     auto& env = ccl::global_data::env();
     CCL_THROW_IF_NOT(env.env_2_worker_affinity(get_local_proc_idx(), get_local_proc_count()));
-    CCL_THROW_IF_NOT(env.env_2_worker_mem_affinity());
+    CCL_THROW_IF_NOT(env.env_2_worker_mem_affinity(get_local_proc_count()));
     start_workers();
 }
 
@@ -217,7 +218,7 @@ void ccl_executor::update_workers() {
 //    }
 //
 //    if (resize_func != NULL)
-//        ccl::global_data::get().atl->atl_set_resize_function((atl_resize_fn_t)resize_func);
+//        ccl::global_data::get().atl->set_resize_function((atl_resize_fn_t)resize_func);
 //
 //    /* pin listener thread together with first worker thread */
 //    auto worker_affinity = ccl::global_data::env().worker_affinity;
@@ -234,7 +235,7 @@ void ccl_executor::update_workers() {
 //}
 
 void ccl_executor::start(ccl_extra_sched* extra_sched) {
-    CCL_ASSERT(extra_sched->internal_type == ccl_sched_internal_unordered_coll,
+    CCL_ASSERT(extra_sched->sched_type == ccl_sched_unordered_coll,
                "should be unordered_coll for now");
 
     extra_sched->set_counter(1);

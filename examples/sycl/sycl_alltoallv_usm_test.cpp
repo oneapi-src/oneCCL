@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
     vector<ccl::event> deps;
     deps.push_back(ccl::create_event(e));
 
-    /* invoke alltoall */
+    /* invoke alltoallv */
     auto attr = ccl::create_operation_attr<ccl::alltoallv_attr>();
     ccl::alltoallv(send_buf, send_counts, recv_buf, recv_counts, comm, stream, attr, deps).wait();
 

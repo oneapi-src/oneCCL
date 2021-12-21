@@ -47,14 +47,15 @@ public:
     void start() override {
         LOG_DEBUG("REDUCE entry req ", &req, ", cnt ", cnt);
         size_t bytes = cnt * dtype.size();
-        atl_status_t atl_status = comm->atl->atl_ep_reduce(sched->bin->get_atl_ep(),
-                                                           send_buf.get_ptr(bytes),
-                                                           recv_buf.get_ptr(bytes),
-                                                           cnt,
-                                                           root,
-                                                           static_cast<atl_datatype_t>(dtype.idx()),
-                                                           static_cast<atl_reduction_t>(op),
-                                                           &req);
+        atl_status_t atl_status =
+            comm->get_atl_comm()->reduce(sched->bin->get_atl_ep(),
+                                         send_buf.get_ptr(bytes),
+                                         recv_buf.get_ptr(bytes),
+                                         cnt,
+                                         root,
+                                         static_cast<atl_datatype_t>(dtype.idx()),
+                                         static_cast<atl_reduction_t>(op),
+                                         &req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("REDUCE entry failed. atl_status: ", atl_status_to_str(atl_status));
@@ -64,15 +65,13 @@ public:
     }
 
     void update() override {
-        int req_status;
-        atl_status_t atl_status =
-            comm->atl->atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
+        atl_status_t atl_status = comm->get_atl_comm()->check(sched->bin->get_atl_ep(), &req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("REDUCE entry failed. atl_status: ", atl_status_to_str(atl_status));
         }
 
-        if (req_status)
+        if (req.is_completed)
             status = ccl_sched_entry_status_complete;
     }
 

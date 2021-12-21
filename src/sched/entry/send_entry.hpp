@@ -44,18 +44,14 @@ public:
               comm(comm) {}
 
     void start_send() {
-        int global_dst = comm->get_global_rank(dst);
-        int global_rank = comm->get_global_rank(comm->rank());
-
-        atl_tag = comm->atl->tag->create(
-            global_rank, sched->get_comm_id(), sched->sched_id, sched->get_op_id());
+        atl_tag = comm->get_atl_comm()->tag->create(
+            comm->rank(), sched->get_comm_id(), sched->sched_id, sched->get_op_id());
         size_t bytes = cnt * dtype.size();
 
-        LOG_DEBUG(
-            "SEND entry dst ", global_dst, ", tag ", atl_tag, ", req ", &req, ", bytes ", bytes);
+        LOG_DEBUG("SEND entry dst ", dst, ", tag ", atl_tag, ", req ", &req, ", bytes ", bytes);
 
-        atl_status_t atl_status = comm->atl->atl_ep_send(
-            sched->bin->get_atl_ep(), send_buf.get_ptr(bytes), bytes, global_dst, atl_tag, &req);
+        atl_status_t atl_status = comm->get_atl_comm()->send(
+            sched->bin->get_atl_ep(), send_buf.get_ptr(bytes), bytes, dst, atl_tag, &req);
 
         update_status(atl_status);
     }
@@ -79,7 +75,7 @@ public:
             (ccl::global_data::env().atl_send_proxy != ccl_atl_send_proxy_none) &&
             (proxy_mode == proxy_copy_mode::unknown)) {
             sycl::usm::alloc ptr_type = sycl::usm::alloc::unknown;
-            if (sched->coll_param.stream->get_type() == stream_type::gpu) {
+            if (sched->coll_param.stream->is_gpu()) {
                 auto sycl_queue = sched->coll_param.stream->get_native_stream();
                 ptr_type = sycl::get_pointer_type(buf.get_ptr(), sycl_queue.get_context());
             }
@@ -89,12 +85,15 @@ public:
 
         if (proxy_mode == proxy_copy_mode::enabled) {
             if (!proxy_buf) {
-                ccl_sched_buf_type buf_type =
+                ccl::buffer_type buf_type =
                     (ccl::global_data::env().atl_send_proxy == ccl_atl_send_proxy_regular)
-                        ? ccl_sched_buf_system
-                        : ccl_sched_buf_runtime;
-                send_buf = proxy_buf = sched->alloc_buffer(cnt * dtype.size(), buf_type);
+                        ? ccl::buffer_type::regular
+                        : ccl::buffer_type::sycl;
+                ccl::alloc_param alloc_param(
+                    cnt * dtype.size(), buf_type, ccl::buffer_place::host, 1);
+                proxy_buf = sched->alloc_buffer(alloc_param);
             }
+
             if (!proxy_copy_entry) {
                 proxy_copy_entry =
                     std::shared_ptr<copy_entry>(new copy_entry(sched, buf, proxy_buf, cnt, dtype));
@@ -106,6 +105,8 @@ public:
                 status = ccl_sched_entry_status_again;
                 return;
             }
+
+            send_buf = proxy_buf;
         }
 #endif // CCL_ENABLE_SYCL
 
@@ -113,16 +114,13 @@ public:
     }
 
     void update() override {
-        int req_status;
-
-        atl_status_t atl_status =
-            comm->atl->atl_ep_check(sched->bin->get_atl_ep(), &req_status, &req);
+        atl_status_t atl_status = comm->get_atl_comm()->check(sched->bin->get_atl_ep(), &req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("SEND entry failed. atl_status: ", atl_status_to_str(atl_status));
         }
 
-        if (req_status) {
+        if (req.is_completed) {
             LOG_DEBUG("SEND entry done, dst ", dst);
             status = ccl_sched_entry_status_complete;
         }
