@@ -457,8 +457,8 @@
   </a>
  </li>
  <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#limitations">
-   Limitations
+  <a class="reference internal nav-link" href="#usage">
+   Usage
   </a>
  </li>
  <li class="toc-h2 nav-item toc-entry">
@@ -496,8 +496,7 @@
                 
   <div class="section" id="enabling-ofi-verbs-dmabuf-support">
 <h1>Enabling OFI/verbs dmabuf support<a class="headerlink" href="#enabling-ofi-verbs-dmabuf-support" title="Permalink to this headline">¶</a></h1>
-<p>oneCCL provides experimental support for device memory transfers using Linux dmabuf,
-which is exposed through OFI API for verbs provider.</p>
+<p>oneCCL provides experimental support for data transfers between Intel GPU memory and NIC using Linux dmabuf, which is exposed through OFI API for verbs provider.</p>
 <div class="section" id="requirements">
 <h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
@@ -506,34 +505,31 @@ which is exposed through OFI API for verbs provider.</p>
 <li><p>level-zero-devel package</p></li>
 </ul>
 </div>
-<div class="section" id="limitations">
-<h2>Limitations<a class="headerlink" href="#limitations" title="Permalink to this headline">¶</a></h2>
-<ul class="simple">
-<li><p>Only first tile should be used from each GPU card.
-For example, if GPU with 2 tiles is used then set ZE_AFFINITY_MASK=0.0.
-More information about GPU selection can be found in level-zero <a class="reference external" href="https://one-api.gitlab-pages.devtools.intel.com/level_zero/core/PROG.html#affinity-mask">documentation</a>.</p></li>
-</ul>
+<div class="section" id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h2>
+<p>oneCCL, OFI and OFI/verbs from Intel® oneAPI Base Toolkit support device memory transfers. Refer to <a href="#id1"><span class="problematic" id="id2">`Run instructions`__</span></a> for usage.</p>
+<p>If you want to build software components from sources, refer to <a href="#id1"><span class="problematic" id="id3">`Build instructions`__</span></a>.</p>
 </div>
 <div class="section" id="build-instructions">
 <h2>Build instructions<a class="headerlink" href="#build-instructions" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="ofi">
 <h3>OFI<a class="headerlink" href="#ofi" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="o">--</span><span class="n">single</span><span class="o">-</span><span class="n">branch</span> <span class="o">--</span><span class="n">branch</span> <span class="n">v1</span><span class="mf">.13.1</span> <span class="nl">https</span><span class="p">:</span><span class="c1">//github.com/ofiwg/libfabric.git</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="o">--</span><span class="n">single</span><span class="o">-</span><span class="n">branch</span> <span class="o">--</span><span class="n">branch</span> <span class="n">v1</span><span class="mf">.13.2</span> <span class="nl">https</span><span class="p">:</span><span class="c1">//github.com/ofiwg/libfabric.git</span>
 <span class="n">cd</span> <span class="n">libfabric</span>
 <span class="p">.</span><span class="o">/</span><span class="n">autogen</span><span class="p">.</span><span class="n">sh</span>
-<span class="p">.</span><span class="o">/</span><span class="n">configure</span> <span class="o">--</span><span class="n">prefix</span><span class="o">=&lt;</span><span class="n">ofi_install_dir</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">enable</span><span class="o">-</span><span class="n">verbs</span><span class="o">=&lt;</span><span class="n">rdma_core_install_dir</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">enable</span><span class="o">-</span><span class="n">ze</span><span class="o">-</span><span class="n">dlopen</span><span class="o">=</span><span class="n">yes</span>
+<span class="p">.</span><span class="o">/</span><span class="n">configure</span> <span class="o">--</span><span class="n">prefix</span><span class="o">=&lt;</span><span class="n">ofi_install_dir</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">enable</span><span class="o">-</span><span class="n">verbs</span><span class="o">=&lt;</span><span class="n">rdma_core_install_dir</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">with</span><span class="o">-</span><span class="n">ze</span><span class="o">=&lt;</span><span class="n">level_zero_install_dir</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">enable</span><span class="o">-</span><span class="n">ze</span><span class="o">-</span><span class="n">dlopen</span><span class="o">=</span><span class="n">yes</span>
 <span class="n">make</span> <span class="o">-</span><span class="n">j</span> <span class="n">install</span>
 </pre></div>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>You may also get OFI release package directly from <a class="reference external" href="https://github.com/ofiwg/libfabric/releases/tag/v1.13.1">here</a>.
+<p>You may also get OFI release package directly from <a class="reference external" href="https://github.com/ofiwg/libfabric/releases/tag/v1.13.2">here</a>.
 No need to run autogen.sh if using the release package.</p>
 </div>
 </div>
 <div class="section" id="product-short">
 <h3>oneCCL<a class="headerlink" href="#product-short" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">cmake</span> <span class="o">-</span><span class="n">DCMAKE_INSTALL_PREFIX</span><span class="o">=&lt;</span><span class="n">ccl_install_dir</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">DLIBFABRIC_DIR</span><span class="o">=&lt;</span><span class="n">ofi_install_dir</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">DCMAKE_C_COMPILER</span><span class="o">=</span><span class="n">clang</span> <span class="o">-</span><span class="n">DCMAKE_CXX_COMPILER</span><span class="o">=</span><span class="n">dpcpp</span> <span class="o">-</span><span class="n">DCOMPUTE_BACKEND</span><span class="o">=</span><span class="n">dpcpp_level_zero</span> <span class="o">-</span><span class="n">DENABLE_OFI_HMEM</span><span class="o">=</span><span class="mi">1</span> <span class="p">..</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">cmake</span> <span class="o">-</span><span class="n">DCMAKE_INSTALL_PREFIX</span><span class="o">=&lt;</span><span class="n">ccl_install_dir</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">DLIBFABRIC_DIR</span><span class="o">=&lt;</span><span class="n">ofi_install_dir</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">DCMAKE_C_COMPILER</span><span class="o">=</span><span class="n">icx</span> <span class="o">-</span><span class="n">DCMAKE_CXX_COMPILER</span><span class="o">=</span><span class="n">dpcpp</span> <span class="o">-</span><span class="n">DCOMPUTE_BACKEND</span><span class="o">=</span><span class="n">dpcpp_level_zero</span> <span class="o">-</span><span class="n">DENABLE_OFI_HMEM</span><span class="o">=</span><span class="mi">1</span> <span class="p">..</span>
 <span class="n">make</span> <span class="o">-</span><span class="n">j</span> <span class="n">install</span>
 </pre></div>
 </div>
@@ -541,12 +537,28 @@ No need to run autogen.sh if using the release package.</p>
 </div>
 <div class="section" id="run-instructions">
 <h2>Run instructions<a class="headerlink" href="#run-instructions" title="Permalink to this headline">¶</a></h2>
-<p>Run allreduce test with ring algorithm and SYCL USM device buffers.</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span>source &lt;ccl_install_dir&gt;/env/setvars.sh
-export LD_LIBRARY_PATH=&lt;ofi_install_path&gt;/lib:${LD_LIBRARY_PATH}
-CCL_ATL_TRANSPORT=ofi CCL_ATL_HMEM=1 CCL_ALLREDUCE=ring FI_PROVIDER=verbs mpiexec -n 2 &lt;ccl_install_dir&gt;/examples/sycl/sycl_allreduce_usm_test gpu device
+<ol class="arabic">
+<li><p>Set the environment.</p>
+<p>If Intel® oneAPI Base Toolkit is used:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">source</span> <span class="o">&lt;</span><span class="n">toolkit_install_dir</span><span class="o">&gt;/</span><span class="n">setvars</span><span class="p">.</span><span class="n">sh</span>
 </pre></div>
 </div>
+<p>If software components are built from sources:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span>source &lt;ccl_install_dir&gt;/env/setvars.sh
+export LD_LIBRARY_PATH=&lt;ofi_install_path&gt;/lib:${LD_LIBRARY_PATH}
+</pre></div>
+</div>
+</li>
+<li><p>Run allreduce test with ring algorithm and SYCL USM device buffers:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">export</span> <span class="n">CCL_ATL_TRANSPORT</span><span class="o">=</span><span class="n">ofi</span>
+<span class="k">export</span> <span class="n">CCL_ATL_HMEM</span><span class="o">=</span><span class="mi">1</span>
+<span class="k">export</span> <span class="n">CCL_ALLREDUCE</span><span class="o">=</span><span class="n">ring</span>
+<span class="k">export</span> <span class="n">FI_PROVIDER</span><span class="o">=</span><span class="n">verbs</span>
+<span class="n">mpiexec</span> <span class="o">-</span><span class="n">n</span> <span class="mi">2</span> <span class="o">&lt;</span><span class="n">ccl_install_dir</span><span class="o">&gt;/</span><span class="n">examples</span><span class="o">/</span><span class="n">sycl</span><span class="o">/</span><span class="n">sycl_allreduce_usm_test</span> <span class="n">gpu</span> <span class="n">device</span>
+</pre></div>
+</div>
+</li>
+</ol>
 </div>
 </div>
 

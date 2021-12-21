@@ -86,14 +86,12 @@ Available algorithms for each collective operation (``<algo_name>``):
      - Based on ``MPI_Iallreduce``
    * - ``rabenseifner``
      - Rabenseifner’s algorithm
-   * - ``starlike``
+   * - ``nreduce``
      - May be beneficial for imbalanced workloads
    * - ``ring`` 
      - reduce_scatter + allgather ring.
        Use ``CCL_RS_CHUNK_COUNT`` and ``CCL_RS_MIN_CHUNK_SIZE``
        to control pipelining on reduce_scatter phase.
-   * - ``ring_rma``
-     - reduce_scatter+allgather ring using RMA communications
    * - ``double_tree``
      - Double-tree algorithm
    * - ``recursive_doubling``
@@ -713,3 +711,32 @@ CCL_MNIC_COUNT
 
 Set this environment variable to specify the maximum number of NICs to be selected.
 The actual number of NICs selected may be smaller due to limitations on transport level or system configuration.
+
+
+CCL_SYCL_OUTPUT_EVENT
+#####################
+**Syntax**
+
+::
+
+  CCL_SYCL_OUTPUT_EVENT=<value>
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``1``
+     - Enable support for SYCL output event.
+   * - ``0``
+     - Disable support for SYCL output event (**default**).
+
+**Description**
+
+Set this environment variable to control support for SYCL output event.
+Once the support is enabled, you can retrieve SYCL output event from oneCCL event using ``get_native()`` method.
+oneCCL event must be associated with oneCCL communication operation.
