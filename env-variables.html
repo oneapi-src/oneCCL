@@ -38,7 +38,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Notices and Disclaimers" href="legal.html" />
-    <link rel="prev" title="SparseAllreduce" href="api/operations/collective-operations/sparse-allreduce.html" />
+    <link rel="prev" title="ReduceScatter" href="api/operations/collective-operations/reduce-scatter.html" />
     <script defer type="text/javascript" src="https://www.intel.com/content/dam/www/global/wap/performance-config.js" ></script>
     <script type="text/javascript">
         // Configure TMS settings
@@ -156,7 +156,7 @@
    </li>
    <li class="toctree-l2">
     <a class="reference internal" href="general-configuration/transport-selection.html">
-     Transport selection
+     Transport Selection
     </a>
    </li>
   </ul>
@@ -177,6 +177,11 @@
     </a>
    </li>
    <li class="toctree-l2">
+    <a class="reference internal" href="advanced-configuration/low-precision-datatypes.html">
+     Low-precision Datatypes
+    </a>
+   </li>
+   <li class="toctree-l2">
     <a class="reference internal" href="advanced-configuration/operation-caching.html">
      Caching of Communication Operations
     </a>
@@ -192,18 +197,8 @@
     </a>
    </li>
    <li class="toctree-l2">
-    <a class="reference internal" href="advanced-configuration/unordered-collectives.html">
-     Unordered collectives support
-    </a>
-   </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="advanced-configuration/sparse-collectives.html">
-     Sparse collective operations
-    </a>
-   </li>
-   <li class="toctree-l2">
     <a class="reference internal" href="advanced-configuration/dmabuf.html">
-     Enabling OFI/verbs dmabuf support
+     Enabling OFI/verbs/dmabuf Support
     </a>
    </li>
   </ul>
@@ -335,11 +330,6 @@
        <li class="toctree-l4">
         <a class="reference internal" href="api/operations/collective-operations/reduce-scatter.html">
          ReduceScatter
-        </a>
-       </li>
-       <li class="toctree-l4">
-        <a class="reference internal" href="api/operations/collective-operations/sparse-allreduce.html">
-         SparseAllreduce
         </a>
        </li>
       </ul>
@@ -552,16 +542,6 @@
       </a>
      </li>
      <li class="toc-h4 nav-item toc-entry">
-      <a class="reference internal nav-link" href="#sparse-allreduce-algorithms">
-       <code class="docutils literal notranslate">
-        <span class="pre">
-         SPARSE_ALLREDUCE
-        </span>
-       </code>
-       algorithms
-      </a>
-     </li>
-     <li class="toc-h4 nav-item toc-entry">
       <a class="reference internal nav-link" href="#ccl-rs-chunk-count">
        CCL_RS_CHUNK_COUNT
       </a>
@@ -574,6 +554,94 @@
     </ul>
    </li>
   </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#workers">
+   Workers
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#ccl-worker-count">
+     CCL_WORKER_COUNT
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#ccl-worker-affinity">
+     CCL_WORKER_AFFINITY
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#ccl-worker-mem-affinity">
+     CCL_WORKER_MEM_AFFINITY
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#atl">
+   ATL
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#ccl-atl-transport">
+     CCL_ATL_TRANSPORT
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#ccl-atl-hmem">
+     CCL_ATL_HMEM
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#multi-nic">
+   Multi-NIC
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#ccl-mnic">
+     CCL_MNIC
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#ccl-mnic-name">
+     CCL_MNIC_NAME
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#ccl-mnic-count">
+     CCL_MNIC_COUNT
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#low-precision-datatypes">
+   Low-precision datatypes
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#ccl-bf16">
+     CCL_BF16
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#ccl-fp16">
+     CCL_FP16
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#ccl-log-level">
+   CCL_LOG_LEVEL
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#ccl-itt-level">
+   CCL_ITT_LEVEL
+  </a>
  </li>
  <li class="toc-h2 nav-item toc-entry">
   <a class="reference internal nav-link" href="#fusion">
@@ -603,50 +671,8 @@
   </ul>
  </li>
  <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#atl">
-   ATL
-  </a>
-  <ul class="nav section-nav flex-column">
-   <li class="toc-h3 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#ccl-atl-transport">
-     CCL_ATL_TRANSPORT
-    </a>
-   </li>
-   <li class="toc-h3 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#ccl-atl-hmem">
-     CCL_ATL_HMEM
-    </a>
-   </li>
-  </ul>
- </li>
- <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#ccl-unordered-coll">
-   CCL_UNORDERED_COLL
-  </a>
- </li>
- <li class="toc-h2 nav-item toc-entry">
   <a class="reference internal nav-link" href="#ccl-priority">
    CCL_PRIORITY
-  </a>
- </li>
- <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#ccl-worker-count">
-   CCL_WORKER_COUNT
-  </a>
- </li>
- <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#ccl-worker-affinity">
-   CCL_WORKER_AFFINITY
-  </a>
- </li>
- <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#ccl-worker-mem-affinity">
-   CCL_WORKER_MEM_AFFINITY
-  </a>
- </li>
- <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#ccl-log-level">
-   CCL_LOG_LEVEL
   </a>
  </li>
  <li class="toc-h2 nav-item toc-entry">
@@ -655,30 +681,13 @@
   </a>
  </li>
  <li class="toc-h2 nav-item toc-entry">
-  <a class="reference internal nav-link" href="#multi-nic">
-   Multi-NIC
-  </a>
-  <ul class="nav section-nav flex-column">
-   <li class="toc-h3 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#ccl-mnic">
-     CCL_MNIC
-    </a>
-   </li>
-   <li class="toc-h3 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#ccl-mnic-name">
-     CCL_MNIC_NAME
-    </a>
-   </li>
-   <li class="toc-h3 nav-item toc-entry">
-    <a class="reference internal nav-link" href="#ccl-mnic-count">
-     CCL_MNIC_COUNT
-    </a>
-   </li>
-  </ul>
- </li>
- <li class="toc-h2 nav-item toc-entry">
   <a class="reference internal nav-link" href="#ccl-sycl-output-event">
    CCL_SYCL_OUTPUT_EVENT
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#ccl-ze-library-path">
+   CCL_ZE_LIBRARY_PATH
   </a>
  </li>
 </ul>
@@ -733,7 +742,6 @@ To see the actual table values set <code class="docutils literal notranslate"><s
 <li><p><code class="docutils literal notranslate"><span class="pre">BCAST</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">REDUCE</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">REDUCE_SCATTER</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">SPARSE_ALLREDUCE</span></code></p></li>
 </ul>
 </div>
 <div class="section" id="available-algorithms">
@@ -911,30 +919,6 @@ to control pipelining.</p></td>
 </tbody>
 </table>
 </div>
-<div class="section" id="sparse-allreduce-algorithms">
-<h4><code class="docutils literal notranslate"><span class="pre">SPARSE_ALLREDUCE</span></code> algorithms<a class="headerlink" href="#sparse-allreduce-algorithms" title="Permalink to this headline">¶</a></h4>
-<table class="colwidths-given table">
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 67%" />
-</colgroup>
-<tbody>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ring</span></code></p></td>
-<td><p>Ring-allreduce based algorithm</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">mask</span></code></p></td>
-<td><p>Mask matrix based algorithm</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">allgatherv</span></code></p></td>
-<td><p>3-allgatherv based algorithm</p></td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>WARNING: <code class="docutils literal notranslate"><span class="pre">ccl::sparse_allreduce</span></code> is experimental and subject to change.</p>
-</div>
-</div>
 <div class="section" id="ccl-rs-chunk-count">
 <h4>CCL_RS_CHUNK_COUNT<a class="headerlink" href="#ccl-rs-chunk-count" title="Permalink to this headline">¶</a></h4>
 <p><strong>Syntax</strong></p>
@@ -989,8 +973,389 @@ to control pipelining.</p></td>
 </div>
 </div>
 </div>
+<div class="section" id="workers">
+<h2>Workers<a class="headerlink" href="#workers" title="Permalink to this headline">¶</a></h2>
+<p>The group of environment variables to control worker threads.</p>
+<div class="section" id="ccl-worker-count">
+<h3>CCL_WORKER_COUNT<a class="headerlink" href="#ccl-worker-count" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_WORKER_COUNT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given table">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">N</span></code></p></td>
+<td><p>The number of worker threads for oneCCL rank (<code class="docutils literal notranslate"><span class="pre">1</span></code> if not specified).</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify the number of oneCCL worker threads.</p>
+</div>
+<div class="section" id="ccl-worker-affinity">
+<h3>CCL_WORKER_AFFINITY<a class="headerlink" href="#ccl-worker-affinity" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_WORKER_AFFINITY</span><span class="o">=&lt;</span><span class="n">cpulist</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given table">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;cpulist&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">auto</span></code></p></td>
+<td><p>Workers are automatically pinned to last cores of pin domain.
+Pin domain depends from process launcher.
+If <code class="docutils literal notranslate"><span class="pre">mpirun</span></code> from oneCCL package is used then pin domain is MPI process pin domain.
+Otherwise, pin domain is all cores on the node.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">&lt;cpulist&gt;</span></code></p></td>
+<td><p>A comma-separated list of core numbers and/or ranges of core numbers for all local workers, one number per worker.
+The i-th local worker is pinned to the i-th core in the list.
+For example <code class="docutils literal notranslate"><span class="pre">&lt;a&gt;,&lt;b&gt;-&lt;c&gt;</span></code> defines list of cores contaning core with number <code class="docutils literal notranslate"><span class="pre">&lt;a&gt;</span></code>
+and range of cores with numbers from <code class="docutils literal notranslate"><span class="pre">&lt;b&gt;</span></code> to <code class="docutils literal notranslate"><span class="pre">&lt;c&gt;</span></code>.
+The number should not exceed the number of cores available on the system.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify cpu affinity for oneCCL worker threads.</p>
+</div>
+<div class="section" id="ccl-worker-mem-affinity">
+<h3>CCL_WORKER_MEM_AFFINITY<a class="headerlink" href="#ccl-worker-mem-affinity" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_WORKER_MEM_AFFINITY</span><span class="o">=&lt;</span><span class="n">nodelist</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given table">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;nodelist&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">auto</span></code></p></td>
+<td><p>Workers are automatically pinned to NUMA nodes that correspond to CPU affinity of workers.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">&lt;nodelist&gt;</span></code></p></td>
+<td><p>A comma-separated list of NUMA node numbers for all local workers, one number per worker.
+The i-th local worker is pinned to the i-th NUMA node in the list.
+The number should not exceed the number of NUMA nodes available on the system.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify memory affinity for oneCCL worker threads.</p>
+</div>
+</div>
+<div class="section" id="atl">
+<h2>ATL<a class="headerlink" href="#atl" title="Permalink to this headline">¶</a></h2>
+<p>The group of environment variables to control ATL (abstract transport layer).</p>
+<div class="section" id="ccl-atl-transport">
+<h3>CCL_ATL_TRANSPORT<a class="headerlink" href="#ccl-atl-transport" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_ATL_TRANSPORT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given table">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">mpi</span></code></p></td>
+<td><p>MPI transport (<strong>default</strong>).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ofi</span></code></p></td>
+<td><p>OFI (libfabric*) transport.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to select the transport for inter-process communications.</p>
+</div>
+<div class="section" id="ccl-atl-hmem">
+<h3>CCL_ATL_HMEM<a class="headerlink" href="#ccl-atl-hmem" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_ATL_HMEM</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given table">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+<td><p>Enable heterogeneous memory support on the transport layer.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Disable heterogeneous memory support on the transport layer (<strong>default</strong>).</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to enable handling of HMEM/GPU buffers by the transport layer.
+The actual HMEM support depends on the limitations on the transport level and system configuration.</p>
+</div>
+</div>
+<div class="section" id="multi-nic">
+<h2>Multi-NIC<a class="headerlink" href="#multi-nic" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">CCL_MNIC</span></code>, <code class="docutils literal notranslate"><span class="pre">CCL_MNIC_NAME</span></code> and <code class="docutils literal notranslate"><span class="pre">CCL_MNIC_COUNT</span></code> define filters to select multiple NICs.
+oneCCL workers will be pinned on selected NICs in a round-robin way.</p>
+<div class="section" id="ccl-mnic">
+<h3>CCL_MNIC<a class="headerlink" href="#ccl-mnic" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_MNIC</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given table">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">global</span></code></p></td>
+<td><p>Select all NICs available on the node.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">local</span></code></p></td>
+<td><p>Select all NICs local for the NUMA node that corresponds to process pinning.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">none</span></code></p></td>
+<td><p>Disable special NIC selection, use a single default NIC (<strong>default</strong>).</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to control multi-NIC selection by NIC locality.</p>
+</div>
+<div class="section" id="ccl-mnic-name">
+<h3>CCL_MNIC_NAME<a class="headerlink" href="#ccl-mnic-name" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_MNIC_NAME</span><span class="o">=&lt;</span><span class="n">namelist</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given table">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;namelist&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">&lt;namelist&gt;</span></code></p></td>
+<td><p>A comma-separated list of NIC full names or prefixes to filter NICs.
+Use the <code class="docutils literal notranslate"><span class="pre">^</span></code> symbol to exclude NICs starting with the specified prefixes. For example,
+if you provide a list <code class="docutils literal notranslate"><span class="pre">mlx5_0,mlx5_1,^mlx5_2</span></code>, NICs with the names <code class="docutils literal notranslate"><span class="pre">mlx5_0</span></code> and <code class="docutils literal notranslate"><span class="pre">mlx5_1</span></code>
+will be selected, while <code class="docutils literal notranslate"><span class="pre">mlx5_2</span></code> will be excluded from the selection.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to control multi-NIC selection by NIC names.</p>
+</div>
+<div class="section" id="ccl-mnic-count">
+<h3>CCL_MNIC_COUNT<a class="headerlink" href="#ccl-mnic-count" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_MNIC_COUNT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given table">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">N</span></code></p></td>
+<td><p>The maximum number of NICs that should be selected for oneCCL workers.
+If not specified then equal to the number of oneCCL workers.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify the maximum number of NICs to be selected.
+The actual number of NICs selected may be smaller due to limitations on transport level or system configuration.</p>
+</div>
+</div>
+<div class="section" id="low-precision-datatypes">
+<h2>Low-precision datatypes<a class="headerlink" href="#low-precision-datatypes" title="Permalink to this headline">¶</a></h2>
+<p>The group of environment variables to control processing of low-precision datatypes.</p>
+<div class="section" id="ccl-bf16">
+<h3>CCL_BF16<a class="headerlink" href="#ccl-bf16" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_BF16</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given table">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">avx512f</span></code></p></td>
+<td><p>Select implementation based on <code class="docutils literal notranslate"><span class="pre">AVX512F</span></code> instructions.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">avx512bf</span></code></p></td>
+<td><p>Select implementation based on <code class="docutils literal notranslate"><span class="pre">AVX512_BF16</span></code> instructions.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to select implementation for BF16 &lt;-&gt; FP32 conversion on reduction phase of collective operation.
+Default value depends on instruction set support on specific CPU. <code class="docutils literal notranslate"><span class="pre">AVX512_BF16</span></code>-based implementation has precedence over <code class="docutils literal notranslate"><span class="pre">AVX512F</span></code>-based one.</p>
+</div>
+<div class="section" id="ccl-fp16">
+<h3>CCL_FP16<a class="headerlink" href="#ccl-fp16" title="Permalink to this headline">¶</a></h3>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_FP16</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given table">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">f16c</span></code></p></td>
+<td><p>Select implementation based on <code class="docutils literal notranslate"><span class="pre">F16C</span></code> instructions.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">avx512f</span></code></p></td>
+<td><p>Select implementation based on <code class="docutils literal notranslate"><span class="pre">AVX512F</span></code> instructions.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to select implementation for FP16 &lt;-&gt; FP32 conversion on reduction phase of collective operation.
+Default value depends on instruction set support on specific CPU. <code class="docutils literal notranslate"><span class="pre">AVX512F</span></code>-based implementation has precedence over <code class="docutils literal notranslate"><span class="pre">F16C</span></code>-based one.</p>
+</div>
+</div>
+<div class="section" id="ccl-log-level">
+<h2>CCL_LOG_LEVEL<a class="headerlink" href="#ccl-log-level" title="Permalink to this headline">¶</a></h2>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_LOG_LEVEL</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="table">
+<colgroup>
+<col style="width: 100%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">error</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">warn</span></code> (<strong>default</strong>)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">info</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">debug</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">trace</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to control logging level.</p>
+</div>
+<div class="section" id="ccl-itt-level">
+<h2>CCL_ITT_LEVEL<a class="headerlink" href="#ccl-itt-level" title="Permalink to this headline">¶</a></h2>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_ITT_LEVEL</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given table">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+<td><p>Enable support for ITT profiling.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Disable support for ITT profiling (<strong>default</strong>).</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify <code class="docutils literal notranslate"><span class="pre">Intel(R)</span> <span class="pre">Instrumentation</span> <span class="pre">and</span> <span class="pre">Tracing</span> <span class="pre">Technology</span></code> (ITT) profiling level.
+Once the environment variable is enabled (value &gt; 0), it is possible to collect and display profiling
+data for oneCCL using tools such as <code class="docutils literal notranslate"><span class="pre">Intel(R)</span> <span class="pre">VTune(TM)</span> <span class="pre">Amplifier</span></code>.</p>
+</div>
 <div class="section" id="fusion">
 <h2>Fusion<a class="headerlink" href="#fusion" title="Permalink to this headline">¶</a></h2>
+<p>The group of environment variables to control fusion of collective operations.</p>
 <div class="section" id="ccl-fusion">
 <h3>CCL_FUSION<a class="headerlink" href="#ccl-fusion" title="Permalink to this headline">¶</a></h3>
 <p><strong>Syntax</strong></p>
@@ -1107,98 +1472,6 @@ oneCCL can fuse together no more than <code class="docutils literal notranslate"
 <p>Set this environment variable to specify the frequency of checking for collectives operations to be fused.</p>
 </div>
 </div>
-<div class="section" id="atl">
-<h2>ATL<a class="headerlink" href="#atl" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="ccl-atl-transport">
-<h3>CCL_ATL_TRANSPORT<a class="headerlink" href="#ccl-atl-transport" title="Permalink to this headline">¶</a></h3>
-<p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_ATL_TRANSPORT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<p><strong>Arguments</strong></p>
-<table class="colwidths-given table">
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 67%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">mpi</span></code></p></td>
-<td><p>MPI transport (<strong>default</strong>).</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ofi</span></code></p></td>
-<td><p>OFI (Libfabric*) transport.</p></td>
-</tr>
-</tbody>
-</table>
-<p><strong>Description</strong></p>
-<p>Set this environment variable to select the transport for inter-process communications.</p>
-</div>
-<div class="section" id="ccl-atl-hmem">
-<h3>CCL_ATL_HMEM<a class="headerlink" href="#ccl-atl-hmem" title="Permalink to this headline">¶</a></h3>
-<p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_ATL_HMEM</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<p><strong>Arguments</strong></p>
-<table class="colwidths-given table">
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 67%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
-<td><p>Enable heterogeneous memory support on the transport layer.</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
-<td><p>Disable heterogeneous memory support on the transport layer (<strong>default</strong>).</p></td>
-</tr>
-</tbody>
-</table>
-<p><strong>Description</strong></p>
-<p>Set this environment variable to enable handling of HMEM/GPU buffers by the transport layer.
-The actual HMEM support depends on the limitations on the transport level and system configuration.</p>
-</div>
-</div>
-<div class="section" id="ccl-unordered-coll">
-<h2>CCL_UNORDERED_COLL<a class="headerlink" href="#ccl-unordered-coll" title="Permalink to this headline">¶</a></h2>
-<p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_UNORDERED_COLL</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<p><strong>Arguments</strong></p>
-<table class="colwidths-given table">
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 67%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
-<td><p>Enable execution of unordered collectives.
-You have to additionally specify <code class="docutils literal notranslate"><span class="pre">match_id</span></code>.</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
-<td><p>Disable execution of unordered collectives (<strong>default</strong>).</p></td>
-</tr>
-</tbody>
-</table>
-<p><strong>Description</strong></p>
-<p>Set this environment variable to enable execution of unordered collective operations on different nodes.</p>
-</div>
 <div class="section" id="ccl-priority">
 <h2>CCL_PRIORITY<a class="headerlink" href="#ccl-priority" title="Permalink to this headline">¶</a></h2>
 <p><strong>Syntax</strong></p>
@@ -1231,130 +1504,6 @@ You have to additionally specify <code class="docutils literal notranslate"><spa
 <p><strong>Description</strong></p>
 <p>Set this environment variable to control priority mode of collective operations.</p>
 </div>
-<div class="section" id="ccl-worker-count">
-<h2>CCL_WORKER_COUNT<a class="headerlink" href="#ccl-worker-count" title="Permalink to this headline">¶</a></h2>
-<p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_WORKER_COUNT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<p><strong>Arguments</strong></p>
-<table class="colwidths-given table">
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 67%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">N</span></code></p></td>
-<td><p>The number of worker threads for oneCCL rank (<code class="docutils literal notranslate"><span class="pre">1</span></code> if not specified).</p></td>
-</tr>
-</tbody>
-</table>
-<p><strong>Description</strong></p>
-<p>Set this environment variable to specify the number of oneCCL worker threads.</p>
-</div>
-<div class="section" id="ccl-worker-affinity">
-<h2>CCL_WORKER_AFFINITY<a class="headerlink" href="#ccl-worker-affinity" title="Permalink to this headline">¶</a></h2>
-<p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_WORKER_AFFINITY</span><span class="o">=&lt;</span><span class="n">cpulist</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<p><strong>Arguments</strong></p>
-<table class="colwidths-given table">
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 67%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>&lt;cpulist&gt;</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">auto</span></code></p></td>
-<td><p>Workers are automatically pinned to last cores of pin domain.
-Pin domain depends from process launcher.
-If <code class="docutils literal notranslate"><span class="pre">mpirun</span></code> from oneCCL package is used then pin domain is MPI process pin domain.
-Otherwise, pin domain is all cores on the node.</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">&lt;cpulist&gt;</span></code></p></td>
-<td><p>A comma-separated list of core numbers and/or ranges of core numbers for all local workers, one number per worker.
-The i-th local worker is pinned to the i-th core in the list.
-For example &lt;a&gt;,&lt;b&gt;-&lt;c&gt; defines list of cores contaning core with number &lt;a&gt;
-and range of cores with numbers from &lt;b&gt; to &lt;c&gt;.
-The number should not exceed the number of cores available on the system.</p></td>
-</tr>
-</tbody>
-</table>
-<p><strong>Description</strong></p>
-<p>Set this environment variable to specify cpu affinity for oneCCL worker threads.</p>
-</div>
-<div class="section" id="ccl-worker-mem-affinity">
-<h2>CCL_WORKER_MEM_AFFINITY<a class="headerlink" href="#ccl-worker-mem-affinity" title="Permalink to this headline">¶</a></h2>
-<p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_WORKER_MEM_AFFINITY</span><span class="o">=&lt;</span><span class="n">nodelist</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<p><strong>Arguments</strong></p>
-<table class="colwidths-given table">
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 67%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>&lt;nodelist&gt;</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">auto</span></code></p></td>
-<td><p>Workers are automatically pinned to NUMA nodes that correspond to CPU affinity of workers.</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">&lt;nodelist&gt;</span></code></p></td>
-<td><p>A comma-separated list of NUMA node numbers for all local workers, one number per worker.
-The i-th local worker is pinned to the i-th NUMA node in the list.
-The number should not exceed the number of NUMA nodes available on the system.</p></td>
-</tr>
-</tbody>
-</table>
-<p><strong>Description</strong></p>
-<p>Set this environment variable to specify memory affinity for oneCCL worker threads.</p>
-</div>
-<div class="section" id="ccl-log-level">
-<h2>CCL_LOG_LEVEL<a class="headerlink" href="#ccl-log-level" title="Permalink to this headline">¶</a></h2>
-<p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_LOG_LEVEL</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<p><strong>Arguments</strong></p>
-<table class="table">
-<colgroup>
-<col style="width: 100%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">error</span></code></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">warn</span></code> (<strong>default</strong>)</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">info</span></code></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">debug</span></code></p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">trace</span></code></p></td>
-</tr>
-</tbody>
-</table>
-<p><strong>Description</strong></p>
-<p>Set this environment variable to control logging level.</p>
-</div>
 <div class="section" id="ccl-max-short-size">
 <h2>CCL_MAX_SHORT_SIZE<a class="headerlink" href="#ccl-max-short-size" title="Permalink to this headline">¶</a></h2>
 <p><strong>Syntax</strong></p>
@@ -1380,100 +1529,6 @@ The number should not exceed the number of NUMA nodes available on the system.</
 </table>
 <p><strong>Description</strong></p>
 <p>Set this environment variable to specify the threshold of the number of bytes for a collective operation to be split.</p>
-</div>
-<div class="section" id="multi-nic">
-<h2>Multi-NIC<a class="headerlink" href="#multi-nic" title="Permalink to this headline">¶</a></h2>
-<p>CCL_MNIC, CCL_MNIC_NAME and CCL_MNIC_COUNT define filters to select multiple NICs.
-oneCCL workers will be pinned on selected NICs in a round-robin way.</p>
-<div class="section" id="ccl-mnic">
-<h3>CCL_MNIC<a class="headerlink" href="#ccl-mnic" title="Permalink to this headline">¶</a></h3>
-<p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_MNIC</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<p><strong>Arguments</strong></p>
-<table class="colwidths-given table">
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 67%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">global</span></code></p></td>
-<td><p>Select all NICs available on the node.</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">local</span></code></p></td>
-<td><p>Select all NICs local for the NUMA node that corresponds to process pinning.</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">none</span></code></p></td>
-<td><p>Disable special NIC selection, use a single default NIC (<strong>default</strong>).</p></td>
-</tr>
-</tbody>
-</table>
-<p><strong>Description</strong></p>
-<p>Set this environment variable to control multi-NIC selection by NIC locality.</p>
-</div>
-<div class="section" id="ccl-mnic-name">
-<h3>CCL_MNIC_NAME<a class="headerlink" href="#ccl-mnic-name" title="Permalink to this headline">¶</a></h3>
-<p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_MNIC_NAME</span><span class="o">=&lt;</span><span class="n">namelist</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<p><strong>Arguments</strong></p>
-<table class="colwidths-given table">
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 67%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>&lt;namelist&gt;</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">&lt;namelist&gt;</span></code></p></td>
-<td><p>A comma-separated list of NIC full names or prefixes to filter NICs.
-Use the <code class="docutils literal notranslate"><span class="pre">^</span></code> symbol to exclude NICs starting with the specified prefixes. For example,
-if you provide a list <code class="docutils literal notranslate"><span class="pre">mlx5_0,mlx5_1,^mlx5_2</span></code>, NICs with the names <code class="docutils literal notranslate"><span class="pre">mlx5_0</span></code> and <code class="docutils literal notranslate"><span class="pre">mlx5_1</span></code>
-will be selected, while <code class="docutils literal notranslate"><span class="pre">mlx5_2</span></code> will be excluded from the selection.</p></td>
-</tr>
-</tbody>
-</table>
-<p><strong>Description</strong></p>
-<p>Set this environment variable to control multi-NIC selection by NIC names.</p>
-</div>
-<div class="section" id="ccl-mnic-count">
-<h3>CCL_MNIC_COUNT<a class="headerlink" href="#ccl-mnic-count" title="Permalink to this headline">¶</a></h3>
-<p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_MNIC_COUNT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
-</pre></div>
-</div>
-<p><strong>Arguments</strong></p>
-<table class="colwidths-given table">
-<colgroup>
-<col style="width: 33%" />
-<col style="width: 67%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">N</span></code></p></td>
-<td><p>The maximum number of NICs that should be selected for oneCCL workers.
-If not specified then equal to the number of oneCCL workers.</p></td>
-</tr>
-</tbody>
-</table>
-<p><strong>Description</strong></p>
-<p>Set this environment variable to specify the maximum number of NICs to be selected.
-The actual number of NICs selected may be smaller due to limitations on transport level or system configuration.</p>
-</div>
 </div>
 <div class="section" id="ccl-sycl-output-event">
 <h2>CCL_SYCL_OUTPUT_EVENT<a class="headerlink" href="#ccl-sycl-output-event" title="Permalink to this headline">¶</a></h2>
@@ -1506,6 +1561,32 @@ The actual number of NICs selected may be smaller due to limitations on transpor
 Once the support is enabled, you can retrieve SYCL output event from oneCCL event using <code class="docutils literal notranslate"><span class="pre">get_native()</span></code> method.
 oneCCL event must be associated with oneCCL communication operation.</p>
 </div>
+<div class="section" id="ccl-ze-library-path">
+<h2>CCL_ZE_LIBRARY_PATH<a class="headerlink" href="#ccl-ze-library-path" title="Permalink to this headline">¶</a></h2>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_ZE_LIBRARY_PATH</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given table">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PATH/NAME</span></code></p></td>
+<td><p>Specify the name and full path to the <code class="docutils literal notranslate"><span class="pre">Level-Zero</span></code> library for dynamic loading by oneCCL.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to specify the name and full path to <code class="docutils literal notranslate"><span class="pre">Level-Zero</span></code> library. The path should be absolute and validated. Set this variable if <code class="docutils literal notranslate"><span class="pre">Level-Zero</span></code> is not located in the default path. By default oneCCL uses <code class="docutils literal notranslate"><span class="pre">libze_loader.so</span></code> name for dynamic loading.</p>
+</div>
 </div>
 
 
@@ -1514,7 +1595,7 @@ oneCCL event must be associated with oneCCL communication operation.</p>
         
         <div class='prev-next-bottom'>
             
-    <a class='left-prev' id="prev-link" href="api/operations/collective-operations/sparse-allreduce.html" title="previous page">SparseAllreduce</a>
+    <a class='left-prev' id="prev-link" href="api/operations/collective-operations/reduce-scatter.html" title="previous page">ReduceScatter</a>
     <a class='right-next' id="next-link" href="legal.html" title="next page">Notices and Disclaimers</a>
 
         </div>
@@ -1527,7 +1608,7 @@ oneCCL event must be associated with oneCCL communication operation.</p>
         
           By Intel<br/>
         
-            &copy; Copyright 2019–2021.<br/>
+            &copy; Copyright 2019–2022.<br/>
           <div class="extra_footer">
             <p align="right"><a href="https://www.intel.com/content/www/us/en/privacy/intel-cookie-notice.html">Cookies</a></p>
           </div>

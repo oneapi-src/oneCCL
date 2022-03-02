@@ -4,7 +4,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Unordered collectives support &#8212; oneCCL  documentation</title>
+    <title>Low-precision Datatypes &#8212; oneCCL  documentation</title>
     
   <link href="../_static/css/theme.css" rel="stylesheet" />
   <link href="../_static/css/index.c5995385ac14fb8791e8eb36b4908be2.css" rel="stylesheet" />
@@ -37,8 +37,8 @@
     <link rel="shortcut icon" href="../_static/favicons.png"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Sparse collective operations" href="sparse-collectives.html" />
-    <link rel="prev" title="Fusion of Communication Operations" href="operation-fusion.html" />
+    <link rel="next" title="Caching of Communication Operations" href="operation-caching.html" />
+    <link rel="prev" title="Selection of Collective Algorithms" href="collective-algorithms-selection.html" />
     <script defer type="text/javascript" src="https://www.intel.com/content/dam/www/global/wap/performance-config.js" ></script>
     <script type="text/javascript">
         // Configure TMS settings
@@ -156,7 +156,7 @@
    </li>
    <li class="toctree-l2">
     <a class="reference internal" href="../general-configuration/transport-selection.html">
-     Transport selection
+     Transport Selection
     </a>
    </li>
   </ul>
@@ -176,6 +176,11 @@
      Selection of Collective Algorithms
     </a>
    </li>
+   <li class="toctree-l2 current active">
+    <a class="current reference internal" href="#">
+     Low-precision Datatypes
+    </a>
+   </li>
    <li class="toctree-l2">
     <a class="reference internal" href="operation-caching.html">
      Caching of Communication Operations
@@ -191,19 +196,9 @@
      Fusion of Communication Operations
     </a>
    </li>
-   <li class="toctree-l2 current active">
-    <a class="current reference internal" href="#">
-     Unordered collectives support
-    </a>
-   </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="sparse-collectives.html">
-     Sparse collective operations
-    </a>
-   </li>
    <li class="toctree-l2">
     <a class="reference internal" href="dmabuf.html">
-     Enabling OFI/verbs dmabuf support
+     Enabling OFI/verbs/dmabuf Support
     </a>
    </li>
   </ul>
@@ -337,11 +332,6 @@
          ReduceScatter
         </a>
        </li>
-       <li class="toctree-l4">
-        <a class="reference internal" href="../api/operations/collective-operations/sparse-allreduce.html">
-         SparseAllreduce
-        </a>
-       </li>
       </ul>
      </li>
     </ul>
@@ -406,7 +396,7 @@
         <!-- ipynb file if we had a myst markdown file -->
         
         <!-- Download raw file -->
-        <a class="dropdown-buttons" href="../_sources/advanced-configuration/unordered-collectives.rst.txt"><button type="button"
+        <a class="dropdown-buttons" href="../_sources/advanced-configuration/low-precision-datatypes.rst.txt"><button type="button"
                 class="btn btn-secondary topbarbtn" title="Download source file" data-toggle="tooltip"
                 data-placement="left">.rst</button></a>
         <!-- Download PDF via print -->
@@ -423,10 +413,10 @@
     <div class="dropdown-buttons sourcebuttons">
         
         <a class="issues-button"
-            href="https://github.com/oneapi-src/oneCCL/issues/new?title=Issue%20on%20page%20%2Fadvanced-configuration/unordered-collectives.html&body=Your%20issue%20content%20here."><button
+            href="https://github.com/oneapi-src/oneCCL/issues/new?title=Issue%20on%20page%20%2Fadvanced-configuration/low-precision-datatypes.html&body=Your%20issue%20content%20here."><button
                 type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
                 title="Open an issue"><i class="fas fa-lightbulb"></i>open issue</button></a>
-        <a class="edit-button" href="https://github.com/oneapi-src/oneCCL/edit/master/doc/source/advanced-configuration/unordered-collectives.rst"><button
+        <a class="edit-button" href="https://github.com/oneapi-src/oneCCL/edit/master/doc/source/advanced-configuration/low-precision-datatypes.rst"><button
                 type="button" class="btn btn-secondary topbarbtn" data-toggle="tooltip" data-placement="left"
                 title="Edit this page"><i class="fas fa-pencil-alt"></i>suggest edit</button></a>
     </div>
@@ -454,19 +444,17 @@
         
               <div>
                 
-  <div class="section" id="unordered-collectives-support">
-<h1>Unordered collectives support<a class="headerlink" href="#unordered-collectives-support" title="Permalink to this headline">¶</a></h1>
-<p>Some deep learning frameworks deploy local scheduling approach for the graph of operations,
-which may result in different ordering of collective operations across different processes.
-When using communication middleware that requires the same order of collective calls across different ranks, such scenarios may result in hangs or data corruption.
-This requires complicated coordination logic to maintain the same ordering.</p>
-<p>In contrast, oneCCL provides a mechanism to arrange execution of collective operations in accordance with the user-defined string identifier. To set an identifier, use <code class="docutils literal notranslate"><span class="pre">match_id</span></code> field in operation attribute.</p>
-<p>Unordered collectives’ execution is coordinated by the zero-id rank (root rank). When root rank receives a user request with a non-empty <code class="docutils literal notranslate"><span class="pre">match_id</span></code> for the first time,
-it broadcasts information about the user identifier to all other ranks and assigns an internal oneCCL identifier that will later be used with all following operations with the same <code class="docutils literal notranslate"><span class="pre">match_id</span></code>.</p>
-<p>When a non-root rank receives a user request with a non-empty <code class="docutils literal notranslate"><span class="pre">match_id</span></code> for the first time, it postpones operation execution until it receives a message from the root rank.
-Once the message is received, the rank creates an internal oneCCL identifier that will be used for all following operations with the same <code class="docutils literal notranslate"><span class="pre">match_id</span></code>.</p>
-<p>Unordered collectives are controlled by <a class="reference internal" href="../env-variables.html#ccl-unordered-coll"><span class="std std-ref">CCL_UNORDERED_COLL</span></a>.</p>
-<a class="reference internal image-reference" href="../_images/unordered_coll.png"><img alt="../_images/unordered_coll.png" src="../_images/unordered_coll.png" style="width: 800px;" /></a>
+  <div class="section" id="low-precision-datatypes">
+<h1>Low-precision Datatypes<a class="headerlink" href="#low-precision-datatypes" title="Permalink to this headline">¶</a></h1>
+<p>oneCCL provides support for collective operations on low-precision (LP) datatypes (<a class="reference external" href="https://en.wikipedia.org/wiki/Bfloat16_floating-point_format">bfloat16</a> and <a class="reference external" href="https://en.wikipedia.org/wiki/Half-precision_floating-point_format">float16</a>).</p>
+<p>Reduction of LP buffers (for example as phase in <code class="docutils literal notranslate"><span class="pre">ccl::allreduce</span></code>) includes conversion from LP to FP32 format, reduction of FP32 values and conversion from FP32 to LP format.</p>
+<p>oneCCL utilizes CPU vector instructions for FP32 &lt;-&gt; LP conversion.</p>
+<p>For BF16 &lt;-&gt; FP32 conversion oneCCL provides <code class="docutils literal notranslate"><span class="pre">AVX512F</span></code> and <code class="docutils literal notranslate"><span class="pre">AVX512_BF16</span></code>-based implementations.
+<code class="docutils literal notranslate"><span class="pre">AVX512F</span></code>-based implementation requires GCC 4.9 or higher. <code class="docutils literal notranslate"><span class="pre">AVX512_BF16</span></code>-based implementation requires GCC 10.0 or higher and GNU binutils 2.33 or higher.
+<code class="docutils literal notranslate"><span class="pre">AVX512_BF16</span></code>-based implementation may provide less accuracy loss after multiple up-down conversions.</p>
+<p>For FP16 &lt;-&gt; FP32 conversion oneCCL provides <code class="docutils literal notranslate"><span class="pre">F16C</span></code> and <code class="docutils literal notranslate"><span class="pre">AVX512F</span></code>-based implementations.
+Both implementations require GCC 4.9 or higher.</p>
+<p>Refer to <a class="reference internal" href="../env-variables.html#low-precision-datatypes"><span class="std std-ref">Low-precision datatypes</span></a> for details about relevant environment variables.</p>
 </div>
 
 
@@ -475,8 +463,8 @@ Once the message is received, the rank creates an internal oneCCL identifier tha
         
         <div class='prev-next-bottom'>
             
-    <a class='left-prev' id="prev-link" href="operation-fusion.html" title="previous page">Fusion of Communication Operations</a>
-    <a class='right-next' id="next-link" href="sparse-collectives.html" title="next page">Sparse collective operations</a>
+    <a class='left-prev' id="prev-link" href="collective-algorithms-selection.html" title="previous page">Selection of Collective Algorithms</a>
+    <a class='right-next' id="next-link" href="operation-caching.html" title="next page">Caching of Communication Operations</a>
 
         </div>
         
@@ -488,7 +476,7 @@ Once the message is received, the rank creates an internal oneCCL identifier tha
         
           By Intel<br/>
         
-            &copy; Copyright 2019–2021.<br/>
+            &copy; Copyright 2019–2022.<br/>
           <div class="extra_footer">
             <p align="right"><a href="https://www.intel.com/content/www/us/en/privacy/intel-cookie-notice.html">Cookies</a></p>
           </div>

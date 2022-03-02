@@ -4,7 +4,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Transport selection &#8212; oneCCL  documentation</title>
+    <title>Transport Selection &#8212; oneCCL  documentation</title>
     
   <link href="../_static/css/theme.css" rel="stylesheet" />
   <link href="../_static/css/index.c5995385ac14fb8791e8eb36b4908be2.css" rel="stylesheet" />
@@ -156,7 +156,7 @@
    </li>
    <li class="toctree-l2 current active">
     <a class="current reference internal" href="#">
-     Transport selection
+     Transport Selection
     </a>
    </li>
   </ul>
@@ -177,6 +177,11 @@
     </a>
    </li>
    <li class="toctree-l2">
+    <a class="reference internal" href="../advanced-configuration/low-precision-datatypes.html">
+     Low-precision Datatypes
+    </a>
+   </li>
+   <li class="toctree-l2">
     <a class="reference internal" href="../advanced-configuration/operation-caching.html">
      Caching of Communication Operations
     </a>
@@ -192,18 +197,8 @@
     </a>
    </li>
    <li class="toctree-l2">
-    <a class="reference internal" href="../advanced-configuration/unordered-collectives.html">
-     Unordered collectives support
-    </a>
-   </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="../advanced-configuration/sparse-collectives.html">
-     Sparse collective operations
-    </a>
-   </li>
-   <li class="toctree-l2">
     <a class="reference internal" href="../advanced-configuration/dmabuf.html">
-     Enabling OFI/verbs dmabuf support
+     Enabling OFI/verbs/dmabuf Support
     </a>
    </li>
   </ul>
@@ -337,11 +332,6 @@
          ReduceScatter
         </a>
        </li>
-       <li class="toctree-l4">
-        <a class="reference internal" href="../api/operations/collective-operations/sparse-allreduce.html">
-         SparseAllreduce
-        </a>
-       </li>
       </ul>
      </li>
     </ul>
@@ -455,11 +445,10 @@
               <div>
                 
   <div class="section" id="transport-selection">
-<h1>Transport selection<a class="headerlink" href="#transport-selection" title="Permalink to this headline">¶</a></h1>
-<p>oneCCL supports two transports for inter-node communication: <a class="reference external" href="https://software.intel.com/content/www/us/en/develop/tools/mpi-library.html">Intel® MPI Library</a> and <a class="reference external" href="https://github.com/ofiwg/libfabric">Libfabric*</a>.</p>
+<h1>Transport Selection<a class="headerlink" href="#transport-selection" title="Permalink to this headline">¶</a></h1>
+<p>oneCCL supports two transports for inter-process communication: <a class="reference external" href="https://www.intel.com/content/www/us/en/developer/tools/oneapi/mpi-library.html">Intel® MPI Library</a> and <a class="reference external" href="https://github.com/ofiwg/libfabric">libfabric*</a>.</p>
 <p>The transport selection is controlled by <a class="reference internal" href="../env-variables.html#ccl-atl-transport"><span class="std std-ref">CCL_ATL_TRANSPORT</span></a>.</p>
-<p>In case of MPI over Libfabric implementation (for example, Intel® MPI Library 2019) or in case of direct Libfabric transport,
-the selection of specific Libfabric provider is controlled by the <code class="docutils literal notranslate"><span class="pre">FI_PROVIDER</span></code> environment variable.</p>
+<p>In case of MPI over libfabric implementation (for example, <code class="docutils literal notranslate"><span class="pre">Intel(R)</span> <span class="pre">MPI</span> <span class="pre">Library</span> <span class="pre">2021</span></code>) or in case of direct libfabric transport, the selection of specific libfabric provider is controlled by the <code class="docutils literal notranslate"><span class="pre">FI_PROVIDER</span></code> environment variable.</p>
 </div>
 
 
@@ -481,7 +470,7 @@ the selection of specific Libfabric provider is controlled by the <code class="d
         
           By Intel<br/>
         
-            &copy; Copyright 2019–2021.<br/>
+            &copy; Copyright 2019–2022.<br/>
           <div class="extra_footer">
             <p align="right"><a href="https://www.intel.com/content/www/us/en/privacy/intel-cookie-notice.html">Cookies</a></p>
           </div>
