@@ -40,6 +40,7 @@
 
 #define ATL_CACHELINE_LEN     64
 #define ATL_REQ_SIZE          16
+#define ATL_EP_SIZE           16
 #define ATL_PROGRESS_MODE_ENV "ATL_PROGRESS_MODE"
 #define ATL_MAX_HOSTNAME_LEN  64
 
@@ -88,7 +89,6 @@
 class ipmi;
 
 typedef struct atl_ctx atl_ctx_t;
-typedef struct atl_ep atl_ep_t;
 
 typedef enum { ATL_PROGRESS_POLL, ATL_PROGRESS_CHECK } atl_progress_mode_t;
 
@@ -143,10 +143,7 @@ typedef enum { ATL_MNIC_OFFSET_NONE, ATL_MNIC_OFFSET_LOCAL_PROC_IDX } atl_mnic_o
 extern std::map<atl_mnic_t, std::string> mnic_type_names;
 extern std::map<atl_mnic_offset_t, std::string> mnic_offset_names;
 
-std::string to_string(atl_mnic_t type);
-std::string to_string(atl_mnic_offset_t offset);
-
-typedef struct {
+typedef struct atl_attr {
     struct {
         int enable_shm;
         int enable_rma;
@@ -178,12 +175,23 @@ typedef struct {
     uintptr_t remote_key;
 } atl_mr_t;
 
-typedef struct {
+typedef struct atl_proc_coord {
     int global_idx;
     int global_count;
     int local_idx;
     int local_count;
     size_t hostname_hash;
+    void reset() {
+        global_idx = 0;
+        global_count = 0;
+        local_idx = 0;
+        local_count = 0;
+        hostname_hash = 0;
+    }
+    void validate(int rank = -1, int size = -1);
+    atl_proc_coord() {
+        reset();
+    }
 } atl_proc_coord_t;
 
 typedef struct atl_req {
@@ -194,19 +202,17 @@ typedef struct atl_req {
     }
 } atl_req_t;
 
-struct atl_ctx {
-    atl_proc_coord_t coord;
-
-    size_t ep_count;
-};
-
-/*
-   name convention
-   len - for bytes
-   count - for iov and for dtype-arrays like in reduce/allreduce
-*/
-
-struct atl_ep {
+typedef struct atl_ep {
     size_t idx;
-    atl_ctx_t* ctx;
-};
+    atl_proc_coord_t coord;
+    void* internal[ATL_EP_SIZE];
+    atl_ep() : idx(0) {
+        memset(internal, 0, ATL_EP_SIZE * sizeof(void*));
+    }
+} atl_ep_t;
+
+std::string to_string(atl_mnic_t type);
+std::string to_string(atl_mnic_offset_t offset);
+std::string to_string(atl_proc_coord_t& coord);
+std::string to_string(atl_attr_t& attr);
+std::ostream& operator<<(std::ostream& str, const atl_req_t& req);

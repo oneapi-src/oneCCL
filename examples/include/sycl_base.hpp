@@ -127,7 +127,7 @@ inline std::string get_preferred_gpu_platform_name() {
     return result;
 }
 
-inline std::vector<sycl::device> create_sycl_gpu_devices() {
+inline std::vector<sycl::device> create_sycl_gpu_devices(bool select_root_devices) {
     constexpr char prefix[] = "-- ";
 
     std::vector<sycl::device> result;
@@ -149,6 +149,11 @@ inline std::vector<sycl::device> create_sycl_gpu_devices() {
 
             if (!device.is_gpu()) {
                 ss_warn << prefix << "device [" << device_name << "] is not GPU, skipping\n";
+                continue;
+            }
+
+            if (select_root_devices) {
+                result.push_back(device);
                 continue;
             }
 
@@ -214,7 +219,8 @@ inline std::vector<sycl::device> create_sycl_gpu_devices() {
 }
 
 inline std::vector<sycl::queue> create_sycl_queues(const std::string& device_type,
-                                                   const std::vector<int>& ranks) {
+                                                   const std::vector<int>& ranks,
+                                                   bool select_root_devices = false) {
     std::vector<sycl::device> devices;
 
     try {
@@ -224,7 +230,7 @@ inline std::vector<sycl::queue> create_sycl_queues(const std::string& device_typ
             }
 
             /* GPU type has special handling to cover multi-tile case */
-            devices = create_sycl_gpu_devices();
+            devices = create_sycl_gpu_devices(select_root_devices);
         }
         else {
             unique_ptr<device_selector> selector;

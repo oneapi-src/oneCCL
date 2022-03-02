@@ -41,6 +41,11 @@ host_event_impl::~host_event_impl() {
     ) {
         LOG_ERROR("not completed event is destroyed");
     }
+
+    // when using native event user might not call wait/test on ccl event(complete = false)
+    // but we need to ensure that the bound schedule is actually destroyed. For this
+    // to happen, call wait() to do a proper finalization and cleanup.
+    wait();
 }
 
 void host_event_impl::wait() {

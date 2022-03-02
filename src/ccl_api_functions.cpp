@@ -16,11 +16,11 @@
 #include "oneapi/ccl/types.hpp"
 #include "oneapi/ccl/environment.hpp"
 #include "oneapi/ccl/api_functions.hpp"
-#include "common/comm/comm.hpp"
+#include "comm/comm.hpp"
 #include "oneapi/ccl/exception.hpp"
 
 #if defined(CCL_ENABLE_ZE) || defined(CCL_ENABLE_SYCL)
-#include "common/comm/comm_interface.hpp"
+#include "comm/comm_interface.hpp"
 #endif //#if defined(CCL_ENABLE_ZE) || defined(CCL_ENABLE_SYCL)
 
 #include "ccl_api_functions_generators.hpp"
@@ -931,180 +931,6 @@ event reduce_scatter(const BufferObjectType& send_buf,
 
 } // namespace v1
 
-namespace preview {
-
-/* sparse_allreduce */
-ccl::event sparse_allreduce(const void* send_ind_buf,
-                            size_t send_ind_count,
-                            const void* send_val_buf,
-                            size_t send_val_count,
-                            void* recv_ind_buf,
-                            size_t recv_ind_count,
-                            void* recv_val_buf,
-                            size_t recv_val_count,
-                            ccl::datatype index_dtype,
-                            ccl::datatype value_dtype,
-                            ccl::reduction reduction,
-                            const ccl::communicator& comm,
-                            const ccl::stream& op_stream,
-                            const ccl::sparse_allreduce_attr& attr,
-                            const ccl::vector_class<ccl::event>& deps) {
-    ccl::impl_dispatch disp;
-    return disp(comm)->sparse_allreduce(send_ind_buf,
-                                        send_ind_count,
-                                        send_val_buf,
-                                        send_val_count,
-                                        recv_ind_buf,
-                                        recv_ind_count,
-                                        recv_val_buf,
-                                        recv_val_count,
-                                        index_dtype,
-                                        value_dtype,
-                                        reduction,
-                                        disp(op_stream),
-                                        attr,
-                                        deps);
-}
-
-ccl::event sparse_allreduce(const void* send_ind_buf,
-                            size_t send_ind_count,
-                            const void* send_val_buf,
-                            size_t send_val_count,
-                            void* recv_ind_buf,
-                            size_t recv_ind_count,
-                            void* recv_val_buf,
-                            size_t recv_val_count,
-                            ccl::datatype index_dtype,
-                            ccl::datatype value_dtype,
-                            ccl::reduction reduction,
-                            const ccl::communicator& comm,
-                            const ccl::sparse_allreduce_attr& attr,
-                            const ccl::vector_class<ccl::event>& deps) {
-    ccl::impl_dispatch disp;
-    return disp(comm)->sparse_allreduce(send_ind_buf,
-                                        send_ind_count,
-                                        send_val_buf,
-                                        send_val_count,
-                                        recv_ind_buf,
-                                        recv_ind_count,
-                                        recv_val_buf,
-                                        recv_val_count,
-                                        index_dtype,
-                                        value_dtype,
-                                        reduction,
-                                        disp(default_stream),
-                                        attr,
-                                        deps);
-}
-
-template <class IndexBufferType, class ValueBufferType, typename T>
-ccl::event sparse_allreduce(const IndexBufferType* send_ind_buf,
-                            size_t send_ind_count,
-                            const ValueBufferType* send_val_buf,
-                            size_t send_val_count,
-                            IndexBufferType* recv_ind_buf,
-                            size_t recv_ind_count,
-                            ValueBufferType* recv_val_buf,
-                            size_t recv_val_count,
-                            ccl::reduction reduction,
-                            const ccl::communicator& comm,
-                            const ccl::stream& op_stream,
-                            const ccl::sparse_allreduce_attr& attr,
-                            const ccl::vector_class<ccl::event>& deps) {
-    ccl::impl_dispatch disp;
-    return disp(comm)->sparse_allreduce(send_ind_buf,
-                                        send_ind_count,
-                                        send_val_buf,
-                                        send_val_count,
-                                        recv_ind_buf,
-                                        recv_ind_count,
-                                        recv_val_buf,
-                                        recv_val_count,
-                                        reduction,
-                                        disp(op_stream),
-                                        attr,
-                                        deps);
-}
-
-template <class IndexBufferType, class ValueBufferType, typename T>
-ccl::event sparse_allreduce(const IndexBufferType* send_ind_buf,
-                            size_t send_ind_count,
-                            const ValueBufferType* send_val_buf,
-                            size_t send_val_count,
-                            IndexBufferType* recv_ind_buf,
-                            size_t recv_ind_count,
-                            ValueBufferType* recv_val_buf,
-                            size_t recv_val_count,
-                            ccl::reduction reduction,
-                            const ccl::communicator& comm,
-                            const ccl::sparse_allreduce_attr& attr,
-                            const ccl::vector_class<ccl::event>& deps) {
-    ccl::impl_dispatch disp;
-    return disp(comm)->sparse_allreduce(send_ind_buf,
-                                        send_ind_count,
-                                        send_val_buf,
-                                        send_val_count,
-                                        recv_ind_buf,
-                                        recv_ind_count,
-                                        recv_val_buf,
-                                        recv_val_count,
-                                        reduction,
-                                        disp(default_stream),
-                                        attr,
-                                        deps);
-}
-
-// template <class IndexBufferObjectType, class ValueBufferObjectType, typename T>
-// ccl::event
-// sparse_allreduce(const IndexBufferObjectType& send_ind_buf,
-//                  size_t send_ind_count,
-//                  const ValueBufferObjectType& send_val_buf,
-//                  size_t send_val_count,
-//                  IndexBufferObjectType& recv_ind_buf,
-//                  size_t recv_ind_count,
-//                  ValueBufferObjectType& recv_val_buf,
-//                  size_t recv_val_count,
-//                  ccl::reduction reduction,
-//                  const ccl::communicator& comm,
-//                  const ccl::stream& op_stream,
-//                  const ccl::sparse_allreduce_attr& attr,
-//                  const ccl::vector_class<ccl::event>& deps)
-// {
-//     ccl::impl_dispatch disp;
-//     return disp(comm)->sparse_allreduce(send_ind_buf, send_ind_count,
-//                                         send_val_buf, send_val_count,
-//                                         recv_ind_buf, recv_ind_count,
-//                                         recv_val_buf, recv_val_count,
-//                                         reduction,
-//                                         disp(op_stream), attr, deps);
-// }
-//
-// template <class IndexBufferObjectType, class ValueBufferObjectType, typename T>
-// ccl::event
-// sparse_allreduce(const IndexBufferObjectType& send_ind_buf,
-//                  size_t send_ind_count,
-//                  const ValueBufferObjectType& send_val_buf,
-//                  size_t send_val_count,
-//                  IndexBufferObjectType& recv_ind_buf,
-//                  size_t recv_ind_count,
-//                  ValueBufferObjectType& recv_val_buf,
-//                  size_t recv_val_count,
-//                  ccl::reduction reduction,
-//                  const ccl::communicator& comm,
-//                  const ccl::sparse_allreduce_attr& attr,
-//                  const ccl::vector_class<ccl::event>& deps)
-// {
-//     ccl::impl_dispatch disp;
-//     return disp(comm)->sparse_allreduce(send_ind_buf, send_ind_count,
-//                                         send_val_buf, send_val_count,
-//                                         recv_ind_buf, recv_ind_count,
-//                                         recv_val_buf, recv_val_count,
-//                                         reduction,
-//                                         disp(default_stream), attr, deps);
-// }
-
-} // namespace preview
-
 namespace v1 {
 
 // API force instantiations for Operations
@@ -1143,30 +969,5 @@ API_COMM_OP_REF_EXPLICIT_INSTANTIATION(cl::sycl::buffer<double COMMA 1>);
 #endif // CCL_ENABLE_SYCL
 
 } // namespace v1
-
-namespace preview {
-
-API_COMM_SPARSE_OP_PTR_EXPLICIT_INSTANTIATION(int32_t, float);
-API_COMM_SPARSE_OP_PTR_EXPLICIT_INSTANTIATION(int32_t, ccl::bfloat16);
-API_COMM_SPARSE_OP_PTR_EXPLICIT_INSTANTIATION(int64_t, float);
-API_COMM_SPARSE_OP_PTR_EXPLICIT_INSTANTIATION(int64_t, ccl::bfloat16);
-
-// #ifdef CCL_ENABLE_SYCL
-// #ifndef COMMA
-// #define COMMA ,
-// #endif
-// API_COMM_SPARSE_OP_REF_EXPLICIT_INSTANTIATION(cl::sycl::buffer<int32_t COMMA 1>,
-//                                                      cl::sycl::buffer<float COMMA 1>);
-// API_COMM_SPARSE_OP_REF_EXPLICIT_INSTANTIATION(cl::sycl::buffer<int32_t COMMA 1>,
-//                                                      cl::sycl::buffer<ccl::bfloat16 COMMA 1>);
-
-// API_COMM_SPARSE_OP_REF_EXPLICIT_INSTANTIATION(cl::sycl::buffer<int64_t COMMA 1>,
-//                                                      cl::sycl::buffer<float COMMA 1>);
-// API_COMM_SPARSE_OP_REF_EXPLICIT_INSTANTIATION(cl::sycl::buffer<int64_t COMMA 1>,
-//                                                      cl::sycl::buffer<ccl::bfloat16 COMMA 1>);
-// #undef COMMA
-// #endif //CCL_ENABLE_SYCL
-
-} // namespace preview
 
 } // namespace ccl

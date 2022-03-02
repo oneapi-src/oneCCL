@@ -24,15 +24,12 @@ public:
     }
 
     barrier_entry() = delete;
-    barrier_entry(ccl_sched* sched, ccl_comm* comm) : base_coll_entry(sched), comm(comm) {
-        //TODO: Add way to using MPI communicator
-        CCL_UNUSED(this->comm);
-    }
+    barrier_entry(ccl_sched* sched, ccl_comm* comm) : base_coll_entry(sched), comm(comm) {}
 
     void start() override {
         LOG_DEBUG("BARRIER entry req ", &req);
 
-        atl_status_t atl_status = comm->get_atl_comm()->barrier(sched->bin->get_atl_ep(), &req);
+        atl_status_t atl_status = comm->get_atl_comm()->barrier(sched->bin->get_atl_ep(), req);
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("BARRIER entry failed. atl_status: ", atl_status_to_str(atl_status));
         }
@@ -41,7 +38,7 @@ public:
     }
 
     void update() override {
-        atl_status_t atl_status = comm->get_atl_comm()->check(sched->bin->get_atl_ep(), &req);
+        atl_status_t atl_status = comm->get_atl_comm()->check(sched->bin->get_atl_ep(), req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("BARRIER entry failed. atl_status: ", atl_status_to_str(atl_status));
@@ -57,7 +54,7 @@ public:
 
 protected:
     void dump_detail(std::stringstream& str) const override {
-        ccl_logger::format(str, "comm_id ", sched->get_comm_id(), ", req ", &req, "\n");
+        ccl_logger::format(str, "comm_id ", comm->get_comm_id(), ", req ", req, "\n");
     }
 
 private:

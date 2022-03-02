@@ -24,7 +24,7 @@ ze_copy_entry::ze_copy_entry(ccl_sched* sched,
                              const ccl_datatype& dtype,
                              const copy_attr& attr,
                              std::vector<ze_event_handle_t> wait_events)
-        : ze_base_entry(sched, init_mode::copy, nullptr, 1, wait_events),
+        : ze_base_entry(sched, nullptr, 1, wait_events),
           sched(sched),
           in_buf(in_buf),
           out_buf(out_buf),
@@ -49,7 +49,8 @@ void ze_copy_entry::init_ze_hook() {
 
     void* dst = static_cast<char*>(out_buf.get_ptr()) + attr.out_buf_offset * dtype.size();
     void* src = static_cast<char*>(in_buf.get_ptr()) + attr.in_buf_offset * dtype.size();
-    ze_command_list_handle_t list = ze_base_entry::get_copy_list();
+    ze_command_list_handle_t list =
+        ze_base_entry::get_copy_list(attr.hint_queue_index, attr.is_peer_card_copy);
 
     ZE_CALL(zeCommandListAppendMemoryCopy,
             (list, dst, src, dtype.size() * count, ze_base_entry::entry_event, 0, nullptr));

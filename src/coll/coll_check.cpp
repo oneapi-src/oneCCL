@@ -29,8 +29,8 @@ void ccl_check_usm_pointers(const ccl_coll_param& param) {
         return;
     }
 
-    auto dev = param.stream->get_native_stream().get_device();
-    auto ctx = param.stream->get_native_stream().get_context();
+    auto dev = param.comm->get_device()->get_native();
+    auto ctx = param.comm->get_context()->get_native();
 
     std::set<sycl::usm::alloc> usm_types;
     for (size_t idx = 0; idx < bufs.size(); idx++) {
@@ -88,30 +88,16 @@ void ccl_coll_validate_user_input(const ccl_coll_param& param, const ccl_coll_at
                          ccl::global_data::env().atl_transport == ccl_atl_ofi,
                      "custom datatype is supported for OFI transport only");
 
-    CCL_THROW_IF_NOT((param.ctype != ccl_coll_allreduce && param.ctype != ccl_coll_reduce &&
-                      param.ctype != ccl_coll_sparse_allreduce) ||
+    CCL_THROW_IF_NOT((param.ctype != ccl_coll_allreduce && param.ctype != ccl_coll_reduce) ||
                          ccl_datatype_storage::is_predefined_datatype(param.dtype.idx()) ||
                          attr.reduction_fn,
                      "custom datatype requires custom reduction");
 
-    CCL_THROW_IF_NOT(param.ctype == ccl_coll_allreduce ||
-                         !(attr.prologue_fn || attr.epilogue_fn || attr.reduction_fn),
-                     "prologue/epilogue/custom reduction is supported for allreduce only");
+    CCL_THROW_IF_NOT(param.ctype == ccl_coll_allreduce || !(attr.reduction_fn),
+                     "custom reduction is supported for allreduce only");
 
     CCL_THROW_IF_NOT(param.ctype == ccl_coll_allgatherv || !(attr.is_vector_buf),
                      "vector buffer is supported for allgatherv only");
-
-    if (param.ctype == ccl_coll_sparse_allreduce) {
-        CCL_THROW_IF_NOT(
-            ccl::global_data::env().sparse_allreduce_algo_raw != "mask" || !(attr.reduction_fn),
-            "mask algorithm for sparse_allreduce does not support custom reduction");
-
-        CCL_THROW_IF_NOT(
-            (attr.sparse_allreduce_completion_fn || attr.sparse_allreduce_alloc_fn) &&
-                !(reinterpret_cast<uintptr_t>(attr.sparse_allreduce_completion_fn) &
-                  reinterpret_cast<uintptr_t>(attr.sparse_allreduce_alloc_fn)),
-            "sparse_allreduce requires completion callback only or allocation callback only");
-    }
 
     if (param.ctype == ccl_coll_bcast || param.ctype == ccl_coll_reduce) {
         CCL_THROW_IF_NOT(param.root < param.comm->size(),
@@ -121,18 +107,29 @@ void ccl_coll_validate_user_input(const ccl_coll_param& param, const ccl_coll_at
                          param.comm->size());
     }
 
-    if (param.stream) {
 #ifdef CCL_ENABLE_SYCL
-        /* SYCL specific validation */
-
-        /* TODO: compare stream dev/ctx and comm dev/ctx */
-        // sycl::device stream_dev = param.stream->get_native().get_context();
-        // sycl::device stream_ctx = param.stream->get_native().get_device();
+    if (param.comm->get_device() && param.comm->get_context() &&
+        (param.comm->get_device()->get_native().is_gpu())) {
+        CCL_THROW_IF_NOT(
+            param.stream, "specify stream for ", ccl_coll_type_to_str(param.ctype), " operation");
 
         if (!attr.is_sycl_buf) {
-            /* check whether USM pointers have expected type */
             ccl_check_usm_pointers(param);
         }
-#endif // CCL_ENABLE_SYCL
+
+        sycl::device comm_dev = param.comm->get_device()->get_native();
+        sycl::context comm_ctx = param.comm->get_context()->get_native();
+        auto stream_dev = param.stream->get_native_stream().get_device();
+        auto stream_ctx = param.stream->get_native_stream().get_context();
+
+        CCL_THROW_IF_NOT(comm_dev == stream_dev,
+                         "device should match for communicator and stream"
+                         ", comm_dev: ",
+                         ccl::utils::sycl_device_to_str(comm_dev),
+                         ", stream_dev: ",
+                         ccl::utils::sycl_device_to_str(stream_dev));
+        CCL_THROW_IF_NOT(comm_ctx == stream_ctx,
+                         "context should match for communicator and stream");
     }
+#endif // CCL_ENABLE_SYCL
 }

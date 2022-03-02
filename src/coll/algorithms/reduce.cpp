@@ -21,12 +21,9 @@
  */
 
 #include "coll/algorithms/algorithms.hpp"
-#include "common/comm/comm.hpp"
-#include "sched/entry/coll/coll_entry_helper.hpp"
-#include "sched/entry/factory/entry_factory.hpp"
-#if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
 #include "coll/coll_util.hpp"
-#endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
+#include "comm/comm.hpp"
+#include "sched/entry/factory/entry_factory.hpp"
 
 /* An implementation of Rabenseifner's reduce algorithm (see
    http://www.hlrs.de/mpi/myreduce.html).
@@ -455,14 +452,14 @@ ccl::status ccl_coll_build_binomial_reduce(ccl_sched* sched,
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
 
-ccl::status ccl_coll_build_gpu_reduce(ccl_sched* sched,
-                                      ccl_buffer send_buf,
-                                      ccl_buffer recv_buf,
-                                      size_t count,
-                                      const ccl_datatype& dtype,
-                                      ccl::reduction op,
-                                      int root,
-                                      ccl_comm* comm) {
+ccl::status ccl_coll_build_topo_reduce(ccl_sched* sched,
+                                       ccl_buffer send_buf,
+                                       ccl_buffer recv_buf,
+                                       size_t count,
+                                       const ccl_datatype& dtype,
+                                       ccl::reduction op,
+                                       int root,
+                                       ccl_comm* comm) {
     LOG_DEBUG("build gpu reduce");
 
     ccl_comm* pair_comm = comm->get_pair_comm().get();
@@ -499,12 +496,14 @@ ccl::status ccl_coll_build_gpu_reduce(ccl_sched* sched,
 
     ccl::add_handle_exchange(sched, node_comm, in_buffers);
 
+    CCL_THROW_IF_NOT(comm_size % 2 == 0, "unexpected comm_size ", comm_size);
+    CCL_THROW_IF_NOT(node_comm_size % 2 == 0, "unexpected node_comm_size ", node_comm_size);
+
     if (is_single_card) {
         LOG_DEBUG("topo/scale_up/intra: use ze_onesided_reduce");
         if (comm->rank() == root) {
             entry_factory::create<ze_onesided_reduce_entry>(
                 sched, send_buf, recv_buf, count, dtype, op, root, pair_comm);
-            sched->add_barrier();
         }
 
         ccl::add_comm_barrier(sched, pair_comm);
@@ -514,7 +513,6 @@ ccl::status ccl_coll_build_gpu_reduce(ccl_sched* sched,
             LOG_DEBUG("topo/scale_up/intra: use ze_onesided_reduce");
             entry_factory::create<ze_onesided_reduce_entry>(
                 sched, send_buf, tmp_buf, count, dtype, op, pair_comm->rank(), pair_comm);
-            sched->add_barrier();
 
             size_t main_block_count = count / even_comm_size;
             size_t block_count = main_block_count;
@@ -523,6 +521,7 @@ ccl::status ccl_coll_build_gpu_reduce(ccl_sched* sched,
             }
 
             ccl::add_comm_barrier(sched, even_comm);
+
             size_t offset_bytes = main_block_count * even_comm->rank() * dtype.size();
             ccl_buffer partial_tmp_buf = tmp_buf + offset_bytes;
             LOG_DEBUG("topo/scale_up/inter: use ze_a2a_reduce_scatter_entry");
@@ -538,64 +537,44 @@ ccl::status ccl_coll_build_gpu_reduce(ccl_sched* sched,
                                                                even_comm,
                                                                wait_events,
                                                                tmp_buf_idx);
-            sched->add_barrier();
             ccl::add_comm_barrier(sched, even_comm);
 
             CCL_THROW_IF_NOT(comm->size() % node_comm_size == 0);
             int root_node_idx = root / node_comm_size;
-            ccl_buffer host_buf{};
-            if (!is_single_node && block_count) {
-                LOG_DEBUG("topo/scale_out: use host_reduce");
-                ccl::alloc_param alloc_param(
-                    block_count * dtype.size(), ccl::buffer_type::regular, ccl::buffer_place::host);
-                host_buf = sched->alloc_buffer(alloc_param);
-                entry_factory::create<copy_entry>(sched,
-                                                  partial_tmp_buf,
-                                                  host_buf,
-                                                  block_count,
-                                                  dtype,
-                                                  copy_attr(copy_direction::d2h));
-                sched->add_barrier();
 
-                LOG_DEBUG("rank: ",
-                          comm->rank(),
-                          ", reduce to rank on r2r_comm: ",
-                          root_node_idx,
-                          ", count: ",
-                          block_count);
-                ccl_coll_build_reduce(
-                    sched, host_buf, host_buf, block_count, dtype, op, root_node_idx, r2r_comm);
-                sched->add_barrier();
-            }
+            ccl_coll_entry_param coll_param{ .ctype = ccl_coll_reduce,
+                                             .send_buf = partial_tmp_buf,
+                                             .recv_buf = partial_tmp_buf,
+                                             .count = block_count,
+                                             .dtype = dtype,
+                                             .reduction = op,
+                                             .root = root_node_idx,
+                                             .comm = r2r_comm };
 
+            copy_attr h2d_copy_attr{};
             if (root_node_idx == r2r_comm->rank()) {
                 LOG_DEBUG("topo/scale_up/intra: use ze_onesided_bcast");
                 int root_in_node_comm = node_comm->get_rank_from_global(root);
                 size_t offset_count = offset_bytes / dtype.size();
-                ccl_buffer src = (!is_single_node && block_count) ? host_buf : partial_tmp_buf;
-                ccl_buffer dst{};
-                copy_attr attr(root_in_node_comm,
-                               recv_buf_idx,
-                               copy_direction::h2d,
-                               node_comm,
-                               0,
-                               offset_count);
+                copy_attr local_attr(root_in_node_comm,
+                                     recv_buf_idx,
+                                     copy_direction::h2d,
+                                     node_comm,
+                                     0,
+                                     offset_count);
                 if (comm->rank() == root) {
-                    dst = recv_buf;
-                    attr = copy_attr(copy_direction::h2d, 0, offset_count);
+                    local_attr = copy_attr(copy_direction::h2d, 0, offset_count);
                 }
-
-                LOG_DEBUG("rank: ",
-                          comm->rank(),
-                          ", copy to rank on node_comm: ",
-                          root_in_node_comm,
-                          ", offset count: ",
-                          offset_count,
-                          ", count: ",
-                          block_count);
-                entry_factory::create<copy_entry>(sched, src, dst, block_count, dtype, attr);
-                sched->add_barrier();
+                h2d_copy_attr = local_attr;
             }
+            ccl::add_scaleout(sched,
+                              coll_param,
+                              is_single_node,
+                              wait_events,
+                              h2d_copy_attr,
+                              comm,
+                              recv_buf,
+                              root);
         }
         ccl::add_comm_barrier(sched, node_comm);
     }

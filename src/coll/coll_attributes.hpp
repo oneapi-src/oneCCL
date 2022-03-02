@@ -22,5 +22,4 @@
 #include "coll/ccl_bcast_op_attr.hpp"
 #include "coll/ccl_reduce_op_attr.hpp"
 #include "coll/ccl_reduce_scatter_op_attr.hpp"
-#include "coll/ccl_sparse_allreduce_op_attr.hpp"
 #include "coll/ccl_barrier_attr.hpp"

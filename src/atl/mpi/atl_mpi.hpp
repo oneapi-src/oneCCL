@@ -14,10 +14,34 @@
  limitations under the License.
 */
 #pragma once
+
 #ifdef CCL_ENABLE_MPI
+
 #include <mpi.h>
 
-#include "atl_mpi_global_data.hpp"
+#include "atl/atl_base_transport.hpp"
+#include "atl/mpi/atl_mpi_ctx.hpp"
+
+#define ATL_MPI_RET(ret) (ret != MPI_SUCCESS) ? ATL_STATUS_FAILURE : ATL_STATUS_SUCCESS
+
+#define ATL_MPI_BASE_PM_KEY      "atl-mpi"
+#define ATL_MPI_RANK_INFO_PM_KEY ATL_MPI_BASE_PM_KEY "-rank_info"
+
+#define ATL_MPI_RANK_STR_SIZE 8
+
+#define MPI_BFLOAT16 \
+    ({ \
+        CCL_THROW_IF_NOT(ctx.bf16.dtype != MPI_DATATYPE_NULL, \
+                         "unsupported datatype: ATL_DTYPE_BF16"); \
+        ctx.bf16.dtype; \
+    })
+
+#define MPI_FLOAT16 \
+    ({ \
+        CCL_THROW_IF_NOT(ctx.fp16.dtype != MPI_DATATYPE_NULL, \
+                         "unsupported datatype: ATL_DTYPE_FP16"); \
+        ctx.fp16.dtype; \
+    })
 
 typedef enum { ATL_MPI_COMP_POSTED, ATL_MPI_COMP_COMPLETED } atl_mpi_comp_state_t;
 
@@ -28,12 +52,9 @@ typedef struct {
 
 typedef struct {
     MPI_Comm mpi_comm;
-
     /* dummy recv operation to ensure progress in atl_poll */
     atl_mpi_req_t dummy_req;
     MPI_Comm dummy_comm;
-    size_t idx;
-    atl_proc_coord_t* coord;
 } atl_mpi_ep_t;
 
 typedef struct atl_mpi_env_info {
@@ -56,7 +77,7 @@ typedef struct atl_mpi_comm_info : atl_mpi_env_info_t {
     }
 } atl_mpi_comm_info_t;
 
-class atl_mpi {
+class atl_mpi : public atl_base_transport {
 public:
     atl_mpi() = default;
     ~atl_mpi();
@@ -65,160 +86,168 @@ public:
                       char*** argv,
                       atl_attr_t* attr,
                       const char* main_addr,
-                      std::shared_ptr<ipmi> pmi);
+                      std::shared_ptr<ipmi> pmi) override;
 
-    atl_status_t update(std::shared_ptr<ipmi> pmi);
+    atl_status_t update(std::shared_ptr<ipmi> pmi) override {
+        return ATL_STATUS_UNSUPPORTED;
+    }
 
-    atl_status_t mr_reg(const void* buf, size_t len, atl_mr_t** mr);
+    atl_status_t mr_reg(const void* buf, size_t len, atl_mr_t** mr) override {
+        return ATL_STATUS_UNSUPPORTED;
+    }
 
-    atl_status_t mr_dereg(atl_mr_t* mr);
+    atl_status_t mr_dereg(atl_mr_t* mr) override {
+        return ATL_STATUS_UNSUPPORTED;
+    }
 
-    atl_status_t send(atl_mpi_ep_t& ep,
+    atl_status_t send(atl_ep_t& ep,
                       const void* buf,
                       size_t len,
                       int dst_proc_idx,
                       uint64_t tag,
-                      atl_req_t* req);
+                      atl_req_t& req) override;
 
-    atl_status_t recv(atl_mpi_ep_t& ep,
+    atl_status_t recv(atl_ep_t& ep,
                       void* buf,
                       size_t len,
                       int src_proc_idx,
                       uint64_t tag,
-                      atl_req_t* req);
+                      atl_req_t& req) override;
 
-    atl_status_t probe(atl_mpi_ep_t& ep,
+    atl_status_t probe(atl_ep_t& ep,
                        int src_proc_idx,
                        uint64_t tag,
                        int* found,
-                       size_t* recv_len);
+                       size_t* recv_len) override;
 
-    atl_status_t allgatherv(atl_mpi_ep_t& ep,
+    atl_status_t allgatherv(atl_ep_t& ep,
                             const void* send_buf,
                             size_t send_len,
                             void* recv_buf,
                             const int* recv_lens,
                             const int* offsets,
-                            atl_req_t* req);
+                            atl_req_t& req) override;
 
-    atl_status_t allreduce(atl_mpi_ep_t& ep,
+    atl_status_t allreduce(atl_ep_t& ep,
                            const void* send_buf,
                            void* recv_buf,
                            size_t len,
                            atl_datatype_t dtype,
                            atl_reduction_t op,
-                           atl_req_t* req);
+                           atl_req_t& req) override;
 
-    atl_status_t alltoall(atl_mpi_ep_t& ep,
+    atl_status_t alltoall(atl_ep_t& ep,
                           const void* send_buf,
                           void* recv_buf,
                           int len,
-                          atl_req_t* req);
+                          atl_req_t& req) override;
 
-    atl_status_t alltoallv(atl_mpi_ep_t& ep,
+    atl_status_t alltoallv(atl_ep_t& ep,
                            const void* send_buf,
                            const int* send_lens,
                            const int* send_offsets,
                            void* recv_buf,
                            const int* recv_lens,
                            const int* recv_offsets,
-                           atl_req_t* req);
+                           atl_req_t& req) override;
 
-    atl_status_t barrier(atl_mpi_ep_t& ep, atl_req_t* req);
+    atl_status_t barrier(atl_ep_t& ep, atl_req_t& req) override;
 
-    atl_status_t bcast(atl_mpi_ep_t& ep, void* buf, size_t len, int root, atl_req_t* req);
+    atl_status_t bcast(atl_ep_t& ep, void* buf, size_t len, int root, atl_req_t& req) override;
 
-    atl_status_t reduce(atl_mpi_ep_t& ep,
+    atl_status_t reduce(atl_ep_t& ep,
                         const void* send_buf,
                         void* recv_buf,
                         size_t len,
                         int root,
                         atl_datatype_t dtype,
                         atl_reduction_t op,
-                        atl_req_t* req);
+                        atl_req_t& req) override;
 
-    atl_status_t reduce_scatter(atl_mpi_ep_t& ep,
+    atl_status_t reduce_scatter(atl_ep_t& ep,
                                 const void* send_buf,
                                 void* recv_buf,
                                 size_t recv_len,
                                 atl_datatype_t dtype,
                                 atl_reduction_t op,
-                                atl_req_t* req);
+                                atl_req_t& req) override;
 
-    atl_status_t read(atl_mpi_ep_t& ep,
+    atl_status_t read(atl_ep_t& ep,
                       void* buf,
                       size_t len,
                       atl_mr_t* mr,
                       uint64_t addr,
                       uintptr_t remote_key,
                       int dst_proc_idx,
-                      atl_req_t* req);
+                      atl_req_t& req) override {
+        return ATL_STATUS_UNSUPPORTED;
+    }
 
-    atl_status_t write(atl_mpi_ep_t& ep,
+    atl_status_t write(atl_ep_t& ep,
                        const void* buf,
                        size_t len,
                        atl_mr_t* mr,
                        uint64_t addr,
                        uintptr_t remote_key,
                        int dst_proc_idx,
-                       atl_req_t* req);
-
-    atl_status_t wait(atl_mpi_ep_t& ep, atl_req_t* req);
-
-    atl_status_t wait_all(atl_mpi_ep_t& ep, atl_req_t* req, size_t count);
-
-    atl_status_t cancel(atl_mpi_ep_t& ep, atl_req_t* req);
-
-    atl_status_t poll(atl_mpi_ep_t& ep);
-
-    atl_status_t check(atl_mpi_ep_t& ep, atl_req_t* req);
-
-    void comms_free(std::vector<atl_mpi_ep_t>& eps);
-
-    atl_status_t finalize();
-
-    int get_rank() {
-        return global_coord.global_idx;
+                       atl_req_t& req) override {
+        return ATL_STATUS_UNSUPPORTED;
     }
-    int get_size() {
-        return global_coord.global_count;
+
+    atl_status_t wait(atl_ep_t& ep, atl_req_t& req) override;
+
+    atl_status_t wait_all(atl_ep_t& ep, std::vector<atl_req_t>& reqs, size_t count) override;
+
+    atl_status_t cancel(atl_ep_t& ep, atl_req_t& req) override;
+
+    atl_status_t poll(atl_ep_t& ep) override;
+
+    atl_status_t check(atl_ep_t& ep, atl_req_t& req) override;
+
+    atl_proc_coord_t create_proc_coord(atl_ep_t& ep) override;
+    atl_proc_coord_t create_proc_coord(MPI_Comm comm);
+
+    void comms_free(std::vector<atl_ep_t>& eps) override;
+
+    atl_status_t comm_split(const std::vector<atl_ep_t>& base_eps,
+                            std::vector<atl_ep_t>& eps,
+                            size_t color,
+                            int local_idx) override;
+
+    atl_status_t get_rank2rank_map(std::shared_ptr<ipmi> pmi,
+                                   std::vector<int>& rank2rank_map) override {
+        return ATL_STATUS_UNSUPPORTED;
     }
-    bool is_inited() {
-        return inited;
-    }
+
+    std::string to_string() override;
+
+    atl_status_t finalize(int global_idx = 0) override;
+
+    atl_status_t comm_create(int comm_size,
+                             const std::vector<int>& comm_ranks,
+                             std::shared_ptr<ipmi> pmi,
+                             MPI_Comm* new_comm);
+
+    atl_status_t ep_init(std::vector<atl_ep_t>& eps, MPI_Comm global_comm, int local_idx);
 
     static void set_env(const atl_attr_t& attr);
-    void coord_update(MPI_Comm base_comm, atl_proc_coord_t& coord);
-    atl_status_t ep_init(std::vector<atl_mpi_ep_t>& eps);
-    atl_status_t comm_split(const std::vector<atl_mpi_ep_t>& base_eps,
-                            std::vector<atl_mpi_ep_t>& eps,
-                            size_t color);
-
     static atl_mpi_env_info_t get_env_info(const char* key);
     static atl_mpi_comm_info_t get_comm_info(MPI_Comm comm, const char* key);
 
 private:
     MPI_Datatype atl2mpi_dtype(atl_datatype_t dtype);
-    void init_req(atl_req_t* req);
-    inline atl_status_t ep_progress(atl_mpi_ep_t& ep, atl_mpi_req_t* req);
     MPI_Op atl2mpi_op(atl_reduction_t rtype, MPI_Datatype dtype);
+
+    void init_req(atl_req_t& req);
+    inline atl_status_t progress_ep(atl_ep_t& ep, atl_mpi_req_t* req);
+
     void check_comm_nic_idx(MPI_Comm comm, size_t expected_idx);
     void check_comm_ep_idx(MPI_Comm comm, size_t expected_idx);
     void check_comm_info(MPI_Comm comm, const char* key, const char* expected_value);
+    void check_ep(atl_ep_t& ep);
+
     size_t get_ep_idx(size_t ep_idx);
 
-#ifdef ENABLE_DEBUG
-    void check_ep(atl_mpi_ep_t& ep);
-#else
-#define check_ep(ep)
-#endif
-
-    bool is_finalized{ false };
-    bool inited{ false };
-    static atl_mpi_global_data global_data;
-    atl_progress_mode_t progress_mode;
-    bool sync_coll;
-    size_t ep_count;
-    atl_proc_coord_t global_coord;
+    atl_mpi_ctx ctx;
 };
 #endif // CCL_ENABLE_MPI

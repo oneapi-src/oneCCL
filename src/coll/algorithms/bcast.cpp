@@ -21,7 +21,7 @@
 */
 
 #include "coll/algorithms/algorithms.hpp"
-#include "sched/entry/coll/coll_entry_helper.hpp"
+#include "coll/coll_util.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
 
 #define MIN(a, b) std::min(a, b)
@@ -235,45 +235,29 @@ fn_exit:
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
 
-ccl::status ccl_coll_build_gpu_bcast(ccl_sched* sched,
-                                     ccl_buffer buf,
-                                     size_t count,
-                                     const ccl_datatype& dtype,
-                                     int root,
-                                     ccl_comm* comm) {
-    LOG_DEBUG("build gpu bcast");
+ccl::status ccl_coll_build_topo_bcast(ccl_sched* sched,
+                                      ccl_buffer buf,
+                                      size_t count,
+                                      const ccl_datatype& dtype,
+                                      int root,
+                                      ccl_comm* comm) {
+    LOG_DEBUG("build topo bcast");
+
+    ccl_comm* node_comm = comm->get_node_comm().get();
 
     const std::vector<ze_handle_exchange_entry::mem_desc_t> buffers{
         { buf.get_ptr(), ccl::ze::ipc_mem_type::memory }, // 0
     };
     LOG_DEBUG("BCAST buf = ", buf.get_ptr(), " and root = ", root);
 
-    ccl_coll_entry_param barrier_param{};
-    barrier_param.ctype = ccl_coll_barrier;
-    barrier_param.comm = comm;
-    barrier_param.hint_algo.barrier = ccl_coll_barrier_ring;
-
-    if (sched->coll_attr.to_cache) {
-        sched->set_entry_exec_mode(ccl_sched_entry_exec_once);
-        entry_factory::create<ze_handle_exchange_entry>(sched, comm, buffers);
-        sched->add_barrier();
-        sched->set_entry_exec_mode(ccl_sched_entry_exec_regular);
-
-        coll_entry_helper::add_coll_entry<ccl_coll_barrier>(sched, barrier_param);
-    }
-    else {
-        entry_factory::create<ze_handle_exchange_entry>(sched, comm, buffers);
-    }
-
-    sched->add_barrier();
+    ccl::add_handle_exchange(sched, node_comm, buffers);
 
     if (comm->rank() != root) {
         entry_factory::create<copy_entry>(
             sched, ccl_buffer(), buf, count, dtype, copy_attr(root, 0, copy_direction::d2d));
-        sched->add_barrier();
     }
 
-    coll_entry_helper::add_coll_entry<ccl_coll_barrier>(sched, barrier_param);
+    ccl::add_comm_barrier(sched, node_comm);
 
     return ccl::status::success;
 }

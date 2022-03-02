@@ -49,9 +49,8 @@ class pmi_resizable final : public ipmi {
 public:
     pmi_resizable() = delete;
     explicit pmi_resizable(std::shared_ptr<ikvs_wrapper> k, const char* main_addr = "")
-            : main_addr(main_addr) {
-        h = std::shared_ptr<helper>(new helper(k));
-    }
+            : main_addr(main_addr),
+              h(std::make_shared<helper>(k)) {}
 
     ~pmi_resizable() override;
 
@@ -138,8 +137,8 @@ private:
     kvs_resize_action_t default_checker(int comm_size);
     kvs_resize_action_t call_resize_fn(int comm_size);
 
-    int rank;
-    int size;
+    int rank = -1;
+    int size = -1;
     std::string main_addr;
 
     pmir_resize_fn_t resize_function = nullptr;

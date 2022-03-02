@@ -22,6 +22,7 @@ class ccl_request;
 
 namespace ccl {
 
+// event returned by ccl_comm(i.e. native backend)
 class host_event_impl final : public event_impl {
 public:
     explicit host_event_impl(ccl_request* r);

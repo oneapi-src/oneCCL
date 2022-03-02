@@ -115,32 +115,6 @@ extern ccl_reduction_type last_reduction_type;
 extern std::map<int, std::string> reduction_type_names;
 extern std::map<int, ccl::reduction> reduction_values;
 
-/* unused */
-typedef enum {
-    PROLOGUE_NULL = 0,
-#ifdef TEST_CCL_CUSTOM_PROLOG
-    PROLOGUE_2X,
-    PROLOGUE_CHAR,
-#endif
-    PROLOGUE_LAST
-} ccl_prologue_type;
-extern ccl_prologue_type first_prologue_type;
-extern ccl_prologue_type last_prologue_type;
-extern std::map<int, std::string> prologue_type_names;
-
-/* unused */
-typedef enum {
-    EPILOGUE_NULL = 0,
-#ifdef TEST_CCL_CUSTOM_EPILOG
-    EPILOGUE_2X,
-    EPILOGUE_CHAR,
-#endif
-    EPILOGUE_LAST
-} ccl_epilogue_type;
-extern ccl_epilogue_type first_epilogue_type;
-extern ccl_epilogue_type last_epilogue_type;
-extern std::map<int, std::string> epilogue_type_names;
-
 POST_AND_PRE_INCREMENTS_DECLARE(ccl_data_type);
 POST_AND_PRE_INCREMENTS_DECLARE(ccl_size_type);
 POST_AND_PRE_INCREMENTS_DECLARE(ccl_buf_count_type);

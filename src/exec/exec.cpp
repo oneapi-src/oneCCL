@@ -19,7 +19,7 @@
 #include "exec/thread/service_worker.hpp"
 #include "exec/thread/worker.hpp"
 #include "common/env/env.hpp"
-#include "sched/extra_sched.hpp"
+#include "sched/sched.hpp"
 
 size_t ccl_executor::get_worker_idx_by_sched_id(ccl_sched* sched) {
     return sched->sched_id % workers.size();
@@ -81,7 +81,7 @@ ccl_executor::ccl_executor(const char* main_addr) {
 
     /* generate ATL attr for all future communicators */
     atl_comm_manager::set_internal_env(generate_atl_attr(env));
-    atl_comm_manager::set_exec(this);
+    atl_comm_manager::set_executor(this);
 }
 
 void ccl_executor::start_workers(int proc_idx, int proc_count) {
@@ -234,21 +234,22 @@ void ccl_executor::update_workers() {
 //    return ccl::status::success;
 //}
 
-void ccl_executor::start(ccl_extra_sched* extra_sched) {
-    CCL_ASSERT(extra_sched->sched_type == ccl_sched_unordered_coll,
-               "should be unordered_coll for now");
+void ccl_executor::start(ccl_sched* sched, bool extra_sched) {
+    if (extra_sched) {
+        CCL_ASSERT(sched->sched_type == ccl_sched_unordered_coll,
+                   "should be unordered_coll for now");
 
-    extra_sched->set_counter(1);
-    workers[0]->add(extra_sched);
-}
-
-void ccl_executor::start(ccl_master_sched* sched) {
+        sched->get_request()->set_counter(1);
+        workers[0]->add(sched);
+        return;
+    }
     size_t worker_idx;
-    for (size_t idx = 0; idx < sched->partial_scheds.size(); idx++) {
-        worker_idx = (this->*get_worker_idx_fn)(sched->partial_scheds[idx].get());
+    auto& partial_scheds = sched->get_subscheds();
+    for (size_t idx = 0; idx < partial_scheds.size(); idx++) {
+        worker_idx = (this->*get_worker_idx_fn)(partial_scheds[idx].get());
         LOG_DEBUG(
             "worker idx: ", worker_idx, ", coll: ", ccl_coll_type_to_str(sched->coll_param.ctype));
-        workers[worker_idx]->add(sched->partial_scheds[idx].get());
+        workers[worker_idx]->add(partial_scheds[idx].get());
     }
 }
 
@@ -287,36 +288,49 @@ void ccl_executor::do_work() {
     }
 }
 
+void ccl_executor::getenv_local_coord(const char* local_proc_idx_env_name,
+                                      const char* local_proc_count_env_name) {
+    char* local_idx_env = getenv(local_proc_idx_env_name);
+    char* local_count_env = getenv(local_proc_count_env_name);
+    if (local_idx_env && local_count_env) {
+        local_proc_idx = std::atoi(local_idx_env);
+        local_proc_count = std::atoi(local_count_env);
+        CCL_THROW_IF_NOT(local_proc_idx != CCL_ENV_INT_NOT_SPECIFIED,
+                         "unexpected local_proc_idx ",
+                         local_proc_idx);
+        CCL_THROW_IF_NOT(local_proc_count != CCL_ENV_INT_NOT_SPECIFIED,
+                         "unexpected local_proc_count ",
+                         local_proc_count);
+    }
+    else {
+        LOG_WARN(local_idx_env, " or ", local_count_env, " not found");
+        LOG_WARN("use local_proc_idx: ", local_proc_idx, " , local_proc_count: ", local_proc_count)
+    }
+}
+
 void ccl_executor::set_local_coord(int proc_idx, int proc_count) {
     local_proc_idx = proc_idx;
     local_proc_count = proc_count;
     auto& env = ccl::global_data::env();
-    if (env.atl_transport == ccl_atl_mpi) {
-        /* hydra specific env variables */
-        const char local_idx_env_name[] = "MPI_LOCALRANKID";
-        const char local_count_env_name[] = "MPI_LOCALNRANKS";
-        char* local_idx_env = getenv(local_idx_env_name);
-        char* local_count_env = getenv(local_count_env_name);
-        if (local_idx_env && local_count_env) {
-            int local_idx = std::atoi(local_idx_env);
-            int local_count = std::atoi(local_count_env);
-            CCL_THROW_IF_NOT(local_idx == local_proc_idx,
-                             "unexpected local_proc_idx ",
-                             local_proc_idx,
-                             ", expected ",
-                             local_idx);
-            CCL_THROW_IF_NOT(local_count == local_proc_count,
-                             "unexpected local_proc_count ",
-                             local_proc_count,
-                             ", expected ",
-                             local_count);
-        }
-        else {
-            LOG_WARN(local_idx_env_name, " or ", local_count_env_name, " not found");
-            LOG_WARN(
-                "use local_proc_idx: ", local_proc_idx, " , local_proc_count: ", local_proc_count);
-        }
+
+    if (env.process_launcher == process_launcher_mode::hydra) {
+        getenv_local_coord("MPI_LOCALRANKID", "MPI_LOCALNRANKS");
     }
+    else if (env.process_launcher == process_launcher_mode::torch) {
+        getenv_local_coord("LOCAL_RANK", "LOCAL_WORLD_SIZE");
+    }
+    else if (env.process_launcher == process_launcher_mode::none) {
+        getenv_local_coord("CCL_LOCAL_RANK", "CCL_LOCAL_SIZE");
+    }
+    else {
+        CCL_THROW("unexpected process launcher");
+    }
+    LOG_INFO("process launcher: ",
+             ccl::env_data::process_launcher_names[env.process_launcher],
+             ", local_proc_idx: ",
+             local_proc_idx,
+             ", local_proc_count: ",
+             local_proc_count);
 }
 
 size_t ccl_executor::get_worker_count() const {

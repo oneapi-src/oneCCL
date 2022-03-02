@@ -81,7 +81,7 @@ struct sycl_allgatherv_coll : sycl_base_coll<Dtype, allgatherv_strategy_impl> {
                 Dtype rbuf_expected = get_val<Dtype>(static_cast<float>(idx));
                 for (size_t e_idx = 0; e_idx < elem_count; e_idx++) {
                     value = host_recv_buf[idx * elem_count + e_idx];
-                    if (value != rbuf_expected) {
+                    if (base_coll::check_error<Dtype>(value, rbuf_expected, comm)) {
                         std::cout << this->name() << " recv_bufs: buf_idx " << b_idx
                                   << ", rank_idx " << rank_idx << ", elem_idx " << e_idx
                                   << ", expected " << rbuf_expected << ", got " << value

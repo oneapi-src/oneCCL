@@ -40,31 +40,6 @@ ccl::status ccl_coll_build_direct_alltoallv(ccl_sched* sched,
     return ccl::status::success;
 }
 
-ccl::status ccl_coll_add_scatter_alltoallv_plain_barriers(std::vector<ccl_sched*>& scheds) {
-    if (ccl::global_data::env().alltoall_scatter_plain) {
-        ssize_t max_ops = ccl::global_data::env().alltoall_scatter_max_ops;
-        for (auto s : scheds) {
-            if (s->entries_count() % max_ops == 0)
-                s->add_barrier();
-        }
-    }
-    return ccl::status::success;
-}
-
-ccl::status ccl_coll_add_scatter_alltoallv_barriers(std::vector<ccl_sched*>& scheds,
-                                                    size_t sched_idx) {
-    ssize_t max_ops = ccl::global_data::env().alltoall_scatter_max_ops;
-
-    if (max_ops != CCL_ENV_SIZET_NOT_SPECIFIED) {
-        if (scheds[sched_idx]->entries_count() % max_ops == 0)
-            scheds[sched_idx]->add_barrier();
-
-        ccl_coll_add_scatter_alltoallv_plain_barriers(scheds);
-    }
-
-    return ccl::status::success;
-}
-
 ccl::status ccl_coll_calculate_alltoallv_counts(const ccl_coll_param& coll_param,
                                                 std::vector<size_t>& send_counts,
                                                 std::vector<size_t>& recv_counts,
@@ -126,7 +101,7 @@ ccl::status ccl_coll_calculate_alltoallv_counts(const ccl_coll_param& coll_param
     return ccl::status::success;
 }
 
-ccl::status ccl_coll_build_naive_alltoallv(ccl_master_sched* main_sched,
+ccl::status ccl_coll_build_naive_alltoallv(ccl_sched* main_sched,
                                            std::vector<ccl_sched*>& scheds,
                                            const ccl_coll_param& coll_param) {
     LOG_DEBUG("build naive alltoallv");
@@ -218,128 +193,10 @@ ccl::status ccl_coll_build_naive_alltoallv(ccl_master_sched* main_sched,
     return ccl::status::success;
 }
 
-ccl::status ccl_coll_build_scatter_alltoallv(ccl_master_sched* main_sched,
+ccl::status ccl_coll_build_scatter_alltoallv(ccl_sched* main_sched,
                                              std::vector<ccl_sched*>& scheds,
                                              const ccl_coll_param& coll_param) {
-    LOG_DEBUG("build scatter alltoall");
-
-    ccl_comm* comm = coll_param.comm;
-    const ccl_datatype& dtype = coll_param.dtype;
-
-    int comm_rank = comm->rank();
-    int comm_size = comm->size();
-    size_t sched_count = scheds.size();
-    size_t dtype_size = dtype.size();
-
-    std::vector<size_t> send_counts, recv_counts, send_offsets, recv_offsets;
-    size_t total_send_count = 0, total_recv_count = 0;
-    size_t total_send_bytes = 0, total_recv_bytes = 0;
-
-    bool inplace = coll_param.is_inplace();
-
-    std::vector<ccl_buffer> recv_bufs;
-    if (inplace)
-        recv_bufs.resize(comm_size);
-
-    ccl_coll_calculate_alltoallv_counts(coll_param,
-                                        send_counts,
-                                        recv_counts,
-                                        send_offsets,
-                                        recv_offsets,
-                                        total_send_count,
-                                        total_recv_count,
-                                        total_send_bytes,
-                                        total_recv_bytes);
-
-    if (!inplace && send_counts[comm_rank] && recv_counts[comm_rank]) {
-        size_t sched_idx = (2 * comm_rank) % sched_count;
-        entry_factory::create<copy_entry>(scheds[sched_idx],
-                                          ccl_buffer(coll_param.get_send_buf_ptr(),
-                                                     total_send_bytes,
-                                                     send_offsets[comm_rank],
-                                                     ccl_buffer_type::INDIRECT),
-                                          ccl_buffer(coll_param.get_recv_buf_ptr(),
-                                                     total_recv_bytes,
-                                                     recv_offsets[comm_rank],
-                                                     ccl_buffer_type::INDIRECT),
-                                          send_counts[comm_rank],
-                                          dtype);
-    }
-
-    for (int idx = 0; idx < comm_size; idx++) {
-        int src = (comm_rank + idx) % comm_size;
-
-        if (src == comm_rank)
-            continue;
-
-        size_t sched_idx =
-            (ccl::global_data::env().alltoall_scatter_plain) ? 0 : (comm_rank + src) % sched_count;
-        ccl_buffer recv_buf;
-
-        if (inplace) {
-            recv_buf = scheds[sched_idx]->alloc_buffer(
-                { recv_counts[src] * dtype_size, coll_param.get_recv_buf() });
-            recv_bufs[src] = recv_buf;
-        }
-        else
-            recv_buf = ccl_buffer(coll_param.get_recv_buf_ptr(),
-                                  total_recv_bytes,
-                                  recv_offsets[src],
-                                  ccl_buffer_type::INDIRECT);
-
-        entry_factory::make_chunked_recv_entry(
-            scheds, sched_idx, recv_buf, recv_counts[src], dtype, src, comm);
-    }
-
-    for (int idx = 0; idx < comm_size; idx++) {
-        int dst = (comm_rank - idx + comm_size) % comm_size;
-
-        if (dst == comm_rank)
-            continue;
-
-        size_t sched_idx =
-            (ccl::global_data::env().alltoall_scatter_plain) ? 0 : (comm_rank + dst) % sched_count;
-
-        entry_factory::make_chunked_send_entry(scheds,
-                                               sched_idx,
-                                               ccl_buffer(coll_param.get_send_buf_ptr(),
-                                                          total_send_bytes,
-                                                          send_offsets[dst],
-                                                          ccl_buffer_type::INDIRECT),
-                                               send_counts[dst],
-                                               dtype,
-                                               dst,
-                                               comm);
-    }
-
-    if (!inplace)
-        return ccl::status::success;
-
-    main_sched->sync_partial_scheds();
-
-    for (int idx = 0; idx < comm_size; idx++) {
-        if (idx == comm_rank)
-            continue;
-
-        size_t sched_idx = (comm_rank + idx) % sched_count;
-
-        entry_factory::create<copy_entry>(scheds[sched_idx],
-                                          recv_bufs[idx],
-                                          ccl_buffer(coll_param.get_recv_buf_ptr(),
-                                                     total_recv_bytes,
-                                                     recv_offsets[idx],
-                                                     ccl_buffer_type::INDIRECT),
-                                          recv_counts[idx],
-                                          dtype);
-    }
-
-    return ccl::status::success;
-}
-
-ccl::status ccl_coll_build_scatter_barrier_alltoallv(ccl_master_sched* main_sched,
-                                                     std::vector<ccl_sched*>& scheds,
-                                                     const ccl_coll_param& coll_param) {
-    LOG_DEBUG("build scatter_barrier alltoallv");
+    LOG_DEBUG("build scatter alltoallv");
 
     ccl_comm* comm = coll_param.comm;
     const ccl_datatype& dtype = coll_param.dtype;
@@ -410,20 +267,16 @@ ccl::status ccl_coll_build_scatter_barrier_alltoallv(ccl_master_sched* main_sche
 
     for (int idx = 0; idx < comm_size; idx++) {
         int src = (comm_rank + idx) % comm_size;
-
         if (src == comm_rank)
             continue;
 
-        size_t sched_idx =
-            (ccl::global_data::env().alltoall_scatter_plain) ? 0 : (comm_rank + src) % sched_count;
-
-        auto sched = recv_scheds[sched_idx];
+        size_t sched_idx = (comm_rank + src) % sched_count;
 
         ccl_buffer recv_buf;
 
         if (inplace) {
-            recv_buf =
-                sched->alloc_buffer({ recv_counts[src] * dtype_size, coll_param.get_recv_buf() });
+            recv_buf = scheds[sched_idx]->alloc_buffer(
+                { recv_counts[src] * dtype_size, coll_param.get_recv_buf() });
             recv_bufs[src] = recv_buf;
         }
         else
@@ -438,12 +291,10 @@ ccl::status ccl_coll_build_scatter_barrier_alltoallv(ccl_master_sched* main_sche
 
     for (int idx = 0; idx < comm_size; idx++) {
         int dst = (comm_rank - idx + comm_size) % comm_size;
-
         if (dst == comm_rank)
             continue;
 
-        size_t sched_idx =
-            (ccl::global_data::env().alltoall_scatter_plain) ? 0 : (comm_rank + dst) % sched_count;
+        size_t sched_idx = (comm_rank + dst) % sched_count;
 
         entry_factory::make_chunked_send_entry(send_scheds,
                                                sched_idx,
@@ -460,23 +311,37 @@ ccl::status ccl_coll_build_scatter_barrier_alltoallv(ccl_master_sched* main_sche
     if (!inplace)
         return ccl::status::success;
 
-    main_sched->sync_partial_scheds();
+    main_sched->sync_subscheds();
 
     for (int idx = 0; idx < comm_size; idx++) {
-        if (idx == comm_rank)
+        int src = (comm_rank + idx) % comm_size;
+        if (src == comm_rank)
             continue;
 
-        size_t sched_idx = (comm_rank + idx) % sched_count;
+        size_t sched_idx = (comm_rank + src) % sched_count;
 
         entry_factory::create<copy_entry>(scheds[sched_idx],
-                                          recv_bufs[idx],
+                                          recv_bufs[src],
                                           ccl_buffer(coll_param.get_recv_buf_ptr(),
                                                      total_recv_bytes,
-                                                     recv_offsets[idx],
+                                                     recv_offsets[src],
                                                      ccl_buffer_type::INDIRECT),
-                                          recv_counts[idx],
+                                          recv_counts[src],
                                           dtype);
     }
 
     return ccl::status::success;
 }
+
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+ccl::status ccl_coll_build_topo_alltoallv(ccl_sched* sched,
+                                          ccl_buffer send_buf,
+                                          const size_t* send_counts,
+                                          ccl_buffer recv_buf,
+                                          const size_t* recv_counts,
+                                          const ccl_datatype& dtype,
+                                          ccl_comm* comm) {
+    CCL_THROW("topo alltoallv is not implemented yet");
+    return ccl::status::success;
+}
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE

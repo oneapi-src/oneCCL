@@ -97,6 +97,9 @@ int main(int argc, char *argv[]) {
             if (recv_buf[id] != rank + 1) {
                 check_buf_acc[id] = -1;
             }
+            else {
+                check_buf_acc[id] = 0;
+            }
         });
     });
 

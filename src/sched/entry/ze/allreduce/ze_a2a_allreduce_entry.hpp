@@ -69,8 +69,8 @@ protected:
                            recv_buf,
                            ", op ",
                            ccl_reduction_to_str(op),
-                           ", comm_id ",
-                           sched->get_comm_id(),
+                           ", comm ",
+                           comm->to_string(),
                            ", context ",
                            context,
                            "\n");

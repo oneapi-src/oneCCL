@@ -15,15 +15,14 @@
 */
 #pragma once
 
-#include "common/comm/comm.hpp"
+#include "comm/comm.hpp"
 #include "sched/entry/entry.hpp"
-#include "sched/entry/ze/ze_primitives.hpp"
 #include "sched/sched.hpp"
 #include "sched/ze/ze_handle_manager.hpp"
 
 #include <poll.h>
 #include <sys/un.h>
-#include <ze_api.h>
+#include "common/ze/ze_api_wrapper.hpp"
 
 class ze_handle_exchange_entry : public sched_entry {
 public:
@@ -50,10 +49,8 @@ public:
 protected:
     void dump_detail(std::stringstream& str) const override {
         ccl_logger::format(str,
-                           "rank ",
-                           rank,
-                           ", comm_size ",
-                           comm_size,
+                           "comm ",
+                           comm->to_string(),
                            ", right_peer ",
                            right_peer_socket_name,
                            ", left_peer ",
@@ -96,13 +93,18 @@ private:
     std::string right_peer_socket_name;
     std::string left_peer_socket_name;
 
+    struct payload_t {
+        pid_t remote_pid{};
+        size_t mem_offset{};
+        uint64_t remote_mem_alloc_id{};
+        ssize_t remote_context_id{ -1 };
+        ssize_t remote_device_id{ -1 };
+    };
+
     bool is_created{};
     bool is_connected{};
     bool is_accepted{};
     bool skip_first_send{};
-
-    void get_fd_from_handle(const ze_ipc_mem_handle_t* handle, int* fd) noexcept;
-    void get_handle_from_fd(const int* fd, ze_ipc_mem_handle_t* handle) noexcept;
 
     int create_server_socket(const std::string& socket_name,
                              struct sockaddr_un* socket_addr,
@@ -122,11 +124,11 @@ private:
                      int addr_len,
                      const std::string& socket_name);
 
-    void sendmsg_fd(int sock, int fd, size_t mem_offset);
-    void recvmsg_fd(int sock, int& fd, size_t& mem_offset);
+    void sendmsg_fd(int sock, int fd, const payload_t& handle_desc);
+    void recvmsg_fd(int sock, int& fd, payload_t& handle_desc);
 
-    void sendmsg_call(int sock, int fd, size_t mem_offset);
-    void recvmsg_call(int sock, int& fd, size_t& mem_offset);
+    void sendmsg_call(int sock, int fd, const payload_t& handle_desc);
+    void recvmsg_call(int sock, int& fd, payload_t& handle_desc);
     int check_msg_retval(std::string operation_name,
                          ssize_t bytes,
                          struct iovec iov,
@@ -137,6 +139,8 @@ private:
 
     using mem_info_t = typename std::pair<void*, size_t>;
     mem_info_t get_mem_info(const void* ptr);
+
+    bool sockets_closed = false;
 
     void unlink_sockets();
     void close_sockets();

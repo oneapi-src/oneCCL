@@ -115,6 +115,9 @@ int main(int argc, char *argv[]) {
             if (static_cast<native_dtype *>(recv_buf)[id] != expected_buf_acc[id]) {
                 check_buf_acc[id] = -1;
             }
+            else {
+                check_buf_acc[id] = 0;
+            }
         });
     });
 

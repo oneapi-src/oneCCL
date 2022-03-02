@@ -32,7 +32,6 @@ class ccl_barrier_attr_impl_t;
 class ccl_broadcast_attr_impl_t;
 class ccl_reduce_attr_impl_t;
 class ccl_reduce_scatter_attr_impl_t;
-class ccl_sparse_allreduce_attr_impl_t;
 
 namespace v1 {
 
@@ -515,66 +514,6 @@ private:
 };
 
 /**
- * Sparse_allreduce coll attributes
- */
-class sparse_allreduce_attr : public ccl_api_base_copyable<sparse_allreduce_attr,
-                                                           copy_on_write_access_policy,
-                                                           ccl_sparse_allreduce_attr_impl_t> {
-public:
-    using base_t = ccl_api_base_copyable<sparse_allreduce_attr,
-                                         copy_on_write_access_policy,
-                                         ccl_sparse_allreduce_attr_impl_t>;
-
-    /**
-     * Declare PIMPL type
-     */
-    using impl_value_t = typename base_t::impl_value_t;
-
-    /**
-     * Declare implementation type
-     */
-    using impl_t = typename impl_value_t::element_type;
-
-    sparse_allreduce_attr(sparse_allreduce_attr&& src);
-    sparse_allreduce_attr(const sparse_allreduce_attr& src);
-    sparse_allreduce_attr& operator=(sparse_allreduce_attr&& src) noexcept;
-    sparse_allreduce_attr& operator=(const sparse_allreduce_attr& src);
-    ~sparse_allreduce_attr();
-
-    /**
-     * Set specific value for attribute by @attrId.
-     * Previous attibute value would be returned
-     */
-    template <sparse_allreduce_attr_id attrId,
-              class Value/*,
-              class = typename std::enable_if<is_attribute_value_supported<attrId, Value>()>::type*/>
-    typename detail::ccl_api_type_attr_traits<sparse_allreduce_attr_id, attrId>::return_type set(const Value& v);
-
-    template <operation_attr_id attrId,
-              class Value/*,
-              class = typename std::enable_if<is_attribute_value_supported<attrId, Value>()>::type*/>
-    typename detail::ccl_api_type_attr_traits<operation_attr_id, attrId>::return_type set(const Value& v);
-
-    /**
-     * Get specific attribute value by @attrId
-     */
-    template <sparse_allreduce_attr_id attrId>
-    const typename detail::ccl_api_type_attr_traits<sparse_allreduce_attr_id, attrId>::return_type&
-    get() const;
-
-    template <operation_attr_id attrId>
-    const typename detail::ccl_api_type_attr_traits<operation_attr_id, attrId>::return_type& get()
-        const;
-
-private:
-    friend class ccl::detail::environment;
-    friend struct ccl::ccl_empty_attr;
-    sparse_allreduce_attr(
-        const typename detail::ccl_api_type_attr_traits<operation_attr_id,
-                                                        operation_attr_id::version>::type& version);
-};
-
-/**
  * Declare extern empty attributes
  */
 extern allgatherv_attr default_allgatherv_attr;
@@ -585,7 +524,6 @@ extern barrier_attr default_barrier_attr;
 extern broadcast_attr default_broadcast_attr;
 extern reduce_attr default_reduce_attr;
 extern reduce_scatter_attr default_reduce_scatter_attr;
-extern sparse_allreduce_attr default_sparse_allreduce_attr;
 
 /**
  * Fabric helpers
@@ -636,12 +574,6 @@ constexpr auto attr_val(value_type v)
     return detail::attr_value_triple<reduce_scatter_attr_id, t, value_type>(v);
 }
 
-template <sparse_allreduce_attr_id t, class value_type>
-constexpr auto attr_val(value_type v)
-    -> detail::attr_value_triple<sparse_allreduce_attr_id, t, value_type> {
-    return detail::attr_value_triple<sparse_allreduce_attr_id, t, value_type>(v);
-}
-
 template <operation_attr_id t, class value_type>
 constexpr auto attr_val(value_type v)
     -> detail::attr_value_triple<operation_attr_id, t, value_type> {
@@ -664,7 +596,6 @@ using v1::barrier_attr;
 using v1::broadcast_attr;
 using v1::reduce_attr;
 using v1::reduce_scatter_attr;
-using v1::sparse_allreduce_attr;
 
 using v1::default_allgatherv_attr;
 using v1::default_allreduce_attr;
@@ -674,6 +605,5 @@ using v1::default_barrier_attr;
 using v1::default_broadcast_attr;
 using v1::default_reduce_attr;
 using v1::default_reduce_scatter_attr;
-using v1::default_sparse_allreduce_attr;
 
 } // namespace ccl

@@ -49,15 +49,15 @@ public:
 
     ~write_entry() {
         if (status == ccl_sched_entry_status_started) {
-            LOG_DEBUG("cancel WRITE entry dst ", dst, ", req ", &req);
-            comm->get_atl_comm()->cancel(sched->bin->get_atl_ep(), &req);
+            LOG_DEBUG("cancel WRITE entry dst ", dst, ", req ", req);
+            comm->get_atl_comm()->cancel(sched->bin->get_atl_ep(), req);
         }
     }
 
     void start() override {
         update_fields();
 
-        LOG_DEBUG("WRITE entry dst ", dst, ", req ", &req);
+        LOG_DEBUG("WRITE entry dst ", dst, ", req ", req);
 
         CCL_THROW_IF_NOT(src_buf && src_mr && dst_mr, "incorrect values");
 
@@ -74,12 +74,12 @@ public:
                                                               (uint64_t)dst_mr->buf + dst_buf_off,
                                                               dst_mr->remote_key,
                                                               dst,
-                                                              &req);
+                                                              req);
         update_status(atl_status);
     }
 
     void update() override {
-        atl_status_t atl_status = comm->get_atl_comm()->check(sched->bin->get_atl_ep(), &req);
+        atl_status_t atl_status = comm->get_atl_comm()->check(sched->bin->get_atl_ep(), req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("WRITE entry failed. atl_status: ", atl_status_to_str(atl_status));
@@ -121,9 +121,9 @@ protected:
                            ", dst_off ",
                            dst_buf_off,
                            ", comm_id ",
-                           sched->get_comm_id(),
-                           ", req %p",
-                           &req,
+                           comm->get_comm_id(),
+                           ", req ",
+                           req,
                            "\n");
     }
 

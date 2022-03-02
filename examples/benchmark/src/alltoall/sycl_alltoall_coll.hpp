@@ -78,7 +78,7 @@ struct sycl_alltoall_coll : sycl_base_coll<Dtype, alltoall_strategy_impl> {
                 }
 
                 value = host_recv_buf[e_idx];
-                if (value != rbuf_expected) {
+                if (base_coll::check_error<Dtype>(value, rbuf_expected, comm)) {
                     std::cout << this->name() << " recv_bufs: buf_idx " << b_idx << ", rank_idx "
                               << rank_idx << ", elem_idx " << e_idx << ", expected "
                               << rbuf_expected << ", got " << value << std::endl;

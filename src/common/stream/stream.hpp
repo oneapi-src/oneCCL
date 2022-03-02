@@ -16,7 +16,7 @@
 #pragma once
 
 #include "coll/coll_common_attributes.hpp"
-#include "common/stream/stream_provider_dispatcher.hpp"
+#include "common/stream/stream_selector.hpp"
 #include "common/utils/utils.hpp"
 #include "oneapi/ccl/stream_attr_ids.hpp"
 #include "oneapi/ccl/stream_attr_ids_traits.hpp"
@@ -37,11 +37,11 @@ std::string to_string(device_family family);
 
 std::string to_string(const stream_type& type);
 
-class alignas(CACHELINE_SIZE) ccl_stream : public stream_provider_dispatcher {
+class alignas(CACHELINE_SIZE) ccl_stream : public stream_selector {
 public:
-    friend class stream_provider_dispatcher;
+    friend class stream_selector;
 
-    using stream_native_t = stream_provider_dispatcher::stream_native_t;
+    using stream_native_t = stream_selector::stream_native_t;
 
     ccl_stream() = delete;
     ccl_stream(const ccl_stream& other) = delete;

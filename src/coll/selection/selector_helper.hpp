@@ -104,7 +104,3 @@ std::map<ccl_coll_reduce_algo, std::string>
 template <>
 std::map<ccl_coll_reduce_scatter_algo, std::string>
     ccl_algorithm_selector_helper<ccl_coll_reduce_scatter_algo>::algo_names;
-
-template <>
-std::map<ccl_coll_sparse_allreduce_algo, std::string>
-    ccl_algorithm_selector_helper<ccl_coll_sparse_allreduce_algo>::algo_names;

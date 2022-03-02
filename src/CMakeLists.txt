@@ -17,30 +17,10 @@
 
 set (EXTENSIONS_SRC)
 
-if (CCL_ENABLE_SYCL)
-    list (APPEND EXTENSIONS_SRC
-        native_device_api/l0/utils.cpp
-        native_device_api/sycl/export.cpp
-        native_device_api/interop_utils.cpp
-        )
-endif(CCL_ENABLE_SYCL)
-
 if (CCL_ENABLE_SYCL AND CCL_ENABLE_ZE)
     list (APPEND EXTENSIONS_SRC
 
         ccl_cpp_utils.cpp
-
-        native_device_api/l0/base.cpp
-        native_device_api/l0/device.cpp
-        native_device_api/l0/context.cpp
-        native_device_api/l0/event_pool.cpp
-        native_device_api/l0/subdevice.cpp
-        native_device_api/l0/driver.cpp
-        native_device_api/l0/export.cpp
-        native_device_api/l0/platform.cpp
-        native_device_api/l0/utils.cpp
-        native_device_api/l0/primitives.cpp
-        native_device_api/interop_utils.cpp
 
         sched/entry/ze/allreduce/ze_a2a_allreduce_entry.cpp
         sched/entry/ze/allreduce/ze_onesided_allreduce_entry.cpp
@@ -60,24 +40,27 @@ if (CCL_ENABLE_SYCL AND CCL_ENABLE_ZE)
         sched/entry/ze/ze_primitives.cpp
         sched/entry/ze/ze_reduce_local_entry.cpp
 
+        common/global/ze_data.cpp
+        common/utils/sycl_utils.cpp
+        common/ze/ze_api_wrapper.cpp
+
         sched/ze/ze_event_manager.cpp
         sched/ze/ze_handle_manager.cpp
         sched/ze/ze_ipc_event_pool_manager.cpp
         sched/ze/ze_list_manager.cpp
-
-        coll/coll_util.cpp
         )
 endif(CCL_ENABLE_SYCL AND CCL_ENABLE_ZE)
 
 set(CCL_SRC
 
     atl/atl_base_comm.cpp
+    atl/atl_base_transport.cpp
     atl/atl_def.cpp
-    atl/ofi/atl_ofi_comm.cpp
-    atl/mpi/atl_mpi_comm.cpp
-    atl/mpi/atl_mpi_global_data.cpp
     atl/mpi/atl_mpi.cpp
+    atl/mpi/atl_mpi_comm.cpp
+    atl/mpi/atl_mpi_ctx.cpp
     atl/ofi/atl_ofi.cpp
+    atl/ofi/atl_ofi_comm.cpp
     atl/ofi/atl_ofi_helper.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable_simple.cpp
@@ -85,7 +68,6 @@ set(CCL_SRC
     atl/util/pm/pmi_resizable_rt/pmi_resizable/helper.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs_keeper.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable/pmi_listener.cpp
-    atl/util/pm/pmi_resizable_rt/pmi_resizable/request_wrappers_k8s.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable/resizable_pmi.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs/internal_kvs.cpp
     atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs/internal_kvs_server.cpp
@@ -102,9 +84,9 @@ set(CCL_SRC
     coll/ccl_bcast_op_attr.cpp
     coll/ccl_reduce_op_attr.cpp
     coll/ccl_reduce_scatter_op_attr.cpp
-    coll/ccl_sparse_allreduce_op_attr.cpp
     coll/ccl_barrier_op_attr.cpp
     coll/coll_param.cpp
+    coll/coll_util.cpp
     coll/algorithms/allgatherv.cpp
     coll/algorithms/allreduce/allreduce.cpp
     coll/algorithms/allreduce/allreduce_2d.cpp
@@ -128,11 +110,11 @@ set(CCL_SRC
     coll/selection/selector_bcast.cpp
     coll/selection/selector_reduce.cpp
     coll/selection/selector_reduce_scatter.cpp
-    coll/selection/selector_sparse_allreduce.cpp
 
-    common/comm/atl_tag.cpp
-    common/comm/comm.cpp
-    common/comm/compiler_comm_interface_dispatcher.cpp
+    comm/atl_tag.cpp
+    comm/comm.cpp
+    comm/comm_selector.cpp
+
     common/context/context.cpp
     common/datatype/datatype.cpp
     common/device/device.cpp
@@ -146,7 +128,9 @@ set(CCL_SRC
     common/request/request.cpp
     common/stream/stream.cpp
     common/utils/memcpy.cpp
+    common/utils/fd_info.cpp
     common/utils/spinlock.cpp
+    common/utils/utils.cpp
     common/utils/version.cpp
     common/utils/yield.cpp
 
@@ -166,8 +150,7 @@ set(CCL_SRC
 
     hwloc/hwloc_wrapper.cpp
 
-    native_device_api/sycl_l0/export.cpp
-    native_device_api/empty/export.cpp
+    native_device_api/sycl/export.cpp
 
     parallelizer/parallelizer.cpp
 
@@ -176,7 +159,6 @@ set(CCL_SRC
     sched/cache/cache.cpp
     sched/cache/key.cpp
     sched/entry/coll/coll_entry.cpp
-    sched/entry/coll/coll_entry_helper.cpp
     sched/entry/copy/copy_entry.cpp
     sched/entry/copy/copy_helper.cpp
     sched/entry/entry.cpp
@@ -186,11 +168,12 @@ set(CCL_SRC
     sched/queue/flow_control.cpp
     sched/queue/queue.cpp
     sched/queue/strict_queue.cpp
-    sched/extra_sched.cpp
-    sched/master_sched.cpp
     sched/sched.cpp
     sched/sched_base.cpp
+    sched/sched_restart_manager.cpp
     sched/sched_timer.cpp
+
+    topology/topo_manager.cpp
 
     unordered_coll/unordered_coll.cpp
 
@@ -219,6 +202,13 @@ set(CCL_SRC
 
     ${EXTENSIONS_SRC})
 
+if (ENABLE_STUB_BACKEND)
+    set (CCL_SRC
+            comm/stub_comm.cpp
+            stub_kvs_impl.cpp
+            ${CCL_SRC})
+endif()
+
 set(SRC_C_FLAGS)
 set(SRC_CXX_FLAGS)
 set(SRC_SHARED_LINKER_FLAGS)
@@ -242,20 +232,29 @@ endif()
 set(SRC_SHARED_LINKER_FLAGS "${SRC_SHARED_LINKER_FLAGS} -Wl,--version-script=${PROJECT_SOURCE_DIR}/ccl.map")
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "Intel" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
-    if (USE_CODECOV_FLAGS)
-        set(SRC_C_FLAGS "${SRC_C_FLAGS} -prof-gen=srcpos -prof-src-root-cwd")
-        set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -prof-gen=srcpos -prof-src-root-cwd")
-    endif()
     #To suppress for 'offsetof applied to non-POD (Plain Old Data) types is nonstandar'
     set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -diag-disable=1875")
+    # To supress "overloaded virtual function is only partially overridden in class", as we intentially
+    # don't override some base class' overloads in order to keep a default implementation for them
+    set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -diag-disable=654")
+endif()
+
+
+if (${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
+    if (USE_CODECOV_FLAGS)
+        set(SRC_C_FLAGS "${SRC_C_FLAGS} -fprofile-instr-generate -fcoverage-mapping -Wno-error=unused-command-line-argument -fno-sycl-use-footer")
+        set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -fprofile-instr-generate -fcoverage-mapping -Wno-error=unused-command-line-argument -fno-sycl-use-footer")
+    endif()
 endif()
 
 list(APPEND SRC_INCLUDE_DIRS
      ${PROJECT_SOURCE_DIR}/include
      ${PROJECT_SOURCE_DIR}/src
      ${PROJECT_SOURCE_DIR}/src/atl
+     ${LEVEL_ZERO_INCLUDE_DIR}
      ${LIBFABRIC_INCLUDE_DIR}
-     ${HWLOC_INCLUDE_DIR})
+     ${HWLOC_INCLUDE_DIR}
+     ${ITT_INCLUDE_DIR})
 
 list(APPEND SRC_LINK_DIRS ${LIBFABRIC_LIB_DIR})
 
@@ -263,9 +262,9 @@ list(APPEND SRC_LINK_LIBS
      dl
      pthread
      ${EXTERNAL_LIBS}
-     ${COMPUTE_BACKEND_TARGET_NAME}
      fabric
-     ${HWLOC_LIB_DIR}/libhwloc.a)
+     ${HWLOC_LIB_DIR}/libhwloc.a
+     ${ITT_LIB_DIR}/libittnotify.a)
 
 if (ENABLE_MPI)
     set(SRC_C_FLAGS "${SRC_C_FLAGS} -DCCL_ENABLE_MPI")
@@ -287,19 +286,23 @@ set_target_properties(ccl-objects PROPERTIES POSITION_INDEPENDENT_CODE 1)
 target_include_directories(ccl-objects PRIVATE ${SRC_INCLUDE_DIRS})
 
 if (COMPUTE_BACKEND_TARGET_NAME)
-    target_include_directories(ccl-objects PRIVATE $<TARGET_PROPERTY:${COMPUTE_BACKEND_TARGET_NAME},INTERFACE_INCLUDE_DIRECTORIES>)
+    target_include_directories(ccl-objects PUBLIC ${INTERFACE_INCLUDE_DIRECTORIES})
 endif()
 
 # shared library
 add_library(ccl SHARED $<TARGET_OBJECTS:ccl-objects>)
 target_include_directories(ccl PUBLIC ${SRC_INCLUDE_DIRS})
+target_link_libraries(ccl PRIVATE ${SRC_LINK_LIBS})
 
-target_link_libraries(ccl PUBLIC ${SRC_LINK_LIBS})
-
+set_target_properties(ccl PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CCL_BUILD_DIR})
 if (NOT LIB_SO_VERSION AND NOT LIB_MAJOR_VERSION)
-    set_target_properties(ccl PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CCL_BUILD_DIR})
+    set(DEFAULT_LIB_SO_VERSION "1.0")
+    set(DEFAULT_LIB_MAJOR_VERSION "1")
+    set_target_properties(ccl PROPERTIES VERSION ${DEFAULT_LIB_SO_VERSION})
+    set_target_properties(ccl PROPERTIES SOVERSION ${DEFAULT_LIB_MAJOR_VERSION})
 else()
-    set_target_properties(ccl PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CCL_BUILD_DIR} VERSION ${LIB_SO_VERSION} SOVERSION ${LIB_MAJOR_VERSION})
+    set_target_properties(ccl PROPERTIES VERSION ${LIB_SO_VERSION})
+    set_target_properties(ccl PROPERTIES SOVERSION ${LIB_MAJOR_VERSION})
 endif()
 
 message(STATUS "SRC C_FLAGS: ${CMAKE_C_FLAGS}")
@@ -313,9 +316,7 @@ install(TARGETS ccl LIBRARY DESTINATION ${CCL_INSTALL_LIB})
 install(FILES
     "${PROJECT_SOURCE_DIR}/cmake/FindIntelSYCL.cmake"
     "${PROJECT_SOURCE_DIR}/cmake/FindIntelSYCL_level_zero.cmake"
-    "${PROJECT_SOURCE_DIR}/cmake/Findlevel_zero.cmake"
     "${PROJECT_SOURCE_DIR}/cmake/FindNUMA.cmake"
-    "${PROJECT_SOURCE_DIR}/cmake/FindOpenCL.cmake"
     "${PROJECT_SOURCE_DIR}/cmake/FindSYCL.cmake"
     DESTINATION ${CCL_INSTALL_LIB})
 

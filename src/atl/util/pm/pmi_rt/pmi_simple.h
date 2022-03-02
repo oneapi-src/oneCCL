@@ -66,8 +66,8 @@ public:
     atl_status_t pmrt_init() override;
 
 private:
-    int rank;
-    int size;
+    int rank = -1;
+    int size = -1;
     pm_rt_desc_t *pmrt_desc = nullptr;
-    bool is_finalized{ false };
+    bool is_finalized = false;
 };

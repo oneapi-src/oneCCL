@@ -15,7 +15,7 @@
 */
 #pragma once
 
-#include "common/comm/comm.hpp"
+#include "comm/comm.hpp"
 #include "sched/entry/coll/direct/base_coll_entry.hpp"
 
 class alltoallv_entry : public base_coll_entry {
@@ -77,7 +77,7 @@ public:
             sum_recv_bytes += recv_bytes[i];
         }
 
-        LOG_DEBUG("alltoallv entry req ", &req, ", sum_send_bytes ", sum_send_bytes);
+        LOG_DEBUG("alltoallv entry req ", req, ", sum_send_bytes ", sum_send_bytes);
 
         atl_status_t atl_status = comm->get_atl_comm()->alltoallv(sched->bin->get_atl_ep(),
                                                                   send_buf.get_ptr(sum_send_bytes),
@@ -86,7 +86,7 @@ public:
                                                                   recv_buf.get_ptr(sum_recv_bytes),
                                                                   recv_bytes,
                                                                   recv_offsets,
-                                                                  &req);
+                                                                  req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("alltoallv entry failed. atl_status: ", atl_status_to_str(atl_status));
@@ -96,7 +96,7 @@ public:
     }
 
     void update() override {
-        atl_status_t atl_status = comm->get_atl_comm()->check(sched->bin->get_atl_ep(), &req);
+        atl_status_t atl_status = comm->get_atl_comm()->check(sched->bin->get_atl_ep(), req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("alltoallv entry failed. atl_status: ", atl_status_to_str(atl_status));
@@ -140,9 +140,9 @@ protected:
                            ", recv_offsets ",
                            recv_offsets,
                            ", comm_id ",
-                           sched->get_comm_id(),
+                           comm->get_comm_id(),
                            ", req ",
-                           &req,
+                           req,
                            "\n");
     }
 

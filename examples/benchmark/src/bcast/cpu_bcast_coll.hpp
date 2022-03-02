@@ -51,7 +51,7 @@ struct cpu_bcast_coll : cpu_base_coll<Dtype, bcast_strategy_impl> {
             for (size_t e_idx = 0; e_idx < elem_count; e_idx++) {
                 value = ((Dtype*)recv_bufs[b_idx][rank_idx])[e_idx];
                 Dtype expected = get_val<Dtype>(static_cast<float>(b_idx));
-                if (value != expected) {
+                if (base_coll::check_error<Dtype>(value, expected, comm)) {
                     std::cout << this->name() << " recv_bufs: buf_idx " << b_idx << ", rank_idx "
                               << rank_idx << ", elem_idx " << e_idx << ", expected " << expected
                               << ", got " << value << std::endl;

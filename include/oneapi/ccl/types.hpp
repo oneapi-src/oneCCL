@@ -73,8 +73,6 @@ enum class datatype : int {
  */
 enum class cl_backend_type : int {
     empty_backend = 0x0,
-    dpcpp_sycl = 0x1,
-    l0 = 0x2,
     dpcpp_sycl_l0 = 0x3,
 };
 
@@ -131,50 +129,12 @@ struct ccl_empty_attr {
     template <class attr>
     static attr create_empty();
 };
-
-/**
- * Sparse coalesce modes
- * 
- * Use this variable to set sparse_allreduce coalescing mode:
- * regular        - run regular coalesce funtion;
- * disable        - disables coalesce function in sparse_allreduce,
- *                  allgathered data is returned;
- * keep_precision - on every local reduce bf16 data is converted to fp32,
- *                  reduced and then converted back to bf16.
- */
-enum class sparse_coalesce_mode : int {
-    regular = 0,
-    disable,
-    keep_precision,
-};
-
-/* idx_buf, idx_count, idx_dtype, val_buf, val_count, val_dtype, user_context */
-typedef void (*sparse_allreduce_completion_fn)(const void*,
-                                               size_t,
-                                               ccl::datatype,
-                                               const void*,
-                                               size_t,
-                                               ccl::datatype,
-                                               const void*);
-
-/* idx_count, idx_dtype, val_count, val_dtype, user_context, out_idx_buf, out_val_buf */
-typedef void (*sparse_allreduce_alloc_fn)(size_t,
-                                          ccl::datatype,
-                                          size_t,
-                                          ccl::datatype,
-                                          const void*,
-                                          void**,
-                                          void**);
 } // namespace v1
 
 using v1::library_version;
 using v1::fn_context;
 using v1::reduction_fn;
 using v1::ccl_empty_attr;
-
-using v1::sparse_coalesce_mode;
-using v1::sparse_allreduce_completion_fn;
-using v1::sparse_allreduce_alloc_fn;
 
 /**
  * API object attributes traits

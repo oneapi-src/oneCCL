@@ -46,7 +46,7 @@ struct cpu_allreduce_coll : cpu_base_coll<Dtype, allreduce_strategy_impl> {
                 }
 
                 value = ((Dtype*)recv_bufs[b_idx][rank_idx])[e_idx];
-                if (value != rbuf_expected) {
+                if (base_coll::check_error<Dtype>(value, rbuf_expected, comm)) {
                     std::cout << this->name() << " recv_bufs: buf_idx " << b_idx << ", rank_idx "
                               << rank_idx << ", elem_idx " << e_idx << ", expected "
                               << rbuf_expected << ", got " << value << std::endl;

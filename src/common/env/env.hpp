@@ -30,11 +30,14 @@
 #include "comp/bf16/bf16_utils.hpp"
 #include "comp/fp16/fp16_utils.hpp"
 #include "sched/cache/cache.hpp"
+#include "topology/topo_manager.hpp"
 
 constexpr const char* CCL_ENV_STR_NOT_SPECIFIED = "<not specified>";
 constexpr const ssize_t CCL_ENV_SIZET_NOT_SPECIFIED = -1;
+constexpr const int CCL_ENV_INT_NOT_SPECIFIED = -1;
 
 constexpr const char* CCL_LOG_LEVEL = "CCL_LOG_LEVEL";
+constexpr const char* CCL_ABORT_ON_THROW = "CCL_ABORT_ON_THROW";
 constexpr const char* CCL_QUEUE_DUMP = "CCL_QUEUE_DUMP";
 constexpr const char* CCL_SCHED_DUMP = "CCL_SCHED_DUMP";
 constexpr const char* CCL_SCHED_PROFILE = "CCL_SCHED_PROFILE";
@@ -73,7 +76,6 @@ constexpr const char* CCL_BARRIER = "CCL_BARRIER";
 constexpr const char* CCL_BCAST = "CCL_BCAST";
 constexpr const char* CCL_REDUCE = "CCL_REDUCE";
 constexpr const char* CCL_REDUCE_SCATTER = "CCL_REDUCE_SCATTER";
-constexpr const char* CCL_SPARSE_ALLREDUCE = "CCL_SPARSE_ALLREDUCE";
 constexpr const char* CCL_UNORDERED_COLL = "CCL_UNORDERED_COLL";
 
 constexpr const char* CCL_FUSION = "CCL_FUSION";
@@ -101,6 +103,8 @@ constexpr const char* CCL_RS_MIN_CHUNK_SIZE = "CCL_RS_MIN_CHUNK_SIZE";
 constexpr const char* CCL_AR2D_CHUNK_COUNT = "CCL_AR2D_CHUNK_COUNT";
 constexpr const char* CCL_AR2D_MIN_CHUNK_SIZE = "CCL_AR2D_MIN_CHUNK_SIZE";
 
+constexpr const char* CCL_ALLGATHERV_TOPO_LARGE_SCALE = "CCL_ALLGATHERV_TOPO_LARGE_SCALE";
+
 constexpr const char* CCL_ALLREDUCE_2D_BASE_SIZE = "CCL_ALLREDUCE_2D_BASE_SIZE";
 constexpr const char* CCL_ALLREDUCE_2D_SWITCH_DIMS = "CCL_ALLREDUCE_2D_SWITCH_DIMS";
 
@@ -108,7 +112,8 @@ constexpr const char* CCL_ALLREDUCE_NREDUCE_BUFFERING = "CCL_ALLREDUCE_NREDUCE_B
 constexpr const char* CCL_ALLREDUCE_NREDUCE_SEGMENT_SIZE = "CCL_ALLREDUCE_NREDUCE_SEGMENT_SIZE";
 
 constexpr const char* CCL_ALLTOALL_SCATTER_MAX_OPS = "CCL_ALLTOALL_SCATTER_MAX_OPS";
-constexpr const char* CCL_ALLTOALL_SCATTER_PLAIN = "CCL_ALLTOALL_SCATTER_PLAIN";
+
+constexpr const char* CCL_BACKEND = "CCL_BACKEND";
 
 constexpr const char* CCL_KERNEL_PATH = "CCL_KERNEL_PATH";
 constexpr const char* CCL_KERNEL_DEBUG = "CCL_KERNEL_DEBUG";
@@ -118,19 +123,41 @@ constexpr const char* CCL_KERNEL_SYNC = "CCL_KERNEL_SYNC";
 constexpr const char* CCL_KERNEL_1S_LEAD = "CCL_KERNEL_1S_LEAD";
 constexpr const char* CCL_KERNEL_1S_USE_COPY_OPS = "CCL_KERNEL_1S_USE_COPY_OPS";
 constexpr const char* CCL_KERNEL_1S_IPC_WA = "CCL_KERNEL_1S_IPC_WA";
-constexpr const char* CCL_KERNEL_PROFILE = "CCL_KERNEL_PROFILE";
 constexpr const char* CCL_KERNEL_CLOSE_FD_WA = "CCL_KERNEL_CLOSE_FD_WA";
 
+constexpr const char* CCL_LOCAL_RANK = "CCL_LOCAL_RANK";
+constexpr const char* CCL_LOCAL_SIZE = "CCL_LOCAL_SIZE";
+
+constexpr const char* CCL_PROCESS_LAUNCHER = "CCL_PROCESS_LAUNCHER";
+
+constexpr const char* CCL_TOPO_ALGO = "CCL_TOPO_ALGO";
+constexpr const char* CCL_TOPO_COLOR = "CCL_TOPO_COLOR";
+
 constexpr const char* CCL_SYCL_OUTPUT_EVENT = "CCL_SYCL_OUTPUT_EVENT";
+constexpr const char* CCL_USE_HMEM = "CCL_USE_HMEM";
 
 constexpr const char* CCL_ZE_BARRIER = "CCL_ZE_BARRIER";
+constexpr const char* CCL_ZE_BIDIR_ALGO = "CCL_ZE_BIDIR_ALGO";
 constexpr const char* CCL_ZE_CACHE = "CCL_ZE_CACHE";
+constexpr const char* CCL_ZE_CACHE_IPC_HANDLES = "CCL_ZE_CACHE_IPC_HANDLES";
+constexpr const char* CCL_ZE_CACHE_IPC_HANDLES_THRESHOLD = "CCL_ZE_CACHE_IPC_HANDLES_THRESHOLD";
 constexpr const char* CCL_ZE_SERIALIZE = "CCL_ZE_SERIALIZE";
 constexpr const char* CCL_ZE_COPY_ENGINE = "CCL_ZE_COPY_ENGINE";
-constexpr const char* CCL_ZE_QUEUE_INDEX = "CCL_ZE_QUEUE_INDEX";
+constexpr const char* CCL_ZE_MAX_COMPUTE_QUEUES = "CCL_ZE_MAX_COMPUTE_QUEUES";
+constexpr const char* CCL_ZE_MAX_COPY_QUEUES = "CCL_ZE_MAX_COPY_QUEUES";
+constexpr const char* CCL_ZE_LIST_DUMP = "CCL_ZE_LIST_DUMP";
+constexpr const char* CCL_ZE_QUEUE_INDEX_OFFSET = "CCL_ZE_QUEUE_INDEX_OFFSET";
 constexpr const char* CCL_ZE_CLOSE_IPC_WA = "CCL_ZE_CLOSE_IPC_WA";
 constexpr const char* CCL_ZE_SINGLE_LIST = "CCL_ZE_SINGLE_LIST";
 constexpr const char* CCL_ZE_DISABLE_FAMILY_CHECK = "CCL_ZE_DISABLE_FAMILY_CHECK";
+constexpr const char* CCL_ZE_LIBRARY_PATH = "CCL_ZE_LIBRARY_PATH";
+constexpr const char* CCL_ZE_ENABLE = "CCL_ZE_ENABLE";
+constexpr const char* CCL_ZE_FINI_WA = "CCL_ZE_FINI_WA";
+constexpr const char* CCL_ZE_MULTI_WORKERS = "CCL_ZE_MULTI_WORKERS";
+
+#ifdef CCL_ENABLE_ITT
+constexpr const char* CCL_ITT_LEVEL = "CCL_ITT_LEVEL";
+#endif // CCL_ENABLE_ITT
 
 constexpr const char* CCL_BF16 = "CCL_BF16";
 constexpr const char* CCL_FP16 = "CCL_FP16";
@@ -150,8 +177,18 @@ enum ccl_staging_buffer { ccl_staging_regular, ccl_staging_usm };
 enum ccl_ze_copy_engine_mode {
     ccl_ze_copy_engine_none,
     ccl_ze_copy_engine_main,
-    ccl_ze_copy_engine_link
+    ccl_ze_copy_engine_link,
+    ccl_ze_copy_engine_auto
 };
+
+enum class backend_mode {
+    native,
+#ifdef CCL_ENABLE_STUB_BACKEND
+    stub
+#endif // CCL_ENABLE_STUB_BACKEND
+};
+
+enum class process_launcher_mode { hydra, torch, none };
 
 namespace ccl {
 
@@ -174,6 +211,7 @@ public:
     ccl_spinlock print_guard{};
 
     ccl_log_level log_level;
+    int abort_on_throw;
     int queue_dump;
     int sched_dump;
     int sched_profile;
@@ -214,7 +252,6 @@ public:
     std::string bcast_algo_raw;
     std::string reduce_algo_raw;
     std::string reduce_scatter_algo_raw;
-    std::string sparse_allreduce_algo_raw;
     int enable_unordered_coll;
 
     int enable_fusion;
@@ -242,13 +279,23 @@ public:
     size_t ar2d_chunk_count;
     size_t ar2d_min_chunk_size;
 
+    int allgatherv_topo_large_scale;
+
     ssize_t allreduce_2d_base_size;
     int allreduce_2d_switch_dims;
     int allreduce_nreduce_buffering;
     ssize_t allreduce_nreduce_segment_size;
 
     ssize_t alltoall_scatter_max_ops;
-    int alltoall_scatter_plain;
+
+    backend_mode backend;
+
+    int local_rank;
+    int local_size;
+    process_launcher_mode process_launcher;
+
+    int enable_topo_algo;
+    topo_color_mode topo_color;
 
 #ifdef CCL_ENABLE_SYCL
     std::string kernel_path;
@@ -259,20 +306,34 @@ public:
     int kernel_1s_lead;
     int enable_kernel_1s_copy_ops;
     int enable_kernel_1s_ipc_wa;
-    int enable_kernel_profile;
     int enable_close_fd_wa;
 
     int enable_sycl_output_event;
+    int use_hmem;
 
     int enable_ze_barrier;
+    int enable_ze_bidir_algo;
     int enable_ze_cache;
+    int enable_ze_cache_ipc_handles;
+    int ze_cache_ipc_handles_threshold;
     int enable_ze_single_list;
     int disable_ze_family_check;
     int ze_serialize_mode;
     ccl_ze_copy_engine_mode ze_copy_engine;
-    int ze_queue_index;
+    ssize_t ze_max_compute_queues;
+    ssize_t ze_max_copy_queues;
+    int enable_ze_list_dump;
+    int ze_queue_index_offset;
     int ze_close_ipc_wa;
+    std::string ze_lib_path;
+    int ze_enable;
+    int ze_fini_wa;
+    int ze_multi_workers;
 #endif // CCL_ENABLE_SYCL
+
+#ifdef CCL_ENABLE_ITT
+    int itt_level;
+#endif // CCL_ENABLE_ITT
 
     ccl_bf16_impl_type bf16_impl_type;
     ccl_fp16_impl_type fp16_impl_type;
@@ -342,6 +403,25 @@ public:
         }
     }
 
+    template <class T>
+    static int env_2_topo(const char* env_name, const std::map<T, std::string>& values, T& val) {
+        int status = 0;
+        char* env_to_parse = getenv(env_name);
+        if (env_to_parse) {
+            std::string env_str(env_to_parse);
+            if (env_str.find(std::string(topo_manager::card_domain_name)) != std::string::npos &&
+                env_str.find(std::string(topo_manager::plane_domain_name)) != std::string::npos) {
+                val = topo_color_mode::env;
+                status = 1;
+            }
+            else {
+                status = env_2_enum(env_name, values, val);
+            }
+        }
+
+        return status;
+    }
+
     static bool with_mpirun();
 
     static std::map<ccl_priority_mode, std::string> priority_mode_names;
@@ -349,6 +429,8 @@ public:
     static std::map<ccl_atl_send_proxy, std::string> atl_send_proxy_names;
     static std::map<ccl_staging_buffer, std::string> staging_buffer_names;
     static std::map<ccl_ze_copy_engine_mode, std::string> ze_copy_engine_names;
+    static std::map<backend_mode, std::string> backend_names;
+    static std::map<process_launcher_mode, std::string> process_launcher_names;
 
     int env_2_worker_affinity(int local_proc_idx, int local_proc_count);
     int env_2_worker_mem_affinity(int local_proc_count);

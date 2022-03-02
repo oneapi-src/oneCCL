@@ -2,19 +2,10 @@
 Sample Application
 ==================
 
-The sample code below shows how to use |product_short| API to perform allreduce communication for SYCL* memory: buffer objects and USM.
+The sample code below shows how to use |product_short| API to perform allreduce communication for SYCL USM memory.
 
-.. tabs::
-
-   .. tab:: SYCL Buffers
-
-      .. literalinclude:: ../../../../examples/sycl/sycl_allreduce_test.cpp 
-         :language: cpp
-
-   .. tab:: SYCL USM
-
-      .. literalinclude:: ../../../../examples/sycl/sycl_allreduce_usm_test.cpp
-         :language: cpp
+.. literalinclude:: sample.cpp
+   :language: cpp
 
 
 Build details
@@ -28,7 +19,7 @@ Build details
 
    ::
 
-      dpcpp -I${CCL_ROOT}/examples/include -I${CCL_ROOT}/include/ -L${CCL_ROOT}/lib/ -lccl -lmpi -o sample sample.cpp
+      dpcpp -o sample sample.cpp -lccl -lmpi
 
 
 Run the sample

@@ -36,14 +36,16 @@
 
 #include "atl/util/pm/pm_rt.h"
 #include "common/global/global.hpp"
+#include "common/utils/utils.hpp"
 #include "hwloc/hwloc_wrapper.hpp"
 #ifdef CCL_ENABLE_OFI_HMEM
 #include "sched/entry/ze/ze_primitives.hpp"
 #endif // CCL_ENABLE_OFI_HMEM
 
-#define ATL_OFI_BASE_PM_KEY     "atl-ofi"
-#define ATL_OFI_FI_ADDR_PM_KEY  ATL_OFI_BASE_PM_KEY "-fiaddr"
-#define ATL_OFI_HOSTNAME_PM_KEY ATL_OFI_BASE_PM_KEY "-hostname"
+#define ATL_OFI_BASE_PM_KEY           "atl-ofi"
+#define ATL_OFI_FI_ADDR_PM_KEY        ATL_OFI_BASE_PM_KEY "-fiaddr"
+#define ATL_OFI_FI_ADDR_UPDATE_PM_KEY ATL_OFI_BASE_PM_KEY "-fiaddr_update"
+#define ATL_OFI_HOSTNAME_PM_KEY       ATL_OFI_BASE_PM_KEY "-hostname"
 
 #define ATL_OFI_MAJOR_VERSION       "CCL_ATL_OFI_MAJOR_VERSION"
 #define ATL_OFI_MINOR_VERSION       "CCL_ATL_OFI_MINOR_VERSION"
@@ -97,9 +99,7 @@
 
 #define ATL_OFI_RETRY(func, ep, ret_val) \
     do { \
-        atl_ctx_t* ctx_local = (ep)->ctx; \
-        atl_ofi_ctx_t* ofi_ctx_local = container_of(ctx_local, atl_ofi_ctx_t, ctx); \
-        size_t max_retry_count = ofi_ctx_local->max_retry_count; \
+        size_t max_retry_count = ctx.max_retry_count; \
         size_t retry_count = 0; \
         do { \
             (ret_val) = func; \
@@ -119,7 +119,7 @@
     } while (0)
 
 /* OFI returns 0 or -errno */
-#define RET2ATL(ret) \
+#define ATL_OFI_RET(ret) \
     ({ \
         atl_status_t res; \
         if ((ret) == -FI_EAGAIN) \
@@ -191,16 +191,13 @@ typedef struct {
 } atl_ofi_prov_t;
 
 typedef struct {
-    atl_ep_t ep;
-
     /* used to make progressing only for really used providers */
     size_t active_prov_count;
     size_t active_prov_idxs[ATL_OFI_MAX_ACTIVE_PROV_COUNT];
-
 } atl_ofi_ep_t;
 
 typedef struct {
-    atl_ctx_t ctx;
+    size_t ep_count;
     pm_rt_desc_t* pm_rt;
     atl_ofi_prov_t provs[ATL_OFI_MAX_PROV_COUNT];
     size_t prov_count;
@@ -226,20 +223,7 @@ typedef struct {
     struct fid_mr* mr;
 } atl_ofi_req_t;
 
-#ifdef CCL_ENABLE_OFI_HMEM
-typedef struct atl_ofi_ze_data {
-    ze_driver_handle_t driver;
-    ze_context_handle_t context;
-    uint32_t device_count;
-    ze_device_handle_t devices[ATL_OFI_MAX_ZE_DEV_COUNT];
-
-    atl_ofi_ze_data() : driver(nullptr), context(nullptr), device_count(0) {}
-
-} atl_ofi_ze_data_t;
-#endif // CCL_ENABLE_OFI_HMEM
-
 typedef struct atl_ofi_global_data {
-    size_t ctx_count;
     int is_env_inited;
     void* dlhandle;
     char prov_env_copy[ATL_OFI_MAX_PROV_ENV_LEN];
@@ -247,13 +231,8 @@ typedef struct atl_ofi_global_data {
     int fi_major_version;
     int fi_minor_version;
 
-#ifdef CCL_ENABLE_OFI_HMEM
-    atl_ofi_ze_data ze_data;
-#endif // CCL_ENABLE_OFI_HMEM
-
     atl_ofi_global_data()
-            : ctx_count(0),
-              is_env_inited(0),
+            : is_env_inited(0),
               dlhandle(nullptr),
               prov_env_copy(),
               fi_major_version(1),
@@ -264,49 +243,54 @@ typedef struct atl_ofi_global_data {
 
 extern atl_ofi_global_data_t global_data;
 
-template <class Container>
-std::string vec_to_string(Container& elems);
-
-#ifdef CCL_ENABLE_OFI_HMEM
-void atl_ofi_init_ze_data();
-#endif // CCL_ENABLE_OFI_HMEM
-
-void atl_ofi_print_coord(atl_proc_coord_t* coord);
 std::string atl_ofi_get_short_nic_name(const struct fi_info* prov);
 std::string atl_ofi_get_nic_name(const struct fi_info* prov);
-atl_ofi_prov_t* atl_ofi_get_prov(atl_ep_t* ep, int peer_proc_idx, size_t msg_size);
-fi_addr_t atl_ofi_get_addr(atl_ctx_t* ctx, atl_ofi_prov_t* prov, int proc_idx, size_t ep_idx);
-atl_status_t atl_ofi_get_local_proc_coord(atl_ofi_ctx_t* ofi_ctx, std::shared_ptr<ipmi> pmi);
-atl_status_t atl_ofi_prov_update_addr_table(atl_ofi_ctx_t* ofi_ctx,
+atl_ofi_prov_t* atl_ofi_get_prov(atl_ofi_ctx_t& ctx,
+                                 const atl_proc_coord_t& coord,
+                                 const atl_ep_t& ep,
+                                 int peer_proc_idx,
+                                 size_t msg_size);
+fi_addr_t atl_ofi_get_addr(atl_ofi_ctx_t& ctx, atl_ofi_prov_t* prov, int proc_idx, size_t ep_idx);
+atl_status_t atl_ofi_get_local_proc_coord(atl_proc_coord_t& coord, std::shared_ptr<ipmi> pmi);
+atl_status_t atl_ofi_prov_update_addr_table(atl_ofi_ctx_t& ctx,
+                                            const atl_proc_coord_t& coord,
                                             size_t prov_idx,
-                                            std::shared_ptr<ipmi> pmi);
+                                            std::shared_ptr<ipmi> pmi,
+                                            std::list<std::vector<char>>& ep_names);
 atl_status_t atl_ofi_prov_ep_get_name(atl_ofi_prov_t* prov, size_t ep_idx);
-atl_status_t atl_ofi_prov_eps_connect(atl_ofi_ctx_t* ofi_ctx,
+atl_status_t atl_ofi_prov_eps_connect(atl_ofi_ctx_t& ctx,
+                                      const atl_proc_coord_t& coord,
                                       size_t prov_idx,
-                                      std::shared_ptr<ipmi> pmi);
+                                      std::shared_ptr<ipmi> pmi,
+                                      std::list<std::vector<char>>& ep_names);
 void atl_ofi_prov_ep_destroy(atl_ofi_prov_t* prov, atl_ofi_prov_ep_t* ep);
-void atl_ofi_prov_destroy(atl_ctx_t* ctx, atl_ofi_prov_t* prov);
+void atl_ofi_prov_destroy(atl_ofi_ctx_t& ctx, atl_ofi_prov_t* prov);
 int atl_ofi_wait_cancel_cq(struct fid_cq* cq);
 atl_status_t atl_ofi_prov_ep_init(atl_ofi_prov_t* prov, size_t ep_idx);
 atl_status_t atl_ofi_try_to_drain_cq_err(struct fid_cq* cq);
 int atl_ofi_try_to_drain_cq(struct fid_cq* cq);
-void atl_ofi_reset(atl_ctx_t* ctx);
+void atl_ofi_reset(atl_ofi_ctx_t& ctx);
 atl_status_t atl_ofi_adjust_env(const atl_attr_t& attr);
 atl_status_t atl_ofi_set_env(const atl_attr_t& attr);
-atl_status_t atl_ofi_get_prov_list(atl_ctx_t* ctx,
+atl_status_t atl_ofi_get_prov_list(atl_ofi_ctx_t& ctx,
                                    const char* prov_name,
                                    struct fi_info* base_hints,
                                    struct fi_info** out_prov_list);
-atl_status_t atl_ofi_prov_init(atl_ctx_t* ctx,
+atl_status_t atl_ofi_prov_init(atl_ofi_ctx_t& ctx,
+                               const atl_proc_coord_t& coord,
                                struct fi_info* info,
                                atl_ofi_prov_t* prov,
                                atl_attr_t* attr,
-                               std::shared_ptr<ipmi> pmi);
+                               std::shared_ptr<ipmi> pmi,
+                               std::list<std::vector<char>>& ep_names);
 atl_status_t atl_ofi_adjust_out_tag(atl_ofi_prov_t* prov, atl_attr_t* attr);
-atl_status_t atl_ofi_parse_mnic_name(atl_ctx_t* ctx, std::string str_to_parse);
-int atl_ofi_is_allowed_nic_name(atl_ofi_ctx_t* ofi_ctx, struct fi_info* info);
-atl_status_t atl_ofi_open_nw_provs(atl_ctx_t* ctx,
+atl_status_t atl_ofi_parse_mnic_name(atl_ofi_ctx_t& ctx, std::string str_to_parse);
+int atl_ofi_is_allowed_nic_name(atl_ofi_ctx_t& ctx, struct fi_info* info);
+atl_status_t atl_ofi_open_nw_provs(atl_ofi_ctx_t& ctx,
+                                   const atl_proc_coord_t& coord,
                                    struct fi_info* base_hints,
                                    atl_attr_t* attr,
-                                   std::shared_ptr<ipmi> pmi);
-void atl_ofi_init_req(atl_req_t* req, atl_ofi_prov_ep_t* prov_ep, struct fid_ep* fi_ep);
+                                   std::shared_ptr<ipmi> pmi,
+                                   std::list<std::vector<char>>& ep_names,
+                                   bool log_on_error);
+void atl_ofi_init_req(atl_req_t& req, atl_ofi_prov_ep_t* prov_ep, struct fid_ep* fi_ep);

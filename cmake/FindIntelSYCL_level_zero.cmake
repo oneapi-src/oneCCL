@@ -26,13 +26,9 @@ else()
     message("DPCPP_ROOT prefix path hint is not defiend")
 endif()
 
-find_package(level_zero REQUIRED)
-set(COMPUTE_BACKEND_NAME ze_loader)
-
 if (NOT COMPUTE_BACKEND_NAME)
     message("Not OpenCL or L0")
 endif()
-
 
 include(CheckCXXCompilerFlag)
 include(FindPackageHandleStandardArgs)
@@ -70,12 +66,12 @@ find_package_handle_standard_args(IntelSYCL_level_zero
         INTEL_SYCL_SUPPORTED)
 
 if(IntelSYCL_level_zero_FOUND AND NOT TARGET Intel::SYCL_level_zero)
-	get_target_property(LEVEL_ZERO_INCLUDE_DIRECTORIES ze_loader INTERFACE_INCLUDE_DIRECTORIES)
-
     add_library(Intel::SYCL_level_zero UNKNOWN IMPORTED)
-	list(APPEND SYCL_LEVEL_ZERO_INCLUDE_DIRS "${LEVEL_ZERO_INCLUDE_DIRECTORIES}")
-	list(APPEND SYCL_LEVEL_ZERO_INCLUDE_DIRS "${INTEL_SYCL_INCLUDE_DIRS}")
+    message(STATUS "IntelSYCL_level_zero_FOUND: ${LEVEL_ZERO_INCLUDE_DIR}")
+    list(APPEND SYCL_LEVEL_ZERO_INCLUDE_DIRS "${LEVEL_ZERO_INCLUDE_DIR}")
+    list(APPEND SYCL_LEVEL_ZERO_INCLUDE_DIRS "${INTEL_SYCL_INCLUDE_DIRS}")
 
+    message(STATUS "SYCL_LEVEL_ZERO_INCLUDE_DIRS: ${SYCL_LEVEL_ZERO_INCLUDE_DIRS}")
     set(imp_libs
         $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:-fsycl>
         ${COMPUTE_BACKEND_NAME})

@@ -56,8 +56,6 @@ public:
     void start() override;
     void update() override;
 
-    void reset_sync_objects();
-
 protected:
     void dump_detail(std::stringstream& str) const override {
         ccl_logger::format(str,
@@ -71,8 +69,8 @@ protected:
                            recv_buf,
                            ", op ",
                            ccl_reduction_to_str(op),
-                           ", comm_id ",
-                           sched->get_comm_id(),
+                           ", comm ",
+                           comm->to_string(),
                            ", context ",
                            context,
                            "\n");
@@ -89,7 +87,6 @@ private:
     const ccl::reduction op;
     int root;
     const size_t buf_size_bytes;
-    bool is_initialized;
 
     ze_event_handle_t empty_kernel_event;
     ze_event_handle_t copy_from_peer_event;
@@ -101,6 +98,4 @@ private:
 
     ze_kernel_handle_t empty_kernel;
     std::string empty_kernel_name;
-
-    ze_device_mem_alloc_desc_t device_mem_alloc_desc;
 };

@@ -149,6 +149,8 @@ private:
     std::mutex mutex;
 };
 
+struct ipc_handle_desc;
+
 class module_cache {
 public:
     module_cache() = default;
@@ -171,6 +173,68 @@ private:
               ze_device_handle_t device,
               const std::string& spv_name,
               ze_module_handle_t* module);
+};
+
+class mem_handle_cache {
+public:
+    class handle_desc {
+    public:
+        handle_desc() = delete;
+        handle_desc(ze_context_handle_t remote_context,
+                    const ze_ipc_mem_handle_t& handle,
+                    const void* ptr);
+        handle_desc(const handle_desc&) = delete;
+        handle_desc& operator=(const handle_desc&) = delete;
+        ~handle_desc();
+
+        const void* get_ptr() const;
+
+    private:
+        friend class mem_handle_cache;
+        const ze_context_handle_t remote_context;
+        const ze_ipc_mem_handle_t handle;
+        const void* ptr{};
+
+        void close_handle() const;
+    };
+
+    using value_t = typename std::shared_ptr<const handle_desc>;
+
+    mem_handle_cache();
+    ~mem_handle_cache();
+
+    void clear();
+
+    void get(ze_context_handle_t context,
+             ze_device_handle_t device,
+             const ipc_handle_desc& info,
+             value_t* out_value);
+
+private:
+    using key_t = typename std::
+        tuple<pid_t, uint64_t, ssize_t, ssize_t, ze_context_handle_t, ze_device_handle_t>;
+
+    enum class key_id : size_t {
+        remote_pid,
+        remote_alloc_id,
+        remote_context_id,
+        remote_device_id,
+        context,
+        device
+    };
+
+    // LRU cache
+    std::list<std::pair<key_t, value_t>> cache_list;
+    std::unordered_map<key_t, decltype(cache_list.begin()), utils::tuple_hash> cache;
+    std::mutex mutex;
+    size_t threshold{};
+
+    void push(ze_device_handle_t device,
+              key_t&& key,
+              const ze_ipc_mem_handle_t& handle,
+              value_t* out_value);
+    void make_clean(size_t limit);
+    bool fd_is_valid(int fd);
 };
 
 class cache {
@@ -237,6 +301,13 @@ public:
         modules.get(context, device, spv_name, module);
     }
 
+    void get(ze_context_handle_t context,
+             ze_device_handle_t device,
+             const ipc_handle_desc& info,
+             mem_handle_cache::value_t* out_value) {
+        mem_handles.get(context, device, info, out_value);
+    }
+
     /* push */
     void push(size_t instance_idx,
               ze_module_handle_t module,
@@ -287,6 +358,7 @@ private:
     std::vector<event_pool_cache> event_pools;
     std::vector<device_mem_cache> device_mems;
     module_cache modules{};
+    mem_handle_cache mem_handles{};
 };
 
 } // namespace ze

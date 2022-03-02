@@ -105,24 +105,6 @@ std::map<int, ccl::reduction> reduction_values = {
 #endif
 };
 
-ccl_prologue_type first_prologue_type = PROLOGUE_NULL;
-ccl_prologue_type last_prologue_type = PROLOGUE_LAST;
-std::map<int, std::string> prologue_type_names = { { PROLOGUE_NULL, "PROLOGUE_NULL" },
-#ifdef TEST_CCL_CUSTOM_PROLOG
-                                                   { PROLOGUE_2X, "PROLOGUE_2X" },
-                                                   { PROLOGUE_CHAR, "PROLOGUE_CHAR" }
-#endif
-};
-
-ccl_epilogue_type first_epilogue_type = EPILOGUE_NULL;
-ccl_epilogue_type last_epilogue_type = EPILOGUE_LAST;
-std::map<int, std::string> epilogue_type_names = { { EPILOGUE_NULL, "EPILOGUE_NULL" },
-#ifdef TEST_CCL_CUSTOM_EPILOG
-                                                   { EPILOGUE_2X, "EPILOGUE_2X" },
-                                                   { EPILOGUE_CHAR, "EPILOGUE_CHAR" }
-#endif
-};
-
 POST_AND_PRE_INCREMENTS(ccl_data_type, DATATYPE_LAST);
 POST_AND_PRE_INCREMENTS(ccl_size_type, SIZE_LAST);
 POST_AND_PRE_INCREMENTS(ccl_buf_count_type, BUF_COUNT_LAST);

@@ -18,10 +18,11 @@
 #include "common/log/log.hpp"
 #include "common/stream/stream.hpp"
 #include "common/utils/buffer.hpp"
+#include "sched/entry/ze/ze_cache.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
 
 #include <unordered_map>
-#include <ze_api.h>
+#include "common/ze/ze_api_wrapper.hpp"
 
 class ccl_comm;
 
@@ -33,21 +34,27 @@ enum class ipc_mem_type : int { unknown = 0, memory, pool };
 
 std::string to_string(ipc_mem_type type);
 
-struct ipc_handle_info {
+struct ipc_handle_desc {
     ze_ipc_mem_handle_t handle{};
-    size_t offset{};
-    void* ptr{};
-    ipc_mem_type type{};
+    size_t mem_offset{};
+    void* mem_ptr{};
+    ipc_mem_type mem_type{};
+    pid_t remote_pid{};
+    ssize_t remote_context_id{ -1 };
+    uint64_t remote_mem_alloc_id{};
+    ssize_t remote_device_id{ -1 };
 
-    ipc_handle_info();
-    ipc_handle_info(const ze_ipc_mem_handle_t& handle, size_t offset, ipc_mem_type type);
-    ipc_handle_info(const ipc_handle_info&) = default;
-    ipc_handle_info& operator=(const ipc_handle_info&) = default;
+    bool is_cached = false;
+
+    ipc_handle_desc();
+    ipc_handle_desc(const ze_ipc_mem_handle_t& handle, size_t offset, ipc_mem_type type);
+    ipc_handle_desc(const ipc_handle_desc&) = default;
+    ipc_handle_desc& operator=(const ipc_handle_desc&) = default;
 };
 
 class ipc_handle_manager {
 public:
-    using mem_handle_map_t = typename std::vector<std::vector<ipc_handle_info>>;
+    using mem_handle_map_t = typename std::vector<std::vector<ipc_handle_desc>>;
 
     ipc_handle_manager() = default;
     ipc_handle_manager(const ipc_handle_manager&) = delete;
@@ -65,7 +72,7 @@ public:
 
     void get_handle(const void* buffer, ze_ipc_mem_handle_t* handle);
     void get_handle(ze_event_pool_handle_t pool, ze_ipc_event_pool_handle_t* handle);
-    void open_handle(const ze_ipc_mem_handle_t& handle, void** ptr);
+    void open_handle(ipc_handle_desc& info, void** ptr);
     void open_handle(const ze_ipc_event_pool_handle_t& handle, ze_event_pool_handle_t* pool);
 
     void get_address_range(const void* ptr, void** base_ptr, size_t* size);
@@ -76,6 +83,16 @@ private:
     ccl_comm* comm{};
     std::unordered_map<int, int> rank_map{};
     mem_handle_map_t handles;
+
+    /**
+     * The value can be destroyed in the cache if the cache reaches its limit.
+     * This can happen at a time when the handle is really needed.
+     * We can run a lot of ranks and get fail here.
+     * Instead, the value will be popped from the cache, but only destroyed when not needed.
+     * We rely on the smart pointer to work.
+     * So, in cached_handles we just save handles to increase ref counter
+     */
+    std::list<mem_handle_cache::value_t> cached_handles;
 
     void check_rank(int rank, ccl_comm* check_comm);
 };

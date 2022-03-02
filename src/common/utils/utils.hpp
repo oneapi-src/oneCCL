@@ -143,39 +143,12 @@
 #define CCL_FREE(ptr) CCL_FREE_IMPL(ptr)
 
 /* other */
+namespace ccl {
+namespace utils {
 
-static inline size_t ccl_get_ptr_diff(const void* ptr1, const void* ptr2) {
-    return static_cast<const char*>(ptr2) - static_cast<const char*>(ptr1);
-}
-
-static inline size_t ccl_pof2(size_t number) {
-    size_t last_bit_mask = ((size_t)1 << (8 * sizeof(size_t) - 1));
-    if (number & last_bit_mask) {
-        return last_bit_mask;
-    }
-
-    size_t pof2 = 1;
-    while (pof2 <= number) {
-        pof2 <<= 1;
-    }
-    pof2 >>= 1;
-    return pof2;
-}
-
-static inline size_t ccl_aligned_sz(size_t size, size_t alignment) {
-    return ((size % alignment) == 0) ? size : ((size / alignment) + 1) * alignment;
-}
-
-#if 0
-static inline timespec ccl_from_time_point(
-    const std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> point) {
-    auto sec = std::chrono::time_point_cast<std::chrono::seconds>(point);
-    auto ns = std::chrono::time_point_cast<std::chrono::nanoseconds>(point) -
-              std::chrono::time_point_cast<std::chrono::nanoseconds>(sec);
-
-    return timespec{ .tv_sec = sec.time_since_epoch().count(), .tv_nsec = ns.count() };
-}
-#endif
+size_t get_ptr_diff(const void* ptr1, const void* ptr2);
+size_t pof2(size_t number);
+size_t aligned_sz(size_t size, size_t alignment);
 
 template <class container>
 container tokenize(const std::string& input, char delimeter) {
@@ -193,102 +166,51 @@ container tokenize(const std::string& input, char delimeter) {
     return ret;
 }
 
-template <typename T>
-void ccl_str_to_array(const char* input, std::set<char> delims, std::vector<T>& output) {
-    std::stringstream ss(input);
-    T temp{};
-    int c;
-    bool can_parse = false;
-    do {
-        while (((c = ss.peek()) != EOF) && (delims.find(c) != delims.end())) {
-            ss.ignore();
+template <class Container>
+std::string vec_to_string(Container& elems) {
+    if (elems.empty()) {
+        return "<empty>";
+    }
+
+    size_t idx = 0;
+    std::ostringstream ss;
+    for (auto elem : elems) {
+        ss << elem;
+        idx++;
+        if (idx < elems.size()) {
+            ss << " ";
         }
-        can_parse = static_cast<bool>(ss >> temp);
-        if (can_parse)
-            output.push_back(temp);
-    } while (can_parse);
+    }
+    return ss.str();
 }
 
-#if 0
-//TODO naite implementation, use TBB
-template <class Key,
-          class Value,
-          class = typename std::enable_if<std::is_pointer<Value>::value>::type>
-class concurrent_map {
-public:
-    using implementation = std::map<Key, Value>;
-    using value_type = typename implementation::value_type;
-    using lock_t = std::unique_lock<ccl_spinlock>;
+template <typename T>
+inline T from_string(const std::string& str) {
+    T val;
+    std::stringstream ss(str);
+    ss >> val;
+    return val;
+}
 
-    template <class Impl>
-    using accessor = std::tuple<Impl, lock_t>;
-
-    using read_accessor =
-        std::tuple<std::reference_wrapper<typename std::add_const<implementation>::type>, lock_t>;
-    using write_accessor = std::tuple<std::reference_wrapper<implementation>, lock_t>;
-
-    concurrent_map() = default;
-    concurrent_map(concurrent_map<Key, Value>&& src) {
-        src.swap(get_write());
-    }
-
-    concurrent_map<Key, Value>& operator=(const concurrent_map<Key, Value>&& src) {
-        src.swap(get_write());
-        return *this;
-    }
-
-    concurrent_map(const concurrent_map<Key, Value>&) = delete;
-    concurrent_map<Key, Value>& operator=(const concurrent_map<Key, Value>&) = delete;
-
-    std::pair<Value, bool> insert(value_type&& value) {
-        Value ret = nullptr;
-        bool find = false;
-        {
-            std::unique_lock<ccl_spinlock> lock(guard);
-            auto pair = map.insert(std::move(value));
-            find = pair.second;
-            ret = pair.first->second;
+template <class T>
+void str_to_array(const std::string& input_str, std::string delims, std::vector<T>& result) {
+    size_t beg, pos = 0;
+    while ((beg = input_str.find_first_not_of(delims, pos)) != std::string::npos) {
+        pos = input_str.find_first_of(delims, beg + 1);
+        auto str = input_str.substr(beg, pos - beg);
+        if (str.size() == 0) {
+            throw ccl::exception("unexpected result string size: 0");
         }
-        return { ret, find };
+        result.push_back(from_string<T>(str));
     }
+}
 
-    Value find(const Key& key) {
-        Value ret = nullptr;
-        {
-            std::unique_lock<ccl_spinlock> lock(guard);
-            auto it = map.find(key);
-            if (it != map.end()) {
-                ret = it->second;
-            }
-        }
-        return ret;
-    }
+void str_to_array(const std::string& input_str,
+                  std::string delimiter,
+                  std::vector<std::string>& result);
 
-    read_accessor get_read() const {
-        return { std::cref(map), locker() };
-    }
-
-    write_accessor get_write() {
-        return { std::ref(map), locker() };
-    }
-
-    void swap(write_accessor&& rhs) {
-        {
-            std::unique_lock<ccl_spinlock> lock(guard);
-            std::swap(map, std::get<0>(rhs).get());
-        }
-    }
-
-    void swap(write_accessor& rhs) {
-        swap(rhs);
-    }
-
-private:
-    std::unique_lock<ccl_spinlock> locker() const {
-        return std::unique_lock<ccl_spinlock>(guard);
-    }
-
-    mutable ccl_spinlock guard;
-    implementation map;
-};
-#endif
+std::string get_substring_between_delims(std::string& full_str,
+                                         const std::string& start_delim,
+                                         const std::string& stop_delim);
+} // namespace utils
+} // namespace ccl

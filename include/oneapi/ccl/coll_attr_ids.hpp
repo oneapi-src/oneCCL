@@ -81,15 +81,6 @@ enum class reduce_scatter_attr_id : int {
     reduction_fn = op_id_offset,
 };
 
-enum class sparse_allreduce_attr_id : int {
-    op_id_offset = 5,
-
-    completion_fn = op_id_offset,
-    alloc_fn,
-    fn_ctx,
-    coalesce_mode,
-};
-
 } // namespace v1
 
 using v1::operation_attr_id;
@@ -102,6 +93,5 @@ using v1::broadcast_attr_id;
 using v1::barrier_attr_id;
 using v1::reduce_attr_id;
 using v1::reduce_scatter_attr_id;
-using v1::sparse_allreduce_attr_id;
 
 } // namespace ccl

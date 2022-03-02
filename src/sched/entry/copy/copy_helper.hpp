@@ -21,7 +21,6 @@
 #include "common/utils/enums.hpp"
 #include "common/utils/tuple.hpp"
 #include "common/utils/sycl_utils.hpp"
-#include "oneapi/ccl/native_device_api/interop_utils.hpp"
 
 enum class copy_direction { undefined, h2h, d2h, h2d, d2d };
 std::string to_string(copy_direction val);
@@ -34,6 +33,11 @@ struct copy_attr {
     size_t in_buf_offset = 0;
     size_t out_buf_offset = 0;
     bool use_nontemporal = false;
+
+#ifdef CCL_ENABLE_ZE
+    int hint_queue_index = 0;
+    bool is_peer_card_copy = false;
+#endif // CCL_ENABLE_ZE
 
     copy_attr() {}
 

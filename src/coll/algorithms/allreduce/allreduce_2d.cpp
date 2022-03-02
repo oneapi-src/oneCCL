@@ -34,11 +34,9 @@ ccl_allreduce_2d_builder::ccl_allreduce_2d_builder(size_t base_size,
         second_dim_color = comm->rank() / base_size;
     }
 
-    first_dim_comm = std::shared_ptr<ccl_comm>(comm->create_with_color(
-        first_dim_color, ccl::global_data::get().comm_ids.get(), true /*share_resources*/));
+    first_dim_comm = std::shared_ptr<ccl_comm>(comm->create_subcomm(first_dim_color));
 
-    second_dim_comm = std::shared_ptr<ccl_comm>(comm->create_with_color(
-        second_dim_color, ccl::global_data::get().comm_ids.get(), true /*share_resources*/));
+    second_dim_comm = std::shared_ptr<ccl_comm>(comm->create_subcomm(second_dim_color));
 
     if (comm->rank() == 0) {
         std::string first_dim_ranks, second_dim_ranks;

@@ -18,9 +18,9 @@
 #include "common/global/global.hpp"
 #include "comp/comp.hpp"
 #include "sched/entry/coll/coll_entry_param.hpp"
-#include "sched/entry/entry.hpp"
+#include "sched/entry/subsched_entry.hpp"
 
-class coll_entry : public sched_entry,
+class coll_entry : public subsched_entry,
                    public postponed_fields<coll_entry,
                                            ccl_sched_entry_field_send_buf,
                                            ccl_sched_entry_field_recv_buf,
@@ -34,24 +34,23 @@ public:
 
     coll_entry() = delete;
     coll_entry(ccl_sched* sched, const ccl_coll_entry_param& param, ccl_op_id_t op_id = 0)
-            : sched_entry(sched),
-              param(param),
-              coll_sched(),
-              coll_sched_op_id(op_id) {}
-
-    ~coll_entry() {
-        coll_sched.reset();
-    }
+            : subsched_entry(
+                  sched,
+                  op_id,
+                  [this](ccl_sched* s) {
+                      coll_entry::build_sched(s, this->param);
+                  },
+                  "coll_entry"),
+              param(param) {}
 
     void start() override;
-    void update() override;
 
     bool is_strict_order_satisfied() override {
 #ifdef CCL_ENABLE_SYCL
         /* use more strict condition for SYCL build to handle async execution */
-        return (coll_sched) ? coll_sched->is_completed() : false;
+        return (status == ccl_sched_entry_status_complete);
 #else // CCL_ENABLE_SYCL
-        return (coll_sched) ? coll_sched->is_strict_order_satisfied() : false;
+        return (subsched) ? subsched->is_strict_order_satisfied() : false;
 #endif // CCL_ENABLE_SYCL
     }
 
@@ -79,12 +78,14 @@ public:
         return param.send_count;
     }
 
+    static ccl::status build_sched(ccl_sched* sched, const ccl_coll_entry_param& param);
+
 protected:
     void dump_detail(std::stringstream& str) const override {
         ccl_logger::format(str,
                            "dt ",
                            ccl::global_data::get().dtypes->name(param.dtype),
-                           ", coll_type ",
+                           ", coll ",
                            ccl_coll_type_to_str(param.ctype),
                            ", send_buf ",
                            param.send_buf,
@@ -96,13 +97,9 @@ protected:
                            ccl_reduction_to_str(param.reduction),
                            ", comm ",
                            param.comm,
-                           ", coll sched ",
-                           coll_sched.get(),
                            "\n");
     }
 
 private:
     ccl_coll_entry_param param;
-    std::unique_ptr<ccl_extra_sched> coll_sched;
-    ccl_op_id_t coll_sched_op_id;
 };

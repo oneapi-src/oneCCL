@@ -13,38 +13,126 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "common/request/request.hpp"
-#include "sched/entry/coll/coll_entry_helper.hpp"
-#include "sched/extra_sched.hpp"
+#include "sched/entry/coll/coll_entry.hpp"
+
+ccl::status coll_entry::build_sched(ccl_sched* sched, const ccl_coll_entry_param& param) {
+    ccl::status res = ccl::status::success;
+
+    sched->hint_algo = param.hint_algo;
+
+    switch (param.ctype) {
+        case ccl_coll_allgatherv: {
+            res = ccl_coll_build_allgatherv(sched,
+                                            param.send_buf,
+                                            param.send_count,
+                                            param.recv_buf,
+                                            param.recv_counts,
+                                            param.dtype,
+                                            param.comm);
+            break;
+        }
+        case ccl_coll_allreduce: {
+            res = ccl_coll_build_allreduce(sched,
+                                           param.send_buf,
+                                           param.recv_buf,
+                                           param.count,
+                                           param.dtype,
+                                           param.reduction,
+                                           param.comm);
+            break;
+        }
+        case ccl_coll_alltoall: {
+            res = ccl_coll_build_alltoall(
+                sched, param.send_buf, param.recv_buf, param.count, param.dtype, param.comm);
+            break;
+        }
+        case ccl_coll_alltoallv: {
+            res = ccl_coll_build_alltoallv(sched,
+                                           param.send_buf,
+                                           param.send_counts,
+                                           param.recv_buf,
+                                           param.recv_counts,
+                                           param.dtype,
+                                           param.comm);
+            break;
+        }
+        case ccl_coll_barrier: {
+            res = ccl_coll_build_barrier(sched, param.comm);
+            break;
+        }
+        case ccl_coll_bcast: {
+            res = ccl_coll_build_bcast(
+                sched, param.recv_buf, param.count, param.dtype, param.root, param.comm);
+            break;
+        }
+        case ccl_coll_reduce: {
+            res = ccl_coll_build_reduce(sched,
+                                        param.send_buf,
+                                        param.recv_buf,
+                                        param.count,
+                                        param.dtype,
+                                        param.reduction,
+                                        param.root,
+                                        param.comm);
+            break;
+        }
+        case ccl_coll_reduce_scatter: {
+            res = ccl_coll_build_reduce_scatter(sched,
+                                                param.send_buf,
+                                                param.recv_buf,
+                                                param.count,
+                                                param.dtype,
+                                                param.reduction,
+                                                param.comm);
+            break;
+        }
+        default: CCL_FATAL("not supported coll_type ", param.ctype); break;
+    }
+    return res;
+}
 
 void coll_entry::start() {
     if (update_fields()) {
-        coll_sched.reset();
+        LOG_DEBUG("updated fields in COLL entry: ", this);
+        subsched.reset();
     }
 
-    if (!coll_sched) {
+    if (!subsched) {
         ccl_coll_param coll_param{};
         coll_param.ctype = sched->coll_param.ctype;
         coll_param.comm = sched->coll_param.comm;
         coll_param.stream = sched->coll_param.stream;
-        coll_sched.reset(new ccl_extra_sched({ sched->sched_id, coll_param }, sched->master_sched));
-        coll_sched->set_op_id(coll_sched_op_id);
 
-        auto res = coll_entry_helper::build_schedule(coll_sched.get(), sched, param);
-        CCL_ASSERT(res == ccl::status::success, "error during build_schedule, res ", res);
+        LOG_DEBUG("building COLL entry: ",
+                  this,
+                  ", subsched: ",
+                  subsched.get(),
+                  ", coll: ",
+                  ccl_coll_type_to_str(param.ctype),
+                  ", count: ",
+                  param.count);
+        subsched_entry::build_subsched({ sched->sched_id, coll_param });
+        LOG_DEBUG("built COLL entry: ",
+                  this,
+                  ", subsched: ",
+                  subsched.get(),
+                  ", coll: ",
+                  ccl_coll_type_to_str(param.ctype),
+                  ", count: ",
+                  param.count);
     }
 
-    LOG_DEBUG("starting COLL entry: ", this, ", subsched: ", coll_sched.get());
-    auto req = sched->start_subsched(coll_sched.get());
-    LOG_DEBUG("started COLL entry: ", this, ", subsched ", coll_sched.get(), ", req ", req);
-
-    status = ccl_sched_entry_status_started;
-}
-
-void coll_entry::update() {
-    CCL_THROW_IF_NOT(coll_sched, "empty request");
-    if (coll_sched->is_completed()) {
-        LOG_DEBUG("COLL entry, completed: ", this, ", sched: ", coll_sched.get());
-        status = ccl_sched_entry_status_complete;
-    }
+    LOG_DEBUG("starting COLL entry: sched_id ",
+              sched->sched_id,
+              ", this: ",
+              this,
+              ", subsched: ",
+              subsched.get());
+    subsched_entry::start();
+    LOG_DEBUG("started COLL entry: sched_id ",
+              sched->sched_id,
+              ", this: ",
+              this,
+              ", subsched: ",
+              subsched.get());
 }

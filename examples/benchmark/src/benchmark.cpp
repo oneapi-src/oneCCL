@@ -43,11 +43,11 @@ inline void finalize_coll(const user_options_t& options,
     coll->finalize(elem_count);
 }
 
-void do_regular(ccl::communicator& service_comm,
-                bench_exec_attr& bench_attr,
-                coll_list_t& all_colls,
-                req_list_t& reqs,
-                const user_options_t& options) {
+void run(ccl::communicator& service_comm,
+         bench_exec_attr& bench_attr,
+         coll_list_t& all_colls,
+         req_list_t& reqs,
+         const user_options_t& options) {
     std::stringstream match_id_stream;
 
     for (auto dtype : all_dtypes) {
@@ -72,7 +72,7 @@ void do_regular(ccl::communicator& service_comm,
                 continue;
 
             PRINT_BY_ROOT(service_comm,
-                          "\ndtype: %s\nreduction: %s\n",
+                          "\ndatatype: %s\nreduction: %s\n",
                           dtype_name.c_str(),
                           reduction.c_str());
 
@@ -211,113 +211,8 @@ void do_regular(ccl::communicator& service_comm,
     PRINT_BY_ROOT(service_comm, "\n# All done\n");
 }
 
-/* TODO: merge with do_regular */
-void do_unordered(ccl::communicator& service_comm,
-                  bench_exec_attr& bench_attr,
-                  coll_list_t& all_colls,
-                  req_list_t& reqs,
-                  const user_options_t& options) {
-    std::set<ccl::string_class> match_ids;
-    std::stringstream match_id_stream;
-
-    for (auto dtype : all_dtypes) {
-        coll_list_t colls;
-        std::string dtype_name;
-
-        std::copy_if(all_colls.begin(),
-                     all_colls.end(),
-                     std::back_inserter(colls),
-                     [dtype](const typename coll_list_t::value_type coll) {
-                         return dtype == coll->get_dtype();
-                     });
-
-        if (colls.empty())
-            continue;
-
-        dtype_name = find_str_val(dtype_names, dtype);
-        for (const auto& reduction : options.reductions) {
-            ccl::reduction reduction_op;
-
-            if (!find_key_val(reduction_op, reduction_names, reduction))
-                continue;
-
-            PRINT_BY_ROOT(service_comm,
-                          "\ndtype: %s\nreduction: %s\n",
-                          dtype_name.c_str(),
-                          reduction.c_str());
-
-            int rank = service_comm.rank();
-
-            reqs.reserve(colls.size() * options.buf_count * (log2(options.max_elem_count) + 1));
-
-            PRINT_BY_ROOT(service_comm, "do unordered test");
-            bench_attr.reduction = reduction_op;
-            bench_attr.set<ccl::operation_attr_id::to_cache>((bool)options.cache_ops);
-
-            for (auto& count : options.elem_counts) {
-                try {
-                    if (rank % 2) {
-                        for (size_t coll_idx = 0; coll_idx < colls.size(); coll_idx++) {
-                            auto& coll = colls[coll_idx];
-                            for (size_t buf_idx = 0; buf_idx < options.buf_count; buf_idx++) {
-                                match_id_stream << "coll_" << coll->name() << "_" << coll_idx
-                                                << "_count_" << count << "_buf_" << buf_idx;
-                                bench_attr.set<ccl::operation_attr_id::match_id>(
-                                    ccl::string_class(match_id_stream.str()));
-                                match_ids.insert(match_id_stream.str());
-                                match_id_stream.str("");
-                                coll->start(count, buf_idx, bench_attr, reqs);
-                            }
-                        }
-                    }
-                    else {
-                        for (size_t coll_idx = 0; coll_idx < colls.size(); coll_idx++) {
-                            size_t real_coll_idx = colls.size() - coll_idx - 1;
-                            auto& coll = colls[real_coll_idx];
-                            for (size_t buf_idx = 0; buf_idx < options.buf_count; buf_idx++) {
-                                size_t real_buf_idx = options.buf_count - buf_idx - 1;
-                                match_id_stream << "coll_" << coll->name() << "_" << real_coll_idx
-                                                << "_count_" << count << "_buf_" << real_buf_idx;
-                                bench_attr.set<ccl::operation_attr_id::match_id>(
-                                    ccl::string_class(match_id_stream.str()));
-                                match_ids.insert(match_id_stream.str());
-                                match_id_stream.str("");
-                                coll->start(count, real_buf_idx, bench_attr, reqs);
-                            }
-                        }
-                    }
-                }
-                catch (...) {
-                    ASSERT(0, "error on count %zu", count);
-                }
-            }
-
-            ASSERT(match_ids.size() == reqs.size(),
-                   "unexpected match_ids.size %zu, expected %zu",
-                   match_ids.size(),
-                   reqs.size());
-
-            try {
-                for (auto& req : reqs) {
-                    req.wait();
-                }
-            }
-            catch (...) {
-                ASSERT(0, "error on coll completion");
-            }
-            PRINT_BY_ROOT(service_comm, "PASSED\n");
-        }
-    }
-}
-
 template <class Dtype>
 void create_cpu_colls(bench_init_attr& init_attr, user_options_t& options, coll_list_t& colls) {
-    // using namespace sparse_detail;
-    // using incremental_index_int_sparse_strategy =
-    //     sparse_allreduce_strategy_impl<int, sparse_detail::incremental_indices_distributor>;
-    // using incremental_index_bf16_sparse_strategy =
-    //     sparse_allreduce_strategy_impl<ccl::bfloat16, sparse_detail::incremental_indices_distributor>;
-
     std::stringstream error_messages_stream;
 
     for (auto names_it = options.coll_names.begin(); names_it != options.coll_names.end();) {
@@ -343,35 +238,6 @@ void create_cpu_colls(bench_init_attr& init_attr, user_options_t& options, coll_
         else if (name == reduce_scatter_strategy_impl::class_name()) {
             colls.emplace_back(new cpu_reduce_scatter_coll<Dtype>(init_attr));
         }
-        //         else if (name.find(incremental_index_int_sparse_strategy::class_name()) !=
-        //                  std::string::npos) {
-        //             if (name.find(incremental_index_bf16_sparse_strategy::class_name()) !=
-        //                 std::string::npos) {
-        //                 if (is_bf16_enabled() == 0) {
-        //                     error_messages_stream << "bfloat16 is not supported for current CPU, skipping "
-        //                                           << name << ".\n";
-        //                     names_it = options.coll_names.erase(names_it);
-        //                     continue;
-        //                 }
-        // #ifdef CCL_bf16_COMPILER
-        //                 colls.emplace_back(
-        //                     new cpu_sparse_allreduce_coll<ccl::bfloat16,
-        //                                                   int64_t,
-        //                                                   sparse_detail::incremental_indices_distributor>(
-        //                         init_attr,
-        //                         sizeof(float) / sizeof(ccl::bfloat16),
-        //                         sizeof(float) / sizeof(ccl::bfloat16)));
-        // #else
-        //                 error_messages_stream << "bfloat16 is not supported by current compiler, skipping "
-        //                                       << name << ".\n";
-        //                 names_it = options.coll_names.erase(names_it);
-        //                 continue;
-        // #endif
-        //             }
-        //             else {
-        //                 colls.emplace_back(new cpu_sparse_allreduce_coll<Dtype, int64_t>(init_attr));
-        //             }
-        //         }
         else {
             ASSERT(0, "create_colls error, unknown coll name: %s", name.c_str());
         }
@@ -392,11 +258,6 @@ void create_cpu_colls(bench_init_attr& init_attr, user_options_t& options, coll_
 #ifdef CCL_ENABLE_SYCL
 template <class Dtype>
 void create_sycl_colls(bench_init_attr& init_attr, user_options_t& options, coll_list_t& colls) {
-    // using incremental_index_int_sparse_strategy =
-    //     sparse_allreduce_strategy_impl<int, sparse_detail::incremental_indices_distributor>;
-    // using incremental_index_bf16_sparse_strategy =
-    //     sparse_allreduce_strategy_impl<ccl::bfloat16, sparse_detail::incremental_indices_distributor>;
-
     std::stringstream error_messages_stream;
 
     for (auto names_it = options.coll_names.begin(); names_it != options.coll_names.end();) {
@@ -423,48 +284,6 @@ void create_sycl_colls(bench_init_attr& init_attr, user_options_t& options, coll
         else if (name == reduce_scatter_strategy_impl::class_name()) {
             colls.emplace_back(new sycl_reduce_scatter_coll<Dtype>(init_attr));
         }
-        //         else if (name.find(incremental_index_int_sparse_strategy::class_name()) !=
-        //                  std::string::npos) {
-        //             // TODO case is not supported yet
-        //             if (true) {
-        //                 error_messages_stream << "SYCL coll: skipping " << name
-        //                                       << ", because it is not supported yet.\n";
-        //                 names_it = options.coll_names.erase(names_it);
-        //                 continue;
-        //             }
-        //             colls.emplace_back(new sycl_sparse_allreduce_coll<Dtype, int>(init_attr));
-        //         }
-        //         else if (name.find(incremental_index_bf16_sparse_strategy::class_name()) !=
-        //                  std::string::npos) {
-        //             // TODO case is not supported yet
-        //             if (true) {
-        //                 error_messages_stream << "SYCL coll: skipping " << name
-        //                                       << ", because it is not supported yet.\n";
-        //                 names_it = options.coll_names.erase(names_it);
-        //                 continue;
-        //             }
-
-        //             if (is_bf16_enabled() == 0) {
-        //                 error_messages_stream << "SYCL bf16 is not supported for current CPU, skipping "
-        //                                       << name << ".\n";
-        //                 names_it = options.coll_names.erase(names_it);
-        //                 continue;
-        //             }
-        // #ifdef CCL_bf16_COMPILER
-        //             colls.emplace_back(
-        //                 new sycl_sparse_allreduce_coll<ccl::bfloat16,
-        //                                                int64_t,
-        //                                                sparse_detail::incremental_indices_distributor>(
-        //                     init_attr,
-        //                     sizeof(float) / sizeof(ccl::bfloat16),
-        //                     sizeof(float) / sizeof(ccl::bfloat16)));
-        // #else
-        //             error_messages_stream << "SYCL bf16 is not supported by current compiler, skipping "
-        //                                   << name << ".\n";
-        //             names_it = options.coll_names.erase(names_it);
-        //             continue;
-        // #endif
-        //         }
         else {
             ASSERT(0, "create_colls error, unknown coll name: %s", name.c_str());
         }
@@ -565,47 +384,37 @@ int main(int argc, char* argv[]) {
     bench_exec_attr bench_attr{};
     bench_attr.init_all();
 
+    // open and truncate CSV file if csv-output is requested
+    if (service_comm.rank() == 0 && !options.csv_filepath.empty()) {
+        std::ofstream csvf;
+        csvf.open(options.csv_filepath, std::ofstream::out | std::ofstream::trunc);
+        if (!csvf.is_open()) {
+            std::cerr << "cannot open CSV file for writing: " << options.csv_filepath << std::endl;
+            abort();
+        }
+
+        // write header (column names)
+        csvf << "#ranks,"
+             << "collective,"
+             << "reduction,"
+             << "dtype,"
+             << "dtype_size,"
+             << "#elements/buffer,"
+             << "#buffers,"
+             << "#repetitions,"
+             << "t_min[usec],"
+             << "t_max[usec],"
+             << "t_avg[usec],"
+             << "stddev[%],"
+             << "wait_t_avg[usec]" << std::endl;
+        csvf.close();
+    }
+
     ccl::barrier(service_comm);
 
-    switch (options.loop) {
-        case LOOP_REGULAR: {
-            // open and truncate CSV file if csv-output is requested
-            if (service_comm.rank() == 0 && !options.csv_filepath.empty()) {
-                std::ofstream csvf;
-                csvf.open(options.csv_filepath, std::ofstream::out | std::ofstream::trunc);
-                if (!csvf.is_open()) {
-                    std::cerr << "Cannot open CSV file for writing: " << options.csv_filepath
-                              << std::endl;
-                    abort();
-                }
-                // write header (column names)
-                csvf << "#ranks,"
-                     << "collective,"
-                     << "reduction,"
-                     << "dtype,"
-                     << "dtype_size,"
-                     << "#elements/buffer,"
-                     << "#buffers,"
-                     << "#repetitions,"
-                     << "t_min[usec],"
-                     << "t_max[usec],"
-                     << "t_avg[usec],"
-                     << "stddev[%],"
-                     << "wait_t_avg[usec]" << std::endl;
-                csvf.close();
-            }
-            ccl::barrier(service_comm);
-            do_regular(service_comm, bench_attr, colls, reqs, options);
-            break;
-        }
-        case LOOP_UNORDERED: {
-            // no timing is printed or exported here
-            ccl::barrier(service_comm);
-            do_unordered(service_comm, bench_attr, colls, reqs, options);
-            break;
-        }
-        default: ASSERT(0, "unknown loop %d", options.loop); break;
-    }
+    run(service_comm, bench_attr, colls, reqs, options);
+
+    ccl::barrier(service_comm);
 
     colls.clear();
     transport.reset_comms();

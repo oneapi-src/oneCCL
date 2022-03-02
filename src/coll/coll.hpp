@@ -17,7 +17,7 @@
 
 #include "coll/algorithms/algorithm_utils.hpp"
 #include "coll/coll_param.hpp"
-#include "common/comm/comm.hpp"
+#include "comm/comm.hpp"
 #include "common/datatype/datatype.hpp"
 #include "common/stream/stream.hpp"
 #include "common/utils/buffer.hpp"
@@ -86,20 +86,6 @@ ccl::status ccl_coll_build_reduce_scatter(ccl_sched* sched,
                                           ccl::reduction reduction,
                                           ccl_comm* comm,
                                           bool from_allreduce = false);
-
-ccl::status ccl_coll_build_sparse_allreduce(ccl_sched* sched,
-                                            ccl_buffer send_ind_buf,
-                                            size_t send_ind_count,
-                                            ccl_buffer send_val_buf,
-                                            size_t send_val_count,
-                                            void** recv_ind_buf,
-                                            size_t* recv_ind_count,
-                                            void** recv_val_buf,
-                                            size_t* recv_val_count,
-                                            const ccl_datatype& index_dtype,
-                                            const ccl_datatype& value_dtype,
-                                            ccl::reduction reduction,
-                                            ccl_comm* comm);
 
 ccl_request* ccl_allgatherv_impl(const void* send_buf,
                                  size_t send_count,
@@ -173,19 +159,3 @@ ccl_request* ccl_reduce_scatter_impl(const void* send_buf,
                                      ccl_comm* comm,
                                      const ccl_stream* stream,
                                      const std::vector<ccl::event>& deps);
-
-ccl_request* ccl_sparse_allreduce_impl(const void* send_ind_buf,
-                                       size_t send_ind_count,
-                                       const void* send_val_buf,
-                                       size_t send_val_count,
-                                       void* recv_ind_buf,
-                                       size_t recv_ind_count,
-                                       void* recv_val_buf,
-                                       size_t recv_val_count,
-                                       ccl::datatype index_dtype,
-                                       ccl::datatype dtype,
-                                       ccl::reduction reduction,
-                                       const ccl_coll_attr& attr,
-                                       ccl_comm* comm,
-                                       const ccl_stream* stream,
-                                       const std::vector<ccl::event>& deps);

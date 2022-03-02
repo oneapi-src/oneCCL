@@ -24,15 +24,19 @@
 #include <CL/sycl.hpp>
 #endif
 
+class ccl_sched;
+
 class alignas(CACHELINE_SIZE) ccl_request {
 public:
     using dump_func = std::function<void(std::ostream&)>;
-#ifdef ENABLE_DEBUG
-    void set_dump_callback(dump_func&& callback);
-#endif
+
+    ccl_request(ccl_sched& sched);
 
     virtual ~ccl_request();
 
+    // decrements counter and return the current value
+    int complete_counter();
+    // decrements counter and return true if it's equal to 0
     bool complete();
 
     bool is_completed() const;
@@ -60,9 +64,27 @@ public:
         return sync_event;
     }
 
+    bool has_output_event() const {
+        // by default the event is empty and is_host() is true,
+        // if we actually set it to a non-empty one, is_host() would be false
+        return !native_event.is_host();
+    }
 #endif
-private:
+
+    ccl_sched* get_sched() {
+        return &sched;
+    }
+
+    const ccl_sched* get_sched() const {
+        return &sched;
+    }
+
     std::atomic_int completion_counter{ 0 };
+
+private:
+#ifdef ENABLE_DEBUG
+    void set_dump_callback(dump_func&& callback);
+#endif
 
 #ifdef CCL_ENABLE_SYCL
     // The actual event from submit_barrier. It's returned to the user via ccl::event.get_native()
@@ -72,6 +94,9 @@ private:
     // So just keep it here until we signal the corresponding l0 event.
     sycl::event sync_event;
 #endif
+
+    // ref to sched as part of which the request is created, there must be 1-to-1 relation
+    ccl_sched& sched;
 
 #ifdef ENABLE_DEBUG
     dump_func dump_callback;

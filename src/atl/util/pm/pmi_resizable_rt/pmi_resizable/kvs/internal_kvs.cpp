@@ -31,7 +31,6 @@
 #include "internal_kvs.h"
 #include "internal_kvs_server.hpp"
 #include "common/log/log.hpp"
-#include "util/pm/pmi_resizable_rt/pmi_resizable/request_wrappers_k8s.hpp"
 
 kvs_status_t internal_kvs::kvs_set_value(const char* kvs_name,
                                          const char* kvs_key,
@@ -281,42 +280,22 @@ kvs_status_t internal_kvs::kvs_get_keys_values_by_name(const char* kvs_name,
 
 kvs_status_t internal_kvs::kvs_get_replica_size(size_t& replica_size) {
     replica_size = 0;
-    if (ip_getting_mode == IGT_K8S) {
-        return request_k8s_get_replica_size(replica_size);
-    }
-    else {
-        kvs_request_t request;
-        request.mode = AM_GET_REPLICA;
+    kvs_request_t request;
+    request.mode = AM_GET_REPLICA;
 
-        DO_RW_OP(write,
-                 client_op_sock,
-                 &request,
-                 sizeof(kvs_request_t),
-                 client_memory_mutex,
-                 "client: get_replica");
+    DO_RW_OP(write,
+             client_op_sock,
+             &request,
+             sizeof(kvs_request_t),
+             client_memory_mutex,
+             "client: get_replica");
 
-        DO_RW_OP(read,
-                 client_op_sock,
-                 &replica_size,
-                 sizeof(size_t),
-                 client_memory_mutex,
-                 "client: get_replica read size");
-    }
-    return KVS_STATUS_SUCCESS;
-}
-
-kvs_status_t internal_kvs::init_main_server_by_k8s() {
-    char port_str[MAX_KVS_VAL_LENGTH];
-    KVS_CHECK_STATUS(request_k8s_kvs_init(), "failed to init k8s kvs");
-
-    SET_STR(port_str, INT_STR_SIZE, "%d", local_server_address->get_sin_port());
-
-    KVS_CHECK_STATUS(request_k8s_kvs_get_master(local_host_ip, main_host_ip, port_str),
-                     "failed to get port");
-
-    KVS_CHECK_STATUS(safe_strtol(port_str, main_port), "failed to convert main_port");
-    main_server_address->set_sin_port(main_port);
-    KVS_CHECK_STATUS(main_server_address->set_sin_addr(main_host_ip), "failed to set main_ip");
+    DO_RW_OP(read,
+             client_op_sock,
+             &replica_size,
+             sizeof(size_t),
+             client_memory_mutex,
+             "client: get_replica read size");
     return KVS_STATUS_SUCCESS;
 }
 
@@ -530,9 +509,6 @@ kvs_status_t internal_kvs::init_main_server_address(const char* main_addr) {
         if (strstr(ip_getting_type, CCL_KVS_IP_EXCHANGE_VAL_ENV.c_str())) {
             ip_getting_mode = IGT_ENV;
         }
-        else if (strstr(ip_getting_type, CCL_KVS_IP_EXCHANGE_VAL_K8S.c_str())) {
-            ip_getting_mode = IGT_K8S;
-        }
         else {
             LOG_ERROR("unknown ", CCL_KVS_IP_EXCHANGE_ENV, ": ", ip_getting_type);
             return KVS_STATUS_FAILURE;
@@ -561,18 +537,6 @@ kvs_status_t internal_kvs::init_main_server_address(const char* main_addr) {
     }
 
     switch (ip_getting_mode) {
-        case IGT_K8S: {
-            size_t sin_port = local_server_address->get_sin_port();
-            while (bind(server_listen_sock,
-                        local_server_address->get_sock_addr_ptr(),
-                        local_server_address->size()) < 0) {
-                sin_port++;
-                local_server_address->set_sin_port(sin_port);
-            }
-
-            local_port = local_server_address->get_sin_port();
-            return init_main_server_by_k8s();
-        }
         case IGT_ENV: {
             int is_master_node = 0;
 
@@ -596,7 +560,9 @@ kvs_status_t internal_kvs::init_main_server_address(const char* main_addr) {
                 if (bind(server_listen_sock,
                          main_server_address->get_sock_addr_ptr(),
                          main_server_address->size()) < 0) {
-                    LOG_INFO("port [", main_server_address->get_sin_port(), "] is busy");
+                    LOG_WARN("port [",
+                             main_server_address->get_sin_port(),
+                             "] is busy, connecting as client");
                     local_port = local_server_address->get_sin_port();
                     while (bind(server_listen_sock,
                                 local_server_address->get_sock_addr_ptr(),
@@ -748,9 +714,6 @@ kvs_status_t internal_kvs::kvs_finalize(void) {
         server_control_sock = 0;
     }
 
-    if (ip_getting_mode == IGT_K8S) {
-        KVS_CHECK_STATUS(request_k8s_kvs_finalize(is_master), "failed to finaluze k8s kvs");
-    }
     is_inited = false;
 
     return KVS_STATUS_SUCCESS;

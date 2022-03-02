@@ -21,6 +21,7 @@
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
 #include "common/utils/sycl_utils.hpp"
+#include "sched/entry/ze/ze_reduce_local_entry.hpp"
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
 using namespace ccl;
@@ -37,11 +38,10 @@ void reduce_local_entry::check_use_device() {
     }
 
     size_t bytes = in_cnt * dtype.size();
-    auto sycl_stream = stream->get_native_stream(worker_idx);
-    CCL_THROW_IF_NOT(sycl_stream, "null sycl queue");
-    auto in_ptr_type = sycl::get_pointer_type(in_buf.get_ptr(bytes), sycl_stream->get_context());
+    auto sycl_stream = stream->get_native_stream();
+    auto in_ptr_type = sycl::get_pointer_type(in_buf.get_ptr(bytes), sycl_stream.get_context());
     auto inout_ptr_type =
-        sycl::get_pointer_type(inout_buf.get_ptr(bytes), sycl_stream->get_context());
+        sycl::get_pointer_type(inout_buf.get_ptr(bytes), sycl_stream.get_context());
 
     LOG_DEBUG("in_ptr_type: ",
               ccl::utils::usm_type_to_str(in_ptr_type),
@@ -58,7 +58,8 @@ void reduce_local_entry::check_use_device() {
 }
 
 void reduce_local_entry::start_on_device() {
-    ze_reduce_local_entry::start();
+    ze_reduce_local->start();
+    status = ze_reduce_local->get_status();
 }
 
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
@@ -70,12 +71,7 @@ reduce_local_entry::reduce_local_entry(ccl_sched* sched,
                                        size_t* out_cnt,
                                        const ccl_datatype& dtype,
                                        ccl::reduction op)
-        :
-#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-          ze_reduce_local_entry(sched, in_buf, in_cnt, inout_buf, out_cnt, dtype, op),
-#else // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
-          sched_entry(sched),
-#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+        : sched_entry(sched),
           in_buf(in_buf),
           in_cnt(in_cnt),
           inout_buf(inout_buf),
@@ -89,6 +85,14 @@ reduce_local_entry::reduce_local_entry(ccl_sched* sched,
                      ccl_reduction_to_str(op),
                      ", fn ",
                      fn);
+
+    check_use_device();
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    if (use_device) {
+        ze_reduce_local = std::make_unique<ze_reduce_local_entry>(
+            sched, in_buf, in_cnt, inout_buf, out_cnt, dtype, op);
+    }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 }
 
 void reduce_local_entry::start_on_host() {
@@ -110,7 +114,6 @@ void reduce_local_entry::start_on_host() {
 }
 
 void reduce_local_entry::start() {
-    check_use_device();
     if (use_device) {
         LOG_DEBUG("start on device");
         start_on_device();
@@ -119,4 +122,23 @@ void reduce_local_entry::start() {
         LOG_DEBUG("start on host");
         start_on_host();
     }
+}
+
+void reduce_local_entry::update() {
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    if (use_device) {
+        ze_reduce_local->update();
+        status = ze_reduce_local->get_status();
+    }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+    // status will be set after start_on_host()
+}
+
+void reduce_local_entry::reset(size_t idx) {
+    sched_entry::reset(idx);
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    if (ze_reduce_local) {
+        ze_reduce_local->reset(idx);
+    }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 }

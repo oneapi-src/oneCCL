@@ -32,6 +32,13 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
 
+#set default proc maps
+if (NOT PROC_MAPS)
+    set(PROC_MAPS "2:1,2")
+endif()
+
+message(STATUS "PROC_MAPS: ${PROC_MAPS}")
+
 # standalone build
 if (${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
     set(COMMON_CMAKE_DIR ${PROJECT_SOURCE_DIR}/../../cmake)
@@ -90,8 +97,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_COMPILER_FLAGS} -Wall -Wextra -Wno
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${CXX_COMPILER_FLAGS} -O0 -g -DENABLE_DEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_COMPILER_FLAGS} -O3")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${CXX_COMPILER_FLAGS} -O2 -g")
-# C++ standard version is set by set_compute_backend/activate_compute_backend, so no need to set it here
+set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if (${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" OR(${CMAKE_CXX_COMPILER_ID} STREQUAL "IntelLLVM"))
+    set(CMAKE_CXX_STANDARD 17)
+endif()
 
 if (COMPUTE_BACKEND)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMPUTE_BACKEND_FLAGS}")
@@ -112,57 +123,73 @@ foreach(src ${sources})
     target_include_directories(${executable} PRIVATE ${EXAMPLES_INC_DIRS})
     target_link_libraries(${executable} PUBLIC gtest_main)
     target_link_libraries(${executable} PUBLIC gtest)
-    target_link_libraries(${executable} PRIVATE ccl)
     target_link_libraries(${executable} PUBLIC rt)
     target_link_libraries(${executable} PUBLIC m)
     target_link_libraries(${executable} PUBLIC dl)
+    # w/a for case with 2 mpi libs, should be fixed
     if (DEFINED ENV{I_MPI_ROOT})
         set(I_MPI_ROOT "$ENV{I_MPI_ROOT}")
     endif()
+    target_link_libraries(${executable} PUBLIC ccl)
     target_link_libraries(${executable} PUBLIC -L${I_MPI_ROOT}/lib/release/)
     target_link_libraries(${executable} PUBLIC mpi)
+    target_link_libraries(${executable} PUBLIC -L${LIBFABRIC_LIB_DIR})
+    target_link_libraries(${executable} PUBLIC fabric)
+    target_link_libraries(${executable} PUBLIC ${COMPUTE_BACKEND_TARGET_NAME})
     install(TARGETS ${executable} RUNTIME DESTINATION ${CCL_INSTALL_TESTS} OPTIONAL)
     add_test (NAME ${executable} CONFIGURATIONS default COMMAND mpiexec.hydra -l -n 2 -ppn 1 ${CCL_INSTALL_TESTS}/${executable} --gtest_output=xml:${CCL_INSTALL_TESTS}/${executable}_default_report.junit.xml)
 endforeach()
 
-foreach(algo direct; naive; flat; multi_bcast)
+foreach(algo direct; naive; flat; multi_bcast; topo)
 add_test (NAME allgatherv_${algo} CONFIGURATIONS allgatherv_${algo} COMMAND mpiexec.hydra -l -n 2 -ppn 1 ${CCL_INSTALL_TESTS}/allgatherv_test --gtest_output=xml:${CCL_INSTALL_TESTS}/allgatherv_${algo}_report.junit.xml)
 endforeach()
 
 add_test (NAME allreduce_fusion CONFIGURATIONS allreduce_fusion COMMAND mpiexec.hydra -l -n 2 -ppn 1 ${CCL_INSTALL_TESTS}/allreduce_test --gtest_output=xml:${CCL_INSTALL_TESTS}/allreduce_fusion_report.junit.xml)
 
-foreach(ppn 1; 2)
-    foreach(algo direct; rabenseifner; nreduce; ring; ring_rma; double_tree; recursive_doubling; 2d; topo)
-        add_test (NAME allreduce_${algo}_${ppn} CONFIGURATIONS allreduce_${algo}_${ppn} COMMAND mpiexec.hydra -l -n 2 -ppn ${ppn} ${CCL_INSTALL_TESTS}/allreduce_test --gtest_output=xml:${CCL_INSTALL_TESTS}/allreduce_${algo}_${ppn}_report.junit.xml)
-    endforeach()
+foreach(proc_map ${PROC_MAPS})
 
-    foreach(algo direct; ring; double_tree; naive; topo)
-        add_test (NAME bcast_${algo}_${ppn} CONFIGURATIONS bcast_${algo}_${ppn} COMMAND mpiexec.hydra -l -n 2 -ppn ${ppn} ${CCL_INSTALL_TESTS}/bcast_test --gtest_output=xml:${CCL_INSTALL_TESTS}/bcast_${algo}_${ppn}_report.junit.xml)
-    endforeach()
+    if (${proc_map} MATCHES "(.*):(.*)")
+        set(N ${CMAKE_MATCH_1})
+        set(PPNS ${CMAKE_MATCH_2})
+        string(REGEX REPLACE "," ";" PPNS ${PPNS})
+    else()
+        message(FATAL_ERROR "Incorrect proc_map input: ${proc_map}, expected input <n:ppn>")
+    endif()
 
-    foreach(algo direct; rabenseifner; tree; double_tree; topo)
-        add_test (NAME reduce_${algo}_${ppn} CONFIGURATIONS reduce_${algo}_${ppn} COMMAND mpiexec.hydra -l -n 2 -ppn ${ppn} ${CCL_INSTALL_TESTS}/reduce_test --gtest_output=xml:${CCL_INSTALL_TESTS}/reduce_${algo}_${ppn}_report.junit.xml)
-    endforeach()
+    foreach(ppn ${PPNS})
 
+        foreach(algo direct; rabenseifner; nreduce; ring; ring_rma; double_tree; recursive_doubling; 2d; topo)
+            add_test (NAME allreduce_${algo}_${N}_${ppn} CONFIGURATIONS allreduce_${algo}_${N}_${ppn} COMMAND mpiexec.hydra -l -n ${N} -ppn ${ppn} ${CCL_INSTALL_TESTS}/allreduce_test --gtest_output=xml:${CCL_INSTALL_TESTS}/allreduce_${algo}_${N}_${ppn}_report.junit.xml)
+        endforeach()
+
+        foreach(algo direct; ring; double_tree; naive; topo)
+            add_test (NAME bcast_${algo}_${N}_${ppn} CONFIGURATIONS bcast_${algo}_${N}_${ppn} COMMAND mpiexec.hydra -l -n ${N} -ppn ${ppn} ${CCL_INSTALL_TESTS}/bcast_test --gtest_output=xml:${CCL_INSTALL_TESTS}/bcast_${algo}_${N}_${ppn}_report.junit.xml)
+        endforeach()
+
+        foreach(algo direct; rabenseifner; tree; double_tree; topo)
+            add_test (NAME reduce_${algo}_${N}_${ppn} CONFIGURATIONS reduce_${algo}_${N}_${ppn} COMMAND mpiexec.hydra -l -n ${N} -ppn ${ppn} ${CCL_INSTALL_TESTS}/reduce_test --gtest_output=xml:${CCL_INSTALL_TESTS}/reduce_${algo}_${N}_${ppn}_report.junit.xml)
+        endforeach()
+
+    endforeach()
 endforeach()
 
 foreach(algo nreduce; ring; 2d)
 add_test (NAME allreduce_${algo}_chunked CONFIGURATIONS allreduce_${algo}_chunked COMMAND mpiexec.hydra -l -n 2 -ppn 1 ${CCL_INSTALL_TESTS}/allreduce_test --gtest_output=xml:${CCL_INSTALL_TESTS}/allreduce_${algo}_chunked_report.junit.xml)
 endforeach()
 
-foreach(algo direct; naive; scatter; scatter_barrier)
+foreach(algo direct; naive; scatter)
 add_test (NAME alltoall_${algo} CONFIGURATIONS alltoall_${algo} COMMAND mpiexec.hydra -l -n 2 -ppn 1 ${CCL_INSTALL_TESTS}/alltoall_test --gtest_output=xml:${CCL_INSTALL_TESTS}/alltoall_${algo}_report.junit.xml)
 endforeach()
 
-foreach(algo scatter_barrier)
+foreach(algo scatter)
 add_test (NAME alltoall_${algo}_chunked CONFIGURATIONS alltoall_${algo}_chunked COMMAND mpiexec.hydra -l -n 2 -ppn 1 ${CCL_INSTALL_TESTS}/alltoall_test --gtest_output=xml:${CCL_INSTALL_TESTS}/alltoall_${algo}_chunked_report.junit.xml)
 endforeach()
 
-foreach(algo direct; naive; scatter; scatter_barrier)
+foreach(algo direct; naive; scatter)
 add_test (NAME alltoallv_${algo} CONFIGURATIONS alltoallv_${algo} COMMAND mpiexec.hydra -l -n 2 -ppn 1 ${CCL_INSTALL_TESTS}/alltoallv_test --gtest_output=xml:${CCL_INSTALL_TESTS}/alltoallv_${algo}_report.junit.xml)
 endforeach()
 
-foreach(algo scatter_barrier)
+foreach(algo scatter)
 add_test (NAME alltoallv_${algo}_chunked CONFIGURATIONS alltoallv_${algo}_chunked COMMAND mpiexec.hydra -l -n 2 -ppn 1 ${CCL_INSTALL_TESTS}/alltoallv_test --gtest_output=xml:${CCL_INSTALL_TESTS}/alltoallv_${algo}_chunked_report.junit.xml)
 endforeach()
 

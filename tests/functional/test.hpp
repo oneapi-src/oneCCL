@@ -42,6 +42,9 @@ struct test_operation {
 
     std::vector<size_t> buf_indexes;
 
+    float first_fp_coeff;
+    float second_fp_coeff;
+
 #ifdef CCL_ENABLE_SYCL
     std::vector<aligned_vector<T>> send_bufs;
     std::vector<aligned_vector<T>> recv_bufs;
@@ -64,6 +67,21 @@ struct test_operation {
         comm_size = transport_data::instance().get_comm().size();
         comm_rank = transport_data::instance().get_comm().rank();
         buf_indexes.resize(buffer_count);
+
+        // fp coefficients are required to avoid overflow
+        // or accuracy issue on large scale
+        if (param.datatype == DATATYPE_BFLOAT16) {
+            first_fp_coeff = 0.5;
+            second_fp_coeff = 1;
+        }
+        else if (param.datatype == DATATYPE_FLOAT16) {
+            first_fp_coeff = 0.01;
+            second_fp_coeff = 0.01;
+        }
+        else {
+            first_fp_coeff = 1;
+            second_fp_coeff = 1;
+        }
     }
 
     template <class coll_attr_type>

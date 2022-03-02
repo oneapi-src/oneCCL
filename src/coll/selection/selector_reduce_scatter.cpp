@@ -20,18 +20,16 @@ std::map<ccl_coll_reduce_scatter_algo, std::string>
     ccl_algorithm_selector_helper<ccl_coll_reduce_scatter_algo>::algo_names = {
         std::make_pair(ccl_coll_reduce_scatter_direct, "direct"),
         std::make_pair(ccl_coll_reduce_scatter_ring, "ring"),
+#ifdef CCL_ENABLE_SYCL
         std::make_pair(ccl_coll_reduce_scatter_topo, "topo"),
+#endif // CCL_ENABLE_SYCL
     };
 
 ccl_algorithm_selector<ccl_coll_reduce_scatter>::ccl_algorithm_selector() {
-#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-    insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_reduce_scatter_topo);
-#else // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
     if (ccl::global_data::env().atl_transport == ccl_atl_ofi)
         insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_reduce_scatter_ring);
     else if (ccl::global_data::env().atl_transport == ccl_atl_mpi)
         insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_reduce_scatter_direct);
-#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
     insert(fallback_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_reduce_scatter_ring);
 }

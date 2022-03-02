@@ -49,9 +49,3 @@
 #include "reduce_scatter/reduce_scatter_strategy.hpp"
 #include "reduce_scatter/cpu_reduce_scatter_coll.hpp"
 #include "reduce_scatter/sycl_reduce_scatter_coll.hpp"
-
-/* sparse_allreduce implementation */
-// #include "sparse_allreduce/sparse_allreduce_base.hpp"
-// #include "sparse_allreduce/sparse_allreduce_strategy.hpp"
-// #include "sparse_allreduce/cpu_sparse_allreduce_coll.hpp"
-// #include "sparse_allreduce/sycl_sparse_allreduce_coll.hpp"

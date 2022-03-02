@@ -15,23 +15,18 @@
 */
 #pragma once
 
-#include "sched/entry/ze/ze_call.hpp"
-
 #include <initializer_list>
 #include <string>
 #include <vector>
-#include <ze_api.h>
+
+#include "common/ze/ze_api_wrapper.hpp"
+#include "sched/entry/ze/ze_call.hpp"
 
 namespace ccl {
 
 namespace ze {
 
 #define ZE_CALL(ze_name, ze_args) ccl::ze::ze_call().do_call(ze_name ze_args, #ze_name)
-
-enum class init_mode : int {
-    compute = 1,
-    copy = 2,
-};
 
 enum class device_id : uint32_t { unknown = 0x0, id1 = 0x200, id2 = 0xbd0 };
 
@@ -94,14 +89,6 @@ constexpr ze_event_desc_t default_event_desc = { .stype = ZE_STRUCTURE_TYPE_EVEN
                                                  .signal = 0,
                                                  .wait = 0 };
 
-inline init_mode operator|(init_mode mode1, init_mode mode2) {
-    return static_cast<init_mode>(static_cast<int>(mode1) | static_cast<int>(mode2));
-}
-
-inline bool operator&(init_mode mode1, init_mode mode2) {
-    return static_cast<int>(mode1) & static_cast<int>(mode2);
-}
-
 void load_module(const std::string& file_path,
                  ze_device_handle_t device,
                  ze_context_handle_t context,
@@ -135,33 +122,55 @@ struct ze_kernel_arg_t {
 using ze_kernel_args_t = typename std::initializer_list<ze_kernel_arg_t>;
 void set_kernel_args(ze_kernel_handle_t kernel, const ze_kernel_args_t& kernel_args);
 
+enum class queue_group_type : uint8_t { unknown, compute, main, link };
+
 using ze_queue_properties_t = typename std::vector<ze_command_queue_group_properties_t>;
 
+queue_group_type get_queue_group_type(const ze_queue_properties_t& props, uint32_t ordinal);
+uint32_t get_queue_group_ordinal(const ze_queue_properties_t& props, queue_group_type type);
+
 void get_queues_properties(ze_device_handle_t device, ze_queue_properties_t* props);
-void get_comp_queue_ordinal(ze_device_handle_t device,
-                            const ze_queue_properties_t& props,
-                            uint32_t* ordinal);
-void get_copy_queue_ordinal(ze_device_handle_t device,
-                            const ze_queue_properties_t& props,
-                            uint32_t* ordinal);
-void get_queue_index(const ze_queue_properties_t& props,
-                     uint32_t ordinal,
-                     int idx,
-                     uint32_t* index);
+
+bool get_buffer_context_and_device(const void* buf,
+                                   ze_context_handle_t* context,
+                                   ze_device_handle_t* device,
+                                   ze_memory_allocation_properties_t* props = nullptr);
+bool get_context_global_id(ze_context_handle_t context, ssize_t* id);
+bool get_device_global_id(ze_device_handle_t device, ssize_t* id);
+
+int get_fd_from_handle(const ze_ipc_mem_handle_t& handle);
+void close_handle_fd(const ze_ipc_mem_handle_t& handle);
+ze_ipc_mem_handle_t get_handle_from_fd(int fd);
 
 device_family get_device_family(ze_device_handle_t device);
-std::pair<uint64_t, uint64_t> calculate_event_time(ze_event_handle_t event,
-                                                   ze_device_handle_t device);
-uint64_t calculate_global_time(ze_device_handle_t device);
 
 std::string to_string(ze_result_t result);
 std::string to_string(const ze_group_size_t& group_size);
 std::string to_string(const ze_group_count_t& group_count);
 std::string to_string(const ze_kernel_args_t& kernel_args);
+std::string to_string(const ze_device_property_flag_t& flag);
 std::string to_string(const ze_command_queue_group_property_flag_t& flag);
 std::string to_string(const ze_command_queue_group_properties_t& queue_property);
+std::string to_string(const ze_device_uuid_t& uuid);
+std::string to_string(const zes_pci_address_t& addr);
+std::string to_string(queue_group_type type);
+std::string to_string(const zes_fabric_port_id_t& port);
 
 std::string join_strings(const std::vector<std::string>& tokens, const std::string& delimeter);
+
+template <typename T>
+std::string flags_to_string(uint32_t flags) {
+    constexpr size_t bits = 8;
+    std::vector<std::string> output;
+    for (size_t i = 0; i < sizeof(flags) * bits; ++i) {
+        const size_t mask = 1UL << i;
+        const auto flag = flags & mask;
+        if (flag != 0) {
+            output.emplace_back(to_string(static_cast<T>(flag)));
+        }
+    }
+    return join_strings(output, " | ");
+}
 
 } // namespace ze
 } // namespace ccl

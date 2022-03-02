@@ -113,30 +113,6 @@ struct ccl_api_type_attr_traits<reduce_scatter_attr_id, reduce_scatter_attr_id::
     using return_type = function_holder<type>;
 };
 
-/**
- * Traits specialization for sparse_allreduce op attributes
- */
-template <>
-struct ccl_api_type_attr_traits<sparse_allreduce_attr_id, sparse_allreduce_attr_id::completion_fn> {
-    using type = ccl::sparse_allreduce_completion_fn;
-    using return_type = function_holder<type>;
-};
-template <>
-struct ccl_api_type_attr_traits<sparse_allreduce_attr_id, sparse_allreduce_attr_id::alloc_fn> {
-    using type = ccl::sparse_allreduce_alloc_fn;
-    using return_type = function_holder<type>;
-};
-template <>
-struct ccl_api_type_attr_traits<sparse_allreduce_attr_id, sparse_allreduce_attr_id::fn_ctx> {
-    using type = const void*;
-    using return_type = const void*;
-};
-template <>
-struct ccl_api_type_attr_traits<sparse_allreduce_attr_id, sparse_allreduce_attr_id::coalesce_mode> {
-    using type = ccl::sparse_coalesce_mode;
-    using return_type = type;
-};
-
 } // namespace detail
 
 } // namespace ccl

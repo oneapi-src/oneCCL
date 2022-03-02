@@ -33,7 +33,7 @@
 
 #include "common/request/request.hpp"
 
-#include "common/comm/comm.hpp"
+#include "comm/comm.hpp"
 #include "coll/coll.hpp"
 #include "coll/coll_common_attributes.hpp"
 #include "coll/ccl_allgather_op_attr.hpp"
@@ -44,7 +44,6 @@
 #include "coll/ccl_bcast_op_attr.hpp"
 #include "coll/ccl_reduce_op_attr.hpp"
 #include "coll/ccl_reduce_scatter_op_attr.hpp"
-#include "coll/ccl_sparse_allreduce_op_attr.hpp"
 #include "coll/coll_check.hpp"
 #include "coll/coll_param.hpp"
 
@@ -53,7 +52,6 @@
 #include "coll/algorithms/algorithms.hpp"
 #include "coll/algorithms/algorithm_utils.hpp"
 #include "coll/algorithms/allreduce/allreduce_2d.hpp"
-#include "coll/algorithms/sparse_allreduce/sparse_allreduce.hpp"
 #include "coll/selection/selection.hpp"
 #include "exec/exec.hpp"
 #include "fusion/fusion.hpp"
@@ -63,12 +61,9 @@
 static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& in_attr) {
     ccl_coll_attr& attr = const_cast<ccl_coll_attr&>(in_attr);
 
-#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-    uint64_t operation_create_time = 0;
-    if (ccl::global_data::env().enable_kernel_profile && param.stream) {
-        operation_create_time = ccl::ze::calculate_global_time(param.stream->get_ze_device());
-    }
-#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+#ifdef CCL_ENABLE_ITT
+    ccl::profile::itt::task_start(ccl::profile::itt::task_type::api_call);
+#endif // CCL_ENABLE_ITT
 
 #ifdef CCL_ENABLE_SYCL
     if (ccl::global_data::env().enable_op_sync)
@@ -113,13 +108,7 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
     }
 
     /* 2. create or get schedule */
-    ccl_master_sched* sched = ccl_master_sched::create(param, attr);
-
-#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-    if (ccl::global_data::env().enable_kernel_profile && param.stream) {
-        sched->get_kernel_timer().set_operation_create_time(operation_create_time);
-    }
-#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+    ccl_sched* sched = ccl_sched::create(param, attr);
 
     /* 3. fuse schedule */
     if (!postpone_schedule && ccl::global_data::env().enable_fusion) {
@@ -129,7 +118,7 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
                       ", coll ",
                       ccl_coll_type_to_str(sched->coll_param.ctype),
                       " will be fused");
-            return sched;
+            return sched->get_request();
         }
     }
 
@@ -148,16 +137,13 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
     /* 6. regular schedule execution */
     ccl_request* request = sched->start(data.executor.get());
     if (sched->coll_attr.synchronous) {
-        ccl_wait_impl<ccl_master_sched>(data.executor.get(), request);
+        ccl_wait_impl<ccl_sched>(data.executor.get(), request);
         request = nullptr;
     }
 
-#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-    if (ccl::global_data::env().enable_kernel_profile && sched->coll_param.stream) {
-        sched->get_kernel_timer().set_operation_start_time(
-            ccl::ze::calculate_global_time(sched->coll_param.stream->get_ze_device()));
-    }
-#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+#ifdef CCL_ENABLE_ITT
+    ccl::profile::itt::task_end(ccl::profile::itt::task_type::api_call);
+#endif // CCL_ENABLE_ITT
 
     return request;
 }
@@ -171,25 +157,49 @@ ccl::status ccl_coll_build_allgatherv(ccl_sched* sched,
                                       ccl_comm* comm) {
     ccl::status status = ccl::status::success;
 
-    ccl_selector_param param;
-    param.ctype = ccl_coll_allgatherv;
-    param.recv_counts = recv_counts;
-    param.dtype = dtype;
-    param.comm = comm;
-    param.stream = sched->coll_param.stream;
-    param.buf = send_buf.get_ptr();
-    param.is_vector_buf = sched->coll_attr.is_vector_buf;
+    ccl_selector_param selector_param;
+    selector_param.ctype = ccl_coll_allgatherv;
+    selector_param.recv_counts = recv_counts;
+    selector_param.dtype = dtype;
+    selector_param.comm = comm;
+    selector_param.stream = sched->coll_param.stream;
+    selector_param.buf = send_buf.get_ptr();
+    selector_param.is_vector_buf = false;
 #ifdef CCL_ENABLE_SYCL
-    param.is_sycl_buf = sched->coll_attr.is_sycl_buf;
+    selector_param.is_sycl_buf = sched->coll_attr.is_sycl_buf;
 #endif // CCL_ENABLE_SYCL
-    param.hint_algo = sched->hint_algo;
+    selector_param.hint_algo = sched->hint_algo;
 
-    auto algo = ccl::global_data::get().algorithm_selector->get<ccl_coll_allgatherv>(param);
+    auto algo =
+        ccl::global_data::get().algorithm_selector->get<ccl_coll_allgatherv>(selector_param);
+
+    auto get_coll_param = [&]() {
+        ccl_coll_param coll_param{};
+        coll_param.ctype = ccl_coll_allgatherv;
+        coll_param.send_bufs.push_back(send_buf.get_ptr());
+        coll_param.send_counts.push_back(send_count);
+        coll_param.recv_bufs.push_back(recv_buf.get_ptr());
+        coll_param.recv_counts.reserve(comm->size());
+        coll_param.recv_counts.insert(
+            coll_param.recv_counts.end(), recv_counts, recv_counts + comm->size());
+        coll_param.dtype = dtype;
+        coll_param.comm = comm;
+        coll_param.stream = sched->coll_param.stream;
+        return coll_param;
+    };
+    std::vector<ccl_sched*> part_scheds = { sched };
 
     switch (algo) {
         case ccl_coll_allgatherv_direct:
             CCL_CALL(ccl_coll_build_direct_allgatherv(
                 sched, send_buf, send_count, recv_buf, recv_counts, dtype, comm));
+            break;
+        case ccl_coll_allgatherv_flat:
+            CCL_CALL(ccl_coll_build_flat_allgatherv(nullptr, part_scheds, get_coll_param()));
+            break;
+        case ccl_coll_allgatherv_multi_bcast:
+            CCL_CALL(
+                ccl_coll_build_multi_bcast_allgatherv(nullptr, part_scheds, get_coll_param(), 1));
             break;
         case ccl_coll_allgatherv_naive:
             CCL_CALL(ccl_coll_build_naive_allgatherv(
@@ -201,8 +211,7 @@ ccl::status ccl_coll_build_allgatherv(ccl_sched* sched,
             break;
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
         case ccl_coll_allgatherv_topo:
-            CCL_CALL(ccl_coll_build_topo_allgatherv(
-                sched, send_buf, send_count, recv_buf, recv_counts, dtype, comm));
+            CCL_CALL(ccl_coll_build_topo_allgatherv(nullptr, part_scheds, get_coll_param()));
             break;
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
         default:
@@ -350,6 +359,12 @@ ccl::status ccl_coll_build_alltoallv(ccl_sched* sched,
             CCL_CALL(ccl_coll_build_direct_alltoallv(
                 sched, send_buf, send_counts, recv_buf, recv_counts, dtype, comm));
             break;
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+        case ccl_coll_alltoallv_topo:
+            CCL_CALL(ccl_coll_build_topo_alltoallv(
+                sched, send_buf, send_counts, recv_buf, recv_counts, dtype, comm));
+            break;
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
         default:
             CCL_FATAL("unexpected alltoallv_algo ", ccl_coll_algorithm_to_str(algo));
             return ccl::status::invalid_arguments;
@@ -430,7 +445,7 @@ ccl::status ccl_coll_build_bcast(ccl_sched* sched,
             break;
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
         case ccl_coll_bcast_topo:
-            CCL_CALL(ccl_coll_build_gpu_bcast(sched, buf, count, dtype, root, comm));
+            CCL_CALL(ccl_coll_build_topo_bcast(sched, buf, count, dtype, root, comm));
             break;
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
         default:
@@ -492,7 +507,7 @@ ccl::status ccl_coll_build_reduce(ccl_sched* sched,
             break;
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
         case ccl_coll_reduce_topo:
-            CCL_CALL(ccl_coll_build_gpu_reduce(
+            CCL_CALL(ccl_coll_build_topo_reduce(
                 sched, send_buf, recv_buf, count, dtype, reduction, root, comm));
             break;
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
@@ -553,120 +568,6 @@ ccl::status ccl_coll_build_reduce_scatter(ccl_sched* sched,
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
         default:
             CCL_FATAL("unexpected reduce_scatter_algo ", ccl_coll_algorithm_to_str(algo));
-            return ccl::status::invalid_arguments;
-    }
-
-    return status;
-}
-
-ccl::status ccl_coll_build_sparse_allreduce(ccl_sched* sched,
-                                            ccl_buffer send_ind_buf,
-                                            size_t send_ind_count,
-                                            ccl_buffer send_val_buf,
-                                            size_t send_val_count,
-                                            void** recv_ind_buf,
-                                            size_t* recv_ind_count,
-                                            void** recv_val_buf,
-                                            size_t* recv_val_count,
-                                            const ccl_datatype& index_dtype,
-                                            const ccl_datatype& value_dtype,
-                                            ccl::reduction reduction,
-                                            ccl_comm* comm) {
-    ccl::status status = ccl::status::success;
-
-    ccl_selector_param param;
-    param.ctype = ccl_coll_sparse_allreduce;
-    param.count = 0;
-    param.dtype = ccl_datatype_int8;
-    param.comm = comm;
-    param.sparse_coalesce_mode = sched->coll_attr.sparse_coalesce_mode;
-    param.sparse_allreduce_alloc_fn = sched->coll_attr.sparse_allreduce_alloc_fn;
-
-    if (!send_ind_buf.get_ptr() || !send_val_buf.get_ptr()) {
-        LOG_ERROR(
-            "sparse_allreduce send buffers for indices and values should not be NULL, but got "
-            "indices buffer = ",
-            send_ind_buf.get_ptr(),
-            ", values buffer = ",
-            send_val_buf.get_ptr());
-        assert(send_ind_buf.get_ptr() && send_val_buf.get_ptr());
-
-        throw ccl::exception(
-            std::string(__FUNCTION__) + "sparse_allreduce send buffers for indices and values \
-            should not be NULL, but got indices buffer = " +
-            std::to_string((uintptr_t)send_ind_buf.get_ptr()) +
-            ", values buffer = " + std::to_string((uintptr_t)send_val_buf.get_ptr()));
-    }
-
-    if (!send_ind_count || !send_val_count) {
-        LOG_ERROR("sparse_allreduce send buffer count should be greater than zero, but got "
-                  "indices count = ",
-                  send_ind_count,
-                  ", values count = ",
-                  send_val_count);
-        assert(send_ind_count && send_val_count);
-
-        throw ccl::exception(
-            std::string(__FUNCTION__) + "sparse_allreduce send buffer count should be \
-            greater than zero, but got indices count = " +
-            std::to_string(send_ind_count) + ", values count = " + std::to_string(send_val_count));
-    }
-
-    if (send_ind_count > send_val_count) {
-        CCL_FATAL("sparse collective algorithms now support only 1-D indices and \
-                  multi-dimensional values format\n got indices count = ",
-                  send_ind_count,
-                  ", values count = ",
-                  send_val_count);
-        return ccl::status::invalid_arguments;
-    }
-
-    if (ccl::global_data::env().atl_transport == ccl_atl_mpi) {
-        /*
-            for now all sparse_allreduce algorithms
-            may contains direct collective entries (allreduce/allgatherv)
-            which should be executed in strict_order mode
-        */
-        sched->strict_order = true;
-    }
-
-    auto algo = ccl::global_data::get().algorithm_selector->get<ccl_coll_sparse_allreduce>(param);
-
-    LOG_DEBUG("build sparse allreduce, param:",
-              "\nsend_ind_buf ",
-              send_ind_buf,
-              "\nsend_ind_count ",
-              send_ind_count,
-              "\nsend_val_buf ",
-              send_val_buf,
-              "\nsend_val_count ",
-              send_val_count,
-              "\nrecv_ind_buf ",
-              recv_ind_buf,
-              "\nrecv_ind_count ",
-              recv_ind_count,
-              "\nrecv_val_buf ",
-              recv_val_buf,
-              "\nrecv_val_count ",
-              recv_val_count,
-              "\nindex_dtype ",
-              ccl::global_data::get().dtypes->name(index_dtype),
-              "\nvalue_dtype ",
-              ccl::global_data::get().dtypes->name(value_dtype),
-              "\nop ",
-              ccl_reduction_to_str(reduction));
-
-    switch (index_dtype.idx()) {
-        case ccl::datatype::int32:
-            CCL_SPARSE_ALLREDUCE_SELECT_V_DTYPE(int32_t, value_dtype, algo);
-            break;
-        case ccl::datatype::int64:
-            CCL_SPARSE_ALLREDUCE_SELECT_V_DTYPE(int64_t, value_dtype, algo);
-            break;
-        default:
-            CCL_FATAL("index datatype ",
-                      ccl::global_data::get().dtypes->name(index_dtype),
-                      " is not supported yet");
             return ccl::status::invalid_arguments;
     }
 
@@ -805,49 +706,6 @@ ccl_request* ccl_reduce_scatter_impl(const void* send_buf,
         send_buf, recv_buf, recv_count, dtype, reduction, attr, comm, stream, deps);
 
     auto req = ccl_coll_create(param, attr);
-    LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req);
-    return req;
-}
-
-ccl_request* ccl_sparse_allreduce_impl(const void* send_ind_buf,
-                                       size_t send_ind_count,
-                                       const void* send_val_buf,
-                                       size_t send_val_count,
-                                       void* recv_ind_buf,
-                                       size_t recv_ind_count,
-                                       void* recv_val_buf,
-                                       size_t recv_val_count,
-                                       ccl::datatype index_dtype,
-                                       ccl::datatype value_dtype,
-                                       ccl::reduction reduction,
-                                       const ccl_coll_attr& attr,
-                                       ccl_comm* comm,
-                                       const ccl_stream* stream,
-                                       const std::vector<ccl::event>& deps) {
-    CCL_THROW("unsupported path");
-
-    ccl_coll_param param{};
-
-    param.ctype = ccl_coll_sparse_allreduce;
-    param.sparse_param.send_ind_buf = send_ind_buf;
-    param.sparse_param.send_ind_count = send_ind_count;
-    param.sparse_param.send_val_buf = send_val_buf;
-    param.sparse_param.send_val_count = send_val_count;
-    param.sparse_param.recv_ind_buf = recv_ind_buf;
-    param.sparse_param.recv_ind_count = recv_ind_count;
-    param.sparse_param.recv_val_buf = recv_val_buf;
-    param.sparse_param.recv_val_count = recv_val_count;
-    param.dtype = ccl::global_data::get().dtypes->get(value_dtype);
-    param.sparse_param.itype = ccl::global_data::get().dtypes->get(index_dtype);
-    param.reduction = reduction;
-    param.stream = (ccl_stream*)stream;
-    param.comm = comm;
-    param.copy_deps(deps);
-
-    ccl_coll_attr internal_attr(attr);
-    internal_attr.to_cache = 0; /* skip to_cache flag, unsupported yet */
-
-    auto req = ccl_coll_create(param, internal_attr);
     LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req);
     return req;
 }
