@@ -4,7 +4,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Enabling OFI/verbs dmabuf support &#8212; oneCCL  documentation</title>
+    <title>Enabling OFI/verbs/dmabuf Support &#8212; oneCCL  documentation</title>
     
   <link href="../_static/css/theme.css" rel="stylesheet" />
   <link href="../_static/css/index.c5995385ac14fb8791e8eb36b4908be2.css" rel="stylesheet" />
@@ -38,7 +38,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="oneCCL API" href="../api.html" />
-    <link rel="prev" title="Sparse collective operations" href="sparse-collectives.html" />
+    <link rel="prev" title="Fusion of Communication Operations" href="operation-fusion.html" />
     <script defer type="text/javascript" src="https://www.intel.com/content/dam/www/global/wap/performance-config.js" ></script>
     <script type="text/javascript">
         // Configure TMS settings
@@ -156,7 +156,7 @@
    </li>
    <li class="toctree-l2">
     <a class="reference internal" href="../general-configuration/transport-selection.html">
-     Transport selection
+     Transport Selection
     </a>
    </li>
   </ul>
@@ -177,6 +177,11 @@
     </a>
    </li>
    <li class="toctree-l2">
+    <a class="reference internal" href="low-precision-datatypes.html">
+     Low-precision Datatypes
+    </a>
+   </li>
+   <li class="toctree-l2">
     <a class="reference internal" href="operation-caching.html">
      Caching of Communication Operations
     </a>
@@ -191,19 +196,9 @@
      Fusion of Communication Operations
     </a>
    </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="unordered-collectives.html">
-     Unordered collectives support
-    </a>
-   </li>
-   <li class="toctree-l2">
-    <a class="reference internal" href="sparse-collectives.html">
-     Sparse collective operations
-    </a>
-   </li>
    <li class="toctree-l2 current active">
     <a class="current reference internal" href="#">
-     Enabling OFI/verbs dmabuf support
+     Enabling OFI/verbs/dmabuf Support
     </a>
    </li>
   </ul>
@@ -335,11 +330,6 @@
        <li class="toctree-l4">
         <a class="reference internal" href="../api/operations/collective-operations/reduce-scatter.html">
          ReduceScatter
-        </a>
-       </li>
-       <li class="toctree-l4">
-        <a class="reference internal" href="../api/operations/collective-operations/sparse-allreduce.html">
-         SparseAllreduce
         </a>
        </li>
       </ul>
@@ -495,7 +485,7 @@
               <div>
                 
   <div class="section" id="enabling-ofi-verbs-dmabuf-support">
-<h1>Enabling OFI/verbs dmabuf support<a class="headerlink" href="#enabling-ofi-verbs-dmabuf-support" title="Permalink to this headline">¶</a></h1>
+<h1>Enabling OFI/verbs/dmabuf Support<a class="headerlink" href="#enabling-ofi-verbs-dmabuf-support" title="Permalink to this headline">¶</a></h1>
 <p>oneCCL provides experimental support for data transfers between Intel GPU memory and NIC using Linux dmabuf, which is exposed through OFI API for verbs provider.</p>
 <div class="section" id="requirements">
 <h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h2>
@@ -507,8 +497,8 @@
 </div>
 <div class="section" id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h2>
-<p>oneCCL, OFI and OFI/verbs from Intel® oneAPI Base Toolkit support device memory transfers. Refer to <a href="#id1"><span class="problematic" id="id2">`Run instructions`__</span></a> for usage.</p>
-<p>If you want to build software components from sources, refer to <a href="#id1"><span class="problematic" id="id3">`Build instructions`__</span></a>.</p>
+<p>oneCCL, OFI and OFI/verbs from Intel® oneAPI Base Toolkit support device memory transfers. Refer to <a class="reference internal" href="#run-instructions">Run instructions</a> for usage.</p>
+<p>If you want to build software components from sources, refer to <a class="reference internal" href="#build-instructions">Build instructions</a>.</p>
 </div>
 <div class="section" id="build-instructions">
 <h2>Build instructions<a class="headerlink" href="#build-instructions" title="Permalink to this headline">¶</a></h2>
@@ -529,7 +519,7 @@ No need to run autogen.sh if using the release package.</p>
 </div>
 <div class="section" id="product-short">
 <h3>oneCCL<a class="headerlink" href="#product-short" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">cmake</span> <span class="o">-</span><span class="n">DCMAKE_INSTALL_PREFIX</span><span class="o">=&lt;</span><span class="n">ccl_install_dir</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">DLIBFABRIC_DIR</span><span class="o">=&lt;</span><span class="n">ofi_install_dir</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">DCMAKE_C_COMPILER</span><span class="o">=</span><span class="n">icx</span> <span class="o">-</span><span class="n">DCMAKE_CXX_COMPILER</span><span class="o">=</span><span class="n">dpcpp</span> <span class="o">-</span><span class="n">DCOMPUTE_BACKEND</span><span class="o">=</span><span class="n">dpcpp_level_zero</span> <span class="o">-</span><span class="n">DENABLE_OFI_HMEM</span><span class="o">=</span><span class="mi">1</span> <span class="p">..</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">cmake</span> <span class="o">-</span><span class="n">DCMAKE_INSTALL_PREFIX</span><span class="o">=&lt;</span><span class="n">ccl_install_dir</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">DLIBFABRIC_DIR</span><span class="o">=&lt;</span><span class="n">ofi_install_dir</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">DCMAKE_C_COMPILER</span><span class="o">=</span><span class="n">icx</span> <span class="o">-</span><span class="n">DCMAKE_CXX_COMPILER</span><span class="o">=</span><span class="n">dpcpp</span> <span class="o">-</span><span class="n">DCOMPUTE_BACKEND</span><span class="o">=</span><span class="n">dpcpp</span> <span class="o">-</span><span class="n">DENABLE_OFI_HMEM</span><span class="o">=</span><span class="mi">1</span> <span class="p">..</span>
 <span class="n">make</span> <span class="o">-</span><span class="n">j</span> <span class="n">install</span>
 </pre></div>
 </div>
@@ -568,7 +558,7 @@ export LD_LIBRARY_PATH=&lt;ofi_install_path&gt;/lib:${LD_LIBRARY_PATH}
         
         <div class='prev-next-bottom'>
             
-    <a class='left-prev' id="prev-link" href="sparse-collectives.html" title="previous page">Sparse collective operations</a>
+    <a class='left-prev' id="prev-link" href="operation-fusion.html" title="previous page">Fusion of Communication Operations</a>
     <a class='right-next' id="next-link" href="../api.html" title="next page">oneCCL API</a>
 
         </div>
@@ -581,7 +571,7 @@ export LD_LIBRARY_PATH=&lt;ofi_install_path&gt;/lib:${LD_LIBRARY_PATH}
         
           By Intel<br/>
         
-            &copy; Copyright 2019–2021.<br/>
+            &copy; Copyright 2019–2022.<br/>
           <div class="extra_footer">
             <p align="right"><a href="https://www.intel.com/content/www/us/en/privacy/intel-cookie-notice.html">Cookies</a></p>
           </div>
