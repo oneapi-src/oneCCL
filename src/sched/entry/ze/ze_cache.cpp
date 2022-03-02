@@ -16,6 +16,7 @@
 #include "common/global/global.hpp"
 #include "sched/entry/ze/ze_cache.hpp"
 
+#include <fcntl.h>
 #include <iterator>
 
 namespace ccl {
@@ -364,6 +365,137 @@ void module_cache::load(ze_context_handle_t context,
     load_module(file_path, device, context, module);
 }
 
+mem_handle_cache::mem_handle_cache() {
+    if (!global_data::env().enable_ze_cache_ipc_handles) {
+        return;
+    }
+
+    threshold = global_data::env().ze_cache_ipc_handles_threshold;
+    cache.reserve(threshold + 1);
+    LOG_DEBUG("cache threshold: ", threshold);
+}
+
+mem_handle_cache::~mem_handle_cache() {
+    if (!cache.empty()) {
+        LOG_WARN("mem handle cache is not empty, size: ", cache.size());
+        clear();
+    }
+}
+
+void mem_handle_cache::clear() {
+    std::lock_guard<std::mutex> lock(mutex);
+    LOG_DEBUG("clear cache size: ", cache.size());
+    make_clean(0);
+    cache.clear();
+    cache_list.clear();
+}
+
+void mem_handle_cache::make_clean(size_t limit) {
+    while (cache.size() > limit) {
+        auto it = cache_list.end();
+        --it;
+        // handle will be closed from handle_desc class destructor
+        cache.erase(it->first);
+        cache_list.pop_back();
+    }
+}
+
+void mem_handle_cache::get(ze_context_handle_t context,
+                           ze_device_handle_t device,
+                           const ipc_handle_desc& info,
+                           value_t* out_value) {
+    CCL_THROW_IF_NOT(context);
+    CCL_THROW_IF_NOT(device);
+    CCL_THROW_IF_NOT(info.remote_context_id >= 0);
+    CCL_THROW_IF_NOT(info.remote_device_id >= 0);
+    std::lock_guard<std::mutex> lock(mutex);
+
+    bool found{};
+    key_t key(info.remote_pid,
+              info.remote_mem_alloc_id,
+              info.remote_context_id,
+              info.remote_device_id,
+              context,
+              device);
+    auto key_value = cache.find(key);
+    if (key_value != cache.end()) {
+        value_t& value = key_value->second->second;
+        const auto& handle_from_cache = value->handle;
+        int fd = get_fd_from_handle(handle_from_cache);
+        if (fd_is_valid(fd)) {
+            // move key_value to the beginning of the list
+            cache_list.splice(cache_list.begin(), cache_list, key_value->second);
+            close_handle_fd(info.handle);
+            *out_value = value;
+            found = true;
+        }
+        else {
+            LOG_DEBUG("handle is invalid in the cache");
+            cache_list.erase(key_value->second);
+            cache.erase(key_value);
+            found = false;
+        }
+    }
+
+    if (!found) {
+        push(device, std::move(key), info.handle, out_value);
+    }
+}
+
+void mem_handle_cache::push(ze_device_handle_t device,
+                            key_t&& key,
+                            const ze_ipc_mem_handle_t& handle,
+                            value_t* out_value) {
+    make_clean(threshold);
+
+    // no mutex here because this method is private and called from get() only
+    auto remote_context_id = std::get<static_cast<size_t>(key_id::remote_context_id)>(key);
+    auto remote_context = global_data::get().ze_data->context_list.at(remote_context_id);
+
+    void* ptr{};
+    ZE_CALL(zeMemOpenIpcHandle, (remote_context, device, handle, {}, &ptr));
+    *out_value = std::make_shared<const handle_desc>(remote_context, handle, ptr);
+    cache_list.push_front(std::make_pair(key, *out_value));
+    cache.insert(std::make_pair(key, cache_list.begin()));
+}
+
+bool mem_handle_cache::fd_is_valid(int fd) {
+    return fcntl(fd, F_GETFD) != -1 || errno != EBADF;
+}
+
+mem_handle_cache::handle_desc::handle_desc(ze_context_handle_t remote_context,
+                                           const ze_ipc_mem_handle_t& handle,
+                                           const void* ptr)
+        : remote_context(remote_context),
+          handle(handle),
+          ptr(ptr) {}
+
+const void* mem_handle_cache::handle_desc::get_ptr() const {
+    return ptr;
+}
+
+void mem_handle_cache::handle_desc::close_handle() const {
+    CCL_THROW_IF_NOT(remote_context, " no remote context");
+
+    if (global_data::env().ze_close_ipc_wa) {
+        close_handle_fd(handle);
+        return;
+    }
+
+    auto fd = get_fd_from_handle(handle);
+    auto res = zeMemCloseIpcHandle(remote_context, ptr);
+    if (res == ZE_RESULT_ERROR_INVALID_ARGUMENT) {
+        close(fd);
+    }
+    else if (res != ZE_RESULT_SUCCESS) {
+        CCL_THROW("error at zeMemCloseIpcHandle, code: ", to_string(res));
+    }
+}
+
+mem_handle_cache::handle_desc::~handle_desc() {
+    close_handle();
+}
+
 // cache
 cache::~cache() {
     for (size_t i = 0; i < instance_count; ++i) {
@@ -375,6 +507,7 @@ cache::~cache() {
     }
 
     modules.clear();
+    mem_handles.clear();
 }
 
 } // namespace ze

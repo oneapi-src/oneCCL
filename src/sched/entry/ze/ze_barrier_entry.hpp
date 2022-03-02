@@ -17,7 +17,7 @@
 
 #include "sched/entry/factory/entry_factory.hpp"
 
-#include <ze_api.h>
+#include "common/ze/ze_api_wrapper.hpp"
 
 class ze_barrier_entry : public sched_entry {
 public:
@@ -43,16 +43,8 @@ public:
 
 protected:
     void dump_detail(std::stringstream& str) const override {
-        ccl_logger::format(str,
-                           "rank ",
-                           rank,
-                           ", comm_size ",
-                           comm_size,
-                           ", comm_id ",
-                           sched->get_comm_id(),
-                           "wait_events: ",
-                           wait_events.size(),
-                           "\n");
+        ccl_logger::format(
+            str, "comm ", comm->to_string(), ", wait_events ", wait_events.size(), "\n");
     }
 
 private:

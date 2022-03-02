@@ -37,14 +37,11 @@ public:
               cnt(cnt),
               dtype(dtype),
               op(op),
-              comm(comm) {
-        //TODO: Add way to using MPI communicator
-        CCL_UNUSED(this->comm);
-    }
+              comm(comm) {}
 
     void start() override {
         size_t bytes = cnt * dtype.size();
-        LOG_DEBUG("ALLREDUCE entry req: ", &req, ", cnt: ", cnt, ", bytes: ", bytes);
+        LOG_DEBUG("ALLREDUCE entry req: ", req, ", cnt: ", cnt, ", bytes: ", bytes);
         atl_status_t atl_status =
             comm->get_atl_comm()->allreduce(sched->bin->get_atl_ep(),
                                             send_buf.get_ptr(bytes),
@@ -52,7 +49,7 @@ public:
                                             cnt,
                                             static_cast<atl_datatype_t>(dtype.idx()),
                                             static_cast<atl_reduction_t>(op),
-                                            &req);
+                                            req);
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("ALLREDUCE entry failed. atl_status: ", atl_status_to_str(atl_status));
         }
@@ -61,7 +58,7 @@ public:
     }
 
     void update() override {
-        atl_status_t atl_status = comm->get_atl_comm()->check(sched->bin->get_atl_ep(), &req);
+        atl_status_t atl_status = comm->get_atl_comm()->check(sched->bin->get_atl_ep(), req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("ALLREDUCE entry failed. atl_status: ", atl_status_to_str(atl_status));
@@ -89,9 +86,9 @@ protected:
                            ", op ",
                            ccl_reduction_to_str(op),
                            ", comm_id ",
-                           sched->get_comm_id(),
+                           comm->get_comm_id(),
                            ", req ",
-                           &req,
+                           req,
                            "\n");
     }
 

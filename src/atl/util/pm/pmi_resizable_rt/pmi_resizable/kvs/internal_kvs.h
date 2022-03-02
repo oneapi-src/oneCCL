@@ -87,7 +87,6 @@ public:
 private:
     kvs_status_t init_main_server_by_string(const char* main_addr);
     kvs_status_t init_main_server_by_env();
-    kvs_status_t init_main_server_by_k8s();
     kvs_status_t init_main_server_address(const char* main_addr);
     kvs_status_t fill_local_host_ip();
     bool is_inited{ false };
@@ -114,11 +113,10 @@ private:
     int server_control_sock; /* used on server side to be controlled by local client */
 
     typedef enum ip_getting_type {
-        IGT_K8S = 0,
-        IGT_ENV = 1,
+        IGT_ENV = 0,
     } ip_getting_type_t;
 
-    ip_getting_type_t ip_getting_mode = IGT_K8S;
+    ip_getting_type_t ip_getting_mode = IGT_ENV;
 
     const std::string CCL_KVS_IP_PORT_ENV = "CCL_KVS_IP_PORT";
     const std::string CCL_KVS_IP_EXCHANGE_ENV = "CCL_KVS_IP_EXCHANGE";
@@ -126,7 +124,6 @@ private:
     const std::string CCL_KVS_IFACE_ENV = "CCL_KVS_IFACE";
 
     const std::string CCL_KVS_IP_EXCHANGE_VAL_ENV = "env";
-    const std::string CCL_KVS_IP_EXCHANGE_VAL_K8S = "k8s";
 
     const int CONNECTION_TIMEOUT = 120;
 
@@ -145,10 +142,10 @@ public:
         addr.sin_port = default_start_port;
     }
     in_port_t get_sin_port() override {
-        return addr.sin_port;
+        return ntohs(addr.sin_port);
     }
     void set_sin_port(in_port_t sin_port) override {
-        addr.sin_port = sin_port;
+        addr.sin_port = htons(sin_port);
     }
     struct sockaddr* get_sock_addr_ptr() override {
         return (struct sockaddr*)&addr;
@@ -177,10 +174,10 @@ public:
         addr.sin6_port = default_start_port;
     }
     in_port_t get_sin_port() override {
-        return addr.sin6_port;
+        return ntohs(addr.sin6_port);
     }
     void set_sin_port(in_port_t sin_port) override {
-        addr.sin6_port = sin_port;
+        addr.sin6_port = htons(sin_port);
     }
     const void* get_sin_addr_ptr() override {
         return &(addr.sin6_addr);

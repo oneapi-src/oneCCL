@@ -16,8 +16,8 @@
 #include "common/global/global.hpp"
 #include "sched/cache/cache.hpp"
 
-ccl_master_sched* ccl_sched_cache::find_unsafe(const ccl_sched_key& key) const {
-    ccl_master_sched* sched = nullptr;
+ccl_sched* ccl_sched_cache::find_unsafe(const ccl_sched_key& key) const {
+    ccl_sched* sched = nullptr;
     {
         auto it = table.find(key);
         if (it != table.end()) {
@@ -45,15 +45,16 @@ void ccl_sched_cache::recache(const ccl_sched_key& old_key, ccl_sched_key&& new_
             CCL_ASSERT(false, error_message, old_key.match_id);
             throw ccl::exception(error_message + old_key.match_id);
         }
-        ccl_master_sched* sched = it->second;
+        ccl_sched* sched = it->second;
         table.erase(it);
         auto emplace_result = table.emplace(std::move(new_key), sched);
         CCL_THROW_IF_NOT(emplace_result.second);
     }
 }
 
-void ccl_sched_cache::release(ccl_master_sched* sched) {
+void ccl_sched_cache::release(ccl_sched* sched) {
     reference_counter--;
+    LOG_DEBUG("releasing sched to cache: ", sched);
     LOG_TRACE("reference_counter=", reference_counter);
 }
 
@@ -65,7 +66,7 @@ bool ccl_sched_cache::try_flush() {
 
     if (reference_counter == 0) {
         for (auto it = table.begin(); it != table.end(); ++it) {
-            ccl_master_sched* sched = it->second;
+            ccl_sched* sched = it->second;
             CCL_ASSERT(sched);
             LOG_DEBUG("remove sched ", sched, " from cache");
             delete sched;

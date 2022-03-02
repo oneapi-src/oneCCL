@@ -14,7 +14,7 @@
  limitations under the License.
 */
 #include "coll/selection/selection.hpp"
-#include "common/comm/comm.hpp"
+#include "comm/comm.hpp"
 #include "common/global/global.hpp"
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
@@ -142,11 +142,11 @@ bool is_gpu_stream(const ccl_selector_param& param) {
 
 bool is_single_node(const ccl_selector_param& param) {
     size_t local_proc_count = ccl::global_data::get().executor->get_local_proc_count();
-    return static_cast<size_t>(param.comm->size()) == local_proc_count;
+    return static_cast<size_t>(param.comm->size()) <= local_proc_count;
 }
 
 bool is_single_card(const ccl_selector_param& param) {
-    return (param.comm->size() == 2) && is_single_node(param);
+    return param.comm->get_topo_manager().is_single_card;
 }
 
 } // namespace checkers
@@ -168,6 +168,9 @@ static bool ccl_is_device_side_algo(ccl_coll_algo algo, const ccl_selector_param
     else if (param.ctype == ccl_coll_allreduce) {
         return algo.allreduce == ccl_coll_allreduce_topo;
     }
+    else if (param.ctype == ccl_coll_alltoallv) {
+        return algo.alltoallv == ccl_coll_alltoallv_topo;
+    }
     else if (param.ctype == ccl_coll_bcast) {
         return algo.bcast == ccl_coll_bcast_topo;
     }
@@ -186,11 +189,8 @@ bool ccl_is_device_side_algo(const ccl_selector_param& param) {
     return false;
 #endif // CCL_ENABLE_SYCL
 
-    auto supported_colls = { ccl_coll_allgatherv,
-                             ccl_coll_allreduce,
-                             ccl_coll_bcast,
-                             ccl_coll_reduce,
-                             ccl_coll_reduce_scatter };
+    auto supported_colls = { ccl_coll_allgatherv, ccl_coll_allreduce, ccl_coll_alltoallv,
+                             ccl_coll_bcast,      ccl_coll_reduce,    ccl_coll_reduce_scatter };
     RETURN_FALSE_IF(!checkers::is_coll_supported(supported_colls, param.ctype),
                     "coll ",
                     ccl_coll_type_to_str(param.ctype),
@@ -204,6 +204,9 @@ bool ccl_is_device_side_algo(const ccl_selector_param& param) {
     }
     else if (param.ctype == ccl_coll_allreduce) {
         algo.allreduce = selector->get<ccl_coll_allreduce>(param);
+    }
+    else if (param.ctype == ccl_coll_alltoallv) {
+        algo.alltoallv = selector->get<ccl_coll_alltoallv>(param);
     }
     else if (param.ctype == ccl_coll_bcast) {
         algo.bcast = selector->get<ccl_coll_bcast>(param);
@@ -219,6 +222,8 @@ bool ccl_is_device_side_algo(const ccl_selector_param& param) {
 }
 
 bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
+    RETURN_FALSE_IF(!ccl::global_data::env().enable_topo_algo, "topo algo is explicitly disabled");
+
     auto supported_colls = { ccl_coll_allgatherv,
                              ccl_coll_allreduce,
                              ccl_coll_bcast,
@@ -230,6 +235,13 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
     size_t local_proc_count = ccl::global_data::get().executor->get_local_proc_count();
     int comm_size = param.comm->size();
 
+    LOG_DEBUG("coll ",
+              ccl_coll_type_to_str(param.ctype),
+              ", local_proc_count ",
+              local_proc_count,
+              ", comm ",
+              param.comm->to_string());
+
     RETURN_FALSE_IF(!checkers::is_gpu_stream(param), "non-gpu stream is not supported");
     RETURN_FALSE_IF(checkers::is_sycl_buf(param), "sycl buffer is not supported");
     RETURN_FALSE_IF(!checkers::is_device_buf(param), "non-device buffers is not supported");
@@ -239,15 +251,37 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
     RETURN_FALSE_IF(ccl::global_data::env().enable_unordered_coll,
                     "unordered coll is not supported");
     RETURN_FALSE_IF(ccl::global_data::env().priority_mode != ccl_priority_none, "wrong priority");
-    RETURN_FALSE_IF(ccl::global_data::env().worker_count != 1, "unsupported count of workers");
+    RETURN_FALSE_IF(ccl::global_data::env().worker_count != 1
+#ifdef CCL_ENABLE_SYCL
+                        && !ccl::global_data::env().ze_multi_workers
+#endif
+                    ,
+                    "unsupported count of workers");
+
+    // this check is for multi-level scale-out for device buffers case:
+    // we can't use topo algorithm without sub-communicators
+    RETURN_FALSE_IF(!param.comm->get_even_comm().get(), "sub-communicators are not available");
 
 #ifdef CCL_ENABLE_SYCL
+    RETURN_FALSE_IF(ccl::global_data::env().enable_ze_bidir_algo &&
+                        !checkers::is_single_card(param) && param.ctype == ccl_coll_allreduce,
+                    "bidir for allreduce is supported only for single-card");
+
+    RETURN_FALSE_IF(!param.comm->get_topo_manager().has_p2p_access(),
+                    "no p2p access between devices");
+
+    RETURN_FALSE_IF(!param.comm->get_topo_manager().has_same_ppn(),
+                    "ppn is not the same among the nodes");
+
+    RETURN_FALSE_IF(!param.comm->get_topo_manager().has_same_domains(),
+                    "processes are not properly distributed among domains");
+
     if (!ccl::global_data::env().disable_ze_family_check) {
         RETURN_FALSE_IF(
             checkers::is_family1_card(param) &&
                 (((!checkers::is_single_card(param) &&
-                   ((param.ctype == ccl_coll_allreduce || param.ctype == ccl_coll_reduce ||
-                     param.ctype == ccl_coll_allgatherv)))) ||
+                   (param.ctype == ccl_coll_allgatherv || param.ctype == ccl_coll_allreduce ||
+                    param.ctype == ccl_coll_bcast || param.ctype == ccl_coll_reduce))) ||
                  (param.ctype == ccl_coll_reduce_scatter)),
             "family1 multi-card for ",
             ccl_coll_type_to_str(param.ctype),
@@ -255,14 +289,14 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
     }
 #endif // CCL_ENABLE_SYCL
 
-    RETURN_FALSE_IF((((param.ctype == ccl_coll_bcast) || (param.ctype == ccl_coll_reduce)) &&
-                     ((comm_size < 2) || (local_proc_count == 1))) ||
-                        ((param.ctype == ccl_coll_allreduce || param.ctype == ccl_coll_reduce) &&
-                         (comm_size <= 2) && (local_proc_count == 1)),
+    RETURN_FALSE_IF((((param.ctype == ccl_coll_allreduce) || (param.ctype == ccl_coll_bcast) ||
+                      (param.ctype == ccl_coll_reduce)) &&
+                     ((comm_size < 2) || (local_proc_count == 1))),
                     "unsupported comm size for ",
                     ccl_coll_type_to_str(param.ctype));
 
-    RETURN_FALSE_IF((param.ctype == ccl_coll_bcast || param.ctype == ccl_coll_reduce_scatter) &&
+    RETURN_FALSE_IF((param.ctype == ccl_coll_allgatherv || param.ctype == ccl_coll_bcast ||
+                     param.ctype == ccl_coll_reduce_scatter) &&
                         !checkers::is_single_node(param),
                     "multi-node for ",
                     ccl_coll_type_to_str(param.ctype),
@@ -275,9 +309,12 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
                         comm_size % local_proc_count != 0,
                     "ppn must be equal");
 
+    RETURN_FALSE_IF((comm_size % 2 != 0), "odd comm_size is not supported");
+
     RETURN_FALSE_IF(!checkers::is_single_card(param) && !checkers::is_single_node(param) &&
                         (local_proc_count % 2 != 0),
                     "odd proc count per node is not supported");
+
     return true;
 }
 

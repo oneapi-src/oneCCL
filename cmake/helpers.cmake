@@ -1,10 +1,13 @@
-#different functions, etc
+# different functions, etc
 
 function(set_lp_env)
 
     set(GCC_BF16_MIN_SUPPORTED "4.9.0")
     set(GCC_BF16_AVX512BF_MIN_SUPPORTED "10.0.0")
+    set(GCC_BF16_AVX512BF_BINUTILS_MIN_SUPPORTED "2.33")
+
     set(ICC_BF16_AVX512BF_MIN_SUPPORTED "19.1.0")
+
     set(CLANG_BF16_MIN_SUPPORTED "9.0.0")
     set(CLANG_BF16_AVX512BF_MIN_SUPPORTED "9.3.0")
 
@@ -21,12 +24,19 @@ function(set_lp_env)
     endif()
     message(STATUS "BF16 compiler: ${CCL_BF16_COMPILER}")
 
+    execute_process(COMMAND ld -v
+            OUTPUT_VARIABLE BINUTILS_VERSION_RAW
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
+    string(REGEX MATCH "([0-9]+)\\.([0-9]+)" BINUTILS_VERSION ${BINUTILS_VERSION_RAW})
+    message(STATUS "binutils version: " "${BINUTILS_VERSION}")
+
     if ((${CMAKE_C_COMPILER_ID} STREQUAL "Intel"
             AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${ICC_BF16_AVX512BF_MIN_SUPPORTED})
         OR (${CMAKE_C_COMPILER_ID} STREQUAL "Clang"
             AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${CLANG_BF16_AVX512BF_MIN_SUPPORTED})
         OR (${CMAKE_C_COMPILER_ID} STREQUAL "GNU"
-            AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${GCC_BF16_AVX512BF_MIN_SUPPORTED})
+            AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${GCC_BF16_AVX512BF_MIN_SUPPORTED}
+            AND NOT ${BINUTILS_VERSION} VERSION_LESS ${GCC_BF16_AVX512BF_BINUTILS_MIN_SUPPORTED})
         )
         add_definitions(-DCCL_BF16_AVX512BF_COMPILER)
         set(CCL_BF16_AVX512BF_COMPILER ON)
@@ -170,36 +180,10 @@ endfunction(get_vcs_properties)
 function(activate_compute_backend MODULES_PATH COMPUTE_BACKEND)
     string( TOLOWER "${COMPUTE_BACKEND}" COMPUTE_BACKEND)
 
-    set(CCL_ENABLE_SYCL_V 0 PARENT_SCOPE)
-    set(CCL_ENABLE_SYCL_L0 0 PARENT_SCOPE)
-
     message("Search Compute Runtime by MODULES_PATH: ${MODULES_PATH}")
     list(APPEND CMAKE_MODULE_PATH "${MODULES_PATH}")
 
-    if(COMPUTE_BACKEND STREQUAL "computecpp")
-        message ("COMPUTE_BACKEND=${COMPUTE_BACKEND} requested. Using ComputeCpp provider")
-        SET (COMPUTE_BACKEND_LOAD_MODULE "ComputeCpp"
-                CACHE STRING
-             "COMPUTE_BACKEND=${COMPUTE_BACKEND} requested. Using ComputeCpp provider")
-
-        find_package(${COMPUTE_BACKEND_LOAD_MODULE} REQUIRED)
-
-        if(NOT ComputeCpp_FOUND)
-            message(FATAL_ERROR "Failed to find ComputeCpp")
-        endif()
-
-        # remember compilation flags, because flag required for OBJECTS target
-        # but if we use `target_link_libraries`, then these flags applied to all compiler options
-        # for c & cxx. But we need special flags for cxx only
-        # So set it manually
-        set (COMPUTE_BACKEND_CXXFLAGS_LOCAL "${COMPUTE_BACKEND_CXXFLAGS_LOCAL} ${COMPUTECPP_FLAGS}")
-
-        # remember current target for `target_link_libraries` in ccl
-        set (COMPUTE_BACKEND_TARGET_NAME Codeplay::ComputeCpp)
-        set (COMPUTE_BACKEND_TARGET_NAME Codeplay::ComputeCpp PARENT_SCOPE)
-    endif()
-
-    if(COMPUTE_BACKEND STREQUAL "dpcpp_level_zero")
+    if(COMPUTE_BACKEND STREQUAL "dpcpp")
         message ("COMPUTE_BACKEND=${COMPUTE_BACKEND} requested. Using DPC++ provider")
         SET (COMPUTE_BACKEND_LOAD_MODULE "IntelSYCL_level_zero"
                 CACHE STRING
@@ -211,8 +195,6 @@ function(activate_compute_backend MODULES_PATH COMPUTE_BACKEND)
             message(FATAL_ERROR "Failed to find IntelSYCL_level_zero")
         endif()
 
-        set(CCL_ENABLE_SYCL_V 1 PARENT_SCOPE)
-
         # remember compilation flags, because flag required for OBJECTS target
         # but if we use `target_link_libraries`, then these flags applied to all compiler options
         # for c & cxx. But we need special flags for cxx only
@@ -223,51 +205,6 @@ function(activate_compute_backend MODULES_PATH COMPUTE_BACKEND)
         set (COMPUTE_BACKEND_TARGET_NAME Intel::SYCL_level_zero)
         set (COMPUTE_BACKEND_TARGET_NAME Intel::SYCL_level_zero PARENT_SCOPE)
         message ("COMPUTE_BACKEND_TARGET_NAME=${COMPUTE_BACKEND_TARGET_NAME} requested. Using DPC++ provider")
-
-    elseif(COMPUTE_BACKEND STREQUAL "level_zero")
-        SET (COMPUTE_BACKEND_LOAD_MODULE "level_zero"
-                CACHE STRING
-             "COMPUTE_BACKEND=${COMPUTE_BACKEND} requested")
-
-        find_package(${COMPUTE_BACKEND_LOAD_MODULE} REQUIRED)
-
-        if(NOT LevelZero_FOUND)
-            message(STATUS "Can not find level-zero")
-            return()
-        endif()
-
-        # No compiler flags
-        set (COMPUTE_BACKEND_CXXFLAGS_LOCAL "")
-
-        # remember current target for `target_link_libraries` in ccl
-        set (COMPUTE_BACKEND_TARGET_NAME ze_loader)
-        set (COMPUTE_BACKEND_TARGET_NAME ze_loader PARENT_SCOPE)
-
-    elseif(COMPUTE_BACKEND STREQUAL "dpcpp")
-        message ("COMPUTE_BACKEND=${COMPUTE_BACKEND} requested. Using DPC++ provider")
-        SET (COMPUTE_BACKEND_LOAD_MODULE "IntelSYCL"
-                CACHE STRING
-             "COMPUTE_BACKEND=${COMPUTE_BACKEND} requested. Using DPC++ provider")
-
-        find_package(${COMPUTE_BACKEND_LOAD_MODULE} REQUIRED)
-
-        if(NOT IntelSYCL_FOUND)
-            message(FATAL_ERROR "Failed to find IntelSYCL")
-        endif()
-
-        # remember compilation flags, because flag required for OBJECTS target
-        # but if we use `target_link_libraries`, then these flags applied to all compiler options
-        # for c & cxx. But we need special flags for cxx only
-        # So set it manually
-        set (COMPUTE_BACKEND_CXXFLAGS_LOCAL "${COMPUTE_BACKEND_CXXFLAGS_LOCAL} ${INTEL_SYCL_FLAGS}")
-
-        # remember current target for `target_link_libraries` in ccl
-        set (COMPUTE_BACKEND_TARGET_NAME Intel::SYCL)
-        set (COMPUTE_BACKEND_TARGET_NAME Intel::SYCL PARENT_SCOPE)
-    # elseif(COMPUTE_BACKEND STREQUAL "host")
-        # message ("COMPUTE_BACKEND=${COMPUTE_BACKEND} requested.")
-    # else()
-         # message(FATAL_ERROR "Please provide one of the following compute runtime: dpcpp, level_zero, dpcpp_level_zero, host")
     endif()
 
     # extract target properties
@@ -276,7 +213,7 @@ function(activate_compute_backend MODULES_PATH COMPUTE_BACKEND)
     get_target_property(COMPUTE_BACKEND_LIBRARIES_LOCAL
                         ${COMPUTE_BACKEND_TARGET_NAME} INTERFACE_LINK_LIBRARIES)
 
-    # When we use dpcpp compiler(dpcpp/dpcpp_level_zero backends), use c++17 to be aligned with compiler
+    # When we use dpcpp compiler(dpcpp backends), use c++17 to be aligned with compiler
     if (${COMPUTE_BACKEND_TARGET_NAME} MATCHES "^Intel::SYCL.*")
         set(CMAKE_CXX_STANDARD 17 PARENT_SCOPE)
     # And use c++11 for all other cases
@@ -297,7 +234,7 @@ endfunction(activate_compute_backend)
 function(set_compute_backend COMMON_CMAKE_DIR)
     activate_compute_backend("${COMMON_CMAKE_DIR}" ${COMPUTE_BACKEND})
 
-    # When we use dpcpp compiler(dpcpp/dpcpp_level_zero backends), use c++17 to be aligned with compiler
+    # When we use dpcpp compiler(dpcpp backends), use c++17 to be aligned with compiler
     # Although the same thing is done in activate_compute_backend we need to set the variable here as
     # well bacause both set_compute_backend and activate_compute_backend can be called directly
     if (${COMPUTE_BACKEND_TARGET_NAME} MATCHES "^Intel::SYCL.*")
@@ -313,8 +250,13 @@ function(set_compute_backend COMMON_CMAKE_DIR)
     message(STATUS "COMPUTE_BACKEND_TARGET_NAME: ${COMPUTE_BACKEND_TARGET_NAME}")
 
     if (${COMPUTE_BACKEND_TARGET_NAME} STREQUAL "Intel::SYCL" OR ${COMPUTE_BACKEND_TARGET_NAME} STREQUAL "Intel::SYCL_level_zero")
-        option (CCL_ENABLE_SYCL "Enable CCL SYCL runtime" ON)
-        message(STATUS "Enable CCL SYCL runtime")
+
+        set(CCL_ENABLE_SYCL ON PARENT_SCOPE)
+        message(STATUS "Enable CCL SYCL support")
+
+        set(CCL_ENABLE_ZE ON PARENT_SCOPE)
+        message(STATUS "Enable CCL Level Zero support")
+
         execute_process(COMMAND dpcpp -v
             OUTPUT_VARIABLE DPCPP_VERSION
             ERROR_VARIABLE DPCPP_VERSION
@@ -323,14 +265,8 @@ function(set_compute_backend COMMON_CMAKE_DIR)
         )
         message(STATUS "DPC++ compiler version:\n" "${DPCPP_VERSION}")
     endif()
+
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMPUTE_BACKEND_FLAGS}")
-    if (${COMPUTE_BACKEND_TARGET_NAME} STREQUAL "Intel::SYCL_level_zero" OR ${COMPUTE_BACKEND_TARGET_NAME} STREQUAL "ze_loader")
-        set(CCL_ENABLE_ZE ON PARENT_SCOPE)
-        set(CCL_ENABLE_ZE ON)
-    endif()
-    if (CCL_ENABLE_ZE)
-        message(STATUS "Enable Level Zero support")
-    endif()
 
     # need to pass these variables to overlying function
     set (COMPUTE_BACKEND_TARGET_NAME ${COMPUTE_BACKEND_TARGET_NAME} PARENT_SCOPE)
@@ -338,3 +274,19 @@ function(set_compute_backend COMMON_CMAKE_DIR)
     set (COMPUTE_BACKEND_LIBRARIES ${COMPUTE_BACKEND_LIBRARIES} PARENT_SCOPE)
     set (COMPUTE_BACKEND_FLAGS ${COMPUTE_BACKEND_FLAGS} PARENT_SCOPE)
 endfunction(set_compute_backend)
+
+function(precheck_compute_backend)
+    if (${COMPUTE_BACKEND} STREQUAL "dpcpp_level_zero")
+        message(WARNING "Deprecated value \"dpcpp_level_zero\" is used for COMPUTE_BACKEND, switching to \"dpcpp\", please use it instead")
+        set(COMPUTE_BACKEND "dpcpp")
+        set(COMPUTE_BACKEND "dpcpp" PARENT_SCOPE)
+    endif()
+
+    if (COMPUTE_BACKEND)
+        if (NOT ${COMPUTE_BACKEND} STREQUAL "dpcpp")
+            message(FATAL_ERROR "Invalid value is used for COMPUTE_BACKEND: ${COMPUTE_BACKEND}\n"
+                    "Possible values: <empty>(default), dpcpp")
+        endif()
+    endif()
+
+endfunction(precheck_compute_backend)

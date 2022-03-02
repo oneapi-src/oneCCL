@@ -14,40 +14,39 @@
  limitations under the License.
 */
 #include "oneapi/ccl/config.h"
-
-#if defined(CCL_ENABLE_SYCL) and !defined(CCL_ENABLE_ZE)
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
 
 #include "oneapi/ccl/native_device_api/sycl/export.hpp"
 #include "oneapi/ccl/type_traits.hpp"
 #include "common/log/log.hpp"
-#include "native_device_api/compiler_ccl_wrappers_dispatcher.hpp"
 
 namespace ccl {
 
 /**
  * Context
  */
-CCL_BE_API generic_context_type<cl_backend_type::dpcpp_sycl>::generic_context_type() {}
-CCL_BE_API generic_context_type<cl_backend_type::dpcpp_sycl>::generic_context_type(ccl_native_t ctx)
+generic_context_type<cl_backend_type::dpcpp_sycl_l0>::generic_context_type() {}
+
+generic_context_type<cl_backend_type::dpcpp_sycl_l0>::generic_context_type(ccl_native_t ctx)
         : context(ctx) {}
 
-CCL_BE_API generic_context_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
-generic_context_type<cl_backend_type::dpcpp_sycl>::get() noexcept {
-    return const_cast<generic_context_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&>(
-        static_cast<const generic_context_type<cl_backend_type::dpcpp_sycl>*>(this)->get());
+generic_context_type<cl_backend_type::dpcpp_sycl_l0>::ccl_native_t&
+generic_context_type<cl_backend_type::dpcpp_sycl_l0>::get() noexcept {
+    return const_cast<generic_context_type<cl_backend_type::dpcpp_sycl_l0>::ccl_native_t&>(
+        static_cast<const generic_context_type<cl_backend_type::dpcpp_sycl_l0>*>(this)->get());
 }
 
-CCL_BE_API const generic_context_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
-generic_context_type<cl_backend_type::dpcpp_sycl>::get() const noexcept {
+const generic_context_type<cl_backend_type::dpcpp_sycl_l0>::ccl_native_t&
+generic_context_type<cl_backend_type::dpcpp_sycl_l0>::get() const noexcept {
     return context;
 }
 
 /**
  * Device
  */
-CCL_BE_API generic_device_type<cl_backend_type::dpcpp_sycl>::generic_device_type(
+generic_device_type<cl_backend_type::dpcpp_sycl_l0>::generic_device_type(
     device_index_type id,
-    cl::sycl::info::device_type type)
+    cl::sycl::info::device_type type /* = info::device_type::gpu*/)
         : device() {
     if ((std::get<0>(id) == ccl::unused_index_value) &&
         (std::get<1>(id) == ccl::unused_index_value) &&
@@ -89,96 +88,75 @@ CCL_BE_API generic_device_type<cl_backend_type::dpcpp_sycl>::generic_device_type
               platform_it->get_info<cl::sycl::info::platform::name>(),
               "\nvendor: ",
               platform_it->get_info<cl::sycl::info::platform::vendor>());
-    auto devices = platform_it->get_devices(type);
-
-    LOG_DEBUG("Found devices: ", devices.size());
-    auto it =
-        std::find_if(devices.begin(), devices.end(), [id](const cl::sycl::device& dev) -> bool {
-            //TODO -S- not implemented
-            (void)id;
-            return true;
-        });
-    if (it == devices.end()) {
-        std::stringstream ss;
-        ss << "cannot find requested device. Supported devices are:\n";
-        for (const auto& dev : devices) {
-            ss << "Device:\nname: " << dev.get_info<cl::sycl::info::device::name>()
-               << "\nvendor: " << dev.get_info<cl::sycl::info::device::vendor>()
-               << "\nversion: " << dev.get_info<cl::sycl::info::device::version>()
-               << "\nprofile: " << dev.get_info<cl::sycl::info::device::profile>();
-        }
-
-        CCL_THROW("cannot find device by id: " + ccl::to_string(id) + ", reason:\n" + ss.str());
-    }
-    device = *it;
 }
 
-CCL_BE_API generic_device_type<cl_backend_type::dpcpp_sycl>::generic_device_type(
+generic_device_type<cl_backend_type::dpcpp_sycl_l0>::generic_device_type(
     const cl::sycl::device& in_device)
         : device(in_device) {}
 
-CCL_BE_API device_index_type generic_device_type<cl_backend_type::dpcpp_sycl>::get_id() const {
-    //TODO -S-
-    return device_index_type{};
+device_index_type generic_device_type<cl_backend_type::dpcpp_sycl_l0>::get_id() const {
+    return {};
 }
 
-CCL_BE_API typename generic_device_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
-generic_device_type<cl_backend_type::dpcpp_sycl>::get() noexcept {
+typename generic_device_type<cl_backend_type::dpcpp_sycl_l0>::ccl_native_t&
+generic_device_type<cl_backend_type::dpcpp_sycl_l0>::get() noexcept {
     return device;
 }
 
-CCL_BE_API const typename generic_device_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
-generic_device_type<cl_backend_type::dpcpp_sycl>::get() const noexcept {
+const typename generic_device_type<cl_backend_type::dpcpp_sycl_l0>::ccl_native_t&
+generic_device_type<cl_backend_type::dpcpp_sycl_l0>::get() const noexcept {
     return device;
 }
 
 /**
  * Event
  */
-generic_event_type<cl_backend_type::dpcpp_sycl>::generic_event_type(ccl_native_t ev) : event(ev) {}
+generic_event_type<cl_backend_type::dpcpp_sycl_l0>::generic_event_type(ccl_native_t ev)
+        : event(ev) {}
 
-generic_event_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
-generic_event_type<cl_backend_type::dpcpp_sycl>::get() noexcept {
-    return const_cast<generic_event_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&>(
-        static_cast<const generic_event_type<cl_backend_type::dpcpp_sycl>*>(this)->get());
+generic_event_type<cl_backend_type::dpcpp_sycl_l0>::ccl_native_t&
+generic_event_type<cl_backend_type::dpcpp_sycl_l0>::get() noexcept {
+    return const_cast<generic_event_type<cl_backend_type::dpcpp_sycl_l0>::ccl_native_t&>(
+        static_cast<const generic_event_type<cl_backend_type::dpcpp_sycl_l0>*>(this)->get());
 }
 
-const generic_event_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
-generic_event_type<cl_backend_type::dpcpp_sycl>::get() const noexcept {
+const generic_event_type<cl_backend_type::dpcpp_sycl_l0>::ccl_native_t&
+generic_event_type<cl_backend_type::dpcpp_sycl_l0>::get() const noexcept {
     return event;
 }
 
 /**
  * Stream
  */
-generic_stream_type<cl_backend_type::dpcpp_sycl>::generic_stream_type(ccl_native_t q) : queue(q) {}
+generic_stream_type<cl_backend_type::dpcpp_sycl_l0>::generic_stream_type(ccl_native_t q)
+        : queue(q) {}
 
-generic_stream_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
-generic_stream_type<cl_backend_type::dpcpp_sycl>::get() noexcept {
-    return const_cast<generic_stream_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&>(
-        static_cast<const generic_stream_type<cl_backend_type::dpcpp_sycl>*>(this)->get());
+generic_stream_type<cl_backend_type::dpcpp_sycl_l0>::ccl_native_t&
+generic_stream_type<cl_backend_type::dpcpp_sycl_l0>::get() noexcept {
+    return const_cast<generic_stream_type<cl_backend_type::dpcpp_sycl_l0>::ccl_native_t&>(
+        static_cast<const generic_stream_type<cl_backend_type::dpcpp_sycl_l0>*>(this)->get());
 }
 
-const generic_stream_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
-generic_stream_type<cl_backend_type::dpcpp_sycl>::get() const noexcept {
+const generic_stream_type<cl_backend_type::dpcpp_sycl_l0>::ccl_native_t&
+generic_stream_type<cl_backend_type::dpcpp_sycl_l0>::get() const noexcept {
     return queue;
 }
 
 /**
  * Platform
  */
-generic_platform_type<cl_backend_type::dpcpp_sycl>::generic_platform_type(ccl_native_t pl)
+generic_platform_type<cl_backend_type::dpcpp_sycl_l0>::generic_platform_type(ccl_native_t& pl)
         : platform(pl) {}
 
-generic_platform_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
-generic_platform_type<cl_backend_type::dpcpp_sycl>::get() noexcept {
-    return const_cast<generic_platform_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&>(
-        static_cast<const generic_platform_type<cl_backend_type::dpcpp_sycl>*>(this)->get());
+generic_platform_type<cl_backend_type::dpcpp_sycl_l0>::ccl_native_t&
+generic_platform_type<cl_backend_type::dpcpp_sycl_l0>::get() noexcept {
+    return const_cast<generic_platform_type<cl_backend_type::dpcpp_sycl_l0>::ccl_native_t&>(
+        static_cast<const generic_platform_type<cl_backend_type::dpcpp_sycl_l0>*>(this)->get());
 }
 
-const generic_platform_type<cl_backend_type::dpcpp_sycl>::ccl_native_t&
-generic_platform_type<cl_backend_type::dpcpp_sycl>::get() const noexcept {
+const generic_platform_type<cl_backend_type::dpcpp_sycl_l0>::ccl_native_t&
+generic_platform_type<cl_backend_type::dpcpp_sycl_l0>::get() const noexcept {
     return platform;
 }
 } // namespace ccl
-#endif //CCL_ENABLE_SYCL and !defined(CCL_ENABLE_ZE)
+#endif //#if defined(CCL_ENABLE_SYCL) && defined (CCL_ENABLE_ZE)

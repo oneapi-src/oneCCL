@@ -42,7 +42,7 @@
 class pmi_resizable_simple_internal final : public ipmi {
 public:
     pmi_resizable_simple_internal() = delete;
-    pmi_resizable_simple_internal(int total_rank_count,
+    pmi_resizable_simple_internal(int comm_size,
                                   const std::vector<int>& ranks,
                                   std::shared_ptr<internal_kvs> k,
                                   const char* main_addr = "");
@@ -106,7 +106,7 @@ private:
     int threads_count = 0;
     int thread_num = 0;
 
-    int total_rank_count;
+    int comm_size;
 
     std::vector<int> ranks;
     std::shared_ptr<internal_kvs> k;

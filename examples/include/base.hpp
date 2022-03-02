@@ -17,6 +17,7 @@
 
 #include "oneapi/ccl.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <cstring>

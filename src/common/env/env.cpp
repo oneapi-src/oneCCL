@@ -58,13 +58,28 @@ std::map<ccl_staging_buffer, std::string> env_data::staging_buffer_names = {
 std::map<ccl_ze_copy_engine_mode, std::string> env_data::ze_copy_engine_names = {
     std::make_pair(ccl_ze_copy_engine_none, "none"),
     std::make_pair(ccl_ze_copy_engine_main, "main"),
-    std::make_pair(ccl_ze_copy_engine_link, "link")
+    std::make_pair(ccl_ze_copy_engine_link, "link"),
+    std::make_pair(ccl_ze_copy_engine_auto, "auto")
+};
+
+std::map<backend_mode, std::string> env_data::backend_names = {
+    std::make_pair(backend_mode::native, "native"),
+#ifdef CCL_ENABLE_STUB_BACKEND
+    std::make_pair(backend_mode::stub, "stub")
+#endif // CCL_ENABLE_STUB_BACKEND
+};
+
+std::map<process_launcher_mode, std::string> env_data::process_launcher_names = {
+    std::make_pair(process_launcher_mode::hydra, "hydra"),
+    std::make_pair(process_launcher_mode::torch, "torch"),
+    std::make_pair(process_launcher_mode::none, "none")
 };
 
 env_data::env_data()
         : was_printed(false),
 
           log_level(ccl_log_level::warn),
+          abort_on_throw(0),
           queue_dump(0),
           sched_dump(0),
           sched_profile(0),
@@ -113,7 +128,7 @@ env_data::env_data()
 #endif // CCL_ENABLE_SYCL
           enable_buffer_cache(1),
           enable_strict_order(0),
-          staging_buffer(ccl_staging_usm),
+          staging_buffer(ccl_staging_regular),
           enable_op_sync(0),
 
           chunk_count(1),
@@ -123,13 +138,24 @@ env_data::env_data()
           ar2d_chunk_count(1),
           ar2d_min_chunk_size(65536),
 
+          allgatherv_topo_large_scale(0),
+
           allreduce_2d_base_size(CCL_ENV_SIZET_NOT_SPECIFIED),
           allreduce_2d_switch_dims(0),
           allreduce_nreduce_buffering(0),
           allreduce_nreduce_segment_size(CCL_ENV_SIZET_NOT_SPECIFIED),
 
           alltoall_scatter_max_ops(CCL_ENV_SIZET_NOT_SPECIFIED),
-          alltoall_scatter_plain(0),
+
+          backend(backend_mode::native),
+
+          local_rank(CCL_ENV_INT_NOT_SPECIFIED),
+          local_size(CCL_ENV_INT_NOT_SPECIFIED),
+
+          process_launcher(process_launcher_mode::hydra),
+
+          enable_topo_algo(1),
+          topo_color(topo_color_mode::fixed),
 
 #ifdef CCL_ENABLE_SYCL
           kernel_path(),
@@ -140,20 +166,34 @@ env_data::env_data()
           kernel_1s_lead(0),
           enable_kernel_1s_copy_ops(0),
           enable_kernel_1s_ipc_wa(0),
-          enable_kernel_profile(0),
-          enable_close_fd_wa(0),
+          enable_close_fd_wa(1),
 
           enable_sycl_output_event(0),
+          use_hmem(1),
 
           enable_ze_barrier(0),
+          enable_ze_bidir_algo(0),
           enable_ze_cache(1),
+          enable_ze_cache_ipc_handles(1),
+          ze_cache_ipc_handles_threshold(100),
           enable_ze_single_list(1),
           disable_ze_family_check(0),
           ze_serialize_mode(0),
           ze_copy_engine(ccl_ze_copy_engine_none),
-          ze_queue_index(1),
+          ze_max_compute_queues(1),
+          ze_max_copy_queues(CCL_ENV_SIZET_NOT_SPECIFIED),
+          enable_ze_list_dump(0),
+          ze_queue_index_offset(1),
           ze_close_ipc_wa(0),
+          ze_lib_path(),
+          ze_enable(1),
+          ze_fini_wa(0),
+          ze_multi_workers(0),
 #endif // CCL_ENABLE_SYCL
+
+#ifdef CCL_ENABLE_ITT
+          itt_level(0),
+#endif // CCL_ENABLE_ITT
 
           bf16_impl_type(ccl_bf16_no_compiler_support),
           fp16_impl_type(ccl_fp16_no_compiler_support) {
@@ -161,7 +201,9 @@ env_data::env_data()
 
 void env_data::parse() {
     env_2_enum(CCL_LOG_LEVEL, ccl_logger::level_names, log_level);
+    env_2_type(CCL_ABORT_ON_THROW, abort_on_throw);
     ccl_logger::set_log_level(log_level);
+    ccl_logger::set_abort_on_throw(abort_on_throw);
     env_2_type(CCL_QUEUE_DUMP, queue_dump);
     env_2_type(CCL_SCHED_DUMP, sched_dump);
     env_2_type(CCL_SCHED_PROFILE, sched_profile);
@@ -183,9 +225,9 @@ void env_data::parse() {
     env_2_enum(CCL_FRAMEWORK, ccl_framework_type_names, fw_type);
 
     if (fw_type == ccl_framework_horovod) {
+        // enable_sync_coll = 1;
+        // enable_extra_ep = 1;
         worker_wait = 1;
-        enable_sync_coll = 1;
-        enable_extra_ep = 1;
         yield_type = ccl_yield_sched_yield;
     }
 
@@ -199,6 +241,7 @@ void env_data::parse() {
     env_2_type(CCL_ATL_RMA, enable_rma);
     env_2_type(CCL_ATL_HMEM, enable_hmem);
     if (atl_transport == ccl_atl_mpi && enable_hmem) {
+        LOG_INFO("atl hmem requested, switch to single worker");
         worker_count = 1;
     }
     env_2_enum(CCL_ATL_SEND_PROXY, atl_send_proxy_names, atl_send_proxy);
@@ -223,7 +266,6 @@ void env_data::parse() {
     env_2_type(CCL_BCAST, bcast_algo_raw);
     env_2_type(CCL_REDUCE, reduce_algo_raw);
     env_2_type(CCL_REDUCE_SCATTER, reduce_scatter_algo_raw);
-    env_2_type(CCL_SPARSE_ALLREDUCE, sparse_allreduce_algo_raw);
     env_2_type(CCL_UNORDERED_COLL, enable_unordered_coll);
     if (enable_unordered_coll && atl_transport != ccl_atl_ofi) {
         CCL_THROW("unordered collectives are supported for OFI transport only");
@@ -287,13 +329,24 @@ void env_data::parse() {
     CCL_THROW_IF_NOT(
         ar2d_min_chunk_size >= 1, "incorrect ", CCL_AR2D_MIN_CHUNK_SIZE, " ", ar2d_min_chunk_size);
 
+    env_2_type(CCL_ALLGATHERV_TOPO_LARGE_SCALE, allgatherv_topo_large_scale);
+
     env_2_type(CCL_ALLREDUCE_2D_BASE_SIZE, (size_t&)allreduce_2d_base_size);
     env_2_type(CCL_ALLREDUCE_2D_SWITCH_DIMS, allreduce_2d_switch_dims);
     env_2_type(CCL_ALLREDUCE_NREDUCE_BUFFERING, allreduce_nreduce_buffering);
     env_2_type(CCL_ALLREDUCE_NREDUCE_SEGMENT_SIZE, (size_t&)allreduce_nreduce_segment_size);
 
     env_2_type(CCL_ALLTOALL_SCATTER_MAX_OPS, (size_t&)alltoall_scatter_max_ops);
-    env_2_type(CCL_ALLTOALL_SCATTER_PLAIN, alltoall_scatter_plain);
+
+    env_2_enum(CCL_BACKEND, backend_names, backend);
+
+    env_2_type(CCL_LOCAL_RANK, local_rank);
+    env_2_type(CCL_LOCAL_SIZE, local_size);
+
+    env_2_enum(CCL_PROCESS_LAUNCHER, process_launcher_names, process_launcher);
+
+    env_2_type(CCL_TOPO_ALGO, enable_topo_algo);
+    env_2_topo(CCL_TOPO_COLOR, topo_color_names, topo_color);
 
 #ifdef CCL_ENABLE_SYCL
     env_2_type(CCL_KERNEL_PATH, kernel_path);
@@ -314,20 +367,62 @@ void env_data::parse() {
     env_2_type(CCL_KERNEL_1S_LEAD, kernel_1s_lead);
     env_2_type(CCL_KERNEL_1S_USE_COPY_OPS, enable_kernel_1s_copy_ops);
     env_2_type(CCL_KERNEL_1S_IPC_WA, enable_kernel_1s_ipc_wa);
-    env_2_type(CCL_KERNEL_PROFILE, enable_kernel_profile);
     env_2_type(CCL_KERNEL_CLOSE_FD_WA, enable_close_fd_wa);
 
     env_2_type(CCL_SYCL_OUTPUT_EVENT, enable_sycl_output_event);
+    env_2_type(CCL_USE_HMEM, use_hmem);
 
     env_2_type(CCL_ZE_BARRIER, enable_ze_barrier);
+    env_2_type(CCL_ZE_BIDIR_ALGO, enable_ze_bidir_algo);
     env_2_type(CCL_ZE_CACHE, enable_ze_cache);
+    env_2_type(CCL_ZE_CACHE_IPC_HANDLES, enable_ze_cache_ipc_handles);
+    env_2_type(CCL_ZE_CACHE_IPC_HANDLES_THRESHOLD, ze_cache_ipc_handles_threshold);
+    if (enable_ze_cache == 0) {
+        enable_ze_cache_ipc_handles = 0;
+    }
+    else if (enable_ze_cache && enable_ze_cache_ipc_handles) {
+        CCL_THROW_IF_NOT(ze_cache_ipc_handles_threshold > 0,
+                         "incorrect ",
+                         CCL_ZE_CACHE_IPC_HANDLES_THRESHOLD,
+                         " ",
+                         ze_cache_ipc_handles_threshold);
+    }
     env_2_type(CCL_ZE_SINGLE_LIST, enable_ze_single_list);
     env_2_type(CCL_ZE_DISABLE_FAMILY_CHECK, disable_ze_family_check);
     env_2_type(CCL_ZE_SERIALIZE, ze_serialize_mode);
     env_2_enum(CCL_ZE_COPY_ENGINE, ze_copy_engine_names, ze_copy_engine);
-    env_2_type(CCL_ZE_QUEUE_INDEX, ze_queue_index);
+    env_2_type(CCL_ZE_MAX_COMPUTE_QUEUES, ze_max_compute_queues);
+    CCL_THROW_IF_NOT(
+        ze_max_compute_queues == CCL_ENV_SIZET_NOT_SPECIFIED || ze_max_compute_queues > 0,
+        "incorrect ",
+        CCL_ZE_MAX_COMPUTE_QUEUES,
+        " ",
+        ze_max_compute_queues);
+    env_2_type(CCL_ZE_MAX_COPY_QUEUES, ze_max_copy_queues);
+    CCL_THROW_IF_NOT(ze_copy_engine == ccl_ze_copy_engine_none ||
+                         ze_max_copy_queues == CCL_ENV_SIZET_NOT_SPECIFIED ||
+                         ze_max_copy_queues > 0,
+                     "incorrect ",
+                     CCL_ZE_MAX_COPY_QUEUES,
+                     " ",
+                     ze_max_copy_queues);
+    env_2_type(CCL_ZE_LIST_DUMP, enable_ze_list_dump);
+    env_2_type(CCL_ZE_QUEUE_INDEX_OFFSET, ze_queue_index_offset);
+    CCL_THROW_IF_NOT(ze_queue_index_offset >= 0,
+                     "incorrect ",
+                     CCL_ZE_QUEUE_INDEX_OFFSET,
+                     " ",
+                     ze_queue_index_offset);
     env_2_type(CCL_ZE_CLOSE_IPC_WA, ze_close_ipc_wa);
+    env_2_type(CCL_ZE_LIBRARY_PATH, ze_lib_path);
+    env_2_type(CCL_ZE_ENABLE, ze_enable);
+    env_2_type(CCL_ZE_FINI_WA, ze_fini_wa);
+    env_2_type(CCL_ZE_MULTI_WORKERS, ze_multi_workers);
 #endif // CCL_ENABLE_SYCL
+
+#ifdef CCL_ENABLE_ITT
+    env_2_type(CCL_ITT_LEVEL, itt_level);
+#endif // CCL_ENABLE_ITT
 
     auto bf16_impl_types = ccl_bf16_get_impl_types();
     ccl_bf16_impl_type bf16_env_impl_type;
@@ -409,6 +504,7 @@ void env_data::print(int rank) {
     LOG_INFO(CCL_WORKER_WAIT, ": ", worker_wait);
 
     LOG_INFO(CCL_LOG_LEVEL, ": ", str_by_enum(ccl_logger::level_names, log_level));
+    LOG_INFO(CCL_ABORT_ON_THROW, ": ", abort_on_throw);
     LOG_INFO(CCL_QUEUE_DUMP, ": ", queue_dump);
     LOG_INFO(CCL_SCHED_DUMP, ": ", sched_dump);
     LOG_INFO(CCL_SCHED_PROFILE, ": ", sched_profile);
@@ -454,10 +550,6 @@ void env_data::print(int rank) {
         CCL_REDUCE_SCATTER,
         ": ",
         (reduce_scatter_algo_raw.length()) ? reduce_scatter_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
-    LOG_INFO(CCL_SPARSE_ALLREDUCE,
-             ": ",
-             (sparse_allreduce_algo_raw.length()) ? sparse_allreduce_algo_raw
-                                                  : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_UNORDERED_COLL, ": ", enable_unordered_coll);
 
     LOG_INFO(CCL_FUSION, ": ", enable_fusion);
@@ -488,6 +580,8 @@ void env_data::print(int rank) {
     LOG_INFO(CCL_AR2D_CHUNK_COUNT, ": ", ar2d_chunk_count);
     LOG_INFO(CCL_AR2D_MIN_CHUNK_SIZE, ": ", ar2d_min_chunk_size);
 
+    LOG_INFO(CCL_ALLGATHERV_TOPO_LARGE_SCALE, ": ", allgatherv_topo_large_scale);
+
     LOG_INFO(CCL_ALLREDUCE_2D_BASE_SIZE,
              ": ",
              (allreduce_2d_base_size != CCL_ENV_SIZET_NOT_SPECIFIED)
@@ -506,9 +600,24 @@ void env_data::print(int rank) {
              (alltoall_scatter_max_ops != CCL_ENV_SIZET_NOT_SPECIFIED)
                  ? std::to_string(alltoall_scatter_max_ops)
                  : CCL_ENV_STR_NOT_SPECIFIED);
-    LOG_INFO(CCL_ALLTOALL_SCATTER_PLAIN, ": ", alltoall_scatter_plain);
+
+    LOG_INFO(CCL_BACKEND, ": ", str_by_enum(backend_names, backend));
+
+    LOG_INFO(CCL_LOCAL_RANK,
+             ": ",
+             (local_rank != CCL_ENV_INT_NOT_SPECIFIED) ? std::to_string(local_rank)
+                                                       : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_LOCAL_SIZE,
+             ": ",
+             (local_size != CCL_ENV_INT_NOT_SPECIFIED) ? std::to_string(local_size)
+                                                       : CCL_ENV_STR_NOT_SPECIFIED);
+
+    LOG_INFO(CCL_PROCESS_LAUNCHER, ": ", str_by_enum(process_launcher_names, process_launcher));
 
 #ifdef CCL_ENABLE_SYCL
+    LOG_INFO(CCL_TOPO_ALGO, ": ", enable_topo_algo);
+    LOG_INFO(CCL_TOPO_COLOR, ": ", str_by_enum(topo_color_names, topo_color));
+
     LOG_INFO(
         CCL_KERNEL_PATH, ": ", (!kernel_path.empty()) ? kernel_path : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_KERNEL_DEBUG, ": ", kernel_debug);
@@ -525,20 +634,44 @@ void env_data::print(int rank) {
     LOG_INFO(CCL_KERNEL_1S_LEAD, ": ", kernel_1s_lead);
     LOG_INFO(CCL_KERNEL_1S_USE_COPY_OPS, ": ", enable_kernel_1s_copy_ops);
     LOG_INFO(CCL_KERNEL_1S_IPC_WA, ": ", enable_kernel_1s_ipc_wa);
-    LOG_INFO(CCL_KERNEL_PROFILE, ": ", enable_kernel_profile);
     LOG_INFO(CCL_KERNEL_CLOSE_FD_WA, ": ", enable_close_fd_wa);
 
     LOG_INFO(CCL_SYCL_OUTPUT_EVENT, ": ", enable_sycl_output_event);
+    LOG_INFO(CCL_USE_HMEM, ": ", use_hmem);
 
     LOG_INFO(CCL_ZE_BARRIER, ": ", enable_ze_barrier);
+    LOG_INFO(CCL_ZE_BIDIR_ALGO, ": ", enable_ze_bidir_algo);
     LOG_INFO(CCL_ZE_CACHE, ": ", enable_ze_cache);
+    LOG_INFO(CCL_ZE_CACHE_IPC_HANDLES, ": ", enable_ze_cache_ipc_handles);
+    LOG_INFO(CCL_ZE_CACHE_IPC_HANDLES_THRESHOLD, ": ", ze_cache_ipc_handles_threshold);
     LOG_INFO(CCL_ZE_SINGLE_LIST, ": ", enable_ze_single_list);
     LOG_INFO(CCL_ZE_DISABLE_FAMILY_CHECK, ": ", disable_ze_family_check);
     LOG_INFO(CCL_ZE_SERIALIZE, ": ", ze_serialize_mode);
     LOG_INFO(CCL_ZE_COPY_ENGINE, ": ", str_by_enum(ze_copy_engine_names, ze_copy_engine));
-    LOG_INFO(CCL_ZE_QUEUE_INDEX, ": ", ze_queue_index);
+    LOG_INFO(CCL_ZE_MAX_COMPUTE_QUEUES,
+             ": ",
+             (ze_max_compute_queues != CCL_ENV_SIZET_NOT_SPECIFIED)
+                 ? std::to_string(ze_max_compute_queues)
+                 : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_ZE_MAX_COPY_QUEUES,
+             ": ",
+             (ze_max_copy_queues != CCL_ENV_SIZET_NOT_SPECIFIED)
+                 ? std::to_string(ze_max_copy_queues)
+                 : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_ZE_LIST_DUMP, ": ", enable_ze_list_dump);
+    LOG_INFO(CCL_ZE_QUEUE_INDEX_OFFSET, ": ", ze_queue_index_offset);
     LOG_INFO(CCL_ZE_CLOSE_IPC_WA, ": ", ze_close_ipc_wa);
+    LOG_INFO(CCL_ZE_LIBRARY_PATH,
+             ": ",
+             (!ze_lib_path.empty()) ? ze_lib_path : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_ZE_ENABLE, ": ", ze_enable);
+    LOG_INFO(CCL_ZE_FINI_WA, ": ", ze_fini_wa);
+    LOG_INFO(CCL_ZE_MULTI_WORKERS, ": ", ze_multi_workers);
 #endif // CCL_ENABLE_SYCL
+
+#ifdef CCL_ENABLE_ITT
+    LOG_INFO(CCL_ITT_LEVEL, ": ", itt_level);
+#endif // CCL_ENABLE_ITT
 
     LOG_INFO(CCL_BF16, ": ", str_by_enum(bf16_impl_names, bf16_impl_type));
     LOG_INFO(CCL_FP16, ": ", str_by_enum(fp16_impl_names, fp16_impl_type));
@@ -576,12 +709,8 @@ int env_data::env_2_worker_affinity_auto(int local_proc_idx, size_t workers_per_
 
     LOG_DEBUG("available_cores ", available_cores);
 
-    std::set<char> delims;
-    for (char c : std::string(I_MPI_AVAILABLE_CORES_DELIMS)) {
-        delims.insert(c);
-    }
     std::vector<size_t> cores;
-    ccl_str_to_array(available_cores, delims, cores);
+    ccl::utils::str_to_array(available_cores, std::string(I_MPI_AVAILABLE_CORES_DELIMS), cores);
 
     CCL_THROW_IF_NOT(workers_per_process <= cores.size(),
                      "failed to implicitly set workers affinity, "
@@ -664,7 +793,7 @@ int env_data::parse_affinity(const std::string& input,
             break;
         }
 
-        auto range = tokenize<std::vector<std::string>>(std::string(range_str), '-');
+        auto range = ccl::utils::tokenize<std::vector<std::string>>(std::string(range_str), '-');
 
         if ((range.size() != 2) && (range.size() != 1)) {
             LOG_ERROR(

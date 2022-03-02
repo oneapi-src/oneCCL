@@ -37,11 +37,7 @@ ze_a2a_allreduce_entry::ze_a2a_allreduce_entry(ccl_sched* sched,
                                                std::vector<ze_event_handle_t> wait_events,
                                                size_t send_buf_idx,
                                                size_t recv_buf_idx)
-        : ze_base_entry(sched,
-                        (init_mode::compute | init_mode::copy),
-                        comm,
-                        comm->size() * event_group_count,
-                        wait_events),
+        : ze_base_entry(sched, comm, comm->size() * event_group_count, wait_events),
           send_buf(send_buf),
           recv_buf(recv_buf),
           cnt(cnt),
@@ -56,7 +52,7 @@ ze_a2a_allreduce_entry::ze_a2a_allreduce_entry(ccl_sched* sched,
     skip_entry = !count_check || ((comm->size() == 1) && (send_buf == recv_buf));
     if (skip_entry) {
         // skip entry init and finalize
-        sched->get_memory().ze_entries.pop_back();
+        sched->ze_entries.pop_back();
     }
 }
 
@@ -117,8 +113,7 @@ void ze_a2a_allreduce_entry::init_ze_hook() {
 
     barrier_event = ze_base_entry::create_event();
 
-    ze_a2a_reduce_scatter_entry::fill_list(ze_base_entry::get_copy_list(),
-                                           ze_base_entry::get_comp_list(),
+    ze_a2a_reduce_scatter_entry::fill_list(this,
                                            send_buf.get_ptr(),
                                            tmp_buf,
                                            peer_send_bufs,
@@ -142,7 +137,8 @@ void ze_a2a_allreduce_entry::init_ze_hook() {
         event = ze_base_entry::create_event();
     }
 
-    ze_a2a_allgatherv_entry::fill_list(ze_base_entry::get_copy_list(),
+    ze_a2a_allgatherv_entry::fill_list(this,
+                                       comm_rank,
                                        tmp_buf,
                                        recv_buf.get_ptr(),
                                        peer_recv_bufs,

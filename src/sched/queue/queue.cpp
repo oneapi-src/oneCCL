@@ -156,6 +156,7 @@ size_t ccl_sched_queue::erase(ccl_sched_bin* bin, size_t idx) {
     size_t bin_priority = bin->get_priority();
 
     LOG_DEBUG("queue ", this, ", bin ", bin);
+
     size_t next_idx = 0;
 
     // erase sched and check bin size after

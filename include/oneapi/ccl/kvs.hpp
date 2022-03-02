@@ -25,9 +25,13 @@ class environment;
 }
 namespace v1 {
 class communicator;
-}
+class kvs;
+} // namespace v1
 
-class kvs_impl;
+class base_kvs_impl;
+
+template <class T>
+const T* get_kvs_impl_typed(std::shared_ptr<ccl::v1::kvs>);
 
 namespace v1 {
 
@@ -55,14 +59,16 @@ public:
 
 private:
     friend class ccl::detail::environment;
-    friend class ccl::v1::communicator;
+
+    template <class T>
+    friend const T* ccl::get_kvs_impl_typed(std::shared_ptr<kvs>);
 
     kvs(const kvs_attr& attr);
     kvs(const address_type& addr, const kvs_attr& attr);
-    const kvs_impl& get_impl();
+    const base_kvs_impl& get_impl();
 
     address_type addr;
-    unique_ptr_class<kvs_impl> pimpl;
+    unique_ptr_class<base_kvs_impl> pimpl;
 };
 
 } // namespace v1

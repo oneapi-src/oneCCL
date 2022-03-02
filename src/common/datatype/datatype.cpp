@@ -23,7 +23,7 @@
 const ccl::datatype last_predefined_dt = ccl::datatype::bfloat16;
 
 namespace ccl {
-using datatype_str_enum = utils::enum_to_str<utils::enum_to_underlying(last_predefined_dt) + 1>;
+using datatype_str_enum = ::utils::enum_to_str<::utils::enum_to_underlying(last_predefined_dt) + 1>;
 string_class to_string(const datatype& dt) {
     return datatype_str_enum({ "INT8",
                                "UINT8",
@@ -102,7 +102,7 @@ ccl_datatype_storage::ccl_datatype_storage() {
                    : (idx == ccl::datatype::float32)  ? "float32"
                    : (idx == ccl::datatype::float64)  ? "float64"
                    : (idx == ccl::datatype::bfloat16) ? "bfloat16"
-                                                      : 0;
+                                                      : "";
 
         create_internal(predefined_table, idx, size, name_str);
 
@@ -134,7 +134,7 @@ void ccl_datatype_storage::create_internal(ccl_datatype_table_t& table,
                                            const std::string& name) {
     CCL_THROW_IF_NOT(table.find(idx) == table.end(), "datatype index is busy, idx ", idx);
     table[idx] = std::make_pair(ccl_datatype(idx, size), name);
-    LOG_DEBUG("created datatype idx: ", idx, ", size: ", size, ", name: ", name);
+    // LOG_DEBUG("created datatype idx: ", idx, ", size: ", size, ", name: ", name);
 }
 
 ccl::datatype ccl_datatype_storage::create_by_datatype_size(size_t datatype_size) {

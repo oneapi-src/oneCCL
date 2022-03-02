@@ -30,7 +30,6 @@ const char* ccl_coll_type_to_str(ccl_coll_type type) {
         case ccl_coll_bcast: return "bcast";
         case ccl_coll_reduce: return "reduce";
         case ccl_coll_reduce_scatter: return "reduce_scatter";
-        case ccl_coll_sparse_allreduce: return "sparse_allreduce";
         case ccl_coll_partial: return "partial";
         case ccl_coll_undefined: return "undefined";
         default: return "unknown";

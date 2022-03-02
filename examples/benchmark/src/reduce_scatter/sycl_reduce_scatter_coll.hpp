@@ -81,7 +81,7 @@ struct sycl_reduce_scatter_coll : sycl_base_coll<Dtype, reduce_scatter_strategy_
 
             for (size_t e_idx = 0; e_idx < recv_elem_count; e_idx++) {
                 Dtype value = host_recv_buf[e_idx];
-                if (value != rbuf_expected) {
+                if (base_coll::check_error<Dtype>(value, rbuf_expected, comm)) {
                     std::cout << this->name() << " recv_bufs: buf_idx " << b_idx << ", rank_idx "
                               << rank_idx << ", elem_idx " << e_idx << ", expected "
                               << rbuf_expected << ", got " << value << std::endl;

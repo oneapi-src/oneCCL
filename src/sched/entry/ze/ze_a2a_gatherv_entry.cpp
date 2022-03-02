@@ -29,7 +29,7 @@ ze_a2a_gatherv_entry::ze_a2a_gatherv_entry(ccl_sched* sched,
                                            int root,
                                            ccl_comm* comm,
                                            size_t peer_buf_idx)
-        : ze_base_entry(sched, init_mode::copy, comm),
+        : ze_base_entry(sched, comm),
           send_buf(send_buf),
           send_bytes(send_count * dtype.size()),
           recv_buf(recv_buf),

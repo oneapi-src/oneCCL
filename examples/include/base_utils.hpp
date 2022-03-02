@@ -193,4 +193,22 @@ void str_to_mset(const char* input, std::multiset<T>& output, char delimiter) {
         }
     }
 }
+
+template <class Container>
+std::string vec_to_string(Container& elems) {
+    if (elems.empty()) {
+        return "<empty>";
+    }
+
+    size_t idx = 0;
+    std::ostringstream ss;
+    for (auto elem : elems) {
+        ss << elem;
+        idx++;
+        if (idx < elems.size()) {
+            ss << " ";
+        }
+    }
+    return ss.str();
+}
 } // namespace utils

@@ -22,7 +22,9 @@ std::map<ccl_coll_reduce_algo, std::string>
         std::make_pair(ccl_coll_reduce_rabenseifner, "rabenseifner"),
         std::make_pair(ccl_coll_reduce_tree, "tree"),
         std::make_pair(ccl_coll_reduce_double_tree, "double_tree"),
+#ifdef CCL_ENABLE_SYCL
         std::make_pair(ccl_coll_reduce_topo, "topo")
+#endif // CCL_ENABLE_SYCL
     };
 
 ccl_algorithm_selector<ccl_coll_reduce>::ccl_algorithm_selector() {

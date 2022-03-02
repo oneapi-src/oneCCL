@@ -26,8 +26,8 @@ using sycl_buffer_t = cl::sycl::buffer<Dtype, 1>;
 
 #define COLL_ROOT (0)
 
-#define BF16_COEF 0.00001
-#define FP16_COEF 0.0001
+#define BF16_COEF 0.5
+#define FP16_COEF 0.01
 
 struct base_coll;
 
@@ -58,8 +58,7 @@ typedef struct bench_exec_attr {
                                            ccl::shared_ptr_class<ccl::alltoallv_attr>,
                                            ccl::shared_ptr_class<ccl::reduce_attr>,
                                            ccl::shared_ptr_class<ccl::broadcast_attr>,
-                                           ccl::shared_ptr_class<ccl::reduce_scatter_attr>/*,
-                                           ccl::shared_ptr_class<ccl::sparse_allreduce_attr>*/>;
+                                           ccl::shared_ptr_class<ccl::reduce_scatter_attr>>;
 
     template <class attr_t>
     attr_t& get_attr() {
@@ -115,6 +114,16 @@ inline ccl::float16 get_val<ccl::float16, float>(float value) {
     return fp32_to_fp16(FP16_COEF * value);
 }
 
+template <>
+inline float get_val<float, ccl::bfloat16>(ccl::bfloat16 value) {
+    return bf16_to_fp32(value);
+}
+
+template <>
+inline float get_val<float, ccl::float16>(ccl::float16 value) {
+    return fp16_to_fp32(value);
+}
+
 /* base polymorph collective wrapper class */
 struct base_coll {
     base_coll(bench_init_attr init_attr) : init_attr(init_attr) {
@@ -156,6 +165,44 @@ struct base_coll {
             std::fill(res.begin(), res.end(), fill_value);
         }
         return res;
+    }
+    template <class Dtype>
+    bool check_error(Dtype value, Dtype expected, ccl::communicator& comm) {
+        float max_error = 0;
+        float precision = 0;
+        float value_float = 0;
+        float expected_float = 0;
+        ccl::datatype dt = get_dtype();
+        if (dt == ccl::datatype::float16) {
+            precision = 2 * FP16_PRECISION;
+        }
+        else if (dt == ccl::datatype::float32) {
+            precision = FP32_PRECISION;
+        }
+        else if (dt == ccl::datatype::float64) {
+            precision = FP64_PRECISION;
+        }
+        else if (dt == ccl::datatype::bfloat16) {
+            precision = 2 * BF16_PRECISION;
+        }
+        expected_float = get_val<float>(expected);
+        value_float = get_val<float>(value);
+
+        if (precision) {
+            if (comm.size() == 1) {
+                max_error = precision;
+            }
+            else {
+                /* https://www.mcs.anl.gov/papers/P4093-0713_1.pdf */
+                float log_base2 = log(comm.size()) / log(2);
+                float g = (log_base2 * precision) / (1 - (log_base2 * precision));
+                max_error = expected_float * g;
+            }
+        }
+        if (fabs(max_error) < fabs(expected_float - value_float)) {
+            return 1;
+        }
+        return 0;
     }
 
     virtual void prepare(size_t elem_count) {

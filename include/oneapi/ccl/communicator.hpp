@@ -24,12 +24,10 @@ namespace detail {
 class environment;
 }
 
-struct communicator_interface;
+struct comm_interface;
 
 template <cl_backend_type type>
 struct comm_impl_dispatch_selector;
-
-class comm_group;
 
 namespace v1 {
 class context;
@@ -44,13 +42,11 @@ struct impl_dispatch;
  */
 class communicator final : public ccl_api_base_movable<communicator,
                                                        direct_access_policy,
-                                                       communicator_interface,
+                                                       comm_interface,
                                                        std::shared_ptr> {
 public:
-    using base_t = ccl_api_base_movable<communicator,
-                                        direct_access_policy,
-                                        communicator_interface,
-                                        std::shared_ptr>;
+    using base_t =
+        ccl_api_base_movable<communicator, direct_access_policy, comm_interface, std::shared_ptr>;
 
     /**
      * Declare PIMPL type
@@ -103,7 +99,6 @@ public:
 
 private:
     friend class ccl::detail::environment;
-    friend class ccl::comm_group;
     friend struct ccl::v1::impl_dispatch;
 
     template <cl_backend_type type>

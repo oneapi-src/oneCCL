@@ -16,7 +16,7 @@
 #pragma once
 
 #ifdef CCL_ENABLE_ZE
-#include <ze_api.h>
+#include "common/ze/ze_api_wrapper.hpp"
 #endif // CCL_ENABLE_ZE
 #ifdef CCL_ENABLE_SYCL
 #include <CL/sycl.hpp>

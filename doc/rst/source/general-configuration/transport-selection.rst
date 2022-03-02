@@ -1,12 +1,11 @@
-.. _mpi: https://software.intel.com/content/www/us/en/develop/tools/mpi-library.html
+.. _mpi: https://www.intel.com/content/www/us/en/developer/tools/oneapi/mpi-library.html
 
 ===================
-Transport selection
+Transport Selection
 ===================
 
-|product_short| supports two transports for inter-node communication: |mpi|_ and `Libfabric* <https://github.com/ofiwg/libfabric>`_.
+|product_short| supports two transports for inter-process communication: |mpi|_ and `libfabric* <https://github.com/ofiwg/libfabric>`_.
 
 The transport selection is controlled by :ref:`CCL_ATL_TRANSPORT`.
 
-In case of MPI over Libfabric implementation (for example, Intel\ |reg|\  MPI Library 2019) or in case of direct Libfabric transport, 
-the selection of specific Libfabric provider is controlled by the ``FI_PROVIDER`` environment variable.
+In case of MPI over libfabric implementation (for example, ``Intel(R) MPI Library 2021``) or in case of direct libfabric transport, the selection of specific libfabric provider is controlled by the ``FI_PROVIDER`` environment variable.

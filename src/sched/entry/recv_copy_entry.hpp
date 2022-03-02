@@ -61,9 +61,9 @@ protected:
                            ", atl_tag ",
                            atl_tag,
                            ", comm_id ",
-                           sched->get_comm_id(),
+                           comm->get_comm_id(),
                            ", req ",
-                           &req,
+                           req,
                            "\n");
     }
 

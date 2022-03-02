@@ -20,16 +20,16 @@
 
 #include "coll/coll_attributes.hpp"
 
-#include "common/comm/comm_common_attr.hpp"
+#include "comm/comm_common_attr.hpp"
 #include "comm_attr_impl.hpp"
 
-#include "common/comm/comm_split_common_attr.hpp"
+#include "comm/comm_split_common_attr.hpp"
 #include "comm_split_attr_impl.hpp"
 
 #include "stream_impl.hpp"
 
 #include "common/global/global.hpp"
-#include "common/comm/comm.hpp"
+#include "comm/comm.hpp"
 
 #include "oneapi/ccl/communicator.hpp"
 

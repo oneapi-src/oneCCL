@@ -1,9 +1,9 @@
 .. _`here`: https://github.com/ofiwg/libfabric/releases/tag/v1.13.2
 .. _`documentation`: https://one-api.gitlab-pages.devtools.intel.com/level_zero/core/PROG.html#affinity-mask
 
-=====================================
-Enabling OFI/verbs dmabuf support
-=====================================
+=================================
+Enabling OFI/verbs/dmabuf Support
+=================================
 
 |product_short| provides experimental support for data transfers between Intel GPU memory and NIC using Linux dmabuf, which is exposed through OFI API for verbs provider.
 
@@ -19,9 +19,9 @@ Requirements
 Usage
 #####
 
-|product_short|, OFI and OFI/verbs from |base_tk| support device memory transfers. Refer to `Run instructions`__ for usage.
+|product_short|, OFI and OFI/verbs from |base_tk| support device memory transfers. Refer to `Run instructions`_ for usage.
 
-If you want to build software components from sources, refer to `Build instructions`__.
+If you want to build software components from sources, refer to `Build instructions`_.
 
 
 Build instructions
@@ -47,7 +47,7 @@ OFI
 
 ::
 
-    cmake -DCMAKE_INSTALL_PREFIX=<ccl_install_dir> -DLIBFABRIC_DIR=<ofi_install_dir> -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=dpcpp -DCOMPUTE_BACKEND=dpcpp_level_zero -DENABLE_OFI_HMEM=1 ..
+    cmake -DCMAKE_INSTALL_PREFIX=<ccl_install_dir> -DLIBFABRIC_DIR=<ofi_install_dir> -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=dpcpp -DCOMPUTE_BACKEND=dpcpp -DENABLE_OFI_HMEM=1 ..
     make -j install
 
 

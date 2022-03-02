@@ -35,7 +35,8 @@ extern "C" {
  * from a core in another node.
  * The corresponding kind is ::HWLOC_DISTANCES_KIND_FROM_OS | ::HWLOC_DISTANCES_KIND_FROM_USER.
  * The name of this distances structure is "NUMALatency".
- * Others distance structures include and "XGMIBandwidth" and "NVLinkBandwidth".
+ * Others distance structures include and "XGMIBandwidth", "XGMIHops"
+ * and "NVLinkBandwidth".
  *
  * The matrix may also contain bandwidths between random sets of objects,
  * possibly provided by the user, as specified in the \p kind attribute.
@@ -46,6 +47,8 @@ extern "C" {
  * For instance, if there is a single NUMA node per Package,
  * hwloc_get_obj_with_same_locality() may be used to convert between them
  * and replace NUMA nodes in the \p objs array with the corresponding Packages.
+ * See also hwloc_distances_transform() for applying some transformations
+ * to the structure.
  */
 struct hwloc_distances_s {
   unsigned nbobjs;		/**< \brief Number of objects described by the distance matrix. */
@@ -157,7 +160,7 @@ hwloc_distances_get_by_type(hwloc_topology_t topology, hwloc_obj_type_t type,
  * Usually only one distances structure may match a given name.
  *
  * The name of the most common structure is "NUMALatency".
- * Others include "XGMIBandwidth" and "NVLinkBandwidth".
+ * Others include "XGMIBandwidth", "XGMIHops" and "NVLinkBandwidth".
  */
 HWLOC_DECLSPEC int
 hwloc_distances_get_by_name(hwloc_topology_t topology, const char *name,
@@ -208,7 +211,23 @@ enum hwloc_distances_transform_e {
    *
    * \hideinitializer
    */
-  HWLOC_DISTANCES_TRANSFORM_LINKS = 1
+  HWLOC_DISTANCES_TRANSFORM_LINKS = 1,
+
+  /** \brief Merge switches with multiple ports into a single object.
+   * This currently only applies to NVSwitches where GPUs seem connected to different
+   * separate switch ports in the NVLinkBandwidth matrix. This transformation will
+   * replace all of them with the same port connected to all GPUs.
+   * Other ports are removed by applying ::HWLOC_DISTANCES_TRANSFORM_REMOVE_NULL internally.
+   * \hideinitializer
+   */
+  HWLOC_DISTANCES_TRANSFORM_MERGE_SWITCH_PORTS = 2,
+
+  /** \brief Apply a transitive closure to the matrix to connect objects across switches.
+   * This currently only applies to GPUs and NVSwitches in the NVLinkBandwidth matrix.
+   * All pairs of GPUs will be reported as directly connected.
+   * \hideinitializer
+   */
+  HWLOC_DISTANCES_TRANSFORM_TRANSITIVE_CLOSURE = 3
 };
 
 /** \brief Apply a transformation to a distances structure.
@@ -231,6 +250,11 @@ enum hwloc_distances_transform_e {
  * \p transform_attr must be \c NULL for now.
  *
  * \p flags must be \c 0 for now.
+ *
+ * \note Objects in distances array \p objs may be directly modified
+ * in place without using hwloc_distances_transform().
+ * One may use hwloc_get_obj_with_same_locality() to easily convert
+ * between similar objects of different types.
  */
 HWLOC_DECLSPEC int hwloc_distances_transform(hwloc_topology_t topology, struct hwloc_distances_s *distances,
                                              enum hwloc_distances_transform_e transform,

@@ -22,7 +22,9 @@ std::map<ccl_coll_bcast_algo, std::string>
         std::make_pair(ccl_coll_bcast_ring, "ring"),
         std::make_pair(ccl_coll_bcast_double_tree, "double_tree"),
         std::make_pair(ccl_coll_bcast_naive, "naive"),
+#ifdef CCL_ENABLE_SYCL
         std::make_pair(ccl_coll_bcast_topo, "topo")
+#endif // CCL_ENABLE_SYCL
     };
 
 ccl_algorithm_selector<ccl_coll_bcast>::ccl_algorithm_selector() {

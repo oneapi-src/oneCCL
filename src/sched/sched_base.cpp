@@ -19,7 +19,7 @@
 #include "coll/coll_param.hpp"
 #include "coll/selection/selection.hpp"
 #include "common/global/global.hpp"
-#include "common/comm/comm.hpp"
+#include "comm/comm.hpp"
 #include "common/utils/sycl_utils.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
 #include "sched/sched_base.hpp"
@@ -36,7 +36,7 @@ ccl_sched_base::ccl_sched_base(const ccl_sched_create_param& param)
         auto node_comm = coll_param.comm->get_node_comm().get();
         memory.handle_manager.init(node_comm, coll_param.stream);
         memory.ipc_event_pool_manager.init(coll_param.stream);
-        memory.list_manager.reset(new ccl::ze::list_manager(coll_param.stream));
+        memory.list_manager.reset(new ccl::ze::list_manager(this, coll_param.stream));
     }
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 }
@@ -61,7 +61,8 @@ void ccl_sched_base::set_coll_attr(const ccl_coll_attr& attr) {
 void ccl_sched_base::update_coll_param_and_attr(const ccl_coll_param& param,
                                                 const ccl_coll_attr& attr) {
 #ifdef CCL_ENABLE_SYCL
-    coll_param.sync_deps(param.stream, param.deps);
+    // we already have barrier event in the list, just update coll param
+    coll_param.copy_deps(param.deps);
 #endif // CCL_ENABLE_SYCL
 
     bool has_pre_post_copies =
@@ -101,13 +102,6 @@ void ccl_sched_base::update_coll_param_and_attr(const ccl_coll_param& param,
         if (coll_attr.is_vector_buf)
             CCL_THROW_IF_NOT(static_cast<int>(coll_param.recv_bufs.size()) == comm_size);
         CCL_THROW_IF_NOT(static_cast<int>(coll_param.recv_counts.size()) == comm_size);
-    }
-
-    if (coll_param.ctype == ccl_coll_sparse_allreduce) {
-        coll_param.sparse_param.send_ind_buf = param.sparse_param.send_ind_buf;
-        coll_param.sparse_param.send_val_buf = param.sparse_param.send_val_buf;
-        coll_param.sparse_param.recv_ind_buf = param.sparse_param.recv_ind_buf;
-        coll_param.sparse_param.recv_val_buf = param.sparse_param.recv_val_buf;
     }
 
     if (ccl::global_data::env().priority_mode == ccl_priority_direct) {
@@ -171,18 +165,71 @@ void ccl_sched_base::dealloc_buffer(const ccl::dealloc_param& user_param) {
 }
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-bool ccl_sched_base::enable_ze_single_list() {
-    memory.use_single_list =
-        ccl::global_data::env().enable_ze_single_list &&
-        ccl::global_data::env().kernel_debug == 0 &&
-        ((ccl::global_data::env().ze_serialize_mode & ze_call::serialize_mode::block) == 0) &&
-        !ccl::global_data::env().enable_fusion;
-    return memory.use_single_list;
+bool ccl_sched_base::try_enable_ze_single_list() {
+    CCL_THROW_IF_NOT(ze_entries.empty(),
+                     "trying to modify the list mode after ze_entries has already been formed");
+    use_single_list = ccl::global_data::env().enable_ze_single_list &&
+                      ccl::global_data::env().kernel_debug == 0 &&
+                      !ccl::global_data::env().enable_fusion;
+    return use_single_list;
+}
+
+void ccl_sched_base::append_to_ze_entries_list(sched_entry* entry) {
+    if (memory.list_manager && memory.list_manager->is_executed()) {
+        CCL_THROW("modifying ze_entries during list execution");
+    }
+    ze_entries.push_back(entry);
 }
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
+void ccl_sched_base::sched_complete_hook() {
+    if (!coll_attr.to_cache) {
+        /* don't wait sched dtor to clear memory */
+        clear_memory();
+    }
+    else {
+        /* just reset without destroy */
+        reset_memory_state();
+    }
+
+#ifdef CCL_ENABLE_ZE
+    for (auto& ze_entry : ze_entries) {
+        /** During the start of the schedule, all entries contained in
+         *  ze_entries list were initialized. If this exception is throw,
+         *  it means that the entry was initialized but never started.
+         *  This is unexpected behavior and can lead to issues and overhead.
+         *  Need to make sure that the entry in ze_entries list is really needed
+         *  and skip the entry initialization if not.
+         */
+        ze_base_entry* ptr = reinterpret_cast<ze_base_entry*>(ze_entry);
+        CCL_THROW_IF_NOT(ptr->get_status() >= ccl_sched_entry_status_started,
+                         "entry ",
+                         ptr->name(),
+                         " ",
+                         ptr,
+                         " was initialized but never started");
+        CCL_THROW_IF_NOT(ptr->is_finalized || coll_attr.to_cache,
+                         "entry ",
+                         ptr->name(),
+                         " ",
+                         ptr,
+                         " was not finalized");
+    }
+#endif // CCL_ENABLE_ZE
+}
+
+/* in this function we just reset state without destroy if to_cache=1,
+   function is called on sched complete and never be called*/
+void ccl_sched_base::reset_memory_state() {
+#ifdef CCL_ENABLE_ZE
+    if (!ze_entries.empty()) {
+        get_memory().event_manager->reset();
+        get_memory().list_manager->reset_execution_state();
+    }
+#endif // CCL_ENABLE_ZE
+}
+
 void ccl_sched_base::clear_memory() {
-    memory.buffer_manager.clear();
 #ifdef CCL_ENABLE_ZE
     if (coll_param.stream &&
         coll_param.stream->get_backend() == ccl::utils::get_level_zero_backend()) {
@@ -194,9 +241,9 @@ void ccl_sched_base::clear_memory() {
         if (memory.list_manager) {
             memory.list_manager->clear();
         }
-        memory.ze_entries.clear();
     }
 #endif // CCL_ENABLE_ZE
+    memory.buffer_manager.clear();
     free_memory_regions();
 }
 
@@ -227,8 +274,9 @@ void ccl_sched_base::free_memory_regions() {
     ccl_coll_param param{};
     param.ctype = ccl_coll_undefined;
     param.comm = coll_param.comm;
-    std::unique_ptr<ccl_extra_sched> dereg_sched(
-        new ccl_extra_sched({ ccl_sched_regular, sched_id, param }));
+    ccl_sched* sched = nullptr;
+    std::unique_ptr<ccl_sched> dereg_sched(
+        new ccl_sched({ ccl_sched_regular, sched_id, param }, sched));
     entry_factory::create<deregister_entry>(dereg_sched.get(), memory.mr_list, param.comm);
 
     if (ccl::global_data::get().is_worker_thread || !ccl::global_data::env().worker_offload) {
@@ -308,10 +356,6 @@ void ccl_sched_base::get_pre_post_copy_counts(std::vector<size_t>& d2h_counts,
             d2h_counts.push_back(param.get_send_count());
             h2d_counts.push_back(param.get_recv_count());
             break;
-        case ccl_coll_sparse_allreduce:
-            CCL_FATAL("SYCL stream is not supported for sparse_allreduce yet");
-            CCL_ASSERT(0);
-            break;
         default: break;
     }
 }
@@ -346,13 +390,14 @@ void ccl_sched_base::alloc_buffers_for_pre_post_copy() {
             auto usm_type =
                 sycl::get_pointer_type(bufs[0], param.stream->get_native_stream().get_context());
             if ((usm_type == sycl::usm::alloc::host) || (usm_type == sycl::usm::alloc::shared) ||
-                ((usm_type == sycl::usm::alloc::device) && atl_base_comm::attr.out.enable_hmem)) {
+                ((usm_type == sycl::usm::alloc::device) && ccl::global_data::env().use_hmem &&
+                 atl_base_comm::attr.out.enable_hmem)) {
                 should_alloc_buffers = false;
             }
         }
     }
 
-    LOG_DEBUG("coll_type ", param.ctype, ", should_alloc_buffers ", should_alloc_buffers);
+    LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), ", alloc_buffers ", should_alloc_buffers);
 
     if (!should_alloc_buffers) {
         return;
@@ -370,7 +415,7 @@ void ccl_sched_base::alloc_buffers_for_pre_post_copy() {
     bool reuse_buffers;
     get_pre_post_copy_counts(d2h_counts, h2d_counts, reuse_buffers);
 
-    LOG_DEBUG("alloc tmp buffers for D2H and H2D copies, coll_type ",
+    LOG_DEBUG("alloc tmp buffers for D2H and H2D copies, coll ",
               ccl_coll_type_to_str(param.ctype),
               ", dtype_size ",
               param.dtype.size(),

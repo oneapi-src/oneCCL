@@ -50,7 +50,8 @@ public:
 
     void update() override;
 
-    static void fill_list(ze_command_list_handle_t list,
+    static void fill_list(const ze_base_entry* entry,
+                          int comm_rank,
                           void* send_buf,
                           void* recv_buf,
                           const std::vector<ccl_buffer>& peer_recv_bufs,
@@ -60,6 +61,11 @@ public:
                           bool is_inplace,
                           std::vector<ze_event_handle_t>& copy_events,
                           ze_event_handle_t wait_event = nullptr);
+
+protected:
+    void dump_detail(std::stringstream& str) const override {
+        ccl_logger::format(str, "comm ", comm->to_string(), "\n");
+    }
 
 private:
     static constexpr size_t event_group_count{ 1 }; // copy phase

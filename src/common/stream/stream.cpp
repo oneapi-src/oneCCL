@@ -16,7 +16,7 @@
 #include "common/global/global.hpp"
 #include "common/log/log.hpp"
 #include "common/stream/stream.hpp"
-#include "common/stream/stream_provider_dispatcher_impl.hpp"
+#include "common/stream/stream_selector_impl.hpp"
 #include "common/utils/enums.hpp"
 #include "common/utils/sycl_utils.hpp"
 #include "oneapi/ccl/native_device_api/export_api.hpp"
@@ -50,23 +50,11 @@ ccl_stream::ccl_stream(stream_type type,
 
 #ifdef CCL_ENABLE_SYCL
     cl::sycl::property_list props{};
-    // TODO: can we somehow simplify this?
     if (stream.is_in_order()) {
-        if (ccl::global_data::env().enable_kernel_profile) {
-            props = { sycl::property::queue::in_order{},
-                      sycl::property::queue::enable_profiling{} };
-        }
-        else {
-            props = { sycl::property::queue::in_order{} };
-        }
+        props = { sycl::property::queue::in_order{} };
     }
     else {
-        if (ccl::global_data::env().enable_kernel_profile) {
-            props = { sycl::property::queue::enable_profiling{} };
-        }
-        else {
-            props = {};
-        }
+        props = {};
     }
 
     native_streams.resize(ccl::global_data::env().worker_count);
@@ -78,7 +66,7 @@ ccl_stream::ccl_stream(stream_type type,
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_ZE
-    if (backend == ccl::utils::get_level_zero_backend()) {
+    if (backend == ccl::utils::get_level_zero_backend() && ccl::global_data::get().ze_data) {
         device = sycl::get_native<ccl::utils::get_level_zero_backend()>(stream.get_device());
         context = sycl::get_native<ccl::utils::get_level_zero_backend()>(stream.get_context());
         device_family = ccl::ze::get_device_family(device);

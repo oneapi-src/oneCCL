@@ -71,32 +71,32 @@ public:
         if (status == ccl_sched_entry_status_started) {
             size_t bytes = in_cnt * dtype.size();
             LOG_DEBUG(
-                "cancel RECV in RECV_REDUCE entry, src ", src, ", req ", &req, ", bytes", bytes);
-            comm->get_atl_comm()->cancel(sched->bin->get_atl_ep(), &req);
+                "cancel RECV in RECV_REDUCE entry, src ", src, ", req ", req, ", bytes", bytes);
+            comm->get_atl_comm()->cancel(sched->bin->get_atl_ep(), req);
         }
     }
 
     void start() override {
         atl_tag = comm->get_atl_comm()->tag->create(
-            src, sched->get_comm_id(), sched->sched_id, sched->get_op_id());
+            src, comm->get_comm_id(), sched->sched_id, sched->get_op_id());
         size_t bytes = in_cnt * dtype.size();
         LOG_DEBUG("starting RECV in RECV_REDUCE entry, src ",
                   src,
                   ", tag ",
                   atl_tag,
                   ", req ",
-                  &req,
+                  req,
                   ", bytes ",
                   bytes);
 
         atl_status_t atl_status = comm->get_atl_comm()->recv(
-            sched->bin->get_atl_ep(), comm_buf.get_ptr(bytes), bytes, src, atl_tag, &req);
+            sched->bin->get_atl_ep(), comm_buf.get_ptr(bytes), bytes, src, atl_tag, req);
 
         update_status(atl_status);
     }
 
     void update() override {
-        atl_status_t atl_status = comm->get_atl_comm()->check(sched->bin->get_atl_ep(), &req);
+        atl_status_t atl_status = comm->get_atl_comm()->check(sched->bin->get_atl_ep(), req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("RECV_REDUCE entry failed. atl_status: ", atl_status_to_str(atl_status));
@@ -106,7 +106,7 @@ public:
             return;
         }
 
-        LOG_DEBUG("completed RECV in RECV_REDUCE entry, req=", &req, ", starting REDUCE");
+        LOG_DEBUG("completed RECV in RECV_REDUCE entry, req=", req, ", starting REDUCE");
         size_t bytes = in_cnt * dtype.size();
         size_t offset = inout_buf.get_offset();
 
@@ -155,13 +155,13 @@ protected:
                            ", atl_tag ",
                            atl_tag,
                            ", comm_id ",
-                           sched->get_comm_id(),
+                           comm->get_comm_id(),
                            ", comm_buf ",
                            comm_buf,
                            ", result_buf_type ",
                            result_buf_type,
                            ", req ",
-                           &req,
+                           req,
                            "\n");
     }
 

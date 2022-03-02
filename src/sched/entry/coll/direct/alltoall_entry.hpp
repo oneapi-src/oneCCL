@@ -35,21 +35,15 @@ public:
               recv_buf(recv_buf),
               cnt(cnt),
               dtype(dtype),
-              comm(comm) {
-        //TODO: Add way to using MPI communicator
-        CCL_UNUSED(this->comm);
-    }
+              comm(comm) {}
 
     void start() override {
         size_t dt_size = dtype.size();
         bytes = cnt * dt_size;
 
-        LOG_DEBUG("ALLTOALL entry req ", &req, ", bytes ", bytes);
-        atl_status_t atl_status = comm->get_atl_comm()->alltoall(sched->bin->get_atl_ep(),
-                                                                 send_buf.get_ptr(bytes),
-                                                                 recv_buf.get_ptr(bytes),
-                                                                 bytes,
-                                                                 &req);
+        LOG_DEBUG("ALLTOALL entry req ", req, ", bytes ", bytes);
+        atl_status_t atl_status = comm->get_atl_comm()->alltoall(
+            sched->bin->get_atl_ep(), send_buf.get_ptr(bytes), recv_buf.get_ptr(bytes), bytes, req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("ALLTOALL entry failed. atl_status: ", atl_status_to_str(atl_status));
@@ -59,7 +53,7 @@ public:
     }
 
     void update() override {
-        atl_status_t atl_status = comm->get_atl_comm()->check(sched->bin->get_atl_ep(), &req);
+        atl_status_t atl_status = comm->get_atl_comm()->check(sched->bin->get_atl_ep(), req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("ALLTOALL entry failed. atl_status: ", atl_status_to_str(atl_status));
@@ -88,9 +82,9 @@ protected:
                            ", recv_bytes ",
                            bytes,
                            ", comm_id ",
-                           sched->get_comm_id(),
+                           comm->get_comm_id(),
                            ", req ",
-                           &req,
+                           req,
                            "\n");
     }
 

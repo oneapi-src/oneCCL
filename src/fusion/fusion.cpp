@@ -22,8 +22,8 @@
 #define CCL_FUSION_CHECK_SCHEDS_ITERS (1024)
 
 ccl::status complete_user_request(const void* ctx) {
-    ccl_master_sched* sched = (ccl_master_sched*)ctx;
-    LOG_DEBUG("complete fusion request: ", static_cast<ccl_request*>(sched));
+    ccl_sched* sched = (ccl_sched*)ctx;
+    LOG_DEBUG("complete fusion request: ", sched->get_request());
     sched->complete();
     return ccl::status::success;
 }
@@ -94,14 +94,14 @@ void ccl_fusion_manager::reset() {
         check_tracked_scheds(true);
 }
 
-bool ccl_fusion_manager::can_fuse(ccl_master_sched* sched) {
+bool ccl_fusion_manager::can_fuse(ccl_sched* sched) {
     if (atl_base_comm::attr.out.enable_hmem) {
         /* TODO: implement fusion with D2D copies */
         return false;
     }
 
     if (sched->coll_param.ctype != ccl_coll_allreduce) {
-        LOG_DEBUG("can't fuse due to coll_type ", ccl_coll_type_to_str(sched->coll_param.ctype));
+        LOG_DEBUG("can't fuse due to coll ", ccl_coll_type_to_str(sched->coll_param.ctype));
         return false;
     }
 
@@ -117,8 +117,7 @@ bool ccl_fusion_manager::can_fuse(ccl_master_sched* sched) {
         return false;
     }
 
-    if (sched->coll_attr.prologue_fn || sched->coll_attr.epilogue_fn ||
-        sched->coll_attr.reduction_fn || sched->coll_attr.synchronous) {
+    if (sched->coll_attr.reduction_fn || sched->coll_attr.synchronous) {
         LOG_DEBUG("can't fuse due to unexpected fields in coll_attr");
         return false;
     }
@@ -127,13 +126,13 @@ bool ccl_fusion_manager::can_fuse(ccl_master_sched* sched) {
     return true;
 }
 
-bool ccl_fusion_manager::add(ccl_master_sched* sched) {
+bool ccl_fusion_manager::add(ccl_sched* sched) {
     if (!can_fuse(sched)) {
         return false;
     }
 
     CCL_THROW_IF_NOT(sched->is_completed(), "incorrect completion counter");
-    sched->set_counter(1);
+    sched->get_request()->set_counter(1);
 
     {
         std::lock_guard<ccl_fusion_manager::lock_t> lock{ guard };
@@ -143,7 +142,7 @@ bool ccl_fusion_manager::add(ccl_master_sched* sched) {
     return true;
 }
 
-ccl_master_sched* ccl_fusion_manager::build_sched() {
+ccl_sched* ccl_fusion_manager::build_sched() {
     size_t sum_count = 0, sum_bytes = 0, dtype_size;
     size_t max_priority = 0;
     bool use_cache = true;
@@ -182,9 +181,9 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
               ", sched_count ",
               exec_queue.size());
 
-    ccl_master_sched* sched = nullptr;
+    ccl_sched* sched = nullptr;
     auto create_fn = [this, ctype, &fusion_buf, sum_count, dtype, reduction, comm, stream]() {
-        ccl_master_sched* sched = nullptr;
+        ccl_sched* sched = nullptr;
         switch (ctype) {
             case ccl_coll_allreduce: {
                 ccl::global_data::get().buffer_cache->get(0, buffer_size, &fusion_buf);
@@ -197,7 +196,7 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
                                                                                    coll_attr,
                                                                                    comm,
                                                                                    stream);
-                sched = new ccl_master_sched({ ccl_sched_fusion, coll_param });
+                sched = new ccl_sched({ ccl_sched_fusion, coll_param });
             } break;
             default: CCL_FATAL("not supported"); break;
         }
@@ -221,13 +220,13 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
         fill_sched = is_created;
 
         if (!is_created) {
-            LOG_DEBUG("found fused_sched in cache");
+            LOG_DEBUG("found fused_sched in cache: ", sched);
             if (!sched->is_completed()) {
                 LOG_DEBUG("it is not completed sched");
                 stat_overlapped_exec_calls++;
                 if (ccl::global_data::get().executor->get_worker_count() > 1) {
                     LOG_DEBUG("found fused_sched in cache, which is not completed yet");
-                    ccl::global_data::get().executor->wait(sched);
+                    ccl::global_data::get().executor->wait(sched->get_request());
                 }
                 else {
                     CCL_THROW_IF_NOT(sched->is_completed(),
@@ -261,8 +260,8 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
     sched->commit(ccl::global_data::get().parallelizer.get());
 
     size_t exec_queue_size = exec_queue.size();
-    size_t part_count = sched->partial_scheds.size();
-    std::vector<std::shared_ptr<ccl_sched>>& part_scheds = sched->partial_scheds;
+    size_t part_count = sched->get_subscheds().size();
+    std::vector<std::shared_ptr<ccl_sched>>& part_scheds = sched->get_subscheds();
     size_t copies_per_part = exec_queue_size / part_count;
     size_t copies_per_last_part = copies_per_part + exec_queue_size % part_count;
 
@@ -279,7 +278,7 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
         part_scheds[idx]->add_barrier();
         part_scheds[idx]->set_add_mode(ccl_sched_add_front);
     }
-    sched->sync_partial_scheds();
+    sched->sync_subscheds();
 
     size_t offset = 0;
     for (size_t idx = 0; idx < part_count; idx++) {
@@ -319,7 +318,7 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
     for (size_t idx = 0; idx < part_count; idx++) {
         part_scheds[idx]->set_add_mode(ccl_sched_add_back);
     }
-    sched->sync_partial_scheds();
+    sched->sync_subscheds();
 
     offset = 0;
     for (size_t idx = 0; idx < part_count; idx++) {
@@ -362,7 +361,7 @@ ccl_master_sched* ccl_fusion_manager::build_sched() {
         }
     }
 
-    sched->sync_partial_scheds();
+    sched->sync_subscheds();
 
     if (use_cache) {
         part_scheds[0]->set_finalize_fn(release_fusion_buf_for_cached_sched, fusion_buf);
@@ -390,7 +389,7 @@ void ccl_fusion_manager::execute() {
     if (ccl::global_data::env().fusion_check_urgent && !exec_queue.empty()) {
         /* recheck scheds from exec_queue, maybe some of them were marked as urgent since previous call */
         for (auto it = exec_queue.begin(); it != exec_queue.end(); ++it) {
-            if ((*it)->urgent) {
+            if ((*it)->get_request()->urgent) {
                 LOG_DEBUG("found urgent sched in exec_queue, flush exec_queue");
                 flush_exec_queue = true;
                 break;
@@ -404,7 +403,7 @@ void ccl_fusion_manager::execute() {
         if (!postponed_queue.empty()) {
             LOG_DEBUG("postponed_queue size ", postponed_queue.size());
 
-            ccl_master_sched* first_sched;
+            ccl_sched* first_sched;
             if (!exec_queue.empty()) {
                 first_sched = exec_queue.front();
             }
@@ -432,7 +431,7 @@ void ccl_fusion_manager::execute() {
                     exec_queue_sum_bytes += size;
 
                     if (ccl::global_data::env().fusion_check_urgent && !flush_exec_queue &&
-                        s->urgent) {
+                        s->get_request()->urgent) {
                         LOG_DEBUG(
                             "found urgent sched in postponed_queue, flush exec_queue, postponed_queue size ",
                             postponed_queue.size());
@@ -457,7 +456,7 @@ void ccl_fusion_manager::execute() {
 
     if (flush_exec_queue) {
         LOG_DEBUG("exec_queue size ", exec_queue.size(), ", bytes ", exec_queue_sum_bytes);
-        ccl_master_sched* sched = build_sched();
+        ccl_sched* sched = build_sched();
         sched->start(ccl::global_data::get().executor.get());
     }
 
@@ -478,7 +477,7 @@ void ccl_fusion_manager::clear_exec_queue() {
 void ccl_fusion_manager::check_tracked_scheds(bool force_release) {
     std::lock_guard<ccl_fusion_manager::lock_t> lock{ guard };
     for (auto it = tracked_scheds.begin(); it != tracked_scheds.end();) {
-        ccl_master_sched* sched = *it;
+        ccl_sched* sched = *it;
         if (sched->is_completed() && (!sched->coll_attr.to_cache || force_release)) {
             ccl_release_sched(sched);
             it = tracked_scheds.erase(it);

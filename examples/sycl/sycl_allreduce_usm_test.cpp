@@ -102,6 +102,9 @@ int main(int argc, char* argv[]) {
             if (recv_buf[id] != static_cast<int>(check_sum + size * id)) {
                 check_buf_acc[id] = -1;
             }
+            else {
+                check_buf_acc[id] = 0;
+            }
         });
     });
 

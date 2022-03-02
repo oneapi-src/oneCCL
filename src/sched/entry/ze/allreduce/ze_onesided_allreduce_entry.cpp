@@ -31,20 +31,16 @@ ze_onesided_allreduce_entry::ze_onesided_allreduce_entry(ccl_sched* sched,
                                                          const ccl_datatype& dtype,
                                                          reduction op,
                                                          ccl_comm* comm,
-                                                         std::vector<ze_event_handle_t> wait_events)
-        : ze_base_entry(sched,
-                        global_data::env().enable_kernel_1s_copy_ops
-                            ? (init_mode::compute | init_mode::copy)
-                            : init_mode::compute,
-                        comm,
-                        3 /* request additional events */,
-                        wait_events),
+                                                         std::vector<ze_event_handle_t> wait_events,
+                                                         const size_t buf_offset_cnt)
+        : ze_base_entry(sched, comm, 3 /* request additional events */, wait_events),
           send_buf(send_buf),
           recv_buf(recv_buf),
           cnt(cnt),
           dtype(dtype),
           op(op),
-          buf_size_bytes(dtype.size() * cnt) {}
+          buf_size_bytes(dtype.size() * cnt),
+          buf_offset_bytes(dtype.size() * buf_offset_cnt) {}
 
 void ze_onesided_allreduce_entry::init_ze_hook() {
     /* create kernels */
@@ -52,8 +48,8 @@ void ze_onesided_allreduce_entry::init_ze_hook() {
     ccl_buffer right_recv_buf;
     int peer_rank = (comm_rank + 1) % comm_size;
 
-    send_buf_ptr = send_buf.get_ptr();
-    recv_buf_ptr = recv_buf.get_ptr();
+    send_buf_ptr = static_cast<char*>(send_buf.get_ptr()) + buf_offset_bytes;
+    recv_buf_ptr = static_cast<char*>(recv_buf.get_ptr()) + buf_offset_bytes;
     if (send_buf_ptr == recv_buf_ptr) {
         sched->get_memory().handle_manager.get(peer_rank, 1, right_send_buf, comm);
         sched->get_memory().handle_manager.get(peer_rank, 1, right_recv_buf, comm);
@@ -62,8 +58,9 @@ void ze_onesided_allreduce_entry::init_ze_hook() {
         sched->get_memory().handle_manager.get(peer_rank, 0, right_send_buf, comm);
         sched->get_memory().handle_manager.get(peer_rank, 1, right_recv_buf, comm);
     }
-    right_send_buf_ptr = right_send_buf.get_ptr();
-    right_recv_buf_ptr = right_recv_buf.get_ptr();
+
+    right_send_buf_ptr = static_cast<char*>(right_send_buf.get_ptr()) + buf_offset_bytes;
+    right_recv_buf_ptr = static_cast<char*>(right_recv_buf.get_ptr()) + buf_offset_bytes;
 
     void* tmp_buf_ptr{};
 
@@ -79,8 +76,8 @@ void ze_onesided_allreduce_entry::init_ze_hook() {
     main_kernel_name += to_string(dtype.idx()) + "_" + ccl_reduction_to_str(op);
     LOG_DEBUG("get kernel: name: ", main_kernel_name);
 
-    global_data::get().ze_cache->get(context, device, "kernels.spv", &module);
-    global_data::get().ze_cache->get(worker_idx, module, main_kernel_name, &main_kernel);
+    global_data::get().ze_data->cache->get(context, device, "kernels.spv", &module);
+    global_data::get().ze_data->cache->get(worker_idx, module, main_kernel_name, &main_kernel);
 
     ze_kernel_args_t allreduce_kernel_args{ &comm_rank,         &comm_size,    &cnt,
                                             &send_buf_ptr,      &recv_buf_ptr, &right_send_buf_ptr,
@@ -106,7 +103,8 @@ void ze_onesided_allreduce_entry::init_ze_hook() {
 
     if (global_data::env().enable_kernel_1s_ipc_wa) {
         LOG_DEBUG("get kernel: name: ", empty_kernel_name);
-        global_data::get().ze_cache->get(worker_idx, module, empty_kernel_name, &empty_kernel);
+        global_data::get().ze_data->cache->get(
+            worker_idx, module, empty_kernel_name, &empty_kernel);
         CCL_THROW_IF_NOT(empty_kernel, "null empty_kernel");
         /* use allreduce_kernel_args since they have pointers to peer mem */
         set_kernel_args(empty_kernel, allreduce_kernel_args);
@@ -177,22 +175,23 @@ void ze_onesided_allreduce_entry::init_ze_hook() {
 
 void ze_onesided_allreduce_entry::finalize_ze_hook() {
     if (empty_kernel_event) {
-        global_data::get().ze_cache->push(worker_idx, module, empty_kernel_name, empty_kernel);
+        global_data::get().ze_data->cache->push(
+            worker_idx, module, empty_kernel_name, empty_kernel);
     }
-    global_data::get().ze_cache->push(worker_idx, module, main_kernel_name, main_kernel);
+    global_data::get().ze_data->cache->push(worker_idx, module, main_kernel_name, main_kernel);
 }
 
 void ze_onesided_allreduce_entry::start() {
     size_t kernel_counter = 0;
     if (global_data::env().enable_kernel_sync) {
-        kernel_counter = global_data::get().kernel_counter++;
+        kernel_counter = global_data::get().ze_data->kernel_counter++;
     }
 
     if (kernel_counter == 0) {
         ze_base_entry::start();
     }
     else {
-        global_data::get().kernel_counter--;
+        global_data::get().ze_data->kernel_counter--;
         status = ccl_sched_entry_status_again;
     }
 }
@@ -200,7 +199,7 @@ void ze_onesided_allreduce_entry::start() {
 void ze_onesided_allreduce_entry::update() {
     ze_base_entry::update();
 
-    if (global_data::env().enable_kernel_sync && global_data::get().kernel_counter > 0) {
-        global_data::get().kernel_counter--;
+    if (global_data::env().enable_kernel_sync && global_data::get().ze_data->kernel_counter > 0) {
+        global_data::get().ze_data->kernel_counter--;
     }
 }

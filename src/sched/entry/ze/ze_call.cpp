@@ -38,10 +38,10 @@ ze_call::~ze_call() {
 }
 
 ze_result_t ze_call::do_call(ze_result_t ze_result, const char* ze_name) const {
+    LOG_DEBUG("call ze function: ", ze_name);
     if (ze_result != ZE_RESULT_SUCCESS) {
         CCL_THROW("ze error at ", ze_name, ", code: ", to_string(ze_result));
     }
-    LOG_DEBUG("call ze function: ", ze_name);
     return ze_result;
 }
 

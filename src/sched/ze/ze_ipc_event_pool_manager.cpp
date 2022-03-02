@@ -32,7 +32,7 @@ void ipc_event_pool_manager::init(const ccl_stream* init_stream) {
 
 void ipc_event_pool_manager::clear() {
     for (const auto& pool_info : event_pool_info) {
-        ccl::global_data::get().ze_cache->push(0, context, pool_info.second, pool_info.first);
+        ccl::global_data::get().ze_data->cache->push(0, context, pool_info.second, pool_info.first);
     }
     event_pool_info.clear();
     LOG_DEBUG("finalize completed");
@@ -46,7 +46,7 @@ ze_event_pool_handle_t ipc_event_pool_manager::create(size_t event_count) {
     event_pool_desc.flags = ZE_EVENT_POOL_FLAG_IPC | ZE_EVENT_POOL_FLAG_HOST_VISIBLE;
 
     ze_event_pool_handle_t event_pool{};
-    ccl::global_data::get().ze_cache->get(0, context, event_pool_desc, &event_pool);
+    ccl::global_data::get().ze_data->cache->get(0, context, event_pool_desc, &event_pool);
     CCL_THROW_IF_NOT(event_pool, "ipc event pool is unavailable");
 
     event_pool_info.push_back({ event_pool, event_pool_desc });

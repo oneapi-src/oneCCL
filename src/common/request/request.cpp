@@ -18,10 +18,18 @@
 #include "common/request/request.hpp"
 
 #ifdef ENABLE_DEBUG
-void ccl_request::set_dump_callback(dump_func &&callback) {
+void ccl_request::set_dump_callback(dump_func&& callback) {
     dump_callback = std::move(callback);
 }
 #endif
+
+ccl_request::ccl_request(ccl_sched& sched) : sched(sched) {
+#ifdef ENABLE_DEBUG
+    set_dump_callback([&sched](std::ostream& out) {
+        sched.dump(out);
+    });
+#endif
+}
 
 ccl_request::~ccl_request() {
     auto counter = completion_counter.load(std::memory_order_acquire);
@@ -29,13 +37,21 @@ ccl_request::~ccl_request() {
     if (counter != 0 && !ccl::global_data::get().is_ft_enabled) {
         LOG_WARN("unexpected completion_counter ", counter);
     }
+
+    // notify sched about request release to update its state.
+    // if event is empty, sched will that
+    sched.release_sync_event(this);
 }
 
 bool ccl_request::complete() {
+    return complete_counter() == 0;
+}
+
+int ccl_request::complete_counter() {
     int prev_counter = completion_counter.fetch_sub(1, std::memory_order_release);
     CCL_THROW_IF_NOT(prev_counter > 0, "unexpected prev_counter ", prev_counter, ", req ", this);
     LOG_DEBUG("req ", this, ", counter ", prev_counter - 1);
-    return (prev_counter == 1);
+    return prev_counter - 1;
 }
 
 bool ccl_request::is_completed() const {
@@ -56,10 +72,23 @@ bool ccl_request::is_completed() const {
 }
 
 void ccl_request::set_counter(int counter) {
-    LOG_DEBUG("req: ", this, ", set count ", counter);
+    // add +1 to the inital counter value, this allows us to order
+    // finalization/cleanup work on the request and its schedule rigth
+    // before it's completion, like this:
+    // if (req->complete_counter() == 1) {
+    //    // do cleanup
+    //    req->complete();
+    // }
+    // this is important because it protects request and sched from
+    // being destroyed at the time of this finalization work by
+    // a user thread waiting on the event: with this approach
+    // user thread will detect event completion only after finalization
+    // work is done
+    int adjusted_counter = counter + 1;
+    LOG_DEBUG("req: ", this, ", set count ", adjusted_counter);
     int current_counter = completion_counter.load(std::memory_order_acquire);
     CCL_THROW_IF_NOT(current_counter == 0, "unexpected counter ", current_counter);
-    completion_counter.store(counter, std::memory_order_release);
+    completion_counter.store(adjusted_counter, std::memory_order_release);
 }
 
 void ccl_request::increase_counter(int increment) {

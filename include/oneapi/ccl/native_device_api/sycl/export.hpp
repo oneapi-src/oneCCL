@@ -19,7 +19,8 @@
 
 #define CCL_BE_API /*CCL_HELPER_DLL_EXPORT*/
 
-#define CL_BACKEND_TYPE ccl::cl_backend_type::dpcpp_sycl
+#define CL_BACKEND_TYPE ccl::cl_backend_type::dpcpp_sycl_l0
+
 #include <CL/sycl.hpp>
 
 namespace ccl {
@@ -69,7 +70,7 @@ struct generic_platform_type<CL_BACKEND_TYPE> {
     using impl_t = handle_t;
     using ccl_native_t = impl_t;
 
-    generic_platform_type(ccl_native_t pl);
+    generic_platform_type(ccl_native_t& pl);
     ccl_native_t& get() noexcept;
     const ccl_native_t& get() const noexcept;
 

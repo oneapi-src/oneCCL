@@ -21,6 +21,7 @@
 
 namespace ccl {
 
+// event which wraps SYCL event to pass it to our API as a parameter
 class native_event_impl final : public event_impl {
 public:
     explicit native_event_impl(std::unique_ptr<ccl_event> ev);

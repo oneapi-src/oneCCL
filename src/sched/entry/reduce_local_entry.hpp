@@ -19,14 +19,10 @@
 #include "sched/entry/entry.hpp"
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-#include "sched/entry/ze/ze_reduce_local_entry.hpp"
+class ze_reduce_local_entry;
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
-#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-class reduce_local_entry : public ze_reduce_local_entry {
-#else
 class reduce_local_entry : public sched_entry {
-#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 public:
     static constexpr const char* class_name() noexcept {
         return "REDUCE_LOCAL";
@@ -55,6 +51,8 @@ public:
 
     void start_on_host();
     void start() override;
+    void update() override;
+    void reset(size_t idx) override;
 
 protected:
     void dump_detail(std::stringstream& str) const override {
@@ -86,4 +84,8 @@ private:
     const ccl::reduction_fn fn;
 
     bool use_device{};
+
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    std::unique_ptr<ze_reduce_local_entry> ze_reduce_local;
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 };

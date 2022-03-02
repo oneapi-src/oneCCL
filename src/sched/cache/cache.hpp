@@ -17,7 +17,7 @@
 
 #include "common/utils/spinlock.hpp"
 #include "sched/cache/key.hpp"
-#include "sched/master_sched.hpp"
+#include "sched/sched.hpp"
 
 #include <atomic>
 #include <functional>
@@ -44,26 +44,24 @@ public:
     ccl_sched_cache(const ccl_sched_cache& other) = delete;
     ccl_sched_cache& operator=(const ccl_sched_cache& other) = delete;
     template <class Lambda>
-    std::pair<ccl_master_sched*, bool> find_or_create(ccl_sched_key&& key, Lambda create_fn);
+    std::pair<ccl_sched*, bool> find_or_create(ccl_sched_key&& key, Lambda create_fn);
     void recache(const ccl_sched_key& old_key, ccl_sched_key&& new_key);
-    void release(ccl_master_sched* sched);
+    void release(ccl_sched* sched);
     bool try_flush();
 
 private:
-    ccl_master_sched* find_unsafe(const ccl_sched_key& key) const;
+    ccl_sched* find_unsafe(const ccl_sched_key& key) const;
     using sched_cache_lock_t = ccl_spinlock;
     mutable sched_cache_lock_t guard{}; //could be changed in constant method
     //TODO use smart ptr for ccl_master_sched in table
-    using sched_table_t =
-        std::unordered_map<ccl_sched_key, ccl_master_sched*, ccl_sched_key_hasher>;
+    using sched_table_t = std::unordered_map<ccl_sched_key, ccl_sched*, ccl_sched_key_hasher>;
     sched_table_t table{ CCL_SCHED_CACHE_INITIAL_BUCKET_COUNT };
     std::atomic<size_t> reference_counter;
 };
 
 template <class Lambda>
-std::pair<ccl_master_sched*, bool> ccl_sched_cache::find_or_create(ccl_sched_key&& key,
-                                                                   Lambda create_fn) {
-    ccl_master_sched* sched = nullptr;
+std::pair<ccl_sched*, bool> ccl_sched_cache::find_or_create(ccl_sched_key&& key, Lambda create_fn) {
+    ccl_sched* sched = nullptr;
     bool is_created = false;
     {
         std::lock_guard<sched_cache_lock_t> lock{ guard };

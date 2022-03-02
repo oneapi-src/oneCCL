@@ -65,7 +65,7 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${CXX_COMP
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if ("${COMPUTE_BACKEND}" STREQUAL "dpcpp_level_zero")
+if ("${COMPUTE_BACKEND}" STREQUAL "dpcpp")
     set(CMAKE_CLANG_FLAGS "-fsycl")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -lsycl")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CLANG_FLAGS}")
@@ -100,7 +100,7 @@ endif()
 include_directories(include)
 
 add_subdirectory(cpu)
-if ("${COMPUTE_BACKEND}" STREQUAL "dpcpp_level_zero")
+if ("${COMPUTE_BACKEND}" STREQUAL "dpcpp")
     add_subdirectory(sycl)
 endif()
 add_subdirectory(common)

@@ -49,7 +49,6 @@ atl_status_t pmi_simple::pmrt_wait_notification() {
 
 atl_status_t pmi_simple::pmrt_finalize() {
     is_finalized = true;
-    pmirt_finalize(pmrt_desc);
     return ATL_STATUS_SUCCESS;
 }
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/utils/sycl_utils.hpp"
 #include "sched/entry/entry.hpp"
 
 class deps_entry : public sched_entry {
@@ -13,12 +14,6 @@ public:
 
     void start() override {
         status = ccl_sched_entry_status_started;
-#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-        if (ccl::global_data::env().enable_kernel_profile && sched->coll_param.stream) {
-            sched->master_sched->get_kernel_timer().set_deps_start_time(
-                ccl::ze::calculate_global_time(sched->coll_param.stream->get_ze_device()));
-        }
-#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
     }
 
     void update() override {
@@ -35,12 +30,22 @@ public:
 
         if (all_completed) {
             status = ccl_sched_entry_status_complete;
+
+#ifdef CCL_ENABLE_ITT
+            // deps entry should be executed right at the beginning, so we can assume it's
+            // a start of operation execution
+            // due to issue with overlapping tasks we can't measure deps entry
+            // because it can start executing while the previous master sched
+            // is not completed yet. For now, start to measure operation when deps entry
+            // is completed and when there are no possible overlap.
+            ccl::profile::itt::task_start(ccl::profile::itt::task_type::operation);
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-            if (ccl::global_data::env().enable_kernel_profile && sched->coll_param.stream) {
-                sched->master_sched->get_kernel_timer().set_deps_end_time(
-                    ccl::ze::calculate_global_time(sched->coll_param.stream->get_ze_device()));
+            // only applicable for device execution
+            if (sched->coll_param.stream) {
+                ccl::profile::itt::task_start(ccl::profile::itt::task_type::preparation);
             }
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+#endif // CCL_ENABLE_ITT
         }
     }
 

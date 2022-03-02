@@ -16,7 +16,9 @@
 #pragma once
 
 #include <list>
-#include <ze_api.h>
+#include <unordered_map>
+#include "common/ze/ze_api_wrapper.hpp"
+#include "sched/entry/ze/ze_primitives.hpp"
 
 class ccl_stream;
 
@@ -92,6 +94,65 @@ protected:
 
     event_pool* add_pool(ze_event_pool_desc_t desc = get_default_event_pool_desc(),
                          ze_event_desc_t event_desc = get_default_event_desc());
+};
+
+// allows to dynamically allocate events by managing multiple event pools
+// the basic idea is to have a list of event pools(depending on the number
+// of requested events). For each pool we keep track of slots with allocated
+// events and slots without them.
+// note: this is relatively similar to event_manager class above, except it
+// allows to release events one by one, but with additional overhead of status
+// tracking. Potentially these 2 classes could be merged into one, but keep
+// them separate for now for different use-cases.
+class dynamic_event_pool {
+public:
+    dynamic_event_pool(const ccl_stream* stream);
+    ~dynamic_event_pool();
+
+    dynamic_event_pool(const dynamic_event_pool&) = delete;
+    dynamic_event_pool(dynamic_event_pool&&) = delete;
+
+    dynamic_event_pool& operator=(const dynamic_event_pool&) = delete;
+    dynamic_event_pool& operator=(dynamic_event_pool&&) = delete;
+
+    ze_event_handle_t get_event();
+    void put_event(ze_event_handle_t event);
+
+private:
+    struct event_pool_info {
+        ze_event_pool_handle_t pool;
+        // number of allocated events from the pool
+        size_t num_alloc_events;
+        // vector of flags(true - slot is occupied, false - slot is free)
+        std::vector<bool> event_alloc_status;
+    };
+
+    struct event_info {
+        // position of the event's pool in the list
+        std::list<event_pool_info>::iterator pool;
+        // index inside the pool, necessary to track free/non-free status
+        size_t pool_idx;
+    };
+
+    bool find_free_slot(event_info& slot);
+    ze_event_handle_t create_event(const event_info& slot);
+
+    // TODO: make some parameters configurable
+    // TODO: check if another value would be better, as this one is chosen quite arbitrary
+    static constexpr size_t event_pool_size{ 50 };
+
+    static ze_event_pool_desc_t get_default_event_pool_desc();
+    static const ze_event_pool_desc_t common_pool_desc;
+
+    static constexpr size_t worker_idx{};
+
+    ze_context_handle_t context;
+    std::mutex lock;
+    // map to keep allocation information for each event so we can properly track
+    // free/non-free slots
+    std::unordered_map<ze_event_handle_t, event_info> event_alloc_info;
+    // list of all allocated event pools
+    std::list<event_pool_info> event_pools;
 };
 
 } // namespace ze

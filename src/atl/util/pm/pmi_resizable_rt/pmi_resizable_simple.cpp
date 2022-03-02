@@ -33,13 +33,13 @@ pmi_resizable_simple::pmi_resizable_simple(int size,
                                            const std::vector<int>& ranks,
                                            std::shared_ptr<ikvs_wrapper> k,
                                            const char* main_addr)
-        : total_rank_count(size),
+        : comm_size(size),
+          assigned_proc_idx(0),
           ranks(ranks),
           k(k),
-          main_addr(main_addr) {
-    max_keylen = MAX_KVS_KEY_LENGTH;
-    max_vallen = MAX_KVS_VAL_LENGTH;
-}
+          main_addr(main_addr),
+          max_keylen(MAX_KVS_KEY_LENGTH),
+          max_vallen(MAX_KVS_VAL_LENGTH) {}
 
 int pmi_resizable_simple::is_pm_resize_enabled() {
     return 0;
@@ -284,14 +284,6 @@ atl_status_t pmi_resizable_simple::kvs_get_value(const char* kvs_name,
     return ATL_STATUS_SUCCESS;
 }
 
-atl_status_t pmi_resizable_simple::kvs_iget_value(const char* kvs_name,
-                                                  const char* key,
-                                                  char* value) {
-    std::string result_kvs_name = std::string(kvs_name) + std::to_string(local_id);
-    return k->kvs_get_value_by_name_key(result_kvs_name.c_str(), key, value) == KVS_STATUS_SUCCESS
-               ? ATL_STATUS_SUCCESS
-               : ATL_STATUS_FAILURE;
-}
 atl_status_t pmi_resizable_simple::get_barrier_idx(size_t& barrier_num_out) {
     size_t proc_count = threads_per_proc.size();
     barrier_num_out = 0;
@@ -322,7 +314,7 @@ atl_status_t pmi_resizable_simple::register_first_rank_idx_and_rank_count() {
 atl_status_t pmi_resizable_simple::assign_thread_idx_and_fill_ranks_per_thread_map() {
     int rank_count = 0;
     int ranks_per_thread;
-    while (rank_count < total_rank_count) {
+    while (rank_count < comm_size) {
         if (rank_count == ranks[0]) {
             assigned_thread_idx = ranks_per_thread_map.size();
         }
@@ -346,10 +338,10 @@ atl_status_t pmi_resizable_simple::register_my_proc_name() {
         LOG_ERROR("gethostname error: %s\n", strerror(errno));
         return ATL_STATUS_FAILURE;
     }
-    my_proccess_name = std::string(hostname) + std::to_string(my_pid);
+    my_process_name = std::string(hostname) + std::to_string(my_pid);
 
     return kvs_set_value(
-        PROCESS_THREAD_NAME, std::to_string(assigned_thread_idx).c_str(), my_proccess_name.c_str());
+        PROCESS_THREAD_NAME, std::to_string(assigned_thread_idx).c_str(), my_process_name.c_str());
 }
 
 atl_status_t pmi_resizable_simple::get_my_proc_idx_and_proc_count() {
@@ -363,12 +355,12 @@ atl_status_t pmi_resizable_simple::get_my_proc_idx_and_proc_count() {
         it = proc_name_to_rank.find(val_storage);
         if (it == proc_name_to_rank.end()) {
             rank = threads_per_proc.size();
-            if (!my_proccess_name.compare(val_storage)) {
+            if (!my_process_name.compare(val_storage)) {
                 assigned_proc_idx = rank;
                 if (assigned_thread_idx == i) {
                     ATL_CHECK_STATUS(kvs_set_value(REQUESTED_RANK_TO_NAME,
                                                    std::to_string(assigned_proc_idx).c_str(),
-                                                   my_proccess_name.c_str()),
+                                                   my_process_name.c_str()),
                                      "failed to set proc name");
                 }
             }
@@ -392,7 +384,16 @@ void pmi_resizable_simple::calculate_local_thread_idx() {
         local_thread_idx++;
     }
 }
-
+// TODO: uncomment and fix it for collect real request ranks
+#if 0
+atl_status_t pmi_resizable_simple::kvs_iget_value(const char* kvs_name,
+                                                  const char* key,
+                                                  char* value) {
+    std::string result_kvs_name = std::string(kvs_name) + std::to_string(local_id);
+    return k->kvs_get_value_by_name_key(result_kvs_name.c_str(), key, value) == KVS_STATUS_SUCCESS
+               ? ATL_STATUS_SUCCESS
+               : ATL_STATUS_FAILURE;
+}
 atl_status_t pmi_resizable_simple::make_map_requested2global() {
     char global_rank_str[MAX_KVS_VAL_LENGTH];
     char process_name[MAX_KVS_VAL_LENGTH];
@@ -406,7 +407,7 @@ atl_status_t pmi_resizable_simple::make_map_requested2global() {
         ATL_CHECK_STATUS(kvs_iget_value(GLOBAL_NAME_TO_RANK, process_name, global_rank_str),
                          "make_map_requested2global: failed to get glob rank");
         if (strlen(global_rank_str) == 0) {
-            if (!my_proccess_name.compare(process_name)) {
+            if (!my_process_name.compare(process_name)) {
                 int free_glob_rank = 0;
                 ATL_CHECK_STATUS(
                     kvs_iget_value(
@@ -419,12 +420,13 @@ atl_status_t pmi_resizable_simple::make_map_requested2global() {
                                                     process_name),
                                      "make_map_requested2global: failed to get proc name");
                 }
+// Fixme: need additional sinchronization
                 ATL_CHECK_STATUS(kvs_set_value(GLOBAL_RANK_TO_NAME,
                                                std::to_string(free_glob_rank).c_str(),
-                                               my_proccess_name.c_str()),
+                                               my_process_name.c_str()),
                                  "make_map_requested2global: failed to set proc name");
                 ATL_CHECK_STATUS(kvs_set_value(GLOBAL_NAME_TO_RANK,
-                                               my_proccess_name.c_str(),
+                                               my_process_name.c_str(),
                                                std::to_string(free_glob_rank).c_str()),
                                  "make_map_requested2global: failed to set free rank info");
             }
@@ -436,6 +438,7 @@ atl_status_t pmi_resizable_simple::make_map_requested2global() {
     ATL_CHECK_STATUS(pmrt_barrier_full(), "make_map_requested2global: full barrier failed");
     return ATL_STATUS_SUCCESS;
 }
+#endif
 
 atl_status_t pmi_resizable_simple::get_local_kvs_id(size_t& res) {
     char local_kvs_id[MAX_KVS_VAL_LENGTH];

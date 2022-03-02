@@ -40,8 +40,6 @@ CCL_API broadcast_attr default_broadcast_attr = ccl_empty_attr::create_empty<bro
 CCL_API reduce_attr default_reduce_attr = ccl_empty_attr::create_empty<reduce_attr>();
 CCL_API reduce_scatter_attr default_reduce_scatter_attr =
     ccl_empty_attr::create_empty<reduce_scatter_attr>();
-CCL_API sparse_allreduce_attr default_sparse_allreduce_attr =
-    ccl_empty_attr::create_empty<sparse_allreduce_attr>();
 
 } // namespace v1
 

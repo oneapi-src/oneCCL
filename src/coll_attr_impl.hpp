@@ -266,42 +266,6 @@ reduce_scatter_attr::get() const {
 }
 
 /**
- * sparse_allreduce attributes definition
- */
-template<sparse_allreduce_attr_id attrId,
-             class Value/*,
-             typename T*/>
-CCL_API typename detail::ccl_api_type_attr_traits<sparse_allreduce_attr_id, attrId>::return_type sparse_allreduce_attr::set(const Value& v)
-{
-    return get_impl()->set_attribute_value(
-        v, detail::ccl_api_type_attr_traits<sparse_allreduce_attr_id, attrId>{});
-}
-
-template<operation_attr_id attrId,
-             class Value/*,
-             typename T*/>
-CCL_API typename detail::ccl_api_type_attr_traits<operation_attr_id, attrId>::return_type sparse_allreduce_attr::set(const Value& v)
-{
-    return static_cast<ccl_operation_attr_impl_t*>(get_impl().get())
-        ->set_attribute_value(v, detail::ccl_api_type_attr_traits<operation_attr_id, attrId>{});
-}
-
-template <sparse_allreduce_attr_id attrId>
-CCL_API const typename detail::ccl_api_type_attr_traits<sparse_allreduce_attr_id,
-                                                        attrId>::return_type&
-sparse_allreduce_attr::get() const {
-    return get_impl()->get_attribute_value(
-        detail::ccl_api_type_attr_traits<sparse_allreduce_attr_id, attrId>{});
-}
-
-template <operation_attr_id attrId>
-CCL_API const typename detail::ccl_api_type_attr_traits<operation_attr_id, attrId>::return_type&
-sparse_allreduce_attr::get() const {
-    return static_cast<const ccl_operation_attr_impl_t*>(get_impl().get())
-        ->get_attribute_value(detail::ccl_api_type_attr_traits<operation_attr_id, attrId>{});
-}
-
-/**
  * barrier attributes definition
  */
 template<barrier_attr_id attrId,

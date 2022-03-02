@@ -37,6 +37,12 @@ Intel(R) oneAPI DPC++/C++ Compiler with Level Zero v1.0 support.
 
 To install Level Zero, refer to the instructions in [Intel(R) Graphics Compute Runtime repository](https://github.com/intel/compute-runtime/releases) or to the [installation guide](https://dgpu-docs.intel.com/installation-guides/index.html) for oneAPI users.
 
+### BF16 support <!-- omit in toc -->
+
+- AVX512F-based implementation requires GCC 4.9 or higher.
+- AVX512_BF16-based implementation requires GCC 10.0 or higher and GNU binutils 2.33 or higher.
+
+
 ## Installation
 
 General installation scenario:

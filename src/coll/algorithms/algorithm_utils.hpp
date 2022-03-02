@@ -22,8 +22,7 @@
 
 #define CCL_COLL_LIST \
     ccl_coll_allgatherv, ccl_coll_allreduce, ccl_coll_alltoall, ccl_coll_alltoallv, \
-        ccl_coll_barrier, ccl_coll_bcast, ccl_coll_reduce, ccl_coll_reduce_scatter, \
-        ccl_coll_sparse_allreduce
+        ccl_coll_barrier, ccl_coll_bcast, ccl_coll_reduce, ccl_coll_reduce_scatter
 
 enum ccl_coll_allgatherv_algo {
     ccl_coll_allgatherv_undefined = 0,
@@ -55,8 +54,7 @@ enum ccl_coll_alltoall_algo {
 
     ccl_coll_alltoall_direct,
     ccl_coll_alltoall_naive,
-    ccl_coll_alltoall_scatter,
-    ccl_coll_alltoall_scatter_barrier
+    ccl_coll_alltoall_scatter
 };
 
 enum ccl_coll_alltoallv_algo {
@@ -65,7 +63,7 @@ enum ccl_coll_alltoallv_algo {
     ccl_coll_alltoallv_direct,
     ccl_coll_alltoallv_naive,
     ccl_coll_alltoallv_scatter,
-    ccl_coll_alltoallv_scatter_barrier
+    ccl_coll_alltoallv_topo
 };
 
 enum ccl_coll_barrier_algo {
@@ -103,14 +101,6 @@ enum ccl_coll_reduce_scatter_algo {
     ccl_coll_reduce_scatter_topo
 };
 
-enum ccl_coll_sparse_allreduce_algo {
-    ccl_coll_sparse_allreduce_undefined = 0,
-
-    ccl_coll_sparse_allreduce_ring,
-    ccl_coll_sparse_allreduce_mask,
-    ccl_coll_sparse_allreduce_3_allgatherv
-};
-
 union ccl_coll_algo {
     ccl_coll_allgatherv_algo allgatherv;
     ccl_coll_allreduce_algo allreduce;
@@ -137,8 +127,7 @@ enum ccl_coll_type {
     ccl_coll_bcast,
     ccl_coll_reduce,
     ccl_coll_reduce_scatter,
-    ccl_coll_sparse_allreduce,
-    ccl_coll_last_regular = ccl_coll_sparse_allreduce,
+    ccl_coll_last_regular = ccl_coll_reduce_scatter,
 
     ccl_coll_partial,
     ccl_coll_undefined,

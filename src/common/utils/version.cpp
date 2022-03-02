@@ -18,6 +18,7 @@
 #include "common/utils/version.hpp"
 #include "oneapi/ccl/native_device_api/export_api.hpp"
 
+namespace ccl {
 namespace utils {
 
 ccl::library_version get_library_version() {
@@ -30,3 +31,4 @@ ccl::library_version get_library_version() {
 }
 
 } // namespace utils
+} // namespace ccl

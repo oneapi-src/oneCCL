@@ -18,7 +18,7 @@
 #include "common/stream/stream.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
 
-#include <ze_api.h>
+#include "common/ze/ze_api_wrapper.hpp"
 
 namespace ccl {
 

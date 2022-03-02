@@ -52,10 +52,6 @@ struct ccl_selector_param {
 #endif // CCL_ENABLE_SYCL
 
     ccl_coll_algo hint_algo = {};
-
-    /* tmp fields to avoid selection of algorithms which don't support all coalesce modes or alloc_fn */
-    ccl::sparse_coalesce_mode sparse_coalesce_mode;
-    ccl::sparse_allreduce_alloc_fn sparse_allreduce_alloc_fn;
 };
 
 template <ccl_coll_type coll_id>
@@ -100,6 +96,5 @@ CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_barrier, ccl_coll_barrier_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_bcast, ccl_coll_bcast_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_reduce, ccl_coll_reduce_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_reduce_scatter, ccl_coll_reduce_scatter_algo);
-CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_sparse_allreduce, ccl_coll_sparse_allreduce_algo);
 
 #include "coll/selection/selector_impl.hpp"

@@ -22,6 +22,7 @@
 #include "atl/ofi/atl_ofi_comm.hpp"
 #include "atl/ofi/atl_ofi.hpp"
 #include "atl/util/pm/pm_rt.h"
+#include "common/utils/utils.hpp"
 #include "exec/exec.hpp"
 
 atl_attr_t atl_base_comm::attr = {
@@ -52,35 +53,97 @@ atl_attr_t atl_base_comm::attr = {
     }
 };
 
-ccl_executor* atl_base_comm::executor = nullptr;
+ccl_executor* atl_base_comm::executor{ nullptr };
+atl_base_transport* atl_base_comm::transport{ nullptr };
+std::atomic<size_t> atl_base_comm::comm_count{ 0 };
+ccl_spinlock atl_base_comm::comm_id_storage_guard{};
+
+atl_base_comm::~atl_base_comm() {
+    std::lock_guard<ccl_spinlock> lock{ comm_id_storage_guard };
+    transport->get_comm_id_storage().release(comm_id);
+    tag.reset();
+    comm_count--;
+    if (comm_count.load() == 0) {
+        transport->finalize(rank);
+        delete transport;
+        transport = nullptr;
+    }
+}
+
+int atl_base_comm::create_comm_id() {
+    int new_comm_id = atl_comm_id_storage::invalid_comm_id;
+
+    std::lock_guard<ccl_spinlock> lock{ comm_id_storage_guard };
+
+    auto comm_id_map = transport->get_comm_id_storage().get_map();
+    int send_bytes = sizeof(new_comm_id) * comm_id_map.size();
+    std::vector<int> all_comm_id_maps(size * comm_id_map.size(),
+                                      atl_comm_id_storage::invalid_comm_id);
+
+    std::vector<int> recv_bytes(size, send_bytes);
+    std::vector<int> offsets(size, 0);
+    for (int i = 1; i < size; i++) {
+        offsets[i] = offsets[i - 1] + recv_bytes[i - 1];
+    }
+
+    LOG_DEBUG("rank2rank_map: ", ccl::utils::vec_to_string(rank2rank_map));
+    LOG_DEBUG("rank2proc_map: ", ccl::utils::vec_to_string(rank2proc_map));
+    // LOG_DEBUG("comm_id_map: ", ccl::utils::vec_to_string(comm_id_map));
+
+    if (std::any_of(comm_id_map.begin(), comm_id_map.end(), [](int id) {
+            return id == atl_comm_id_storage::invalid_comm_id;
+        })) {
+        CCL_THROW("comm_id_map contains invalid value: ", ccl::utils::vec_to_string(comm_id_map));
+    }
+
+    atl_req_t req{};
+    allgatherv(0 /* ep_idx */,
+               comm_id_map.data(),
+               send_bytes,
+               all_comm_id_maps.data(),
+               recv_bytes.data(),
+               offsets.data(),
+               req);
+    wait(0, req);
+
+    // LOG_DEBUG("all_comm_id_maps: ", ccl::utils::vec_to_string(all_comm_id_maps));
+
+    if (std::any_of(all_comm_id_maps.begin(), all_comm_id_maps.end(), [](int id) {
+            return id == atl_comm_id_storage::invalid_comm_id;
+        })) {
+        CCL_THROW("all_comm_id_maps contains invalid value: ",
+                  ccl::utils::vec_to_string(all_comm_id_maps));
+    }
+
+    for (size_t free_comm_id = 0; free_comm_id < comm_id_map.size(); free_comm_id++) {
+        new_comm_id = free_comm_id;
+        for (int rank_idx = 0; rank_idx < size; rank_idx++) {
+            if (all_comm_id_maps[rank_idx * comm_id_map.size() + free_comm_id] != 1) {
+                new_comm_id = atl_comm_id_storage::invalid_comm_id;
+                break;
+            }
+        }
+        if (new_comm_id != atl_comm_id_storage::invalid_comm_id) {
+            break;
+        }
+    }
+
+    LOG_DEBUG("new_comm_id ", new_comm_id);
+    CCL_THROW_IF_NOT(new_comm_id != atl_comm_id_storage::invalid_comm_id, "unexpected comm_id");
+
+    transport->get_comm_id_storage().acquire(new_comm_id);
+
+    return new_comm_id;
+}
 
 void atl_base_comm::init_tag() {
-    tag = std::unique_ptr<ccl_atl_tag>(new ccl_atl_tag(attr.out.tag_bits, attr.out.max_tag));
+    tag = std::shared_ptr<ccl_atl_tag>(new ccl_atl_tag(attr.out.tag_bits, attr.out.max_tag));
     if (rank == 0) {
         LOG_DEBUG("atl tag: ", tag->to_string());
     }
 }
 
-void atl_base_comm::print_atl_attrs() {
-    std::stringstream ss;
-
-    ss << "atl attrs:\n{\n"
-       << "  in: { "
-       << "shm: " << attr.in.enable_shm << ", hmem: " << attr.in.enable_hmem
-       << ", sync_coll: " << attr.in.enable_sync_coll << ", extra_ep: " << attr.in.enable_extra_ep
-       << ", ep_count: " << attr.in.ep_count << ", mnic_type: " << to_string(attr.in.mnic_type)
-       << ", mnic_count: " << attr.in.mnic_count
-       << ", mnic_offset: " << to_string(attr.in.mnic_offset) << " }\n"
-       << "  out: { "
-       << "shm: " << attr.out.enable_shm << ", hmem: " << attr.out.enable_hmem
-       << ", mnic_type: " << to_string(attr.out.mnic_type)
-       << ", mnic_count: " << attr.out.mnic_count << ", tag_bits: " << attr.out.tag_bits
-       << ", max_tag: " << attr.out.max_tag << " }\n}";
-
-    LOG_INFO(ss.str());
-}
-
-void atl_base_comm::executor_update() {
+void atl_base_comm::update_executor() {
     if (!executor->are_workers_started()) {
         if (rank < coord.local_count)
             LOG_INFO(
@@ -89,7 +152,7 @@ void atl_base_comm::executor_update() {
     }
 }
 
-std::shared_ptr<atl_base_comm> atl_comm_manager::create_comm() {
+std::shared_ptr<atl_base_comm> atl_comm_manager::create() {
     std::shared_ptr<atl_base_comm> atl_comm;
 
     auto transport_type = ccl::global_data::env().atl_transport;
@@ -99,12 +162,12 @@ std::shared_ptr<atl_base_comm> atl_comm_manager::create_comm() {
 #ifdef CCL_ENABLE_MPI
         case ccl_atl_mpi: atl_comm = std::shared_ptr<atl_base_comm>(new atl_mpi_comm()); break;
 #endif // CCL_ENABLE_MPI
-        default: LOG_ERROR("Unsupported yet"); break;
+        default: LOG_ERROR("unsupported yet"); break;
     }
     return atl_comm;
 }
 
-std::shared_ptr<atl_base_comm> atl_comm_manager::create_comm(std::shared_ptr<ikvs_wrapper> k) {
+std::shared_ptr<atl_base_comm> atl_comm_manager::create(std::shared_ptr<ikvs_wrapper> k) {
     std::shared_ptr<atl_base_comm> atl_comm;
 
     auto transport_type = ccl::global_data::env().atl_transport;
@@ -114,29 +177,60 @@ std::shared_ptr<atl_base_comm> atl_comm_manager::create_comm(std::shared_ptr<ikv
 #ifdef CCL_ENABLE_MPI
         case ccl_atl_mpi: atl_comm = std::shared_ptr<atl_base_comm>(new atl_mpi_comm(k)); break;
 #endif // CCL_ENABLE_MPI
-        default: LOG_ERROR("Unsupported yet"); break;
+        default: LOG_ERROR("unsupported yet"); break;
     }
     return atl_comm;
 }
 
-std::shared_ptr<atl_base_comm> atl_comm_manager::create_comm(int total_rank_count,
-                                                             const std::vector<int>& ranks,
-                                                             std::shared_ptr<ikvs_wrapper> k) {
+std::shared_ptr<atl_base_comm> atl_comm_manager::create(int comm_size,
+                                                        const std::vector<int>& ranks,
+                                                        std::shared_ptr<ikvs_wrapper> k) {
     std::shared_ptr<atl_base_comm> atl_comm;
 
     auto transport_type = ccl::global_data::env().atl_transport;
 
     switch (transport_type) {
         case ccl_atl_ofi:
-            atl_comm = std::shared_ptr<atl_base_comm>(new atl_ofi_comm(total_rank_count, ranks, k));
+            atl_comm = std::shared_ptr<atl_base_comm>(new atl_ofi_comm(comm_size, ranks, k));
             break;
 #ifdef CCL_ENABLE_MPI
         case ccl_atl_mpi:
-            atl_comm = std::shared_ptr<atl_base_comm>(new atl_mpi_comm(total_rank_count, ranks, k));
+            atl_comm = std::shared_ptr<atl_base_comm>(new atl_mpi_comm(comm_size, ranks, k));
             break;
 #endif // CCL_ENABLE_MPI
-        default: LOG_ERROR("Unsupported yet"); break;
+        default: LOG_ERROR("unsupported yet"); break;
     }
+    return atl_comm;
+}
+
+std::shared_ptr<atl_base_comm> atl_comm_manager::create_with_id(
+    const std::shared_ptr<atl_base_comm> base_comm,
+    int comm_id) {
+    std::shared_ptr<atl_base_comm> atl_comm;
+
+    auto transport_type = ccl::global_data::env().atl_transport;
+
+    switch (transport_type) {
+        case ccl_atl_ofi: {
+            std::shared_ptr<atl_ofi_comm> ofi_base_comm =
+                std::dynamic_pointer_cast<atl_ofi_comm>(base_comm);
+            atl_comm = std::shared_ptr<atl_base_comm>(new atl_ofi_comm(*ofi_base_comm.get()));
+            break;
+        }
+#ifdef CCL_ENABLE_MPI
+        case ccl_atl_mpi: {
+            std::shared_ptr<atl_mpi_comm> mpi_base_comm =
+                std::dynamic_pointer_cast<atl_mpi_comm>(base_comm);
+            atl_comm = std::shared_ptr<atl_base_comm>(new atl_mpi_comm(*mpi_base_comm.get()));
+            break;
+        }
+#endif // CCL_ENABLE_MPI
+        default: LOG_ERROR("unsupported yet"); break;
+    }
+
+    atl_comm->comm_id = comm_id;
+    atl_base_comm::comm_count++;
+
     return atl_comm;
 }
 
@@ -145,13 +239,13 @@ void atl_comm_manager::set_internal_env(const atl_attr_t& attr) {
     atl_base_comm::attr = attr;
 
     if (transport_type == ccl_atl_ofi)
-        atl_ofi::atl_set_env(attr);
+        atl_ofi::set_env(attr);
 #ifdef CCL_ENABLE_MPI
     else if (transport_type == ccl_atl_mpi)
         atl_mpi::set_env(attr);
 #endif // CCL_ENABLE_MPI
 }
 
-void atl_comm_manager::set_exec(ccl_executor* exec) {
+void atl_comm_manager::set_executor(ccl_executor* exec) {
     atl_base_comm::executor = exec;
 }

@@ -346,7 +346,8 @@ typedef enum hwloc_obj_osdev_type_e {
 				  * For instance the "eth0" interface on Linux. */
   HWLOC_OBJ_OSDEV_OPENFABRICS,	/**< \brief Operating system openfabrics device.
 				  * For instance the "mlx4_0" InfiniBand HCA,
-				  * or "hfi1_0" Omni-Path interface on Linux. */
+				  * "hfi1_0" Omni-Path interface,
+				  * or "bxi0" Atos/Bull BXI HCA on Linux. */
   HWLOC_OBJ_OSDEV_DMA,		/**< \brief Operating system dma engine device.
 				  * For instance the "dma0chan0" DMA channel on Linux. */
   HWLOC_OBJ_OSDEV_COPROC	/**< \brief Operating system co-processor device.
@@ -1212,8 +1213,9 @@ HWLOC_DECLSPEC int hwloc_set_cpubind(hwloc_topology_t topology, hwloc_const_cpus
 
 /** \brief Get current process or thread binding.
  *
- * Writes into \p set the physical cpuset which the process or thread (according to \e
- * flags) was last bound to.
+ * The CPU-set \p set (previously allocated by the caller)
+ * is filled with the list of PUs which the process or
+ * thread (according to \e flags) was last bound to.
  */
 HWLOC_DECLSPEC int hwloc_get_cpubind(hwloc_topology_t topology, hwloc_cpuset_t set, int flags);
 
@@ -1231,6 +1233,10 @@ HWLOC_DECLSPEC int hwloc_get_cpubind(hwloc_topology_t topology, hwloc_cpuset_t s
 HWLOC_DECLSPEC int hwloc_set_proc_cpubind(hwloc_topology_t topology, hwloc_pid_t pid, hwloc_const_cpuset_t set, int flags);
 
 /** \brief Get the current physical binding of process \p pid.
+ *
+ * The CPU-set \p set (previously allocated by the caller)
+ * is filled with the list of PUs which the process
+ * was last bound to.
  *
  * \note \p hwloc_pid_t is \p pid_t on Unix platforms,
  * and \p HANDLE on native Windows platforms.
@@ -1257,6 +1263,10 @@ HWLOC_DECLSPEC int hwloc_set_thread_cpubind(hwloc_topology_t topology, hwloc_thr
 #ifdef hwloc_thread_t
 /** \brief Get the current physical binding of thread \p tid.
  *
+ * The CPU-set \p set (previously allocated by the caller)
+ * is filled with the list of PUs which the thread
+ * was last bound to.
+ *
  * \note \p hwloc_thread_t is \p pthread_t on Unix platforms,
  * and \p HANDLE on native Windows platforms.
  *
@@ -1266,6 +1276,10 @@ HWLOC_DECLSPEC int hwloc_get_thread_cpubind(hwloc_topology_t topology, hwloc_thr
 #endif
 
 /** \brief Get the last physical CPU where the current process or thread ran.
+ *
+ * The CPU-set \p set (previously allocated by the caller)
+ * is filled with the list of PUs which the process or
+ * thread (according to \e flags) last ran on.
  *
  * The operating system may move some tasks from one processor
  * to another at any time according to their binding,
@@ -1281,6 +1295,10 @@ HWLOC_DECLSPEC int hwloc_get_thread_cpubind(hwloc_topology_t topology, hwloc_thr
 HWLOC_DECLSPEC int hwloc_get_last_cpu_location(hwloc_topology_t topology, hwloc_cpuset_t set, int flags);
 
 /** \brief Get the last physical CPU where a process ran.
+ *
+ * The CPU-set \p set (previously allocated by the caller)
+ * is filled with the list of PUs which the process
+ * last ran on.
  *
  * The operating system may move some tasks from one processor
  * to another at any time according to their binding,
@@ -1511,6 +1529,9 @@ HWLOC_DECLSPEC int hwloc_set_membind(hwloc_topology_t topology, hwloc_const_bitm
 /** \brief Query the default memory binding policy and physical locality of the
  * current process or thread.
  *
+ * The bitmap \p set (previously allocated by the caller)
+ * is filled with the process or thread memory binding.
+ *
  * This function has two output parameters: \p set and \p policy.
  * The values returned in these parameters depend on both the \p flags
  * passed in and the current memory binding policies and nodesets in
@@ -1571,6 +1592,9 @@ HWLOC_DECLSPEC int hwloc_set_proc_membind(hwloc_topology_t topology, hwloc_pid_t
 /** \brief Query the default memory binding policy and physical locality of the
  * specified process.
  *
+ * The bitmap \p set (previously allocated by the caller)
+ * is filled with the process memory binding.
+ *
  * This function has two output parameters: \p set and \p policy.
  * The values returned in these parameters depend on both the \p flags
  * passed in and the current memory binding policies and nodesets in
@@ -1624,6 +1648,9 @@ HWLOC_DECLSPEC int hwloc_set_area_membind(hwloc_topology_t topology, const void 
 /** \brief Query the CPUs near the physical NUMA node(s) and binding policy of
  * the memory identified by (\p addr, \p len ).
  *
+ * The bitmap \p set (previously allocated by the caller)
+ * is filled with the memory area binding.
+ *
  * This function has two output parameters: \p set and \p policy.
  * The values returned in these parameters depend on both the \p flags
  * passed in and the memory binding policies and nodesets of the pages
@@ -1652,7 +1679,8 @@ HWLOC_DECLSPEC int hwloc_get_area_membind(hwloc_topology_t topology, const void 
 
 /** \brief Get the NUMA nodes where memory identified by (\p addr, \p len ) is physically allocated.
  *
- * Fills \p set according to the NUMA nodes where the memory area pages
+ * The bitmap \p set (previously allocated by the caller)
+ * is filled according to the NUMA nodes where the memory area pages
  * are physically allocated. If no page is actually allocated yet,
  * \p set may be empty.
  *
@@ -1698,9 +1726,12 @@ HWLOC_DECLSPEC void *hwloc_alloc_membind(hwloc_topology_t topology, size_t len, 
 
 /** \brief Allocate some memory on NUMA memory nodes specified by \p set
  *
- * This is similar to hwloc_alloc_membind_nodeset() except that it is allowed to change
- * the current memory binding policy, thus providing more binding support, at
- * the expense of changing the current state.
+ * First, try to allocate properly with hwloc_alloc_membind().
+ * On failure, the current process or thread memory binding policy
+ * is changed with hwloc_set_membind() before allocating memory.
+ * Thus this function works in more cases, at the expense of changing
+ * the current state (possibly affecting future allocations that
+ * would not specify any policy).
  *
  * If ::HWLOC_MEMBIND_BYNODESET is specified, set is considered a nodeset.
  * Otherwise it's a cpuset.
@@ -1966,7 +1997,69 @@ enum hwloc_topology_flags_e {
    * hwloc and machine support.
    *
    */
-  HWLOC_TOPOLOGY_FLAG_IMPORT_SUPPORT = (1UL<<3)
+  HWLOC_TOPOLOGY_FLAG_IMPORT_SUPPORT = (1UL<<3),
+
+  /** \brief Do not consider resources outside of the process CPU binding.
+   *
+   * If the binding of the process is limited to a subset of cores,
+   * ignore the other cores during discovery.
+   *
+   * The resulting topology is identical to what a call to hwloc_topology_restrict()
+   * would generate, but this flag also prevents hwloc from ever touching other
+   * resources during the discovery.
+   *
+   * This flag especially tells the x86 backend to never temporarily
+   * rebind a thread on any excluded core. This is useful on Windows
+   * because such temporary rebinding can change the process binding.
+   * Another use-case is to avoid cores that would not be able to
+   * perform the hwloc discovery anytime soon because they are busy
+   * executing some high-priority real-time tasks.
+   *
+   * If process CPU binding is not supported,
+   * the thread CPU binding is considered instead if supported,
+   * or the flag is ignored.
+   *
+   * This flag requires ::HWLOC_TOPOLOGY_FLAG_IS_THISSYSTEM as well
+   * since binding support is required.
+   */
+  HWLOC_TOPOLOGY_FLAG_RESTRICT_TO_CPUBINDING = (1UL<<4),
+
+  /** \brief Do not consider resources outside of the process memory binding.
+   *
+   * If the binding of the process is limited to a subset of NUMA nodes,
+   * ignore the other NUMA nodes during discovery.
+   *
+   * The resulting topology is identical to what a call to hwloc_topology_restrict()
+   * would generate, but this flag also prevents hwloc from ever touching other
+   * resources during the discovery.
+   *
+   * This flag is meant to be used together with
+   * ::HWLOC_TOPOLOGY_FLAG_RESTRICT_TO_CPUBINDING when both cores
+   * and NUMA nodes should be ignored outside of the process binding.
+   *
+   * If process memory binding is not supported,
+   * the thread memory binding is considered instead if supported,
+   * or the flag is ignored.
+   *
+   * This flag requires ::HWLOC_TOPOLOGY_FLAG_IS_THISSYSTEM as well
+   * since binding support is required.
+   */
+  HWLOC_TOPOLOGY_FLAG_RESTRICT_TO_MEMBINDING = (1UL<<5),
+
+  /** \brief Do not ever modify the process or thread binding during discovery.
+   *
+   * This flag disables all hwloc discovery steps that require a change of
+   * the process or thread binding. This currently only affects the x86
+   * backend which gets entirely disabled.
+   *
+   * This is useful when hwloc_topology_load() is called while the
+   * application also creates additional threads or modifies the binding.
+   *
+   * This flag is also a strict way to make sure the process binding will
+   * not change to due thread binding changes on Windows
+   * (see ::HWLOC_TOPOLOGY_FLAG_RESTRICT_TO_CPUBINDING).
+   */
+  HWLOC_TOPOLOGY_FLAG_DONT_CHANGE_BINDING = (1UL<<6)
 };
 
 /** \brief Set OR'ed flags to non-yet-loaded topology.

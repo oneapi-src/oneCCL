@@ -30,19 +30,19 @@
 #define LOCAL_KVS_ID           "LOCAL_KVS_ID"
 
 #define INTERNAL_REGISTRATION                 "INTERNAL_REGISTRATION"
-#define RANKCOUNT_RANK_PROCID_THREADID_FORMAT "%ld_%d_%d_%ld"
+#define RANKCOUNT_RANK_PROCID_THREADID_FORMAT "%zu_%d_%d_%ld"
 
 pmi_resizable_simple_internal::pmi_resizable_simple_internal(int size,
                                                              const std::vector<int>& ranks,
                                                              std::shared_ptr<internal_kvs> k,
                                                              const char* main_addr)
-        : total_rank_count(size),
+        : comm_size(size),
           ranks(ranks),
           k(k),
-          main_addr(main_addr) {
-    max_keylen = MAX_KVS_KEY_LENGTH;
-    max_vallen = MAX_KVS_VAL_LENGTH;
-}
+          main_addr(main_addr),
+          max_keylen(MAX_KVS_KEY_LENGTH),
+          max_vallen(MAX_KVS_VAL_LENGTH),
+          local_id(0) {}
 
 int pmi_resizable_simple_internal::is_pm_resize_enabled() {
     return 0;
@@ -81,7 +81,7 @@ atl_status_t pmi_resizable_simple_internal::pmrt_init() {
 }
 
 atl_status_t pmi_resizable_simple_internal::registration() {
-    std::string total_local_rank_count_str = std::to_string(total_rank_count);
+    std::string total_local_rank_count_str = std::to_string(comm_size);
     std::string result_kvs_name = std::string(INTERNAL_REGISTRATION) + std::to_string(local_id);
     memset(val_storage, 0, max_vallen);
     snprintf(val_storage,
@@ -125,7 +125,7 @@ atl_status_t pmi_resizable_simple_internal::registration() {
 atl_status_t pmi_resizable_simple_internal::barrier_full_reg() {
     std::string empty_line("");
     std::string total_local_rank_count_str =
-        std::to_string(total_rank_count) + "_" + std::to_string(ranks.size());
+        std::to_string(comm_size) + "_" + std::to_string(ranks.size());
     std::string result_kvs_name = std::string(KVS_BARRIER_FULL) + std::to_string(local_id);
 
     KVS_2_ATL_CHECK_STATUS(
@@ -326,7 +326,6 @@ atl_status_t pmi_resizable_simple_internal::get_local_kvs_id(size_t& res) {
 
 atl_status_t pmi_resizable_simple_internal::set_local_kvs_id(size_t local_kvs_id) {
     /*TODO: change it for collect local_per_rank id, not global*/
-    put_key(LOCAL_KVS_ID, "ID", std::to_string(local_kvs_id).c_str(), ST_CLIENT);
     return k->kvs_set_value(LOCAL_KVS_ID, "ID", std::to_string(local_kvs_id).c_str()) ==
                    KVS_STATUS_SUCCESS
                ? ATL_STATUS_SUCCESS

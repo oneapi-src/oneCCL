@@ -152,91 +152,110 @@ void get_queues_properties(ze_device_handle_t device, ze_queue_properties_t* pro
     ZE_CALL(zeDeviceGetCommandQueueGroupProperties, (device, &queue_group_count, props->data()));
 }
 
-void get_comp_queue_ordinal(ze_device_handle_t device,
-                            const ze_queue_properties_t& props,
-                            uint32_t* ordinal) {
-    uint32_t comp_ordinal = std::numeric_limits<uint32_t>::max();
-
-    for (uint32_t idx = 0; idx < props.size(); ++idx) {
-        if (props[idx].flags & ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COMPUTE) {
-            comp_ordinal = idx;
-            break;
-        }
-    }
-
-    LOG_DEBUG("find queue: { ordinal: ",
-              comp_ordinal,
-              ", queue properties params: ",
-              to_string(props[comp_ordinal]),
-              " }");
-
-    if (comp_ordinal != std::numeric_limits<uint32_t>::max()) {
-        *ordinal = comp_ordinal;
-    }
-    else {
-        LOG_WARN("could not find queue ordinal, ordinal 0 will be used");
-        *ordinal = 0;
+std::string to_string(queue_group_type type) {
+    switch (type) {
+        case queue_group_type::compute: return "compute";
+        case queue_group_type::main: return "main";
+        case queue_group_type::link: return "link";
+        default: return "unknown";
     }
 }
 
-void get_copy_queue_ordinal(ze_device_handle_t device,
-                            const ze_queue_properties_t& props,
-                            uint32_t* ordinal) {
-    uint32_t copy_ordinal = std::numeric_limits<uint32_t>::max();
+queue_group_type get_queue_group_type(const ze_queue_properties_t& props, uint32_t ordinal) {
+    CCL_THROW_IF_NOT(ordinal < props.size(),
+                     "wrong queue group ordinal or properties size: { ordinal: ",
+                     ordinal,
+                     ", size: ",
+                     props.size(),
+                     " }");
+    const auto& prop = props[ordinal];
+    queue_group_type type = queue_group_type::unknown;
 
-    for (uint32_t idx = 0; idx < props.size(); ++idx) {
-        /* only compute property */
-        if ((props[idx].flags & ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COMPUTE) &&
-            global_data::env().ze_copy_engine == ccl_ze_copy_engine_none) {
-            copy_ordinal = idx;
-            break;
-        }
-
-        /* only copy property */
-        if ((props[idx].flags & ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COPY) &&
-            ((props[idx].flags & ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COMPUTE) == 0)) {
-            /* main */
-            if (props[idx].numQueues == 1 &&
-                global_data::env().ze_copy_engine == ccl_ze_copy_engine_main) {
-                copy_ordinal = idx;
-                break;
-            }
-            /* link */
-            if (props[idx].numQueues > 1 &&
-                global_data::env().ze_copy_engine == ccl_ze_copy_engine_link) {
-                copy_ordinal = idx;
-                break;
-            }
-        }
+    if (prop.flags & ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COMPUTE) {
+        type = queue_group_type::compute;
+    }
+    else if ((prop.flags & ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COPY) &&
+             ((prop.flags & ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COMPUTE) == 0)) {
+        type = (prop.numQueues == 1) ? queue_group_type::main : queue_group_type::link;
     }
 
-    LOG_DEBUG("find copy queue: { ordinal: ",
-              copy_ordinal,
-              ", queue properties params: ",
-              to_string(props[copy_ordinal]),
-              " }");
-
-    if (copy_ordinal != std::numeric_limits<uint32_t>::max()) {
-        *ordinal = copy_ordinal;
-    }
-    else {
-        LOG_WARN("could not find queue ordinal for copy engine mode: ",
-                 global_data::env().ze_copy_engine,
-                 ", ordinal 0 will be used");
-        *ordinal = 0;
-    }
+    return type;
 }
 
-void get_queue_index(const ze_queue_properties_t& props,
-                     uint32_t ordinal,
-                     int idx,
-                     uint32_t* index) {
-    CCL_ASSERT(props.size() > ordinal, "props.size() <= ordinal");
+uint32_t get_queue_group_ordinal(const ze_queue_properties_t& props, queue_group_type type) {
+    for (uint32_t ordinal = 0; ordinal < props.size(); ordinal++) {
+        if (get_queue_group_type(props, ordinal) == type) {
+            return ordinal;
+        }
+    }
+    return std::numeric_limits<uint32_t>::max();
+}
 
-    idx += ccl::global_data::env().ze_queue_index;
+bool get_buffer_context_and_device(const void* buf,
+                                   ze_context_handle_t* context,
+                                   ze_device_handle_t* device,
+                                   ze_memory_allocation_properties_t* props) {
+    CCL_THROW_IF_NOT(context, "no context");
+    bool success{};
+    const auto& contexts = global_data::get().ze_data->context_list;
+    auto mem_alloc_props = default_alloc_props;
+    for (auto ctx : contexts) {
+        ze_device_handle_t dev{};
+        ze_result_t res = zeMemGetAllocProperties(ctx, buf, &mem_alloc_props, &dev);
+        if (res == ZE_RESULT_SUCCESS) {
+            *context = ctx;
+            if (device) {
+                *device = dev;
+            }
+            if (props) {
+                *props = mem_alloc_props;
+            }
+            success = true;
+            break;
+        }
+    }
+    return success;
+}
 
-    *index = idx % props[ordinal].numQueues;
-    LOG_DEBUG("set queue index: ", *index);
+bool get_context_global_id(ze_context_handle_t context, ssize_t* id) {
+    CCL_THROW_IF_NOT(context, "no context");
+    CCL_THROW_IF_NOT(id, "no id");
+    bool success{};
+    const auto& contexts = global_data::get().ze_data->context_list;
+    auto found = std::find(contexts.begin(), contexts.end(), context);
+    if (found != contexts.end()) {
+        *id = std::distance(contexts.begin(), found);
+        success = true;
+    }
+    return success;
+}
+
+int get_fd_from_handle(const ze_ipc_mem_handle_t& handle) {
+    return *(reinterpret_cast<const int*>(handle.data));
+}
+
+void close_handle_fd(const ze_ipc_mem_handle_t& handle) {
+    int fd = get_fd_from_handle(handle);
+    close(fd);
+}
+
+ze_ipc_mem_handle_t get_handle_from_fd(int fd) {
+    ze_ipc_mem_handle_t handle{};
+    *(reinterpret_cast<int*>(handle.data)) = fd;
+    return handle;
+}
+
+bool get_device_global_id(ze_device_handle_t device, ssize_t* id) {
+    CCL_THROW_IF_NOT(device, "no device");
+    CCL_THROW_IF_NOT(id, "no id");
+    bool success{};
+    const auto& devices = global_data::get().ze_data->device_handles;
+    auto found = std::find(devices.begin(), devices.end(), device);
+    if (found != devices.end()) {
+        *id = std::distance(devices.begin(), found);
+        success = true;
+    }
+    return success;
 }
 
 device_family get_device_family(ze_device_handle_t device) {
@@ -250,55 +269,6 @@ device_family get_device_family(ze_device_handle_t device) {
         case static_cast<enum_t>(device_id::id2): return device_family::family2;
         default: return device_family::unknown;
     }
-}
-
-// adjust the timestamp to a common format
-static uint64_t adjust_device_timestamp(uint64_t timestamp, const ze_device_properties_t& props) {
-    // we have 2 fields that specify the amount of value bits: kernelTimestampValidBits for event
-    // timestamps and timestampValidBits for the global timestamps. In order to compare timestamps
-    // from the different sources we need to truncate the value the lowest number of bits.
-    const uint64_t min_mask = std::min(props.kernelTimestampValidBits, props.timestampValidBits);
-    const uint64_t mask = (1ull << min_mask) - 1ull;
-
-    return (timestamp & mask) * props.timerResolution;
-}
-
-// Returns start and end values for the provided event(measured in ns)
-std::pair<uint64_t, uint64_t> calculate_event_time(ze_event_handle_t event,
-                                                   ze_device_handle_t device) {
-    ze_kernel_timestamp_result_t timestamp = {};
-    ZE_CALL(zeEventQueryKernelTimestamp, (event, &timestamp));
-
-    ze_device_properties_t device_props = {};
-    device_props.stype = ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES;
-    ZE_CALL(zeDeviceGetProperties, (device, &device_props));
-
-    // use global counter as we calculate value across different contexts
-    uint64_t start = timestamp.global.kernelStart;
-    uint64_t end = timestamp.global.kernelEnd;
-
-    // gpu counters might be limited to 32-bit, so we need to handle a potential overlap
-    if (end <= start) {
-        const uint64_t timestamp_max_value = (1LL << device_props.kernelTimestampValidBits) - 1;
-        end += timestamp_max_value - start;
-    }
-
-    start = adjust_device_timestamp(start, device_props);
-    end = adjust_device_timestamp(end, device_props);
-
-    return { start, end };
-}
-
-uint64_t calculate_global_time(ze_device_handle_t device) {
-    uint64_t host_timestamp = 0;
-    uint64_t device_timestamp = 0;
-    ZE_CALL(zeDeviceGetGlobalTimestamps, (device, &host_timestamp, &device_timestamp));
-
-    ze_device_properties_t device_props = {};
-    device_props.stype = ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES;
-    ZE_CALL(zeDeviceGetProperties, (device, &device_props));
-
-    return adjust_device_timestamp(device_timestamp, device_props);
 }
 
 std::string to_string(ze_result_t result) {
@@ -385,6 +355,20 @@ std::string to_string(const ze_kernel_args_t& kernel_args) {
     return ss.str();
 }
 
+std::string to_string(const ze_device_property_flag_t& flag) {
+    switch (flag) {
+        case ZE_DEVICE_PROPERTY_FLAG_INTEGRATED: return "ZE_DEVICE_PROPERTY_FLAG_INTEGRATED";
+        case ZE_DEVICE_PROPERTY_FLAG_SUBDEVICE: return "ZE_DEVICE_PROPERTY_FLAG_SUBDEVICE";
+        case ZE_DEVICE_PROPERTY_FLAG_ECC: return "ZE_DEVICE_PROPERTY_FLAG_ECC";
+        case ZE_DEVICE_PROPERTY_FLAG_ONDEMANDPAGING:
+            return "ZE_DEVICE_PROPERTY_FLAG_ONDEMANDPAGING";
+        case ZE_DEVICE_PROPERTY_FLAG_FORCE_UINT32: return "ZE_DEVICE_PROPERTY_FLAG_FORCE_UINT32";
+        default:
+            return "unknown ze_device_property_flag_t value: " +
+                   std::to_string(static_cast<int>(flag));
+    }
+}
+
 std::string to_string(const ze_command_queue_group_property_flag_t& flag) {
     switch (flag) {
         case ZE_COMMAND_QUEUE_GROUP_PROPERTY_FLAG_COMPUTE:
@@ -403,20 +387,6 @@ std::string to_string(const ze_command_queue_group_property_flag_t& flag) {
     }
 }
 
-template <typename T>
-std::string flags_to_string(uint32_t flags) {
-    constexpr size_t bits = 8;
-    std::vector<std::string> output;
-    for (size_t i = 0; i < sizeof(flags) * bits; ++i) {
-        const size_t mask = 1UL << i;
-        const auto flag = flags & mask;
-        if (flag != 0) {
-            output.emplace_back(to_string(static_cast<T>(flag)));
-        }
-    }
-    return join_strings(output, " | ");
-}
-
 std::string to_string(const ze_command_queue_group_properties_t& queue_property) {
     std::stringstream ss;
     ss << "stype: " << queue_property.stype << ", pNext: " << (void*)queue_property.pNext
@@ -424,6 +394,24 @@ std::string to_string(const ze_command_queue_group_properties_t& queue_property)
        << flags_to_string<ze_command_queue_group_property_flag_t>(queue_property.flags)
        << ", maxMemoryFillPatternSize: " << queue_property.maxMemoryFillPatternSize
        << ", numQueues: " << queue_property.numQueues;
+    return ss.str();
+}
+
+std::string to_string(const ze_device_uuid_t& uuid) {
+    std::string str{};
+    std::string tmp{};
+    for (auto& entry : uuid.id) {
+        tmp += std::to_string(entry);
+        tmp += ", ";
+    }
+    str += "[ " + tmp.substr(0, tmp.size() - 2) + " ]";
+    return str;
+}
+
+std::string to_string(const zes_pci_address_t& addr) {
+    std::stringstream ss;
+    ss << "{ " << addr.domain << ", " << addr.bus << ", " << addr.device << ", " << addr.function
+       << "}";
     return ss.str();
 }
 
@@ -435,6 +423,12 @@ std::string join_strings(const std::vector<std::string>& tokens, const std::stri
             ss << delimeter;
         }
     }
+    return ss.str();
+}
+
+std::string to_string(const zes_fabric_port_id_t& port) {
+    std::stringstream ss;
+    ss << "{ " << port.fabricId << " " << port.attachId << " " << (int)port.portNumber << " }";
     return ss.str();
 }
 

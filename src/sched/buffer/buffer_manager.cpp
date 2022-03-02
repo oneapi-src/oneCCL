@@ -95,13 +95,13 @@ void buffer_manager::clear() {
 
 #ifdef CCL_ENABLE_ZE
     for (auto it = ze_buffers.begin(); it != ze_buffers.end(); it++) {
-        global_data::get().ze_cache->push(instance_idx,
-                                          it->ctx,
-                                          it->dev,
-                                          ze::default_device_mem_alloc_desc,
-                                          it->bytes,
-                                          0,
-                                          it->ptr);
+        global_data::get().ze_data->cache->push(instance_idx,
+                                                it->ctx,
+                                                it->dev,
+                                                ze::default_device_mem_alloc_desc,
+                                                it->bytes,
+                                                0,
+                                                it->ptr);
     }
     ze_buffers.clear();
 #endif // CCL_ENABLE_ZE
@@ -151,7 +151,7 @@ void* buffer_manager::alloc(const alloc_param& param) {
 
         auto context = param.stream->get_ze_context();
         auto device = param.stream->get_ze_device();
-        global_data::get().ze_cache->get(
+        global_data::get().ze_data->cache->get(
             instance_idx, context, device, ze::default_device_mem_alloc_desc, bytes, 0, &ptr);
         if (param.is_managed) {
             ze_buffers.emplace_back(ptr, bytes, context, device);
@@ -190,7 +190,7 @@ void buffer_manager::dealloc(const dealloc_param& param) {
         CCL_THROW_IF_NOT(param.stream, "null stream");
         auto context = param.stream->get_ze_context();
         auto device = param.stream->get_ze_device();
-        global_data::get().ze_cache->push(
+        global_data::get().ze_data->cache->push(
             instance_idx, context, device, ze::default_device_mem_alloc_desc, bytes, 0, ptr);
     }
 #endif // CCL_ENABLE_ZE

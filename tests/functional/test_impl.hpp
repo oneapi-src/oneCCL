@@ -21,9 +21,6 @@
 #include "test.hpp"
 #include "transport.hpp"
 
-#define FIRST_FP_COEFF  (0.1)
-#define SECOND_FP_COEFF (0.01)
-
 #ifdef CCL_ENABLE_SYCL
 void* alloc_buffer(size_t bytes) {
     auto& allocator = transport_data::instance().get_allocator();
@@ -292,8 +289,7 @@ void base_test<float>::fill_send_buffers(test_operation<float>& op) {
     for (size_t buf_idx = 0; buf_idx < op.buffer_count; buf_idx++) {
         for (size_t elem_idx = 0; elem_idx < op.send_bufs[buf_idx].size(); elem_idx++) {
             op.send_bufs[buf_idx][elem_idx] =
-                FIRST_FP_COEFF * op.comm_rank + SECOND_FP_COEFF * buf_idx;
-
+                op.first_fp_coeff * op.comm_rank + op.second_fp_coeff * buf_idx;
             if (op.param.reduction == REDUCTION_PROD) {
                 op.send_bufs[buf_idx][elem_idx] += 1;
             }
@@ -309,17 +305,17 @@ float base_test<float>::calculate_reduce_value(test_operation<float>& op,
     switch (op.param.reduction) {
         case REDUCTION_SUM:
             expected = op.comm_size *
-                       (FIRST_FP_COEFF * (op.comm_size - 1) / 2 + SECOND_FP_COEFF * buf_idx);
+                       (op.first_fp_coeff * (op.comm_size - 1) / 2 + op.second_fp_coeff * buf_idx);
             break;
         case REDUCTION_PROD:
             expected = 1;
             for (int rank = 0; rank < op.comm_size; rank++) {
-                expected *= FIRST_FP_COEFF * rank + SECOND_FP_COEFF * buf_idx + 1;
+                expected *= op.first_fp_coeff * rank + op.second_fp_coeff * buf_idx + 1;
             }
             break;
-        case REDUCTION_MIN: expected = SECOND_FP_COEFF * buf_idx; break;
+        case REDUCTION_MIN: expected = op.second_fp_coeff * buf_idx; break;
         case REDUCTION_MAX:
-            expected = FIRST_FP_COEFF * (op.comm_size - 1) + SECOND_FP_COEFF * buf_idx;
+            expected = op.first_fp_coeff * (op.comm_size - 1) + op.second_fp_coeff * buf_idx;
             break;
         default: ASSERT(0, "unexpected reduction %d", op.param.reduction); break;
     }

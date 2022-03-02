@@ -21,35 +21,6 @@
 #include "oneapi/ccl/communicator.hpp"
 
 #include "kvs_impl.hpp"
-#include "communicator_impl_details.hpp"
-
-//TODO
-/*
-namespace ccl
-{
-struct comm_split_attr_impl
-{
-    constexpr static int color_default()
-    {
-        return 0;
-    }
-    ccl::library_version version;
-};
-
-struct device_attr_impl
-{
-    constexpr static device_topology_type class_default()
-    {
-        return device_topology_type::ring;
-    }
-    constexpr static group_split_type group_default()
-    {
-        return group_split_type::process;
-    }
-    device_topology_type current_preferred_topology_class = class_default();
-    group_split_type current_preferred_topology_group = group_default();
-};
-}*/
 
 namespace ccl {
 
@@ -66,30 +37,22 @@ CCL_API vector_class<communicator> communicator::create_communicators(
     return ret;
 }
 
-using rank_t = int;
-
 template <class DeviceType, class ContextType>
 CCL_API vector_class<communicator> communicator::create_communicators(
     const int size,
     const vector_class<pair_class<int, DeviceType>>& devices,
     const ContextType& context,
     shared_ptr_class<kvs_interface> kvs) {
-    shared_ptr_class<ikvs_wrapper> kvs_tmp;
-    if (std::dynamic_pointer_cast<ccl::v1::kvs>(kvs) != nullptr) {
-        kvs_tmp = std::dynamic_pointer_cast<v1::kvs>(kvs)->get_impl().get();
-    }
-    else {
-        kvs_tmp = std::shared_ptr<ikvs_wrapper>(new users_kvs(kvs));
-    }
+    LOG_DEBUG("size: ", size, ", local ranks: ", devices.size());
 
     CCL_THROW_IF_NOT(devices.size() == 1, "multiple devices per process are not supported");
 
-    LOG_TRACE("create communicator");
+    ccl::comm_interface_ptr impl = ccl::comm_interface::create_comm_impl(
+        size, devices.begin()->first, devices.begin()->second, context, kvs);
 
-    ccl::communicator_interface_ptr impl = ccl::communicator_interface::create_communicator_impl(
-        size, devices.begin()->first, kvs_tmp);
     ccl::vector_class<ccl::communicator> ret;
     ret.push_back(ccl::communicator(std::move(impl)));
+
     return ret;
 }
 
@@ -112,11 +75,9 @@ CCL_API vector_class<communicator> communicator::create_communicators(
  * @return host communicator
  */
 communicator communicator::create_communicator(const comm_attr& attr) {
-    throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
+    LOG_DEBUG("create communicator");
 
-    LOG_DEBUG("create host communicator");
-
-    communicator_interface_ptr impl = communicator_interface::create_communicator_impl();
+    comm_interface_ptr impl = comm_interface::create_comm_impl();
 
     return communicator(std::move(impl));
 }
@@ -133,18 +94,9 @@ communicator communicator::create_communicator(const int size,
                                                const comm_attr& attr) {
     throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
 
-    LOG_DEBUG("create host communicator");
+    LOG_DEBUG("size: ", size);
 
-    shared_ptr_class<ikvs_wrapper> kvs_tmp;
-    if (std::dynamic_pointer_cast<ccl::v1::kvs>(kvs) != nullptr) {
-        kvs_tmp = std::dynamic_pointer_cast<ccl::v1::kvs>(kvs)->get_impl().get();
-    }
-    else {
-        kvs_tmp = std::shared_ptr<ikvs_wrapper>(new users_kvs(kvs));
-    }
-
-    communicator_interface_ptr impl =
-        communicator_interface::create_communicator_impl(size, kvs_tmp);
+    comm_interface_ptr impl = comm_interface::create_comm_impl(size, kvs);
 
     return communicator(std::move(impl));
 }
@@ -162,16 +114,7 @@ communicator communicator::create_communicator(const int size,
                                                const comm_attr& attr) {
     LOG_DEBUG("size ", size, ", rank ", rank);
 
-    shared_ptr_class<ikvs_wrapper> kvs_tmp;
-    if (std::dynamic_pointer_cast<ccl::v1::kvs>(kvs) != nullptr) {
-        kvs_tmp = std::dynamic_pointer_cast<ccl::v1::kvs>(kvs)->get_impl().get();
-    }
-    else {
-        kvs_tmp = std::shared_ptr<ikvs_wrapper>(new users_kvs(kvs));
-    }
-
-    communicator_interface_ptr impl =
-        communicator_interface::create_communicator_impl(size, rank, kvs_tmp);
+    comm_interface_ptr impl = comm_interface::create_comm_impl(size, rank, kvs);
 
     return communicator(std::move(impl));
 }

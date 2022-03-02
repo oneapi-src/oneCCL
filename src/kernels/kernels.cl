@@ -1,107 +1,90 @@
 #include "common.h"
-#include "shared.h"
 
 __kernel void empty_kernel(int my_rank,
                            int comm_size,
                            ulong count,
                            const __global void* input_buffer,
                            __global void* output_buffer,
-                           const __global void* right_input_buffer,
-                           __global void* right_output_buffer) {
+                           const __global void* peer_input_buffer,
+                           __global void* peer_output_buffer) {
     return;
 }
 
-// Name - unique name suffix for the kernel
-// T - type parameter(e.g. float, int4, etc)
-// VecSize - vector size of the type. E.g. if float4 is used, VecSize is 4. Note: if just float is used,
-// the value must be one as it's used for division inside the kernel.
-// Op - A operation parameter(e.g. add(x, y))
-// OpName - Operator name which goes to the kernel name, e.g. OpName = add, Op = __add_int(actual function)
-#define DEFINE_ALLREDUCE_KERNEL(Name, T, VecSize, Op, OpName) \
-    __kernel void allreduce_kernel_##Name##_##OpName(int my_rank, \
-                                                     int comm_size, \
-                                                     ulong count, \
-                                                     const __global T* input_buffer, \
-                                                     __global T* output_buffer, \
-                                                     const __global T* right_input_buffer, \
-                                                     __global T* right_output_buffer) { \
+// DtypeName - e.g. float32, uint16
+// Dtype - e.g. float, ushort
+// OpName - e.g. sum, prod
+// OpFunc - e.g. __sum_int, __prod_float (convention __<OpName>_<Dtype>)
+
+#define DEFINE_ALLREDUCE_KERNEL(DtypeName, Dtype, OpName, OpFunc) \
+    __kernel void allreduce_kernel_##DtypeName##_##OpName(int my_rank, \
+                                                          int comm_size, \
+                                                          ulong count, \
+                                                          const __global Dtype* input_buffer, \
+                                                          __global Dtype* output_buffer, \
+                                                          const __global Dtype* peer_input_buffer, \
+                                                          __global Dtype* peer_output_buffer) { \
         DEBUG_BLOCK(printf("rank: %d, comm size: %d, count: %zu\n", my_rank, comm_size, count)); \
         size_t work_group_size = get_global_size(0); \
         size_t thread_id = get_global_id(0); \
-\
         for (size_t i = 0; thread_id + i < count; i += work_group_size) { \
             const size_t idx = thread_id + i; \
-            output_buffer[idx] = Op(input_buffer[idx], right_input_buffer[idx]); \
-            right_output_buffer[idx] = output_buffer[idx]; \
+            output_buffer[idx] = OpFunc(input_buffer[idx], peer_input_buffer[idx]); \
+            peer_output_buffer[idx] = output_buffer[idx]; \
         } \
     }
 
-#define DEFINE_REDUCE_LOCAL_OUTOFPLACE_KERNEL(Name, T, VecSize, Op, OpName) \
-    __kernel void reduce_local_outofplace_kernel_##Name##_##OpName( \
+#define DEFINE_REDUCE_LOCAL_OUTOFPLACE_KERNEL(DtypeName, Dtype, OpName, OpFunc) \
+    __kernel void reduce_local_outofplace_kernel_##DtypeName##_##OpName( \
         int my_rank, \
         int comm_size, \
         ulong count, \
-        const __global T* input_buffer_1, \
-        const __global T* input_buffer_2, \
-        __global T* output_buffer) { \
+        const __global Dtype* input_buffer_1, \
+        const __global Dtype* input_buffer_2, \
+        __global Dtype* output_buffer) { \
         DEBUG_BLOCK(printf("rank: %d, comm size: %d, count: %zu\n", my_rank, comm_size, count)); \
         size_t work_group_size = get_global_size(0); \
         size_t thread_id = get_global_id(0); \
-\
         for (size_t i = 0; thread_id + i < count; i += work_group_size) { \
             const size_t idx = thread_id + i; \
-            output_buffer[idx] = Op(input_buffer_1[idx], input_buffer_2[idx]); \
+            output_buffer[idx] = OpFunc(input_buffer_1[idx], input_buffer_2[idx]); \
         } \
     }
 
-#define DEFINE_REDUCE_LOCAL_INPLACE_KERNEL(Name, T, VecSize, Op, OpName) \
-    __kernel void reduce_local_inplace_kernel_##Name##_##OpName( \
-        ulong count, const __global T* input_buffer, __global T* inoutput_buffer) { \
-        DEBUG_BLOCK(/* int sg_id = get_sub_group_id(); */ \
-                    printf("in reduce_local_inplace_kernel_\n")); \
+#define DEFINE_REDUCE_LOCAL_INPLACE_KERNEL(DtypeName, Dtype, OpName, OpFunc) \
+    __kernel void reduce_local_inplace_kernel_##DtypeName##_##OpName( \
+        ulong count, const __global Dtype* input_buffer, __global Dtype* inoutput_buffer) { \
+        DEBUG_BLOCK(printf("in reduce_local_inplace_kernel\n")); \
         size_t work_group_size = get_global_size(0); \
         size_t thread_id = get_global_id(0); \
-\
         for (size_t i = 0; thread_id + i < count; i += work_group_size) { \
             const size_t idx = thread_id + i; \
-            inoutput_buffer[idx] = Op(input_buffer[idx], inoutput_buffer[idx]); \
+            inoutput_buffer[idx] = OpFunc(input_buffer[idx], inoutput_buffer[idx]); \
         } \
     }
 
-// Define kernels for a specific operation for all the supported types.
-// Note: for op function we use convention __<OpName>_<type>, where type is the actual type(e.g. int4, float)
-// FIXME: Temporary use scalar types instead of vector ones. This is a workaround for issues in case when
-// elems_count % VecSize != 0. Need to find a proper fix with a good performance.
-#define VEC_SIZE RING_ALLREDUCE_VEC_SIZE
-
+// Define kernels for a specific reduction operation for all supported datatypes
 #define DEFINE_KERNELS_WITH_OP(KernelName, OpName) \
-    DEFINE_##KernelName##_KERNEL(int8, char, VEC_SIZE, __##OpName##_##char, OpName) \
-        DEFINE_##KernelName##_KERNEL(uint8, uchar, VEC_SIZE, __##OpName##_##uchar, OpName) \
+    DEFINE_##KernelName##_KERNEL(int8, char, OpName, __##OpName##_##char) \
+        DEFINE_##KernelName##_KERNEL(uint8, uchar, OpName, __##OpName##_##uchar) \
 \
-            DEFINE_##KernelName##_KERNEL(int16, short, VEC_SIZE, __##OpName##_##short, OpName) \
-                DEFINE_##KernelName##_KERNEL( \
-                    uint16, ushort, VEC_SIZE, __##OpName##_##ushort, OpName) \
+            DEFINE_##KernelName##_KERNEL(int16, short, OpName, __##OpName##_##short) \
+                DEFINE_##KernelName##_KERNEL(uint16, ushort, OpName, __##OpName##_##ushort) \
 \
-                    DEFINE_##KernelName##_KERNEL(int32, int, VEC_SIZE, __##OpName##_##int, OpName) \
-                        DEFINE_##KernelName##_KERNEL( \
-                            uint32, uint, VEC_SIZE, __##OpName##_##uint, OpName) \
+                    DEFINE_##KernelName##_KERNEL(int32, int, OpName, __##OpName##_##int) \
+                        DEFINE_##KernelName##_KERNEL(uint32, uint, OpName, __##OpName##_##uint) \
 \
-                            DEFINE_##KernelName##_KERNEL( \
-                                int64, long, VEC_SIZE, __##OpName##_##long, OpName) \
+                            DEFINE_##KernelName##_KERNEL(int64, long, OpName, __##OpName##_##long) \
                                 DEFINE_##KernelName##_KERNEL( \
-                                    uint64, ulong, VEC_SIZE, __##OpName##_##ulong, OpName) \
+                                    uint64, ulong, OpName, __##OpName##_##ulong) \
 \
                                     DEFINE_##KernelName##_KERNEL( \
-                                        float32, float, VEC_SIZE, __##OpName##_##float, OpName) \
-                                        DEFINE_##KernelName##_KERNEL(float64, \
-                                                                     double, \
-                                                                     VEC_SIZE, \
-                                                                     __##OpName##_##double, \
-                                                                     OpName)
+                                        float32, float, OpName, __##OpName##_##float) \
+                                        DEFINE_##KernelName##_KERNEL( \
+                                            float64, double, OpName, __##OpName##_##double)
 
 #define DEFINE_KERNELS_WITH_LP_OP(KernelName, OpName) \
-    DEFINE_##KernelName##_KERNEL(bfloat16, ushort, VEC_SIZE, __bf16_##OpName##_##ushort, OpName) \
-        DEFINE_##KernelName##_KERNEL(float16, half, VEC_SIZE, __##OpName##_##half, OpName)
+    DEFINE_##KernelName##_KERNEL(bfloat16, ushort, OpName, __bf16_##OpName##_##ushort) \
+        DEFINE_##KernelName##_KERNEL(float16, half, OpName, __##OpName##_##half)
 
 #define DEFINE_OPS(T) \
     DEFINE_SUM_OP(T) \
@@ -121,7 +104,7 @@ __kernel void empty_kernel(int my_rank,
     DEFINE_FP16MIN_OP(T) \
     DEFINE_FP16MAX_OP(T)
 
-// Define Op function for each supported type(use vector types for some of them as required by the kernel)
+// Define reduction operation function for each supported datatype
 DEFINE_OPS(char)
 DEFINE_OPS(uchar)
 

@@ -78,7 +78,7 @@ You can customize CLI-based installation (for example, specify directory, compil
 
   ::
 
-     cmake .. -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=dpcpp -DCOMPUTE_BACKEND=dpcpp_level_zero
+     cmake .. -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=dpcpp -DCOMPUTE_BACKEND=dpcpp
 
 * To specify the **build type**, modify the ``cmake`` command:
 

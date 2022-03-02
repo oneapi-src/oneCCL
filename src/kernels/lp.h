@@ -27,8 +27,6 @@ ushort __fp32_to_bf16(float V) {
     ushort2 temp = as_ushort2(V);
     return temp.s1;
 }
-#else // CCL_BF16_GPU_TRUNCATE
-#include "legacy/rne.h"
 #endif // CCL_BF16_GPU_TRUNCATE
 
 #define DEFINE_BF16SUM_OP(T) \
@@ -141,6 +139,7 @@ half __fp32_to_fp16(float V) {
     }
 
 #else // CCL_FP16_GPU_TRUNCATE
+
 #define DEFINE_FP16SUM_OP(T) \
     T __sum_##T(T lhs, T rhs) { \
         return lhs + rhs; \

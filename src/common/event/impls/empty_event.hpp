@@ -20,6 +20,7 @@
 
 namespace ccl {
 
+// empty default event, used by default constructed ccl event
 class empty_event_impl final : public event_impl {
 public:
     empty_event_impl() = default;

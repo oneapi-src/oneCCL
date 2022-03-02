@@ -17,59 +17,6 @@
 
 atl_ofi_global_data_t global_data;
 
-template <class Container>
-std::string vec_to_string(Container& elems) {
-    if (elems.empty()) {
-        return "<empty>";
-    }
-
-    size_t idx = 0;
-    std::ostringstream ss;
-    for (auto elem : elems) {
-        ss << elem;
-        idx++;
-        if (idx < elems.size()) {
-            ss << " ";
-        }
-    }
-    return ss.str();
-}
-
-#ifdef CCL_ENABLE_OFI_HMEM
-void atl_ofi_init_ze_data() {
-    atl_ofi_ze_data& ze_data = global_data.ze_data;
-
-    ZE_CALL(zeInit, (ZE_INIT_FLAG_GPU_ONLY));
-
-    uint32_t count = 1;
-    ZE_CALL(zeDriverGet, (&count, &ze_data.driver));
-
-    ze_data.device_count = 0;
-    ZE_CALL(zeDeviceGet, (ze_data.driver, &ze_data.device_count, nullptr));
-    ZE_CALL(zeDeviceGet, (ze_data.driver, &ze_data.device_count, ze_data.devices));
-    ZE_CALL(zeContextCreate, (ze_data.driver, &ccl::ze::default_context_desc, &ze_data.context));
-
-    CCL_THROW_IF_NOT(ze_data.driver, "null ze driver");
-    CCL_THROW_IF_NOT(ze_data.context, "null ze context");
-    CCL_THROW_IF_NOT(
-        ze_data.device_count > 0, "unexpected ze device count: ", ze_data.device_count);
-
-    LOG_DEBUG("ze device count: ", ze_data.device_count);
-}
-#endif // CCL_ENABLE_OFI_HMEM
-
-void atl_ofi_print_coord(atl_proc_coord_t* coord) {
-    LOG_DEBUG("coord: global [idx ",
-              coord->global_idx,
-              ", cnt ",
-              coord->global_count,
-              "], local [idx ",
-              coord->local_idx,
-              ", cnt ",
-              coord->local_count,
-              "]");
-}
-
 std::string atl_ofi_get_short_nic_name(const struct fi_info* prov) {
     std::stringstream ss;
     ss << prov->domain_attr->name;
@@ -128,33 +75,34 @@ std::string atl_ofi_get_nic_info(const struct fi_info* prov) {
     return ss.str();
 }
 
-atl_ofi_prov_t* atl_ofi_get_prov(atl_ep_t* ep, int peer_proc_idx, size_t msg_size) {
+atl_ofi_prov_t* atl_ofi_get_prov(atl_ofi_ctx_t& ctx,
+                                 const atl_proc_coord_t& coord,
+                                 const atl_ep_t& ep,
+                                 int peer_proc_idx,
+                                 size_t msg_size) {
     size_t prov_idx;
-    atl_ofi_ctx_t* ofi_ctx = container_of(ep->ctx, atl_ofi_ctx_t, ctx);
 
-    CCL_THROW_IF_NOT(ofi_ctx->prov_count <= ATL_OFI_MAX_PROV_COUNT,
-                     "unexpected prov_count ",
-                     ofi_ctx->prov_count);
+    CCL_THROW_IF_NOT(
+        ctx.prov_count <= ATL_OFI_MAX_PROV_COUNT, "unexpected prov_count ", ctx.prov_count);
 
-    atl_proc_coord_t* coord = &(ep->ctx->coord);
-    int my_node_idx = coord->global_idx / coord->local_count;
-    int peer_node_idx = peer_proc_idx / coord->local_count;
+    int my_node_idx = coord.global_idx / coord.local_count;
+    int peer_node_idx = peer_proc_idx / coord.local_count;
 
-    int has_shm = (ofi_ctx->prov_count == ofi_ctx->nw_prov_count + 1) ? 1 : 0;
+    int has_shm = (ctx.prov_count == ctx.nw_prov_count + 1) ? 1 : 0;
 
     if (has_shm && (my_node_idx == peer_node_idx) &&
-        (msg_size <= ofi_ctx->provs[ofi_ctx->shm_prov_idx].max_msg_size)) {
-        prov_idx = ofi_ctx->shm_prov_idx;
+        (msg_size <= ctx.provs[ctx.shm_prov_idx].max_msg_size)) {
+        prov_idx = ctx.shm_prov_idx;
     }
     else {
-        size_t nw_prov_offset = ep->idx % ofi_ctx->nw_prov_count;
-        prov_idx = ofi_ctx->nw_prov_first_idx + nw_prov_offset;
+        size_t nw_prov_offset = ep.idx % ctx.nw_prov_count;
+        prov_idx = ctx.nw_prov_first_idx + nw_prov_offset;
     }
 
     LOG_DEBUG("select nic: ep_idx ",
-              ep->idx,
+              ep.idx,
               ", local_proc_idx ",
-              coord->local_idx,
+              coord.local_idx,
               ", nic_idx ",
               prov_idx,
               ", my_node_idx ",
@@ -167,37 +115,33 @@ atl_ofi_prov_t* atl_ofi_get_prov(atl_ep_t* ep, int peer_proc_idx, size_t msg_siz
               has_shm);
 
     /* TODO: add segmentation logic */
-    CCL_THROW_IF_NOT(msg_size <= ofi_ctx->provs[prov_idx].max_msg_size,
+    CCL_THROW_IF_NOT(msg_size <= ctx.provs[prov_idx].max_msg_size,
                      "msg_size (",
                      msg_size,
                      ") is greater than max_msg_size (",
-                     ofi_ctx->provs[prov_idx].max_msg_size,
+                     ctx.provs[prov_idx].max_msg_size,
                      "), prov_idx ",
                      prov_idx);
 
-    return &(ofi_ctx->provs[prov_idx]);
+    return &(ctx.provs[prov_idx]);
 }
 
-fi_addr_t atl_ofi_get_addr(atl_ctx_t* ctx, atl_ofi_prov_t* prov, int proc_idx, size_t ep_idx) {
-    return *(prov->addr_table + ((ctx->ep_count * (proc_idx - prov->first_proc_idx)) + ep_idx));
+fi_addr_t atl_ofi_get_addr(atl_ofi_ctx_t& ctx, atl_ofi_prov_t* prov, int proc_idx, size_t ep_idx) {
+    return *(prov->addr_table + ((ctx.ep_count * (proc_idx - prov->first_proc_idx)) + ep_idx));
 }
 
-atl_status_t atl_ofi_get_local_proc_coord(atl_ofi_ctx_t* ofi_ctx, std::shared_ptr<ipmi> pmi) {
-    CCL_THROW_IF_NOT(ofi_ctx, "ofi_ctx is null");
-
-    atl_proc_coord_t* coord = &(ofi_ctx->ctx.coord);
-
+atl_status_t atl_ofi_get_local_proc_coord(atl_proc_coord_t& coord, std::shared_ptr<ipmi> pmi) {
     atl_status_t ret = ATL_STATUS_SUCCESS;
     int i;
     int local_idx = 0, local_count = 0;
     char* all_hostnames = nullptr;
     char my_hostname[ATL_MAX_HOSTNAME_LEN] = { 0 };
     size_t my_hostname_len = 0;
-    int my_global_proc_idx = coord->global_idx;
+    int my_global_proc_idx = coord.global_idx;
 
     gethostname(my_hostname, ATL_MAX_HOSTNAME_LEN - 1);
     my_hostname_len = strlen(my_hostname);
-    coord->hostname_hash = std::hash<std::string>{}(my_hostname);
+    coord.hostname_hash = std::hash<std::string>{}(my_hostname);
 
     CCL_THROW_IF_NOT(my_hostname_len < ATL_MAX_HOSTNAME_LEN,
                      "unexpected my_hostname_len ",
@@ -226,13 +170,13 @@ atl_status_t atl_ofi_get_local_proc_coord(atl_ofi_ctx_t* ofi_ctx, std::shared_pt
 
     ATL_CHECK_STATUS(pmi->pmrt_barrier(), "barrier failed");
 
-    all_hostnames = (char*)calloc(1, coord->global_count * ATL_MAX_HOSTNAME_LEN);
+    all_hostnames = (char*)calloc(1, coord.global_count * ATL_MAX_HOSTNAME_LEN);
     if (!all_hostnames) {
         LOG_ERROR("can't allocate all_hostnames");
         goto fn_err;
     }
 
-    for (i = 0; i < coord->global_count; i++) {
+    for (i = 0; i < coord.global_count; i++) {
         ret = pmi->pmrt_kvs_get((char*)ATL_OFI_HOSTNAME_PM_KEY,
                                 i * ATL_OFI_PMI_PROC_MULTIPLIER,
                                 all_hostnames + i * ATL_MAX_HOSTNAME_LEN,
@@ -243,7 +187,7 @@ atl_status_t atl_ofi_get_local_proc_coord(atl_ofi_ctx_t* ofi_ctx, std::shared_pt
         }
     }
 
-    for (i = 0; i < coord->global_count; i++) {
+    for (i = 0; i < coord.global_count; i++) {
         if (!strncmp(my_hostname,
                      all_hostnames + i * ATL_MAX_HOSTNAME_LEN,
                      my_hostname_len + 1 /* including "-" at the end */)) {
@@ -257,8 +201,8 @@ atl_status_t atl_ofi_get_local_proc_coord(atl_ofi_ctx_t* ofi_ctx, std::shared_pt
         }
     }
 
-    coord->local_idx = local_idx;
-    coord->local_count = local_count;
+    coord.local_idx = local_idx;
+    coord.local_count = local_count;
 
 fn_exit:
     free(all_hostnames);
@@ -269,13 +213,12 @@ fn_err:
     goto fn_exit;
 }
 
-atl_status_t atl_ofi_prov_update_addr_table(atl_ofi_ctx_t* ofi_ctx,
+atl_status_t atl_ofi_prov_update_addr_table(atl_ofi_ctx_t& ctx,
+                                            const atl_proc_coord_t& coord,
                                             size_t prov_idx,
-                                            std::shared_ptr<ipmi> pmi) {
-    CCL_THROW_IF_NOT(ofi_ctx, "ofi_ctx is null");
-
-    atl_ctx_t* ctx = &(ofi_ctx->ctx);
-    atl_ofi_prov_t* prov = &(ofi_ctx->provs[prov_idx]);
+                                            std::shared_ptr<ipmi> pmi,
+                                            std::list<std::vector<char>>& ep_names) {
+    atl_ofi_prov_t* prov = &(ctx.provs[prov_idx]);
 
     atl_status_t ret = ATL_STATUS_SUCCESS;
     int i;
@@ -286,16 +229,16 @@ atl_status_t atl_ofi_prov_update_addr_table(atl_ofi_ctx_t* ofi_ctx,
     char* ep_names_table;
     size_t ep_names_table_len;
 
-    size_t named_ep_count = (prov->sep ? 1 : ctx->ep_count);
+    size_t named_ep_count = (prov->sep ? 1 : ctx.ep_count);
 
-    int local_count = ctx->coord.local_count;
-    int node_idx = ctx->coord.global_idx / local_count;
+    int local_count = coord.local_count;
+    int node_idx = coord.global_idx / local_count;
     int shm_start_idx = node_idx * local_count;
     int shm_end_idx = (node_idx + 1) * local_count;
 
     LOG_DEBUG("shm_start_idx ", shm_start_idx, ", shm_end_idx ", shm_end_idx);
 
-    int proc_count = prov->is_shm ? ctx->coord.local_count : ctx->coord.global_count;
+    int proc_count = prov->is_shm ? coord.local_count : coord.global_count;
 
     if (proc_count == 0)
         return ATL_STATUS_SUCCESS;
@@ -307,9 +250,9 @@ atl_status_t atl_ofi_prov_update_addr_table(atl_ofi_ctx_t* ofi_ctx,
               ", addr_len ",
               prov->addr_len,
               ", local_count ",
-              ctx->coord.local_count,
+              coord.local_count,
               ", global_count ",
-              ctx->coord.global_count,
+              coord.global_count,
               ", proc_count ",
               proc_count);
 
@@ -334,8 +277,9 @@ atl_status_t atl_ofi_prov_update_addr_table(atl_ofi_ctx_t* ofi_ctx,
 
     ATL_CHECK_STATUS(pmi->pmrt_barrier(), "barrier failed");
 
+    std::vector<char> ret_ep_name(prov->addr_len, '\0');
     /* retrieve all OFI EP names in order */
-    for (i = 0; i < ctx->coord.global_count; i++) {
+    for (i = 0; i < coord.global_count; i++) {
         if (prov->is_shm) {
             if (!(i >= shm_start_idx && i < shm_end_idx)) {
                 continue;
@@ -346,9 +290,14 @@ atl_status_t atl_ofi_prov_update_addr_table(atl_ofi_ctx_t* ofi_ctx,
             ret = pmi->pmrt_kvs_get(
                 (char*)ATL_OFI_FI_ADDR_PM_KEY,
                 i * ATL_OFI_PMI_PROC_MULTIPLIER + prov_idx * ATL_OFI_PMI_PROV_MULTIPLIER + j,
-                ep_names_table + addr_idx * prov->addr_len,
+                (void*)ret_ep_name.data(),
                 prov->addr_len);
 
+            auto it = std::find(ep_names.begin(), ep_names.end(), ret_ep_name);
+            if (it == ep_names.end()) {
+                ep_names.push_back(ret_ep_name);
+            }
+            memcpy(ep_names_table + addr_idx * prov->addr_len, ret_ep_name.data(), prov->addr_len);
             if (ret) {
                 LOG_ERROR("kvs_get error: ret ",
                           ret,
@@ -381,7 +330,7 @@ atl_status_t atl_ofi_prov_update_addr_table(atl_ofi_ctx_t* ofi_ctx,
     if (prov->addr_table != nullptr)
         free(prov->addr_table);
 
-    prov->addr_table = (fi_addr_t*)calloc(1, ctx->ep_count * proc_count * sizeof(fi_addr_t));
+    prov->addr_table = (fi_addr_t*)calloc(1, ctx.ep_count * proc_count * sizeof(fi_addr_t));
 
     if (!prov->addr_table)
         goto err_ep_names;
@@ -425,9 +374,8 @@ atl_status_t atl_ofi_prov_update_addr_table(atl_ofi_ctx_t* ofi_ctx,
         memcpy(table, prov->addr_table, proc_count * sizeof(fi_addr_t));
 
         for (i = 0; i < proc_count; i++) {
-            for (j = 0; j < ctx->ep_count; j++) {
-                prov->addr_table[i * ctx->ep_count + j] =
-                    fi_rx_addr(table[i], j, prov->rx_ctx_bits);
+            for (j = 0; j < ctx.ep_count; j++) {
+                prov->addr_table[i * ctx.ep_count + j] = fi_rx_addr(table[i], j, prov->rx_ctx_bits);
             }
         }
         free(table);
@@ -486,25 +434,25 @@ err_getname:
     ep->name.len = 0;
 
 err_addr:
-    return RET2ATL(ret);
+    return ATL_OFI_RET(ret);
 }
 
-atl_status_t atl_ofi_prov_eps_connect(atl_ofi_ctx_t* ofi_ctx,
+atl_status_t atl_ofi_prov_eps_connect(atl_ofi_ctx_t& ctx,
+                                      const atl_proc_coord_t& coord,
                                       size_t prov_idx,
-                                      std::shared_ptr<ipmi> pmi) {
+                                      std::shared_ptr<ipmi> pmi,
+                                      std::list<std::vector<char>>& ep_names) {
     int ret;
     size_t ep_idx;
 
-    atl_ctx_t* ctx = &(ofi_ctx->ctx);
-    atl_ofi_prov_t* prov = &(ofi_ctx->provs[prov_idx]);
-    size_t named_ep_count = (prov->sep ? 1 : ctx->ep_count);
-    atl_proc_coord_t* coord = &(ctx->coord);
+    atl_ofi_prov_t* prov = &(ctx.provs[prov_idx]);
+    size_t named_ep_count = (prov->sep ? 1 : ctx.ep_count);
 
     prov->addr_len = 0;
     prov->first_proc_idx =
-        (prov->is_shm) ? ((coord->global_idx / coord->local_count) * coord->local_count) : 0;
+        (prov->is_shm) ? ((coord.global_idx / coord.local_count) * coord.local_count) : 0;
 
-    for (ep_idx = 0; ep_idx < ctx->ep_count; ep_idx++) {
+    for (ep_idx = 0; ep_idx < ctx.ep_count; ep_idx++) {
         ret = atl_ofi_prov_ep_get_name(prov, ep_idx);
         if (ret) {
             LOG_ERROR("atl_ofi_prov_ep_get_name error");
@@ -515,7 +463,7 @@ atl_status_t atl_ofi_prov_eps_connect(atl_ofi_ctx_t* ofi_ctx,
     for (ep_idx = 0; ep_idx < named_ep_count; ep_idx++) {
         atl_ofi_prov_ep_t* ep = &(prov->eps[ep_idx]);
         ret = pmi->pmrt_kvs_put((char*)ATL_OFI_FI_ADDR_PM_KEY,
-                                coord->global_idx * ATL_OFI_PMI_PROC_MULTIPLIER +
+                                coord.global_idx * ATL_OFI_PMI_PROC_MULTIPLIER +
                                     prov_idx * ATL_OFI_PMI_PROV_MULTIPLIER + ep_idx,
                                 ep->name.addr,
                                 ep->name.len);
@@ -525,9 +473,9 @@ atl_status_t atl_ofi_prov_eps_connect(atl_ofi_ctx_t* ofi_ctx,
         }
     }
 
-    ret = atl_ofi_prov_update_addr_table(ofi_ctx, prov_idx, pmi);
+    ret = atl_ofi_prov_update_addr_table(ctx, coord, prov_idx, pmi, ep_names);
 
-    return RET2ATL(ret);
+    return ATL_OFI_RET(ret);
 }
 
 void atl_ofi_prov_ep_destroy(atl_ofi_prov_t* prov, atl_ofi_prov_ep_t* ep) {
@@ -549,10 +497,10 @@ void atl_ofi_prov_ep_destroy(atl_ofi_prov_t* prov, atl_ofi_prov_ep_t* ep) {
     ep->name.len = 0;
 }
 
-void atl_ofi_prov_destroy(atl_ctx_t* ctx, atl_ofi_prov_t* prov) {
+void atl_ofi_prov_destroy(atl_ofi_ctx_t& ctx, atl_ofi_prov_t* prov) {
     size_t i;
 
-    for (i = 0; i < ctx->ep_count; i++) {
+    for (i = 0; i < ctx.ep_count; i++) {
         atl_ofi_prov_ep_destroy(prov, &(prov->eps[i]));
     }
 
@@ -718,19 +666,17 @@ int atl_ofi_try_to_drain_cq(struct fid_cq* cq) {
     return ret;
 }
 
-void atl_ofi_reset(atl_ctx_t* ctx) {
-    atl_ofi_ctx_t* ofi_ctx = container_of(ctx, atl_ofi_ctx_t, ctx);
-
+void atl_ofi_reset(atl_ofi_ctx_t& ctx) {
     int again = 1;
     size_t prov_idx, ep_idx;
     int recv_buf_len = sizeof(char);
     char* recv_buf;
     struct fi_context fi_ctx;
     recv_buf = (char*)malloc(recv_buf_len);
-    for (prov_idx = 0; prov_idx < ofi_ctx->prov_count; prov_idx++) {
-        atl_ofi_prov_t* prov = &(ofi_ctx->provs[prov_idx]);
+    for (prov_idx = 0; prov_idx < ctx.prov_count; prov_idx++) {
+        atl_ofi_prov_t* prov = &(ctx.provs[prov_idx]);
 
-        for (ep_idx = 0; ep_idx < ctx->ep_count; ep_idx++) {
+        for (ep_idx = 0; ep_idx < ctx.ep_count; ep_idx++) {
             atl_ofi_prov_ep_t* ep = &(prov->eps[ep_idx]);
 
             /* complete active sends and receives */
@@ -861,6 +807,7 @@ atl_status_t atl_ofi_set_env(const atl_attr_t& attr) {
 
     atl_ofi_adjust_env(attr);
 
+#ifdef CCL_ENABLE_OFI_OOT_PROV
     /*
        load libfabric symbols into global namespace
        to workaround issue with undefined symbols
@@ -870,13 +817,14 @@ atl_status_t atl_ofi_set_env(const atl_attr_t& attr) {
     if (global_data.dlhandle == nullptr) {
         LOG_WARN("dlopen (libfabric.so): ", dlerror());
     }
+#endif // CCL_ENABLE_OFI_OOT_PROV
 
     global_data.is_env_inited = 1;
 
     return ATL_STATUS_SUCCESS;
 }
 
-atl_status_t atl_ofi_get_prov_list(atl_ctx_t* ctx,
+atl_status_t atl_ofi_get_prov_list(atl_ofi_ctx_t& ctx,
                                    const char* prov_name,
                                    struct fi_info* base_hints,
                                    struct fi_info** out_prov_list) {
@@ -899,14 +847,22 @@ atl_status_t atl_ofi_get_prov_list(atl_ctx_t* ctx,
     hints->fabric_attr->prov_name = (prov_name) ? strdup(prov_name) : nullptr;
 
     ret = fi_getinfo(fi_version, nullptr, nullptr, 0ULL, hints, &prov_list);
+
+    if ((ret || !prov_list || !strcmp(prov_list->fabric_attr->prov_name, ATL_OFI_SHM_PROV_NAME)) &&
+        prov_list->caps & FI_HMEM) {
+        // skip OFI/SHM with HMEM capability
+        fi_freeinfo(hints);
+        fi_freeinfo(prov_list);
+        return ATL_STATUS_FAILURE;
+    }
     if (ret || !prov_list) {
         LOG_ERROR("fi_getinfo error: ret ", ret, ", providers ", (void*)prov_list);
         goto err;
     }
 
     if (prov_list->domain_attr->max_ep_tx_ctx > 1) {
-        hints->ep_attr->tx_ctx_cnt = ctx->ep_count;
-        hints->ep_attr->rx_ctx_cnt = ctx->ep_count;
+        hints->ep_attr->tx_ctx_cnt = ctx.ep_count;
+        hints->ep_attr->rx_ctx_cnt = ctx.ep_count;
     }
     else {
         hints->ep_attr->tx_ctx_cnt = 1;
@@ -929,24 +885,30 @@ atl_status_t atl_ofi_get_prov_list(atl_ctx_t* ctx,
     return ATL_STATUS_SUCCESS;
 
 err:
+    if (hints) {
+        fi_freeinfo(hints);
+    }
+    if (prov_list) {
+        fi_freeinfo(prov_list);
+    }
     LOG_ERROR("can't create providers for name ", prov_name_str);
     return ATL_STATUS_FAILURE;
 }
 
-atl_status_t atl_ofi_prov_init(atl_ctx_t* ctx,
+atl_status_t atl_ofi_prov_init(atl_ofi_ctx_t& ctx,
+                               const atl_proc_coord_t& coord,
                                struct fi_info* info,
                                atl_ofi_prov_t* prov,
                                atl_attr_t* attr,
-                               std::shared_ptr<ipmi> pmi) {
+                               std::shared_ptr<ipmi> pmi,
+                               std::list<std::vector<char>>& ep_names) {
     struct fi_av_attr av_attr;
     size_t ep_idx = 0;
     ssize_t ret = 0;
 
     memset(&av_attr, 0, sizeof(av_attr));
 
-    atl_ofi_ctx_t* ofi_ctx = container_of(ctx, atl_ofi_ctx_t, ctx);
-
-    if (ctx->coord.global_idx == 0) {
+    if (coord.global_idx == 0) {
         LOG_INFO("provider: ", info->fabric_attr->prov_name);
         LOG_INFO("  nic: ", atl_ofi_get_nic_info(info));
         LOG_INFO("  mr_mode: ", info->domain_attr->mr_mode);
@@ -979,13 +941,13 @@ atl_status_t atl_ofi_prov_init(atl_ctx_t* ctx,
         ATL_OFI_CALL(fi_scalable_ep_bind(prov->sep, &prov->av->fid, 0), ret, goto err);
     }
 
-    prov->eps = (atl_ofi_prov_ep_t*)calloc(1, sizeof(atl_ofi_prov_ep_t) * ctx->ep_count);
+    prov->eps = (atl_ofi_prov_ep_t*)calloc(1, sizeof(atl_ofi_prov_ep_t) * ctx.ep_count);
     if (!prov->eps) {
         LOG_ERROR("can't allocate prov->eps");
         goto err;
     }
 
-    for (ep_idx = 0; ep_idx < ctx->ep_count; ep_idx++) {
+    for (ep_idx = 0; ep_idx < ctx.ep_count; ep_idx++) {
         ret = atl_ofi_prov_ep_init(prov, ep_idx);
         if (ret) {
             LOG_ERROR("atl_ofi_prov_ep_init error");
@@ -998,7 +960,7 @@ atl_status_t atl_ofi_prov_init(atl_ctx_t* ctx,
     }
 
     /* TODO: make separate function to be called on CCL comm creation */
-    ret = atl_ofi_prov_eps_connect(ofi_ctx, prov->idx, pmi);
+    ret = atl_ofi_prov_eps_connect(ctx, coord, prov->idx, pmi, ep_names);
     if (ret) {
         LOG_ERROR("atl_ofi_prov_eps_connect error, prov_idx ", prov->idx);
         goto err;
@@ -1009,6 +971,10 @@ atl_status_t atl_ofi_prov_init(atl_ctx_t* ctx,
     return ATL_STATUS_SUCCESS;
 
 err:
+    if (prov->info) {
+        fi_freeinfo(prov->info);
+        prov->info = nullptr;
+    }
     LOG_ERROR("can't init provider ", atl_ofi_get_nic_name(info));
     return ATL_STATUS_FAILURE;
 }
@@ -1069,7 +1035,7 @@ int atl_ofi_nic_already_used(const struct fi_info* prov,
             others[i]->nic->bus_attr->bus_type == FI_BUS_PCI) {
             struct fi_pci_attr pci = prov->nic->bus_attr->attr.pci;
             struct fi_pci_attr other_pci = others[i]->nic->bus_attr->attr.pci;
-            LOG_DEBUG("compare nic ",
+            LOG_TRACE("compare nic ",
                       prov->fabric_attr->prov_name,
                       " pci ",
                       (int)pci.domain_id,
@@ -1094,7 +1060,7 @@ int atl_ofi_nic_already_used(const struct fi_info* prov,
                 return 1;
         }
         else {
-            LOG_DEBUG("compare nic ",
+            LOG_TRACE("compare nic ",
                       atl_ofi_get_nic_name(prov),
                       " with nic ",
                       atl_ofi_get_nic_name(others[i]));
@@ -1115,9 +1081,8 @@ int atl_ofi_is_nic_local(struct fi_info* info) {
     return 0;
 }
 
-atl_status_t atl_ofi_parse_mnic_name(atl_ctx_t* ctx, std::string str_to_parse) {
+atl_status_t atl_ofi_parse_mnic_name(atl_ofi_ctx_t& ctx, std::string str_to_parse) {
     atl_status_t ret = ATL_STATUS_SUCCESS;
-    atl_ofi_ctx_t* ofi_ctx = container_of(ctx, atl_ofi_ctx_t, ctx);
 
     std::string include_str;
     std::string exclude_str;
@@ -1145,8 +1110,8 @@ atl_status_t atl_ofi_parse_mnic_name(atl_ctx_t* ctx, std::string str_to_parse) {
         LOG_DEBUG("exclude names str: ", exclude_str);
     }
 
-    auto include_names = tokenize<std::vector<std::string>>(include_str, ',');
-    auto exclude_names = tokenize<std::vector<std::string>>(exclude_str, ',');
+    auto include_names = ccl::utils::tokenize<std::vector<std::string>>(include_str, ',');
+    auto exclude_names = ccl::utils::tokenize<std::vector<std::string>>(exclude_str, ',');
 
     if (!include_names.empty() && !exclude_names.empty()) {
         auto include_set = std::set<std::string>(include_names.begin(), include_names.end());
@@ -1183,18 +1148,18 @@ atl_status_t atl_ofi_parse_mnic_name(atl_ctx_t* ctx, std::string str_to_parse) {
     }
 
     if (ret == ATL_STATUS_SUCCESS) {
-        LOG_DEBUG("include names: ", vec_to_string(include_names));
-        LOG_DEBUG("exclude names: ", vec_to_string(exclude_names));
-        ofi_ctx->mnic_include_names = include_names;
-        ofi_ctx->mnic_exclude_names = exclude_names;
+        LOG_DEBUG("include names: ", ccl::utils::vec_to_string(include_names));
+        LOG_DEBUG("exclude names: ", ccl::utils::vec_to_string(exclude_names));
+        ctx.mnic_include_names = include_names;
+        ctx.mnic_exclude_names = exclude_names;
     }
 
     return ret;
 }
 
-int atl_ofi_is_allowed_nic_name(atl_ofi_ctx_t* ofi_ctx, struct fi_info* info) {
-    auto& include_names = ofi_ctx->mnic_include_names;
-    auto& exclude_names = ofi_ctx->mnic_exclude_names;
+int atl_ofi_is_allowed_nic_name(atl_ofi_ctx_t& ctx, struct fi_info* info) {
+    auto& include_names = ctx.mnic_include_names;
+    auto& exclude_names = ctx.mnic_exclude_names;
     std::string nic_name = atl_ofi_get_short_nic_name(info);
 
     int should_include = 0;
@@ -1231,10 +1196,13 @@ bool atl_ofi_compare_nics(const struct fi_info* nic1, const struct fi_info* nic2
     return (atl_ofi_get_short_nic_name(nic1) < atl_ofi_get_short_nic_name(nic2));
 }
 
-atl_status_t atl_ofi_open_nw_provs(atl_ctx_t* ctx,
+atl_status_t atl_ofi_open_nw_provs(atl_ofi_ctx_t& ctx,
+                                   const atl_proc_coord_t& coord,
                                    struct fi_info* base_hints,
                                    atl_attr_t* attr,
-                                   std::shared_ptr<ipmi> pmi) {
+                                   std::shared_ptr<ipmi> pmi,
+                                   std::list<std::vector<char>>& ep_names,
+                                   bool log_on_error) {
     atl_status_t ret = ATL_STATUS_SUCCESS;
     struct fi_info* prov_list = nullptr;
     struct fi_info* prov_iter = nullptr;
@@ -1247,16 +1215,22 @@ atl_status_t atl_ofi_open_nw_provs(atl_ctx_t* ctx,
     std::set<std::string> all_nic_names;
     int prov_offset = 0;
 
-    atl_ofi_ctx_t* ofi_ctx = container_of(ctx, atl_ofi_ctx_t, ctx);
-
-    ofi_ctx->nw_prov_count = 0;
+    ctx.nw_prov_count = 0;
 
     /* 1. get full list of providers */
     if (strlen(global_data.prov_env_copy) && !strstr(global_data.prov_env_copy, ","))
         prov_name = global_data.prov_env_copy;
     else
         prov_name = nullptr;
-    ATL_CALL(atl_ofi_get_prov_list(ctx, prov_name, base_hints, &prov_list), goto err);
+    ret = atl_ofi_get_prov_list(ctx, prov_name, base_hints, &prov_list);
+    if (ret != ATL_STATUS_SUCCESS) {
+        if (log_on_error) {
+            LOG_ERROR(
+                "atl_ofi_get_prov_list(ctx, prov_name, base_hints, &prov_list)\n fails with status: ",
+                ret);
+        }
+        goto err;
+    }
 
     /* 2. filter out by names */
     prov_iter = prov_list;
@@ -1267,7 +1241,7 @@ atl_status_t atl_ofi_open_nw_provs(atl_ctx_t* ctx,
         }
         else if (!atl_ofi_nic_already_used(prov_iter, name_provs)) {
             all_nic_names.insert(atl_ofi_get_short_nic_name(prov_iter));
-            if (atl_ofi_is_allowed_nic_name(ofi_ctx, prov_iter)) {
+            if (atl_ofi_is_allowed_nic_name(ctx, prov_iter)) {
                 LOG_DEBUG("name filter: found suitable nic ", atl_ofi_get_nic_name(prov_iter));
                 name_provs.push_back(fi_dupinfo(prov_iter));
             }
@@ -1281,16 +1255,16 @@ atl_status_t atl_ofi_open_nw_provs(atl_ctx_t* ctx,
     if (name_provs.empty()) {
         LOG_ERROR("name filter: can not find network providers",
                   ", include names: ",
-                  vec_to_string(ofi_ctx->mnic_include_names),
+                  ccl::utils::vec_to_string(ctx.mnic_include_names),
                   ", exclude names: ",
-                  vec_to_string(ofi_ctx->mnic_exclude_names),
+                  ccl::utils::vec_to_string(ctx.mnic_exclude_names),
                   ", all names: ",
-                  vec_to_string(all_nic_names));
+                  ccl::utils::vec_to_string(all_nic_names));
         goto err;
     }
 
     /* 3. filter out by topo */
-    if (ofi_ctx->mnic_type == ATL_MNIC_NONE) {
+    if (ctx.mnic_type == ATL_MNIC_NONE) {
         topo_provs.push_back(fi_dupinfo(name_provs[0]));
     }
     else {
@@ -1309,8 +1283,8 @@ atl_status_t atl_ofi_open_nw_provs(atl_ctx_t* ctx,
                 int is_local = atl_ofi_is_nic_local(prov_iter);
                 LOG_DEBUG(
                     "topo filter: nic ", atl_ofi_get_nic_name(prov_iter), ", is_local ", is_local);
-                if (ofi_ctx->mnic_type == ATL_MNIC_GLOBAL ||
-                    (ofi_ctx->mnic_type == ATL_MNIC_LOCAL && is_local)) {
+                if (ctx.mnic_type == ATL_MNIC_GLOBAL ||
+                    (ctx.mnic_type == ATL_MNIC_LOCAL && is_local)) {
                     LOG_DEBUG("topo filter: found suitable nic ", atl_ofi_get_nic_name(prov_iter));
                     topo_provs.push_back(fi_dupinfo(prov_iter));
                 }
@@ -1322,13 +1296,13 @@ atl_status_t atl_ofi_open_nw_provs(atl_ctx_t* ctx,
     }
 
     if (topo_provs.empty()) {
-        LOG_ERROR("topo filter: can not find network providers, mnic_type ", ofi_ctx->mnic_type);
+        LOG_ERROR("topo filter: can not find network providers, mnic_type ", ctx.mnic_type);
         goto err;
     }
 
     /* 4. reorder according to desired offset */
-    if (ofi_ctx->mnic_offset == ATL_MNIC_OFFSET_LOCAL_PROC_IDX) {
-        prov_offset = ctx->coord.local_idx % topo_provs.size();
+    if (ctx.mnic_offset == ATL_MNIC_OFFSET_LOCAL_PROC_IDX) {
+        prov_offset = coord.local_idx % topo_provs.size();
     }
     LOG_DEBUG("rotate: prov_offset ", prov_offset, ", vec_size ", topo_provs.size());
     std::rotate(topo_provs.begin(), topo_provs.begin() + prov_offset, topo_provs.end());
@@ -1337,7 +1311,7 @@ atl_status_t atl_ofi_open_nw_provs(atl_ctx_t* ctx,
     for (idx = 0; idx < topo_provs.size(); idx++) {
         prov_iter = topo_provs[idx];
         LOG_DEBUG("count filter: check nic ", atl_ofi_get_nic_name(prov_iter));
-        if (final_provs.size() < ofi_ctx->mnic_count) {
+        if (final_provs.size() < ctx.mnic_count) {
             LOG_DEBUG("count filter: found suitable nic ",
                       atl_ofi_get_nic_name(prov_iter),
                       ", nic idx ",
@@ -1350,19 +1324,20 @@ atl_status_t atl_ofi_open_nw_provs(atl_ctx_t* ctx,
     }
 
     if (final_provs.empty()) {
-        LOG_ERROR("count filter: can not find network providers, mnic_count ", ofi_ctx->mnic_count);
+        LOG_ERROR("count filter: can not find network providers, mnic_count ", ctx.mnic_count);
         goto err;
     }
 
     /* 6. create network providers */
     LOG_INFO("found ", final_provs.size(), " nic(s) according to all filters");
-    ofi_ctx->nw_prov_count = final_provs.size();
-    for (idx = 0; idx < ofi_ctx->nw_prov_count; idx++) {
-        prov_idx = ofi_ctx->nw_prov_first_idx + idx;
-        prov = &ofi_ctx->provs[prov_idx];
+    ctx.nw_prov_count = final_provs.size();
+    for (idx = 0; idx < ctx.nw_prov_count; idx++) {
+        prov_idx = ctx.nw_prov_first_idx + idx;
+        prov = &ctx.provs[prov_idx];
         prov->idx = prov_idx;
         prov->is_shm = 0;
-        ATL_CALL(atl_ofi_prov_init(ctx, final_provs[idx], prov, attr, pmi), goto err);
+        ATL_CALL(atl_ofi_prov_init(ctx, coord, final_provs[idx], prov, attr, pmi, ep_names),
+                 goto err);
     }
 
 exit:
@@ -1383,20 +1358,25 @@ exit:
 
     fi_freeinfo(prov_list);
 
-    ofi_ctx->prov_count += ofi_ctx->nw_prov_count;
+    ctx.prov_count += ctx.nw_prov_count;
 
     return ret;
 
 err:
-    LOG_ERROR("can not open network providers");
+    if (log_on_error) {
+        LOG_ERROR("can not open network providers");
+    }
+    else {
+        LOG_DEBUG("can not open network providers");
+    }
     ret = ATL_STATUS_FAILURE;
     goto exit;
 }
 
-void atl_ofi_init_req(atl_req_t* req, atl_ofi_prov_ep_t* prov_ep, struct fid_ep* fi_ep) {
-    atl_ofi_req_t* ofi_req = ((atl_ofi_req_t*)req->internal);
+void atl_ofi_init_req(atl_req_t& req, atl_ofi_prov_ep_t* prov_ep, struct fid_ep* fi_ep) {
+    atl_ofi_req_t* ofi_req = ((atl_ofi_req_t*)req.internal);
     ofi_req->prov_ep = prov_ep;
     ofi_req->fi_ep = fi_ep;
     ofi_req->comp_state = ATL_OFI_COMP_POSTED;
-    req->is_completed = 0;
+    req.is_completed = 0;
 }

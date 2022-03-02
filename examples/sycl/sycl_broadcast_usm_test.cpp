@@ -98,6 +98,9 @@ int main(int argc, char *argv[]) {
             if (buf[id] != 10) {
                 check_buf_acc[id] = -1;
             }
+            else {
+                check_buf_acc[id] = 0;
+            }
         });
     });
 

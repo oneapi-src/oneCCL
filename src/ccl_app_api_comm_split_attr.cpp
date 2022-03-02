@@ -21,7 +21,7 @@
 #include "oneapi/ccl/comm_split_attr.hpp"
 
 // Core file with PIMPL implementation
-#include "common/comm/comm_split_common_attr.hpp"
+#include "comm/comm_split_common_attr.hpp"
 #include "comm_split_attr_impl.hpp"
 
 namespace ccl {

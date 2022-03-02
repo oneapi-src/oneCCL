@@ -19,20 +19,12 @@
 #include "sched/entry/entry.hpp"
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-#include "sched/entry/ze/ze_copy_entry.hpp"
+class ze_copy_entry;
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
 enum class copy_type : int { regular, sycl, ze };
 
-#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-class copy_entry : public ze_copy_entry,
-#else
-class copy_entry : public sched_entry,
-#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
-                   public postponed_fields<copy_entry,
-                                           ccl_sched_entry_field_in_buf,
-                                           ccl_sched_entry_field_cnt,
-                                           ccl_sched_entry_field_dtype> {
+class copy_entry : public sched_entry {
 public:
     static constexpr const char* class_name() noexcept {
         return "COPY";
@@ -52,10 +44,7 @@ public:
 
     void start() override;
     void update() override;
-
-    const ccl_buffer& get_field_ref(field_id_t<ccl_sched_entry_field_in_buf> id);
-    const size_t& get_field_ref(field_id_t<ccl_sched_entry_field_cnt> id);
-    const ccl_datatype& get_field_ref(field_id_t<ccl_sched_entry_field_dtype> id);
+    void reset(size_t idx) override;
 
 protected:
     void dump_detail(std::stringstream& str) const override {
@@ -72,21 +61,25 @@ protected:
                            attr.in_buf_offset,
                            ", out_buf_offset ",
                            attr.out_buf_offset,
+                           ", direction ",
+                           to_string(attr.direction),
                            "\n");
     }
 
 private:
-    ccl_sched* const sched;
     ccl_buffer in_buf{};
     ccl_buffer out_buf{};
     const size_t count;
     const ccl_datatype dtype;
     copy_attr attr;
 
+    copy_type ctype{ copy_type::regular };
+
 #ifdef CCL_ENABLE_SYCL
+    int is_sycl_buf{};
     sycl_copier copier{};
 #ifdef CCL_ENABLE_ZE
-    copy_type ctype{ copy_type::regular };
+    std::unique_ptr<ze_copy_entry> ze_copier;
 #endif // CCL_ENABLE_ZE
 #endif // CCL_ENABLE_SYCL
 
