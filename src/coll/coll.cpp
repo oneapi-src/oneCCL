@@ -709,3 +709,4 @@ ccl_request* ccl_reduce_scatter_impl(const void* send_buf,
     LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req);
     return req;
 }
+
