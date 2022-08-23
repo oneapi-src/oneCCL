@@ -96,8 +96,10 @@ void ccl_coll_validate_user_input(const ccl_coll_param& param, const ccl_coll_at
     CCL_THROW_IF_NOT(param.ctype == ccl_coll_allreduce || !(attr.reduction_fn),
                      "custom reduction is supported for allreduce only");
 
+    //TODO: add vectorized support for ccl_coll_alltoall/v, when it's ready
     CCL_THROW_IF_NOT(param.ctype == ccl_coll_allgatherv || !(attr.is_vector_buf),
-                     "vector buffer is supported for allgatherv only");
+                     "vector buffer is not supported for ",
+                     ccl_coll_type_to_str(param.ctype));
 
     if (param.ctype == ccl_coll_bcast || param.ctype == ccl_coll_reduce) {
         CCL_THROW_IF_NOT(param.root < param.comm->size(),

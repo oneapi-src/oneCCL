@@ -19,19 +19,15 @@
 #include "common/utils/utils.hpp"
 #include "oneapi/ccl/config.h"
 
-#ifdef CCL_ENABLE_MPI
-#include <mpi.h>
-#endif // CCL_ENABLE_MPI
-
 #include <algorithm>
 #include <numeric>
 #include <set>
 #include <sstream>
 #include <string>
 
-#if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
-#include "common/ze/ze_api_wrapper.hpp"
-#endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+#include "common/global/ze_data.hpp"
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
 namespace ccl {
 
@@ -53,17 +49,56 @@ struct topo_rank_info {
     topo_rank_info();
 };
 
-#if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
+struct topo_host_info {
+    int idx;
+    std::string name;
+
+    // subset of global ranks
+    // launched on the same host
+    std::set<int> ranks;
+
+    topo_host_info(int idx, const std::string& name, const std::set<int>& ranks = {});
+};
+
+using host_info_vec_t = typename std::vector<topo_host_info>;
+using rank_info_vec_t = typename std::vector<topo_rank_info>;
+std::string to_string(const rank_info_vec_t& rank_info_vec, const host_info_vec_t& host_info_vec);
+
+// each element in map = domain = domain_idx + vector of subdomains
+// subdomain = vector of local process indexes
+using domains_t = typename std::map<int, std::vector<std::vector<int>>>;
+std::string to_string(const domains_t& domains);
+
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
 struct topo_ze_rank_info {
     ze_device_uuid_t device_uuid{};
     zes_pci_address_t pci_addr{};
+    uint32_t subdev_count{};
+    uint32_t subdev_id{};
+    ze_device_property_flags_t dev_prop_flags{};
 };
 
 struct topo_ze_port_info {
+    int host_idx{};
+
+    // fabric_port_id is unique within host only
     zes_fabric_port_id_t local{};
     zes_fabric_port_id_t remote{};
+
+    zes_fabric_port_status_t local_status{};
 };
-#endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
+
+using ze_rank_info_vec_t = typename std::vector<topo_ze_rank_info>;
+std::string to_string(const ze_rank_info_vec_t& ze_rank_info_vec,
+                      const host_info_vec_t& host_info_vec);
+
+using p2p_matrix_t = typename std::vector<std::vector<bool>>;
+using fabric_ports_t = typename std::vector<std::vector<topo_ze_port_info>>;
+using plane_t = typename std::set<int>;
+
+std::string to_string(const p2p_matrix_t& p2p_matrix);
+
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
 class topo_manager {
 public:
@@ -71,11 +106,13 @@ public:
     static constexpr int invalid_host_idx = -1;
     static constexpr int invalid_plane_idx = -1;
     static constexpr int invalid_domain_idx = -1;
+
     static constexpr int max_hostname_len = 256;
     static constexpr int max_ranks_per_host = 1000;
     static constexpr int max_ranks_per_card = 2;
     static constexpr int max_ranks_per_plane = 8;
     static constexpr int max_domain_count = 2;
+
     static constexpr int card_domain_idx = 0;
     static constexpr int plane_domain_idx = 1;
     static constexpr const char* card_domain_name = "card";
@@ -95,88 +132,97 @@ public:
     int get_intra_card_color(int rank) const;
     int get_inter_card_color(int rank) const;
     std::string get_uuid(int rank) const;
-
-    bool has_p2p_access() const;
     bool has_same_ppn() const;
     bool has_same_domains() const;
 
-#if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
-    static bool is_same_pci_addr(zes_pci_address_t addr1, zes_pci_address_t addr2);
-    static std::vector<std::vector<bool>> build_p2p_matrix(
-        const std::vector<ze_device_handle_t>& devices);
-#endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    enum class port_health_status { unknown, ok, fail };
+    bool has_failed_ports() const;
+    bool has_p2p_access() const;
+    std::vector<ze_device_uuid_t> copy_dev_uuids(const rank_info_vec_t& info_vec) const;
+    std::vector<ze_device_handle_t> get_filtered_devices(
+        const std::vector<ze::device_info>& node_devices) const;
+    static p2p_matrix_t build_p2p_matrix(const std::vector<ze_device_handle_t>& devices);
+    static bool is_sub_vector(const std::vector<ze_device_uuid_t>& vec,
+                              const std::vector<ze_device_uuid_t>& sub_vec);
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
-    static std::map<int, std::vector<std::vector<int>>> parse_topo_env();
+    static std::string generate_uuid();
+    static domains_t parse_topo_env();
 
-    std::string to_string();
+    std::string to_string() const;
 
     bool is_single_node = false;
     bool is_single_card = false;
 
 private:
-    void base_init(std::shared_ptr<atl_base_comm> atl_comm,
-                   std::shared_ptr<ccl::device> device_ptr,
-                   std::shared_ptr<ccl::context> context_ptr);
-    void check_colors();
-    void check_ppn(const std::set<std::string>& unique_hostnames,
-                   const std::vector<std::string>& all_hostnames);
-    void post_init();
+    bool check_colors() const;
 
     void allgather(const void* send_buf, void* recv_buf, int bytes);
     void allgatherv(const void* send_buf, void* recv_buf, const std::vector<int>& recv_bytes);
 
-    void fill_env_colors(const std::vector<topo_rank_info>& local_info_vec);
-    void fill_fixed_colors(const std::vector<topo_rank_info>& info_vec);
+    void fill_env_colors(const rank_info_vec_t& local_info_vec);
+    void fill_fixed_colors(const rank_info_vec_t& info_vec);
 
-#if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
-    void fill_ze_intra_colors(const std::vector<topo_rank_info>& local_info_vec,
-                              const std::vector<topo_ze_rank_info>& ze_info_vec);
-#endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
-    void fill_ze_inter_colors(const std::vector<topo_rank_info>& local_info_vec);
-    void fill_ze_inter_colors(const std::vector<std::set<int>>& planes);
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    void fill_ze_colors();
 
-    inline std::vector<topo_rank_info> get_filtered_rank_info(
-        std::vector<topo_rank_info>& rank_info_vec,
-        const int compare_idx);
+    void fill_ze_intra_colors(const rank_info_vec_t& local_info_vec);
 
-    static inline void check_color(const int color);
-    static inline void check_domain_count(const size_t domain_count);
+    void fill_ze_inter_colors();
+    void fill_ze_inter_colors(const rank_info_vec_t& local_info_vec);
+    void fill_ze_inter_colors(const std::vector<plane_t>& planes);
+
+    bool check_p2p_access() const;
+    fabric_ports_t get_fabric_ports();
+
+    static void check_planes(const std::vector<plane_t>& planes);
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+
+    rank_info_vec_t get_filtered_rank_info_vec(int filter_host_idx) const;
+
+    static void check_invalid_color(int color);
+    static void check_domain_count(size_t domain_count);
 
     static std::map<int, std::string> get_domain_string(const std::string& input_str,
                                                         const std::string& key);
     static std::vector<std::string> get_subdomain_strings(const std::string& input_str);
-    static std::string generate_uuid();
 
-#if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
-    ze_device_handle_t device{};
-    static std::string to_string(const std::vector<std::vector<bool>>& p2p_matrix);
+    void build_host_info();
 
-    static inline std::vector<ze_device_uuid_t> copy_dev_uuids(
-        const std::vector<topo_rank_info>& info_vec,
-        const std::vector<topo_ze_rank_info>& ze_rank_info_vec);
-    static bool is_same_dev_uuid(ze_device_uuid_t uuid1, ze_device_uuid_t uuid2);
-    static bool is_sub_vector(const std::vector<ze_device_uuid_t>& vec,
-                              const std::vector<ze_device_uuid_t>& sub_vec);
-
-    std::vector<ze_device_handle_t> get_filtered_devices(
-        const std::vector<ze_device_handle_t>& devices,
-        const std::vector<topo_ze_rank_info>& ze_rank_info_vec);
-#endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
-
-    std::string to_string(const std::map<int, std::vector<std::vector<int>>>& domains);
+    void base_init(std::shared_ptr<atl_base_comm> atl_comm,
+                   std::shared_ptr<ccl::device> device,
+                   std::shared_ptr<ccl::context> context);
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    void ze_base_init(std::shared_ptr<ccl::device> device, std::shared_ptr<ccl::context> context);
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+    void post_init();
 
     std::shared_ptr<atl_base_comm> comm;
 
     int host_idx = invalid_host_idx;
+    host_info_vec_t host_info_vec;
+
     std::vector<int> intra_card_colors{};
     std::vector<int> inter_card_colors{};
     std::vector<std::string> uuids{};
-    std::vector<topo_rank_info> rank_info_vec;
-    std::vector<std::vector<bool>> p2p_matrix;
-    std::map<int, std::vector<std::vector<int>>> domains;
+    rank_info_vec_t rank_info_vec;
+
+    domains_t domains;
 
     bool is_same_ppn = true;
     bool is_same_domains = true;
+
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    ze_device_handle_t ze_device{};
+    ze_device_properties_t dev_props = ccl::ze::default_device_props;
+    p2p_matrix_t p2p_matrix;
+    fabric_ports_t fabric_ports;
+    ze_rank_info_vec_t ze_rank_info_vec;
+
+    bool is_p2p_access_enabled = false;
+    port_health_status port_status = port_health_status::unknown;
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 };
 
 } // namespace ccl

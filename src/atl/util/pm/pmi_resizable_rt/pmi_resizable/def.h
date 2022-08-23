@@ -26,6 +26,14 @@
 
 typedef enum { KVS_STATUS_SUCCESS, KVS_STATUS_FAILURE, KVS_STATUS_UNSUPPORTED } kvs_status_t;
 
+#define KVS_ERROR_IF_NOT(cond, ...) \
+    do { \
+        if (!(cond)) { \
+            LOG_ERROR("condition ", #cond, " failed\n", ##__VA_ARGS__); \
+            return KVS_STATUS_FAILURE; \
+        } \
+    } while (0)
+
 #define KVS_CHECK_STATUS(expr, str) \
     do { \
         if (expr != KVS_STATUS_SUCCESS) { \
@@ -52,11 +60,11 @@ typedef enum { KVS_STATUS_SUCCESS, KVS_STATUS_FAILURE, KVS_STATUS_UNSUPPORTED } 
         } \
     } while (0)
 
-#define DO_RW_OP(op, fd, buf, size, memory_mutex, msg) \
+#define DO_RW_OP(op, fd, buf, size, memory_mutex) \
     do { \
         { \
             if (!fd) { \
-                printf("" #msg ": " #op ": fd is closed, size %zu\n", size); \
+                printf("" #op ": fd is closed, size %zu\n", size); \
                 break; \
             } \
             std::lock_guard<std::mutex> lock(memory_mutex); \
@@ -66,19 +74,14 @@ typedef enum { KVS_STATUS_SUCCESS, KVS_STATUS_FAILURE, KVS_STATUS_UNSUPPORTED } 
                 res = op(fd, (char*)buf + shift, size - shift); \
                 if (res == -1) { \
                     if (errno != EINTR) { \
-                        printf("" #msg ": " #op ": error: buf %p, size %zu, shift %zu\n", \
-                               buf, \
-                               size, \
-                               shift); \
+                        printf("" #op ": error: buf %p, size %zu, shift %zu\n", buf, size, shift); \
                         LOG_ERROR("read/write error: ", strerror(errno)); \
                         return KVS_STATUS_FAILURE; \
                     } \
                 } \
                 else if (res == 0) { \
-                    LOG_ERROR("" #msg ": " #op \
-                              ": can not process all data, size %zu, shift %zu\n", \
-                              size, \
-                              shift); \
+                    LOG_ERROR( \
+                        "" #op ": can not process all data, size %zu, shift %zu\n", size, shift); \
                     return KVS_STATUS_FAILURE; \
                 } \
                 else { \
@@ -88,10 +91,10 @@ typedef enum { KVS_STATUS_SUCCESS, KVS_STATUS_FAILURE, KVS_STATUS_UNSUPPORTED } 
         } \
     } while (0)
 
-#define DO_RW_OP_1(op, fd, buf, size, res, msg) \
+#define DO_RW_OP_1(op, fd, buf, size, res) \
     do { \
         if (!fd) { \
-            printf("" #msg ": " #op ": fd is closed, size %zu\n", size); \
+            printf("" #op ": fd is closed, size %zu\n", size); \
             break; \
         } \
         size_t shift = 0; \
@@ -100,10 +103,7 @@ typedef enum { KVS_STATUS_SUCCESS, KVS_STATUS_FAILURE, KVS_STATUS_UNSUPPORTED } 
             res = op(fd, (char*)buf + shift, size - shift); \
             if (res == -1) { \
                 if (errno != EINTR) { \
-                    printf("" #msg ": " #op ": error: buf %p, size %zu, shift %zu\n", \
-                           buf, \
-                           size, \
-                           shift); \
+                    printf("" #op ": error: buf %p, size %zu, shift %zu\n", buf, size, shift); \
                     LOG_ERROR("read/write error: ", strerror(errno)); \
                     return KVS_STATUS_FAILURE; \
                 } \

@@ -132,6 +132,7 @@ constexpr const char* CCL_PROCESS_LAUNCHER = "CCL_PROCESS_LAUNCHER";
 
 constexpr const char* CCL_TOPO_ALGO = "CCL_TOPO_ALGO";
 constexpr const char* CCL_TOPO_COLOR = "CCL_TOPO_COLOR";
+constexpr const char* CCL_TOPO_P2P_ACCESS = "CCL_TOPO_P2P_ACCESS";
 
 constexpr const char* CCL_SYCL_OUTPUT_EVENT = "CCL_SYCL_OUTPUT_EVENT";
 constexpr const char* CCL_USE_HMEM = "CCL_USE_HMEM";
@@ -150,6 +151,7 @@ constexpr const char* CCL_ZE_QUEUE_INDEX_OFFSET = "CCL_ZE_QUEUE_INDEX_OFFSET";
 constexpr const char* CCL_ZE_CLOSE_IPC_WA = "CCL_ZE_CLOSE_IPC_WA";
 constexpr const char* CCL_ZE_SINGLE_LIST = "CCL_ZE_SINGLE_LIST";
 constexpr const char* CCL_ZE_DISABLE_FAMILY_CHECK = "CCL_ZE_DISABLE_FAMILY_CHECK";
+constexpr const char* CCL_ZE_DISABLE_PORT_CHECK = "CCL_ZE_DISABLE_PORT_CHECK";
 constexpr const char* CCL_ZE_LIBRARY_PATH = "CCL_ZE_LIBRARY_PATH";
 constexpr const char* CCL_ZE_ENABLE = "CCL_ZE_ENABLE";
 constexpr const char* CCL_ZE_FINI_WA = "CCL_ZE_FINI_WA";
@@ -296,6 +298,7 @@ public:
 
     int enable_topo_algo;
     topo_color_mode topo_color;
+    int enable_p2p_access;
 
 #ifdef CCL_ENABLE_SYCL
     std::string kernel_path;
@@ -318,6 +321,7 @@ public:
     int ze_cache_ipc_handles_threshold;
     int enable_ze_single_list;
     int disable_ze_family_check;
+    int disable_ze_port_check;
     int ze_serialize_mode;
     ccl_ze_copy_engine_mode ze_copy_engine;
     ssize_t ze_max_compute_queues;

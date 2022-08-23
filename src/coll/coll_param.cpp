@@ -205,10 +205,19 @@ bool ccl_coll_param::is_inplace(buf_type type) const {
         return true;
     }
 
-    void* send_buf = get_send_buf(0, type);
+    void* send_buf = nullptr;
     void* recv_buf = nullptr;
 
-    if ((ctype == ccl_coll_allgatherv) && (recv_bufs.size() > 1)) {
+    if ((ctype == ccl_coll_alltoall || ctype == ccl_coll_alltoallv) && (send_bufs.size() > 1)) {
+        send_buf = get_send_buf(comm->rank(), type);
+    }
+    else {
+        send_buf = get_send_buf(0, type);
+    }
+
+    if ((ctype == ccl_coll_allgatherv || ctype == ccl_coll_alltoall ||
+         ctype == ccl_coll_alltoallv) &&
+        (recv_bufs.size() > 1)) {
         recv_buf = get_recv_buf(comm->rank(), type);
     }
     else {
@@ -545,9 +554,22 @@ ccl_coll_param ccl_coll_param::create_alltoallv_param(const void* send_buf,
     ccl_coll_param param;
 
     param.ctype = ccl_coll_alltoallv;
-    param.send_bufs.push_back((void*)send_buf);
+    //send
+    if (attr.is_vector_buf) {
+        param.send_bufs.assign((void**)send_buf, (void**)send_buf + comm->size());
+    }
+    else {
+        param.send_bufs.push_back((void*)send_buf);
+    }
     param.send_counts.assign((size_t*)send_counts, (size_t*)send_counts + comm->size());
-    param.recv_bufs.push_back(recv_buf);
+
+    //recv
+    if (attr.is_vector_buf) {
+        param.recv_bufs.assign((void**)recv_buf, (void**)recv_buf + comm->size());
+    }
+    else {
+        param.recv_bufs.push_back(recv_buf);
+    }
     param.recv_counts.assign((size_t*)recv_counts, (size_t*)recv_counts + comm->size());
     param.set_common_fields(dtype, comm, stream, deps);
     param.validate();

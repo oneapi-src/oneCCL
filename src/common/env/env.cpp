@@ -156,6 +156,7 @@ env_data::env_data()
 
           enable_topo_algo(1),
           topo_color(topo_color_mode::fixed),
+          enable_p2p_access(CCL_ENV_INT_NOT_SPECIFIED),
 
 #ifdef CCL_ENABLE_SYCL
           kernel_path(),
@@ -178,6 +179,7 @@ env_data::env_data()
           ze_cache_ipc_handles_threshold(100),
           enable_ze_single_list(1),
           disable_ze_family_check(0),
+          disable_ze_port_check(0),
           ze_serialize_mode(0),
           ze_copy_engine(ccl_ze_copy_engine_none),
           ze_max_compute_queues(1),
@@ -347,6 +349,7 @@ void env_data::parse() {
 
     env_2_type(CCL_TOPO_ALGO, enable_topo_algo);
     env_2_topo(CCL_TOPO_COLOR, topo_color_names, topo_color);
+    env_2_type(CCL_TOPO_P2P_ACCESS, enable_p2p_access);
 
 #ifdef CCL_ENABLE_SYCL
     env_2_type(CCL_KERNEL_PATH, kernel_path);
@@ -389,6 +392,7 @@ void env_data::parse() {
     }
     env_2_type(CCL_ZE_SINGLE_LIST, enable_ze_single_list);
     env_2_type(CCL_ZE_DISABLE_FAMILY_CHECK, disable_ze_family_check);
+    env_2_type(CCL_ZE_DISABLE_PORT_CHECK, disable_ze_port_check);
     env_2_type(CCL_ZE_SERIALIZE, ze_serialize_mode);
     env_2_enum(CCL_ZE_COPY_ENGINE, ze_copy_engine_names, ze_copy_engine);
     env_2_type(CCL_ZE_MAX_COMPUTE_QUEUES, ze_max_compute_queues);
@@ -617,6 +621,7 @@ void env_data::print(int rank) {
 #ifdef CCL_ENABLE_SYCL
     LOG_INFO(CCL_TOPO_ALGO, ": ", enable_topo_algo);
     LOG_INFO(CCL_TOPO_COLOR, ": ", str_by_enum(topo_color_names, topo_color));
+    LOG_INFO(CCL_TOPO_P2P_ACCESS, ": ", enable_p2p_access);
 
     LOG_INFO(
         CCL_KERNEL_PATH, ": ", (!kernel_path.empty()) ? kernel_path : CCL_ENV_STR_NOT_SPECIFIED);
@@ -646,6 +651,7 @@ void env_data::print(int rank) {
     LOG_INFO(CCL_ZE_CACHE_IPC_HANDLES_THRESHOLD, ": ", ze_cache_ipc_handles_threshold);
     LOG_INFO(CCL_ZE_SINGLE_LIST, ": ", enable_ze_single_list);
     LOG_INFO(CCL_ZE_DISABLE_FAMILY_CHECK, ": ", disable_ze_family_check);
+    LOG_INFO(CCL_ZE_DISABLE_PORT_CHECK, ": ", disable_ze_port_check);
     LOG_INFO(CCL_ZE_SERIALIZE, ": ", ze_serialize_mode);
     LOG_INFO(CCL_ZE_COPY_ENGINE, ": ", str_by_enum(ze_copy_engine_names, ze_copy_engine));
     LOG_INFO(CCL_ZE_MAX_COMPUTE_QUEUES,

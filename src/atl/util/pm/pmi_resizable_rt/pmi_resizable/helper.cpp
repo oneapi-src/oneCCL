@@ -19,7 +19,8 @@
 #include "util/pm/pmi_resizable_rt/pmi_resizable/helper.hpp"
 #include "util/pm/pmi_resizable_rt/pmi_resizable/kvs/internal_kvs.h"
 
-int my_rank, count_pods;
+int my_rank;
+size_t count_pods;
 size_t barrier_num = 0;
 size_t up_idx;
 size_t applied = 0;
@@ -64,9 +65,10 @@ kvs_status_t helper::replace_str(char* str, int old_rank, int new_rank) {
 kvs_status_t helper::update_ranks(int* old_count,
                                   std::list<int>& origin_list,
                                   const char* kvs_name) {
-    char** rank_nums = NULL;
+    std::vector<std::string> rank_nums(1);
+    std::vector<std::string> clear_buf;
     size_t rank_count;
-    KVS_CHECK_STATUS(get_keys_values_by_name(kvs_name, NULL, &rank_nums, rank_count),
+    KVS_CHECK_STATUS(get_keys_values_by_name(kvs_name, clear_buf, rank_nums, rank_count),
                      "failed to get values by name");
     size_t i;
     size_t cur_count = 0;
@@ -77,7 +79,8 @@ kvs_status_t helper::update_ranks(int* old_count,
     }
     int rank_num;
     for (i = 0; i < rank_count; i++) {
-        KVS_CHECK_STATUS(safe_strtol(rank_nums[i], rank_num), "failed to to convert rank_num");
+        KVS_CHECK_STATUS(safe_strtol(rank_nums[i].c_str(), rank_num),
+                         "failed to to convert rank_num");
 
         if (std::find(origin_list.begin(), origin_list.end(), rank_num) != origin_list.end())
             continue;
@@ -85,11 +88,6 @@ kvs_status_t helper::update_ranks(int* old_count,
         origin_list.push_back(rank_num);
         cur_count++;
     }
-
-    for (i = 0; i < rank_count; i++) {
-        free(rank_nums[i]);
-    }
-    free(rank_nums);
 
     *old_count += cur_count;
     return KVS_STATUS_SUCCESS;
@@ -155,16 +153,16 @@ kvs_status_t helper::up_pods_count(void) {
 }
 
 kvs_status_t helper::wait_accept(void) {
-    char my_rank_str[MAX_KVS_VAL_LENGTH];
+    std::string my_rank_str;
 
     my_rank = 0;
 
     while (1) {
         KVS_CHECK_STATUS(get_value_by_name_key(KVS_ACCEPT, my_hostname, my_rank_str),
                          "failed to get value");
-        if (strlen(my_rank_str) == 0)
+        if (my_rank_str.length() == 0)
             continue;
-        KVS_CHECK_STATUS(safe_strtol(my_rank_str, my_rank), "failed to convert my_rank");
+        KVS_CHECK_STATUS(safe_strtol(my_rank_str.c_str(), my_rank), "failed to convert my_rank");
         break;
     }
     return KVS_STATUS_SUCCESS;
@@ -173,12 +171,13 @@ kvs_status_t helper::wait_accept(void) {
 kvs_status_t helper::clean_dead_pods_info(std::list<int>& dead_up_idx) {
     size_t i;
     size_t count_death;
-    char** kvs_keys = NULL;
+    std::vector<std::string> kvs_keys(1);
+    std::vector<std::string> clear_buf;
     auto it = dead_up_idx.begin();
 
     while (it != dead_up_idx.end()) {
         KVS_CHECK_STATUS(
-            get_keys_values_by_name(KVS_APPROVED_DEAD_POD, &kvs_keys, NULL, count_death),
+            get_keys_values_by_name(KVS_APPROVED_DEAD_POD, kvs_keys, clear_buf, count_death),
             "failed to get keys and values");
 
         for (i = 0; i < count_death; i++) {
@@ -186,24 +185,19 @@ kvs_status_t helper::clean_dead_pods_info(std::list<int>& dead_up_idx) {
                              "failed to remove name and key");
             it++;
             if (it == dead_up_idx.end()) {
-                for (; i < count_death; i++) {
-                    free(kvs_keys[i]);
-                }
                 break;
             }
-            free(kvs_keys[i]);
         }
     }
-    if (kvs_keys != NULL)
-        free(kvs_keys);
     return KVS_STATUS_SUCCESS;
 }
 
 kvs_status_t helper::accept_new_ranks(const std::list<shift_rank_t>& list) {
     char new_rank_str[INT_STR_SIZE];
     char old_rank_str[INT_STR_SIZE];
-    char** kvs_values = NULL;
-    char** kvs_keys = NULL;
+    std::vector<std::string> kvs_values(1);
+    std::vector<std::string> kvs_keys(1);
+    std::vector<std::string> clear_buf;
     size_t count_values;
     size_t i = 0;
 
@@ -213,35 +207,24 @@ kvs_status_t helper::accept_new_ranks(const std::list<shift_rank_t>& list) {
             SET_STR(new_rank_str, INT_STR_SIZE, RANK_TEMPLATE, cur_list.new_rank);
 
             KVS_CHECK_STATUS(
-                get_keys_values_by_name(KVS_APPROVED_NEW_POD, &kvs_keys, &kvs_values, count_values),
+                get_keys_values_by_name(KVS_APPROVED_NEW_POD, kvs_keys, kvs_values, count_values),
                 "failed to get keys and values");
 
             for (i = 0; i < count_values; i++) {
-                if (!strcmp(kvs_values[i], old_rank_str)) {
+                if (!strcmp(kvs_values[i].c_str(), old_rank_str)) {
                     KVS_CHECK_STATUS(set_value(KVS_ACCEPT, kvs_keys[i], new_rank_str),
                                      "failed to set value");
                     break;
                 }
             }
-            for (i = 0; i < count_values; i++) {
-                free(kvs_keys[i]);
-                free(kvs_values[i]);
-            }
         }
     }
 
     do {
-        KVS_CHECK_STATUS(get_keys_values_by_name(KVS_ACCEPT, NULL, &kvs_values, count_values),
+        KVS_CHECK_STATUS(get_keys_values_by_name(KVS_ACCEPT, clear_buf, kvs_values, count_values),
                          "failed to get keys and values");
-        for (i = 0; i < count_values; i++) {
-            free(kvs_values[i]);
-        }
     } while (count_values != 0);
 
-    if (kvs_keys != NULL)
-        free(kvs_keys);
-    if (kvs_values != NULL)
-        free(kvs_values);
     return KVS_STATUS_SUCCESS;
 }
 
@@ -300,28 +283,27 @@ kvs_status_t helper::update_my_info(const std::list<shift_rank_t>& list) {
 }
 
 kvs_status_t helper::get_barrier_idx(size_t& barrier_num_out) {
-    char** kvs_values = NULL;
+    std::vector<std::string> kvs_values(1);
+    std::vector<std::string> clear_buf;
+
     size_t count_kvs_values = 0;
     size_t tmp_barrier_num;
     size_t min_barrier_num;
     size_t i = 0;
 
-    KVS_CHECK_STATUS(get_keys_values_by_name(KVS_BARRIER, NULL, &kvs_values, count_kvs_values),
+    KVS_CHECK_STATUS(get_keys_values_by_name(KVS_BARRIER, clear_buf, kvs_values, count_kvs_values),
                      "failed to get keys and values");
     if (count_kvs_values == 0)
         return KVS_STATUS_SUCCESS;
 
-    KVS_CHECK_STATUS(safe_strtol(kvs_values[0], min_barrier_num), "failed to convert barrier num");
+    KVS_CHECK_STATUS(safe_strtol(kvs_values[0].c_str(), min_barrier_num),
+                     "failed to convert barrier num");
     for (i = 1; i < count_kvs_values; i++) {
-        KVS_CHECK_STATUS(safe_strtol(kvs_values[i], tmp_barrier_num),
+        KVS_CHECK_STATUS(safe_strtol(kvs_values[i].c_str(), tmp_barrier_num),
                          "failed to convert tmp barrier num");
         if (min_barrier_num > tmp_barrier_num)
             min_barrier_num = tmp_barrier_num;
     }
-    for (i = 0; i < count_kvs_values; i++) {
-        free(kvs_values[i]);
-    }
-    free(kvs_values);
 
     barrier_num_out = min_barrier_num;
     return KVS_STATUS_SUCCESS;
@@ -378,28 +360,27 @@ kvs_status_t helper::update(const std::list<shift_rank_t>& list,
 
 kvs_status_t helper::get_val_count(const char* name, const char* val, size_t& res) {
     res = 0;
-    char** kvs_values = NULL;
+    std::vector<std::string> kvs_values(1);
+    std::vector<std::string> clear_buf;
     size_t count_values;
     size_t i;
 
-    KVS_CHECK_STATUS(get_keys_values_by_name(name, NULL, &kvs_values, count_values),
+    KVS_CHECK_STATUS(get_keys_values_by_name(name, clear_buf, kvs_values, count_values),
                      "failed to get keys and values");
 
     if (count_values != 0) {
         for (i = 0; i < count_values; i++) {
-            if (!strcmp(val, kvs_values[i])) {
+            if (!strcmp(val, kvs_values[i].c_str())) {
                 res++;
             }
-            free(kvs_values[i]);
         }
-        free(kvs_values);
     }
 
     return KVS_STATUS_SUCCESS;
 }
 
 kvs_status_t helper::get_occupied_ranks_count(char* rank, size_t& res) {
-    char occupied_rank_val_str[MAX_KVS_VAL_LENGTH];
+    std::string occupied_rank_val_str;
     size_t is_occupied_rank;
     size_t count_new_pod = 0;
     size_t count_seen_new_pod = 0;
@@ -407,7 +388,7 @@ kvs_status_t helper::get_occupied_ranks_count(char* rank, size_t& res) {
     KVS_CHECK_STATUS(get_value_by_name_key(KVS_POD_NUM, rank, occupied_rank_val_str),
                      "failed to get occupied rank");
 
-    is_occupied_rank = (strlen(occupied_rank_val_str) == 0) ? 0 : 1;
+    is_occupied_rank = (occupied_rank_val_str.length() == 0) ? 0 : 1;
 
     KVS_CHECK_STATUS(get_val_count(KVS_NEW_POD, rank, count_new_pod), "failed to get mew rank");
 
@@ -428,11 +409,11 @@ kvs_status_t helper::get_count_requested_ranks(char* rank, size_t& count_pods_wi
 }
 
 kvs_status_t helper::occupied_rank(char* rank) {
-    char idx_val[MAX_KVS_VAL_LENGTH];
+    std::string idx_val;
 
     KVS_CHECK_STATUS(get_value_by_name_key(KVS_UP, KVS_IDX, idx_val), "failed to get ID");
 
-    if ((strlen(idx_val) == 0) && (my_rank == 0)) {
+    if ((idx_val.length() == 0) && (my_rank == 0)) {
         KVS_CHECK_STATUS(set_value(KVS_UP, KVS_IDX, INITIAL_UPDATE_IDX),
                          "failed to set initial ID");
 
@@ -451,8 +432,8 @@ kvs_status_t helper::occupied_rank(char* rank) {
 kvs_status_t helper::reg_rank(void) {
     char rank_str[INT_STR_SIZE];
     size_t wait_shift = 0;
-    char** kvs_values = NULL;
-    char** kvs_keys = NULL;
+    std::vector<std::string> kvs_values(1);
+    std::vector<std::string> kvs_keys(1);
     size_t count_values = 0;
     size_t my_num_in_pod_request_line = 0;
     size_t i;
@@ -468,19 +449,15 @@ kvs_status_t helper::reg_rank(void) {
         my_num_in_pod_request_line = 0;
 
         KVS_CHECK_STATUS(
-            get_keys_values_by_name(KVS_POD_REQUEST, &kvs_keys, &kvs_values, count_values),
+            get_keys_values_by_name(KVS_POD_REQUEST, kvs_keys, kvs_values, count_values),
             "failed to get requested pods");
 
         for (i = 0; i < count_values; i++) {
-            if (!strcmp(kvs_values[i], rank_str)) {
+            if (!strcmp(kvs_values[i].c_str(), rank_str)) {
                 my_num_in_pod_request_line++;
-                if (!strcmp(kvs_keys[i], my_hostname))
+                if (!strcmp(kvs_keys[i].c_str(), my_hostname))
                     break;
             }
-        }
-        for (i = 0; i < count_values; i++) {
-            free(kvs_keys[i]);
-            free(kvs_values[i]);
         }
 
         if (my_num_in_pod_request_line == 1) {
@@ -511,10 +488,6 @@ kvs_status_t helper::reg_rank(void) {
 
     KVS_CHECK_STATUS(remove_name_key(KVS_POD_REQUEST, my_hostname), "failed to remove host info");
 
-    if (kvs_keys != NULL)
-        free(kvs_keys);
-    if (kvs_values != NULL)
-        free(kvs_values);
     return KVS_STATUS_SUCCESS;
 }
 
@@ -523,12 +496,12 @@ kvs_status_t helper::get_replica_size(size_t& replica_size) {
 }
 
 kvs_status_t helper::up_kvs(const char* new_kvs_name, const char* old_kvs_name) {
-    char** kvs_values = NULL;
-    char** kvs_keys = NULL;
+    std::vector<std::string> kvs_values(1);
+    std::vector<std::string> kvs_keys(1);
     size_t i = 0;
     size_t count_values;
 
-    KVS_CHECK_STATUS(get_keys_values_by_name(old_kvs_name, &kvs_keys, &kvs_values, count_values),
+    KVS_CHECK_STATUS(get_keys_values_by_name(old_kvs_name, kvs_keys, kvs_values, count_values),
                      "failed to get keys and values");
     for (i = 0; i < count_values; i++) {
         KVS_CHECK_STATUS(remove_name_key(old_kvs_name, kvs_keys[i]),
@@ -536,14 +509,7 @@ kvs_status_t helper::up_kvs(const char* new_kvs_name, const char* old_kvs_name) 
 
         KVS_CHECK_STATUS(set_value(new_kvs_name, kvs_keys[i], kvs_values[i]),
                          "failed to set new kvs info");
-
-        free(kvs_keys[i]);
-        free(kvs_values[i]);
     }
-    if (kvs_keys != NULL)
-        free(kvs_keys);
-    if (kvs_values != NULL)
-        free(kvs_values);
     return KVS_STATUS_SUCCESS;
 }
 
@@ -555,39 +521,39 @@ kvs_status_t helper::up_kvs_new_and_dead(void) {
 
 kvs_status_t helper::get_new_root(int* old_root) {
     size_t i;
-    char** rank_nums = NULL;
+    std::vector<std::string> rank_nums(1);
+    std::vector<std::string> clear_buf;
     size_t rank_count;
     int rank_num;
-    KVS_CHECK_STATUS(get_keys_values_by_name(KVS_DEAD_POD, NULL, &rank_nums, rank_count),
+    KVS_CHECK_STATUS(get_keys_values_by_name(KVS_DEAD_POD, clear_buf, rank_nums, rank_count),
                      "failed to update new");
 
     for (i = 0; i < rank_count; i++) {
-        KVS_CHECK_STATUS(safe_strtol(rank_nums[i], rank_num), "failed to update new");
+        KVS_CHECK_STATUS(safe_strtol(rank_nums[i].c_str(), rank_num), "failed to update new");
         if (*old_root == rank_num) {
             (*old_root)++;
         }
-        free(rank_nums[i]);
     }
-    if (rank_nums != NULL)
-        free(rank_nums);
     return KVS_STATUS_SUCCESS;
 }
 
-kvs_status_t helper::get_keys_values_by_name(const char* kvs_name,
-                                             char*** kvs_keys,
-                                             char*** kvs_values,
+kvs_status_t helper::get_keys_values_by_name(const std::string& kvs_name,
+                                             std::vector<std::string>& kvs_keys,
+                                             std::vector<std::string>& kvs_values,
                                              size_t& count) {
     return k->kvs_get_keys_values_by_name(kvs_name, kvs_keys, kvs_values, count);
 }
-kvs_status_t helper::set_value(const char* kvs_name, const char* kvs_key, const char* kvs_val) {
+kvs_status_t helper::set_value(const std::string& kvs_name,
+                               const std::string& kvs_key,
+                               const std::string& kvs_val) {
     return k->kvs_set_value(kvs_name, kvs_key, kvs_val);
 }
-kvs_status_t helper::remove_name_key(const char* kvs_name, const char* kvs_key) {
+kvs_status_t helper::remove_name_key(const std::string& kvs_name, const std::string& kvs_key) {
     return k->kvs_remove_name_key(kvs_name, kvs_key);
 }
-kvs_status_t helper::get_value_by_name_key(const char* kvs_name,
-                                           const char* kvs_key,
-                                           char* kvs_val) {
+kvs_status_t helper::get_value_by_name_key(const std::string& kvs_name,
+                                           const std::string& kvs_key,
+                                           std::string& kvs_val) {
     return k->kvs_get_value_by_name_key(kvs_name, kvs_key, kvs_val);
 }
 size_t helper::init(const char* main_addr) {
@@ -596,7 +562,7 @@ size_t helper::init(const char* main_addr) {
 kvs_status_t helper::main_server_address_reserve(char* main_addr) {
     return k->kvs_main_server_address_reserve(main_addr);
 }
-kvs_status_t helper::get_count_names(const char* kvs_name, int& count_names) {
+kvs_status_t helper::get_count_names(const std::string& kvs_name, size_t& count_names) {
     return k->kvs_get_count_names(kvs_name, count_names);
 }
 kvs_status_t helper::finalize(void) {

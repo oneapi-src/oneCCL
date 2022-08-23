@@ -65,19 +65,11 @@ vector_class<char> native_kvs_impl::get(const string_class& key) {
     CCL_THROW_IF_NOT(ccl::global_data::env().backend == backend_mode::native,
                      "incorrect non-native backend is used");
 
-    char ret[MAX_KVS_VAL_LENGTH];
+    std::string ret;
     CCL_THROW_IF_NOT(inter_kvs->kvs_get_value_by_name_key(prefix.c_str(), key.c_str(), ret) ==
                          KVS_STATUS_SUCCESS,
                      "kvs get failed");
-    size_t ret_len = strlen(ret);
-    vector_class<char> ret_vec;
-    if (ret_len != 0) {
-        ret_vec = vector_class<char>(ret, ret + ret_len + 1);
-        ret_vec[ret_len] = '\0';
-    }
-    else
-        ret_vec = vector_class<char>('\0');
-    return ret_vec;
+    return { ret.begin(), ret.end() };
 }
 
 void native_kvs_impl::set(const string_class& key, const vector_class<char>& data) {

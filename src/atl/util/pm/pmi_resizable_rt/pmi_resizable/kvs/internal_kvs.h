@@ -40,37 +40,44 @@ protected:
 
 class internal_kvs final : public ikvs_wrapper {
 public:
-    kvs_status_t kvs_set_value(const char* kvs_name,
-                               const char* kvs_key,
-                               const char* kvs_val) override;
+    kvs_status_t kvs_set_value(const std::string& kvs_name,
+                               const std::string& kvs_key,
+                               const std::string& kvs_val) override;
 
-    kvs_status_t kvs_remove_name_key(const char* kvs_name, const char* kvs_key) override;
+    kvs_status_t kvs_remove_name_key(const std::string& kvs_name,
+                                     const std::string& kvs_key) override;
 
-    kvs_status_t kvs_get_value_by_name_key(const char* kvs_name,
-                                           const char* kvs_key,
-                                           char* kvs_val) override;
+    kvs_status_t kvs_get_value_by_name_key(const std::string& kvs_name,
+                                           const std::string& kvs_key,
+                                           std::string& kvs_val) override;
 
-    kvs_status_t kvs_register(const char* kvs_name, const char* kvs_key, char* kvs_val);
+    kvs_status_t kvs_register(const std::string& kvs_name,
+                              const std::string& kvs_key,
+                              std::string& kvs_val);
 
-    kvs_status_t kvs_set_size(const char* kvs_name, const char* kvs_key, const char* kvs_val);
+    kvs_status_t kvs_set_size(const std::string& kvs_name,
+                              const std::string& kvs_key,
+                              const std::string& kvs_val);
 
-    kvs_status_t kvs_barrier_register(const char* kvs_name,
-                                      const char* kvs_key,
-                                      const char* kvs_val);
+    kvs_status_t kvs_barrier_register(const std::string& kvs_name,
+                                      const std::string& kvs_key,
+                                      const std::string& kvs_val);
 
-    kvs_status_t kvs_barrier(const char* kvs_name, const char* kvs_key, const char* kvs_val);
+    kvs_status_t kvs_barrier(const std::string& kvs_name,
+                             const std::string& kvs_key,
+                             const std::string& kvs_val);
 
     kvs_status_t kvs_init(const char* main_addr) override;
 
     kvs_status_t kvs_main_server_address_reserve(char* main_addr) override;
 
-    kvs_status_t kvs_get_count_names(const char* kvs_name, int& count_names) override;
+    kvs_status_t kvs_get_count_names(const std::string& kvs_name, size_t& count_names) override;
 
     kvs_status_t kvs_finalize() override;
 
-    kvs_status_t kvs_get_keys_values_by_name(const char* kvs_name,
-                                             char*** kvs_keys,
-                                             char*** kvs_values,
+    kvs_status_t kvs_get_keys_values_by_name(const std::string& kvs_name,
+                                             std::vector<std::string>& kvs_keys,
+                                             std::vector<std::string>& kvs_values,
                                              size_t& count) override;
 
     kvs_status_t kvs_get_replica_size(size_t& replica_size) override;

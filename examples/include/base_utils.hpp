@@ -160,39 +160,6 @@ inline void str_to_array(const char* input, std::vector<T>& output, char delimit
         }
     }
 }
-template <>
-inline void str_to_array(const char* input, std::vector<std::string>& output, char delimiter) {
-    std::string processes_input(input);
-
-    processes_input.erase(std::remove_if(processes_input.begin(),
-                                         processes_input.end(),
-                                         [](unsigned char x) {
-                                             return std::isspace(x);
-                                         }),
-                          processes_input.end());
-
-    std::replace(processes_input.begin(), processes_input.end(), delimiter, ' ');
-    std::stringstream ss(processes_input);
-
-    while (ss >> processes_input) {
-        output.push_back(processes_input);
-    }
-}
-
-template <typename T>
-void str_to_mset(const char* input, std::multiset<T>& output, char delimiter) {
-    if (!input) {
-        return;
-    }
-    std::stringstream ss(input);
-    T temp{};
-    while (ss >> temp) {
-        output.insert(temp);
-        if (ss.peek() == delimiter) {
-            ss.ignore();
-        }
-    }
-}
 
 template <class Container>
 std::string vec_to_string(Container& elems) {

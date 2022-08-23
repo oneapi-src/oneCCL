@@ -33,7 +33,7 @@ class server {
 public:
     server() = default;
     kvs_status_t run(void*);
-    kvs_status_t check_finalize(bool& to_finalize);
+    kvs_status_t check_finalize(size_t& to_finalize);
     kvs_status_t make_client_request(int& socket);
     kvs_status_t try_to_connect_new();
 
@@ -73,7 +73,6 @@ private:
     const size_t client_count_increase = 300;
     std::map<std::string, barrier_info> barriers;
     std::map<std::string, comm_info> communicators;
-    int ret = 0;
     std::mutex server_memory_mutex;
     std::map<std::string, std::map<std::string, std::string>> requests;
     const int free_socket = -1;
@@ -121,16 +120,15 @@ kvs_status_t server::try_to_connect_new() {
 }
 
 kvs_status_t server::make_client_request(int& socket) {
-    DO_RW_OP_1(
-        read, socket, &request, sizeof(kvs_request_t), ret, "server: get command from client");
-    if (ret == 0) {
-        close(socket);
-        socket = free_socket;
-        client_count--;
-        return KVS_STATUS_SUCCESS;
-    }
+    KVS_CHECK_STATUS(request.get(socket, server_memory_mutex), "server: get command from client");
 
     switch (request.mode) {
+        case AM_CLOSE: {
+            close(socket);
+            socket = free_socket;
+            client_count--;
+            break;
+        }
         case AM_PUT: {
             auto& req = requests[request.name];
             req[request.key] = request.val;
@@ -147,30 +145,16 @@ kvs_status_t server::make_client_request(int& socket) {
                 auto it_key = it_name->second.find(request.key);
                 if (it_key != it_name->second.end()) {
                     count = 1;
-                    DO_RW_OP(write,
-                             socket,
-                             &count,
-                             sizeof(size_t),
-                             server_memory_mutex,
-                             "server: get_value write size");
+                    KVS_CHECK_STATUS(request.put(socket, server_memory_mutex, count),
+                                     "server: put value write size");
 
-                    kvs_str_copy(request.val, it_key->second.c_str(), MAX_KVS_VAL_LENGTH);
-
-                    DO_RW_OP(write,
-                             socket,
-                             &request,
-                             sizeof(kvs_request_t),
-                             server_memory_mutex,
-                             "server: get_value write data");
+                    KVS_CHECK_STATUS(request.put(socket, server_memory_mutex, it_key->second),
+                                     "server: put value write data");
                     break;
                 }
             }
-            DO_RW_OP(write,
-                     socket,
-                     &count,
-                     sizeof(size_t),
-                     server_memory_mutex,
-                     "server: get_value write size");
+            KVS_CHECK_STATUS(request.put(socket, server_memory_mutex, count),
+                             "server: put value write size");
             break;
         }
         case AM_GET_COUNT: {
@@ -179,8 +163,7 @@ kvs_status_t server::make_client_request(int& socket) {
             if (it != requests.end()) {
                 count = it->second.size();
             }
-            DO_RW_OP(
-                write, socket, &count, sizeof(size_t), server_memory_mutex, "server: get_count");
+            KVS_CHECK_STATUS(request.put(socket, server_memory_mutex, count), "server: put count");
             break;
         }
         case AM_GET_REPLICA: {
@@ -189,12 +172,11 @@ kvs_status_t server::make_client_request(int& socket) {
             if (replica_size_str != nullptr) {
                 KVS_CHECK_STATUS(safe_strtol(replica_size_str, count), "failed to convert count");
             }
-            DO_RW_OP(
-                write, socket, &count, sizeof(size_t), server_memory_mutex, "server: get_replica");
+            KVS_CHECK_STATUS(request.put(socket, server_memory_mutex, count),
+                             "server: get_replica");
             break;
         }
         case AM_GET_KEYS_VALUES: {
-            size_t j = 0;
             std::vector<kvs_request_t> answers;
             count = 0;
             auto it_name = requests.find(request.name);
@@ -202,31 +184,13 @@ kvs_status_t server::make_client_request(int& socket) {
                 count = it_name->second.size();
             }
 
-            DO_RW_OP(write,
-                     socket,
-                     &count,
-                     sizeof(size_t),
-                     server_memory_mutex,
-                     "server: get_keys_values write size");
+            KVS_CHECK_STATUS(request.put(socket, server_memory_mutex, count),
+                             "server: put keys_values count");
             if (count == 0)
                 break;
 
-            answers.resize(count);
-
-            for (auto it_keys : it_name->second) {
-                kvs_str_copy_known_sizes(answers[j].name, request.name, MAX_KVS_NAME_LENGTH);
-                kvs_str_copy(answers[j].key, it_keys.first.c_str(), MAX_KVS_KEY_LENGTH);
-                kvs_str_copy(answers[j].val, it_keys.second.c_str(), MAX_KVS_VAL_LENGTH);
-                j++;
-            }
-
-            DO_RW_OP(write,
-                     socket,
-                     answers.data(),
-                     sizeof(kvs_request_t) * count,
-                     server_memory_mutex,
-                     "server: get_keys_values write data");
-
+            KVS_CHECK_STATUS(request.put(socket, server_memory_mutex, it_name->second),
+                             "server: put keys_values write data");
             break;
         }
         case AM_BARRIER: {
@@ -254,15 +218,11 @@ kvs_status_t server::make_client_request(int& socket) {
                     }
                 }
                 if (is_barrier_stop) {
-                    int is_done = 1;
+                    size_t is_done = 1;
                     for (const auto& client : clients) {
                         client->in_barrier = false;
-                        DO_RW_OP(write,
-                                 client->socket,
-                                 &is_done,
-                                 sizeof(is_done),
-                                 server_memory_mutex,
-                                 "server: barrier");
+                        KVS_CHECK_STATUS(request.put(client->socket, server_memory_mutex, is_done),
+                                         "server: barrier");
                     }
                 }
             }
@@ -324,6 +284,7 @@ kvs_status_t server::make_client_request(int& socket) {
                         return a.rank < b.rank;
                     });
                 }
+                std::string put_buf;
                 for (auto& it : communicator.sockets) {
                     std::string thread_num;
                     int i = 0;
@@ -340,22 +301,12 @@ kvs_status_t server::make_client_request(int& socket) {
                     for (auto& proc_info_it : process_info) {
                         proc_rank_count += proc_info_it.rank_count;
                     }
-                    memset(request.val, 0, MAX_KVS_VAL_LENGTH);
                     /*return string: %PROC_COUNT%_%RANK_NUM%_%PROCESS_RANK_COUNT%_%THREADS_COUNT%_%THREAD_NUM% */
-                    snprintf(request.val,
-                             MAX_KVS_VAL_LENGTH,
-                             "%s_%s_%s_%s_%s",
-                             proc_count_str.c_str(),
-                             it.process_info.rank.c_str(),
-                             std::to_string(proc_rank_count).c_str(),
-                             threads_count.c_str(),
-                             thread_num.c_str());
-                    DO_RW_OP(write,
-                             it.socket,
-                             &request,
-                             sizeof(kvs_request_t),
-                             server_memory_mutex,
-                             "server: register write data");
+                    put_buf = proc_count_str + "_" + it.process_info.rank + "_" +
+                              std::to_string(proc_rank_count) + "_" + threads_count + "_" +
+                              thread_num;
+                    KVS_CHECK_STATUS(request.put(it.socket, server_memory_mutex, put_buf),
+                                     "server: register write data");
                 }
             }
             break;
@@ -370,19 +321,11 @@ kvs_status_t server::make_client_request(int& socket) {
     return KVS_STATUS_SUCCESS;
 }
 
-kvs_status_t server::check_finalize(bool& to_finalize) {
+kvs_status_t server::check_finalize(size_t& to_finalize) {
     to_finalize = false;
     if (poll_fds[FDI_CONTROL].revents != 0) {
-        DO_RW_OP_1(read,
-                   poll_fds[FDI_CONTROL].fd,
-                   &request,
-                   sizeof(kvs_request_t),
-                   ret,
-                   "server: get control msg from client");
-        if (ret == 0) {
-            close(poll_fds[FDI_CONTROL].fd);
-            poll_fds[FDI_CONTROL].fd = free_socket;
-        }
+        KVS_CHECK_STATUS(request.get(poll_fds[FDI_CONTROL].fd, server_memory_mutex),
+                         "server: get control msg from client");
         if (request.mode != AM_FINALIZE) {
             LOG_ERROR("invalid access mode for local socket\n");
             return KVS_STATUS_FAILURE;
@@ -393,7 +336,7 @@ kvs_status_t server::check_finalize(bool& to_finalize) {
 }
 
 kvs_status_t server::run(void* args) {
-    bool should_stop = false;
+    size_t should_stop = false;
     int so_reuse = 1;
     poll_fds.resize(client_count_increase);
     for (auto& it : poll_fds) {
@@ -447,12 +390,8 @@ kvs_status_t server::run(void* args) {
     }
 
     if (poll_fds[FDI_CONTROL].fd != free_socket) {
-        DO_RW_OP_1(write,
-                   poll_fds[FDI_CONTROL].fd,
-                   &should_stop,
-                   sizeof(should_stop),
-                   ret,
-                   "server: send control msg to client");
+        KVS_CHECK_STATUS(request.put(poll_fds[FDI_CONTROL].fd, server_memory_mutex, should_stop),
+                         "server: put control msg to client");
     }
 
     close(poll_fds[FDI_CONTROL].fd);

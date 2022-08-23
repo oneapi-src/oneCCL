@@ -519,6 +519,12 @@ ccl::status ccl_parallelizer::process_base(ccl_sched* sched, bool update_sched_i
                      algo.alltoallv == ccl_coll_alltoallv_scatter) {
                 ccl_coll_build_scatter_alltoallv(sched, part_scheds_vector, coll_param);
             }
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+            else if (algo.alltoall == ccl_coll_alltoall_topo ||
+                     algo.alltoallv == ccl_coll_alltoallv_topo) {
+                ccl_coll_build_topo_alltoallv(sched, part_scheds_vector, coll_param);
+            }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
             else {
                 ccl_coll_entry_param param{};
                 param.ctype = coll_type;

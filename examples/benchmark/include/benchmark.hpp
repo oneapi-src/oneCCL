@@ -520,6 +520,11 @@ void adjust_user_options(user_options_t& options) {
     adjust_elem_counts(options);
 }
 
+bool is_inplace_supported(const std::string& coll,
+                          const std::initializer_list<std::string>& supported_colls) {
+    return std::find(supported_colls.begin(), supported_colls.end(), coll) != supported_colls.end();
+}
+
 int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
     int ch;
     int errors = 0;
@@ -716,8 +721,12 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
     }
 
     if (options.inplace) {
+        //TODO: "allgatherv"
+        std::initializer_list<std::string> supported_colls = { "allreduce",
+                                                               "alltoall",
+                                                               "alltoallv" };
         for (auto name : options.coll_names) {
-            if (name != "allreduce") {
+            if (!is_inplace_supported(name, supported_colls)) {
                 PRINT("inplace is not supported for %s yet", name.c_str());
                 errors++;
                 break;

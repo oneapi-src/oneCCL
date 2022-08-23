@@ -30,7 +30,7 @@
 #define LOCAL_KVS_ID           "LOCAL_KVS_ID"
 
 #define INTERNAL_REGISTRATION                 "INTERNAL_REGISTRATION"
-#define RANKCOUNT_RANK_PROCID_THREADID_FORMAT "%zu_%d_%d_%ld"
+#define RANKCOUNT_RANK_PROCID_THREADID_FORMAT "%zu_%d_%d-%s_%ld"
 
 pmi_resizable_simple_internal::pmi_resizable_simple_internal(int size,
                                                              const std::vector<int>& ranks,
@@ -83,24 +83,25 @@ atl_status_t pmi_resizable_simple_internal::pmrt_init() {
 atl_status_t pmi_resizable_simple_internal::registration() {
     std::string total_local_rank_count_str = std::to_string(comm_size);
     std::string result_kvs_name = std::string(INTERNAL_REGISTRATION) + std::to_string(local_id);
-    memset(val_storage, 0, max_vallen);
-    snprintf(val_storage,
+    std::string val_storage_vec(max_vallen, 0);
+    char my_hostname[ATL_MAX_HOSTNAME_LEN]{};
+    gethostname(my_hostname, ATL_MAX_HOSTNAME_LEN - 1);
+    snprintf(const_cast<char*>(val_storage_vec.data()),
              max_vallen,
              RANKCOUNT_RANK_PROCID_THREADID_FORMAT,
              ranks.size(),
              ranks[0],
              getpid(),
+             my_hostname, // consider pid+hostname pair as proc_id
              gettid());
     KVS_2_ATL_CHECK_STATUS(
-        k->kvs_set_size(
-            result_kvs_name.c_str(), result_kvs_name.c_str(), total_local_rank_count_str.c_str()),
+        k->kvs_set_size(result_kvs_name, result_kvs_name, total_local_rank_count_str),
         "failed to set total rank count");
     /*return string: %PROC_COUNT%_%RANK_NUM%_%PROCESS_RANK_COUNT%_%THREADS_COUNT%_%THREAD_NUM% */
-    KVS_2_ATL_CHECK_STATUS(
-        k->kvs_register(result_kvs_name.c_str(), result_kvs_name.c_str(), val_storage),
-        "failed to register");
+    KVS_2_ATL_CHECK_STATUS(k->kvs_register(result_kvs_name, result_kvs_name, val_storage_vec),
+                           "failed to register");
 
-    char* proc_count_str = val_storage;
+    char* proc_count_str = const_cast<char*>(val_storage_vec.data());
     char* rank_str = strstr(proc_count_str, "_");
     rank_str[0] = '\0';
     rank_str++;
@@ -129,8 +130,7 @@ atl_status_t pmi_resizable_simple_internal::barrier_full_reg() {
     std::string result_kvs_name = std::string(KVS_BARRIER_FULL) + std::to_string(local_id);
 
     KVS_2_ATL_CHECK_STATUS(
-        k->kvs_barrier_register(
-            result_kvs_name.c_str(), result_kvs_name.c_str(), total_local_rank_count_str.c_str()),
+        k->kvs_barrier_register(result_kvs_name, result_kvs_name, total_local_rank_count_str),
         "registration failed");
     ATL_CHECK_STATUS(pmrt_barrier_full(), "full barrier failed");
     return ATL_STATUS_SUCCESS;
@@ -142,8 +142,7 @@ atl_status_t pmi_resizable_simple_internal::barrier_reg() {
     std::string result_kvs_name = std::string(KVS_BARRIER) + std::to_string(local_id);
 
     KVS_2_ATL_CHECK_STATUS(
-        k->kvs_barrier_register(
-            result_kvs_name.c_str(), result_kvs_name.c_str(), proc_count_str.c_str()),
+        k->kvs_barrier_register(result_kvs_name, result_kvs_name, proc_count_str),
         "registration failed");
     ATL_CHECK_STATUS(pmrt_barrier_full(), "full barrier failed");
     return ATL_STATUS_SUCCESS;
@@ -192,8 +191,7 @@ atl_status_t pmi_resizable_simple_internal::pmrt_barrier() {
     std::string empty_line("");
     std::string result_kvs_name = std::string(KVS_BARRIER) + std::to_string(local_id);
 
-    return k->kvs_barrier(result_kvs_name.c_str(), result_kvs_name.c_str(), empty_line.c_str()) ==
-                   KVS_STATUS_SUCCESS
+    return k->kvs_barrier(result_kvs_name, result_kvs_name, empty_line) == KVS_STATUS_SUCCESS
                ? ATL_STATUS_SUCCESS
                : ATL_STATUS_FAILURE;
 }
@@ -202,8 +200,7 @@ atl_status_t pmi_resizable_simple_internal::pmrt_barrier_full() {
     std::string empty_line("");
     std::string result_kvs_name = std::string(KVS_BARRIER_FULL) + std::to_string(local_id);
 
-    return k->kvs_barrier(result_kvs_name.c_str(), result_kvs_name.c_str(), (empty_line.c_str())) ==
-                   KVS_STATUS_SUCCESS
+    return k->kvs_barrier(result_kvs_name, result_kvs_name, empty_line) == KVS_STATUS_SUCCESS
                ? ATL_STATUS_SUCCESS
                : ATL_STATUS_FAILURE;
 }
@@ -242,6 +239,7 @@ atl_status_t pmi_resizable_simple_internal::pmrt_kvs_get(char* kvs_key,
                                                          size_t kvs_val_len) {
     int ret;
     char key_storage[max_keylen];
+    std::string val_storage;
 
     ret = snprintf(key_storage, max_keylen - 1, RESIZABLE_PMI_RT_KEY_FORMAT, kvs_key, proc_idx);
     if (ret < 0) {
@@ -251,7 +249,7 @@ atl_status_t pmi_resizable_simple_internal::pmrt_kvs_get(char* kvs_key,
 
     ATL_CHECK_STATUS(kvs_get_value(KVS_NAME, key_storage, val_storage), "failed to get val");
 
-    ret = decode(val_storage, kvs_val, kvs_val_len);
+    ret = decode(val_storage.c_str(), kvs_val, kvs_val_len);
     if (ret) {
         LOG_ERROR("decode failed");
         return ATL_STATUS_FAILURE;
@@ -280,28 +278,28 @@ size_t pmi_resizable_simple_internal::get_ranks_per_process() {
     return proc_rank_count;
 }
 
-int pmi_resizable_simple_internal::kvs_set_value(const char* kvs_name,
-                                                 const char* key,
-                                                 const char* value) {
-    std::string result_kvs_name = std::string(kvs_name) + std::to_string(local_id);
-    put_key(result_kvs_name.c_str(), key, value, ST_CLIENT);
+int pmi_resizable_simple_internal::kvs_set_value(const std::string& kvs_name,
+                                                 const std::string& key,
+                                                 const std::string& value) {
+    std::string result_kvs_name = kvs_name + std::to_string(local_id);
+    put_key(result_kvs_name.c_str(), key.c_str(), value.c_str(), ST_CLIENT);
 
-    return k->kvs_set_value(result_kvs_name.c_str(), key, value);
+    return k->kvs_set_value(result_kvs_name, key, value);
 }
 
-atl_status_t pmi_resizable_simple_internal::kvs_get_value(const char* kvs_name,
-                                                          const char* key,
-                                                          char* value) {
-    std::string result_kvs_name = std::string(kvs_name) + std::to_string(local_id);
+atl_status_t pmi_resizable_simple_internal::kvs_get_value(const std::string& kvs_name,
+                                                          const std::string& key,
+                                                          std::string& value) {
+    std::string result_kvs_name = kvs_name + std::to_string(local_id);
 
     time_t start_time = time(NULL);
     size_t kvs_get_time = 0;
 
     do {
-        KVS_2_ATL_CHECK_STATUS(k->kvs_get_value_by_name_key(result_kvs_name.c_str(), key, value),
+        KVS_2_ATL_CHECK_STATUS(k->kvs_get_value_by_name_key(result_kvs_name, key, value),
                                "failed to get value");
         kvs_get_time = time(NULL) - start_time;
-    } while (strlen(value) == 0 && kvs_get_time < kvs_get_timeout);
+    } while (value.length() == 0 && kvs_get_time < kvs_get_timeout);
 
     if (kvs_get_time >= kvs_get_timeout) {
         LOG_ERROR("KVS get error: timeout limit (%zu > %zu), prefix: %s, key %s\n",
@@ -315,12 +313,12 @@ atl_status_t pmi_resizable_simple_internal::kvs_get_value(const char* kvs_name,
 }
 
 atl_status_t pmi_resizable_simple_internal::get_local_kvs_id(size_t& res) {
-    char local_kvs_id[MAX_KVS_VAL_LENGTH];
+    std::string local_kvs_id;
     res = 0;
     /*TODO: change it for collect local_per_rank id, not global*/
     KVS_2_ATL_CHECK_STATUS(k->kvs_get_value_by_name_key(LOCAL_KVS_ID, "ID", local_kvs_id),
                            "failed to get local kvs id");
-    res = atoi(local_kvs_id);
+    res = atoi(local_kvs_id.c_str());
     return ATL_STATUS_SUCCESS;
 }
 

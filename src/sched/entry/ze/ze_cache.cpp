@@ -450,7 +450,7 @@ void mem_handle_cache::push(ze_device_handle_t device,
 
     // no mutex here because this method is private and called from get() only
     auto remote_context_id = std::get<static_cast<size_t>(key_id::remote_context_id)>(key);
-    auto remote_context = global_data::get().ze_data->context_list.at(remote_context_id);
+    auto remote_context = global_data::get().ze_data->contexts.at(remote_context_id);
 
     void* ptr{};
     ZE_CALL(zeMemOpenIpcHandle, (remote_context, device, handle, {}, &ptr));

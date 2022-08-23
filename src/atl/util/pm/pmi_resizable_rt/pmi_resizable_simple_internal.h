@@ -92,8 +92,12 @@ public:
 private:
     bool is_finalized{ false };
 
-    int kvs_set_value(const char* kvs_name, const char* key, const char* value);
-    atl_status_t kvs_get_value(const char* kvs_name, const char* key, char* value);
+    int kvs_set_value(const std::string& kvs_name,
+                      const std::string& key,
+                      const std::string& value);
+    atl_status_t kvs_get_value(const std::string& kvs_name,
+                               const std::string& key,
+                               std::string& value);
 
     atl_status_t pmrt_barrier_full();
     atl_status_t barrier_full_reg();

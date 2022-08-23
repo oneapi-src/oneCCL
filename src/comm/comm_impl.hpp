@@ -263,8 +263,20 @@ ccl::event ccl_comm::alltoallv_impl(const ccl::vector_class<buffer_type*>& send_
                                     const ccl::stream::impl_value_t& stream,
                                     const ccl::alltoallv_attr& attr,
                                     const ccl::vector_class<ccl::event>& dep) {
-    throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
-    return {};
+    ccl_coll_attr internal_attr(attr);
+    internal_attr.is_vector_buf = 1;
+
+    ccl_request* req = ccl_alltoallv_impl((void*)(send_buf.data()),
+                                          send_counts.data(),
+                                          (void*)(recv_buf.data()),
+                                          recv_counts.data(),
+                                          ccl::native_type_info<buffer_type>::dtype,
+                                          internal_attr,
+                                          this,
+                                          get_stream_ptr(stream),
+                                          dep);
+
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
 }
 
 template <class buffer_type>
@@ -279,6 +291,7 @@ ccl::event ccl_comm::alltoallv_impl(const buffer_type& send_buf,
 #ifdef CCL_ENABLE_SYCL
     internal_attr.is_sycl_buf = 1;
 #endif // CCL_ENABLE_SYCL
+
     ccl_request* req = ccl_alltoallv_impl(reinterpret_cast<const void*>(&send_buf),
                                           send_counts.data(),
                                           reinterpret_cast<void*>(&recv_buf),
@@ -301,8 +314,22 @@ ccl::event ccl_comm::alltoallv_impl(
     const ccl::stream::impl_value_t& stream,
     const ccl::alltoallv_attr& attr,
     const ccl::vector_class<ccl::event>& dep) {
-    throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
-    return {};
+    ccl_coll_attr internal_attr(attr);
+    internal_attr.is_vector_buf = 1;
+#ifdef CCL_ENABLE_SYCL
+    internal_attr.is_sycl_buf = 1;
+#endif // CCL_ENABLE_SYCL
+    ccl_request* req = ccl_alltoallv_impl((void*)(send_buf.data()),
+                                          send_counts.data(),
+                                          (void*)(recv_buf.data()),
+                                          recv_counts.data(),
+                                          ccl::native_type_info<buffer_type>::dtype,
+                                          internal_attr,
+                                          this,
+                                          get_stream_ptr(stream),
+                                          dep);
+
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
 }
 
 /* bcast */

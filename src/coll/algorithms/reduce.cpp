@@ -471,8 +471,9 @@ ccl::status ccl_coll_build_topo_reduce(ccl_sched* sched,
     int even_comm_size = even_comm->size();
     int node_comm_size = node_comm->size();
 
-    bool is_single_node = (comm_size == node_comm_size);
-    bool is_single_card = (comm_size == 2) && is_single_node;
+    const ccl::topo_manager& topo_manager = comm->get_topo_manager();
+    bool is_single_node = topo_manager.is_single_node;
+    bool is_single_card = topo_manager.is_single_card;
     bool use_tmp_buf = !is_single_card;
 
     ccl_buffer tmp_buf{};

@@ -31,7 +31,8 @@
 #include "kvs_keeper.hpp"
 #include "kvs/ikvs_wrapper.h"
 
-extern int my_rank, count_pods;
+extern int my_rank;
+extern size_t count_pods;
 extern size_t barrier_num;
 extern size_t up_idx;
 extern size_t applied;
@@ -73,23 +74,27 @@ public:
     kvs_status_t get_new_root(int* old_root);
 
     /*Work with KVS, new*/
-    kvs_status_t set_value(const char* kvs_name, const char* kvs_key, const char* kvs_val);
+    kvs_status_t set_value(const std::string& kvs_name,
+                           const std::string& kvs_key,
+                           const std::string& kvs_val);
 
-    kvs_status_t remove_name_key(const char* kvs_name, const char* kvs_key);
+    kvs_status_t remove_name_key(const std::string& kvs_name, const std::string& kvs_key);
 
-    kvs_status_t get_value_by_name_key(const char* kvs_name, const char* kvs_key, char* kvs_val);
+    kvs_status_t get_value_by_name_key(const std::string& kvs_name,
+                                       const std::string& kvs_key,
+                                       std::string& kvs_val);
 
     size_t init(const char* main_addr);
 
     kvs_status_t main_server_address_reserve(char* main_addr);
 
-    kvs_status_t get_count_names(const char* kvs_name, int& count_names);
+    kvs_status_t get_count_names(const std::string& kvs_name, size_t& count_names);
 
     kvs_status_t finalize(void);
 
-    kvs_status_t get_keys_values_by_name(const char* kvs_name,
-                                         char*** kvs_keys,
-                                         char*** kvs_values,
+    kvs_status_t get_keys_values_by_name(const std::string& kvs_name,
+                                         std::vector<std::string>& kvs_keys,
+                                         std::vector<std::string>& kvs_values,
                                          size_t& count);
 
     /*Work with KVS, new*/
