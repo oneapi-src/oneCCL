@@ -23,10 +23,10 @@
 #include <mutex>
 #include <sstream>
 
-#include "oneapi/ccl/exception.hpp"
-#include "oneapi/ccl/types.hpp"
 #include "common/utils/spinlock.hpp"
 #include "common/utils/utils.hpp"
+#include "oneapi/ccl/exception.hpp"
+#include "oneapi/ccl/types.hpp"
 
 std::ostream& operator<<(std::ostream& os, const ccl::datatype& dt);
 

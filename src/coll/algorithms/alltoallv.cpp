@@ -23,6 +23,7 @@
 #include <numeric>
 
 #include "coll/algorithms/algorithms.hpp"
+#include "coll/coll_util.hpp"
 #include "sched/entry/factory/chunked_entry_factory.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
 
@@ -334,14 +335,171 @@ ccl::status ccl_coll_build_scatter_alltoallv(ccl_sched* main_sched,
 }
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-ccl::status ccl_coll_build_topo_alltoallv(ccl_sched* sched,
-                                          ccl_buffer send_buf,
-                                          const size_t* send_counts,
-                                          ccl_buffer recv_buf,
-                                          const size_t* recv_counts,
-                                          const ccl_datatype& dtype,
-                                          ccl_comm* comm) {
-    CCL_THROW("topo alltoallv is not implemented yet");
+ccl::status ccl_coll_build_topo_alltoallv(ccl_sched* main_sched,
+                                          std::vector<ccl_sched*>& scheds,
+                                          const ccl_coll_param& coll_param) {
+    ccl_comm* comm = coll_param.comm;
+    ccl_sched* sched = scheds.front();
+    CCL_THROW_IF_NOT(scheds.size() == 1, "unexpected scheds size: ", scheds.size());
+    const ccl_datatype& dtype = coll_param.dtype;
+    const bool is_inplace = coll_param.is_inplace();
+
+    int comm_rank = comm->rank();
+    int comm_size = comm->size();
+
+    std::vector<size_t> send_counts, recv_counts, send_offsets, recv_offsets;
+    size_t total_send_count = 0, total_recv_count = 0;
+    size_t total_send_bytes = 0, total_recv_bytes = 0;
+
+    ccl_coll_calculate_alltoallv_counts(coll_param,
+                                        send_counts,
+                                        recv_counts,
+                                        send_offsets,
+                                        recv_offsets,
+                                        total_send_count,
+                                        total_recv_count,
+                                        total_send_bytes,
+                                        total_recv_bytes);
+
+    std::vector<ccl_buffer> send_bufs(comm_size);
+    std::vector<ccl_buffer> recv_bufs(comm_size);
+    std::vector<ccl_buffer> tmp_bufs;
+
+    if (is_inplace) {
+        CCL_THROW_IF_NOT(send_counts == recv_counts, "unexpected send_counts");
+        for (int idx = 0; idx < comm_size; idx++) {
+            recv_bufs[idx].set(coll_param.get_send_buf(), total_recv_bytes, recv_offsets[idx]);
+            send_bufs[idx] = recv_bufs[idx];
+        }
+
+        tmp_bufs.resize(comm_size);
+        for (int idx = 0; idx < comm_size; idx++) {
+            ccl::alloc_param alloc_param(
+                send_counts[idx] * dtype.size(), ccl::buffer_type::ze, ccl::buffer_place::device);
+            tmp_bufs[idx] = sched->alloc_buffer(alloc_param);
+        }
+    }
+    else {
+        CCL_THROW_IF_NOT(send_counts[comm_rank] == recv_counts[comm_rank],
+                         "unexpected send_counts");
+        for (int idx = 0; idx < comm_size; idx++) {
+            send_bufs[idx].set(coll_param.get_send_buf(), total_send_bytes, send_offsets[idx]);
+            recv_bufs[idx].set(coll_param.get_recv_buf(), total_recv_bytes, recv_offsets[idx]);
+        }
+    }
+
+    ccl_comm* pair_comm = comm->get_pair_comm().get();
+    ccl_comm* even_comm = comm->get_even_comm().get();
+    ccl_comm* node_comm = comm->get_node_comm().get();
+
+    const int even_comm_size = even_comm->size();
+    bool is_multi_card = (even_comm_size > 1);
+    const ccl::topo_manager& topo_manager = comm->get_topo_manager();
+    CCL_THROW_IF_NOT(topo_manager.is_single_card != is_multi_card);
+
+    // IPC exchange
+    std::vector<ze_handle_exchange_entry::mem_desc_t> in_buffers;
+
+    const size_t send_buf_idx_start = in_buffers.size();
+    in_buffers.reserve(send_buf_idx_start + send_bufs.size());
+    for (const auto& buf : send_bufs) {
+        in_buffers.push_back({ buf.get_ptr(), ccl::ze::ipc_mem_type::memory });
+    }
+
+    const size_t recv_buf_idx_start = in_buffers.size();
+    in_buffers.reserve(recv_buf_idx_start + recv_bufs.size());
+    for (const auto& buf : recv_bufs) {
+        in_buffers.push_back({ buf.get_ptr(), ccl::ze::ipc_mem_type::memory });
+    }
+
+    size_t tmp_buf_idx_start = -1;
+    if (is_inplace) {
+        tmp_buf_idx_start = in_buffers.size();
+        in_buffers.reserve(tmp_buf_idx_start + tmp_bufs.size());
+        for (const auto& buf : tmp_bufs) {
+            in_buffers.push_back({ buf.get_ptr(), ccl::ze::ipc_mem_type::memory });
+        }
+    }
+
+    ccl::add_handle_exchange(sched, node_comm, in_buffers);
+    sched->try_enable_ze_single_list();
+    std::vector<ze_event_handle_t> wait_events;
+    std::list<ze_event_handle_t> parallel_copy_events;
+
+    auto copy_to_peers = [&](std::vector<ccl_buffer>& bufs, std::vector<size_t>& counts) {
+        auto card_count = even_comm->size();
+        auto tile_count = pair_comm->size();
+        for (int card_idx = 0; card_idx < card_count; card_idx++) {
+            for (int tile_idx = 0; tile_idx < tile_count; tile_idx++) {
+                auto peer_rank = (card_idx * tile_count + tile_idx);
+                if (peer_rank == comm_rank)
+                    continue;
+                copy_attr attr{};
+                attr.peer_rank = peer_rank;
+                attr.peer_buf_idx = recv_buf_idx_start + comm_rank;
+                attr.direction = copy_direction::d2d;
+                attr.map_comm = comm;
+                attr.hint_queue_index = parallel_copy_events.size();
+                attr.is_peer_card_copy = true;
+                auto entry = entry_factory::create<ze_copy_entry>(sched,
+                                                                  bufs[peer_rank],
+                                                                  ccl_buffer(),
+                                                                  counts[peer_rank],
+                                                                  dtype,
+                                                                  attr,
+                                                                  wait_events);
+                parallel_copy_events.push_back(entry->entry_event);
+            }
+        }
+    };
+
+    auto add_sched_barrier_for_parallel_copies = [&]() {
+        wait_events.insert(
+            wait_events.end(), parallel_copy_events.begin(), parallel_copy_events.end());
+        parallel_copy_events.clear();
+        sched->add_barrier();
+    };
+
+    auto copy_to_self = [&](ccl_buffer& send, ccl_buffer& recv, const size_t count) {
+        copy_attr attr{};
+        attr.hint_queue_index = parallel_copy_events.size();
+        attr.is_peer_card_copy = true;
+        auto entry = entry_factory::create<ze_copy_entry>(
+            sched, send, recv, count, dtype, attr, wait_events);
+        parallel_copy_events.push_back(entry->entry_event);
+    };
+
+    auto barrier_comm = [&](ccl_comm* comm) {
+        auto barrier_event = ccl::add_comm_barrier(sched, comm, wait_events);
+        wait_events.push_back(barrier_event);
+    };
+
+    if (is_inplace) {
+        for (int idx = 0; idx < comm_size; idx++) {
+            CCL_THROW_IF_NOT(send_bufs[idx].get_ptr() == recv_bufs[idx].get_ptr(),
+                             "unexpected send_buf ptr for inplace case");
+        }
+
+        // copy from all recvs to tmps
+        for (int idx = 0; idx < comm_size; idx++) {
+            copy_to_self(recv_bufs[idx], tmp_bufs[idx], send_counts[idx]);
+        }
+        add_sched_barrier_for_parallel_copies();
+        barrier_comm(node_comm);
+
+        // copy from my tmp buffer to peer recv
+        copy_to_peers(tmp_bufs, send_counts);
+    }
+    else {
+        // copy from own send to own recv
+        copy_to_self(send_bufs[comm->rank()], recv_bufs[comm->rank()], send_counts[comm->rank()]);
+        // copy from peer rank send to peer rank recv
+        copy_to_peers(send_bufs, send_counts);
+    }
+
+    add_sched_barrier_for_parallel_copies();
+    barrier_comm(node_comm);
+
     return ccl::status::success;
 }
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE

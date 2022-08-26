@@ -22,7 +22,7 @@ std::map<ccl_coll_alltoallv_algo, std::string>
         std::make_pair(ccl_coll_alltoallv_naive, "naive"),
         std::make_pair(ccl_coll_alltoallv_scatter, "scatter"),
 #ifdef CCL_ENABLE_SYCL
-        std::make_pair(ccl_coll_alltoallv_topo, "topo"),
+        std::make_pair(ccl_coll_alltoallv_topo, "topo")
 #endif // CCL_ENABLE_SYCL
     };
 
@@ -45,17 +45,17 @@ bool ccl_algorithm_selector_helper<ccl_coll_alltoallv_algo>::can_use(
     const ccl_selection_table_t<ccl_coll_alltoallv_algo>& table) {
     bool can_use = true;
 
-    ccl_coll_algo algo_param;
-    algo_param.alltoallv = algo;
-    can_use = ccl_can_use_datatype(algo_param, param);
-
-    if (param.is_vector_buf && algo != ccl_coll_alltoallv_scatter)
+    if (algo == ccl_coll_alltoallv_topo && !ccl_can_use_topo_algo(param)) {
         can_use = false;
+    }
+    else if (param.is_vector_buf && algo != ccl_coll_alltoallv_scatter &&
+             algo != ccl_coll_alltoallv_naive && algo != ccl_coll_alltoallv_topo) {
+        can_use = false;
+    }
     else if (algo == ccl_coll_alltoallv_direct &&
-             (ccl::global_data::env().atl_transport == ccl_atl_ofi))
+             (ccl::global_data::env().atl_transport == ccl_atl_ofi)) {
         can_use = false;
-    else if (algo == ccl_coll_alltoallv_topo && !ccl_can_use_topo_algo(param))
-        can_use = false;
+    }
 
     return can_use;
 }

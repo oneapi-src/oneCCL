@@ -592,8 +592,9 @@ ccl::status ccl_coll_build_topo_allreduce(ccl_sched* sched,
     int even_comm_size = even_comm->size();
     int node_comm_size = node_comm->size();
 
-    bool is_single_node = (comm_size == node_comm_size);
-    bool is_single_card = (comm_size == 2) && is_single_node;
+    const ccl::topo_manager& topo_manager = comm->get_topo_manager();
+    bool is_single_node = topo_manager.is_single_node;
+    bool is_single_card = topo_manager.is_single_card;
     bool is_multi_card = (even_comm_size > 1);
 
     size_t recv_buf_idx = 1;
@@ -732,7 +733,7 @@ ccl::status ccl_coll_build_topo_allreduce(ccl_sched* sched,
             wait_events.push_back(barrier_event);
         }
 
-        if (!is_single_card) {
+        if (!is_single_card && (pair_comm->size() > 1)) {
             LOG_DEBUG("topo/scale_up/intra: use ze_onesided_bcast");
             int peer_rank = (pair_comm->rank() + 1) % pair_comm->size();
             auto entry = entry_factory::create<ze_copy_entry>(

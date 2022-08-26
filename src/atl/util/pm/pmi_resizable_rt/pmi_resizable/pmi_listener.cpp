@@ -45,8 +45,8 @@ kvs_status_t pmi_listener::collect_sock_addr(std::shared_ptr<helper> h) {
     size_t i, j;
     kvs_status_t res = KVS_STATUS_SUCCESS;
     size_t glob_num_listeners;
-    char** sock_addr_str = NULL;
-    char** hosts_names_str = NULL;
+    std::vector<std::string> sock_addr_str(1);
+    std::vector<std::string> hosts_names_str(1);
     char my_ip[MAX_KVS_VAL_LENGTH];
     char* point_to_space;
 
@@ -62,12 +62,12 @@ kvs_status_t pmi_listener::collect_sock_addr(std::shared_ptr<helper> h) {
         point_to_space[0] = NULL_CHAR;
 
     KVS_CHECK_STATUS(h->get_keys_values_by_name(
-                         KVS_LISTENER, &hosts_names_str, &sock_addr_str, glob_num_listeners),
+                         KVS_LISTENER, hosts_names_str, sock_addr_str, glob_num_listeners),
                      "failed to get sock info");
     num_listeners = glob_num_listeners;
 
     for (i = 0; i < num_listeners; i++) {
-        if (strstr(hosts_names_str[i], my_hostname)) {
+        if (strstr(hosts_names_str[i].c_str(), my_hostname)) {
             num_listeners--;
             break;
         }
@@ -97,7 +97,7 @@ kvs_status_t pmi_listener::collect_sock_addr(std::shared_ptr<helper> h) {
 
     /*get listener addresses*/
     for (i = 0, j = 0; i < num_listeners; i++, j++) {
-        char* point_to_port = strstr(sock_addr_str[j], "_");
+        char* point_to_port = strstr(const_cast<char*>(sock_addr_str[j].c_str()), "_");
         if (point_to_port == NULL) {
             LOG_ERROR("Wrong address_port record: %s", sock_addr_str[j]);
             res = KVS_STATUS_FAILURE;
@@ -105,7 +105,7 @@ kvs_status_t pmi_listener::collect_sock_addr(std::shared_ptr<helper> h) {
         }
         point_to_port[0] = NULL_CHAR;
         point_to_port++;
-        if (strstr(hosts_names_str[j], my_hostname)) {
+        if (strstr(const_cast<char*>(hosts_names_str[j].c_str()), my_hostname)) {
             i--;
             continue;
         }
@@ -117,19 +117,13 @@ kvs_status_t pmi_listener::collect_sock_addr(std::shared_ptr<helper> h) {
         }
         server_addresses[i].sin_family = AF_INET;
 
-        if (inet_pton(AF_INET, sock_addr_str[j], &(server_addresses[i].sin_addr)) <= 0) {
-            LOG_ERROR("Invalid address/ Address not supported: %s", sock_addr_str[j]);
+        if (inet_pton(AF_INET, sock_addr_str[j].c_str(), &(server_addresses[i].sin_addr)) <= 0) {
+            LOG_ERROR("Invalid address/ Address not supported: %s", sock_addr_str[j].c_str());
             res = KVS_STATUS_FAILURE;
             goto exit;
         }
     }
 exit:
-    for (i = 0; i < glob_num_listeners; i++) {
-        free(sock_addr_str[i]);
-        free(hosts_names_str[i]);
-    }
-    free(sock_addr_str);
-    free(hosts_names_str);
     return res;
 }
 

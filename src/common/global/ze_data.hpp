@@ -30,16 +30,15 @@ namespace ze {
 struct device_info {
     ze_device_handle_t device;
     uint32_t parent_idx;
+    ze_device_uuid_t uuid;
 
-    device_info(ze_device_handle_t dev, uint32_t parent_idx)
-            : device(dev),
-              parent_idx(parent_idx){};
+    device_info(ze_device_handle_t dev, uint32_t parent_idx);
 };
 
 struct global_data_desc {
-    std::vector<ze_driver_handle_t> driver_list;
-    std::vector<ze_context_handle_t> context_list;
-    std::vector<device_info> device_list;
+    std::vector<ze_driver_handle_t> drivers;
+    std::vector<ze_context_handle_t> contexts;
+    std::vector<device_info> devices;
     std::vector<ze_device_handle_t> device_handles;
     std::unique_ptr<ze::cache> cache;
     std::unordered_map<ze_context_handle_t, ccl::ze::dynamic_event_pool> dynamic_event_pools;

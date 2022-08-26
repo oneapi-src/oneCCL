@@ -66,7 +66,6 @@ struct sycl_allgatherv_coll : sycl_base_coll<Dtype, allgatherv_strategy_impl> {
             }
 
             Dtype value;
-
             for (size_t e_idx = 0; e_idx < elem_count; e_idx++) {
                 value = host_send_buf[e_idx];
                 if (value != sbuf_expected) {

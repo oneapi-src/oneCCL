@@ -55,6 +55,7 @@ option(ENABLE_OFI_HMEM "Enable support OFI HMEM support" FALSE)
 option(ENABLE_OFI_OOT_PROV "Enable OFI out-of-tree providers support" FALSE)
 option(ENABLE_ITT "Enable ITT profiling support" TRUE)
 option(ENABLE_STUB_BACKEND "Enable stub backend" TRUE)
+option(ENABLE_LINKER_RUNPATH "Enable linker runpath flags" FALSE)
 
 option(USE_CODECOV_FLAGS "Calculate code coverage" FALSE)
 option(WITH_ASAN "Use address sanitizer, can only be used in Debug build" FALSE)
@@ -80,7 +81,8 @@ message(STATUS "Enable SYCL interop event support: ${ENABLE_SYCL_INTEROP_EVENT}"
 message(STATUS "Enable OFI HMEM support: ${ENABLE_OFI_HMEM}")
 message(STATUS "Enable OFI out-of-tree providers support: ${ENABLE_OFI_OOT_PROV}")
 message(STATUS "Enable ITT profiling support: ${ENABLE_ITT}")
-message(STATUS "Enable stub backend" ${ENABLE_STUB_BACKEND})
+message(STATUS "Enable stub backend: ${ENABLE_STUB_BACKEND}")
+message(STATUS "Enable linker rpath flags: ${ENABLE_LINKER_RUNPATH}")
 
 add_definitions(-DCCL_C_COMPILER="${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 add_definitions(-DCCL_CXX_COMPILER="${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
@@ -226,8 +228,8 @@ enable_testing()
 
 set(EXTERNAL_LIBS "")
 
-set(EXAMPLES_INC_DIRS ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/examples/include ${MPI_INCLUDE_DIR} ${LEVEL_ZERO_INCLUDE_DIR})
-set(EXAMPLES_LIB_DIRS ${MPI_LIB_DIR} ${LIBFABRIC_LIB_DIR})
+set(EXAMPLES_INC_DIRS ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/examples/include ${MPI_INCLUDE_DIR})
+set(EXAMPLES_LIB_DIRS ${MPI_LIB_DIR})
 
 # allow `deprecated`
 set(CMAKE_CLANG_FLAGS "${CMAKE_CLANG_FLAGS}")
@@ -254,8 +256,8 @@ file(GLOB spv_kernels "${PROJECT_SOURCE_DIR}/src/kernels/kernels.spv")
 endif()
 
 set(CCL_MAJOR_VERSION     "2021")
-set(CCL_MINOR_VERSION     "5")
-set(CCL_UPDATE_VERSION    "2")
+set(CCL_MINOR_VERSION     "6")
+set(CCL_UPDATE_VERSION    "0")
 set(CCL_PRODUCT_STATUS    "Gold")
 string(TIMESTAMP CCL_PRODUCT_BUILD_DATE "%Y-%m-%dT %H:%M:%SZ")
 get_vcs_properties("git")

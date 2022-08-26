@@ -144,17 +144,72 @@ ze_ipc_mem_handle_t get_handle_from_fd(int fd);
 
 device_family get_device_family(ze_device_handle_t device);
 
+bool is_same_pci_addr(const zes_pci_address_t& addr1, const zes_pci_address_t& addr2);
+bool is_same_dev_uuid(const ze_device_uuid_t& uuid1, const ze_device_uuid_t& uuid2);
+bool is_same_fabric_port(const zes_fabric_port_id_t& port1, const zes_fabric_port_id_t& port2);
+
+struct pci_address_comparator {
+    bool operator()(const zes_pci_address_t& a, const zes_pci_address_t& b) const {
+        if (a.domain == b.domain) {
+            if (a.bus == b.bus) {
+                if (a.device == b.device) {
+                    if (a.function == b.function) {
+                        return false;
+                    }
+                    else {
+                        return (a.function < b.function);
+                    }
+                }
+                else {
+                    return (a.device < b.device);
+                }
+            }
+            else {
+                return (a.bus < b.bus);
+            }
+        }
+        else {
+            return (a.domain < b.domain);
+        }
+    }
+};
+
+struct fabric_port_comparator {
+    bool operator()(const zes_fabric_port_id_t& a, const zes_fabric_port_id_t& b) const {
+        if (a.fabricId == b.fabricId) {
+            if (a.attachId == b.attachId) {
+                if (a.portNumber == b.portNumber) {
+                    return false;
+                }
+                else {
+                    return (a.portNumber < b.portNumber);
+                }
+            }
+            else {
+                return (a.attachId < b.attachId);
+            }
+        }
+        else {
+            return (a.fabricId < b.fabricId);
+        }
+    }
+};
+
 std::string to_string(ze_result_t result);
 std::string to_string(const ze_group_size_t& group_size);
 std::string to_string(const ze_group_count_t& group_count);
 std::string to_string(const ze_kernel_args_t& kernel_args);
-std::string to_string(const ze_device_property_flag_t& flag);
-std::string to_string(const ze_command_queue_group_property_flag_t& flag);
-std::string to_string(const ze_command_queue_group_properties_t& queue_property);
-std::string to_string(const ze_device_uuid_t& uuid);
+std::string to_string(ze_device_property_flag_t flag);
+std::string to_string(ze_command_queue_group_property_flag_t flag);
+std::string to_string(const ze_command_queue_group_properties_t& props);
 std::string to_string(const zes_pci_address_t& addr);
-std::string to_string(queue_group_type type);
+std::string to_string(const ze_device_uuid_t& uuid);
 std::string to_string(const zes_fabric_port_id_t& port);
+std::string to_string(zes_fabric_port_status_t status);
+std::string to_string(zes_fabric_port_qual_issue_flag_t flag);
+std::string to_string(zes_fabric_port_failure_flag_t flag);
+std::string to_string(const zes_fabric_port_state_t& state);
+std::string to_string(queue_group_type type);
 
 std::string join_strings(const std::vector<std::string>& tokens, const std::string& delimeter);
 

@@ -32,270 +32,131 @@
 #include "internal_kvs_server.hpp"
 #include "common/log/log.hpp"
 
-kvs_status_t internal_kvs::kvs_set_value(const char* kvs_name,
-                                         const char* kvs_key,
-                                         const char* kvs_val) {
+kvs_status_t internal_kvs::kvs_set_value(const std::string& kvs_name,
+                                         const std::string& kvs_key,
+                                         const std::string& kvs_val) {
     kvs_request_t request;
-    request.mode = AM_PUT;
-    kvs_str_copy(request.name, kvs_name, MAX_KVS_NAME_LENGTH);
-    kvs_str_copy(request.key, kvs_key, MAX_KVS_KEY_LENGTH);
-    kvs_str_copy(request.val, kvs_val, MAX_KVS_VAL_LENGTH);
-
-    DO_RW_OP(write,
-             client_op_sock,
-             &request,
-             sizeof(kvs_request_t),
-             client_memory_mutex,
-             "client: put_key_value");
+    KVS_CHECK_STATUS(
+        request.put(client_op_sock, AM_PUT, client_memory_mutex, kvs_name, kvs_key, kvs_val),
+        "client: put_key_value");
 
     return KVS_STATUS_SUCCESS;
 }
 
-kvs_status_t internal_kvs::kvs_set_size(const char* kvs_name,
-                                        const char* kvs_key,
-                                        const char* kvs_val) {
+kvs_status_t internal_kvs::kvs_set_size(const std::string& kvs_name,
+                                        const std::string& kvs_key,
+                                        const std::string& kvs_val) {
     kvs_request_t request;
-    request.mode = AM_SET_SIZE;
-    kvs_str_copy(request.name, kvs_name, MAX_KVS_NAME_LENGTH);
-    kvs_str_copy(request.key, kvs_key, MAX_KVS_KEY_LENGTH);
-    kvs_str_copy(request.val, kvs_val, MAX_KVS_VAL_LENGTH);
-
-    DO_RW_OP(write,
-             client_op_sock,
-             &request,
-             sizeof(kvs_request_t),
-             client_memory_mutex,
-             "client: set_size");
-
+    KVS_CHECK_STATUS(
+        request.put(client_op_sock, AM_SET_SIZE, client_memory_mutex, kvs_name, kvs_key, kvs_val),
+        "client: set_size");
     return KVS_STATUS_SUCCESS;
 }
 
-kvs_status_t internal_kvs::kvs_barrier_register(const char* kvs_name,
-                                                const char* kvs_key,
-                                                const char* kvs_val) {
+kvs_status_t internal_kvs::kvs_barrier_register(const std::string& kvs_name,
+                                                const std::string& kvs_key,
+                                                const std::string& kvs_val) {
     kvs_request_t request;
-    request.mode = AM_BARRIER_REGISTER;
-    kvs_str_copy(request.name, kvs_name, MAX_KVS_NAME_LENGTH);
-    kvs_str_copy(request.key, kvs_key, MAX_KVS_KEY_LENGTH);
-    kvs_str_copy(request.val, kvs_val, MAX_KVS_VAL_LENGTH);
-
-    DO_RW_OP(write,
-             client_op_sock,
-             &request,
-             sizeof(kvs_request_t),
-             client_memory_mutex,
-             "client: barrier_register");
-
+    KVS_CHECK_STATUS(
+        request.put(
+            client_op_sock, AM_BARRIER_REGISTER, client_memory_mutex, kvs_name, kvs_key, kvs_val),
+        "client: barrier_register");
     return KVS_STATUS_SUCCESS;
 }
 
-kvs_status_t internal_kvs::kvs_barrier(const char* kvs_name,
-                                       const char* kvs_key,
-                                       const char* kvs_val) {
+kvs_status_t internal_kvs::kvs_barrier(const std::string& kvs_name,
+                                       const std::string& kvs_key,
+                                       const std::string& kvs_val) {
     kvs_request_t request;
-    int is_done;
+    size_t is_done;
+    KVS_CHECK_STATUS(
+        request.put(client_op_sock, AM_BARRIER, client_memory_mutex, kvs_name, kvs_key, kvs_val),
+        "client: barrier");
 
-    request.mode = AM_BARRIER;
-    kvs_str_copy(request.name, kvs_name, MAX_KVS_NAME_LENGTH);
-    kvs_str_copy(request.key, kvs_key, MAX_KVS_KEY_LENGTH);
-    kvs_str_copy(request.val, kvs_val, MAX_KVS_VAL_LENGTH);
-
-    DO_RW_OP(
-        write, client_op_sock, &request, sizeof(request), client_memory_mutex, "client: barrier");
-
-    DO_RW_OP(read,
-             client_op_sock,
-             &is_done,
-             sizeof(is_done),
-             client_memory_mutex,
-             "client: barrier read data");
+    KVS_CHECK_STATUS(request.get(client_op_sock, client_memory_mutex, is_done),
+                     "client: barrier read data");
     return KVS_STATUS_SUCCESS;
 }
 
-kvs_status_t internal_kvs::kvs_remove_name_key(const char* kvs_name, const char* kvs_key) {
+kvs_status_t internal_kvs::kvs_remove_name_key(const std::string& kvs_name,
+                                               const std::string& kvs_key) {
     kvs_request_t request;
-    request.mode = AM_REMOVE;
-    kvs_str_copy(request.name, kvs_name, MAX_KVS_NAME_LENGTH);
-    kvs_str_copy(request.key, kvs_key, MAX_KVS_KEY_LENGTH);
-
-    DO_RW_OP(write,
-             client_op_sock,
-             &request,
-             sizeof(kvs_request_t),
-             client_memory_mutex,
-             "client: remove_key");
-
+    KVS_CHECK_STATUS(request.put(client_op_sock, AM_REMOVE, client_memory_mutex, kvs_name, kvs_key),
+                     "client: remove_key");
     return KVS_STATUS_SUCCESS;
 }
 
-kvs_status_t internal_kvs::kvs_register(const char* kvs_name, const char* kvs_key, char* kvs_val) {
+kvs_status_t internal_kvs::kvs_register(const std::string& kvs_name,
+                                        const std::string& kvs_key,
+                                        std::string& kvs_val) {
     kvs_request_t request;
-    request.mode = AM_INTERNAL_REGISTER;
-    kvs_str_copy(request.name, kvs_name, MAX_KVS_NAME_LENGTH);
-    kvs_str_copy(request.key, kvs_key, MAX_KVS_KEY_LENGTH);
-    kvs_str_copy(request.val, kvs_val, MAX_KVS_VAL_LENGTH);
-    memset(kvs_val, 0, MAX_KVS_VAL_LENGTH);
+    KVS_CHECK_STATUS(
+        request.put(
+            client_op_sock, AM_INTERNAL_REGISTER, client_memory_mutex, kvs_name, kvs_key, kvs_val),
+        "client: register");
 
-    DO_RW_OP(
-        write, client_op_sock, &request, sizeof(request), client_memory_mutex, "client: register");
-
-    DO_RW_OP(read,
-             client_op_sock,
-             &request,
-             sizeof(request),
-             client_memory_mutex,
-             "client: register read data");
-    kvs_str_copy(kvs_val, request.val, MAX_KVS_VAL_LENGTH);
-
+    KVS_CHECK_STATUS(request.get(client_op_sock, client_memory_mutex, kvs_val),
+                     "client: register read data");
     return KVS_STATUS_SUCCESS;
 }
 
-kvs_status_t internal_kvs::kvs_get_value_by_name_key(const char* kvs_name,
-                                                     const char* kvs_key,
-                                                     char* kvs_val) {
+kvs_status_t internal_kvs::kvs_get_value_by_name_key(const std::string& kvs_name,
+                                                     const std::string& kvs_key,
+                                                     std::string& kvs_val) {
     kvs_request_t request;
-    request.mode = AM_GET_VAL;
     size_t is_exist = 0;
-    kvs_str_copy(request.name, kvs_name, MAX_KVS_NAME_LENGTH);
-    kvs_str_copy(request.key, kvs_key, MAX_KVS_KEY_LENGTH);
-    memset(kvs_val, 0, MAX_KVS_VAL_LENGTH);
+    KVS_CHECK_STATUS(
+        request.put(client_op_sock, AM_GET_VAL, client_memory_mutex, kvs_name, kvs_key),
+        "client: get_value");
 
-    DO_RW_OP(
-        write, client_op_sock, &request, sizeof(request), client_memory_mutex, "client: get_value");
-
-    DO_RW_OP(read,
-             client_op_sock,
-             &is_exist,
-             sizeof(is_exist),
-             client_memory_mutex,
-             "client: get_value is_exist");
+    KVS_CHECK_STATUS(request.get(client_op_sock, client_memory_mutex, is_exist),
+                     "client: get_value is_exist");
 
     if (is_exist) {
-        DO_RW_OP(read,
-                 client_op_sock,
-                 &request,
-                 sizeof(request),
-                 client_memory_mutex,
-                 "client: get_value read data");
-        kvs_str_copy(kvs_val, request.val, MAX_KVS_VAL_LENGTH);
+        KVS_CHECK_STATUS(request.get(client_op_sock, client_memory_mutex, kvs_val),
+                         "client: get_value read data");
     }
-
     return KVS_STATUS_SUCCESS;
 }
 
-kvs_status_t internal_kvs::kvs_get_count_names(const char* kvs_name, int& count_names) {
+kvs_status_t internal_kvs::kvs_get_count_names(const std::string& kvs_name, size_t& count_names) {
     count_names = 0;
     kvs_request_t request;
-    request.mode = AM_GET_COUNT;
-    kvs_str_copy(request.name, kvs_name, MAX_KVS_NAME_LENGTH);
+    KVS_CHECK_STATUS(request.put(client_op_sock, AM_GET_COUNT, client_memory_mutex, kvs_name),
+                     "client: get_count");
 
-    DO_RW_OP(
-        write, client_op_sock, &request, sizeof(request), client_memory_mutex, "client: get_count");
-
-    DO_RW_OP(read,
-             client_op_sock,
-             &count_names,
-             sizeof(count_names),
-             client_memory_mutex,
-             "client: get_count read data");
-
+    KVS_CHECK_STATUS(request.get(client_op_sock, client_memory_mutex, count_names),
+                     "client: get_count read data");
     return KVS_STATUS_SUCCESS;
 }
 
-kvs_status_t internal_kvs::kvs_get_keys_values_by_name(const char* kvs_name,
-                                                       char*** kvs_keys,
-                                                       char*** kvs_values,
+kvs_status_t internal_kvs::kvs_get_keys_values_by_name(const std::string& kvs_name,
+                                                       std::vector<std::string>& kvs_keys,
+                                                       std::vector<std::string>& kvs_values,
                                                        size_t& count) {
     count = 0;
-    size_t i;
     kvs_request_t request;
-    std::vector<kvs_request_t> answers;
+    KVS_CHECK_STATUS(request.put(client_op_sock, AM_GET_KEYS_VALUES, client_memory_mutex, kvs_name),
+                     "client: get_keys_values");
 
-    request.mode = AM_GET_KEYS_VALUES;
-    kvs_str_copy(request.name, kvs_name, MAX_KVS_NAME_LENGTH);
-
-    DO_RW_OP(write,
-             client_op_sock,
-             &request,
-             sizeof(kvs_request_t),
-             client_memory_mutex,
-             "client: get_keys_values");
-
-    DO_RW_OP(read,
-             client_op_sock,
-             &count,
-             sizeof(size_t),
-             client_memory_mutex,
-             "client: get_keys_values read size");
-
-    if (count == 0)
+    KVS_CHECK_STATUS(request.get(client_op_sock, client_memory_mutex, count),
+                     "client: get_keys_values read size");
+    if (count == 0) {
         return KVS_STATUS_SUCCESS;
-
-    answers.resize(count);
-    DO_RW_OP(read,
-             client_op_sock,
-             answers.data(),
-             sizeof(kvs_request_t) * count,
-             client_memory_mutex,
-             "client: get_keys_values read data");
-    if (kvs_keys != nullptr) {
-        if (*kvs_keys != nullptr)
-            free(*kvs_keys);
-
-        *kvs_keys = (char**)calloc(count, sizeof(char*));
-        if ((*kvs_keys) == nullptr) {
-            LOG_ERROR("Memory allocation failed");
-            return KVS_STATUS_FAILURE;
-        }
-        for (i = 0; i < count; i++) {
-            (*kvs_keys)[i] = (char*)calloc(MAX_KVS_KEY_LENGTH, sizeof(char));
-            if ((*kvs_keys)[i] == nullptr) {
-                LOG_ERROR("Memory allocation failed");
-                return KVS_STATUS_FAILURE;
-            }
-            kvs_str_copy((*kvs_keys)[i], answers[i].key, MAX_KVS_KEY_LENGTH);
-        }
     }
-    if (kvs_values != nullptr) {
-        if (*kvs_values != nullptr)
-            free(*kvs_values);
-
-        *kvs_values = (char**)calloc(count, sizeof(char*));
-        if ((*kvs_values) == nullptr) {
-            LOG_ERROR("Memory allocation failed");
-            return KVS_STATUS_FAILURE;
-        }
-        for (i = 0; i < count; i++) {
-            (*kvs_values)[i] = (char*)calloc(MAX_KVS_VAL_LENGTH, sizeof(char));
-            if ((*kvs_values)[i] == nullptr) {
-                LOG_ERROR("Memory allocation failed");
-                return KVS_STATUS_FAILURE;
-            }
-            kvs_str_copy((*kvs_values)[i], answers[i].val, MAX_KVS_VAL_LENGTH);
-        }
-    }
-
+    KVS_CHECK_STATUS(request.get(client_op_sock, client_memory_mutex, count, kvs_keys, kvs_values),
+                     "client: get_keys_values read data");
     return KVS_STATUS_SUCCESS;
 }
 
 kvs_status_t internal_kvs::kvs_get_replica_size(size_t& replica_size) {
     replica_size = 0;
     kvs_request_t request;
-    request.mode = AM_GET_REPLICA;
+    KVS_CHECK_STATUS(request.put(client_op_sock, AM_GET_REPLICA, client_memory_mutex),
+                     "client: get_replica");
 
-    DO_RW_OP(write,
-             client_op_sock,
-             &request,
-             sizeof(kvs_request_t),
-             client_memory_mutex,
-             "client: get_replica");
-
-    DO_RW_OP(read,
-             client_op_sock,
-             &replica_size,
-             sizeof(size_t),
-             client_memory_mutex,
-             "client: get_replica read size");
+    KVS_CHECK_STATUS(request.get(client_op_sock, client_memory_mutex, replica_size),
+                     "client: get_replica read size");
     return KVS_STATUS_SUCCESS;
 }
 
@@ -678,26 +539,18 @@ kvs_status_t internal_kvs::kvs_init(const char* main_addr) {
 }
 
 kvs_status_t internal_kvs::kvs_finalize(void) {
-    kvs_request_t request;
     close(client_op_sock);
     client_op_sock = 0;
     if (kvs_thread != 0) {
+        kvs_request_t request;
         void* exit_code;
-        bool is_stop;
+        size_t is_stop;
         int err;
-        request.mode = AM_FINALIZE;
-        DO_RW_OP(write,
-                 client_control_sock,
-                 &request,
-                 sizeof(request),
-                 client_memory_mutex,
-                 "client: finalize start");
-        DO_RW_OP(read,
-                 client_control_sock,
-                 &is_stop,
-                 sizeof(is_stop),
-                 client_memory_mutex,
-                 "client: finalize complete");
+        KVS_CHECK_STATUS(request.put(client_control_sock, AM_FINALIZE, client_memory_mutex),
+                         "client: finalize start");
+
+        KVS_CHECK_STATUS(request.get(client_control_sock, client_memory_mutex, is_stop),
+                         "client: finalize complete");
 
         err = pthread_join(kvs_thread, &exit_code);
         if (err) {

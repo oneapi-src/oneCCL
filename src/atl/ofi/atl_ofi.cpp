@@ -1026,8 +1026,7 @@ void atl_ofi::mr_cache::get(fid_domain* domain, void* buf, size_t bytes, fid_mr*
     mr_attr.iface = FI_HMEM_SYSTEM;
     mr_attr.device.ze = 0;
 
-    CCL_THROW_IF_NOT(ccl::global_data::get().ze_data->context_list.at(0), "ze context is null");
-    ze_context_handle_t context = ccl::global_data::get().ze_data->context_list[0];
+    ze_context_handle_t context = ccl::global_data::get().ze_data->contexts[0];
     ze_memory_allocation_properties_t alloc_props = ccl::ze::default_alloc_props;
     ze_device_handle_t alloc_dev = nullptr;
     ZE_CALL(zeMemGetAllocProperties, (context, buf, &alloc_props, &alloc_dev));
@@ -1044,14 +1043,9 @@ void atl_ofi::mr_cache::get(fid_domain* domain, void* buf, size_t bytes, fid_mr*
         ZE_CALL(zeDeviceGetProperties, (alloc_dev, &alloc_dev_props));
 
         int dev_idx = -1;
-        int device_count = static_cast<int>(ccl::global_data::get().ze_data->device_list.size());
-        for (int idx = 0; idx < device_count; idx++) {
-            ze_device_properties_t dev_props = ccl::ze::default_device_props;
-            ze_device_handle_t device = ccl::global_data::get().ze_data->device_list[idx].device;
-            ZE_CALL(zeDeviceGetProperties, (device, &dev_props));
-
-            if (!std::memcmp(&dev_props.uuid, &alloc_dev_props.uuid, sizeof(ze_device_uuid_t))) {
-                dev_idx = ccl::global_data::get().ze_data->device_list[idx].parent_idx;
+        for (const auto& dev : ccl::global_data::get().ze_data->devices) {
+            if (ccl::ze::is_same_dev_uuid(dev.uuid, alloc_dev_props.uuid)) {
+                dev_idx = dev.parent_idx;
                 LOG_DEBUG("buf ", buf, " corresponds to ze device idx ", dev_idx);
                 break;
             }

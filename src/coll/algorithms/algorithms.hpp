@@ -193,13 +193,9 @@ ccl::status ccl_coll_build_scatter_alltoallv(ccl_sched* main_sched,
                                              const ccl_coll_param& coll_param);
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-ccl::status ccl_coll_build_topo_alltoallv(ccl_sched* sched,
-                                          ccl_buffer send_buf,
-                                          const size_t* send_counts,
-                                          ccl_buffer recv_buf,
-                                          const size_t* recv_counts,
-                                          const ccl_datatype& dtype,
-                                          ccl_comm* comm);
+ccl::status ccl_coll_build_topo_alltoallv(ccl_sched* main_sched,
+                                          std::vector<ccl_sched*>& scheds,
+                                          const ccl_coll_param& coll_param);
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
 /* direct algorithms - i.e. direct mapping on collective API from transport level */

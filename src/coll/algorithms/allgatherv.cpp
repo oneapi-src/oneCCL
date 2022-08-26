@@ -339,15 +339,13 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
     ccl_comm* even_comm = comm->get_even_comm().get();
     ccl_comm* node_comm = comm->get_node_comm().get();
 
-    const int comm_size = comm->size();
-    const int even_comm_size = even_comm->size();
-
     const int lead_rank = ccl::global_data::env().kernel_1s_lead;
     const bool is_lead_rank = pair_comm->rank() == lead_rank;
-    const bool is_single_node = comm_size == node_comm->size();
-    const bool is_single_card = (comm_size == 2) && is_single_node;
+
+    const int even_comm_size = even_comm->size();
     const bool is_multi_card = (even_comm_size > 1);
-    CCL_THROW_IF_NOT(is_single_card != is_multi_card);
+    const ccl::topo_manager& topo_manager = comm->get_topo_manager();
+    CCL_THROW_IF_NOT(topo_manager.is_single_card != is_multi_card);
 
     /* IPC exchange */
     std::vector<ze_handle_exchange_entry::mem_desc_t> in_buffers{
@@ -452,12 +450,12 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
     }
 
     if (is_small_scale_algorithm) {
-        /* Small scale algorithm: step 1. ANR copy */
+        /* Small scale algorithm: step 1. inter-card copy */
         LOG_DEBUG("topo/scale_up/inter: copy to self from peers");
         recv_from_peers(even_comm);
         add_sched_barrier_for_parallel_copies();
 
-        /* Small scale algorithm: step 2 & 3. MDFI copy */
+        /* Small scale algorithm: step 2 & 3. intra-card copy */
         LOG_DEBUG("topo/scale_up/intra: copy from self to peers");
         if (!is_lead_rank && !ccl::global_data::env().enable_ze_bidir_algo) {
             auto barrier_event = ccl::add_comm_barrier(sched, pair_comm, wait_events);
@@ -476,7 +474,7 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
     }
     else {
         /* Single GPU algorithm */
-        /* Large scale algorithm: step 1 & 2. MDFI copy */
+        /* Large scale algorithm: step 1 & 2. intra-card copy */
         LOG_DEBUG("topo/scale_up/intra: copy to self from peers");
         if (!is_lead_rank && !ccl::global_data::env().enable_ze_bidir_algo) {
             auto barrier_event = ccl::add_comm_barrier(sched, pair_comm, wait_events);
@@ -491,7 +489,7 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
     }
 
     if (is_large_scale_algorithm) {
-        /* Large scale algorithm: step 3. ANR copy */
+        /* Large scale algorithm: step 3. inter-card copy */
         LOG_DEBUG("topo/scale_up/inter: copy from self to peers");
         size_t start_rank = comm->rank() - pair_comm->rank();
         CCL_THROW_IF_NOT(start_rank < static_cast<size_t>(comm->size()));

@@ -65,7 +65,7 @@ kvs_resize_action_t pmi_resizable::call_resize_fn(int comm_size) {
 }
 
 kvs_status_t pmi_resizable::PMIR_Update(void) {
-    char up_idx_str[MAX_KVS_VAL_LENGTH];
+    std::string up_idx_str(MAX_KVS_VAL_LENGTH, 0);
     int prev_new_ranks_count = 0;
     int prev_killed_ranks_count = 0;
     int prev_idx = -1;
@@ -86,7 +86,7 @@ kvs_status_t pmi_resizable::PMIR_Update(void) {
         KVS_CHECK_STATUS(h->get_value_by_name_key(KVS_UP, KVS_IDX, up_idx_str),
                          "failed to get KVS IDx");
 
-        KVS_CHECK_STATUS(safe_strtol(up_idx_str, up_idx), "failed to convert KVS IDx");
+        KVS_CHECK_STATUS(safe_strtol(up_idx_str.c_str(), up_idx), "failed to convert KVS IDx");
         if (up_idx == 0)
             is_first_collect = 1;
 
@@ -99,7 +99,8 @@ kvs_status_t pmi_resizable::PMIR_Update(void) {
                 KVS_CHECK_STATUS(h->get_value_by_name_key(KVS_UP, KVS_IDX, up_idx_str),
                                  "failed to get KVS IDx");
 
-                KVS_CHECK_STATUS(safe_strtol(up_idx_str, up_idx), "failed to convert KVS IDx");
+                KVS_CHECK_STATUS(safe_strtol(up_idx_str.c_str(), up_idx),
+                                 "failed to convert KVS IDx");
                 if (prev_idx == (int)up_idx) {
                     count_clean_checks = 0;
 
@@ -137,7 +138,10 @@ kvs_status_t pmi_resizable::PMIR_Update(void) {
                     if (up_idx > 0 && up_idx > MAX_UP_IDX)
                         up_idx = 1;
 
-                    SET_STR(up_idx_str, INT_STR_SIZE, SIZE_T_TEMPLATE, up_idx);
+                    SET_STR(const_cast<char*>(up_idx_str.data()),
+                            INT_STR_SIZE,
+                            SIZE_T_TEMPLATE,
+                            up_idx);
                     KVS_CHECK_STATUS(h->set_value(KVS_UP, KVS_IDX, up_idx_str),
                                      "failed to set KVS IDx");
                     KVS_CHECK_STATUS(h->up_kvs_new_and_dead(), "failed to update KVS");
@@ -168,8 +172,7 @@ kvs_status_t pmi_resizable::PMIR_Update(void) {
             else {
                 size_t replica_size;
                 KVS_CHECK_STATUS(h->get_replica_size(replica_size), "failed to get replica size");
-                if (static_cast<int>(replica_size) !=
-                    count_pods - killed_ranks_count + new_ranks_count)
+                if (replica_size != count_pods - killed_ranks_count + new_ranks_count)
                     answer = KVS_RA_WAIT;
                 else
                     answer = KVS_RA_RUN;
@@ -379,10 +382,12 @@ kvs_status_t pmi_resizable::PMIR_KVS_Get(const char* kvs_name,
                                          char* value,
                                          size_t length) {
     (void)length;
+    std::string value_vec;
     do {
-        KVS_CHECK_STATUS(h->get_value_by_name_key(kvs_name, key, value), "failed to get value");
-    } while (strlen(value) == 0);
+        KVS_CHECK_STATUS(h->get_value_by_name_key(kvs_name, key, value_vec), "failed to get value");
+    } while (value_vec.length() == 0);
 
+    snprintf(value, value_vec.length(), "%s", value_vec.c_str());
     return KVS_STATUS_SUCCESS;
 }
 

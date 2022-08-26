@@ -43,10 +43,31 @@ ze_onesided_reduce_entry::ze_onesided_reduce_entry(ccl_sched* sched,
           buf_size_bytes(dtype.size() * cnt),
           empty_kernel_event(nullptr),
           empty_kernel(nullptr),
-          empty_kernel_name("empty_kernel") {}
+          empty_kernel_name("empty_kernel") {
+    skip_entry = !cnt || ((comm->size() == 1) && (send_buf == recv_buf));
+    if (skip_entry) {
+        // skip entry init and finalize
+        sched->ze_entries.pop_back();
+    }
+}
 
 void ze_onesided_reduce_entry::init_ze_hook() {
     CCL_THROW_IF_NOT(comm_rank == root, "unexpected comm_rank ", comm_rank, ", expected ", root);
+
+    send_buf_ptr = send_buf.get_ptr();
+    recv_buf_ptr = recv_buf.get_ptr();
+
+    if (comm->size() == 1) {
+        ZE_CALL(zeCommandListAppendMemoryCopy,
+                (ze_base_entry::get_copy_list(),
+                 recv_buf_ptr,
+                 send_buf_ptr,
+                 buf_size_bytes,
+                 ze_base_entry::entry_event,
+                 0,
+                 nullptr));
+        return;
+    }
 
     /* create kernels */
     ccl_buffer right_send_buf;
@@ -55,8 +76,6 @@ void ze_onesided_reduce_entry::init_ze_hook() {
     LOG_DEBUG(
         "get IPC pointers from ", peer_rank, " by ", root, ", right_send_buf: ", right_send_buf);
 
-    send_buf_ptr = send_buf.get_ptr();
-    recv_buf_ptr = recv_buf.get_ptr();
     // TODO: in place case check! diff idx for handle_mngr
 
     right_send_buf_ptr = right_send_buf.get_ptr();
@@ -152,6 +171,12 @@ void ze_onesided_reduce_entry::finalize_ze_hook() {
 }
 
 void ze_onesided_reduce_entry::start() {
+    if (skip_entry) {
+        ZE_CALL(zeEventHostSignal, (ze_base_entry::entry_event));
+        status = ccl_sched_entry_status_complete;
+        return;
+    }
+
     size_t kernel_counter = 0;
     if (ccl::global_data::env().enable_kernel_sync) {
         kernel_counter = ccl::global_data::get().ze_data->kernel_counter++;

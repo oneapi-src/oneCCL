@@ -19,6 +19,14 @@
 namespace ccl {
 namespace ze {
 
+device_info::device_info(ze_device_handle_t dev, uint32_t parent_idx)
+        : device(dev),
+          parent_idx(parent_idx) {
+    ze_device_properties_t dev_props = ccl::ze::default_device_props;
+    zeDeviceGetProperties(device, &dev_props);
+    uuid = dev_props.uuid;
+};
+
 global_data_desc::global_data_desc() {
     LOG_INFO("initializing level-zero");
 
@@ -30,38 +38,44 @@ global_data_desc::global_data_desc() {
 
     uint32_t driver_count{};
     ZE_CALL(zeDriverGet, (&driver_count, nullptr));
-    driver_list.resize(driver_count);
-    ZE_CALL(zeDriverGet, (&driver_count, driver_list.data()));
-    LOG_DEBUG("found drivers: ", driver_list.size());
+    drivers.resize(driver_count);
 
-    context_list.resize(driver_list.size());
-    for (size_t i = 0; i < driver_list.size(); ++i) {
+    ZE_CALL(zeDriverGet, (&driver_count, drivers.data()));
+    LOG_DEBUG("found drivers: ", drivers.size());
+
+    CCL_THROW_IF_NOT(!drivers.empty(), "no ze drivers");
+
+    contexts.resize(drivers.size());
+    for (size_t i = 0; i < drivers.size(); ++i) {
         ze_context_desc_t desc = ze::default_context_desc;
-        ZE_CALL(zeContextCreate, (driver_list.at(i), &desc, &context_list.at(i)));
+        ZE_CALL(zeContextCreate, (drivers.at(i), &desc, &contexts.at(i)));
+        CCL_THROW_IF_NOT(contexts[i], "ze context is null");
 
         uint32_t device_count{};
-        ZE_CALL(zeDeviceGet, (driver_list.at(i), &device_count, nullptr));
+        ZE_CALL(zeDeviceGet, (drivers.at(i), &device_count, nullptr));
         std::vector<ze_device_handle_t> devs(device_count);
-        ZE_CALL(zeDeviceGet, (driver_list.at(i), &device_count, devs.data()));
+        ZE_CALL(zeDeviceGet, (drivers.at(i), &device_count, devs.data()));
+
         for (uint32_t idx = 0; idx < device_count; idx++) {
-            device_list.push_back(device_info(devs[idx], idx));
+            devices.push_back(device_info(devs[idx], idx));
             device_handles.push_back(devs[idx]);
         }
 
         for (uint32_t idx = 0; idx < device_count; idx++) {
             auto dev = devs[idx];
+
             uint32_t subdevice_count{};
             ZE_CALL(zeDeviceGetSubDevices, (dev, &subdevice_count, nullptr));
             std::vector<ze_device_handle_t> subdevs(subdevice_count);
             ZE_CALL(zeDeviceGetSubDevices, (dev, &subdevice_count, subdevs.data()));
 
             for (uint32_t subdev_idx = 0; subdev_idx < subdevice_count; subdev_idx++) {
-                device_list.push_back(device_info(subdevs[subdev_idx], idx));
+                devices.push_back(device_info(subdevs[subdev_idx], idx));
                 device_handles.push_back(subdevs[subdev_idx]);
             }
         }
     }
-    LOG_DEBUG("found devices: ", device_list.size());
+    LOG_DEBUG("found devices: ", devices.size());
 
     cache = std::make_unique<ze::cache>(global_data::env().worker_count);
 
@@ -73,7 +87,7 @@ global_data_desc::~global_data_desc() {
 
     if (!global_data::env().ze_fini_wa) {
         cache.reset();
-        for (auto& context : context_list) {
+        for (auto& context : contexts) {
             ZE_CALL(zeContextDestroy, (context));
         }
     }
@@ -81,10 +95,10 @@ global_data_desc::~global_data_desc() {
         LOG_INFO("skip level-zero finalization");
     }
 
-    context_list.clear();
-    device_list.clear();
+    contexts.clear();
+    devices.clear();
     device_handles.clear();
-    driver_list.clear();
+    drivers.clear();
 
     ze_api_fini();
 
