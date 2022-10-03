@@ -11,10 +11,8 @@
     or implied warranties, other than those that are expressly stated in the
     License.
 */
-/* -*- Mode: C; c-basic-offset:4 ; -*- */
-/* 
- *
- *   Copyright (C) 1997 University of Chicago. 
+/*
+ * Copyright (C) by Argonne National Laboratory
     
     				  COPYRIGHT
     
@@ -23,7 +21,7 @@
     of the code.
     
     Copyright Notice
-     + 2002 University of Chicago
+    1998--2020, Argonne National Laboratory
     
     Permission is hereby granted to use, reproduce, prepare derivative works, and
     to redistribute to others.  This software was authored by:
@@ -54,7 +52,22 @@
     for the accuracy, completeness, or usefulness of any information, apparatus,
     product, or process disclosed, or represents that its use would not infringe
     privately owned rights.
- *   
+    
+    			   EXTERNAL CONTRIBUTIONS
+    
+    Portions of this code have been contributed under the above license by:
+    
+     * Intel Corporation
+     * Cray
+     * IBM Corporation
+     * Microsoft Corporation
+     * Mellanox Technologies Ltd.
+     * DataDirect Networks.
+     * Oak Ridge National Laboratory
+     * Sun Microsystems, Lustre group
+     * Dolphin Interconnect Solutions Inc.
+     * Institut Polytechnique de Bordeaux
+ *     
  */
 
 /* user include file for MPI-IO programs */
