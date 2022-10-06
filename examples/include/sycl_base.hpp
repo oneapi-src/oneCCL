@@ -25,6 +25,7 @@
 #include <string>
 #include <numeric>
 
+#include "CL/sycl/property_list.hpp"
 #include "base.hpp"
 #include "base_utils.hpp"
 
@@ -220,7 +221,8 @@ inline std::vector<sycl::device> create_sycl_gpu_devices(bool select_root_device
 
 inline std::vector<sycl::queue> create_sycl_queues(const std::string& device_type,
                                                    const std::vector<int>& ranks,
-                                                   bool select_root_devices = false) {
+                                                   bool select_root_devices = false,
+                                                   const sycl::property_list& queue_props = {}) {
     std::vector<sycl::device> devices;
 
     try {
@@ -312,7 +314,7 @@ inline std::vector<sycl::queue> create_sycl_queues(const std::string& device_typ
 
     for (size_t idx = 0; idx < ctx_devices.size(); idx++) {
         cout << "[" << idx << "]: [" << ctx_devices[idx].get_info<info::device::name>() << "]\n";
-        queues.push_back(sycl::queue(ctx_devices[idx], exception_handler));
+        queues.push_back(sycl::queue(ctx_devices[idx], exception_handler, queue_props));
     }
 
     return queues;
@@ -332,6 +334,26 @@ inline bool create_sycl_queue(int argc, char* argv[], int rank, queue& q) {
     }
     else {
         cerr << "Please provide device type: cpu | gpu | host | default\n";
+        return false;
+    }
+}
+
+inline bool create_sycl_queue(const std::string& type,
+                              int rank,
+                              queue& q,
+                              const property_list& queue_props = {}) {
+    if (type == "gpu" || type == "cpu" || type == "host") {
+        try {
+            std::vector<int> ranks = { rank };
+            q = create_sycl_queues(type.c_str(), ranks, false, queue_props)[0];
+            return true;
+        }
+        catch (std::exception& e) {
+            cerr << e.what() << "\n";
+            return false;
+        }
+    }
+    else {
         return false;
     }
 }

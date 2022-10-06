@@ -21,7 +21,7 @@
 # of the code.
 # 
 # Copyright Notice
-#  + 2002 University of Chicago
+# 1998--2020, Argonne National Laboratory
 # 
 # Permission is hereby granted to use, reproduce, prepare derivative works, and
 # to redistribute to others.  This software was authored by:
@@ -52,8 +52,23 @@
 # for the accuracy, completeness, or usefulness of any information, apparatus,
 # product, or process disclosed, or represents that its use would not infringe
 # privately owned rights.
+# 
+# 			   EXTERNAL CONTRIBUTIONS
+# 
+# Portions of this code have been contributed under the above license by:
+# 
+#  * Intel Corporation
+#  * Cray
+#  * IBM Corporation
+#  * Microsoft Corporation
+#  * Mellanox Technologies Ltd.
+#  * DataDirect Networks.
+#  * Oak Ridge National Laboratory
+#  * Sun Microsystems, Lustre group
+#  * Dolphin Interconnect Solutions Inc.
+#  * Institut Polytechnique de Bordeaux
 #
-#     
+#     .
 #
 # mpicxx
 # Simple script to compile and/or link MPI programs.
@@ -81,7 +96,7 @@
 # Set the default values of all variables.
 #
 # Directory locations: Fixed for any MPI implementation
-prefix=../_install
+prefix=.
 # The environment variable I_MPI_ROOT may be used to override installation folder path
 if [ -n "${I_MPI_ROOT}" ] ; then
     prefix="${I_MPI_ROOT}";
@@ -107,7 +122,7 @@ MPILIBNAME="mpi"
 MPICXXLIBNAME="mpicxx"
 
 # MPIVERSION is the version of the Intel(R) MPI Library that mpiicpc is intended for
-MPIVERSION="2021.5"
+MPIVERSION="2021.7"
 
 # Internal variables
 # Show is set to echo to cause the compilation command to be echoed instead

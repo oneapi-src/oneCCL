@@ -237,6 +237,16 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
     RETURN_FALSE_IF(!checkers::is_coll_supported(supported_colls, param.ctype),
                     "coll is not supported");
 
+    // Fallback if implicit scaling is enabled
+    char* implicit_scaling_env = getenv("EnableImplicitScaling");
+    int enable_implicit_scaling;
+
+    if (implicit_scaling_env) {
+        enable_implicit_scaling = atoi(implicit_scaling_env);
+        LOG_DEBUG("Implicit scaling not null value = ", enable_implicit_scaling);
+        RETURN_FALSE_IF(enable_implicit_scaling != 0, "Implicit scaling is not supported");
+    }
+
     size_t local_proc_count = ccl::global_data::get().executor->get_local_proc_count();
     int comm_size = param.comm->size();
 

@@ -11,8 +11,8 @@
 # This software and the related documents are provided as is, with no express
 # or implied warranties, other than those that are expressly stated in the
 # License.
-# 
-# (C) 2006 by Argonne National Laboratory.
+##
+## Copyright (C) by Argonne National Laboratory
 # 
 # 				  COPYRIGHT
 # 
@@ -21,7 +21,7 @@
 # of the code.
 # 
 # Copyright Notice
-#  + 2002 University of Chicago
+# 1998--2020, Argonne National Laboratory
 # 
 # Permission is hereby granted to use, reproduce, prepare derivative works, and
 # to redistribute to others.  This software was authored by:
@@ -52,10 +52,25 @@
 # for the accuracy, completeness, or usefulness of any information, apparatus,
 # product, or process disclosed, or represents that its use would not infringe
 # privately owned rights.
+# 
+# 			   EXTERNAL CONTRIBUTIONS
+# 
+# Portions of this code have been contributed under the above license by:
+# 
+#  * Intel Corporation
+#  * Cray
+#  * IBM Corporation
+#  * Microsoft Corporation
+#  * Mellanox Technologies Ltd.
+#  * DataDirect Networks.
+#  * Oak Ridge National Laboratory
+#  * Sun Microsystems, Lustre group
+#  * Dolphin Interconnect Solutions Inc.
+#  * Institut Polytechnique de Bordeaux
 #
-#     
-#
-# mpicc
+##     
+##
+
 # Simple script to compile and/or link MPI programs.
 # This script knows the default flags and libraries, and can handle
 # alternative C compilers and the associated flags and libraries.
@@ -79,7 +94,7 @@
 #
 # Directory locations: Fixed for any MPI implementation.
 # Set from the directory arguments to configure (e.g., --prefix=/usr/local)
-prefix=../_install
+prefix=.
 # The environment variable I_MPI_ROOT may be used to override installation folder path
 if [ -n "$I_MPI_ROOT" ] ; then
     prefix=$I_MPI_ROOT;
@@ -99,12 +114,8 @@ fi
 # Determined by a combination of environment variables and tests within
 # configure (e.g., determining whehter -lsocket is needee)
 CC="gcc"
-MPICH_VERSION="3.3"
-CFLAGS=""
-CPPFLAGS=""
-LDFLAGS=" -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl "
-LIBS="-lm   -lpthread  -lfabric -lrt "
-MPIVERSION="2021.5"
+MPICH_VERSION="3.4a2"
+MPIVERSION="2021.7"
 MPILIBNAME="mpi"                           
 
 
@@ -592,12 +603,8 @@ else
     final_cflags=" "
 fi
 final_cppflags=" "
-final_ldflags="  -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl "
+final_ldflags="  -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl  "
 final_libs="-lpthread -lrt "
-if test "no" = "no" -o "${interlib_deps}" = "no" ; then
-    final_ldflags="${final_ldflags}  -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl"
-    final_libs="${final_libs}  -lm   -lpthread  -lfabric -lrt "
-fi
 
 # -----------------------------------------------------------------------
 #
@@ -622,7 +629,7 @@ if [ "$linking" = yes ] ; then
         $Show $CC ${final_cppflags} $PROFILE_INCPATHS ${final_cflags} ${final_ldflags} $allargs -I\"${includedir}\"
         rc=$?
     else
-        $Show $CC $CPPFLAGS $CFLAGS $allargs -I\"${includedir}\" -L\"${libdir}${MPILIBDIR}\" -L\"${libdir}\" $rpath_opt $mpilibs $I_MPI_OTHERLIBS $LDFLAGS
+        $Show $CC $CPPFLAGS $CFLAGS $allargs -I\"${includedir}\" -L\"${libdir}${MPILIBDIR}\" -L\"${libdir}\" $rpath_opt $mpilibs $I_MPI_OTHERLIBS ${final_ldflags}
         rc=$?
 
         if [ $rc -eq 0 -a "x$strip_debug_info" = "xyes" ] ; then

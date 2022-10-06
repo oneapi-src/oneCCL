@@ -11,8 +11,8 @@
 # This software and the related documents are provided as is, with no express
 # or implied warranties, other than those that are expressly stated in the
 # License.
-# 
-# (C) 2006 by Argonne National Laboratory.
+##
+## Copyright (C) by Argonne National Laboratory
 # 
 # 				  COPYRIGHT
 # 
@@ -21,7 +21,7 @@
 # of the code.
 # 
 # Copyright Notice
-#  + 2002 University of Chicago
+# 1998--2020, Argonne National Laboratory
 # 
 # Permission is hereby granted to use, reproduce, prepare derivative works, and
 # to redistribute to others.  This software was authored by:
@@ -52,10 +52,25 @@
 # for the accuracy, completeness, or usefulness of any information, apparatus,
 # product, or process disclosed, or represents that its use would not infringe
 # privately owned rights.
+# 
+# 			   EXTERNAL CONTRIBUTIONS
+# 
+# Portions of this code have been contributed under the above license by:
+# 
+#  * Intel Corporation
+#  * Cray
+#  * IBM Corporation
+#  * Microsoft Corporation
+#  * Mellanox Technologies Ltd.
+#  * DataDirect Networks.
+#  * Oak Ridge National Laboratory
+#  * Sun Microsystems, Lustre group
+#  * Dolphin Interconnect Solutions Inc.
+#  * Institut Polytechnique de Bordeaux
 #
-#     
-#
-# mpicxx
+##     
+##
+
 # Simple script to compile and/or link MPI programs.
 # This script knows the default flags and libraries, and can handle
 # alternative C++ compilers and the associated flags and libraries.
@@ -78,7 +93,7 @@
 # Set the default values of all variables.
 #
 # Directory locations: Fixed for any MPI implementation
-prefix=../_install
+prefix=.
 # The environment variable I_MPI_ROOT may be used to override installation folder path
 if [ -n "$I_MPI_ROOT" ] ; then
     prefix=$I_MPI_ROOT;
@@ -97,11 +112,8 @@ fi
 
 # Default settings for compiler, flags, and libraries
 CXX="g++"
-MPICH_VERSION="3.3"
-CXXFLAGS=""
-LDFLAGS=" -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl "
-LIBS="-lm   -lpthread  -lfabric -lrt "
-MPIVERSION="2021.5"
+MPICH_VERSION="3.4a2"
+MPIVERSION="2021.7"
 MPILIBNAME="mpi"
 MPICXXLIBNAME="mpicxx"
 
@@ -604,12 +616,8 @@ else
 fi
 
 final_cppflags=" "
-final_ldflags="  -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl "
+final_ldflags="  -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl  "
 final_libs="-lpthread -lrt "
-if test "no" = "no" -o "${interlib_deps}" = "no" ; then
-    final_ldflags="${final_ldflags}  -Wl,-z,now -Wl,-z,relro -Wl,-z,noexecstack -Xlinker --enable-new-dtags -ldl"
-    final_libs="${final_libs}  -lm   -lpthread  -lfabric -lrt "
-fi
 
 # A temporary statement to invoke the compiler
 # Place the -L before any args incase there are any mpi libraries in there.
@@ -625,7 +633,7 @@ if [ "$linking" = yes ] ; then
         $Show $CXX ${final_cppflags} $PROFILE_INCPATHS ${final_cxxflags} ${final_ldflags} $allargs -I\"${includedir}\"
         rc=$?
     else
-        $Show $CXX $CXXFLAGS $allargs -I\"${includedir}\" -L\"${libdir}${MPILIBDIR}\" -L\"${libdir}\" $rpath_opt $shllibpath $cxxlibs $mpilibs $I_MPI_OTHERLIBS $LDFLAGS
+        $Show $CXX $CXXFLAGS $allargs -I\"${includedir}\" -L\"${libdir}${MPILIBDIR}\" -L\"${libdir}\" $rpath_opt $shllibpath $cxxlibs $mpilibs $I_MPI_OTHERLIBS ${final_ldflags}
         rc=$?
         if [ $rc -eq 0 -a "x$strip_debug_info" = "xyes" ] ; then
             $Show objcopy --only-keep-debug ${executable} ${executable}.dbg

@@ -11,9 +11,8 @@
     or implied warranties, other than those that are expressly stated in the
     License.
 */
-/* -*- Mode: C; c-basic-offset:4 ; -*- */
-/*  
- *  (C) 2001 by Argonne National Laboratory.
+/*
+ * Copyright (C) by Argonne National Laboratory
     
     				  COPYRIGHT
     
@@ -22,7 +21,7 @@
     of the code.
     
     Copyright Notice
-     + 2002 University of Chicago
+    1998--2020, Argonne National Laboratory
     
     Permission is hereby granted to use, reproduce, prepare derivative works, and
     to redistribute to others.  This software was authored by:
@@ -53,8 +52,24 @@
     for the accuracy, completeness, or usefulness of any information, apparatus,
     product, or process disclosed, or represents that its use would not infringe
     privately owned rights.
- *      
+    
+    			   EXTERNAL CONTRIBUTIONS
+    
+    Portions of this code have been contributed under the above license by:
+    
+     * Intel Corporation
+     * Cray
+     * IBM Corporation
+     * Microsoft Corporation
+     * Mellanox Technologies Ltd.
+     * DataDirect Networks.
+     * Oak Ridge National Laboratory
+     * Sun Microsystems, Lustre group
+     * Dolphin Interconnect Solutions Inc.
+     * Institut Polytechnique de Bordeaux
+ *     
  */
+
 /* src/include/mpi.h.  Generated from mpi.h.in by configure. */
 #ifndef MPI_INCLUDED
 #define MPI_INCLUDED
@@ -254,17 +269,6 @@ static const MPI_Datatype mpich_mpi_long_double_int MPICH_ATTR_TYPE_TAG_LAYOUT_C
 #define MPI_DOUBLE_PRECISION  ((MPI_Datatype)1275070495)
 #define MPI_INTEGER           ((MPI_Datatype)1275069467)
 #define MPI_2INTEGER          ((MPI_Datatype)1275070496)
-/* 
- * MPI_2COMPLEX and MPI_2DOUBLE_COMPLEX were defined by accident in 
- * MPI 1.0 and removed in MPI 1.1.  
- *
- * This definition provides backward compatibility.  These definitions
- * will be removed in a subsequent MPICH release
- */
-#ifdef MPICH_DEFINE_2COMPLEX
-#define MPI_2COMPLEX          ((MPI_Datatype)1275072548)
-#define MPI_2DOUBLE_COMPLEX   ((MPI_Datatype)1275076645)
-#endif 
 #define MPI_2REAL             ((MPI_Datatype)1275070497)
 #define MPI_2DOUBLE_PRECISION ((MPI_Datatype)1275072547)
 #define MPI_CHARACTER         ((MPI_Datatype)1275068698)
@@ -435,7 +439,7 @@ typedef enum MPIR_Win_model {
 } MPIR_Win_model_t;
 
 /* Upper bound on the overhead in bsend for each message buffer */
-#define MPI_BSEND_OVERHEAD 96
+#define MPI_BSEND_OVERHEAD 88
 
 /* Topology types */
 typedef enum MPIR_Topo_type { MPI_GRAPH=1, MPI_CART=2, MPI_DIST_GRAPH=3 } MPIR_Topo_type;
@@ -545,8 +549,8 @@ typedef int (MPI_Delete_function) ( MPI_Comm, int, void *, void * );
  * digits for REV, 1 digit for EXT and 2 digits for EXT_NUMBER. So,
  * 1.0.7rc1 will have the numeric version 10007201.
  */
-#define MPICH_VERSION "3.3"
-#define MPICH_NUMVERSION 30300300
+#define MPICH_VERSION "3.4a2"
+#define MPICH_NUMVERSION 30400002
 
 #define MPICH_RELEASE_TYPE_ALPHA  0
 #define MPICH_RELEASE_TYPE_BETA   1
@@ -580,8 +584,8 @@ typedef int (MPI_Delete_function) ( MPI_Comm, int, void *, void * );
  * digits for REV, 1 digit for EXT and 2 digits for EXT_NUMBER. So,
  * 2019.0.0b0 will have the numeric version 20190000100.
  */
-#define I_MPI_VERSION "2021.5.0"
-#define I_MPI_NUMVERSION 20210500300
+#define I_MPI_VERSION "2021.7.0"
+#define I_MPI_NUMVERSION 20210700300
 
 /* for the datatype decoders */
 enum MPIR_Combiner_enum {

@@ -259,7 +259,8 @@ bool get_device_global_id(ze_device_handle_t device, ssize_t* id) {
 }
 
 device_family get_device_family(ze_device_handle_t device) {
-    ze_device_properties_t device_prop;
+    ze_device_properties_t device_prop = ccl::ze::default_device_props;
+
     ZE_CALL(zeDeviceGetProperties, (device, &device_prop));
     uint32_t id = device_prop.deviceId & 0xfff0;
     using enum_t = typename std::underlying_type<device_family>::type;
