@@ -113,7 +113,7 @@
                 CCL_THROW("OFI function error"); \
                 break; \
             } \
-            (void)poll(ep); \
+            (void)progress_ep(ep); \
             retry_count++; \
         } while (((ret_val) == -FI_EAGAIN) && (retry_count < max_retry_count)); \
     } while (0)

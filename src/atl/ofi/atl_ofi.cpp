@@ -54,6 +54,7 @@ atl_status_t atl_ofi::init(int* argc,
                      ", expected offset ",
                      offsetof(atl_req_t, internal));
 
+    enable_shm = attr->in.enable_shm;
     ret = atl_ofi_set_env(*attr);
     ATL_CHECK_STATUS(ret, "atl_ofi_set_env error");
 
