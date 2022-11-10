@@ -97,6 +97,10 @@ Available algorithms for each collective operation (``<algo_name>``):
      - Recursive doubling algorithm
    * - ``2d``
      - Two-dimensional algorithm (reduce_scatter + allreduce + allgather)
+   * - ``topo``
+     - Optimized algorithm for GPU data and all-to-all network topology.
+       Use ``CCL_REDUCE_SCATTER_MONOLITHIC_KERNEL=1`` to use compute kernels, 
+       instead of copy engines, to move the data across the GPU.
 
 
 ``ALLTOALL`` algorithms
@@ -170,6 +174,10 @@ Available algorithms for each collective operation (``<algo_name>``):
      - Tree algorithm
    * - ``double_tree``
      - Double-tree algorithm
+   * - ``topo``
+     - Optimized algorithm for GPU data and all-to-all network topology.
+       Use ``CCL_REDUCE_SCATTER_MONOLITHIC_KERNEL=1`` to use compute kernels, 
+       instead of copy engines, to move the data across the GPU.
 
 
 ``REDUCE_SCATTER`` algorithms
