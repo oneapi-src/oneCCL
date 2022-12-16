@@ -17,7 +17,10 @@
 
 #include "coll/coll_param.hpp"
 #include "common/global/global.hpp"
+
+#ifdef CCL_ENABLE_SYCL
 #include "common/utils/sycl_utils.hpp"
+#endif // CCL_ENABLE_SYCL
 
 #define COPY_COMMON_OP_ATTRS(from, to) \
     to->priority = from.get<ccl::operation_attr_id::priority>(); \
@@ -95,6 +98,7 @@ ccl_coll_param::ccl_coll_param() {
     recv_counts.reserve(1);
     stream = nullptr;
     comm = nullptr;
+    is_scaleout = false;
 }
 void ccl_coll_param::copy(const ccl_coll_param& other) {
     ctype = other.ctype;
@@ -109,6 +113,7 @@ void ccl_coll_param::copy(const ccl_coll_param& other) {
     root = other.root;
     comm = other.comm;
     stream = other.stream;
+    is_scaleout = other.is_scaleout;
     copy_deps(other.deps);
     validate();
 }

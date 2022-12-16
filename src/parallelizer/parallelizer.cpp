@@ -19,9 +19,12 @@
 #include "coll/coll_util.hpp"
 #include "coll/selection/selection.hpp"
 #include "common/global/global.hpp"
-#include "common/utils/sycl_utils.hpp"
 #include "parallelizer/parallelizer.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
+
+#ifdef CCL_ENABLE_SYCL
+#include "common/utils/sycl_utils.hpp"
+#endif // CCL_ENABLE_SYCL
 
 #define CCL_ATL_LARGE_MSG_SIZE (1024 * 1024 * 1024)
 
@@ -465,6 +468,7 @@ ccl::status ccl_parallelizer::process_base(ccl_sched* sched, bool update_sched_i
                 param.reduction = coll_param.reduction;
                 param.comm = comm;
                 param.stream = coll_param.stream;
+                param.is_scaleout = coll_param.is_scaleout;
                 ccl::add_coll_entry(part_scheds[idx].get(), param);
             }
             break;

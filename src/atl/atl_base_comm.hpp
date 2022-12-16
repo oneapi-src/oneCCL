@@ -222,10 +222,6 @@ public:
         return rank2rank_map;
     }
 
-    std::vector<int> get_rank2proc_map() const {
-        return rank2proc_map;
-    }
-
     int create_comm_id();
 
     int get_comm_id() const {
@@ -236,7 +232,7 @@ public:
         comm_id = atl_comm_id_storage::invalid_comm_id;
     }
 
-    std::shared_ptr<ccl_atl_tag> tag;
+    std::shared_ptr<ccl_atl_tag> tag_creator;
     static atl_attr_t attr;
 
 protected:
@@ -251,8 +247,8 @@ protected:
     int parent_rank;
     int parent_size;
 
-    std::vector<int> rank2rank_map;
-    std::vector<int> rank2proc_map;
+    std::vector<int> rank2rank_map{};
+    std::vector<int> rank2proc_map{};
     atl_proc_coord_t coord;
 
     int comm_id = atl_comm_id_storage::invalid_comm_id;

@@ -71,7 +71,7 @@ public:
     }
 
     void start_send() {
-        atl_tag = comm->get_atl_comm()->tag->create(
+        atl_tag = comm->get_atl_comm()->tag_creator->create(
             comm->rank(), comm->get_comm_id(), sched->sched_id, sched->get_op_id());
         size_t bytes = cnt * dtype.size();
 

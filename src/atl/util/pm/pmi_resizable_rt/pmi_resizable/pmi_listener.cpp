@@ -43,7 +43,7 @@ void pmi_listener::set_applied_count(int count) {
 kvs_status_t pmi_listener::collect_sock_addr(std::shared_ptr<helper> h) {
     FILE* fp;
     size_t i, j;
-    kvs_status_t res = KVS_STATUS_SUCCESS;
+    kvs_status_t status = KVS_STATUS_SUCCESS;
     size_t glob_num_listeners;
     std::vector<std::string> sock_addr_str(1);
     std::vector<std::string> hosts_names_str(1);
@@ -67,20 +67,20 @@ kvs_status_t pmi_listener::collect_sock_addr(std::shared_ptr<helper> h) {
     num_listeners = glob_num_listeners;
 
     for (i = 0; i < num_listeners; i++) {
-        if (strstr(hosts_names_str[i].c_str(), my_hostname)) {
+        if (strstr(hosts_names_str[i].c_str(), pmi_hostname)) {
             num_listeners--;
             break;
         }
     }
 
     if (num_listeners == 0) {
-        res = KVS_STATUS_SUCCESS;
+        status = KVS_STATUS_SUCCESS;
         goto exit;
     }
 
     if ((sock_sender = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         LOG_ERROR("Socket creation error");
-        res = KVS_STATUS_FAILURE;
+        status = KVS_STATUS_FAILURE;
         goto exit;
     }
 
@@ -91,7 +91,7 @@ kvs_status_t pmi_listener::collect_sock_addr(std::shared_ptr<helper> h) {
     server_addresses = (struct sockaddr_in*)malloc((num_listeners) * sizeof(struct sockaddr_in));
     if (server_addresses == NULL) {
         LOG_ERROR("nmemory allocation failed");
-        res = KVS_STATUS_FAILURE;
+        status = KVS_STATUS_FAILURE;
         goto exit;
     }
 
@@ -100,35 +100,35 @@ kvs_status_t pmi_listener::collect_sock_addr(std::shared_ptr<helper> h) {
         char* point_to_port = strstr(const_cast<char*>(sock_addr_str[j].c_str()), "_");
         if (point_to_port == NULL) {
             LOG_ERROR("Wrong address_port record: %s", sock_addr_str[j]);
-            res = KVS_STATUS_FAILURE;
+            status = KVS_STATUS_FAILURE;
             goto exit;
         }
         point_to_port[0] = NULL_CHAR;
         point_to_port++;
-        if (strstr(const_cast<char*>(hosts_names_str[j].c_str()), my_hostname)) {
+        if (strstr(const_cast<char*>(hosts_names_str[j].c_str()), pmi_hostname)) {
             i--;
             continue;
         }
 
         if (safe_strtol(point_to_port, server_addresses[i].sin_port) != KVS_STATUS_SUCCESS) {
             LOG_ERROR("failed to convert sin_port");
-            res = KVS_STATUS_FAILURE;
+            status = KVS_STATUS_FAILURE;
             goto exit;
         }
         server_addresses[i].sin_family = AF_INET;
 
         if (inet_pton(AF_INET, sock_addr_str[j].c_str(), &(server_addresses[i].sin_addr)) <= 0) {
             LOG_ERROR("Invalid address/ Address not supported: %s", sock_addr_str[j].c_str());
-            res = KVS_STATUS_FAILURE;
+            status = KVS_STATUS_FAILURE;
             goto exit;
         }
     }
 exit:
-    return res;
+    return status;
 }
 
 kvs_status_t pmi_listener::clean_listener(std::shared_ptr<helper> h) {
-    KVS_CHECK_STATUS(h->remove_name_key(KVS_LISTENER, my_hostname), "failed to remove host info");
+    KVS_CHECK_STATUS(h->remove_name_key(KVS_LISTENER, pmi_hostname), "failed to remove host info");
     close(sock_listener);
     return KVS_STATUS_SUCCESS;
 }
@@ -199,7 +199,7 @@ kvs_status_t pmi_listener::run_listener(std::shared_ptr<helper> h) {
 
         SET_STR(
             addr_for_kvs, REQUEST_POSTFIX_SIZE, KVS_NAME_TEMPLATE_I, my_ip, (size_t)addr.sin_port);
-        KVS_CHECK_STATUS(h->set_value(KVS_LISTENER, my_hostname, addr_for_kvs),
+        KVS_CHECK_STATUS(h->set_value(KVS_LISTENER, pmi_hostname, addr_for_kvs),
                          "failed to set addr info");
         if (setsockopt(sock_listener, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
             perror("Error");

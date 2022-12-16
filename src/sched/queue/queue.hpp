@@ -215,7 +215,7 @@ public:
     size_t get_idx() const;
 
     void add(ccl_sched* sched);
-    size_t erase(ccl_sched_bin* bin, size_t idx);
+    size_t erase(ccl_sched_bin* bin, size_t sched_idx);
     void clear();
 
     /**
@@ -232,10 +232,11 @@ public:
             std::lock_guard<sched_queue_lock_t> lock(bins_guard);
             out << "{\n";
             out << "  sched_queue: idx: " << idx << " size: " << bins.size() << "\n";
-            size_t idx = 0;
+            size_t bin_idx = 0;
             for (auto& bin : bins) {
-                out << "   bin: idx: " << idx << " priority: " << bin.first
+                out << "   bin: idx: " << bin_idx << " priority: " << bin.first
                     << " size: " << bin.second.size() << "\n";
+                bin_idx++;
                 bin.second.dump(out);
             }
             out << "}\n";

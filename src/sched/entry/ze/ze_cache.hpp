@@ -231,10 +231,37 @@ private:
 
     void push(ze_device_handle_t device,
               key_t&& key,
-              const ze_ipc_mem_handle_t& handle,
+              const ipc_handle_desc& info,
               value_t* out_value);
     void make_clean(size_t limit);
     bool fd_is_valid(int fd);
+};
+
+struct ipc_get_handle_desc;
+
+class ipc_handle_cache {
+public:
+    using value_t = ze_ipc_mem_handle_t;
+
+    ipc_handle_cache() = default;
+    ~ipc_handle_cache();
+
+    void clear();
+
+    void get(ze_context_handle_t context,
+             ze_device_handle_t device,
+             const ipc_get_handle_desc& ipc_info,
+             value_t* out_value);
+
+private:
+    using key_t = typename std::tuple<void*, uint64_t>;
+    std::unordered_multimap<key_t, value_t, utils::tuple_hash> cache;
+    std::mutex mutex;
+
+    void push(ze_context_handle_t context,
+              key_t&& key,
+              const ipc_get_handle_desc& ipc_info,
+              value_t* out_value);
 };
 
 class cache {
@@ -308,6 +335,13 @@ public:
         mem_handles.get(context, device, info, out_value);
     }
 
+    void get(ze_context_handle_t context,
+             ze_device_handle_t device,
+             const ipc_get_handle_desc& ipc_info,
+             ipc_handle_cache::value_t* out_value) {
+        ipc_handles.get(context, device, ipc_info, out_value);
+    }
+
     /* push */
     void push(size_t instance_idx,
               ze_module_handle_t module,
@@ -359,6 +393,7 @@ private:
     std::vector<device_mem_cache> device_mems;
     module_cache modules{};
     mem_handle_cache mem_handles{};
+    ipc_handle_cache ipc_handles{};
 };
 
 } // namespace ze

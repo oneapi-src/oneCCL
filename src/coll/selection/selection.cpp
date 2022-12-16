@@ -18,7 +18,6 @@
 #include "common/global/global.hpp"
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-#include <CL/sycl/backend_types.hpp>
 #include "common/utils/sycl_utils.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
@@ -96,6 +95,13 @@ bool ccl_is_direct_algo(const ccl_selector_param& param) {
 
 namespace checkers {
 
+bool is_unknown_device_family(const ccl_selector_param& param) {
+    if (param.stream) {
+        return param.stream->get_device_family() == ccl::device_family::unknown;
+    }
+    return false;
+}
+
 bool is_family1_card(const ccl_selector_param& param) {
     if (param.stream) {
         return param.stream->get_device_family() == ccl::device_family::family1;
@@ -141,7 +147,7 @@ bool is_gpu_stream(const ccl_selector_param& param) {
 }
 
 bool is_single_node(const ccl_selector_param& param) {
-    size_t local_proc_count = ccl::global_data::get().executor->get_local_proc_count();
+    size_t local_proc_count = ccl::global_data::get().get_local_proc_count();
     return static_cast<size_t>(param.comm->size()) <= local_proc_count;
 }
 
@@ -229,7 +235,11 @@ bool ccl_is_device_side_algo(const ccl_selector_param& param) {
 }
 
 bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
-    RETURN_FALSE_IF(!ccl::global_data::env().enable_topo_algo, "topo algo is explicitly disabled");
+#ifdef CCL_ENABLE_SYCL
+    RETURN_FALSE_IF(!param.comm->get_env()->get_enable_topo_algo(), "topo algo is disabled");
+#else // CCL_ENABLE_SYCL
+    return false;
+#endif // CCL_ENABLE_SYCL
 
     auto supported_colls = { ccl_coll_allgatherv,    ccl_coll_allreduce, ccl_coll_alltoall,
                              ccl_coll_alltoallv,     ccl_coll_bcast,     ccl_coll_reduce,
@@ -237,17 +247,7 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
     RETURN_FALSE_IF(!checkers::is_coll_supported(supported_colls, param.ctype),
                     "coll is not supported");
 
-    // Fallback if implicit scaling is enabled
-    char* implicit_scaling_env = getenv("EnableImplicitScaling");
-    int enable_implicit_scaling;
-
-    if (implicit_scaling_env) {
-        enable_implicit_scaling = atoi(implicit_scaling_env);
-        LOG_DEBUG("Implicit scaling not null value = ", enable_implicit_scaling);
-        RETURN_FALSE_IF(enable_implicit_scaling != 0, "Implicit scaling is not supported");
-    }
-
-    size_t local_proc_count = ccl::global_data::get().executor->get_local_proc_count();
+    size_t local_proc_count = ccl::global_data::get().get_local_proc_count();
     int comm_size = param.comm->size();
 
     LOG_DEBUG("coll ",
@@ -278,16 +278,6 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
     RETURN_FALSE_IF(!param.comm->get_even_comm().get(), "sub-communicators are not available");
 
 #ifdef CCL_ENABLE_SYCL
-    RETURN_FALSE_IF(ccl::global_data::env().enable_ze_bidir_algo &&
-                        (checkers::is_family1_card(param) || !checkers::is_single_card(param)) &&
-                        param.ctype == ccl_coll_allreduce,
-                    "bidir for allreduce is not supported for family1 card or for multi-card");
-
-    RETURN_FALSE_IF(
-        (!ccl::global_data::env().enable_ze_bidir_algo || checkers::is_family1_card(param)) &&
-            (param.ctype == ccl_coll_alltoall || param.ctype == ccl_coll_alltoallv),
-        "alltoall(v) is supported with bidir only or not on family1 card");
-
     RETURN_FALSE_IF(!param.comm->get_topo_manager().has_p2p_access(),
                     "no p2p access between devices");
 
@@ -297,6 +287,15 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
     RETURN_FALSE_IF(!param.comm->get_topo_manager().has_same_domains(),
                     "processes are not properly distributed among domains");
 
+    if (!ccl::global_data::env().ze_disable_oversubscription_check) {
+        RETURN_FALSE_IF(param.comm->get_topo_manager().has_oversubscription(),
+                        "oversubscription case: one rank per device is only supported");
+    }
+
+    RETURN_FALSE_IF(!ccl::global_data::env().enable_ze_bidir_algo &&
+                        (param.ctype == ccl_coll_alltoall || param.ctype == ccl_coll_alltoallv),
+                    "alltoall(v) is supported with bidir only");
+
     if (!ccl::global_data::env().disable_ze_port_check) {
         RETURN_FALSE_IF(
             !checkers::is_single_card(param) && param.comm->get_topo_manager().has_failed_ports(),
@@ -305,10 +304,26 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
 
     if (!ccl::global_data::env().disable_ze_family_check) {
         RETURN_FALSE_IF(checkers::is_family1_card(param) && !checkers::is_single_card(param),
-                        "family1 multi-card for ",
+                        "multi-card ",
                         ccl_coll_type_to_str(param.ctype),
-                        " is not supported");
+                        " is not supported for family1");
+
+        RETURN_FALSE_IF(
+            checkers::is_family1_card(param) && ccl::global_data::env().enable_ze_bidir_algo,
+            "bidir ",
+            ccl_coll_type_to_str(param.ctype),
+            " is not supported for family1");
     }
+
+    RETURN_FALSE_IF(checkers::is_unknown_device_family(param),
+                    "topo algo is not supported for unknown device family");
+#ifndef CCL_BF16_GPU_TRUNCATE
+    RETURN_FALSE_IF(checkers::is_unknown_device_family(param) &&
+                        (param.dtype.idx() == ccl::datatype::bfloat16) &&
+                        (param.ctype == ccl_coll_allreduce || param.ctype == ccl_coll_reduce ||
+                         param.ctype == ccl_coll_reduce_scatter),
+                    "bfloat16 reduction is not supported for unknown device family");
+#endif // !CCL_BF16_GPU_TRUNCATE
 #endif // CCL_ENABLE_SYCL
 
     RETURN_FALSE_IF((((param.ctype == ccl_coll_allreduce) || (param.ctype == ccl_coll_bcast) ||
@@ -317,9 +332,7 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
                     "unsupported comm size for ",
                     ccl_coll_type_to_str(param.ctype));
 
-    RETURN_FALSE_IF((param.ctype == ccl_coll_allgatherv || param.ctype == ccl_coll_alltoall ||
-                     param.ctype == ccl_coll_alltoallv || param.ctype == ccl_coll_bcast ||
-                     param.ctype == ccl_coll_reduce_scatter) &&
+    RETURN_FALSE_IF((param.ctype == ccl_coll_bcast || param.ctype == ccl_coll_reduce_scatter) &&
                         !checkers::is_single_node(param),
                     "multi-node for ",
                     ccl_coll_type_to_str(param.ctype),
@@ -338,56 +351,42 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
                         (local_proc_count % 2 != 0),
                     "odd proc count per node is not supported");
 
+    RETURN_FALSE_IF((param.ctype == ccl_coll_reduce || param.ctype == ccl_coll_allreduce) &&
+                        (param.count < size_t(param.comm->size())),
+                    "reduce with count < comm_size not supported");
+
     return true;
 }
 
 bool ccl_can_use_datatype(ccl_coll_algo algo, const ccl_selector_param& param) {
-    // regular datatype, don't need to check for an additional support
-    if (param.dtype.idx() != ccl::datatype::bfloat16 &&
-        param.dtype.idx() != ccl::datatype::float16) {
+    if (param.dtype.idx() != ccl::datatype::float16) {
         return true;
     }
 
     bool can_use = true;
 
-    bool device_side_algo = ccl_is_device_side_algo(algo, param);
-
-    // algorithms running on device side support fp16 and bf16 both
+    // algorithms running on device side support fp16
     // so we don't need to require their support on the host
-    if (!device_side_algo) {
-        if (param.dtype == ccl::datatype::bfloat16) {
-            bool bf16_hw_support =
-                ccl::global_data::env().bf16_impl_type != ccl_bf16_no_hardware_support;
-            bool bf16_compiler_support =
-                ccl::global_data::env().bf16_impl_type != ccl_bf16_no_compiler_support;
+    bool device_side_algo = ccl_is_device_side_algo(algo, param);
+    if (device_side_algo) {
+        return true;
+    }
 
-            can_use = bf16_compiler_support && bf16_hw_support;
+    if (param.dtype == ccl::datatype::float16) {
+        bool fp16_hw_support =
+            ccl::global_data::env().fp16_impl_type != ccl_fp16_no_hardware_support;
+        bool fp16_compiler_support =
+            ccl::global_data::env().fp16_impl_type != ccl_fp16_no_compiler_support;
 
-            if (!can_use) {
-                LOG_DEBUG("BF16 datatype is requested for ",
-                          ccl_coll_type_to_str(param.ctype),
-                          " running on CPU but not fully supported: hw: ",
-                          bf16_hw_support,
-                          " compiler: ",
-                          bf16_compiler_support);
-            }
-        }
-        else if (param.dtype == ccl::datatype::float16) {
-            bool fp16_hw_support =
-                ccl::global_data::env().fp16_impl_type != ccl_fp16_no_hardware_support;
-            bool fp16_compiler_support =
-                ccl::global_data::env().fp16_impl_type != ccl_fp16_no_compiler_support;
+        can_use = fp16_hw_support && fp16_compiler_support;
 
-            can_use = fp16_hw_support && fp16_compiler_support;
-
-            if (!can_use) {
-                LOG_DEBUG("FP16 datatype is requested for ",
-                          ccl_coll_type_to_str(param.ctype),
-                          " running on CPU but not fully supported: hw: ",
-                          fp16_hw_support,
-                          " compiler: ",
-                          fp16_compiler_support);
-            }
+        if (!can_use) {
+            LOG_DEBUG("FP16 datatype is requested for ",
+                      ccl_coll_type_to_str(param.ctype),
+                      " running on CPU but not fully supported: hw: ",
+                      fp16_hw_support,
+                      " compiler: ",
+                      fp16_compiler_support);
         }
     }
 

@@ -23,7 +23,8 @@
 const ccl::datatype last_predefined_dt = ccl::datatype::bfloat16;
 
 namespace ccl {
-using datatype_str_enum = ::utils::enum_to_str<::utils::enum_to_underlying(last_predefined_dt) + 1>;
+using datatype_str_enum =
+    ccl::utils::enum_to_str<ccl::utils::enum_to_underlying(last_predefined_dt) + 1>;
 string_class to_string(const datatype& dt) {
     return datatype_str_enum({ "INT8",
                                "UINT8",
@@ -148,10 +149,11 @@ ccl::datatype ccl_datatype_storage::create_by_datatype_size(size_t datatype_size
     }
 
     CCL_ASSERT(datatype_size > 0);
-    create_internal(custom_table,
-                    custom_idx,
-                    datatype_size,
-                    std::string("DTYPE_") + std::to_string(utils::enum_to_underlying(custom_idx)));
+    create_internal(
+        custom_table,
+        custom_idx,
+        datatype_size,
+        std::string("DTYPE_") + std::to_string(ccl::utils::enum_to_underlying(custom_idx)));
 
     return custom_idx;
 }

@@ -17,6 +17,7 @@
 
 #include <unordered_map>
 
+#include "common/global/ze/ze_fd_manager.hpp"
 #include "sched/entry/ze/ze_cache.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
 #include "sched/ze/ze_event_manager.hpp"
@@ -24,7 +25,6 @@
 #include "sched/sched_timer.hpp"
 
 namespace ccl {
-
 namespace ze {
 
 struct device_info {
@@ -39,11 +39,12 @@ struct global_data_desc {
     std::vector<ze_driver_handle_t> drivers;
     std::vector<ze_context_handle_t> contexts;
     std::vector<device_info> devices;
-    std::vector<ze_device_handle_t> device_handles;
     std::unique_ptr<ze::cache> cache;
     std::unordered_map<ze_context_handle_t, ccl::ze::dynamic_event_pool> dynamic_event_pools;
 
     std::atomic<size_t> kernel_counter{};
+
+    std::unique_ptr<ze::fd_manager> fd_manager;
 
     global_data_desc();
     global_data_desc(const global_data_desc&) = delete;

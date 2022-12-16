@@ -51,7 +51,6 @@
 
 #include "coll/algorithms/algorithms.hpp"
 #include "coll/algorithms/algorithm_utils.hpp"
-#include "coll/algorithms/allreduce/allreduce_2d.hpp"
 #include "coll/selection/selection.hpp"
 #include "exec/exec.hpp"
 #include "fusion/fusion.hpp"
@@ -68,6 +67,12 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
 #ifdef CCL_ENABLE_SYCL
     if (ccl::global_data::env().enable_op_sync)
         attr.synchronous = 1;
+
+    if (param.stream && ccl::global_data::env().enable_external_queue) {
+        LOG_DEBUG("use external queue in CCL for compute kernel.");
+        // Todo: need to submit kernel before this API return. Now, just use wait execution as WA.
+        attr.synchronous = 1;
+    }
 #endif // CCL_ENABLE_SYCL
 
     LOG_DEBUG("\n{\n",
@@ -137,8 +142,8 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
     /* 6. regular schedule execution */
     ccl_request* request = sched->start(data.executor.get());
     if (sched->coll_attr.synchronous) {
+        request->synchronous = true;
         ccl_wait_impl<ccl_sched>(data.executor.get(), request);
-        request = nullptr;
     }
 
 #ifdef CCL_ENABLE_ITT
@@ -228,7 +233,8 @@ ccl::status ccl_coll_build_allreduce(ccl_sched* sched,
                                      size_t count,
                                      const ccl_datatype& dtype,
                                      ccl::reduction reduction,
-                                     ccl_comm* comm) {
+                                     ccl_comm* comm,
+                                     bool is_scaleout) {
     CCL_ASSERT(sched != nullptr && comm != nullptr);
     ccl::status status = ccl::status::success;
 
@@ -243,6 +249,7 @@ ccl::status ccl_coll_build_allreduce(ccl_sched* sched,
     param.is_sycl_buf = sched->coll_attr.is_sycl_buf;
 #endif // CCL_ENABLE_SYCL
     param.hint_algo = sched->hint_algo;
+    param.is_scaleout = is_scaleout;
 
     auto algo = ccl::global_data::get().algorithm_selector->get<ccl_coll_allreduce>(param);
 
@@ -283,8 +290,8 @@ ccl::status ccl_coll_build_allreduce(ccl_sched* sched,
                 sched, send_buf, recv_buf, count, dtype, reduction, comm));
             break;
         case ccl_coll_allreduce_2d:
-            CCL_CALL(comm->get_allreduce_2d_builder()->build(
-                sched, send_buf, recv_buf, count, dtype, reduction));
+            CCL_CALL(ccl_coll_build_2d_allreduce(
+                sched, send_buf, recv_buf, count, dtype, reduction, comm));
             break;
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
         case ccl_coll_allreduce_topo:

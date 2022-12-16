@@ -17,15 +17,13 @@
 
 #ifdef CCL_ENABLE_MPI
 
-#include <mpi.h>
-
 #include "atl/atl_def.h"
+#include "common/api_wrapper/mpi_api_wrapper.hpp"
+#include "comp/bf16/bf16.hpp"
 #include "comp/bf16/bf16_intrisics.hpp"
 #include "comp/fp16/fp16_intrisics.hpp"
 
-#ifdef CCL_BF16_COMPILER
 #define ATL_MPI_BF16
-#endif // CCL_BF16_COMPILER
 
 #ifdef CCL_FP16_COMPILER
 #define ATL_MPI_FP16

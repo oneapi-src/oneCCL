@@ -67,7 +67,7 @@ public:
         return KVS_STATUS_SUCCESS;
     }
     kvs_status_t put(int sock, std::mutex& memory_mutex, size_t put_buf) {
-        size_t sizeof_put_buf = sizeof(put_buf);
+        const size_t sizeof_put_buf = sizeof(put_buf);
         DO_RW_OP(write, sock, &put_buf, sizeof_put_buf, memory_mutex);
         return KVS_STATUS_SUCCESS;
     }
@@ -101,7 +101,7 @@ public:
         return KVS_STATUS_SUCCESS;
     }
     kvs_status_t get(int sock, std::mutex& memory_mutex, size_t& get_buf) {
-        size_t sizeof_get_buf = sizeof(get_buf);
+        const size_t sizeof_get_buf = sizeof(get_buf);
         DO_RW_OP(read, sock, &get_buf, sizeof_get_buf, memory_mutex);
         return KVS_STATUS_SUCCESS;
     }

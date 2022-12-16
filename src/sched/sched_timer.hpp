@@ -19,7 +19,7 @@
 #include <string>
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-#include "common/ze/ze_api_wrapper.hpp"
+#include "common/api_wrapper/ze_api_wrapper.hpp"
 #endif
 
 namespace ccl {
@@ -27,18 +27,20 @@ namespace ccl {
 class sched_timer {
 public:
     sched_timer() = default;
-    void start() noexcept;
-    void stop();
-    std::string str() const;
-    void print(std::string title = {}) const;
-    void reset() noexcept;
+    void start();
+    void update();
+    void reset();
+    bool is_started() const;
 
-    long double get_elapsed_usec() const noexcept;
+    long double get_elapsed_usec() const;
 
 private:
-    long double time_usec;
+    bool started{};
+    long double time_usec{};
     std::chrono::high_resolution_clock::time_point start_time{};
 };
+
+std::string to_string(const sched_timer& timer);
 
 #ifdef CCL_ENABLE_ITT
 

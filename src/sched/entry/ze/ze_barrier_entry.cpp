@@ -13,20 +13,20 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "ze_barrier_entry.hpp"
-
+#include "common/api_wrapper/ze_api_wrapper.hpp"
+#include "sched/entry/ze/ze_barrier_entry.hpp"
 #include "sched/entry/ze/ze_base_entry.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
 
 ze_barrier_entry::ze_barrier_entry(ccl_sched* sched,
                                    ccl_comm* comm,
                                    ze_event_pool_handle_t& local_pool,
-                                   size_t event_idx)
+                                   size_t wait_event_idx)
         : sched_entry(sched),
           comm(comm),
           rank(comm->rank()),
           comm_size(comm->size()),
-          event_idx(event_idx),
+          wait_event_idx(wait_event_idx),
           local_pool(local_pool) {
     LOG_DEBUG("initialization");
     CCL_THROW_IF_NOT(sched, "no sched");
@@ -61,7 +61,7 @@ void ze_barrier_entry::start() {
     ze_event_desc_t event_desc = default_event_desc;
     event_desc.signal = ZE_EVENT_SCOPE_FLAG_HOST; //TODO: DEVICE
     event_desc.wait = ZE_EVENT_SCOPE_FLAG_HOST;
-    event_desc.index = event_idx;
+    event_desc.index = wait_event_idx;
 
     signal_event = ze_base_entry::create_event(local_pool, event_desc);
     LOG_DEBUG("signal event is created for rank: ", rank);
@@ -97,4 +97,8 @@ void ze_barrier_entry::update() {
             }
         }
     }
+}
+
+void ze_barrier_entry::dump_detail(std::stringstream& str) const {
+    ccl_logger::format(str, "comm ", comm->to_string(), ", wait_events ", wait_events.size(), "\n");
 }

@@ -16,7 +16,6 @@
 #pragma once
 
 #include "sched/entry/entry.hpp"
-#include "sched/sched.hpp"
 
 class ccl_sched;
 

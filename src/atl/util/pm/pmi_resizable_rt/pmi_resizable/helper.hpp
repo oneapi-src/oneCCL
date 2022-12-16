@@ -46,7 +46,7 @@ extern int new_ranks_count;
 class helper {
 public:
     helper() = delete;
-    explicit helper(std::shared_ptr<ikvs_wrapper> k) : k(std::move(k)){};
+    explicit helper(std::shared_ptr<ikvs_wrapper> k) : kvs(std::move(k)){};
     ~helper() = default;
 
     kvs_status_t get_update_ranks(void);
@@ -125,6 +125,6 @@ private:
     kvs_status_t occupied_rank(char* rank);
 
     kvs_status_t up_kvs(const char* new_kvs_name, const char* old_kvs_name);
-    std::shared_ptr<ikvs_wrapper> k;
+    std::shared_ptr<ikvs_wrapper> kvs;
 };
 #endif

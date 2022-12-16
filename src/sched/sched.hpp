@@ -111,6 +111,14 @@ public:
         return op_id;
     }
 
+    void set_scaleout_flag() {
+        is_scaleout_subsched = true;
+    }
+
+    int get_scaleout_flag() {
+        return is_scaleout_subsched;
+    }
+
     void set_in_bin_status(ccl_sched_in_bin_status status) {
         in_bin_status = status;
     }
@@ -183,6 +191,7 @@ public:
       set once and then used for all entries
     */
     ccl_op_id_t op_id = 0;
+    bool is_scaleout_subsched = false;
 
     /* to track status of schedule wrt execution bin, not atomic as updated by single thread in time */
     ccl_sched_in_bin_status in_bin_status = ccl_sched_in_bin_none;
@@ -237,7 +246,7 @@ public:
     void release_sync_event(ccl_request* req);
 
 private:
-    void set_output_event(ccl_request* req);
+    void set_output_event(ccl_request* request);
     void update_active_request(bool use_delayed);
     static void complete_itt(const ccl_stream* stream);
 

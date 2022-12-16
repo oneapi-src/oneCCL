@@ -52,14 +52,9 @@ void ccl_selection_unpack_elem(size_t& size,
 }
 
 template <typename algo_group_type>
-void ccl_algorithm_selector_base<algo_group_type>::init() {
-    const std::string& str_to_parse =
-        ccl_algorithm_selector_helper<algo_group_type>::get_str_to_parse();
-
-    size_t elem_size;
-    algo_group_type elem_algo;
-    ccl_selection_border_type elem_border;
-
+void fill_table_from_str(ccl_algorithm_selector_base<algo_group_type>* selector,
+                         const std::string& str_to_parse,
+                         ccl_selection_table_t<algo_group_type>& table) {
     std::string block;
     std::string algo_name_str;
     std::string size_str;
@@ -98,8 +93,8 @@ void ccl_algorithm_selector_base<algo_group_type>::init() {
 
         if (algo_name_str.length() == block.length()) {
             /* set the single algorithm for the whole range */
-            main_table.clear();
-            insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, algo);
+            table.clear();
+            selector->insert(table, 0, CCL_SELECTION_MAX_COLL_SIZE, algo);
         }
         else {
             try {
@@ -145,13 +140,29 @@ void ccl_algorithm_selector_base<algo_group_type>::init() {
                              right_size,
                              ")");
 
-            insert(main_table, left_size, right_size, algo);
+            selector->insert(table, left_size, right_size, algo);
         }
         block_stream.clear();
     }
+}
 
-    auto tables_to_check =
-        std::vector<const ccl_selection_table_t<algo_group_type>*>{ &main_table, &fallback_table };
+template <typename algo_group_type>
+void ccl_algorithm_selector_base<algo_group_type>::init() {
+    const std::string& main_str_to_parse =
+        ccl_algorithm_selector_helper<algo_group_type>::get_main_str_to_parse();
+    const std::string& scaleout_str_to_parse =
+        ccl_algorithm_selector_helper<algo_group_type>::get_scaleout_str_to_parse();
+
+    size_t elem_size;
+    algo_group_type elem_algo;
+    ccl_selection_border_type elem_border;
+
+    fill_table_from_str<algo_group_type>(this, main_str_to_parse, main_table);
+    fill_table_from_str<algo_group_type>(this, scaleout_str_to_parse, scaleout_table);
+
+    auto tables_to_check = std::vector<const ccl_selection_table_t<algo_group_type>*>{
+        &main_table, &fallback_table, &scaleout_table
+    };
 
     for (const auto& table : tables_to_check) {
         CCL_THROW_IF_NOT(table->size() >= 2, "selection table should have at least 2 entries");
@@ -198,15 +209,17 @@ void ccl_algorithm_selector_base<algo_group_type>::print() const {
     ccl_selection_border_type elem_border;
 
     std::stringstream str;
-    auto tables_to_print =
-        std::vector<const ccl_selection_table_t<algo_group_type>*>{ &main_table, &fallback_table };
+    auto tables_to_print = std::vector<const ccl_selection_table_t<algo_group_type>*>{
+        &main_table, &fallback_table, &scaleout_table
+    };
 
     str << std::endl
         << ccl_coll_type_to_str(ccl_algorithm_selector_helper<algo_group_type>::get_coll_id())
         << " selection" << std::endl;
 
     for (const auto& table : tables_to_print) {
-        const std::string& table_name = (table == &main_table) ? "main table" : "fallback table";
+        std::string table_name = (table == &main_table) ? "main table" : "fallback table";
+        table_name = (table == &scaleout_table) ? "scaleout table" : table_name;
 
         str << "  " << table_name << std::endl;
 
@@ -273,6 +286,25 @@ algo_group_type ccl_algorithm_selector_base<algo_group_type>::get(
     }
 
     size_t size = count * param.dtype.size();
+
+    // Firstly check the scale-out case
+    if (param.is_scaleout) {
+        auto lower_bound = scaleout_table.lower_bound(size);
+        ccl_selection_unpack_elem(elem_size, elem_algo, elem_border, lower_bound, scaleout_table);
+
+        if (lower_bound != scaleout_table.end() &&
+            ccl_algorithm_selector_helper<algo_group_type>::can_use(
+                elem_algo, param, scaleout_table)) {
+            LOG_DEBUG("selected scale-out algo: coll ",
+                      ccl_coll_type_to_str(param.ctype),
+                      ", count ",
+                      count,
+                      ", algo ",
+                      ccl_coll_algorithm_to_str(elem_algo));
+            return elem_algo;
+        }
+    }
+
     auto lower_bound = main_table.lower_bound(size);
     ccl_selection_unpack_elem(elem_size, elem_algo, elem_border, lower_bound, main_table);
 
@@ -446,7 +478,7 @@ void ccl_algorithm_selector_base<algo_group_type>::insert(
         return;
 
     /* merge adjacent ranges for the same algorithm */
-    for (auto iter = table.begin(); iter != table.end();) {
+    for (iter = table.begin(); iter != table.end();) {
         ccl_selection_unpack_elem(elem_size, elem_algo, elem_border, iter, table);
 
         if (elem_border == ccl_selection_border_right || elem_border == ccl_selection_border_both) {

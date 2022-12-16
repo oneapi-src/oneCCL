@@ -14,14 +14,15 @@
  limitations under the License.
 */
 #include "common/stream/stream.hpp"
-#include "sched/queue/queue.hpp"
-
+#include "common/utils/sycl_utils.hpp"
+#include "comm/comm.hpp"
+#include "common/global/global.hpp"
+#include "common/api_wrapper/ze_api_wrapper.hpp"
 #include "sched/entry/ze/ze_base_entry.hpp"
 #include "sched/entry/ze/ze_cache.hpp"
 #include "sched/entry/ze/ze_call.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
-
-#include "common/utils/sycl_utils.hpp"
+#include "sched/sched.hpp"
 
 using namespace ccl;
 using namespace ccl::ze;
@@ -34,12 +35,12 @@ ze_base_entry::ze_base_entry(ccl_sched *sched,
           comm(comm),
           use_single_list(sched->use_single_list),
           wait_events(wait_events) {
-    if (!comm) {
-        comm = sched->coll_param.comm;
+    if (!this->comm) {
+        this->comm = sched->coll_param.comm;
     }
-    CCL_THROW_IF_NOT(comm, "no comm");
-    comm_rank = comm->rank();
-    comm_size = comm->size();
+    CCL_THROW_IF_NOT(this->comm, "no comm");
+    comm_rank = this->comm->rank();
+    comm_size = this->comm->size();
 
     // we can be here in case of copy_entry which may not have ze backend here, so check it
     if (sched->coll_param.stream &&
@@ -167,6 +168,22 @@ bool ze_base_entry::is_event_completed(ze_event_handle_t event) {
 
 void ze_base_entry::update() {
     bool complete = is_event_completed(entry_event);
+    if (is_update_time_expired) {
+        size_t complete_event_count = 0;
+        for (auto &event : wait_events) {
+            if (is_event_completed(event)) {
+                complete_event_count++;
+            }
+        }
+        LOG_DEBUG("completed ",
+                  complete_event_count,
+                  " of ",
+                  wait_events.size(),
+                  " wait events. Entry event ",
+                  entry_event,
+                  " is ",
+                  (complete) ? "completed" : "not completed");
+    }
 
     if (complete) {
         LOG_DEBUG(name(), " ", this, " entry complete");
@@ -202,13 +219,9 @@ ze_command_list_handle_t ze_base_entry::get_comp_list(uint32_t index) const {
     return sched->get_memory().list_manager->get_comp_list(this, wait_events, index);
 }
 
-ze_command_list_handle_t ze_base_entry::get_copy_list(uint32_t index, bool peer_card_copy) const {
-    return sched->get_memory().list_manager->get_copy_list(
-        this, wait_events, index, peer_card_copy);
-}
-
-std::string ze_base_entry::name_ext() const {
-    return "[empty]";
+ze_command_list_handle_t ze_base_entry::get_copy_list(copy_direction direction,
+                                                      uint32_t index) const {
+    return sched->get_memory().list_manager->get_copy_list(this, wait_events, direction, index);
 }
 
 ze_event_handle_t ze_base_entry::create_event(ze_event_pool_handle_t event_pool,

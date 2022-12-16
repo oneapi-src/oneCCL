@@ -28,8 +28,9 @@ __kernel void empty_kernel(int my_rank,
         size_t thread_id = get_global_id(0); \
         for (size_t i = 0; thread_id + i < count; i += work_group_size) { \
             const size_t idx = thread_id + i; \
-            output_buffer[idx] = OpFunc(input_buffer[idx], peer_input_buffer[idx]); \
-            peer_output_buffer[idx] = output_buffer[idx]; \
+            Dtype ret = OpFunc(input_buffer[idx], peer_input_buffer[idx]); \
+            output_buffer[idx] = ret; \
+            peer_output_buffer[idx] = ret; \
         } \
     }
 
@@ -59,6 +60,213 @@ __kernel void empty_kernel(int my_rank,
         for (size_t i = 0; thread_id + i < count; i += work_group_size) { \
             const size_t idx = thread_id + i; \
             inoutput_buffer[idx] = OpFunc(input_buffer[idx], inoutput_buffer[idx]); \
+        } \
+    }
+
+#define DEFINE_REDUCE_SINGLE_LOCAL_INPLACE_KERNEL(DtypeName, Dtype, OpName, OpFunc) \
+    __kernel void reduce_single_local_inplace_kernel_##DtypeName##_##OpName( \
+        ulong count, \
+        int peer_count, \
+        const __global Dtype* input_buffer, \
+        __global Dtype* inoutput_buffer) { \
+        DEBUG_BLOCK(printf("in reduce_single_local_inplace_kernel\n")); \
+        size_t work_group_size = get_global_size(0); \
+        size_t thread_id = get_global_id(0); \
+        for (size_t i = 0; thread_id + i < count; i += work_group_size) { \
+            const size_t idx = thread_id + i; \
+            Dtype ret = OpFunc(input_buffer[idx], inoutput_buffer[idx]); \
+            for (int j = 1; j < peer_count; j++) { \
+                ret = OpFunc(inoutput_buffer[j * count + idx], ret); \
+            } \
+            inoutput_buffer[idx] = ret; \
+        } \
+    }
+
+#define DEFINE_REDUCE_MONOLITHIC_1_KERNEL(DtypeName, Dtype, OpName, OpFunc) \
+    __kernel void reduce_monolithic_kernel_1_##DtypeName##_##OpName( \
+        ulong count, \
+        const __global Dtype* input_buffer, \
+        const __global Dtype* peer_buffer1, \
+        __global Dtype* output_buffer) { \
+        DEBUG_BLOCK(printf("in reduce_monolithic_kernel_1\n")); \
+        const size_t work_group_size = get_global_size(0); \
+        const size_t thread_id = get_global_id(0); \
+        for (size_t idx = thread_id; idx < count; idx += work_group_size) { \
+            Dtype sum = input_buffer[idx]; \
+            sum = OpFunc(sum, peer_buffer1[idx]); \
+            output_buffer[idx] = sum; \
+        } \
+    }
+
+#define DEFINE_REDUCE_MONOLITHIC_2_KERNEL(DtypeName, Dtype, OpName, OpFunc) \
+    __kernel void reduce_monolithic_kernel_2_##DtypeName##_##OpName( \
+        ulong count, \
+        const __global Dtype* input_buffer, \
+        const __global Dtype* peer_buffer1, \
+        const __global Dtype* peer_buffer2, \
+        __global Dtype* output_buffer) { \
+        DEBUG_BLOCK(printf("in reduce_monolithic_kernel_2\n")); \
+        const size_t work_group_size = get_global_size(0); \
+        const size_t thread_id = get_global_id(0); \
+        for (size_t idx = thread_id; idx < count; idx += work_group_size) { \
+            Dtype sum = input_buffer[idx]; \
+            sum = OpFunc(sum, peer_buffer1[idx]); \
+            sum = OpFunc(sum, peer_buffer2[idx]); \
+            output_buffer[idx] = sum; \
+        } \
+    }
+
+#define DEFINE_REDUCE_MONOLITHIC_3_KERNEL(DtypeName, Dtype, OpName, OpFunc) \
+    __kernel void reduce_monolithic_kernel_3_##DtypeName##_##OpName( \
+        ulong count, \
+        const __global Dtype* input_buffer, \
+        const __global Dtype* peer_buffer1, \
+        const __global Dtype* peer_buffer2, \
+        const __global Dtype* peer_buffer3, \
+        __global Dtype* output_buffer) { \
+        DEBUG_BLOCK(printf("in reduce_monolithic_kernel_3\n")); \
+        const size_t work_group_size = get_global_size(0); \
+        const size_t thread_id = get_global_id(0); \
+        for (size_t idx = thread_id; idx < count; idx += work_group_size) { \
+            Dtype sum = input_buffer[idx]; \
+            sum = OpFunc(sum, peer_buffer1[idx]); \
+            sum = OpFunc(sum, peer_buffer2[idx]); \
+            sum = OpFunc(sum, peer_buffer3[idx]); \
+            output_buffer[idx] = sum; \
+        } \
+    }
+
+#define DEFINE_REDUCE_MONOLITHIC_4_KERNEL(DtypeName, Dtype, OpName, OpFunc) \
+    __kernel void reduce_monolithic_kernel_4_##DtypeName##_##OpName( \
+        ulong count, \
+        const __global Dtype* input_buffer, \
+        const __global Dtype* peer_buffer1, \
+        const __global Dtype* peer_buffer2, \
+        const __global Dtype* peer_buffer3, \
+        const __global Dtype* peer_buffer4, \
+        __global Dtype* output_buffer) { \
+        DEBUG_BLOCK(printf("in reduce_monolithic_kernel_4\n")); \
+        const size_t work_group_size = get_global_size(0); \
+        const size_t thread_id = get_global_id(0); \
+        for (size_t idx = thread_id; idx < count; idx += work_group_size) { \
+            Dtype sum = input_buffer[idx]; \
+            sum = OpFunc(sum, peer_buffer1[idx]); \
+            sum = OpFunc(sum, peer_buffer2[idx]); \
+            sum = OpFunc(sum, peer_buffer3[idx]); \
+            sum = OpFunc(sum, peer_buffer4[idx]); \
+            output_buffer[idx] = sum; \
+        } \
+    }
+
+#define DEFINE_REDUCE_MONOLITHIC_5_KERNEL(DtypeName, Dtype, OpName, OpFunc) \
+    __kernel void reduce_monolithic_kernel_5_##DtypeName##_##OpName( \
+        ulong count, \
+        const __global Dtype* input_buffer, \
+        const __global Dtype* peer_buffer1, \
+        const __global Dtype* peer_buffer2, \
+        const __global Dtype* peer_buffer3, \
+        const __global Dtype* peer_buffer4, \
+        const __global Dtype* peer_buffer5, \
+        __global Dtype* output_buffer) { \
+        DEBUG_BLOCK(printf("in reduce_monolithic_kernel_5\n")); \
+        const size_t work_group_size = get_global_size(0); \
+        const size_t thread_id = get_global_id(0); \
+        for (size_t idx = thread_id; idx < count; idx += work_group_size) { \
+            Dtype sum = input_buffer[idx]; \
+            sum = OpFunc(sum, peer_buffer1[idx]); \
+            sum = OpFunc(sum, peer_buffer2[idx]); \
+            sum = OpFunc(sum, peer_buffer3[idx]); \
+            sum = OpFunc(sum, peer_buffer4[idx]); \
+            sum = OpFunc(sum, peer_buffer5[idx]); \
+            output_buffer[idx] = sum; \
+        } \
+    }
+
+#define DEFINE_WRITE_MONOLITHIC_1_KERNEL(DtypeName, Dtype, OpName, OpFunc) \
+    __kernel void write_monolithic_kernel_1_##DtypeName##_##OpName( \
+        ulong count, const __global Dtype* input_buffer, __global Dtype* peer_buffer1) { \
+        DEBUG_BLOCK(printf("in write_monolithic_kernel_1 count %d\n", count)); \
+        const size_t work_group_size = get_global_size(0); \
+        const size_t thread_id = get_global_id(0); \
+        for (size_t idx = thread_id; idx < count; idx += work_group_size) { \
+            const Dtype val = input_buffer[idx]; \
+            peer_buffer1[idx] = val; \
+        } \
+    }
+
+#define DEFINE_WRITE_MONOLITHIC_2_KERNEL(DtypeName, Dtype, OpName, OpFunc) \
+    __kernel void write_monolithic_kernel_2_##DtypeName##_##OpName( \
+        ulong count, \
+        const __global Dtype* input_buffer, \
+        __global Dtype* peer_buffer1, \
+        __global Dtype* peer_buffer2) { \
+        DEBUG_BLOCK(printf("in write_monolithic_kernel_2 count %d\n", count)); \
+        const size_t work_group_size = get_global_size(0); \
+        const size_t thread_id = get_global_id(0); \
+        for (size_t idx = thread_id; idx < count; idx += work_group_size) { \
+            const Dtype val = input_buffer[idx]; \
+            peer_buffer1[idx] = val; \
+            peer_buffer2[idx] = val; \
+        } \
+    }
+
+#define DEFINE_WRITE_MONOLITHIC_3_KERNEL(DtypeName, Dtype, OpName, OpFunc) \
+    __kernel void write_monolithic_kernel_3_##DtypeName##_##OpName( \
+        ulong count, \
+        const __global Dtype* input_buffer, \
+        __global Dtype* peer_buffer1, \
+        __global Dtype* peer_buffer2, \
+        __global Dtype* peer_buffer3) { \
+        DEBUG_BLOCK(printf("in write_monolithic_kernel_3 count %d\n", count)); \
+        const size_t work_group_size = get_global_size(0); \
+        const size_t thread_id = get_global_id(0); \
+        for (size_t idx = thread_id; idx < count; idx += work_group_size) { \
+            const Dtype val = input_buffer[idx]; \
+            peer_buffer1[idx] = val; \
+            peer_buffer2[idx] = val; \
+            peer_buffer3[idx] = val; \
+        } \
+    }
+
+#define DEFINE_WRITE_MONOLITHIC_4_KERNEL(DtypeName, Dtype, OpName, OpFunc) \
+    __kernel void write_monolithic_kernel_4_##DtypeName##_##OpName( \
+        ulong count, \
+        const __global Dtype* input_buffer, \
+        __global Dtype* peer_buffer1, \
+        __global Dtype* peer_buffer2, \
+        __global Dtype* peer_buffer3, \
+        __global Dtype* peer_buffer4) { \
+        DEBUG_BLOCK(printf("in write_monolithic_kernel_4 count %d\n", count)); \
+        const size_t work_group_size = get_global_size(0); \
+        const size_t thread_id = get_global_id(0); \
+        for (size_t idx = thread_id; idx < count; idx += work_group_size) { \
+            const Dtype val = input_buffer[idx]; \
+            peer_buffer1[idx] = val; \
+            peer_buffer2[idx] = val; \
+            peer_buffer3[idx] = val; \
+            peer_buffer4[idx] = val; \
+        } \
+    }
+
+#define DEFINE_WRITE_MONOLITHIC_5_KERNEL(DtypeName, Dtype, OpName, OpFunc) \
+    __kernel void write_monolithic_kernel_5_##DtypeName##_##OpName( \
+        ulong count, \
+        const __global Dtype* input_buffer, \
+        __global Dtype* peer_buffer1, \
+        __global Dtype* peer_buffer2, \
+        __global Dtype* peer_buffer3, \
+        __global Dtype* peer_buffer4, \
+        __global Dtype* peer_buffer5) { \
+        DEBUG_BLOCK(printf("in write_monolithic_kernel_5 count %d\n", count)); \
+        const size_t work_group_size = get_global_size(0); \
+        const size_t thread_id = get_global_id(0); \
+        for (size_t idx = thread_id; idx < count; idx += work_group_size) { \
+            const Dtype val = input_buffer[idx]; \
+            peer_buffer1[idx] = val; \
+            peer_buffer2[idx] = val; \
+            peer_buffer3[idx] = val; \
+            peer_buffer4[idx] = val; \
+            peer_buffer5[idx] = val; \
         } \
     }
 
@@ -138,3 +346,21 @@ DEFINE_FP16OPS(half)
 DEFINE_ALL_KERNELS(ALLREDUCE)
 DEFINE_ALL_KERNELS(REDUCE_LOCAL_OUTOFPLACE)
 DEFINE_ALL_KERNELS(REDUCE_LOCAL_INPLACE)
+DEFINE_ALL_KERNELS(REDUCE_SINGLE_LOCAL_INPLACE)
+DEFINE_ALL_KERNELS(REDUCE_MONOLITHIC_1)
+DEFINE_ALL_KERNELS(REDUCE_MONOLITHIC_2)
+DEFINE_ALL_KERNELS(REDUCE_MONOLITHIC_3)
+DEFINE_ALL_KERNELS(REDUCE_MONOLITHIC_4)
+DEFINE_ALL_KERNELS(REDUCE_MONOLITHIC_5)
+
+DEFINE_KERNELS_WITH_OP(WRITE_MONOLITHIC_1, custom)
+DEFINE_KERNELS_WITH_OP(WRITE_MONOLITHIC_2, custom)
+DEFINE_KERNELS_WITH_OP(WRITE_MONOLITHIC_3, custom)
+DEFINE_KERNELS_WITH_OP(WRITE_MONOLITHIC_4, custom)
+DEFINE_KERNELS_WITH_OP(WRITE_MONOLITHIC_5, custom)
+
+DEFINE_KERNELS_WITH_LP_OP(WRITE_MONOLITHIC_1, custom)
+DEFINE_KERNELS_WITH_LP_OP(WRITE_MONOLITHIC_2, custom)
+DEFINE_KERNELS_WITH_LP_OP(WRITE_MONOLITHIC_3, custom)
+DEFINE_KERNELS_WITH_LP_OP(WRITE_MONOLITHIC_4, custom)
+DEFINE_KERNELS_WITH_LP_OP(WRITE_MONOLITHIC_5, custom)

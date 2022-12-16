@@ -16,7 +16,20 @@
 #pragma once
 
 #include <algorithm>
+#if __has_include(<sycl/sycl.hpp>)
+#include <sycl/sycl.hpp>
+#elif __has_include(<CL/sycl.hpp>)
 #include <CL/sycl.hpp>
+#else
+#error "Unsupported compiler"
+#endif
+#if __has_include(<CL/sycl/property_list.hpp>)
+#include <CL/sycl/property_list.hpp>
+#elif __has_include(<sycl/property_list.hpp>)
+#include <sycl/property_list.hpp>
+#else
+#error "Unsupported compiler"
+#endif
 #include <iostream>
 #include <map>
 #include <mpi.h>
@@ -25,15 +38,41 @@
 #include <string>
 #include <numeric>
 
-#include "CL/sycl/property_list.hpp"
 #include "base.hpp"
 #include "base_utils.hpp"
-
 #include "oneapi/ccl.hpp"
+
+#if defined(__INTEL_LLVM_COMPILER)
+#if (__INTEL_LLVM_COMPILER < 20230000)
+#define CCL_USE_SYCL121_API 1
+#else // (__INTEL_LLVM_COMPILER < 20230000)
+#define CCL_USE_SYCL121_API 0
+#endif // (__INTEL_LLVM_COMPILER < 20230000)
+#elif defined(__LIBSYCL_MAJOR_VERSION)
+#if (__LIBSYCL_MAJOR_VERSION < 6)
+#define CCL_USE_SYCL121_API 1
+#else // (__LIBSYCL_MAJOR_VERSION < 6)
+#define CCL_USE_SYCL121_API 0
+#endif // (__LIBSYCL_MAJOR_VERSION < 6)
+#else // __INTEL_LLVM_COMPILER || __LIBSYCL_MAJOR_VERSION
+#error "Unsupported compiler"
+#endif
 
 using namespace std;
 using namespace sycl;
 using namespace sycl::access;
+
+namespace ccl {
+#if CCL_USE_SYCL121_API
+const auto cpu_selector_v = ::sycl::cpu_selector{};
+const auto gpu_selector_v = ::sycl::gpu_selector{};
+const auto default_selector_v = ::sycl::default_selector{};
+#else // CCL_USE_SYCL121_API
+inline const auto& cpu_selector_v = ::sycl::cpu_selector_v;
+inline const auto& gpu_selector_v = ::sycl::gpu_selector_v;
+inline const auto& default_selector_v = ::sycl::default_selector_v;
+#endif // CCL_USE_SYCL121_API
+} // namespace ccl
 
 /* help functions for sycl-specific base implementation */
 inline bool has_gpu() {
@@ -228,36 +267,30 @@ inline std::vector<sycl::queue> create_sycl_queues(const std::string& device_typ
     try {
         if (device_type.compare("gpu") == 0) {
             if (!has_gpu()) {
-                throw std::runtime_error("GPU is requested but not available.");
+                throw std::runtime_error("GPU is requested but not available");
             }
 
             /* GPU type has special handling to cover multi-tile case */
             devices = create_sycl_gpu_devices(select_root_devices);
         }
         else {
-            unique_ptr<device_selector> selector;
-
             if (device_type.compare("cpu") == 0) {
-                selector.reset(new cpu_selector());
-            }
-            else if (device_type.compare("host") == 0) {
-                selector.reset(new host_selector());
+                devices.push_back(device(ccl::cpu_selector_v));
             }
             else if (device_type.compare("default") == 0) {
                 if (!has_accelerator()) {
-                    selector.reset(new default_selector());
+                    devices.push_back(device(ccl::default_selector_v));
                 }
                 else {
-                    selector.reset(new host_selector());
+                    devices.push_back(device(ccl::cpu_selector_v));
                     cout
                         << "Accelerator is the first in device list, but unavailable for multiprocessing "
-                        << " host_selector has been created instead of default_selector.\n";
+                        << " cpu_selector has been created instead of default_selector.\n";
                 }
             }
             else {
-                throw std::runtime_error("Please provide device type: cpu | gpu | host | default");
+                throw std::runtime_error("Please provide device type: cpu | gpu | default");
             }
-            devices.push_back(sycl::device(*selector));
         }
     }
     catch (...) {
@@ -268,10 +301,47 @@ inline std::vector<sycl::queue> create_sycl_queues(const std::string& device_typ
         throw std::runtime_error("No devices of requested type available");
     }
 
-    std::vector<sycl::device> rank_devices;
+    int global_rank = 0, local_rank = 0;
+    int global_size = 0, local_size = 0;
+    MPI_Comm_rank(MPI_COMM_WORLD, &global_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &global_size);
 
-    for (size_t idx = 0; idx < ranks.size(); idx++) {
-        rank_devices.push_back(devices[ranks[idx] % devices.size()]);
+    MPI_Comm local_comm;
+    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &local_comm);
+    MPI_Comm_rank(local_comm, &local_rank);
+    MPI_Comm_size(local_comm, &local_size);
+    MPI_Comm_free(&local_comm);
+
+    std::stringstream error_msg;
+
+    if (local_rank > global_rank) {
+        error_msg << "Local rank should be less or equal to global rank (local_rank: " << local_rank
+                  << ", global_rank: " << global_rank << ")";
+        throw std::runtime_error(error_msg.str());
+    }
+
+    if (local_size > global_size) {
+        error_msg << "Local size should be less or equal to global size (local_size: " << local_size
+                  << ", global_size: " << global_size << ")";
+        throw std::runtime_error(error_msg.str());
+    }
+
+    if (ranks.size() != 1) {
+        error_msg << "Unexpected number of device ranks: " << ranks.size();
+        throw std::runtime_error(error_msg.str());
+    }
+
+    if (ranks[0] != global_rank) {
+        error_msg << "Unexpected device rank: " << ranks[0] << ", expected: " << global_rank;
+        throw std::runtime_error(error_msg.str());
+    }
+
+    // use local rank for device selection
+    std::vector<int> local_ranks(1, local_rank);
+
+    std::vector<sycl::device> rank_devices;
+    for (size_t idx = 0; idx < local_ranks.size(); idx++) {
+        rank_devices.push_back(devices[local_ranks[idx] % devices.size()]);
     }
 
     if (rank_devices.empty()) {
@@ -284,7 +354,7 @@ inline std::vector<sycl::queue> create_sycl_queues(const std::string& device_typ
         ctx = sycl::context(rank_devices);
     }
     catch (sycl::exception&) {
-        size_t preferred_idx = (ranks.back() / ranks.size()) % devices.size();
+        size_t preferred_idx = (local_ranks.back() / local_ranks.size()) % devices.size();
         cout << "Can not create context from all rank devices of type: " << device_type
              << ", create context from single device, idx " << preferred_idx << "\n";
         ctx = sycl::context(devices[preferred_idx]);
@@ -320,32 +390,14 @@ inline std::vector<sycl::queue> create_sycl_queues(const std::string& device_typ
     return queues;
 }
 
-inline bool create_sycl_queue(int argc, char* argv[], int rank, queue& q) {
-    if (argc >= 2) {
-        try {
-            std::vector<int> ranks = { rank };
-            q = create_sycl_queues(argv[1], ranks)[0];
-            return true;
-        }
-        catch (std::exception& e) {
-            cerr << e.what() << "\n";
-            return false;
-        }
-    }
-    else {
-        cerr << "Please provide device type: cpu | gpu | host | default\n";
-        return false;
-    }
-}
-
 inline bool create_sycl_queue(const std::string& type,
                               int rank,
                               queue& q,
                               const property_list& queue_props = {}) {
-    if (type == "gpu" || type == "cpu" || type == "host") {
+    if (type == "gpu" || type == "cpu" || type == "host" || type == "default") {
         try {
             std::vector<int> ranks = { rank };
-            q = create_sycl_queues(type.c_str(), ranks, false, queue_props)[0];
+            q = create_sycl_queues(type, ranks, false, queue_props)[0];
             return true;
         }
         catch (std::exception& e) {
@@ -354,8 +406,13 @@ inline bool create_sycl_queue(const std::string& type,
         }
     }
     else {
+        cerr << "Unknown device type: " << type << ", please provide: cpu | gpu | host | default\n";
         return false;
     }
+}
+
+inline bool create_sycl_queue(int argc, char* argv[], int rank, queue& q) {
+    return create_sycl_queue(((argc >= 2) ? argv[1] : "unknown"), rank, q, {});
 }
 
 inline bool handle_exception(queue& q) {

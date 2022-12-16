@@ -18,11 +18,10 @@
 #include "common/stream/stream.hpp"
 #include "common/stream/stream_selector_impl.hpp"
 #include "common/utils/enums.hpp"
-#include "common/utils/sycl_utils.hpp"
 #include "oneapi/ccl/native_device_api/export_api.hpp"
 
 #ifdef CCL_ENABLE_SYCL
-#include <CL/sycl/backend/level_zero.hpp>
+#include "common/utils/sycl_utils.hpp"
 #endif // CCL_ENABLE_SYCL
 
 namespace ccl {
@@ -36,7 +35,8 @@ std::string to_string(device_family family) {
 } // namespace ccl
 
 std::string to_string(const stream_type& type) {
-    using stream_str_enum = utils::enum_to_str<utils::enum_to_underlying(stream_type::last_value)>;
+    using stream_str_enum =
+        ccl::utils::enum_to_str<ccl::utils::enum_to_underlying(stream_type::last_value)>;
     return stream_str_enum({ "host", "cpu", "gpu" }).choose(type, "unknown");
 }
 
@@ -49,7 +49,7 @@ ccl_stream::ccl_stream(stream_type type,
     native_stream = stream;
 
 #ifdef CCL_ENABLE_SYCL
-    cl::sycl::property_list props{};
+    sycl::property_list props{};
     if (stream.is_in_order()) {
         props = { sycl::property::queue::in_order{} };
     }
@@ -69,7 +69,40 @@ ccl_stream::ccl_stream(stream_type type,
     if (backend == ccl::utils::get_level_zero_backend() && ccl::global_data::get().ze_data) {
         device = sycl::get_native<ccl::utils::get_level_zero_backend()>(stream.get_device());
         context = sycl::get_native<ccl::utils::get_level_zero_backend()>(stream.get_context());
+        // TODO: after compiler 20220316, L0 cmd queue from sycl queue can be available only after sycl queue is called to submit kernel.
+        // To WA this, submit barrier to create available L0 cmd queue when using external queue
+        if (ccl::global_data::env().enable_external_queue) {
+            stream.ext_oneapi_submit_barrier();
+        }
+        cmd_queue = sycl::get_native<ccl::utils::get_level_zero_backend()>(stream);
+        LOG_DEBUG("command queue initialized from external sycl queue is ", cmd_queue);
         device_family = ccl::ze::get_device_family(device);
+
+        ccl::ze::ze_queue_properties_t queue_props;
+        ccl::ze::get_queues_properties(device, &queue_props);
+
+        if (!ccl::global_data::env().disable_ze_family_check) {
+            if (queue_props.size() == 1 && queue_props.front().numQueues == 1 &&
+                (device_family == ccl::device_family::unknown)) {
+                ze_device_properties_t dev_props = ccl::ze::default_device_props;
+                ZE_CALL(zeDeviceGetProperties, (device, &dev_props));
+                bool is_integrated = dev_props.flags & ZE_DEVICE_PROPERTY_FLAG_INTEGRATED;
+
+                if (!is_integrated) {
+                    LOG_WARN("usage of discrete device with unexpected properties"
+                             " (id: ",
+                             dev_props.deviceId,
+                             ", name: ",
+                             (strlen(dev_props.name) ? dev_props.name : "<empty>"),
+                             ", flags: ",
+                             ccl::ze::flags_to_string<ze_device_property_flag_t>(dev_props.flags),
+                             ")"
+                             ", set ",
+                             CCL_ZE_DISABLE_FAMILY_CHECK,
+                             "=1 to hide this message");
+                }
+            }
+        }
     }
 #endif // CCL_ENABLE_ZE
 }
@@ -98,7 +131,7 @@ std::string ccl_stream::to_string() const {
 #ifdef CCL_ENABLE_SYCL
     ss << "{ "
        << "type: " << ::to_string(type) << ", in_order: " << native_stream.is_in_order()
-       << ", device: " << native_stream.get_device().get_info<cl::sycl::info::device::name>()
+       << ", device: " << native_stream.get_device().get_info<sycl::info::device::name>()
        << ", device_family: " << ccl::to_string(device_family) << " }";
 #else // CCL_ENABLE_SYCL
     ss << reinterpret_cast<void*>(native_stream.get());
@@ -123,7 +156,7 @@ bool ccl_stream::is_gpu() const {
 }
 
 #ifdef CCL_ENABLE_SYCL
-cl::sycl::backend ccl_stream::get_backend() const {
+sycl::backend ccl_stream::get_backend() const {
     return backend;
 }
 #ifdef CCL_ENABLE_ZE
@@ -138,6 +171,14 @@ ze_context_handle_t ccl_stream::get_ze_context() const {
     CCL_THROW_IF_NOT(backend == ccl::utils::get_level_zero_backend());
     CCL_THROW_IF_NOT(context, "no context");
     return context;
+}
+
+ze_command_queue_handle_t ccl_stream::get_ze_command_queue() const {
+    CCL_THROW_IF_NOT(backend == ccl::utils::get_level_zero_backend());
+    if (ccl::global_data::env().enable_external_queue) {
+        CCL_THROW_IF_NOT(cmd_queue, "no command queue");
+    }
+    return cmd_queue;
 }
 #endif // CCL_ENABLE_ZE
 #endif // CCL_ENBALE_SYCL

@@ -20,11 +20,11 @@
 #include "common/global/global.hpp"
 #include "common/utils/enums.hpp"
 #include "common/utils/memcpy.hpp"
-#include "common/utils/sycl_utils.hpp"
 #include "oneapi/ccl/types.hpp"
 #include "sched/queue/queue.hpp"
 
 #ifdef CCL_ENABLE_SYCL
+#include "common/utils/sycl_utils.hpp"
 #include <CL/sycl.hpp>
 #endif // CCL_ENABLE_SYCL
 
@@ -53,7 +53,7 @@
                     inout_buf_##type[i] = std::max(in_buf_##type[i], inout_buf_##type[i]); \
                 } \
                 break; \
-            default: CCL_FATAL("unexpected value ", utils::enum_to_underlying(reduction)); \
+            default: CCL_FATAL("unexpected value ", ccl::utils::enum_to_underlying(reduction)); \
         } \
     } while (0)
 

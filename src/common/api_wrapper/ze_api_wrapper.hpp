@@ -17,7 +17,8 @@
 
 #include "oneapi/ccl/config.h"
 
-#include <dlfcn.h>
+#include <string>
+#include <vector>
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
 
@@ -26,7 +27,7 @@
 
 namespace ccl {
 
-typedef struct libze_ops {
+typedef struct ze_lib_ops {
     decltype(zeInit) *zeInit;
     decltype(zeDriverGet) *zeDriverGet;
     decltype(zeDriverGetApiVersion) *zeDriverGetApiVersion;
@@ -94,9 +95,9 @@ typedef struct libze_ops {
     decltype(zesFabricPortGetConfig) *zesFabricPortGetConfig;
     decltype(zesFabricPortGetProperties) *zesFabricPortGetProperties;
     decltype(zesFabricPortGetState) *zesFabricPortGetState;
-} libze_ops_t;
+} ze_lib_ops_t;
 
-static const char *fn_names[] = {
+static std::vector<std::string> ze_fn_names = {
     "zeInit",
     "zeDriverGet",
     "zeDriverGetApiVersion",
@@ -166,75 +167,76 @@ static const char *fn_names[] = {
     "zesFabricPortGetState",
 };
 
-extern ccl::libze_ops_t libze_ops;
+extern ccl::ze_lib_ops_t ze_lib_ops;
 
-#define zeInit                                 ccl::libze_ops.zeInit
-#define zeDriverGet                            ccl::libze_ops.zeDriverGet
-#define zeDriverGetApiVersion                  ccl::libze_ops.zeDriverGetApiVersion
-#define zeMemGetAllocProperties                ccl::libze_ops.zeMemGetAllocProperties
-#define zeMemGetAddressRange                   ccl::libze_ops.zeMemGetAddressRange
-#define zeMemAllocHost                         ccl::libze_ops.zeMemAllocHost
-#define zeMemAllocDevice                       ccl::libze_ops.zeMemAllocDevice
-#define zeMemAllocShared                       ccl::libze_ops.zeMemAllocShared
-#define zeMemFree                              ccl::libze_ops.zeMemFree
-#define zeMemOpenIpcHandle                     ccl::libze_ops.zeMemOpenIpcHandle
-#define zeMemCloseIpcHandle                    ccl::libze_ops.zeMemCloseIpcHandle
-#define zeMemGetIpcHandle                      ccl::libze_ops.zeMemGetIpcHandle
-#define zeDeviceGet                            ccl::libze_ops.zeDeviceGet
-#define zeDeviceGetProperties                  ccl::libze_ops.zeDeviceGetProperties
-#define zeDeviceCanAccessPeer                  ccl::libze_ops.zeDeviceCanAccessPeer
-#define zeDeviceGetCommandQueueGroupProperties ccl::libze_ops.zeDeviceGetCommandQueueGroupProperties
-#define zeDeviceGetP2PProperties               ccl::libze_ops.zeDeviceGetP2PProperties
-#define zeDeviceGetGlobalTimestamps            ccl::libze_ops.zeDeviceGetGlobalTimestamps
-#define zeDriverGetProperties                  ccl::libze_ops.zeDriverGetProperties
-#define zeDriverGetIpcProperties               ccl::libze_ops.zeDriverGetIpcProperties
-#define zeCommandQueueCreate                   ccl::libze_ops.zeCommandQueueCreate
-#define zeCommandQueueExecuteCommandLists      ccl::libze_ops.zeCommandQueueExecuteCommandLists
-#define zeCommandQueueSynchronize              ccl::libze_ops.zeCommandQueueSynchronize
-#define zeCommandQueueDestroy                  ccl::libze_ops.zeCommandQueueDestroy
-#define zeCommandListCreate                    ccl::libze_ops.zeCommandListCreate
-#define zeCommandListCreateImmediate           ccl::libze_ops.zeCommandListCreateImmediate
-#define zeCommandListAppendMemoryCopy          ccl::libze_ops.zeCommandListAppendMemoryCopy
-#define zeCommandListAppendLaunchKernel        ccl::libze_ops.zeCommandListAppendLaunchKernel
-#define zeCommandListAppendWaitOnEvents        ccl::libze_ops.zeCommandListAppendWaitOnEvents
-#define zeCommandListAppendBarrier             ccl::libze_ops.zeCommandListAppendBarrier
-#define zeCommandListClose                     ccl::libze_ops.zeCommandListClose
-#define zeCommandListReset                     ccl::libze_ops.zeCommandListReset
-#define zeCommandListDestroy                   ccl::libze_ops.zeCommandListDestroy
-#define zeContextCreate                        ccl::libze_ops.zeContextCreate
-#define zeContextDestroy                       ccl::libze_ops.zeContextDestroy
-#define zeEventPoolCreate                      ccl::libze_ops.zeEventPoolCreate
-#define zeEventCreate                          ccl::libze_ops.zeEventCreate
-#define zeEventQueryStatus                     ccl::libze_ops.zeEventQueryStatus
-#define zeEventHostSynchronize                 ccl::libze_ops.zeEventHostSynchronize
-#define zeEventHostReset                       ccl::libze_ops.zeEventHostReset
-#define zeEventHostSignal                      ccl::libze_ops.zeEventHostSignal
-#define zeEventDestroy                         ccl::libze_ops.zeEventDestroy
-#define zeEventPoolOpenIpcHandle               ccl::libze_ops.zeEventPoolOpenIpcHandle
-#define zeEventPoolCloseIpcHandle              ccl::libze_ops.zeEventPoolCloseIpcHandle
-#define zeEventPoolGetIpcHandle                ccl::libze_ops.zeEventPoolGetIpcHandle
-#define zeEventQueryKernelTimestamp            ccl::libze_ops.zeEventQueryKernelTimestamp
-#define zeEventPoolDestroy                     ccl::libze_ops.zeEventPoolDestroy
-#define zeFenceHostSynchronize                 ccl::libze_ops.zeFenceHostSynchronize
-#define zeFenceCreate                          ccl::libze_ops.zeFenceCreate
-#define zeKernelCreate                         ccl::libze_ops.zeKernelCreate
-#define zeKernelSetArgumentValue               ccl::libze_ops.zeKernelSetArgumentValue
-#define zeKernelSuggestGroupSize               ccl::libze_ops.zeKernelSuggestGroupSize
-#define zeKernelSetGroupSize                   ccl::libze_ops.zeKernelSetGroupSize
-#define zeKernelDestroy                        ccl::libze_ops.zeKernelDestroy
-#define zeModuleCreate                         ccl::libze_ops.zeModuleCreate
-#define zeModuleDestroy                        ccl::libze_ops.zeModuleDestroy
-#define zeModuleBuildLogGetString              ccl::libze_ops.zeModuleBuildLogGetString
-#define zeModuleBuildLogDestroy                ccl::libze_ops.zeModuleBuildLogDestroy
-#define zeDeviceGetComputeProperties           ccl::libze_ops.zeDeviceGetComputeProperties
-#define zeDeviceGetMemoryAccessProperties      ccl::libze_ops.zeDeviceGetMemoryAccessProperties
-#define zeDeviceGetMemoryProperties            ccl::libze_ops.zeDeviceGetMemoryProperties
-#define zeDeviceGetSubDevices                  ccl::libze_ops.zeDeviceGetSubDevices
-#define zesDevicePciGetProperties              ccl::libze_ops.zesDevicePciGetProperties
-#define zesDeviceEnumFabricPorts               ccl::libze_ops.zesDeviceEnumFabricPorts
-#define zesFabricPortGetConfig                 ccl::libze_ops.zesFabricPortGetConfig
-#define zesFabricPortGetProperties             ccl::libze_ops.zesFabricPortGetProperties
-#define zesFabricPortGetState                  ccl::libze_ops.zesFabricPortGetState
+#define zeInit                  ccl::ze_lib_ops.zeInit
+#define zeDriverGet             ccl::ze_lib_ops.zeDriverGet
+#define zeDriverGetApiVersion   ccl::ze_lib_ops.zeDriverGetApiVersion
+#define zeMemGetAllocProperties ccl::ze_lib_ops.zeMemGetAllocProperties
+#define zeMemGetAddressRange    ccl::ze_lib_ops.zeMemGetAddressRange
+#define zeMemAllocHost          ccl::ze_lib_ops.zeMemAllocHost
+#define zeMemAllocDevice        ccl::ze_lib_ops.zeMemAllocDevice
+#define zeMemAllocShared        ccl::ze_lib_ops.zeMemAllocShared
+#define zeMemFree               ccl::ze_lib_ops.zeMemFree
+#define zeMemOpenIpcHandle      ccl::ze_lib_ops.zeMemOpenIpcHandle
+#define zeMemCloseIpcHandle     ccl::ze_lib_ops.zeMemCloseIpcHandle
+#define zeMemGetIpcHandle       ccl::ze_lib_ops.zeMemGetIpcHandle
+#define zeDeviceGet             ccl::ze_lib_ops.zeDeviceGet
+#define zeDeviceGetProperties   ccl::ze_lib_ops.zeDeviceGetProperties
+#define zeDeviceCanAccessPeer   ccl::ze_lib_ops.zeDeviceCanAccessPeer
+#define zeDeviceGetCommandQueueGroupProperties \
+    ccl::ze_lib_ops.zeDeviceGetCommandQueueGroupProperties
+#define zeDeviceGetP2PProperties          ccl::ze_lib_ops.zeDeviceGetP2PProperties
+#define zeDeviceGetGlobalTimestamps       ccl::ze_lib_ops.zeDeviceGetGlobalTimestamps
+#define zeDriverGetProperties             ccl::ze_lib_ops.zeDriverGetProperties
+#define zeDriverGetIpcProperties          ccl::ze_lib_ops.zeDriverGetIpcProperties
+#define zeCommandQueueCreate              ccl::ze_lib_ops.zeCommandQueueCreate
+#define zeCommandQueueExecuteCommandLists ccl::ze_lib_ops.zeCommandQueueExecuteCommandLists
+#define zeCommandQueueSynchronize         ccl::ze_lib_ops.zeCommandQueueSynchronize
+#define zeCommandQueueDestroy             ccl::ze_lib_ops.zeCommandQueueDestroy
+#define zeCommandListCreate               ccl::ze_lib_ops.zeCommandListCreate
+#define zeCommandListCreateImmediate      ccl::ze_lib_ops.zeCommandListCreateImmediate
+#define zeCommandListAppendMemoryCopy     ccl::ze_lib_ops.zeCommandListAppendMemoryCopy
+#define zeCommandListAppendLaunchKernel   ccl::ze_lib_ops.zeCommandListAppendLaunchKernel
+#define zeCommandListAppendWaitOnEvents   ccl::ze_lib_ops.zeCommandListAppendWaitOnEvents
+#define zeCommandListAppendBarrier        ccl::ze_lib_ops.zeCommandListAppendBarrier
+#define zeCommandListClose                ccl::ze_lib_ops.zeCommandListClose
+#define zeCommandListReset                ccl::ze_lib_ops.zeCommandListReset
+#define zeCommandListDestroy              ccl::ze_lib_ops.zeCommandListDestroy
+#define zeContextCreate                   ccl::ze_lib_ops.zeContextCreate
+#define zeContextDestroy                  ccl::ze_lib_ops.zeContextDestroy
+#define zeEventPoolCreate                 ccl::ze_lib_ops.zeEventPoolCreate
+#define zeEventCreate                     ccl::ze_lib_ops.zeEventCreate
+#define zeEventQueryStatus                ccl::ze_lib_ops.zeEventQueryStatus
+#define zeEventHostSynchronize            ccl::ze_lib_ops.zeEventHostSynchronize
+#define zeEventHostReset                  ccl::ze_lib_ops.zeEventHostReset
+#define zeEventHostSignal                 ccl::ze_lib_ops.zeEventHostSignal
+#define zeEventDestroy                    ccl::ze_lib_ops.zeEventDestroy
+#define zeEventPoolOpenIpcHandle          ccl::ze_lib_ops.zeEventPoolOpenIpcHandle
+#define zeEventPoolCloseIpcHandle         ccl::ze_lib_ops.zeEventPoolCloseIpcHandle
+#define zeEventPoolGetIpcHandle           ccl::ze_lib_ops.zeEventPoolGetIpcHandle
+#define zeEventQueryKernelTimestamp       ccl::ze_lib_ops.zeEventQueryKernelTimestamp
+#define zeEventPoolDestroy                ccl::ze_lib_ops.zeEventPoolDestroy
+#define zeFenceHostSynchronize            ccl::ze_lib_ops.zeFenceHostSynchronize
+#define zeFenceCreate                     ccl::ze_lib_ops.zeFenceCreate
+#define zeKernelCreate                    ccl::ze_lib_ops.zeKernelCreate
+#define zeKernelSetArgumentValue          ccl::ze_lib_ops.zeKernelSetArgumentValue
+#define zeKernelSuggestGroupSize          ccl::ze_lib_ops.zeKernelSuggestGroupSize
+#define zeKernelSetGroupSize              ccl::ze_lib_ops.zeKernelSetGroupSize
+#define zeKernelDestroy                   ccl::ze_lib_ops.zeKernelDestroy
+#define zeModuleCreate                    ccl::ze_lib_ops.zeModuleCreate
+#define zeModuleDestroy                   ccl::ze_lib_ops.zeModuleDestroy
+#define zeModuleBuildLogGetString         ccl::ze_lib_ops.zeModuleBuildLogGetString
+#define zeModuleBuildLogDestroy           ccl::ze_lib_ops.zeModuleBuildLogDestroy
+#define zeDeviceGetComputeProperties      ccl::ze_lib_ops.zeDeviceGetComputeProperties
+#define zeDeviceGetMemoryAccessProperties ccl::ze_lib_ops.zeDeviceGetMemoryAccessProperties
+#define zeDeviceGetMemoryProperties       ccl::ze_lib_ops.zeDeviceGetMemoryProperties
+#define zeDeviceGetSubDevices             ccl::ze_lib_ops.zeDeviceGetSubDevices
+#define zesDevicePciGetProperties         ccl::ze_lib_ops.zesDevicePciGetProperties
+#define zesDeviceEnumFabricPorts          ccl::ze_lib_ops.zesDeviceEnumFabricPorts
+#define zesFabricPortGetConfig            ccl::ze_lib_ops.zesFabricPortGetConfig
+#define zesFabricPortGetProperties        ccl::ze_lib_ops.zesFabricPortGetProperties
+#define zesFabricPortGetState             ccl::ze_lib_ops.zesFabricPortGetState
 
 bool ze_api_init();
 void ze_api_fini();

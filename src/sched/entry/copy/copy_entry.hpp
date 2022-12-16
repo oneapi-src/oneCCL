@@ -47,24 +47,7 @@ public:
     void reset(size_t idx) override;
 
 protected:
-    void dump_detail(std::stringstream& str) const override {
-        ccl_logger::format(str,
-                           "dt ",
-                           ccl::global_data::get().dtypes->name(dtype),
-                           ", count ",
-                           count,
-                           ", in_buf ",
-                           in_buf,
-                           ", out_buf ",
-                           out_buf,
-                           ", in_buf_offset ",
-                           attr.in_buf_offset,
-                           ", out_buf_offset ",
-                           attr.out_buf_offset,
-                           ", direction ",
-                           to_string(attr.direction),
-                           "\n");
-    }
+    void dump_detail(std::stringstream& str) const override;
 
 private:
     ccl_buffer in_buf{};

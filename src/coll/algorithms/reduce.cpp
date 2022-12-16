@@ -460,7 +460,7 @@ ccl::status ccl_coll_build_topo_reduce(ccl_sched* sched,
                                        ccl::reduction op,
                                        int root,
                                        ccl_comm* comm) {
-    LOG_DEBUG("build gpu reduce");
+    LOG_DEBUG("build gpu topo reduce");
 
     ccl_comm* pair_comm = comm->get_pair_comm().get();
     ccl_comm* even_comm = comm->get_even_comm().get();
@@ -494,11 +494,21 @@ ccl::status ccl_coll_build_topo_reduce(ccl_sched* sched,
         tmp_buf_idx = in_buffers.size();
         in_buffers.push_back({ tmp_buf.get_ptr(), ccl::ze::ipc_mem_type::memory });
     }
+    size_t ipc_event_count{};
+    size_t max_ipc_event_count{ 5 };
+    ze_event_pool_handle_t ipc_event_pool{};
+    if (ccl::global_data::env().enable_ze_barrier) {
+        ipc_event_pool = sched->get_memory().ipc_event_pool_manager.create(max_ipc_event_count);
+        in_buffers.push_back({ static_cast<void*>(ipc_event_pool), ccl::ze::ipc_mem_type::pool });
+    }
 
-    ccl::add_handle_exchange(sched, node_comm, in_buffers);
+    ccl::add_handle_exchange(
+        sched, node_comm, in_buffers, ccl_comm::invalid_rank, ipc_event_pool, ipc_event_count++);
 
     CCL_THROW_IF_NOT(comm_size % 2 == 0, "unexpected comm_size ", comm_size);
     CCL_THROW_IF_NOT(node_comm_size % 2 == 0, "unexpected node_comm_size ", node_comm_size);
+    CCL_THROW_IF_NOT(
+        count >= size_t(comm_size), "unexpected count:", count, " < comm_size:", comm_size);
 
     if (is_single_card) {
         LOG_DEBUG("topo/scale_up/intra: use ze_onesided_reduce");
@@ -509,7 +519,124 @@ ccl::status ccl_coll_build_topo_reduce(ccl_sched* sched,
 
         ccl::add_comm_barrier(sched, pair_comm);
     }
+    else if (ccl::global_data::env().enable_ze_bidir_algo) {
+        size_t base_count = count;
+        size_t pair_comm_offset = 0;
+        size_t pair_comm_offset_bytes = 0;
+
+        base_count = count / pair_comm->size();
+        pair_comm_offset = base_count * pair_comm->rank();
+        pair_comm_offset_bytes = pair_comm_offset * dtype.size();
+
+        if (pair_comm->rank() == pair_comm->size() - 1)
+            base_count += count % pair_comm->size();
+
+        size_t main_block_count = base_count / even_comm_size;
+        size_t block_count = main_block_count;
+        if (even_comm->rank() == even_comm_size - 1) {
+            block_count += base_count % even_comm_size;
+        }
+        size_t even_comm_offset_bytes = main_block_count * even_comm->rank() * dtype.size();
+        ccl_buffer pair_comm_send_buf = send_buf + pair_comm_offset_bytes;
+        ccl_buffer pair_comm_recv_buf = tmp_buf + pair_comm_offset_bytes;
+        ccl_buffer even_comm_recv_buf = tmp_buf + pair_comm_offset_bytes + even_comm_offset_bytes;
+
+        LOG_DEBUG("rank: ",
+                  pair_comm->rank(),
+                  ", count: ",
+                  count,
+                  ", base_count: ",
+                  base_count,
+                  ", block_count: ",
+                  block_count,
+                  ", pair_comm_offset: ",
+                  pair_comm_offset,
+                  ", pair_comm_offset_bytes: ",
+                  pair_comm_offset_bytes);
+
+        std::vector<ze_event_handle_t> wait_events;
+
+        LOG_DEBUG("topo/scale_up/intra: use ze_onesided_reduce");
+        auto entry = entry_factory::create<ze_onesided_reduce_entry>(sched,
+                                                                     pair_comm_send_buf,
+                                                                     pair_comm_recv_buf,
+                                                                     base_count,
+                                                                     dtype,
+                                                                     op,
+                                                                     pair_comm->rank(),
+                                                                     pair_comm,
+                                                                     wait_events,
+                                                                     pair_comm_offset);
+        wait_events.push_back(entry->entry_event);
+        ccl::add_comm_barrier(sched, even_comm, wait_events, ipc_event_pool, ipc_event_count++);
+
+        LOG_DEBUG("topo/scale_up/inter: use ze_a2a_reduce_scatter_entry");
+        std::vector<size_t> block_counts(even_comm->size(), main_block_count);
+        block_counts.back() = block_count;
+        auto entry_reduce_scatter =
+            entry_factory::create<ze_a2a_reduce_scatter_entry>(sched,
+                                                               pair_comm_recv_buf,
+                                                               even_comm_recv_buf,
+                                                               block_counts.data(),
+                                                               dtype,
+                                                               op,
+                                                               even_comm,
+                                                               wait_events,
+                                                               tmp_buf_idx,
+                                                               pair_comm_offset);
+        wait_events.push_back(entry_reduce_scatter->entry_event);
+        ccl::add_comm_barrier(sched, even_comm, wait_events, ipc_event_pool, ipc_event_count++);
+
+        CCL_THROW_IF_NOT(comm->size() % node_comm_size == 0);
+        int root_node_idx = root / node_comm_size;
+        size_t offset = (pair_comm_offset_bytes + even_comm_offset_bytes) / dtype.size();
+
+        if (!is_single_node) {
+            ccl_coll_entry_param coll_param{ .ctype = ccl_coll_reduce,
+                                             .send_buf = even_comm_recv_buf,
+                                             .recv_buf = even_comm_recv_buf,
+                                             .count = block_count,
+                                             .dtype = dtype,
+                                             .reduction = op,
+                                             .root = root_node_idx,
+                                             .comm = r2r_comm };
+
+            ccl::add_scaleout(sched,
+                              coll_param,
+                              is_single_node,
+                              wait_events,
+                              copy_attr(copy_direction::h2d, 0, offset),
+                              r2r_comm,
+                              use_tmp_buf ? tmp_buf : recv_buf,
+                              root_node_idx);
+            ccl::add_comm_barrier(sched, node_comm, wait_events, ipc_event_pool, ipc_event_count++);
+        }
+
+        if (root_node_idx == r2r_comm->rank()) {
+            LOG_DEBUG("topo/scale_up/intra: use ze_gatherv");
+            int root_card_idx = root / pair_comm->size();
+            copy_direction cd =
+                even_comm->rank() != root_card_idx ? copy_direction::d2d : copy_direction::t2t;
+            auto entry_copy = entry_factory::create<ze_copy_entry>(
+                sched,
+                even_comm_recv_buf,
+                comm->rank() == root ? recv_buf : ccl_buffer(),
+                block_count,
+                dtype,
+                copy_attr(root, recv_buf_idx, cd, comm, 0, offset),
+                wait_events);
+            wait_events.push_back(entry_copy->entry_event);
+            ccl::add_comm_barrier(sched, node_comm, wait_events, ipc_event_pool, ipc_event_count++);
+        }
+
+        CCL_THROW_IF_NOT(ipc_event_count <= max_ipc_event_count,
+                         "unexpected ipc_event_count ",
+                         ipc_event_count,
+                         ", expected max ",
+                         max_ipc_event_count);
+    }
     else {
+        LOG_DEBUG("topo reduce original");
         if (pair_comm->rank() == ccl::global_data::env().kernel_1s_lead) {
             LOG_DEBUG("topo/scale_up/intra: use ze_onesided_reduce");
             entry_factory::create<ze_onesided_reduce_entry>(

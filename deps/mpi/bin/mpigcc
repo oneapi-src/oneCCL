@@ -115,7 +115,9 @@ fi
 # configure (e.g., determining whehter -lsocket is needee)
 CC="gcc"
 MPICH_VERSION="3.4a2"
-MPIVERSION="2021.7"
+CFLAGS=""
+CPPFLAGS=""
+MPIVERSION="2021.8"
 MPILIBNAME="mpi"                           
 
 

@@ -22,12 +22,13 @@
 #include "sched/sched.hpp"
 
 size_t ccl_executor::get_worker_idx_by_sched_id(ccl_sched* sched) {
-    return sched->sched_id % workers.size();
-}
+    if (sched->get_scaleout_flag()) {
+        // sched->sched_id is same as master sched id for all sub schedules
+        // so use the op_id to get different workers for different sub schedules
+        return sched->get_op_id() % workers.size();
+    }
 
-size_t ccl_executor::get_worker_idx_round_robin(ccl_sched* sched) {
-    ++rr_worker_idx %= workers.size();
-    return rr_worker_idx;
+    return sched->sched_id % workers.size();
 }
 
 size_t ccl_executor::calculate_atl_ep_count(size_t worker_count) {
@@ -75,53 +76,60 @@ std::unique_ptr<ccl_sched_queue> ccl_executor::create_sched_queue(size_t idx,
 ccl_executor::ccl_executor(const char* main_addr) {
     auto& env = ccl::global_data::env();
 
-    get_worker_idx_fn = (env.enable_fusion || env.enable_unordered_coll)
-                            ? &ccl_executor::get_worker_idx_by_sched_id
-                            : &ccl_executor::get_worker_idx_round_robin;
-
     /* generate ATL attr for all future communicators */
     atl_comm_manager::set_internal_env(generate_atl_attr(env));
     atl_comm_manager::set_executor(this);
 }
 
-void ccl_executor::start_workers(int proc_idx, int proc_count) {
-    set_local_coord(proc_idx, proc_count);
+void ccl_executor::start_workers(atl_proc_coord_t& coord) {
     auto& env = ccl::global_data::env();
-    CCL_THROW_IF_NOT(env.env_2_worker_affinity(get_local_proc_idx(), get_local_proc_count()));
-    CCL_THROW_IF_NOT(env.env_2_worker_mem_affinity(get_local_proc_count()));
-    start_workers();
-}
-
-void ccl_executor::start_workers() {
-    auto& env = ccl::global_data::env();
+    auto& global_data = ccl::global_data::get();
 
     auto worker_count = env.worker_count;
     auto ep_count = calculate_atl_ep_count(worker_count);
 
+    // firstly, check if an end user sets local coordinates.
+    // if it is not, take coordinates from ATL coord structure
+    if (global_data.get_local_proc_idx() == CCL_ENV_INT_NOT_SPECIFIED ||
+        global_data.get_local_proc_count() == CCL_ENV_INT_NOT_SPECIFIED) {
+        global_data.set_local_proc_idx(coord.local_idx);
+        global_data.set_local_proc_count(coord.local_count);
+        LOG_INFO("local_proc_idx: ",
+                 global_data.get_local_proc_idx(),
+                 ", local_proc_count: ",
+                 global_data.get_local_proc_count(),
+                 " are set by ATL transport");
+    }
+
+    CCL_THROW_IF_NOT(env.env_2_worker_affinity(global_data.get_local_proc_idx(),
+                                               global_data.get_local_proc_count()));
+    CCL_THROW_IF_NOT(env.env_2_worker_mem_affinity(global_data.get_local_proc_count()));
+
     if (env.worker_offload) {
-        CCL_THROW_IF_NOT(env.worker_affinity.size() >= get_local_proc_count() * worker_count,
-                         "unexpected worker affinity length ",
-                         env.worker_affinity.size(),
-                         ", should be ",
-                         get_local_proc_count() * worker_count);
+        CCL_THROW_IF_NOT(
+            env.worker_affinity.size() >= global_data.get_local_proc_count() * worker_count,
+            "unexpected worker affinity length ",
+            env.worker_affinity.size(),
+            ", should be ",
+            global_data.get_local_proc_count() * worker_count);
     }
 
     size_t ep_per_worker = ep_count / worker_count;
     for (size_t idx = 0; idx < worker_count; idx++) {
         if (env.enable_fusion && idx == 0) {
             LOG_DEBUG("create service worker");
-            workers.emplace_back(new ccl_service_worker(idx,
-                                                        create_sched_queue(idx, ep_per_worker),
-                                                        *ccl::global_data::get().fusion_manager));
+            workers.emplace_back(new ccl_service_worker(
+                idx, create_sched_queue(idx, ep_per_worker), *global_data.fusion_manager));
         }
         else {
             workers.emplace_back(new ccl_worker(idx, create_sched_queue(idx, ep_per_worker)));
         }
 
         if (env.worker_offload) {
-            size_t cpu_affinity = env.worker_affinity[get_local_proc_idx() * worker_count + idx];
+            size_t cpu_affinity =
+                env.worker_affinity[global_data.get_local_proc_idx() * worker_count + idx];
             size_t mem_affinity =
-                env.worker_mem_affinity[get_local_proc_idx() * worker_count + idx];
+                env.worker_mem_affinity[global_data.get_local_proc_idx() * worker_count + idx];
 
             CCL_THROW_IF_NOT(
                 workers.back()->start(cpu_affinity, mem_affinity) == ccl::status::success,
@@ -129,7 +137,7 @@ void ccl_executor::start_workers() {
                 idx);
 
             LOG_DEBUG("started worker: local_proc_idx ",
-                      get_local_proc_idx(),
+                      global_data.get_local_proc_idx(),
                       ", worker_idx ",
                       idx,
                       ", cpu: ",
@@ -246,7 +254,7 @@ void ccl_executor::start(ccl_sched* sched, bool extra_sched) {
     size_t worker_idx;
     auto& partial_scheds = sched->get_subscheds();
     for (size_t idx = 0; idx < partial_scheds.size(); idx++) {
-        worker_idx = (this->*get_worker_idx_fn)(partial_scheds[idx].get());
+        worker_idx = get_worker_idx_by_sched_id(partial_scheds[idx].get());
         LOG_DEBUG(
             "worker idx: ", worker_idx, ", coll: ", ccl_coll_type_to_str(sched->coll_param.ctype));
         workers[worker_idx]->add(partial_scheds[idx].get());
@@ -286,51 +294,6 @@ void ccl_executor::do_work() {
             worker->do_work(processed_count);
         }
     }
-}
-
-void ccl_executor::getenv_local_coord(const char* local_proc_idx_env_name,
-                                      const char* local_proc_count_env_name) {
-    char* local_idx_env = getenv(local_proc_idx_env_name);
-    char* local_count_env = getenv(local_proc_count_env_name);
-    if (local_idx_env && local_count_env) {
-        local_proc_idx = std::atoi(local_idx_env);
-        local_proc_count = std::atoi(local_count_env);
-        CCL_THROW_IF_NOT(local_proc_idx != CCL_ENV_INT_NOT_SPECIFIED,
-                         "unexpected local_proc_idx ",
-                         local_proc_idx);
-        CCL_THROW_IF_NOT(local_proc_count != CCL_ENV_INT_NOT_SPECIFIED,
-                         "unexpected local_proc_count ",
-                         local_proc_count);
-    }
-    else {
-        LOG_WARN(local_idx_env, " or ", local_count_env, " not found");
-        LOG_WARN("use local_proc_idx: ", local_proc_idx, " , local_proc_count: ", local_proc_count)
-    }
-}
-
-void ccl_executor::set_local_coord(int proc_idx, int proc_count) {
-    local_proc_idx = proc_idx;
-    local_proc_count = proc_count;
-    auto& env = ccl::global_data::env();
-
-    if (env.process_launcher == process_launcher_mode::hydra) {
-        getenv_local_coord("MPI_LOCALRANKID", "MPI_LOCALNRANKS");
-    }
-    else if (env.process_launcher == process_launcher_mode::torch) {
-        getenv_local_coord("LOCAL_RANK", "LOCAL_WORLD_SIZE");
-    }
-    else if (env.process_launcher == process_launcher_mode::none) {
-        getenv_local_coord("CCL_LOCAL_RANK", "CCL_LOCAL_SIZE");
-    }
-    else {
-        CCL_THROW("unexpected process launcher");
-    }
-    LOG_INFO("process launcher: ",
-             ccl::env_data::process_launcher_names[env.process_launcher],
-             ", local_proc_idx: ",
-             local_proc_idx,
-             ", local_proc_count: ",
-             local_proc_count);
 }
 
 size_t ccl_executor::get_worker_count() const {

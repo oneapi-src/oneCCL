@@ -15,6 +15,19 @@
 #
 cmake_minimum_required (VERSION 2.8)
 
+set(PROJECT_NAME "oneCCL examples")
+project(${PROJECT_NAME})
+
+message(STATUS "PROJECT_NAME: ${PROJECT_NAME}")
+message(STATUS "PROJECT_SOURCE_DIR: ${PROJECT_SOURCE_DIR}")
+
+# include helpers if we build in standalone mode
+if (${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
+    set(COMMON_CMAKE_DIR ${PROJECT_SOURCE_DIR}/../cmake)
+    include(${COMMON_CMAKE_DIR}/helpers.cmake)
+    define_compute_backend()
+endif()
+
 if (DEFINED ENV{CCL_CONFIGURATION})
     set(CCL_CONFIGURATION "$ENV{CCL_CONFIGURATION}")
     if(${CCL_CONFIGURATION} STREQUAL "cpu_gpu_dpcpp")
@@ -82,11 +95,10 @@ set(GCC_BF16_MIN_SUPPORTED "4.9.0")
 if (${CMAKE_C_COMPILER_ID} STREQUAL "Intel" OR ${CMAKE_C_COMPILER_ID} STREQUAL "Clang" OR (${CMAKE_C_COMPILER_ID} STREQUAL "GNU" AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${GCC_BF16_MIN_SUPPORTED}))
     add_definitions(-DCCL_BF16_COMPILER)
     set(CCL_BF16_COMPILER ON)
-    message(STATUS "BF16 compiler: yes")
 else()
     set(CCL_BF16_COMPILER OFF)
-    message(STATUS "BF16 compiler: no")
 endif()
+message(STATUS "BF16 AVX512F compiler: ${CCL_BF16_COMPILER}")
 
 if (CCL_BF16_COMPILER)
     if ((${CMAKE_C_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_C_COMPILER_ID} STREQUAL "GNU"))
@@ -100,6 +112,7 @@ endif()
 include_directories(include)
 
 add_subdirectory(cpu)
+
 if ("${COMPUTE_BACKEND}" STREQUAL "dpcpp")
     add_subdirectory(sycl)
 endif()

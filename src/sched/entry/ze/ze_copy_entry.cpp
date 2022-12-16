@@ -13,6 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#include "sched/entry/copy/copy_helper.hpp"
 #include "sched/entry/ze/ze_copy_entry.hpp"
 
 using namespace ccl;
@@ -23,14 +24,16 @@ ze_copy_entry::ze_copy_entry(ccl_sched* sched,
                              size_t count,
                              const ccl_datatype& dtype,
                              const copy_attr& attr,
-                             std::vector<ze_event_handle_t> wait_events)
+                             std::vector<ze_event_handle_t> wait_events,
+                             std::vector<ze_event_handle_t> dep_events)
         : ze_base_entry(sched, nullptr, 1, wait_events),
           sched(sched),
           in_buf(in_buf),
           out_buf(out_buf),
           dtype(dtype),
           attr(attr),
-          count(count) {
+          count(count),
+          dep_events(dep_events) {
     CCL_THROW_IF_NOT(sched, "no sched");
 }
 
@@ -51,8 +54,23 @@ void ze_copy_entry::init_ze_hook() {
     void* src = static_cast<char*>(in_buf.get_ptr()) + attr.in_buf_offset * dtype.size();
 
     ze_command_list_handle_t list =
-        ze_base_entry::get_copy_list(attr.hint_queue_index, attr.is_peer_card_copy);
-
+        ze_base_entry::get_copy_list(attr.direction, attr.hint_queue_index);
     ZE_CALL(zeCommandListAppendMemoryCopy,
-            (list, dst, src, dtype.size() * count, ze_base_entry::entry_event, 0, nullptr));
+            (list,
+             dst,
+             src,
+             dtype.size() * count,
+             ze_base_entry::entry_event,
+             dep_events.size(),
+             dep_events.data()));
+}
+
+std::string ze_copy_entry::name_ext() const {
+    std::stringstream out;
+    out << name();
+    if (attr.direction != copy_direction::undefined) {
+        out << ":" << to_string(attr.direction);
+    }
+    out << ":" << count * dtype.size();
+    return out.str();
 }

@@ -59,6 +59,14 @@ ccl_algorithm_selector<ccl_coll_allreduce>::ccl_algorithm_selector() {
     insert(fallback_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_allreduce_ring);
     insert(fallback_table, 0, CCL_ALLREDUCE_SHORT_MSG_SIZE, ccl_coll_allreduce_recursive_doubling);
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+
+    // scale-out table by default duplicates the main table
+    // TODO: fill the table with algorithms which is suitable for the better scale-out performance.
+    // Explanation: when implementing it was a simple scenario that does not contradict with the selection logic.
+    // If there are no environemnt variable provided, scale-out path will go through the scaleout_table like it is a main_table
+    // and use fallback path if nothing is suitable. Correct default behavior of each algorithm`s scale-out path is another task with discussion
+    // and performance measurements.
+    scaleout_table = main_table;
 }
 
 template <>
@@ -79,9 +87,6 @@ bool ccl_algorithm_selector_helper<ccl_coll_allreduce_algo>::can_use(
         can_use = false;
     else if (algo == ccl_coll_allreduce_nreduce && !(param.count / param.comm->size()))
         can_use = false;
-    else if (algo == ccl_coll_allreduce_2d &&
-             (ccl::global_data::env().atl_transport == ccl_atl_mpi))
-        can_use = false;
     else if (algo == ccl_coll_allreduce_direct &&
              (ccl::global_data::env().atl_transport == ccl_atl_ofi))
         can_use = false;
@@ -94,4 +99,5 @@ bool ccl_algorithm_selector_helper<ccl_coll_allreduce_algo>::can_use(
 CCL_SELECTION_DEFINE_HELPER_METHODS(ccl_coll_allreduce_algo,
                                     ccl_coll_allreduce,
                                     ccl::global_data::env().allreduce_algo_raw,
-                                    param.count);
+                                    param.count,
+                                    ccl::global_data::env().allreduce_scaleout_algo_raw);

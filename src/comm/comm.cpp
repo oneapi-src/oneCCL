@@ -33,6 +33,56 @@
 #include "util/pm/pmi_resizable_rt/pmi_resizable/kvs/ikvs_wrapper.h"
 #include "kvs_impl.hpp"
 
+#ifdef CCL_ENABLE_SYCL
+#include "common/utils/sycl_utils.hpp"
+#endif // CCL_ENABLE_SYCL
+
+// ccl_comm_env
+
+ccl_comm_env::ccl_comm_env(std::shared_ptr<ccl::device> device) : device(device) {
+#ifdef CCL_ENABLE_SYCL
+    enable_topo_algo = ccl::global_data::env().enable_topo_algo;
+    ze_copy_engine = ccl::global_data::env().ze_copy_engine;
+    ze_h2d_copy_engine = ccl::global_data::env().ze_h2d_copy_engine;
+
+    if (device &&
+        (device.get()->get_native().get_backend() == ccl::utils::get_level_zero_backend())) {
+        auto ze_device =
+            sycl::get_native<ccl::utils::get_level_zero_backend()>(device.get()->get_native());
+        CCL_THROW_IF_NOT(ze_device, "null ze device");
+
+        if ((ccl::ze::get_device_family(ze_device) == ccl::device_family::unknown) ||
+            (ccl::ze::get_device_family(ze_device) == ccl::device_family::family1)) {
+            ze_copy_engine = ccl::ze::copy_engine_mode::none;
+            ze_h2d_copy_engine = ccl::ze::h2d_copy_engine_mode::none;
+        }
+    }
+    else {
+        enable_topo_algo = 0;
+        ze_copy_engine = ccl::ze::copy_engine_mode::none;
+        ze_h2d_copy_engine = ccl::ze::h2d_copy_engine_mode::none;
+    }
+#endif // CCL_ENABLE_SYCL
+}
+
+std::string ccl_comm_env::to_string() const {
+    std::stringstream ss;
+    ss << "{";
+
+#ifdef CCL_ENABLE_SYCL
+    if (device) {
+        ss << " enable_topo_algo: " << enable_topo_algo;
+        ss << ", ze_copy_engine: " << ccl::ze::copy_engine_names[ze_copy_engine];
+        ss << ", ze_h2d_copy_engine: " << ccl::ze::h2d_copy_engine_names[ze_h2d_copy_engine];
+        ss << " ";
+    }
+#endif // CCL_ENABLE_SYCL
+
+    ss << "}";
+
+    return ss.str();
+}
+
 // ccl_internal_comm
 
 ccl_internal_comm::ccl_internal_comm(int comm_id,
@@ -56,6 +106,7 @@ void ccl_internal_comm::reset(int rank, int size) {
 }
 
 // ccl_comm
+
 void ccl_comm::init(int comm_id,
                     std::shared_ptr<atl_base_comm> atl_comm,
                     bool share_resources,
@@ -88,6 +139,12 @@ void ccl_comm::init(int comm_id,
     }
     else {
         local2global_map = atl_comm->get_rank2rank_map();
+    }
+
+    env = std::make_shared<ccl_comm_env>(device_ptr);
+
+    if (comm_rank == 0) {
+        LOG_DEBUG(to_string_ext());
     }
 }
 
@@ -186,17 +243,7 @@ void ccl_comm::allocate_resources() {
     if (ccl::global_data::env().enable_unordered_coll) {
         comm_impl->unordered_coll_manager.reset(new ccl_unordered_coll_manager(*this));
     }
-
-    auto& env_object = ccl::global_data::env();
-
-    comm_impl->allreduce_2d_builder.reset(new ccl_allreduce_2d_builder(
-        (env_object.allreduce_2d_base_size != CCL_ENV_SIZET_NOT_SPECIFIED)
-            ? env_object.allreduce_2d_base_size
-            : ccl::global_data::get().executor->get_local_proc_count(),
-        env_object.allreduce_2d_switch_dims,
-        this));
-
-    env_object.print(rank());
+    ccl::global_data::env().print(rank());
 }
 
 ccl::comm_interface_ptr ccl_comm::split(const ccl::comm_split_attr& attr) {
@@ -224,6 +271,7 @@ std::string ccl_comm::to_string_ext() const {
     ss << "   node_comm: " << (node_comm ? node_comm->to_string() : "{}") << "\n";
     ss << "   even_comm: " << (even_comm ? even_comm->to_string() : "{}") << "\n";
     ss << "   pair_comm: " << (pair_comm ? pair_comm->to_string() : "{}") << "\n";
+    ss << "   env: " << (env ? env->to_string() : "{}") << "\n";
     ss << "}";
 
     return ss.str();

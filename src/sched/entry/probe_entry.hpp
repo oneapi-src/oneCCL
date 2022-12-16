@@ -33,7 +33,7 @@ public:
               comm(comm) {}
 
     void start() override {
-        atl_tag = comm->get_atl_comm()->tag->create(
+        atl_tag = comm->get_atl_comm()->tag_creator->create(
             src, comm->get_comm_id(), sched->sched_id, sched->get_op_id());
         LOG_DEBUG("PROBE entry src ", src, ", tag ", atl_tag);
         status = ccl_sched_entry_status_started;

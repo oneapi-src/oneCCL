@@ -22,7 +22,7 @@ static size_t ask_only_framework = 0;
 static size_t finalized = 0;
 static size_t extreme_finalize = 0;
 static struct sigaction old_act;
-char my_hostname[MAX_KVS_VAL_LENGTH];
+char pmi_hostname[MAX_KVS_VAL_LENGTH];
 
 // TODO: rework it for multi kvs
 static pmi_resizable* pmi_object;
@@ -224,7 +224,7 @@ kvs_status_t pmi_resizable::hard_finalize(int sig) {
 
     SET_STR(rank_str, INT_STR_SIZE, RANK_TEMPLATE, my_rank);
 
-    KVS_CHECK_STATUS(h->set_value(KVS_DEAD_POD, my_hostname, rank_str), "failed to set dead rank");
+    KVS_CHECK_STATUS(h->set_value(KVS_DEAD_POD, pmi_hostname, rank_str), "failed to set dead rank");
 
     KVS_CHECK_STATUS(listener.send_notification(sig, h), "failed to send notification");
 
@@ -236,31 +236,31 @@ kvs_status_t pmi_resizable::hard_finalize(int sig) {
     return KVS_STATUS_SUCCESS;
 }
 
-kvs_status_t pmi_resizable::PMIR_Main_Addr_Reserve(char* main_addr) {
-    return h->main_server_address_reserve(main_addr);
+kvs_status_t pmi_resizable::PMIR_Main_Addr_Reserve(char* addr) {
+    return h->main_server_address_reserve(addr);
 }
 
-kvs_status_t pmi_resizable::PMIR_Init(const char* main_addr) {
+kvs_status_t pmi_resizable::PMIR_Init(const char* addr) {
     struct sigaction act;
     FILE* fp;
     finalized = 0;
-    memset(my_hostname, 0, MAX_KVS_VAL_LENGTH);
+    memset(pmi_hostname, 0, MAX_KVS_VAL_LENGTH);
     if ((fp = popen("hostname", READ_ONLY)) == NULL) {
         printf("Can't get hostname\n");
         exit(1);
     }
-    CHECK_FGETS(fgets(my_hostname, MAX_KVS_VAL_LENGTH, fp), my_hostname);
+    CHECK_FGETS(fgets(pmi_hostname, MAX_KVS_VAL_LENGTH, fp), pmi_hostname);
     pclose(fp);
-    while (my_hostname[strlen(my_hostname) - 1] == '\n' ||
-           my_hostname[strlen(my_hostname) - 1] == ' ')
-        my_hostname[strlen(my_hostname) - 1] = '\0';
+    while (pmi_hostname[strlen(pmi_hostname) - 1] == '\n' ||
+           pmi_hostname[strlen(pmi_hostname) - 1] == ' ')
+        pmi_hostname[strlen(pmi_hostname) - 1] = '\0';
 
-    SET_STR(&(my_hostname[strlen(my_hostname)]),
-            MAX_KVS_VAL_LENGTH - (int)strlen(my_hostname) - 1,
+    SET_STR(&(pmi_hostname[strlen(pmi_hostname)]),
+            MAX_KVS_VAL_LENGTH - (int)strlen(pmi_hostname) - 1,
             "-%d",
             getpid());
 
-    KVS_CHECK_STATUS(h->init(main_addr), "failed to init");
+    KVS_CHECK_STATUS(h->init(addr), "failed to init");
 
     KVS_CHECK_STATUS(h->reg_rank(), "failed to rank register");
 
@@ -304,7 +304,8 @@ kvs_status_t pmi_resizable::PMIR_Finalize(void) {
     if (my_rank == 0 && extreme_finalize != 1) {
         KVS_CHECK_STATUS(h->remove_name_key(KVS_UP, KVS_IDX), "failed to remove IDx");
     }
-    KVS_CHECK_STATUS(h->remove_name_key(KVS_BARRIER, my_hostname), "failed to remove barrier info");
+    KVS_CHECK_STATUS(h->remove_name_key(KVS_BARRIER, pmi_hostname),
+                     "failed to remove barrier info");
 
     KVS_CHECK_STATUS(h->finalize(), "failed to finalize");
 
@@ -320,7 +321,7 @@ kvs_status_t pmi_resizable::PMIR_Barrier(void) {
 
     SET_STR(barrier_num_str, INT_STR_SIZE, SIZE_T_TEMPLATE, barrier_num);
 
-    KVS_CHECK_STATUS(h->set_value(KVS_BARRIER, my_hostname, barrier_num_str),
+    KVS_CHECK_STATUS(h->set_value(KVS_BARRIER, pmi_hostname, barrier_num_str),
                      "failed to set barrier info");
 
     KVS_CHECK_STATUS(h->get_barrier_idx(min_barrier_num), "failed to get barrier IDx");
@@ -335,13 +336,13 @@ kvs_status_t pmi_resizable::PMIR_Barrier(void) {
     return KVS_STATUS_SUCCESS;
 }
 
-kvs_status_t pmi_resizable::PMIR_Get_size(int* size) {
-    *size = count_pods;
+kvs_status_t pmi_resizable::PMIR_Get_size(int* size_ptr) {
+    *size_ptr = count_pods;
     return KVS_STATUS_SUCCESS;
 }
 
-kvs_status_t pmi_resizable::PMIR_Get_rank(int* rank) {
-    *rank = my_rank;
+kvs_status_t pmi_resizable::PMIR_Get_rank(int* rank_ptr) {
+    *rank_ptr = my_rank;
     return KVS_STATUS_SUCCESS;
 }
 
@@ -385,7 +386,7 @@ kvs_status_t pmi_resizable::PMIR_KVS_Get(const char* kvs_name,
     std::string value_vec;
     do {
         KVS_CHECK_STATUS(h->get_value_by_name_key(kvs_name, key, value_vec), "failed to get value");
-    } while (value_vec.length() == 0);
+    } while (value_vec.empty());
 
     snprintf(value, value_vec.length(), "%s", value_vec.c_str());
     return KVS_STATUS_SUCCESS;

@@ -93,9 +93,9 @@ std::vector<ccl::stream>& transport_data::get_bench_streams() {
 void transport_data::init_comms(user_options_t& options) {
     int ranks_per_proc = options.ranks_per_proc;
 
-    std::vector<int> local_ranks;
+    std::vector<int> proc_ranks;
     for (int idx = 0; idx < ranks_per_proc; idx++) {
-        local_ranks.push_back(rank * ranks_per_proc + idx);
+        proc_ranks.push_back(rank * ranks_per_proc + idx);
     }
 
     ccl::context context = ccl::create_context();
@@ -112,7 +112,7 @@ void transport_data::init_comms(user_options_t& options) {
 #ifdef CCL_ENABLE_SYCL
     else if (options.backend == BACKEND_SYCL) {
         auto sycl_queues = create_sycl_queues(
-            sycl_dev_names[options.sycl_dev_type], local_ranks, options.sycl_root_dev);
+            sycl_dev_names[options.sycl_dev_type], proc_ranks, options.sycl_root_dev);
         ASSERT(!sycl_queues.empty(), "queues should contain at least one queue");
         ASSERT(static_cast<size_t>(ranks_per_proc) == sycl_queues.size(),
                "ranks and queues sizes should match");
@@ -136,7 +136,7 @@ void transport_data::init_comms(user_options_t& options) {
     }
 
     for (int idx = 0; idx < ranks_per_proc; idx++) {
-        r2d_map.emplace(local_ranks[idx], devices[idx]);
+        r2d_map.emplace(proc_ranks[idx], devices[idx]);
     }
 
     comms = ccl::create_communicators(size * ranks_per_proc, r2d_map, context, kvs);

@@ -66,26 +66,15 @@ bool queue_info::is_copy() const {
 
 queue_factory::queue_factory(ze_device_handle_t device,
                              ze_context_handle_t context,
-                             queue_group_type type)
+                             queue_group_type type,
+                             ze_command_queue_handle_t cmd_queue)
         : device(device),
           context(context),
           is_copy_queue(type == queue_group_type::main || type == queue_group_type::link),
-          type(type) {
+          type(type),
+          cmd_queue(cmd_queue) {
     ze_queue_properties_t queue_props;
     get_queues_properties(device, &queue_props);
-
-    if (!global_data::env().disable_ze_family_check) {
-        if (queue_props.size() == 1 && queue_props.front().numQueues == 1 &&
-            (get_device_family(device) == ccl::device_family::unknown)) {
-            ze_device_properties_t device_props = ccl::ze::default_device_props;
-            ZE_CALL(zeDeviceGetProperties, (device, &device_props));
-            bool is_integrated = device_props.flags & ZE_DEVICE_PROPERTY_FLAG_INTEGRATED;
-
-            CCL_THROW_IF_NOT(is_integrated,
-                             "unexpected device properties flags: ",
-                             flags_to_string<ze_device_property_flag_t>(device_props.flags));
-        }
-    }
 
     queue_ordinal = get_queue_group_ordinal(queue_props, type);
     LOG_DEBUG(get_type_str(),
@@ -127,22 +116,32 @@ queue_info_t queue_factory::get(uint32_t index) {
     uint32_t queue_index = get_queue_index(index);
     CCL_THROW_IF_NOT(queue_index < queues.size(), "wrong queue index");
     auto& queue = queues.at(queue_index);
+
     if (!queue || !queue->is_valid()) {
         queue = std::make_shared<queue_info>();
         queue->desc = default_cmd_queue_desc;
-        queue->desc.ordinal = queue_ordinal;
-        queue->desc.index = queue_index;
         queue->is_copy_queue = is_copy_queue;
         queue->type = type;
-        global_data::get().ze_data->cache->get(
-            worker_idx, context, device, queue->desc, &queue->queue);
-        LOG_DEBUG("created new ",
-                  get_type_str(),
-                  " queue: { ordinal: ",
-                  queue_ordinal,
-                  ", index: ",
-                  queue_index,
-                  " }");
+        if (!is_copy_queue && ccl::global_data::env().enable_external_queue && cmd_queue) {
+            // todo: no API to support getting queue desc by command queue
+            // queue->desc.ordinal = external_command_queue->desc.ordinal;
+            // queue->desc.index = external_command_queue->desc.index;
+            queue->queue = cmd_queue;
+            LOG_DEBUG("use external command queue for ", get_type_str(), " kernels");
+        }
+        else {
+            queue->desc.ordinal = queue_ordinal;
+            queue->desc.index = queue_index;
+            global_data::get().ze_data->cache->get(
+                worker_idx, context, device, queue->desc, &queue->queue);
+            LOG_DEBUG("created new ",
+                      get_type_str(),
+                      " queue: { ordinal: ",
+                      queue_ordinal,
+                      ", index: ",
+                      queue_index,
+                      " }");
+        }
     }
     return queue;
 }
@@ -151,8 +150,11 @@ void queue_factory::destroy(queue_info_t& queue) {
     if (!queue || !queue->is_valid()) {
         return;
     }
-
-    global_data::get().ze_data->cache->push(worker_idx, context, device, queue->desc, queue->queue);
+    // No need to cache external cmd queue
+    if (queue->queue != cmd_queue) {
+        global_data::get().ze_data->cache->push(
+            worker_idx, context, device, queue->desc, queue->queue);
+    }
     queue.reset();
 }
 
@@ -200,19 +202,20 @@ uint32_t queue_factory::get_ordinal() const {
     return queue_ordinal;
 }
 
-bool queue_factory::can_use_queue_group(ze_device_handle_t device, queue_group_type type) {
-    auto user_engine = global_data::env().ze_copy_engine;
+bool queue_factory::can_use_queue_group(ze_device_handle_t device,
+                                        queue_group_type type,
+                                        copy_engine_mode mode) {
     switch (type) {
         case queue_group_type::compute: break;
 
         case queue_group_type::main:
-            if (user_engine != ccl_ze_copy_engine_auto && user_engine != ccl_ze_copy_engine_main) {
+            if (mode != copy_engine_mode::auto_mode && mode != copy_engine_mode::main) {
                 return false;
             }
             break;
 
         case queue_group_type::link:
-            if (user_engine != ccl_ze_copy_engine_auto && user_engine != ccl_ze_copy_engine_link) {
+            if (mode != copy_engine_mode::auto_mode && mode != copy_engine_mode::link) {
                 return false;
             }
             break;
@@ -220,7 +223,7 @@ bool queue_factory::can_use_queue_group(ze_device_handle_t device, queue_group_t
         default: CCL_THROW("unknown queue group type"); break;
     }
 
-    if (type != queue_group_type::compute && user_engine == ccl_ze_copy_engine_none) {
+    if (type != queue_group_type::compute && mode == ccl::ze::copy_engine_mode::none) {
         return false;
     }
 
@@ -280,28 +283,39 @@ bool list_factory::is_copy() const {
 list_manager::list_manager(const ccl_sched_base* sched, const ccl_stream* stream)
         : sched(sched),
           device(stream->get_ze_device()),
-          context(stream->get_ze_context()) {
+          context(stream->get_ze_context()),
+          cmd_queue(stream->get_ze_command_queue()) {
     LOG_DEBUG("create list manager");
     CCL_THROW_IF_NOT(device, "no device");
     CCL_THROW_IF_NOT(context, "no context");
+    CCL_THROW_IF_NOT(sched->coll_param.comm, "no comm");
+
+    h2d_copy_engine_mode h2d_copy_mode = global_data::env().ze_h2d_copy_engine;
 
     comp_queue_factory =
-        std::make_unique<queue_factory>(device, context, queue_group_type::compute);
+        std::make_unique<queue_factory>(device, context, queue_group_type::compute, cmd_queue);
     comp_list_factory = std::make_unique<list_factory>(device, context, false);
 
-    can_use_main_queue = queue_factory::can_use_queue_group(device, queue_group_type::main);
-    if (can_use_main_queue) {
+    auto copy_engine_mode = sched->coll_param.comm->get_env()->get_ze_copy_engine();
+
+    main_queue_available =
+        queue_factory::can_use_queue_group(device, queue_group_type::main, copy_engine_mode);
+
+    main_queue_available = main_queue_available || (h2d_copy_mode == h2d_copy_engine_mode::main);
+
+    if (main_queue_available) {
         main_queue_factory =
-            std::make_unique<queue_factory>(device, context, queue_group_type::main);
+            std::make_unique<queue_factory>(device, context, queue_group_type::main, nullptr);
     }
 
-    can_use_link_queue = queue_factory::can_use_queue_group(device, queue_group_type::link);
-    if (can_use_link_queue) {
+    link_queue_available =
+        queue_factory::can_use_queue_group(device, queue_group_type::link, copy_engine_mode);
+    if (link_queue_available) {
         link_queue_factory =
-            std::make_unique<queue_factory>(device, context, queue_group_type::link);
+            std::make_unique<queue_factory>(device, context, queue_group_type::link, nullptr);
     }
 
-    use_copy_queue = can_use_main_queue || can_use_link_queue;
+    use_copy_queue = main_queue_available || link_queue_available;
     if (use_copy_queue) {
         copy_list_factory = std::make_unique<list_factory>(device, context, true);
     }
@@ -313,25 +327,46 @@ list_manager::~list_manager() {
 
 std::pair<queue_factory*, list_manager::queue_map_t*> list_manager::get_factory_and_map(
     bool is_copy,
-    bool peer_card_copy) const {
+    copy_direction direction) const {
+    CCL_THROW_IF_NOT((!is_copy && direction == copy_direction::undefined) ||
+                         (is_copy && direction != copy_direction::undefined),
+                     "wrong direction");
+
     queue_factory* factory = nullptr;
     queue_map_t* queue_map = nullptr;
-    if (is_copy) {
-        if (can_use_link_queue && peer_card_copy) {
+
+    if (direction == copy_direction::c2c) {
+        if (link_queue_available) {
             factory = link_queue_factory.get();
             queue_map = const_cast<queue_map_t*>(&link_queue_map);
         }
-        else {
+        else if (main_queue_available) {
             factory = main_queue_factory.get();
             queue_map = const_cast<queue_map_t*>(&main_queue_map);
         }
     }
-    else {
+    // h2d, d2h, d2d, t2t
+    else if (direction != copy_direction::undefined) {
+        const bool use_compute_fallback =
+            ccl::global_data::env().ze_enable_ccs_fallback_for_copy && !main_queue_available;
+
+        if (main_queue_available) {
+            factory = main_queue_factory.get();
+            queue_map = const_cast<queue_map_t*>(&main_queue_map);
+        }
+        else if (link_queue_available && !use_compute_fallback) {
+            factory = link_queue_factory.get();
+            queue_map = const_cast<queue_map_t*>(&link_queue_map);
+        }
+    }
+
+    // fallback
+    if (!factory || !queue_map) {
         factory = comp_queue_factory.get();
         queue_map = const_cast<queue_map_t*>(&comp_queue_map);
     }
-    CCL_THROW_IF_NOT(factory, "no factory");
-    CCL_THROW_IF_NOT(queue_map, "no map");
+
+    CCL_THROW_IF_NOT(factory && queue_map, "unable select list queue");
     return std::make_pair(factory, queue_map);
 }
 
@@ -339,9 +374,9 @@ list_info_t list_manager::get_list(const sched_entry* entry,
                                    uint32_t index,
                                    bool is_copy,
                                    const std::vector<ze_event_handle_t>& wait_events,
-                                   bool peer_card_copy) {
+                                   copy_direction direction) {
     // get comp or copy primitives
-    auto factory_map_pair = get_factory_and_map(is_copy, peer_card_copy);
+    auto factory_map_pair = get_factory_and_map(is_copy, direction);
     queue_factory* factory = factory_map_pair.first;
     queue_map_t* queue_map = factory_map_pair.second;
     auto queue = factory->get(index);
@@ -372,8 +407,10 @@ list_info_t list_manager::get_list(const sched_entry* entry,
 
     // if we dont have any lists for current queue
     if (new_list_for_queue && new_entry_for_list) {
+        auto& list_factory = (is_copy) ? copy_list_factory : comp_list_factory;
+        CCL_THROW_IF_NOT(list_factory, "no factory");
         // creaete new list
-        list = (is_copy) ? copy_list_factory->get(queue) : comp_list_factory->get(queue);
+        list = list_factory->get(queue);
         access_list.push_back({ queue, list });
         // remember list for current entry
         entry_map[entry].push_back(std::make_pair(queue, list));
@@ -410,23 +447,20 @@ ze_command_list_handle_t list_manager::get_comp_list(
     const sched_entry* entry,
     const std::vector<ze_event_handle_t>& wait_events,
     uint32_t index) {
-    auto list = get_list(entry, index, false, wait_events, false);
+    auto list = get_list(entry, index, false, wait_events, copy_direction::undefined);
     return list->get_native();
 }
 
 ze_command_list_handle_t list_manager::get_copy_list(
     const sched_entry* entry,
     const std::vector<ze_event_handle_t>& wait_events,
-    uint32_t index,
-    bool peer_card_copy) {
-    // use main for intra copy or link for inter copy
-    if ((!peer_card_copy && can_use_main_queue) || (peer_card_copy && can_use_link_queue)) {
-        auto list = get_list(entry, index, true, wait_events, peer_card_copy);
+    copy_direction direction,
+    uint32_t index) {
+    if (link_queue_available || main_queue_available) {
+        auto list = get_list(entry, index, true, wait_events, direction);
         return list->get_native();
     }
-    else {
-        return get_comp_list(entry, wait_events, index);
-    }
+    return get_comp_list(entry, wait_events, index);
 }
 
 void list_manager::clear() {
@@ -470,6 +504,10 @@ void list_manager::reset_execution_state() {
 
 bool list_manager::can_use_copy_queue() const {
     return use_copy_queue;
+}
+
+bool list_manager::can_use_main_queue() const {
+    return main_queue_available;
 }
 
 bool list_manager::is_executed() const {
@@ -563,7 +601,7 @@ void list_manager::print_dump() const {
             ss << " entries:";
             for (const auto& list_entries_pair : map->at(queue_index).second) {
                 auto entry = list_entries_pair.first;
-                ss << " " << entry->name();
+                ss << " " << entry->name_ext();
             }
             ss << "\n";
         }
@@ -571,7 +609,7 @@ void list_manager::print_dump() const {
     }
 
     if (sched->use_single_list && !access_list.empty()) {
-        ss << "execution order: {\n";
+        ss << "submission order: {\n";
         for (auto& queue_list_pair : access_list) {
             auto& queue = queue_list_pair.first;
             auto& list = queue_list_pair.second;

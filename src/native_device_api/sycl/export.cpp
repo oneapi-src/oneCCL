@@ -46,7 +46,7 @@ generic_context_type<cl_backend_type::dpcpp_sycl_l0>::get() const noexcept {
  */
 generic_device_type<cl_backend_type::dpcpp_sycl_l0>::generic_device_type(
     device_index_type id,
-    cl::sycl::info::device_type type /* = info::device_type::gpu*/)
+    sycl::info::device_type type /* = info::device_type::gpu*/)
         : device() {
     if ((std::get<0>(id) == ccl::unused_index_value) &&
         (std::get<1>(id) == ccl::unused_index_value) &&
@@ -57,41 +57,41 @@ generic_device_type<cl_backend_type::dpcpp_sycl_l0>::generic_device_type(
     LOG_DEBUG("Try to find SYCL device by index: ",
               id,
               ", type: ",
-              static_cast<typename std::underlying_type<cl::sycl::info::device_type>::type>(type));
+              static_cast<typename std::underlying_type<sycl::info::device_type>::type>(type));
 
-    auto platforms = cl::sycl::platform::get_platforms();
+    auto platforms = sycl::platform::get_platforms();
     LOG_DEBUG("Found CL plalforms: ", platforms.size());
     auto platform_it =
-        std::find_if(platforms.begin(), platforms.end(), [](const cl::sycl::platform& pl) {
-            return pl.get_info<cl::sycl::info::platform::name>().find("Level-Zero") !=
+        std::find_if(platforms.begin(), platforms.end(), [](const sycl::platform& pl) {
+            return pl.get_info<sycl::info::platform::name>().find("Level-Zero") !=
                    std::string::npos;
-            //or platform.get_backend() == cl::sycl::backend::ext_oneapi_level_zero
+            //or platform.get_backend() == sycl::backend::ext_oneapi_level_zero
         });
     if (platform_it == platforms.end()) {
         std::stringstream ss;
         ss << "cannot find Level-Zero platform. Supported platforms are:\n";
         for (const auto& pl : platforms) {
-            ss << "Platform:\nprofile: " << pl.get_info<cl::sycl::info::platform::profile>()
-               << "\nversion: " << pl.get_info<cl::sycl::info::platform::version>()
-               << "\nname: " << pl.get_info<cl::sycl::info::platform::name>()
-               << "\nvendor: " << pl.get_info<cl::sycl::info::platform::vendor>();
+            ss << "Platform:\nprofile: " << pl.get_info<sycl::info::platform::profile>()
+               << "\nversion: " << pl.get_info<sycl::info::platform::version>()
+               << "\nname: " << pl.get_info<sycl::info::platform::name>()
+               << "\nvendor: " << pl.get_info<sycl::info::platform::vendor>();
         }
 
         CCL_THROW("cannot find device by id: " + ccl::to_string(id) + ", reason:\n" + ss.str());
     }
 
     LOG_DEBUG("Platform:\nprofile: ",
-              platform_it->get_info<cl::sycl::info::platform::profile>(),
+              platform_it->get_info<sycl::info::platform::profile>(),
               "\nversion: ",
-              platform_it->get_info<cl::sycl::info::platform::version>(),
+              platform_it->get_info<sycl::info::platform::version>(),
               "\nname: ",
-              platform_it->get_info<cl::sycl::info::platform::name>(),
+              platform_it->get_info<sycl::info::platform::name>(),
               "\nvendor: ",
-              platform_it->get_info<cl::sycl::info::platform::vendor>());
+              platform_it->get_info<sycl::info::platform::vendor>());
 }
 
 generic_device_type<cl_backend_type::dpcpp_sycl_l0>::generic_device_type(
-    const cl::sycl::device& in_device)
+    const sycl::device& in_device)
         : device(in_device) {}
 
 device_index_type generic_device_type<cl_backend_type::dpcpp_sycl_l0>::get_id() const {

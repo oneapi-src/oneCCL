@@ -15,7 +15,7 @@
 */
 #pragma once
 
-#include "common/ze/ze_api_wrapper.hpp"
+#include "common/api_wrapper/ze_api_wrapper.hpp"
 
 namespace ccl {
 namespace ze {

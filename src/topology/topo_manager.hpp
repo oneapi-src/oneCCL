@@ -15,7 +15,6 @@
 */
 #pragma once
 
-#include "atl/atl_base_comm.hpp"
 #include "common/utils/utils.hpp"
 #include "oneapi/ccl/config.h"
 
@@ -26,8 +25,9 @@
 #include <string>
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-#include "common/global/ze_data.hpp"
+#include "common/global/ze/ze_data.hpp"
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+#include "common/utils/exchange_utils.hpp"
 
 namespace ccl {
 
@@ -112,6 +112,7 @@ public:
     static constexpr int max_ranks_per_card = 2;
     static constexpr int max_ranks_per_plane = 8;
     static constexpr int max_domain_count = 2;
+    static constexpr size_t invalid_device_uuids_count = 0;
 
     static constexpr int card_domain_idx = 0;
     static constexpr int plane_domain_idx = 1;
@@ -145,7 +146,11 @@ public:
     static p2p_matrix_t build_p2p_matrix(const std::vector<ze_device_handle_t>& devices);
     static bool is_sub_vector(const std::vector<ze_device_uuid_t>& vec,
                               const std::vector<ze_device_uuid_t>& sub_vec);
+
+    bool has_oversubscription() const;
+    bool is_oversubscription_detected = false;
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+    rank_info_vec_t get_filtered_rank_info_vec(int filter_host_idx) const;
 
     static std::string generate_uuid();
     static domains_t parse_topo_env();
@@ -157,9 +162,6 @@ public:
 
 private:
     bool check_colors() const;
-
-    void allgather(const void* send_buf, void* recv_buf, int bytes);
-    void allgatherv(const void* send_buf, void* recv_buf, const std::vector<int>& recv_bytes);
 
     void fill_env_colors(const rank_info_vec_t& local_info_vec);
     void fill_fixed_colors(const rank_info_vec_t& info_vec);
@@ -177,15 +179,15 @@ private:
     fabric_ports_t get_fabric_ports();
 
     static void check_planes(const std::vector<plane_t>& planes);
+    static bool is_unique_uuid(std::vector<ze_device_uuid_t>& unique_vec,
+                               const ze_device_uuid_t& uuid);
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
-
-    rank_info_vec_t get_filtered_rank_info_vec(int filter_host_idx) const;
 
     static void check_invalid_color(int color);
     static void check_domain_count(size_t domain_count);
 
-    static std::map<int, std::string> get_domain_string(const std::string& input_str,
-                                                        const std::string& key);
+    static std::pair<int, std::string> get_domain_pair(const std::string& input_str,
+                                                       const std::string& key);
     static std::vector<std::string> get_subdomain_strings(const std::string& input_str);
 
     void build_host_info();
@@ -195,6 +197,9 @@ private:
                    std::shared_ptr<ccl::context> context);
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
     void ze_base_init(std::shared_ptr<ccl::device> device, std::shared_ptr<ccl::context> context);
+
+    bool oversubscription_detected(const ze_rank_info_vec_t& ze_rank_infos,
+                                   const host_info_vec_t& host_infos);
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
     void post_init();
 

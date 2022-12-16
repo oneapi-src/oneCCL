@@ -128,13 +128,14 @@ atl_status_t atl_ofi::init(int* argc,
     attr->out.max_tag = 0xFFFFFFFFFFFFFFFF;
 
 #ifdef CCL_ENABLE_OFI_HMEM
-    if (prov_env && strstr(prov_env, "verbs") && attr->in.enable_hmem) {
+    if (prov_env && (strstr(prov_env, "verbs") || strstr(prov_env, "cxi")) &&
+        attr->in.enable_hmem) {
         struct fi_info* hmem_hints = fi_dupinfo(base_hints);
         atl_attr_t hmem_attr = *attr;
 
         hmem_hints->caps |= FI_HMEM;
-        hmem_hints->domain_attr->mr_mode =
-            (FI_MR_ALLOCATED | FI_MR_PROV_KEY | FI_MR_VIRT_ADDR | FI_MR_LOCAL | FI_MR_HMEM);
+        hmem_hints->domain_attr->mr_mode = (FI_MR_ALLOCATED | FI_MR_PROV_KEY | FI_MR_VIRT_ADDR |
+                                            FI_MR_LOCAL | FI_MR_HMEM | FI_MR_ENDPOINT);
 
         /* TODO: enable shm with HMEM */
         hmem_attr.in.enable_shm = 0;
@@ -197,8 +198,6 @@ atl_status_t atl_ofi::init(int* argc,
         ep.idx = ep_idx;
         eps.push_back(ep);
     }
-
-    ATL_CHECK_STATUS(pmi->pmrt_barrier(), "barrier failed");
 
     max_retry_count_env = getenv(ATL_OFI_MAX_RETRY_COUNT_ENV);
     if (max_retry_count_env) {
@@ -279,7 +278,7 @@ atl_status_t atl_ofi::update(std::shared_ptr<ipmi> pmi) {
     coord.validate();
 
     for (prov_idx = 0; prov_idx < ctx.prov_count; prov_idx++) {
-        ret = atl_ofi_prov_eps_connect(ctx, coord, prov_idx, pmi, ep_names);
+        ret = atl_ofi_prov_eps_connect(ctx, coord, prov_idx, pmi, ep_names[prov_idx]);
         if (ret)
             return ATL_OFI_RET(ret);
     }
@@ -351,7 +350,7 @@ atl_status_t atl_ofi::send(atl_ep_t& ep,
 
     ofi_req = ((atl_ofi_req_t*)req.internal);
 
-    cache.get(ep.idx, prov->domain, const_cast<void*>(buf), len, &ofi_req->mr);
+    cache.get(ep, prov, const_cast<void*>(buf), len, &ofi_req->mr);
     void* desc = (ofi_req->mr) ? fi_mr_desc(ofi_req->mr) : nullptr;
 
     struct iovec iov;
@@ -364,7 +363,7 @@ atl_status_t atl_ofi::send(atl_ep_t& ep,
     msg.iov_count = 1;
     msg.tag = tag;
     msg.ignore = 0;
-    msg.addr = atl_ofi_get_addr(ctx, prov, dst_proc_idx, ep.idx);
+    msg.addr = atl_ofi_get_addr(prov, dst_proc_idx, ep.idx);
     msg.context = &ofi_req->fi_ctx;
     msg.data = 0;
 
@@ -392,7 +391,7 @@ atl_status_t atl_ofi::recv(atl_ep_t& ep,
 
     ofi_req = ((atl_ofi_req_t*)req.internal);
 
-    cache.get(ep.idx, prov->domain, const_cast<void*>(buf), len, &ofi_req->mr);
+    cache.get(ep, prov, const_cast<void*>(buf), len, &ofi_req->mr);
     void* desc = (ofi_req->mr) ? fi_mr_desc(ofi_req->mr) : nullptr;
 
     struct iovec iov;
@@ -405,7 +404,7 @@ atl_status_t atl_ofi::recv(atl_ep_t& ep,
     msg.iov_count = 1;
     msg.tag = tag;
     msg.ignore = 0;
-    msg.addr = atl_ofi_get_addr(ctx, prov, src_proc_idx, ep.idx);
+    msg.addr = atl_ofi_get_addr(prov, src_proc_idx, ep.idx);
     msg.context = &ofi_req->fi_ctx;
     msg.data = 0;
 
@@ -459,7 +458,7 @@ atl_status_t atl_ofi::probe(atl_ep_t& ep,
         msg->msg_iov = nullptr;
         msg->desc = nullptr;
         msg->iov_count = 0;
-        msg->addr = atl_ofi_get_addr(ctx, prov, src_proc_idx, ep.idx);
+        msg->addr = atl_ofi_get_addr(prov, src_proc_idx, ep.idx);
         msg->tag = tag;
         msg->ignore = 0;
         msg->context = &(req->fi_ctx);
@@ -545,7 +544,7 @@ atl_status_t atl_ofi::read(atl_ep_t& ep,
                           buf,
                           len,
                           (void*)mr->local_key,
-                          atl_ofi_get_addr(ctx, prov, dst_proc_idx, ep.idx),
+                          atl_ofi_get_addr(prov, dst_proc_idx, ep.idx),
                           addr,
                           remote_key,
                           &ofi_req->fi_ctx),
@@ -579,7 +578,7 @@ atl_status_t atl_ofi::write(atl_ep_t& ep,
                            buf,
                            len,
                            (void*)mr->local_key,
-                           atl_ofi_get_addr(ctx, prov, dst_proc_idx, ep.idx),
+                           atl_ofi_get_addr(prov, dst_proc_idx, ep.idx),
                            addr,
                            remote_key,
                            &ofi_req->fi_ctx),
@@ -661,55 +660,146 @@ atl_status_t atl_ofi::check(atl_ep_t& ep, atl_req_t& req) {
     return status;
 }
 
-atl_status_t atl_ofi::get_rank2rank_map(std::shared_ptr<ipmi> pmi,
-                                        std::vector<int>& rank2rank_map) {
+atl_status_t atl_ofi::get_rank2proc_map(std::shared_ptr<ipmi> pmi,
+                                        std::vector<int>& rank2proc_map) {
+    std::lock_guard<ccl_spinlock> lock{ addr_table_guard };
+    size_t pmi_rank = pmi->get_rank();
+    size_t pmi_size = pmi->get_size();
+    CCL_THROW_IF_NOT(rank2proc_map.empty());
+    rank2proc_map.clear();
+    rank2proc_map.resize(pmi_size);
     int ret;
-    //TODO: add support for multi-provs
-    atl_ofi_prov_t* prov =
-        atl_ofi_get_prov(ctx, coord, eps[0], 0 /* peer_proc_idx */, 0 /* msg_size */);
-
-    std::vector<char> addr_name(prov->addr_len, '\0');
-
-    size_t local_rank = pmi->get_rank();
-    size_t local_size = pmi->get_size();
-    // TODO: uncomment after AV insert update
-    //    for (size_t ep_idx = 0; ep_idx < eps.size(); ep_idx++) {
-    ret = pmi->pmrt_kvs_put(
-        (char*)ATL_OFI_FI_ADDR_UPDATE_PM_KEY,
-        local_rank * ATL_OFI_PMI_PROC_MULTIPLIER, // +
-        //                                    prov_idx * ATL_OFI_PMI_PROV_MULTIPLIER + ep_idx,
-        prov->eps[0].name.addr,
-        //                            addr_name.data(),
-        prov->addr_len);
-    if (ret) {
-        LOG_ERROR("pmrt_kvs_put: ret: ", ret);
-        return ATL_STATUS_FAILURE;
-    }
-    //    }
-    pmi->pmrt_barrier();
-    for (size_t i = 0; i < local_size; ++i) {
-        ret = pmi->pmrt_kvs_get(
-            (char*)ATL_OFI_FI_ADDR_UPDATE_PM_KEY,
-            i * ATL_OFI_PMI_PROC_MULTIPLIER, // +
-            //                                    prov_idx * ATL_OFI_PMI_PROV_MULTIPLIER + ep_idx,
-            (void*)addr_name.data(),
-            prov->addr_len);
-        if (ret) {
-            LOG_ERROR("pmrt_kvs_get: ret: ", ret);
-            return ATL_STATUS_FAILURE;
+    if (!need_extra_exchange) {
+        for (size_t i = 0; i < rank2proc_map.size(); i++) {
+            rank2proc_map[i] = i;
         }
-
-        auto it = std::find(ep_names.begin(), ep_names.end(), addr_name);
-        if (it == ep_names.end()) {
-            LOG_ERROR("not found addr_name: ", i);
-            return ATL_STATUS_FAILURE;
-        }
-
-        size_t named_ep_count = (prov->sep ? 1 : ctx.ep_count);
-        rank2rank_map[i] = std::distance(ep_names.begin(), it) / named_ep_count;
+        need_extra_exchange = true;
+        return ATL_STATUS_SUCCESS;
     }
 
-    LOG_DEBUG("transport: rank2rank_map:", ccl::utils::vec_to_string(rank2rank_map));
+    char my_hostname[ATL_MAX_HOSTNAME_LEN] = { 0 };
+    size_t my_hostname_len = 0;
+
+    gethostname(my_hostname, ATL_MAX_HOSTNAME_LEN - 1);
+    my_hostname_len = strlen(my_hostname);
+
+    CCL_THROW_IF_NOT(my_hostname_len < ATL_MAX_HOSTNAME_LEN,
+                     "unexpected my_hostname_len ",
+                     my_hostname_len,
+                     ", expected max ",
+                     (size_t)(ATL_MAX_HOSTNAME_LEN));
+
+    if (ATL_MAX_HOSTNAME_LEN - my_hostname_len <= 10) {
+        LOG_WARN("hostname is quite long, len: ", my_hostname_len, ", name: ", my_hostname);
+    }
+
+    snprintf(
+        my_hostname + my_hostname_len, ATL_MAX_HOSTNAME_LEN - my_hostname_len, "-%zu", pmi_rank);
+
+    ret = pmi->pmrt_kvs_put((char*)ATL_OFI_HOSTNAME_PM_KEY,
+                            pmi_rank * ATL_OFI_PMI_PROC_MULTIPLIER,
+                            my_hostname,
+                            ATL_MAX_HOSTNAME_LEN);
+
+    ATL_CHECK_STATUS(pmi->pmrt_barrier(), "barrier failed");
+
+    for (size_t prov_idx = 0; prov_idx < ep_names.size(); prov_idx++) {
+        size_t named_ep_count = (ctx.provs[prov_idx].sep ? 1 : ctx.ep_count);
+        for (size_t ep_idx = 0; ep_idx < named_ep_count; ep_idx++) {
+            ret = pmi->pmrt_kvs_put((char*)ATL_OFI_FI_ADDR_PM_KEY,
+                                    pmi_rank * ATL_OFI_PMI_PROC_MULTIPLIER +
+                                        prov_idx * ATL_OFI_PMI_PROV_MULTIPLIER + ep_idx,
+                                    ctx.provs[prov_idx].eps[ep_idx].name.addr,
+                                    ctx.provs[prov_idx].addr_len);
+            if (ret) {
+                LOG_ERROR("pmrt_kvs_put: ret: ", ret);
+                return ATL_STATUS_FAILURE;
+            }
+        }
+    }
+
+    for (size_t prov_idx = 0; prov_idx < ep_names.size(); prov_idx++) {
+        auto& prov = ctx.provs[prov_idx];
+        auto& prov_ep_names = ep_names[prov_idx];
+        size_t named_ep_count = (prov.sep ? 1 : ctx.ep_count);
+        std::vector<char> addr_name(prov.addr_len, '\0');
+        int new_ep_names_count = 0;
+        auto old_prov_ep_names_size = prov_ep_names.size();
+        ATL_CHECK_STATUS(pmi->pmrt_barrier(), "barrier failed");
+        for (size_t ep_idx = 0; ep_idx < named_ep_count; ep_idx++) {
+            for (size_t i = 0; i < pmi_size; i++) {
+                ret = pmi->pmrt_kvs_get((char*)ATL_OFI_FI_ADDR_PM_KEY,
+                                        i * ATL_OFI_PMI_PROC_MULTIPLIER +
+                                            prov_idx * ATL_OFI_PMI_PROV_MULTIPLIER + ep_idx,
+                                        (void*)addr_name.data(),
+                                        prov.addr_len);
+                if (ret) {
+                    LOG_ERROR("pmrt_kvs_get: ret: ", ret);
+                    return ATL_STATUS_FAILURE;
+                }
+                auto it = std::find(prov_ep_names.begin(), prov_ep_names.end(), addr_name);
+                if (it == prov_ep_names.end()) {
+                    prov_ep_names.push_back(addr_name);
+                    rank2proc_map[i] = (prov_ep_names.size() - 1) / named_ep_count;
+                    new_ep_names_count++;
+                }
+                else {
+                    rank2proc_map[i] = std::distance(prov_ep_names.begin(), it) / named_ep_count;
+                }
+            }
+        }
+
+        if (new_ep_names_count > 0) {
+            CCL_THROW_IF_NOT(old_prov_ep_names_size < prov_ep_names.size());
+            if (prov.sep) {
+                prov.addr_table = (fi_addr_t*)realloc(
+                    prov.addr_table, prov_ep_names.size() * sizeof(fi_addr_t) * ctx.ep_count);
+            }
+            else {
+                prov.addr_table =
+                    (fi_addr_t*)realloc(prov.addr_table, prov_ep_names.size() * sizeof(fi_addr_t));
+            }
+
+            if (!prov.addr_table) {
+                LOG_ERROR("failed addr_table allocation");
+                return ATL_STATUS_FAILURE;
+            }
+
+            int insert_count = 0;
+            for (size_t i = old_prov_ep_names_size; i < prov_ep_names.size(); i++) {
+                insert_count += fi_av_insert(
+                    prov.av, prov_ep_names[i].data(), 1, &prov.addr_table[i], 0, nullptr);
+            }
+            if (insert_count != new_ep_names_count) {
+                LOG_ERROR("unexpected av_insert results: expected ",
+                          prov_ep_names.size(),
+                          " got ",
+                          insert_count);
+                return ATL_STATUS_FAILURE;
+            }
+            if (prov.sep) {
+                fi_addr_t* table;
+                table = (fi_addr_t*)calloc(1, new_ep_names_count * sizeof(fi_addr_t));
+                if (table == nullptr) {
+                    LOG_ERROR("memory allocaion failed");
+                    return ATL_STATUS_FAILURE;
+                }
+                memcpy(table,
+                       &prov.addr_table[old_prov_ep_names_size],
+                       new_ep_names_count * sizeof(fi_addr_t));
+
+                for (int i = 0; i < new_ep_names_count; i++) {
+                    for (size_t j = 0; j < ctx.ep_count; j++) {
+                        prov.addr_table[(old_prov_ep_names_size + i) * ctx.ep_count + j] =
+                            fi_rx_addr(table[i], j, prov.rx_ctx_bits);
+                    }
+                }
+                free(table);
+            }
+        }
+    }
+
+    LOG_DEBUG("transport: rank2proc_map:", ccl::utils::vec_to_string(rank2proc_map));
 
     return ATL_STATUS_SUCCESS;
 }
@@ -912,7 +1002,11 @@ atl_status_t atl_ofi::open_providers(char* prov_env,
         prov->idx = prov_idx;
         prov->is_shm = 1;
         ATL_CALL(atl_ofi_get_prov_list(ctx, prov_name, base_hints, &prov_list), goto err);
-        ATL_CALL(atl_ofi_prov_init(ctx, coord, prov_list, prov, attr, pmi, ep_names), goto err);
+        if (ep_names.size() < prov->idx + 1) {
+            ep_names.resize(prov->idx + 1);
+        }
+        ATL_CALL(atl_ofi_prov_init(ctx, coord, prov_list, prov, attr, pmi, ep_names[prov->idx]),
+                 goto err);
         free(prov_name);
         fi_freeinfo(prov_list);
         ctx.prov_count++;
@@ -953,8 +1047,8 @@ void atl_ofi::fi_cache::clear() {
     }
 }
 
-void atl_ofi::fi_cache::init(size_t instance_count, int enable_hmem) {
-    this->enable_hmem = enable_hmem;
+void atl_ofi::fi_cache::init(size_t instance_count, int ctx_enable_hmem) {
+    this->enable_hmem = ctx_enable_hmem;
     memory_regions.resize(instance_count);
 }
 
@@ -962,12 +1056,16 @@ atl_ofi::fi_cache::~fi_cache() {
     clear();
 }
 
-void atl_ofi::fi_cache::get(size_t idx, fid_domain* domain, void* buf, size_t bytes, fid_mr** mr) {
+void atl_ofi::fi_cache::get(atl_ep_t& ep,
+                            atl_ofi_prov_t* prov,
+                            void* buf,
+                            size_t bytes,
+                            fid_mr** mr) {
     CCL_THROW_IF_NOT(mr);
     *mr = nullptr;
 #ifdef CCL_ENABLE_OFI_HMEM
     if (enable_hmem) {
-        memory_regions.at(idx % memory_regions.size()).get(domain, buf, bytes, mr);
+        memory_regions.at(ep.idx % memory_regions.size()).get(ep, prov, buf, bytes, mr);
     }
 #endif // CCL_ENABLE_OFI_HMEM
 }
@@ -994,12 +1092,16 @@ void atl_ofi::mr_cache::clear() {
     cache.clear();
 }
 
-void atl_ofi::mr_cache::get(fid_domain* domain, void* buf, size_t bytes, fid_mr** mr) {
-    CCL_THROW_IF_NOT(domain);
+void atl_ofi::mr_cache::get(atl_ep_t& ep,
+                            atl_ofi_prov_t* prov,
+                            void* buf,
+                            size_t bytes,
+                            fid_mr** mr) {
+    CCL_THROW_IF_NOT(prov->domain);
     CCL_THROW_IF_NOT(mr);
 
     if (ccl::global_data::env().enable_atl_cache) {
-        key_t key(domain, buf, bytes);
+        key_t key(prov->domain, buf, bytes);
         auto key_value = cache.find(key);
         if (key_value != cache.end()) {
             *mr = key_value->second;
@@ -1056,7 +1158,7 @@ void atl_ofi::mr_cache::get(fid_domain* domain, void* buf, size_t bytes, fid_mr*
 #endif // CCL_ENABLE_OFI_HMEM
 
     int ofi_ret;
-    ATL_OFI_CALL(fi_mr_regattr(domain, &mr_attr, 0, mr),
+    ATL_OFI_CALL(fi_mr_regattr(prov->domain, &mr_attr, 0, mr),
                  ofi_ret,
                  CCL_THROW("failed to register mr, ret: ",
                            ofi_ret,
@@ -1067,8 +1169,13 @@ void atl_ofi::mr_cache::get(fid_domain* domain, void* buf, size_t bytes, fid_mr*
                            ", iface: ",
                            mr_attr.iface));
 
+    if (prov->info->domain_attr->mr_mode & FI_MR_ENDPOINT) {
+        fi_mr_bind(*mr, (fid_t)&ep, 0);
+        fi_mr_enable(*mr);
+    }
+
     if (ccl::global_data::env().enable_atl_cache) {
-        key_t key(domain, buf, bytes);
+        key_t key(prov->domain, buf, bytes);
         LOG_DEBUG("inserted to mr cache: buf: ", buf, ", bytes: ", bytes);
         cache.insert({ std::move(key), *mr });
     }
@@ -1081,4 +1188,9 @@ void atl_ofi::mr_cache::push(fid_mr* mr) {
         return;
     }
     fi_close(&mr->fid);
+}
+
+fi_addr_t atl_ofi::atl_ofi_get_addr(atl_ofi_prov_t* prov, int proc_idx, size_t ep_idx) {
+    std::lock_guard<ccl_spinlock> lock{ addr_table_guard };
+    return *(prov->addr_table + ((ctx.ep_count * (proc_idx - prov->first_proc_idx)) + ep_idx));
 }

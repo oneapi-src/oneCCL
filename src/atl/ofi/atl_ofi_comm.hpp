@@ -168,8 +168,8 @@ public:
 private:
     friend atl_comm_manager;
 
-    // color, parent_rank, parent_proc_idx, hostname_hash
-    using rank_info_t = std::tuple<int, int, int, size_t>;
+    // color, parent_rank, hostname_hash
+    using rank_info_t = std::tuple<int, int, size_t>;
 
     atl_ofi_comm(atl_ofi_comm* parent, int color);
     atl_status_t init_transport(bool is_new);

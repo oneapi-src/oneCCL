@@ -17,10 +17,9 @@
 
 #ifdef CCL_ENABLE_MPI
 
-#include <mpi.h>
-
 #include "atl/atl_base_comm.hpp"
 #include "atl/mpi/atl_mpi.hpp"
+#include "common/api_wrapper/mpi_api_wrapper.hpp"
 
 class atl_mpi_comm : public atl_base_comm {
 public:

@@ -77,7 +77,7 @@ public:
     }
 
     void start() override {
-        atl_tag = comm->get_atl_comm()->tag->create(
+        atl_tag = comm->get_atl_comm()->tag_creator->create(
             src, comm->get_comm_id(), sched->sched_id, sched->get_op_id());
         size_t bytes = in_cnt * dtype.size();
         LOG_DEBUG("starting RECV in RECV_REDUCE entry, src ",

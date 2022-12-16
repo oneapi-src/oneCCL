@@ -14,6 +14,8 @@
  limitations under the License.
 */
 #include "coll/selection/selection.hpp"
+#include "common/api_wrapper/api_wrapper.hpp"
+#include "common/api_wrapper/pmix_api_wrapper.hpp"
 #include "common/datatype/datatype.hpp"
 #include "common/global/global.hpp"
 #include "exec/exec.hpp"
@@ -81,11 +83,21 @@ ccl::status global_data::reset() {
     ze_data.reset();
 #endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
 
+    pmix_api_fini();
+
+    api_wrappers_fini();
+
     return ccl::status::success;
 }
 
 ccl::status global_data::init() {
     env_object.parse();
+
+    pmix_api_init();
+
+    set_local_coord();
+    api_wrappers_init();
+
     env_object.set_internal_env();
 
     os_info.fill();
@@ -93,27 +105,6 @@ ccl::status global_data::init() {
     if (os_info.release.find("WSL2") != std::string::npos) {
         env_object.enable_topo_algo = 0;
     }
-
-#if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
-    if (ccl::global_data::env().backend == backend_mode::native &&
-        ccl::global_data::env().ze_enable) {
-        LOG_INFO("initializing level-zero api");
-        if (ze_api_init()) {
-            try {
-                ze_data.reset(new ze::global_data_desc);
-            }
-            catch (const ccl::exception& e) {
-                LOG_INFO("could not initialize level-zero: ", e.what());
-            }
-            catch (...) {
-                LOG_INFO("could not initialize level-zero: unknown error");
-            }
-        }
-        else {
-            LOG_INFO("could not initialize level-zero api");
-        }
-    }
-#endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
 
     init_resize_dependent_objects();
     init_resize_independent_objects();
@@ -155,6 +146,78 @@ void global_data::reset_resize_independent_objects() {
     parallelizer.reset();
     algorithm_selector.reset();
     hwloc_wrapper.reset();
+}
+
+void global_data::getenv_local_coord(const char* local_proc_idx_env_name,
+                                     const char* local_proc_count_env_name) {
+    char* local_idx_env = getenv(local_proc_idx_env_name);
+    char* local_count_env = getenv(local_proc_count_env_name);
+    if (!(local_idx_env && local_count_env)) {
+        LOG_WARN("could not get local_idx/count from environment variables, "
+                 "trying to get them from ATL");
+#if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
+        //TODO: set PIDFD in the comments
+        LOG_WARN("fallback to 'sockets' mode of exchange mechanism, to use DRMFD "
+                 "set CCL_LOCAL_RANK/SIZE or use process launcher");
+        global_data::env().ze_ipc_exchange = ccl::ze::ipc_exchange_mode::sockets;
+#endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
+        local_proc_idx = CCL_ENV_INT_NOT_SPECIFIED;
+        local_proc_count = CCL_ENV_INT_NOT_SPECIFIED;
+        return;
+    }
+
+    local_proc_idx = std::atoi(local_idx_env);
+    local_proc_count = std::atoi(local_count_env);
+    CCL_THROW_IF_NOT(
+        local_proc_idx != CCL_ENV_INT_NOT_SPECIFIED, "unexpected local_proc_idx ", local_proc_idx);
+    CCL_THROW_IF_NOT(local_proc_count != CCL_ENV_INT_NOT_SPECIFIED,
+                     "unexpected local_proc_count ",
+                     local_proc_count);
+}
+
+void global_data::set_local_coord() {
+    auto& env = ccl::global_data::env();
+
+    if (env.process_launcher == process_launcher_mode::hydra) {
+        getenv_local_coord("MPI_LOCALRANKID", "MPI_LOCALNRANKS");
+    }
+    else if (env.process_launcher == process_launcher_mode::torch) {
+        getenv_local_coord("LOCAL_RANK", "LOCAL_WORLD_SIZE");
+    }
+#ifdef CCL_ENABLE_PMIX
+    else if (env.process_launcher == process_launcher_mode::pmix) {
+        if (!get_pmix_local_coord(&local_proc_idx, &local_proc_count)) {
+            if (local_proc_idx == CCL_ENV_INT_NOT_SPECIFIED ||
+                local_proc_count == CCL_ENV_INT_NOT_SPECIFIED) {
+                LOG_WARN("could not get local_idx/count from environment variables, "
+                         "trying to get them from ATL");
+#if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
+                LOG_WARN("fallback to 'sockets' mode of exchange mechanism, to use DRMFD "
+                         "set CCL_LOCAL_RANK/SIZE or use process launcher");
+                global_data::env().ze_ipc_exchange = ccl::ze::ipc_exchange_mode::sockets;
+#endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
+            }
+            else {
+                CCL_THROW("unexpected behaviour of get_pmix_local_coord local_proc_idx: ",
+                          local_proc_idx,
+                          ", local_proc_count: ",
+                          local_proc_count);
+            }
+        }
+    }
+#endif // CCL_ENABLE_PMIX
+    else if (env.process_launcher == process_launcher_mode::none) {
+        getenv_local_coord("CCL_LOCAL_RANK", "CCL_LOCAL_SIZE");
+    }
+    else {
+        CCL_THROW("unexpected process launcher");
+    }
+    LOG_INFO("process launcher: ",
+             ccl::env_data::process_launcher_names[env.process_launcher],
+             ", local_proc_idx: ",
+             local_proc_idx,
+             ", local_proc_count: ",
+             local_proc_count);
 }
 
 } // namespace ccl

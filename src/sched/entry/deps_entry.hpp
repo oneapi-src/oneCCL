@@ -1,6 +1,9 @@
 #pragma once
 
+#ifdef CCL_ENABLE_SYCL
 #include "common/utils/sycl_utils.hpp"
+#endif // CCL_ENABLE_SYCL
+
 #include "sched/entry/entry.hpp"
 
 class deps_entry : public sched_entry {

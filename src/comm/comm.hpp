@@ -19,7 +19,6 @@
 #include <unordered_map>
 
 #include "atl/atl_base_comm.hpp"
-#include "coll/algorithms/allreduce/allreduce_2d.hpp"
 #include "comm/comm_interface.hpp"
 #include "comm/atl_tag.hpp"
 #include "common/log/log.hpp"
@@ -38,6 +37,9 @@
 #include "oneapi/ccl/coll_attr_ids.hpp"
 #include "oneapi/ccl/coll_attr_ids_traits.hpp"
 #include "oneapi/ccl/coll_attr.hpp"
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+#include "sched/entry/ze/ze_primitives.hpp"
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 #include "types_generator_defines.hpp"
 #include "topology/topo_manager.hpp"
 #include "unordered_coll/unordered_coll.hpp"
@@ -62,6 +64,39 @@ namespace v1 {
 class kvs_interface;
 }
 } // namespace ccl
+
+// comm-specific environment
+// based on global environment
+// and adjusted according to comm parameters
+class ccl_comm_env {
+public:
+    ccl_comm_env(std::shared_ptr<ccl::device> device);
+    ccl_comm_env(const ccl_comm_env& other) = delete;
+    ccl_comm_env& operator=(const ccl_comm_env& other) = delete;
+    ~ccl_comm_env() = default;
+
+    std::string to_string() const;
+
+#ifdef CCL_ENABLE_SYCL
+    int get_enable_topo_algo() const {
+        return enable_topo_algo;
+    }
+
+    ccl::ze::copy_engine_mode get_ze_copy_engine() const {
+        return ze_copy_engine;
+    }
+#endif // CCL_ENABLE_SYCL
+
+private:
+    std::shared_ptr<ccl::device> device;
+
+#ifdef CCL_ENABLE_SYCL
+    int enable_topo_algo;
+    ccl::ze::copy_engine_mode ze_copy_engine;
+    ccl::ze::h2d_copy_engine_mode ze_h2d_copy_engine;
+
+#endif // CCL_ENABLE_SYCL
+};
 
 // the main purpose of internal comm is to hold
 // shareable parts of ccl_comm which don't need to
@@ -94,7 +129,6 @@ public:
 
     std::shared_ptr<atl_base_comm> atl_comm;
     std::unique_ptr<ccl_unordered_coll_manager> unordered_coll_manager;
-    std::unique_ptr<ccl_allreduce_2d_builder> allreduce_2d_builder;
 
 private:
     int m_rank;
@@ -229,11 +263,12 @@ public:
         }
     }
 
+    std::shared_ptr<ccl_comm_env> get_env() const {
+        return env;
+    }
+
     std::unique_ptr<ccl_unordered_coll_manager>& get_unordered_coll_manager() const {
         return comm_impl->unordered_coll_manager;
-    }
-    std::unique_ptr<ccl_allreduce_2d_builder>& get_allreduce_2d_builder() const {
-        return comm_impl->allreduce_2d_builder;
     }
 
     int rank() const override {
@@ -299,6 +334,8 @@ private:
 
     ccl_rank2rank_map local2global_map{};
     ccl::topo_manager topo_manager;
+
+    std::shared_ptr<ccl_comm_env> env;
 
     ccl_sched_id_t next_sched_id_internal;
     ccl_sched_id_t next_sched_id_external;

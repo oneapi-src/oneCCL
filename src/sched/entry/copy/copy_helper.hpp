@@ -16,43 +16,43 @@
 #pragma once
 
 #include "common/datatype/datatype.hpp"
-#include "common/global/global.hpp"
 #include "common/utils/buffer.hpp"
 #include "common/utils/enums.hpp"
 #include "common/utils/tuple.hpp"
-#include "common/utils/sycl_utils.hpp"
 
-enum class copy_direction { undefined, h2h, d2h, h2d, d2d };
+#ifdef CCL_ENABLE_SYCL
+#include "common/utils/sycl_utils.hpp"
+#endif // CCL_ENABLE_SYCL
+
+enum class copy_direction { undefined, h2h, d2h, h2d, d2d, t2t, c2c };
 std::string to_string(copy_direction val);
 
+class ccl_comm;
+
 struct copy_attr {
-    int peer_rank = ccl_comm::invalid_rank;
-    size_t peer_buf_idx = 0;
-    copy_direction direction = copy_direction::undefined;
-    ccl_comm* map_comm = nullptr;
-    size_t in_buf_offset = 0;
-    size_t out_buf_offset = 0;
-    bool use_nontemporal = false;
+    int peer_rank;
+    size_t peer_buf_idx;
+    copy_direction direction;
+    ccl_comm* map_comm;
+    size_t in_buf_offset;
+    size_t out_buf_offset;
+    bool use_nontemporal;
 
 #ifdef CCL_ENABLE_ZE
-    int hint_queue_index = 0;
-    bool is_peer_card_copy = false;
+    int hint_queue_index;
 #endif // CCL_ENABLE_ZE
 
-    copy_attr() {}
-
+    copy_attr();
     copy_attr(int peer_rank,
               size_t peer_buf_idx,
               copy_direction direction,
               ccl_comm* map_comm = nullptr,
               size_t in_buf_offset = 0,
               size_t out_buf_offset = 0);
-
     copy_attr(copy_direction direction, size_t in_buf_offset = 0, size_t out_buf_offset = 0);
 };
 
 #ifdef CCL_ENABLE_SYCL
-
 struct sycl_copier {
     sycl_copier() = default;
     sycl_copier(copy_direction direction,
@@ -62,35 +62,20 @@ struct sycl_copier {
                 const ccl_datatype& dtype,
                 bool is_sycl_buf = false,
                 size_t in_buf_offset = 0,
-                size_t out_buf_offset = 0)
-            : direction(direction),
-              in_buf(in_buf),
-              out_buf(out_buf),
-              count(count),
-              dtype(dtype),
-              is_sycl_buf(is_sycl_buf),
-              in_buf_offset(in_buf_offset),
-              out_buf_offset(out_buf_offset) {}
+                size_t out_buf_offset = 0);
 
-    bool is_completed() {
-        return (e.get_info<sycl::info::event::command_execution_status>() ==
-                sycl::info::event_command_status::complete)
-                   ? true
-                   : false;
-    }
-
-    void set_queue(sycl::queue* external_q) {
-        q = external_q;
-        CCL_THROW_IF_NOT(q);
-    }
+    bool is_completed() const;
+    void set_queue(const sycl::queue* external_q);
 
     template <size_t index, class specific_sycl_buffer>
     void invoke() {
-        if (index == (int)(dtype.idx())) {
+        const bool dtype_idx_is_matched = index == (int)(dtype.idx());
+
+        if (dtype_idx_is_matched) {
             LOG_DEBUG("visitor matched index: ",
                       index,
-                      ", ccl: ",
-                      ccl::global_data::get().dtypes->name(dtype),
+                      ", dt: ",
+                      get_dtype_name(dtype),
                       ", in: ",
                       __PRETTY_FUNCTION__);
 
@@ -179,12 +164,14 @@ struct sycl_copier {
         else {
             LOG_TRACE("visitor skipped index: ",
                       index,
-                      ", ccl: ",
-                      ccl::global_data::get().dtypes->name(dtype),
+                      ", dt: ",
+                      get_dtype_name(dtype),
                       ", in: ",
                       __PRETTY_FUNCTION__);
         }
     }
+
+    std::string get_dtype_name(const ccl_datatype& dt) const;
 
     copy_direction direction;
     ccl_buffer in_buf;
@@ -197,5 +184,4 @@ struct sycl_copier {
     size_t out_buf_offset;
     sycl::event e;
 };
-
 #endif // CCL_ENABLE_SYCL

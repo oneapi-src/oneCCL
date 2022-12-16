@@ -18,11 +18,25 @@
 
 #include "common/global/global.hpp"
 #include "common/log/log.hpp"
+#include "common/utils/utils.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
 
 namespace ccl {
 
 namespace ze {
+
+std::map<copy_engine_mode, std::string> copy_engine_names = {
+    std::make_pair(copy_engine_mode::none, "none"),
+    std::make_pair(copy_engine_mode::main, "main"),
+    std::make_pair(copy_engine_mode::link, "link"),
+    std::make_pair(copy_engine_mode::auto_mode, "auto")
+};
+
+std::map<h2d_copy_engine_mode, std::string> h2d_copy_engine_names = {
+    std::make_pair(h2d_copy_engine_mode::none, "none"),
+    std::make_pair(h2d_copy_engine_mode::main, "main"),
+    std::make_pair(h2d_copy_engine_mode::auto_mode, "auto")
+};
 
 std::string get_build_log_string(ze_module_build_log_handle_t build_log) {
     size_t log_size{};
@@ -93,14 +107,19 @@ void get_suggested_group_size(ze_kernel_handle_t kernel,
         return;
     }
 
-    ZE_CALL(zeKernelSuggestGroupSize,
-            (kernel,
-             elem_count,
-             1,
-             1,
-             &group_size->groupSizeX,
-             &group_size->groupSizeY,
-             &group_size->groupSizeZ));
+    if (ccl::global_data::env().kernel_group_size == 0) {
+        ZE_CALL(zeKernelSuggestGroupSize,
+                (kernel,
+                 elem_count,
+                 1,
+                 1,
+                 &group_size->groupSizeX,
+                 &group_size->groupSizeY,
+                 &group_size->groupSizeZ));
+    }
+    else {
+        group_size->groupSizeX = ccl::global_data::env().kernel_group_size;
+    }
 
     CCL_THROW_IF_NOT(group_size->groupSizeX >= 1,
                      "wrong group size calculation: size: ",
@@ -117,6 +136,13 @@ void get_suggested_group_count(const ze_group_size_t& group_size,
     group_count->groupCountZ = 1;
 
     auto rem = elem_count % group_size.groupSizeX;
+
+    //check whether any remaining elements are left and
+    //add an additional group to account for that
+    if (ccl::global_data::env().kernel_group_size != 0 && rem != 0) {
+        group_count->groupCountX = group_count->groupCountX + 1;
+        rem = 0;
+    }
     CCL_THROW_IF_NOT(group_count->groupCountX >= 1 && rem == 0,
                      "wrong group calculation: size: ",
                      to_string(group_size),
@@ -129,16 +155,20 @@ void get_suggested_group_count(const ze_group_size_t& group_size,
 void set_kernel_args(ze_kernel_handle_t kernel, const ze_kernel_args_t& kernel_args) {
     uint32_t idx = 0;
     for (const auto& arg : kernel_args) {
-        auto res = zeKernelSetArgumentValue(kernel, idx, arg.size, arg.ptr);
-        if (res != ZE_RESULT_SUCCESS) {
-            CCL_THROW("zeKernelSetArgumentValue failed with error ",
-                      to_string(res),
-                      " on idx ",
-                      idx,
-                      " with value ",
-                      *((void**)arg.ptr));
+        // each arg can be an array with arg.count elements
+        for (size_t i = 0; i < arg.count; i++) {
+            auto ptr = &((char*)arg.ptr)[i * arg.size];
+            auto res = zeKernelSetArgumentValue(kernel, idx, arg.size, ptr);
+            if (res != ZE_RESULT_SUCCESS) {
+                CCL_THROW("zeKernelSetArgumentValue failed with error ",
+                          to_string(res),
+                          " on idx ",
+                          idx,
+                          " with value ",
+                          *((void**)ptr));
+            }
+            ++idx;
         }
-        ++idx;
     }
 }
 
@@ -249,8 +279,11 @@ bool get_device_global_id(ze_device_handle_t device, ssize_t* id) {
     CCL_THROW_IF_NOT(device, "no device");
     CCL_THROW_IF_NOT(id, "no id");
     bool success{};
-    const auto& devices = global_data::get().ze_data->device_handles;
-    auto found = std::find(devices.begin(), devices.end(), device);
+    const auto& devices = global_data::get().ze_data->devices;
+    auto found =
+        std::find_if(devices.begin(), devices.end(), [&device](const device_info& info) -> bool {
+            return info.device == device;
+        });
     if (found != devices.end()) {
         *id = std::distance(devices.begin(), found);
         success = true;
@@ -258,11 +291,19 @@ bool get_device_global_id(ze_device_handle_t device, ssize_t* id) {
     return success;
 }
 
-device_family get_device_family(ze_device_handle_t device) {
-    ze_device_properties_t device_prop = ccl::ze::default_device_props;
+uint32_t get_parent_device_id(ze_device_handle_t device) {
+    ssize_t dev_id = ccl::utils::invalid_device_id;
+    ccl::ze::get_device_global_id(device, &dev_id);
+    CCL_THROW_IF_NOT(dev_id != ccl::utils::invalid_device_id, "unexpected dev_id");
+    LOG_DEBUG("device_id: ", dev_id);
 
-    ZE_CALL(zeDeviceGetProperties, (device, &device_prop));
-    uint32_t id = device_prop.deviceId & 0xfff0;
+    return ccl::global_data::get().ze_data->devices[dev_id].parent_idx;
+}
+
+device_family get_device_family(ze_device_handle_t device) {
+    ze_device_properties_t dev_props = ccl::ze::default_device_props;
+    ZE_CALL(zeDeviceGetProperties, (device, &dev_props));
+    uint32_t id = dev_props.deviceId & 0xfff0;
     using enum_t = typename std::underlying_type<device_family>::type;
 
     switch (id) {
@@ -312,6 +353,51 @@ bool is_same_fabric_port(const zes_fabric_port_id_t& port1, const zes_fabric_por
                   ccl::ze::to_string(port2));
     }
     return result;
+}
+
+bool pci_address_comparator::operator()(const zes_pci_address_t& a,
+                                        const zes_pci_address_t& b) const {
+    if (a.domain == b.domain) {
+        if (a.bus == b.bus) {
+            if (a.device == b.device) {
+                if (a.function == b.function) {
+                    return false;
+                }
+                else {
+                    return (a.function < b.function);
+                }
+            }
+            else {
+                return (a.device < b.device);
+            }
+        }
+        else {
+            return (a.bus < b.bus);
+        }
+    }
+    else {
+        return (a.domain < b.domain);
+    }
+}
+
+bool fabric_port_comparator::operator()(const zes_fabric_port_id_t& a,
+                                        const zes_fabric_port_id_t& b) const {
+    if (a.fabricId == b.fabricId) {
+        if (a.attachId == b.attachId) {
+            if (a.portNumber == b.portNumber) {
+                return false;
+            }
+            else {
+                return (a.portNumber < b.portNumber);
+            }
+        }
+        else {
+            return (a.attachId < b.attachId);
+        }
+    }
+    else {
+        return (a.fabricId < b.fabricId);
+    }
 }
 
 std::string to_string(ze_result_t result) {

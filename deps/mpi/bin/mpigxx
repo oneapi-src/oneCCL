@@ -113,7 +113,8 @@ fi
 # Default settings for compiler, flags, and libraries
 CXX="g++"
 MPICH_VERSION="3.4a2"
-MPIVERSION="2021.7"
+CXXFLAGS=""
+MPIVERSION="2021.8"
 MPILIBNAME="mpi"
 MPICXXLIBNAME="mpicxx"
 

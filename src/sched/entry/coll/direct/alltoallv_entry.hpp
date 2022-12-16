@@ -27,22 +27,22 @@ public:
     alltoallv_entry() = delete;
     alltoallv_entry(ccl_sched* sched,
                     const ccl_buffer send_buf,
-                    const size_t* send_cnts,
+                    const size_t* send_counts,
                     ccl_buffer recv_buf,
-                    const size_t* recv_cnts,
+                    const size_t* recv_counts,
                     const ccl_datatype& dtype,
                     ccl_comm* comm)
             : base_coll_entry(sched),
               send_buf(send_buf),
-              send_cnts(send_cnts),
+              send_counts(send_counts, send_counts + comm->size()),
               recv_buf(recv_buf),
-              recv_cnts(recv_cnts),
+              recv_counts(recv_counts, recv_counts + comm->size()),
               dtype(dtype),
               comm(comm),
-              send_bytes(nullptr),
-              recv_bytes(nullptr),
-              send_offsets(nullptr),
-              recv_offsets(nullptr),
+              send_bytes(comm->size()),
+              recv_bytes(comm->size()),
+              send_offsets(comm->size()),
+              recv_offsets(comm->size()),
               sum_send_bytes(0),
               sum_recv_bytes(0) {}
 
@@ -53,23 +53,16 @@ public:
         sum_recv_bytes = 0;
         sum_send_bytes = 0;
 
-        if (!send_bytes && !recv_bytes && !send_offsets && !recv_offsets) {
-            send_bytes = static_cast<int*>(CCL_MALLOC(comm_size * sizeof(int), "send_bytes"));
-            recv_bytes = static_cast<int*>(CCL_MALLOC(comm_size * sizeof(int), "recv_bytes"));
-            send_offsets = static_cast<int*>(CCL_MALLOC(comm_size * sizeof(int), "send_offsets"));
-            recv_offsets = static_cast<int*>(CCL_MALLOC(comm_size * sizeof(int), "recv_offsets"));
-        }
-
-        send_bytes[0] = send_cnts[0] * dt_size;
-        recv_bytes[0] = recv_cnts[0] * dt_size;
+        send_bytes[0] = send_counts[0] * dt_size;
+        recv_bytes[0] = recv_counts[0] * dt_size;
         send_offsets[0] = 0;
         recv_offsets[0] = 0;
         sum_send_bytes = send_bytes[0];
         sum_recv_bytes = recv_bytes[0];
 
         for (i = 1; i < comm_size; i++) {
-            send_bytes[i] = send_cnts[i] * dt_size;
-            recv_bytes[i] = recv_cnts[i] * dt_size;
+            send_bytes[i] = send_counts[i] * dt_size;
+            recv_bytes[i] = recv_counts[i] * dt_size;
             send_offsets[i] =
                 send_offsets[i - 1] + send_bytes[i - 1]; // treat buffers as char buffers
             recv_offsets[i] = recv_offsets[i - 1] + recv_bytes[i - 1];
@@ -81,11 +74,11 @@ public:
 
         atl_status_t atl_status = comm->get_atl_comm()->alltoallv(sched->bin->get_atl_ep(),
                                                                   send_buf.get_ptr(sum_send_bytes),
-                                                                  send_bytes,
-                                                                  send_offsets,
+                                                                  send_bytes.data(),
+                                                                  send_offsets.data(),
                                                                   recv_buf.get_ptr(sum_recv_bytes),
-                                                                  recv_bytes,
-                                                                  recv_offsets,
+                                                                  recv_bytes.data(),
+                                                                  recv_offsets.data(),
                                                                   req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
@@ -107,13 +100,6 @@ public:
         }
     }
 
-    ~alltoallv_entry() {
-        CCL_FREE(send_bytes);
-        CCL_FREE(recv_bytes);
-        CCL_FREE(send_offsets);
-        CCL_FREE(recv_offsets);
-    }
-
     const char* name() const override {
         return class_name();
     }
@@ -123,22 +109,22 @@ protected:
         ccl_logger::format(str,
                            "dt ",
                            ccl::global_data::get().dtypes->name(dtype),
-                           ", send_cnts ",
-                           send_cnts,
+                           ", send_counts[0] ",
+                           send_counts[0],
                            ", send_buf ",
                            send_buf,
-                           ", send_bytes ",
-                           send_bytes,
-                           ", send_offsets ",
-                           send_offsets,
-                           ", recv_cnts ",
-                           recv_cnts,
+                           ", send_bytes[0] ",
+                           send_bytes[0],
+                           ", send_offsets[0] ",
+                           send_offsets[0],
+                           ", recv_counts[0] ",
+                           recv_counts[0],
                            ", recv_buf ",
                            recv_buf,
-                           ", recv_bytes ",
-                           recv_bytes,
-                           ", recv_offsets ",
-                           recv_offsets,
+                           ", recv_bytes[0] ",
+                           recv_bytes[0],
+                           ", recv_offsets[0] ",
+                           recv_offsets[0],
                            ", comm_id ",
                            comm->get_comm_id(),
                            ", req ",
@@ -147,18 +133,18 @@ protected:
     }
 
 private:
-    ccl_buffer send_buf;
-    const size_t* send_cnts;
-    ccl_buffer recv_buf;
-    const size_t* recv_cnts;
-    ccl_datatype dtype;
-    ccl_comm* comm;
+    const ccl_buffer send_buf;
+    const std::vector<size_t> send_counts;
+    const ccl_buffer recv_buf;
+    const std::vector<size_t> recv_counts;
+    const ccl_datatype dtype;
+    const ccl_comm* comm;
     atl_req_t req{};
 
-    int* send_bytes;
-    int* recv_bytes;
-    int* send_offsets;
-    int* recv_offsets;
+    std::vector<int> send_bytes;
+    std::vector<int> recv_bytes;
+    std::vector<int> send_offsets;
+    std::vector<int> recv_offsets;
     size_t sum_send_bytes;
     size_t sum_recv_bytes;
 };

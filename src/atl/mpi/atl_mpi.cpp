@@ -52,7 +52,6 @@ atl_status_t atl_mpi::init(int* argc,
     }
 
     MPI_Initialized(&ctx.is_external_init);
-
     if (!ctx.is_external_init) {
         ret = MPI_Init_thread(argc, argv, required_thread_level, &provided_thread_level);
         if (provided_thread_level < required_thread_level) {
@@ -581,6 +580,10 @@ atl_status_t atl_mpi::comm_split(const std::vector<atl_ep_t>& base_eps,
         snprintf(mpi_ep_idx_str, MPI_MAX_INFO_VAL, "%zd", mpi_ep_idx);
         MPI_Info_set(info, ctx.EP_IDX_KEY, mpi_ep_idx_str);
 
+        /* pre-requisite for pref-nic hint */
+        MPI_Info_set(info, "mpi_assert_no_any_source", "true");
+        MPI_Info_set(info, "mpi_assert_no_any_tag", "true");
+
         if (ctx.mnic_type != ATL_MNIC_NONE) {
             /* set NIC index */
             nic_idx = idx;
@@ -656,7 +659,6 @@ atl_status_t atl_mpi::finalize(int global_idx) {
 
     int is_mpi_finalized = 0;
     MPI_Finalized(&is_mpi_finalized);
-
     if (!is_mpi_finalized) {
         ctx.bf16_finalize();
         ctx.fp16_finalize();
@@ -780,14 +782,14 @@ MPI_Datatype atl_mpi::atl2mpi_dtype(atl_datatype_t dtype) {
 }
 
 MPI_Op atl_mpi::atl2mpi_op(atl_reduction_t rtype, MPI_Datatype dtype) {
-#ifdef ATL_MPI_BF16
-    if (dtype == ctx.bf16.dtype)
+    if (dtype == ctx.bf16.dtype) {
         return ctx.atl2mpi_op_bf16(rtype);
-#endif // ATL_MPI_BF16
+    }
 
 #ifdef ATL_MPI_FP16
-    if (dtype == ctx.fp16.dtype)
+    if (dtype == ctx.fp16.dtype) {
         return ctx.atl2mpi_op_fp16(rtype);
+    }
 #endif // ATL_MPI_FP16
 
     (void)dtype;

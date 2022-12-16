@@ -15,7 +15,6 @@
 */
 #pragma once
 
-#include "sched/entry/copy/copy_helper.hpp"
 #include "sched/entry/ze/ze_base_entry.hpp"
 
 struct copy_attr;
@@ -30,12 +29,7 @@ public:
         return class_name();
     }
 
-    virtual std::string name_ext() const override {
-        std::stringstream out;
-        out << name() << " ";
-        out << "size: " << count;
-        return out.str();
-    }
+    virtual std::string name_ext() const override;
 
     explicit ze_copy_entry(ccl_sched* sched,
                            ccl_buffer in_buf,
@@ -43,7 +37,8 @@ public:
                            size_t count,
                            const ccl_datatype& dtype,
                            const copy_attr& attr = {},
-                           std::vector<ze_event_handle_t> wait_events = {});
+                           std::vector<ze_event_handle_t> wait_events = {},
+                           std::vector<ze_event_handle_t> dep_events = {});
 
     void init_ze_hook() override;
 
@@ -54,4 +49,5 @@ private:
     const ccl_datatype dtype;
     const copy_attr attr;
     const size_t count;
+    std::vector<ze_event_handle_t> dep_events;
 };

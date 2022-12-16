@@ -26,39 +26,34 @@ public:
     allgatherv_entry() = delete;
     allgatherv_entry(ccl_sched* sched,
                      const ccl_buffer send_buf,
-                     size_t send_cnt,
+                     size_t send_count,
                      ccl_buffer recv_buf,
-                     const size_t* recv_cnts,
+                     const size_t* recv_counts,
                      const ccl_datatype& dtype,
                      ccl_comm* comm)
             : base_coll_entry(sched),
               send_buf(send_buf),
-              send_cnt(send_cnt),
+              send_count(send_count),
               recv_buf(recv_buf),
-              recv_cnts(recv_cnts),
+              recv_counts(recv_counts, recv_counts + comm->size()),
               dtype(dtype),
               comm(comm),
-              recv_bytes(nullptr),
-              offsets(nullptr),
+              recv_bytes(comm->size()),
+              offsets(comm->size()),
               sum_recv_bytes(0) {}
 
     void start() override {
         size_t dt_size = dtype.size();
-        size_t send_bytes = send_cnt * dt_size;
+        size_t send_bytes = send_count * dt_size;
         int comm_size = comm->size();
         int i;
 
-        if (!recv_bytes && !offsets) {
-            recv_bytes = static_cast<int*>(CCL_MALLOC(comm_size * sizeof(int), "recv_bytes"));
-            offsets = static_cast<int*>(CCL_MALLOC(comm_size * sizeof(int), "offsets"));
-        }
-
-        recv_bytes[0] = recv_cnts[0] * dt_size;
+        recv_bytes[0] = recv_counts[0] * dt_size;
         offsets[0] = 0;
         sum_recv_bytes = recv_bytes[0];
 
         for (i = 1; i < comm_size; i++) {
-            recv_bytes[i] = recv_cnts[i] * dt_size;
+            recv_bytes[i] = recv_counts[i] * dt_size;
             offsets[i] = offsets[i - 1] + recv_bytes[i - 1]; // treat buffers as char buffers
             sum_recv_bytes += recv_bytes[i];
         }
@@ -68,8 +63,8 @@ public:
                                                                    send_buf.get_ptr(send_bytes),
                                                                    send_bytes,
                                                                    recv_buf.get_ptr(sum_recv_bytes),
-                                                                   recv_bytes,
-                                                                   offsets,
+                                                                   recv_bytes.data(),
+                                                                   offsets.data(),
                                                                    req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
@@ -91,11 +86,6 @@ public:
         }
     }
 
-    ~allgatherv_entry() {
-        CCL_FREE(recv_bytes);
-        CCL_FREE(offsets);
-    }
-
     const char* name() const override {
         return class_name();
     }
@@ -105,18 +95,18 @@ protected:
         ccl_logger::format(str,
                            "dt ",
                            ccl::global_data::get().dtypes->name(dtype),
-                           ", send_cnt ",
-                           send_cnt,
+                           ", send_count ",
+                           send_count,
                            ", send_buf ",
                            send_buf,
-                           ", recv_cnt ",
-                           recv_cnts,
+                           ", recv_counts[0] ",
+                           recv_counts[0],
                            ", recv_buf ",
                            recv_buf,
-                           ", recv_bytes ",
-                           recv_bytes,
-                           ", offsets ",
-                           offsets,
+                           ", recv_bytes[0] ",
+                           recv_bytes[0],
+                           ", offsets[0] ",
+                           offsets[0],
                            ", comm_id ",
                            comm->get_comm_id(),
                            ", req ",
@@ -125,15 +115,15 @@ protected:
     }
 
 private:
-    ccl_buffer send_buf;
-    size_t send_cnt;
-    ccl_buffer recv_buf;
-    const size_t* recv_cnts;
-    ccl_datatype dtype;
-    ccl_comm* comm;
+    const ccl_buffer send_buf;
+    const size_t send_count;
+    const ccl_buffer recv_buf;
+    const std::vector<size_t> recv_counts;
+    const ccl_datatype dtype;
+    const ccl_comm* comm;
     atl_req_t req{};
 
-    int* recv_bytes;
-    int* offsets;
+    std::vector<int> recv_bytes;
+    std::vector<int> offsets;
     size_t sum_recv_bytes;
 };

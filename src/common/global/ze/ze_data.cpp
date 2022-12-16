@@ -14,7 +14,7 @@
  limitations under the License.
 */
 #include "common/global/global.hpp"
-#include "common/ze/ze_api_wrapper.hpp"
+#include "common/api_wrapper/ze_api_wrapper.hpp"
 
 namespace ccl {
 namespace ze {
@@ -58,7 +58,6 @@ global_data_desc::global_data_desc() {
 
         for (uint32_t idx = 0; idx < device_count; idx++) {
             devices.push_back(device_info(devs[idx], idx));
-            device_handles.push_back(devs[idx]);
         }
 
         for (uint32_t idx = 0; idx < device_count; idx++) {
@@ -71,13 +70,26 @@ global_data_desc::global_data_desc() {
 
             for (uint32_t subdev_idx = 0; subdev_idx < subdevice_count; subdev_idx++) {
                 devices.push_back(device_info(subdevs[subdev_idx], idx));
-                device_handles.push_back(subdevs[subdev_idx]);
             }
         }
     }
     LOG_DEBUG("found devices: ", devices.size());
 
     cache = std::make_unique<ze::cache>(global_data::env().worker_count);
+
+    if (global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::pidfd) {
+        if (!ze::fd_manager::is_pidfd_supported()) {
+            global_data::env().ze_ipc_exchange = ccl::ze::ipc_exchange_mode::drmfd;
+            LOG_WARN("pidfd exchange mode is not supported, fallbacks to drmfd");
+        }
+        else {
+            LOG_DEBUG("pidfd exchange mode is verified successfully");
+        }
+    }
+
+    if (global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::drmfd) {
+        fd_manager = std::make_unique<ze::fd_manager>();
+    }
 
     LOG_INFO("initialized level-zero");
 }
@@ -97,10 +109,7 @@ global_data_desc::~global_data_desc() {
 
     contexts.clear();
     devices.clear();
-    device_handles.clear();
     drivers.clear();
-
-    ze_api_fini();
 
     LOG_INFO("finalized level-zero");
 }

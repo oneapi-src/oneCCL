@@ -367,7 +367,7 @@ kvs_status_t internal_kvs::init_main_server_address(const char* main_addr) {
     }
 
     if (ip_getting_type) {
-        if (strstr(ip_getting_type, CCL_KVS_IP_EXCHANGE_VAL_ENV.c_str())) {
+        if (ip_getting_type == CCL_KVS_IP_EXCHANGE_VAL_ENV) {
             ip_getting_mode = IGT_ENV;
         }
         else {

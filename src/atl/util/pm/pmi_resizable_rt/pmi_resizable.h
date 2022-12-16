@@ -56,7 +56,7 @@ public:
 
     int is_pm_resize_enabled() override;
 
-    atl_status_t pmrt_main_addr_reserve(char* main_addr) override;
+    atl_status_t pmrt_main_addr_reserve(char* addr) override;
 
     atl_status_t pmrt_set_resize_function(atl_resize_fn_t resize_fn) override;
 
@@ -102,15 +102,15 @@ public:
 private:
     bool is_finalized{ false };
     /*Was in API ->*/
-    kvs_status_t PMIR_Main_Addr_Reserve(char* main_addr);
+    kvs_status_t PMIR_Main_Addr_Reserve(char* addr);
 
-    kvs_status_t PMIR_Init(const char* main_addr);
+    kvs_status_t PMIR_Init(const char* addr);
 
     kvs_status_t PMIR_Finalize(void);
 
-    kvs_status_t PMIR_Get_size(int* size);
+    kvs_status_t PMIR_Get_size(int* size_ptr);
 
-    kvs_status_t PMIR_Get_rank(int* rank);
+    kvs_status_t PMIR_Get_rank(int* rank_ptr);
 
     kvs_status_t PMIR_KVS_Get_my_name(char* kvs_name, size_t length);
 

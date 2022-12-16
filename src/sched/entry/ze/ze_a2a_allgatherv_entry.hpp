@@ -21,25 +21,20 @@
 class ze_a2a_allgatherv_entry : public ze_base_entry {
 public:
     static constexpr const char* class_name() noexcept {
-        return "ZE_ALLGATHERV";
+        return "ZE_A2A_ALLGATHERV";
     }
 
     const char* name() const override {
         return class_name();
     }
 
-    virtual std::string name_ext() const override {
-        std::stringstream out;
-        out << name() << " ";
-        out << "send size: " << send_count;
-        return out.str();
-    }
+    virtual std::string name_ext() const override;
 
     explicit ze_a2a_allgatherv_entry(ccl_sched* sched,
                                      ccl_buffer send_buf,
                                      size_t send_count,
-                                     ccl_buffer recv_buf,
-                                     const size_t* recv_counts,
+                                     std::vector<ccl_buffer> recv_bufs,
+                                     std::vector<size_t> recv_counts,
                                      const ccl_datatype& dtype,
                                      ccl_comm* comm,
                                      std::vector<ze_event_handle_t> wait_events = {},
@@ -52,27 +47,34 @@ public:
 
     static void fill_list(const ze_base_entry* entry,
                           int comm_rank,
-                          void* send_buf,
-                          void* recv_buf,
-                          const std::vector<ccl_buffer>& peer_recv_bufs,
+                          ccl_buffer send_buf,
+                          const std::vector<ccl_buffer>& recv_bufs,
+                          const std::vector<ccl_buffer>& peer_bufs,
                           int peer_count,
-                          size_t copy_bytes,
-                          size_t offset_bytes,
+                          const std::vector<size_t>& copy_bytes,
+                          const ccl_datatype& dtype,
+                          const std::vector<size_t>& rank_buf_offsets,
                           bool is_inplace,
                           std::vector<ze_event_handle_t>& copy_events,
-                          ze_event_handle_t wait_event = nullptr);
+                          std::vector<ze_event_handle_t>& wait_events,
+                          std::vector<ze_kernel>& kernels,
+                          ze_module_handle_t module,
+                          ze_device_handle_t device,
+                          ze_context_handle_t context,
+                          size_t worker_idx,
+                          size_t peer_buf_offset,
+                          bool is_read,
+                          bool is_monolithic);
 
 protected:
-    void dump_detail(std::stringstream& str) const override {
-        ccl_logger::format(str, "comm ", comm->to_string(), "\n");
-    }
+    void dump_detail(std::stringstream& str) const override;
 
 private:
     static constexpr size_t event_group_count{ 1 }; // copy phase
 
     const ccl_buffer send_buf;
     const size_t send_count;
-    const ccl_buffer recv_buf;
+    const std::vector<ccl_buffer> recv_bufs;
     const std::vector<size_t> recv_counts;
     const ccl_datatype dtype;
     const size_t peer_buf_idx;
@@ -80,4 +82,41 @@ private:
     const int peer_count;
 
     std::vector<ze_event_handle_t> copy_events;
+    std::vector<ze_kernel> kernels;
+    std::vector<ze_event_handle_t> kernel_events;
+
+    static void fill_list_read(const ze_base_entry* entry,
+                               int comm_rank,
+                               ccl_buffer send_buf,
+                               const std::vector<ccl_buffer>& recv_bufs,
+                               const std::vector<ccl_buffer>& peer_send_bufs,
+                               int peer_count,
+                               const std::vector<size_t>& copy_bytes,
+                               const ccl_datatype& dtype,
+                               const std::vector<size_t>& rank_buf_offsets,
+                               bool is_inplace,
+                               std::vector<ze_event_handle_t>& copy_events,
+                               std::vector<ze_event_handle_t>& wait_events,
+                               size_t peer_buf_offset,
+                               bool is_monolithic);
+
+    static void fill_list_write(const ze_base_entry* entry,
+                                int comm_rank,
+                                ccl_buffer send_buf,
+                                const std::vector<ccl_buffer>& recv_bufs,
+                                const std::vector<ccl_buffer>& peer_recv_bufs,
+                                int peer_count,
+                                const std::vector<size_t>& copy_bytes,
+                                const ccl_datatype& dtype,
+                                const std::vector<size_t>& rank_buf_offsets,
+                                bool is_inplace,
+                                std::vector<ze_event_handle_t>& copy_events,
+                                std::vector<ze_event_handle_t>& wait_events,
+                                std::vector<ze_kernel>& kernels,
+                                ze_module_handle_t module,
+                                ze_device_handle_t device,
+                                ze_context_handle_t context,
+                                size_t worker_idx,
+                                size_t peer_buf_offset,
+                                bool is_monolithic);
 };

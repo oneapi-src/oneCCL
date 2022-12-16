@@ -19,9 +19,8 @@
 #include "common/env/env.hpp"
 
 #if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
-#include "common/global/ze_data.hpp"
+#include "common/global/ze/ze_data.hpp"
 #endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
-
 #include "common/utils/utils.hpp"
 #include "hwloc/hwloc_wrapper.hpp"
 #include "internal_types.hpp"
@@ -90,11 +89,31 @@ public:
     static thread_local bool is_worker_thread;
     bool is_ft_enabled;
 
+    int get_local_proc_idx() const {
+        return local_proc_idx;
+    }
+    int get_local_proc_count() const {
+        return local_proc_count;
+    }
+
+    void set_local_proc_idx(int local_idx) {
+        local_proc_idx = local_idx;
+    }
+    void set_local_proc_count(int local_count) {
+        local_proc_count = local_count;
+    }
+
 private:
     global_data();
 
     void init_resize_independent_objects();
     void reset_resize_independent_objects();
+
+    int local_proc_idx;
+    int local_proc_count;
+    void getenv_local_coord(const char* local_proc_idx_env_name,
+                            const char* local_proc_count_env_name);
+    void set_local_coord();
 
     env_data env_object;
     os_information os_info;

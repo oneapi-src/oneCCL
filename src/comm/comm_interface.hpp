@@ -65,18 +65,18 @@ class reduce_scatter_attr;
     COMM_INTERFACE_COLL_##TYPE(double);
 
 #define SYCL_COMM_INTERFACE_COLL_METHODS(TYPE) \
-    COMM_INTERFACE_COLL_CLASS_##TYPE(cl::sycl::buffer<int8_t COMMA 1>); \
-    COMM_INTERFACE_COLL_CLASS_##TYPE(cl::sycl::buffer<uint8_t COMMA 1>); \
-    COMM_INTERFACE_COLL_CLASS_##TYPE(cl::sycl::buffer<int16_t COMMA 1>); \
-    COMM_INTERFACE_COLL_CLASS_##TYPE(cl::sycl::buffer<uint16_t COMMA 1>); \
-    COMM_INTERFACE_COLL_CLASS_##TYPE(cl::sycl::buffer<int32_t COMMA 1>); \
-    COMM_INTERFACE_COLL_CLASS_##TYPE(cl::sycl::buffer<uint32_t COMMA 1>); \
-    COMM_INTERFACE_COLL_CLASS_##TYPE(cl::sycl::buffer<int64_t COMMA 1>); \
-    COMM_INTERFACE_COLL_CLASS_##TYPE(cl::sycl::buffer<uint64_t COMMA 1>); \
-    /*COMM_INTERFACE_COLL_CLASS_##TYPE(cl::sycl::buffer<ccl::float16 COMMA 1>);*/ \
-    COMM_INTERFACE_COLL_CLASS_##TYPE(cl::sycl::buffer<float COMMA 1>); \
-    COMM_INTERFACE_COLL_CLASS_##TYPE(cl::sycl::buffer<double COMMA 1>); \
-    /*COMM_INTERFACE_COLL_CLASS_##TYPE(cl::sycl::buffer<ccl::bfloat16 COMMA 1>);*/
+    COMM_INTERFACE_COLL_CLASS_##TYPE(sycl::buffer<int8_t COMMA 1>); \
+    COMM_INTERFACE_COLL_CLASS_##TYPE(sycl::buffer<uint8_t COMMA 1>); \
+    COMM_INTERFACE_COLL_CLASS_##TYPE(sycl::buffer<int16_t COMMA 1>); \
+    COMM_INTERFACE_COLL_CLASS_##TYPE(sycl::buffer<uint16_t COMMA 1>); \
+    COMM_INTERFACE_COLL_CLASS_##TYPE(sycl::buffer<int32_t COMMA 1>); \
+    COMM_INTERFACE_COLL_CLASS_##TYPE(sycl::buffer<uint32_t COMMA 1>); \
+    COMM_INTERFACE_COLL_CLASS_##TYPE(sycl::buffer<int64_t COMMA 1>); \
+    COMM_INTERFACE_COLL_CLASS_##TYPE(sycl::buffer<uint64_t COMMA 1>); \
+    /*COMM_INTERFACE_COLL_CLASS_##TYPE(sycl::buffer<ccl::float16 COMMA 1>);*/ \
+    COMM_INTERFACE_COLL_CLASS_##TYPE(sycl::buffer<float COMMA 1>); \
+    COMM_INTERFACE_COLL_CLASS_##TYPE(sycl::buffer<double COMMA 1>); \
+    /*COMM_INTERFACE_COLL_CLASS_##TYPE(sycl::buffer<ccl::bfloat16 COMMA 1>);*/
 
 #define COMM_INTERFACE_COLL_INSTANTIATION(COMM) \
     COMM_INTERFACE_COLL_INSTANTIATIONS(COMM, int8_t); \
@@ -93,14 +93,14 @@ class reduce_scatter_attr;
     COMM_INTERFACE_COLL_INSTANTIATIONS(COMM, ccl::float16);
 
 #define SYCL_COMM_INTERFACE_COLL_INSTANTIATION(COMM) \
-    COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(COMM, cl::sycl::buffer<int8_t COMMA 1>); \
-    COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(COMM, cl::sycl::buffer<int32_t COMMA 1>); \
-    COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(COMM, cl::sycl::buffer<int64_t COMMA 1>); \
-    COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(COMM, cl::sycl::buffer<uint64_t COMMA 1>); \
-    /*COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(COMM, cl::sycl::buffer<ccl::float16 COMMA 1>);*/ \
-    COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(COMM, cl::sycl::buffer<float COMMA 1>); \
-    COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(COMM, cl::sycl::buffer<double COMMA 1>); \
-    /*COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(COMM, cl::sycl::buffer<ccl::bfloat16 COMMA 1>);*/
+    COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(COMM, sycl::buffer<int8_t COMMA 1>); \
+    COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(COMM, sycl::buffer<int32_t COMMA 1>); \
+    COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(COMM, sycl::buffer<int64_t COMMA 1>); \
+    COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(COMM, sycl::buffer<uint64_t COMMA 1>); \
+    /*COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(COMM, sycl::buffer<ccl::float16 COMMA 1>);*/ \
+    COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(COMM, sycl::buffer<float COMMA 1>); \
+    COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(COMM, sycl::buffer<double COMMA 1>); \
+    /*COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(COMM, sycl::buffer<ccl::bfloat16 COMMA 1>);*/
 
 namespace ccl {
 struct comm_interface : public comm_selector {
