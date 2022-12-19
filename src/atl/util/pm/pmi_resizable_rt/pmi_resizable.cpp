@@ -88,8 +88,8 @@ err_resizable:
     return ATL_STATUS_FAILURE;
 }
 
-atl_status_t pmi_resizable::pmrt_main_addr_reserve(char *main_addr) {
-    if (PMIR_Main_Addr_Reserve(main_addr) != KVS_STATUS_SUCCESS)
+atl_status_t pmi_resizable::pmrt_main_addr_reserve(char *addr) {
+    if (PMIR_Main_Addr_Reserve(addr) != KVS_STATUS_SUCCESS)
         return ATL_STATUS_FAILURE;
 
     return ATL_STATUS_SUCCESS;

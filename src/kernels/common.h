@@ -18,7 +18,8 @@
 #pragma OPENCL EXTENSION cl_intel_subgroups : enable
 #pragma OPENCL EXTENSION cl_khr_subgroups : enable
 
-#include "lp.h"
+#include "bf16.h"
+#include "fp16.h"
 
 #define FORMAT_int8_t  "%hhd"
 #define FORMAT_int16_t "%d"

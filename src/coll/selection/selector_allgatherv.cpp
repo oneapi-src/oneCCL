@@ -47,6 +47,14 @@ ccl_algorithm_selector<ccl_coll_allgatherv>::ccl_algorithm_selector() {
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
     insert(fallback_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_allgatherv_flat);
+
+    // scale-out table by default duplicates the main table
+    // TODO: fill the table with algorithms which is suitable for the better scale-out performance.
+    // Explanation: when implementing it was a simple scenario that does not contradict with the selection logic.
+    // If there are no environemnt variable provided, scale-out path will go through the scaleout_table like it is a main_table
+    // and use fallback path if nothing is suitable. Correct default behavior of each algorithm`s scale-out path is another task with discussion
+    // and performance measurements.
+    scaleout_table = main_table;
 }
 
 template <>
@@ -82,4 +90,5 @@ CCL_SELECTION_DEFINE_HELPER_METHODS(ccl_coll_allgatherv_algo,
                                                             0);
                                         count /= param.comm->size();
                                         count;
-                                    }));
+                                    }),
+                                    ccl::global_data::env().allgatherv_scaleout_algo_raw);

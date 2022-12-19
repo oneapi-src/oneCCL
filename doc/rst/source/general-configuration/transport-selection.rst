@@ -8,4 +8,4 @@ Transport Selection
 
 The transport selection is controlled by :ref:`CCL_ATL_TRANSPORT`.
 
-In case of MPI over libfabric implementation (for example, ``Intel(R) MPI Library 2021``) or in case of direct libfabric transport, the selection of specific libfabric provider is controlled by the ``FI_PROVIDER`` environment variable.
+In case of MPI over libfabric implementation (for example, |mpi| 2021) or in case of direct libfabric transport, the selection of specific libfabric provider is controlled by the ``FI_PROVIDER`` environment variable.

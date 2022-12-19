@@ -15,6 +15,7 @@
 */
 #pragma once
 
+#include "sched/entry/copy/copy_helper.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
 
 #include <list>
@@ -73,7 +74,10 @@ using queue_info_t = typename std::shared_ptr<queue_info>;
 
 class queue_factory {
 public:
-    queue_factory(ze_device_handle_t device, ze_context_handle_t context, queue_group_type type);
+    queue_factory(ze_device_handle_t device,
+                  ze_context_handle_t context,
+                  queue_group_type type,
+                  ze_command_queue_handle_t cmd_queue);
     queue_factory& operator=(const queue_factory&) = delete;
     queue_factory& operator=(queue_factory&&) = delete;
     ~queue_factory();
@@ -83,13 +87,16 @@ public:
     bool is_copy() const;
     uint32_t get_ordinal() const;
 
-    static bool can_use_queue_group(ze_device_handle_t device, queue_group_type type);
+    static bool can_use_queue_group(ze_device_handle_t device,
+                                    queue_group_type type,
+                                    copy_engine_mode mode);
 
 private:
     const ze_device_handle_t device;
     const ze_context_handle_t context;
     const bool is_copy_queue;
     const queue_group_type type;
+    const ze_command_queue_handle_t cmd_queue;
 
     static constexpr ssize_t worker_idx = 0;
 
@@ -138,19 +145,21 @@ public:
                                            uint32_t index = 0);
     ze_command_list_handle_t get_copy_list(const sched_entry* entry = nullptr,
                                            const std::vector<ze_event_handle_t>& wait_events = {},
-                                           uint32_t index = 0,
-                                           bool peer_card_copy = false);
+                                           copy_direction direction = copy_direction::d2d,
+                                           uint32_t index = 0);
 
     void clear();
     void reset_execution_state();
 
     bool can_use_copy_queue() const;
+    bool can_use_main_queue() const;
     bool is_executed() const;
 
 private:
     const ccl_sched_base* sched;
     const ze_device_handle_t device;
     const ze_context_handle_t context;
+    const ze_command_queue_handle_t cmd_queue;
     std::unique_ptr<queue_factory> comp_queue_factory;
     std::unique_ptr<queue_factory> link_queue_factory;
     std::unique_ptr<queue_factory> main_queue_factory;
@@ -182,16 +191,16 @@ private:
     std::list<std::pair<queue_info_t, list_info_t>> access_list;
     bool executed = false;
     bool use_copy_queue = false;
-    bool can_use_main_queue = false;
-    bool can_use_link_queue = false;
+    bool main_queue_available = false;
+    bool link_queue_available = false;
 
     std::pair<queue_factory*, queue_map_t*> get_factory_and_map(bool is_copy,
-                                                                bool peer_card_copy) const;
+                                                                copy_direction direction) const;
     list_info_t get_list(const sched_entry* entry,
                          uint32_t index,
                          bool is_copy,
                          const std::vector<ze_event_handle_t>& wait_events,
-                         bool peer_card_copy);
+                         copy_direction direction);
 
     void execute_list(queue_info_t& queue, list_info_t& list);
 

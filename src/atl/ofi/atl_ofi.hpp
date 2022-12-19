@@ -17,12 +17,13 @@
 
 #include <iostream>
 #include <memory>
-#include <rdma/fi_domain.h>
 #include <unordered_map>
 
 #include "atl/atl_base_transport.hpp"
 #include "atl/ofi/atl_ofi_helper.hpp"
+#include "common/api_wrapper/ofi_api_wrapper.hpp"
 #include "common/utils/hash.hpp"
+#include "common/utils/spinlock.hpp"
 
 class atl_ofi : public atl_base_transport {
 public:
@@ -173,8 +174,8 @@ public:
         return ATL_STATUS_UNSUPPORTED;
     }
 
-    atl_status_t get_rank2rank_map(std::shared_ptr<ipmi> pmi,
-                                   std::vector<int>& rank2rank_map) override;
+    atl_status_t get_rank2proc_map(std::shared_ptr<ipmi> pmi,
+                                   std::vector<int>& rank2proc_map) override;
 
     std::string to_string() override;
 
@@ -194,6 +195,7 @@ private:
                                 int fi_version,
                                 std::shared_ptr<ipmi> pmi,
                                 bool log_on_error);
+    fi_addr_t atl_ofi_get_addr(atl_ofi_prov_t* prov, int proc_idx, size_t ep_idx);
 
     atl_ofi_ctx_t ctx;
 
@@ -203,7 +205,7 @@ private:
         ~mr_cache();
 
         void clear();
-        void get(fid_domain* domain, void* buf, size_t bytes, fid_mr** mr);
+        void get(atl_ep_t& ep, atl_ofi_prov_t* prov, void* buf, size_t bytes, fid_mr** mr);
         void push(fid_mr* mr);
 
     private:
@@ -223,8 +225,8 @@ private:
 
         void clear();
 
-        void init(size_t instance_count, int enable_hmem);
-        void get(size_t idx, fid_domain* domain, void* buf, size_t bytes, fid_mr** mr);
+        void init(size_t instance_count, int ctx_enable_hmem);
+        void get(atl_ep_t& ep, atl_ofi_prov_t* prov, void* buf, size_t bytes, fid_mr** mr);
         void push(size_t idx, fid_mr* mr);
 
     private:
@@ -233,7 +235,11 @@ private:
     };
 
     fi_cache cache{};
+    // accumulates ep names from all comms
+    // each new portion added into that vector corresponds to single process
+    // prov_idx : ep_idx : ep_name
+    std::vector<ep_names_t> ep_names{};
 
-    /* accumulates ep names from all comms */
-    std::list<std::vector<char>> ep_names{};
+    bool need_extra_exchange{ false };
+    ccl_spinlock addr_table_guard;
 };

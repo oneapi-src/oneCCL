@@ -87,7 +87,7 @@ atl_status_t pmi_resizable_simple::make_requested_info() {
     return ATL_STATUS_SUCCESS;
 }
 
-atl_status_t pmi_resizable_simple::pmrt_main_addr_reserve(char* main_addr) {
+atl_status_t pmi_resizable_simple::pmrt_main_addr_reserve(char* addr) {
     return ATL_STATUS_UNSUPPORTED;
 }
 
@@ -271,7 +271,7 @@ atl_status_t pmi_resizable_simple::kvs_get_value(const char* kvs_name,
         KVS_2_ATL_CHECK_STATUS(k->kvs_get_value_by_name_key(result_kvs_name, key, value_vec),
                                "failed to get value");
         kvs_get_time = time(NULL) - start_time;
-    } while (value_vec.length() == 0 && kvs_get_time < kvs_get_timeout);
+    } while (value_vec.empty() && kvs_get_time < kvs_get_timeout);
 
     if (kvs_get_time >= kvs_get_timeout) {
         LOG_ERROR("KVS get error: timeout limit (%zu > %zu), prefix: %s, key %s\n",
@@ -454,7 +454,7 @@ atl_status_t pmi_resizable_simple::get_local_kvs_id(size_t& res) {
 atl_status_t pmi_resizable_simple::set_local_kvs_id(size_t local_kvs_id) {
     /*TODO: change it for collect local_per_rank id, not global*/
     put_key(LOCAL_KVS_ID, "ID", std::to_string(local_kvs_id).c_str(), ST_CLIENT);
-    return (k->kvs_set_value(LOCAL_KVS_ID, "ID", std::to_string(local_kvs_id).c_str()) ==
+    return (k->kvs_set_value(LOCAL_KVS_ID, "ID", std::to_string(local_kvs_id)) ==
             KVS_STATUS_SUCCESS)
                ? ATL_STATUS_SUCCESS
                : ATL_STATUS_FAILURE;
@@ -467,8 +467,7 @@ pmi_resizable_simple::~pmi_resizable_simple() {
 atl_status_t pmi_resizable_simple::remove_initial_data() {
     std::string result_kvs_name = std::string(RANKS_PER_THREAD) + std::to_string(0);
     remove_val(result_kvs_name.c_str(), std::to_string(ranks[0]).c_str(), ST_CLIENT);
-    return k->kvs_remove_name_key(result_kvs_name.c_str(), std::to_string(ranks[0]).c_str()) ==
-                   KVS_STATUS_SUCCESS
+    return k->kvs_remove_name_key(result_kvs_name, std::to_string(ranks[0])) == KVS_STATUS_SUCCESS
                ? ATL_STATUS_SUCCESS
                : ATL_STATUS_FAILURE;
 }

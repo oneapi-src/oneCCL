@@ -22,7 +22,7 @@
 
 #ifdef CCL_ENABLE_SYCL
 #include <CL/sycl.hpp>
-#endif
+#endif // CCL_ENABLE_SYCL
 
 class ccl_sched;
 
@@ -47,29 +47,44 @@ public:
 
     mutable bool urgent = false;
 
+    bool synchronous = false;
+
 #ifdef CCL_ENABLE_SYCL
     void set_native_event(sycl::event new_event) {
-        native_event = new_event;
+        native_event = std::make_shared<sycl::event>(new_event);
     }
 
     sycl::event& get_native_event() {
+        return *native_event;
+    }
+
+    std::shared_ptr<sycl::event>& share_native_event() {
         return native_event;
     }
 
     void set_sync_event(sycl::event new_event) {
-        sync_event = new_event;
+        sync_event = std::make_shared<sycl::event>(new_event);
     }
 
     sycl::event& get_sync_event() {
-        return sync_event;
+        return *sync_event;
     }
 
     bool has_output_event() const {
-        // by default the event is empty and is_host() is true,
-        // if we actually set it to a non-empty one, is_host() would be false
-        return !native_event.is_host();
+        // by default the event is empty
+        if (!native_event)
+            return false;
+        // running on xpu it'd be true
+        return true;
     }
-#endif
+
+    bool has_sync_event() const {
+        if (!sync_event)
+            return false;
+        // running on xpu it'd be true
+        return true;
+    }
+#endif // CCL_ENABLE_SYCL
 
     ccl_sched* get_sched() {
         return &sched;
@@ -84,16 +99,16 @@ public:
 private:
 #ifdef ENABLE_DEBUG
     void set_dump_callback(dump_func&& callback);
-#endif
+#endif // ENABLE_DEBUG
 
 #ifdef CCL_ENABLE_SYCL
     // The actual event from submit_barrier. It's returned to the user via ccl::event.get_native()
-    sycl::event native_event;
+    std::shared_ptr<sycl::event> native_event;
     // This is basically a wrapped l0 event from sched_base, we need to keep as sycl object because its destructor
     // implies wait on the event, but in our case it's not yet completed(right after we created it from l0 event).
     // So just keep it here until we signal the corresponding l0 event.
-    sycl::event sync_event;
-#endif
+    std::shared_ptr<sycl::event> sync_event;
+#endif // CCL_ENABLE_SYCL
 
     // ref to sched as part of which the request is created, there must be 1-to-1 relation
     ccl_sched& sched;
@@ -102,5 +117,5 @@ private:
     dump_func dump_callback;
     mutable size_t complete_checks_count = 0;
     static constexpr const size_t CHECK_COUNT_BEFORE_DUMP = 40000000;
-#endif
+#endif // ENABLE_DEBUG
 };

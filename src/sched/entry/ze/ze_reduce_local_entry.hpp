@@ -28,12 +28,7 @@ public:
         return class_name();
     }
 
-    virtual std::string name_ext() const override {
-        std::stringstream out;
-        out << name() << " ";
-        out << "in size: " << in_cnt;
-        return out.str();
-    }
+    virtual std::string name_ext() const override;
 
     explicit ze_reduce_local_entry(ccl_sched* sched,
                                    const ccl_buffer in_buf,

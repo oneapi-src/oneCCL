@@ -59,6 +59,11 @@ public:
         auto& subscheds = subsched->get_subscheds();
         for (size_t i = 0; i < subscheds.size(); i++) {
             subscheds[i]->set_op_id(i);
+            if (!strcmp(subsched_name, "SCALEOUT") || !strcmp(subsched_name, "A2AV_RECV") ||
+                !strcmp(subsched_name, "A2AV_SEND")) {
+                subscheds[i]->set_scaleout_flag();
+                LOG_DEBUG("scaleout flag set: ", subscheds[i]);
+            }
         }
     }
 

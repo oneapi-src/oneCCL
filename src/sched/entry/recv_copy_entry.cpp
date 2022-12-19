@@ -13,13 +13,14 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#include "comm/comm.hpp"
 #include "comp/comp.hpp"
 #include "sched/entry/entry.hpp"
 #include "sched/entry/recv_copy_entry.hpp"
 #include "sched/queue/queue.hpp"
 
 void recv_copy_entry::start() {
-    atl_tag = comm->get_atl_comm()->tag->create(
+    atl_tag = comm->get_atl_comm()->tag_creator->create(
         src, comm->get_comm_id(), sched->sched_id, sched->get_op_id());
     LOG_DEBUG("starting RECV in RECV_COPY entry, src ",
               src,
@@ -55,4 +56,23 @@ void recv_copy_entry::update() {
 
     status = ccl_sched_entry_status_complete;
     LOG_DEBUG("completed COPY in RECV_COPY entry");
+}
+
+void recv_copy_entry::dump_detail(std::stringstream& str) const {
+    ccl_logger::format(str,
+                       ", recv_buf ",
+                       recv_buf,
+                       ", copy_buf ",
+                       copy_buf,
+                       ", bytes ",
+                       bytes,
+                       ", src ",
+                       src,
+                       ", atl_tag ",
+                       atl_tag,
+                       ", comm_id ",
+                       comm->get_comm_id(),
+                       ", req ",
+                       req,
+                       "\n");
 }

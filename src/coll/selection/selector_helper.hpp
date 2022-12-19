@@ -26,7 +26,8 @@ struct ccl_algorithm_selector_helper {
     static bool can_use(algo_group_type algo,
                         const ccl_selector_param& param,
                         const ccl_selection_table_t<algo_group_type>& table);
-    static const std::string& get_str_to_parse();
+    static const std::string& get_main_str_to_parse();
+    static const std::string& get_scaleout_str_to_parse();
     static ccl_coll_type get_coll_id();
     static size_t get_count(const ccl_selector_param& param);
     static algo_group_type algo_from_str(const std::string& str);
@@ -40,10 +41,16 @@ const std::string& ccl_coll_algorithm_to_str(algo_group_type algo) {
     return ccl_algorithm_selector_helper<algo_group_type>::algo_to_str(algo);
 }
 
-#define CCL_SELECTION_DEFINE_HELPER_METHODS(algo_group_type, coll_id, env_str, count_expr) \
+#define CCL_SELECTION_DEFINE_HELPER_METHODS( \
+    algo_group_type, coll_id, main_env_str, count_expr, scaleout_env_str) \
     template <> \
-    const std::string& ccl_algorithm_selector_helper<algo_group_type>::get_str_to_parse() { \
-        return env_str; \
+    const std::string& ccl_algorithm_selector_helper<algo_group_type>::get_main_str_to_parse() { \
+        return main_env_str; \
+    } \
+    template <> \
+    const std::string& \
+    ccl_algorithm_selector_helper<algo_group_type>::get_scaleout_str_to_parse() { \
+        return scaleout_env_str; \
     } \
     template <> \
     ccl_coll_type ccl_algorithm_selector_helper<algo_group_type>::get_coll_id() { \

@@ -210,9 +210,9 @@ ccl::status ccl_coll_build_ring_rma_allreduce(ccl_sched* sched,
 
     sched->set_entry_exec_mode(ccl_sched_entry_exec_once);
 
+    send_entry* e{};
     if (inplace) {
-        send_entry* e =
-            entry_factory::create<send_entry>(sched,
+        e = entry_factory::create<send_entry>(sched,
                                               ccl_buffer(&ar_handler->tmp_buf_mr, sizeof(atl_mr_t)),
                                               sizeof(atl_mr_t),
                                               ccl_datatype_int8,
@@ -221,7 +221,7 @@ ccl::status ccl_coll_build_ring_rma_allreduce(ccl_sched* sched,
         e->set_field_fn<ccl_sched_entry_field_buf>(rma_ring_allreduce_get_tmp_buf_mr, ar_handler);
     }
     else {
-        send_entry* e = entry_factory::create<send_entry>(
+        e = entry_factory::create<send_entry>(
             sched,
             ccl_buffer(&ar_handler->recv_buf_mr, sizeof(atl_mr_t)),
             sizeof(atl_mr_t),
@@ -230,8 +230,7 @@ ccl::status ccl_coll_build_ring_rma_allreduce(ccl_sched* sched,
             comm);
         e->set_field_fn<ccl_sched_entry_field_buf>(rma_ring_allreduce_get_recv_buf_mr, ar_handler);
     }
-    send_entry* e =
-        entry_factory::create<send_entry>(sched,
+    e = entry_factory::create<send_entry>(sched,
                                           ccl_buffer(&ar_handler->recv_buf_mr, sizeof(atl_mr_t)),
                                           sizeof(atl_mr_t),
                                           ccl_datatype_int8,
@@ -269,7 +268,7 @@ ccl::status ccl_coll_build_ring_rma_allreduce(ccl_sched* sched,
         comm);
 
     if (ar_handler->wait_dst) {
-        send_entry* e = entry_factory::create<send_entry>(
+        e = entry_factory::create<send_entry>(
             sched,
             ccl_buffer(ar_handler->dst_ready_flag_mr, sizeof(atl_mr_t)),
             sizeof(atl_mr_t),

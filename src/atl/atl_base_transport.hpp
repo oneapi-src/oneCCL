@@ -178,8 +178,8 @@ public:
                                     size_t color,
                                     int local_idx) = 0;
 
-    virtual atl_status_t get_rank2rank_map(std::shared_ptr<ipmi> pmi,
-                                           std::vector<int>& rank2rank_map) = 0;
+    virtual atl_status_t get_rank2proc_map(std::shared_ptr<ipmi> pmi,
+                                           std::vector<int>& rank2proc_map) = 0;
 
     virtual std::string to_string() = 0;
 

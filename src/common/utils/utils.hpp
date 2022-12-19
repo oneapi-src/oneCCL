@@ -109,30 +109,31 @@
         size_t alignment = CCL_REG_MSG_ALIGNMENT; \
         if (size >= CCL_LARGE_MSG_THRESHOLD) \
             alignment = CCL_LARGE_MSG_ALIGNMENT; \
-        void* ptr = CCL_MEMALIGN_IMPL(size, alignment); \
-        CCL_THROW_IF_NOT(ptr, "CCL cannot allocate bytes: ", size, ", out of memory, ", name); \
-        ptr; \
+        void* mem_ptr = CCL_MEMALIGN_IMPL(size, alignment); \
+        CCL_THROW_IF_NOT(mem_ptr, "CCL cannot allocate bytes: ", size, ", out of memory, ", name); \
+        mem_ptr; \
     })
 
 #define CCL_MEMALIGN_WRAPPER(size, align, name) \
     ({ \
-        void* ptr = CCL_MEMALIGN_IMPL(size, align); \
-        CCL_THROW_IF_NOT(ptr, "CCL cannot allocate bytes: ", size, ", out of memory, ", name); \
-        ptr; \
+        void* mem_ptr = CCL_MEMALIGN_IMPL(size, align); \
+        CCL_THROW_IF_NOT(mem_ptr, "CCL cannot allocate bytes: ", size, ", out of memory, ", name); \
+        mem_ptr; \
     })
 
 #define CCL_REALLOC_WRAPPER(old_ptr, old_size, new_size, align, name) \
     ({ \
-        void* ptr = CCL_REALLOC_IMPL(old_ptr, old_size, new_size, align); \
-        CCL_THROW_IF_NOT(ptr, "CCL cannot allocate bytes: ", new_size, ", out of memory, ", name); \
-        ptr; \
+        void* mem_ptr = CCL_REALLOC_IMPL(old_ptr, old_size, new_size, align); \
+        CCL_THROW_IF_NOT( \
+            mem_ptr, "CCL cannot allocate bytes: ", new_size, ", out of memory, ", name); \
+        mem_ptr; \
     })
 
 #define CCL_CALLOC_WRAPPER(size, align, name) \
     ({ \
-        void* ptr = CCL_CALLOC_IMPL(size, align); \
-        CCL_THROW_IF_NOT(ptr, "CCL cannot allocate bytes: ", size, ", out of memory, ", name); \
-        ptr; \
+        void* mem_ptr = CCL_CALLOC_IMPL(size, align); \
+        CCL_THROW_IF_NOT(mem_ptr, "CCL cannot allocate bytes: ", size, ", out of memory, ", name); \
+        mem_ptr; \
     })
 
 #define CCL_MALLOC(size, name)          CCL_MALLOC_WRAPPER(size, name)
@@ -145,6 +146,14 @@
 /* other */
 namespace ccl {
 namespace utils {
+static constexpr int invalid_context_id = -1;
+static constexpr int invalid_device_id = -1;
+static constexpr int invalid_err_code = -1;
+static constexpr int invalid_fd = -1;
+static constexpr int invalid_mem_handle = -1;
+static constexpr int invalid_pid = -1;
+
+enum class align_kernels { unaligned, aligned, count };
 
 size_t get_ptr_diff(const void* ptr1, const void* ptr2);
 size_t pof2(size_t number);
@@ -212,5 +221,9 @@ void str_to_array(const std::string& input_str,
 std::string get_substring_between_delims(std::string& full_str,
                                          const std::string& start_delim,
                                          const std::string& stop_delim);
+
+uintptr_t get_aligned_offset_byte(const void* ptr,
+                                  const size_t buf_size_bytes,
+                                  const size_t mem_align_bytes);
 } // namespace utils
 } // namespace ccl

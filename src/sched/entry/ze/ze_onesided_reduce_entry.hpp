@@ -32,12 +32,7 @@ public:
         return class_name();
     }
 
-    virtual std::string name_ext() const override {
-        std::stringstream out;
-        out << name() << " ";
-        out << "size: " << cnt;
-        return out.str();
-    }
+    virtual std::string name_ext() const override;
 
     ze_onesided_reduce_entry() = delete;
     explicit ze_onesided_reduce_entry(ccl_sched* sched,
@@ -48,7 +43,8 @@ public:
                                       ccl::reduction op,
                                       int root,
                                       ccl_comm* comm,
-                                      std::vector<ze_event_handle_t> wait_events = {});
+                                      std::vector<ze_event_handle_t> wait_events = {},
+                                      size_t peer_buf_offset = 0);
 
     void init_ze_hook() override;
     void finalize_ze_hook() override;
@@ -57,24 +53,7 @@ public:
     void update() override;
 
 protected:
-    void dump_detail(std::stringstream& str) const override {
-        ccl_logger::format(str,
-                           "dt ",
-                           ccl::global_data::get().dtypes->name(dtype),
-                           ", cnt ",
-                           cnt,
-                           ", send_buf ",
-                           send_buf,
-                           ", recv_buf ",
-                           recv_buf,
-                           ", op ",
-                           ccl_reduction_to_str(op),
-                           ", comm ",
-                           comm->to_string(),
-                           ", context ",
-                           context,
-                           "\n");
-    }
+    void dump_detail(std::stringstream& str) const override;
 
 private:
     ccl_buffer send_buf;
@@ -87,6 +66,7 @@ private:
     const ccl::reduction op;
     int root;
     const size_t buf_size_bytes;
+    const size_t peer_buf_offset_bytes;
 
     ze_event_handle_t empty_kernel_event;
     ze_event_handle_t copy_from_peer_event;

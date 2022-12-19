@@ -151,7 +151,7 @@ void ccl_sched_queue::add(ccl_sched* sched) {
     CCL_ASSERT(bin);
 }
 
-size_t ccl_sched_queue::erase(ccl_sched_bin* bin, size_t idx) {
+size_t ccl_sched_queue::erase(ccl_sched_bin* bin, size_t sched_idx) {
     CCL_ASSERT(bin);
     size_t bin_priority = bin->get_priority();
 
@@ -161,7 +161,7 @@ size_t ccl_sched_queue::erase(ccl_sched_bin* bin, size_t idx) {
 
     // erase sched and check bin size after
     // no need to lock whole `bins` for single erase
-    if (!bin->erase(idx, next_idx)) {
+    if (!bin->erase(sched_idx, next_idx)) {
         // 'bin 'looks like empty, we can erase it from 'bins'.
         // double check on bin.empty(), before remove it from whole table
         std::lock_guard<sched_queue_lock_t> lock{ bins_guard };

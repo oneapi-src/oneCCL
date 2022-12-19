@@ -17,10 +17,9 @@
 
 #ifdef CCL_ENABLE_MPI
 
-#include <mpi.h>
-
 #include "atl/atl_base_transport.hpp"
 #include "atl/mpi/atl_mpi_ctx.hpp"
+#include "common/api_wrapper/mpi_api_wrapper.hpp"
 
 #define ATL_MPI_RET(ret) (ret != MPI_SUCCESS) ? ATL_STATUS_FAILURE : ATL_STATUS_SUCCESS
 
@@ -214,8 +213,8 @@ public:
                             size_t color,
                             int local_idx) override;
 
-    atl_status_t get_rank2rank_map(std::shared_ptr<ipmi> pmi,
-                                   std::vector<int>& rank2rank_map) override {
+    atl_status_t get_rank2proc_map(std::shared_ptr<ipmi> pmi,
+                                   std::vector<int>& rank2proc_map) override {
         return ATL_STATUS_UNSUPPORTED;
     }
 

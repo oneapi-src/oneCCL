@@ -171,7 +171,7 @@ FP16_INLINE_TARGET_ATTRIBUTE_ALL void ccl_fp16_reduce_impl(const void* in_buf,
             case ccl::reduction::prod: func_256 = &fp16_prod_wrap_256; break;
             case ccl::reduction::min: func_256 = &fp16_min_wrap_256; break;
             case ccl::reduction::max: func_256 = &fp16_max_wrap_256; break;
-            default: CCL_FATAL("unexpected value ", utils::enum_to_underlying(op));
+            default: CCL_FATAL("unexpected value ", ccl::utils::enum_to_underlying(op));
         }
         ccl_fp16_reduce_impl_256(in_buf, inout_buf, in_cnt, func_256);
     }
@@ -181,7 +181,7 @@ FP16_INLINE_TARGET_ATTRIBUTE_ALL void ccl_fp16_reduce_impl(const void* in_buf,
             case ccl::reduction::prod: func_512 = &fp16_prod_wrap_512; break;
             case ccl::reduction::min: func_512 = &fp16_min_wrap_512; break;
             case ccl::reduction::max: func_512 = &fp16_max_wrap_512; break;
-            default: CCL_FATAL("unexpected value ", utils::enum_to_underlying(op));
+            default: CCL_FATAL("unexpected value ", ccl::utils::enum_to_underlying(op));
         }
         ccl_fp16_reduce_impl_512(in_buf, inout_buf, in_cnt, func_512);
     }

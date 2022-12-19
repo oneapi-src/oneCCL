@@ -132,6 +132,7 @@ function run()
     host=`hostname`
 
     binary_env="FI_PROVIDER=tcp CCL_LOG_LEVEL=info"
+    binary_env="${binary_env} CCL_PROCESS_LAUNCHER=none CCL_LOCAL_SIZE=${LOCAL_SIZE} CCL_LOCAL_RANK=${LOCAL_RANK}"
     binary_path="$dir/external_launcher"
     binary_arg="$SIZE $RANK ${KVS_MODE} ${KVS_PARAM}"
 

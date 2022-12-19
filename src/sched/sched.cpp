@@ -18,7 +18,6 @@
 #include "common/log/log.hpp"
 #include "common/request/request.hpp"
 #include "common/utils/sync_object.hpp"
-#include "common/utils/sycl_utils.hpp"
 #include "parallelizer/parallelizer.hpp"
 #include "sched/cache/cache.hpp"
 #include "sched/cache/key.hpp"
@@ -29,8 +28,7 @@
 #include "sched/sched_restart_manager.hpp"
 
 #ifdef CCL_ENABLE_SYCL
-#include <CL/sycl.hpp>
-#include <CL/sycl/backend/level_zero.hpp>
+#include "common/utils/sycl_utils.hpp"
 
 #ifdef CCL_ENABLE_ZE
 #include "sched/entry/ze/ze_cache.hpp"
@@ -380,7 +378,7 @@ void ccl_sched::complete() {
 
     // save sched type because we cannot assume that the sched with type == master
     // is not destroyed after we complete the request
-    auto* parent_sched = this->parent_sched;
+    auto* parent_schedule = this->parent_sched;
 
     // it's important to do finalization/cleanup before full completion of the request
     // because right after its completion, the request and the sched can be destroyed
@@ -391,7 +389,7 @@ void ccl_sched::complete() {
     // completing it one more time setting the counter to 0.
     if (get_request()->complete_counter() == 1) {
         if (ccl::global_data::env().sched_profile) {
-            timer.stop();
+            timer.update();
             if (entries.size() > 0) {
                 std::stringstream ss;
                 ss << "\ncoll:";
@@ -404,10 +402,12 @@ void ccl_sched::complete() {
                     ss << " count:" << profile_param->get_send_count();
                 }
 
-                ss << " time(usec):\ntotal: " << timer.str() << "\n";
+                ss << " time(usec): sched total:\n" << to_string(timer) << "\n";
                 for (size_t idx = 0; idx < entries.size(); ++idx) {
-                    ss << "[" << idx << "] " << entries[idx]->name() << ": "
-                       << entries[idx]->timer.str() << "\n";
+                    ss << "[" << idx << "] " << entries[idx]->name()
+                       << ": total: " << to_string(entries[idx]->total_timer);
+                    ss << ", update: " << to_string(entries[idx]->update_timer);
+                    ss << "\n";
                 }
                 ss << "-----------------------------";
                 logger.info(ss.str());
@@ -420,21 +420,21 @@ void ccl_sched::complete() {
         // so we can finaly complete it
         get_request()->complete();
 
-        if (parent_sched) {
+        if (parent_schedule) {
             // after we call try_to_restart() on the parent, it's request might be changed
             // so rememeber it here to call complete on
-            auto parent_req = parent_sched->get_request();
+            auto parent_req = parent_schedule->get_request();
             // check for completed parent request, see comment above for how this works
             if (parent_req->complete_counter() == 1) {
                 // itt tracks only top-level sched execution
                 if (top_level_sched)
-                    complete_itt(parent_sched->coll_param.stream);
+                    complete_itt(parent_schedule->coll_param.stream);
                 // if we don't use cache, it doesn't make sense to restart the sched
                 // as there are never be any requests to restart
-                if (parent_sched->coll_attr.to_cache) {
+                if (parent_schedule->coll_attr.to_cache) {
                     // current sched execution is completed, always check if we need to
                     // restart it again
-                    parent_sched->try_to_restart();
+                    parent_schedule->try_to_restart();
                 }
                 parent_req->complete();
             }
@@ -489,7 +489,7 @@ size_t ccl_sched::entries_count() const {
 }
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-void ccl_sched::set_output_event(ccl_request* req) {
+void ccl_sched::set_output_event(ccl_request* request) {
     if (!use_output_event) {
         return;
     }
@@ -510,9 +510,20 @@ void ccl_sched::set_output_event(ccl_request* req) {
     LOG_DEBUG("convert L0 event: ", ev, "into a SYCL event and submit a barrier");
 
     auto sync_event = ccl::utils::make_event(context, ev);
-    req->set_sync_event(sync_event);
-    req->set_native_event(ccl::utils::submit_barrier(q, sync_event));
-    CCL_THROW_IF_NOT(!(req->get_native_event().is_host()), "something is wrong");
+    if (ccl::global_data::env().enable_external_queue) {
+        // Todo: when using external in-order queue, need to submit barrier after CCL kernel submission
+        LOG_DEBUG(
+            "Current external passed in-order queue means CCL kernel wait execution, so no need to submit barrier");
+        request->set_sync_event(sync_event);
+        request->set_native_event(sync_event);
+    }
+    else {
+        request->set_sync_event(sync_event);
+        if (this->coll_attr.synchronous)
+            request->set_native_event(ccl::utils::submit_barrier(q));
+        else
+            request->set_native_event(ccl::utils::submit_barrier(q, sync_event));
+    }
 
 #else // CCL_ENABLE_SYCL_INTEROP_EVENT
     CCL_THROW("interop event functionality is not available with current configuration, "
@@ -550,7 +561,7 @@ void ccl_sched::release_sync_event(ccl_request* request) {
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
     if (use_output_event) {
         // check if the event has been reset already(is_host is true for an empty one)
-        if (request->get_sync_event().is_host()) {
+        if (!request->has_sync_event()) {
             LOG_DEBUG("request's event has been released already, skipping");
         }
         else {

@@ -28,12 +28,7 @@ public:
         return class_name();
     }
 
-    virtual std::string name_ext() const override {
-        std::stringstream out;
-        out << name() << " ";
-        out << "send size: " << send_bytes;
-        return out.str();
-    }
+    virtual std::string name_ext() const override;
 
     explicit ze_a2a_gatherv_entry(ccl_sched* sched,
                                   ccl_buffer send_buf,
@@ -46,6 +41,9 @@ public:
                                   size_t peer_buf_idx = 0);
 
     void init_ze_hook() override;
+
+protected:
+    void dump_detail(std::stringstream& str) const override;
 
 private:
     const ccl_buffer send_buf;

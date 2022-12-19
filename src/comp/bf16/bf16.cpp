@@ -24,111 +24,146 @@
 #define CCL_BF16_SHIFT     16
 
 std::map<ccl_bf16_impl_type, std::string> bf16_impl_names = {
-    std::make_pair(ccl_bf16_no_compiler_support, "no_compiler_support"),
-    std::make_pair(ccl_bf16_no_hardware_support, "no_hardware_support"),
+    std::make_pair(ccl_bf16_scalar, "scalar"),
     std::make_pair(ccl_bf16_avx512f, "avx512f"),
     std::make_pair(ccl_bf16_avx512bf, "avx512bf")
 };
 
-std::map<ccl_bf16_impl_type, std::string> bf16_env_impl_names = {
-    std::make_pair(ccl_bf16_avx512f, "avx512f"),
-    std::make_pair(ccl_bf16_avx512bf, "avx512bf")
-};
+typedef float (*ccl_bf16_reduction_scalar_func_ptr)(float a, float b);
 
-#ifdef CCL_BF16_COMPILER
-
-void ccl_bf16_reduce(const void* in_buf,
-                     size_t in_cnt,
-                     void* inout_buf,
-                     size_t* out_cnt,
-                     ccl::reduction op) {
-    LOG_DEBUG("BF16 reduction for %zu elements\n", in_cnt);
-
-    if (out_cnt != nullptr) {
-        *out_cnt = in_cnt;
-    }
-
-    ccl_bf16_reduce_impl(in_buf, inout_buf, in_cnt, op);
+inline float bf16_sum_scalar(float a, float b) {
+    return a + b;
 }
 
+inline float bf16_prod_scalar(float a, float b) {
+    return a * b;
+}
+
+inline float bf16_min_scalar(float a, float b) {
+    return std::min(a, b);
+}
+
+inline float bf16_max_scalar(float a, float b) {
+    return std::max(a, b);
+}
+
+inline uint16_t ccl_convert_fp32_to_bf16_scalar(float val) {
+    uint16_t int_val = 0;
+    memcpy(&int_val, reinterpret_cast<uint8_t*>(&val) + 2, sizeof(int_val));
+    return int_val;
+}
+
+inline float ccl_convert_bf16_to_fp32_scalar(uint16_t val) {
+    float ret = 0;
+    uint32_t temp = static_cast<uint32_t>(val) << CCL_BF16_SHIFT;
+    memcpy(&ret, &temp, sizeof(temp));
+    return ret;
+}
+
+void ccl_bf16_reduce_scalar_impl(const void* in_buf,
+                                 void* inout_buf,
+                                 size_t in_count,
+                                 ccl::reduction op) {
+    ccl_bf16_reduction_scalar_func_ptr func = nullptr;
+    switch (op) {
+        case ccl::reduction::sum: func = &bf16_sum_scalar; break;
+        case ccl::reduction::prod: func = &bf16_prod_scalar; break;
+        case ccl::reduction::min: func = &bf16_min_scalar; break;
+        case ccl::reduction::max: func = &bf16_max_scalar; break;
+        default: CCL_FATAL("unexpected value ", ccl::utils::enum_to_underlying(op));
+    }
+
+    uint16_t* in_buf_int = (uint16_t*)in_buf;
+    uint16_t* inout_buf_int = (uint16_t*)inout_buf;
+
+    for (size_t i = 0; i < in_count; i++) {
+        float in_value_1 = ccl_convert_bf16_to_fp32_scalar(in_buf_int[i]);
+        float in_value_2 = ccl_convert_bf16_to_fp32_scalar(inout_buf_int[i]);
+        float out_value = func(in_value_1, in_value_2);
+        inout_buf_int[i] = ccl_convert_fp32_to_bf16_scalar(out_value);
+    }
+}
+
+void ccl_bf16_reduce(const void* in_buf,
+                     size_t in_count,
+                     void* inout_buf,
+                     size_t* out_count,
+                     ccl::reduction op) {
+    LOG_DEBUG("BF16 reduction for %zu elements", in_count);
+
+    if (out_count != nullptr) {
+        *out_count = in_count;
+    }
+
+    auto bf16_impl_type = ccl::global_data::env().bf16_impl_type;
+
+    if (bf16_impl_type == ccl_bf16_scalar) {
+        ccl_bf16_reduce_scalar_impl(in_buf, inout_buf, in_count, op);
+    }
+    else {
+#ifdef CCL_BF16_COMPILER
+        ccl_bf16_reduce_impl(in_buf, inout_buf, in_count, op);
+#else // CCL_BF16_COMPILER
+        CCL_THROW("unexpected bf16_impl_type: ", bf16_impl_type);
+#endif // CCL_BF16_COMPILER
+    }
+}
+
+#ifdef CCL_BF16_COMPILER
 void ccl_convert_fp32_to_bf16(const void* src, void* dst) {
 #ifdef CCL_BF16_AVX512BF_COMPILER
     if (ccl::global_data::env().bf16_impl_type == ccl_bf16_avx512bf) {
-        _mm256_storeu_si256((__m256i*)(dst), (__m256i)_mm512_cvtneps_pbh(_mm512_loadu_ps(src)));
+        ccl_fp32_store_as_bf16_avx512bf(src, dst);
     }
     else
-#endif
+#endif // CCL_BF16_AVX512BF_COMPILER
     {
-        _mm256_storeu_si256((__m256i*)(dst),
-                            _mm512_cvtepi32_epi16(_mm512_bsrli_epi128(_mm512_loadu_si512(src), 2)));
+        ccl_fp32_store_as_bf16_avx512f(src, dst);
     }
 }
 
 void ccl_convert_bf16_to_fp32(const void* src, void* dst) {
-    _mm512_storeu_si512(
-        dst,
-        _mm512_bslli_epi128(_mm512_cvtepu16_epi32(_mm256_loadu_si256((__m256i const*)src)), 2));
+    ccl_bf16_load_as_fp32(src, dst);
 }
-
-void ccl_convert_fp32_to_bf16_arrays(void* fp32_buf, void* bf16_buf, size_t count) {
-    int int_val = 0, int_val_shifted = 0;
-    float* fp32_buf_float = (float*)fp32_buf;
-    size_t limit = (count / CCL_FLOATS_IN_M512) * CCL_FLOATS_IN_M512;
-
-    for (size_t i = 0; i < limit; i += CCL_FLOATS_IN_M512) {
-        ccl_convert_fp32_to_bf16(fp32_buf_float + i, ((unsigned char*)bf16_buf) + (2 * i));
-    }
-
-    /* proceed remaining float's in buffer */
-    for (size_t i = limit; i < count; i++) {
-        /* iterate over bf16_buf */
-        int* send_bfp_tail = (int*)(((char*)bf16_buf) + (2 * i));
-        /* copy float (4 bytes) data as is to int variable, */
-        memcpy(&int_val, &fp32_buf_float[i], 4);
-        /* then perform shift and */
-        int_val_shifted = int_val >> CCL_BF16_SHIFT;
-        /* save pointer to result */
-        *send_bfp_tail = int_val_shifted;
-    }
-}
-
-void ccl_convert_bf16_to_fp32_arrays(void* bf16_buf, float* fp32_buf, size_t count) {
-    int int_val = 0, int_val_shifted = 0;
-    size_t limit = (count / CCL_FLOATS_IN_M512) * CCL_FLOATS_IN_M512;
-
-    for (size_t i = 0; i < limit; i += CCL_FLOATS_IN_M512) {
-        ccl_convert_bf16_to_fp32((char*)bf16_buf + (2 * i), fp32_buf + i);
-    }
-
-    /* proceed remaining bf16's in buffer */
-    for (size_t i = limit; i < count; i++) {
-        /* iterate over bf16_buf */
-        int* recv_bfp_tail = (int*)((char*)bf16_buf + (2 * i));
-        /* copy bf16 data as is to int variable, */
-        memcpy(&int_val, recv_bfp_tail, 4);
-        /* then perform shift and */
-        int_val_shifted = int_val << CCL_BF16_SHIFT;
-        /* copy result to output */
-        memcpy((fp32_buf + i), &int_val_shifted, 4);
-    }
-}
-
-#else // CCL_BF16_COMPILER
-
-void ccl_bf16_reduce(const void* in_buf,
-                     size_t in_cnt,
-                     void* inout_buf,
-                     size_t* out_cnt,
-                     ccl::reduction reduction_op) {
-    CCL_FATAL("BF16 reduction was requested but CCL was compiled w/o BF16 support");
-}
-
-void ccl_convert_fp32_to_bf16_arrays(void* fp32_buf, void* bf16_buf, size_t count) {
-    CCL_FATAL("FP32->BF16 conversion was requested but CCL was compiled w/o BF16 support");
-}
-
-void ccl_convert_bf16_to_fp32_arrays(void* bf16_buf, float* fp32_buf, size_t count) {
-    CCL_FATAL("BF16->FP32 conversion was requested but CCL was compiled w/o BF16 support");
-}
-
 #endif // CCL_BF16_COMPILER
+
+void ccl_convert_fp32_to_bf16_arrays(void* fp32_buf, void* bf16_buf, size_t count) {
+    float* fp32_buf_float = (float*)fp32_buf;
+    uint16_t* bf16_buf_int = (uint16_t*)bf16_buf;
+
+    size_t limit = 0;
+
+#ifdef CCL_BF16_COMPILER
+    if (ccl::global_data::env().bf16_impl_type != ccl_bf16_scalar) {
+        limit = (count / CCL_FLOATS_IN_M512) * CCL_FLOATS_IN_M512;
+        for (size_t i = 0; i < limit; i += CCL_FLOATS_IN_M512) {
+            ccl_convert_fp32_to_bf16(fp32_buf_float + i, ((unsigned char*)bf16_buf) + (2 * i));
+        }
+    }
+#endif // CCL_BF16_COMPILER
+
+    /* process remaining fp32 values */
+    for (size_t i = limit; i < count; i++) {
+        bf16_buf_int[i] = ccl_convert_fp32_to_bf16_scalar(fp32_buf_float[i]);
+    }
+}
+
+void ccl_convert_bf16_to_fp32_arrays(void* bf16_buf, float* fp32_buf, size_t count) {
+    uint16_t* bf16_buf_int = (uint16_t*)bf16_buf;
+
+    size_t limit = 0;
+
+#ifdef CCL_BF16_COMPILER
+    if (ccl::global_data::env().bf16_impl_type != ccl_bf16_scalar) {
+        limit = (count / CCL_FLOATS_IN_M512) * CCL_FLOATS_IN_M512;
+        for (size_t i = 0; i < limit; i += CCL_FLOATS_IN_M512) {
+            ccl_convert_bf16_to_fp32((char*)bf16_buf + (2 * i), fp32_buf + i);
+        }
+    }
+#endif // CCL_BF16_COMPILER
+
+    /* process remaining bf16 values */
+    for (size_t i = limit; i < count; i++) {
+        fp32_buf[i] = ccl_convert_bf16_to_fp32_scalar(bf16_buf_int[i]);
+    }
+}

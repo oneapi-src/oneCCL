@@ -63,10 +63,6 @@ atl_mpi_comm::atl_mpi_comm(atl_mpi_comm* parent, int color) {
 
     rank2rank_map.resize(size);
     MPI_Allgather(&parent_rank, 1, MPI_INT, rank2rank_map.data(), 1, MPI_INT, mpi_ep->mpi_comm);
-
-    rank2proc_map.resize(size);
-    int parent_proc_idx = parent->rank2proc_map[parent_rank];
-    MPI_Allgather(&parent_proc_idx, 1, MPI_INT, rank2proc_map.data(), 1, MPI_INT, mpi_ep->mpi_comm);
 }
 
 void atl_mpi_comm::update_eps() {
@@ -122,9 +118,9 @@ atl_status_t atl_mpi_comm::init_transport(bool is_new,
         parent_rank = rank = coord.global_idx;
         parent_size = size = coord.global_count;
 
-        rank2proc_map.resize(size);
+        rank2rank_map.resize(size);
         for (int i = 0; i < size; i++) {
-            rank2proc_map[i] = i;
+            rank2rank_map[i] = i;
         }
     }
 

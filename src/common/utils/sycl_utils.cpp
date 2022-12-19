@@ -17,8 +17,6 @@
 #include "common/stream/stream.hpp"
 #include "common/utils/sycl_utils.hpp"
 
-#include <CL/sycl/backend/level_zero.hpp>
-
 namespace ccl {
 namespace utils {
 
@@ -43,10 +41,7 @@ std::string usm_type_to_str(sycl::usm::alloc type) {
 }
 
 std::string sycl_device_to_str(const sycl::device& dev) {
-    if (dev.is_host()) {
-        return "host";
-    }
-    else if (dev.is_cpu()) {
+    if (dev.is_cpu()) {
         return "cpu";
     }
     else if (dev.is_gpu()) {
@@ -60,31 +55,31 @@ std::string sycl_device_to_str(const sycl::device& dev) {
     }
 }
 
-sycl::event submit_barrier(cl::sycl::queue queue) {
-#if DPCPP_VERSION >= 140000
+sycl::event submit_barrier(sycl::queue queue) {
+#if ICPX_VERSION >= 140000
     return queue.ext_oneapi_submit_barrier();
-#elif DPCPP_VERSION < 140000
+#elif ICPX_VERSION < 140000
     return queue.submit_barrier();
-#endif // DPCPP_VERSION
+#endif // ICPX_VERSION
 }
 
-sycl::event submit_barrier(cl::sycl::queue queue, sycl::event event) {
-#if DPCPP_VERSION >= 140000
+sycl::event submit_barrier(sycl::queue queue, sycl::event event) {
+#if ICPX_VERSION >= 140000
     return queue.ext_oneapi_submit_barrier({ event });
-#elif DPCPP_VERSION < 140000
+#elif ICPX_VERSION < 140000
     return queue.submit_barrier({ event });
-#endif // DPCPP_VERSION
+#endif // ICPX_VERSION
 }
 
 #ifdef CCL_ENABLE_SYCL_INTEROP_EVENT
 sycl::event make_event(const sycl::context& context, const ze_event_handle_t& sync_event) {
-#if DPCPP_VERSION >= 140000
+#if ICPX_VERSION >= 140000
     return sycl::make_event<sycl::backend::ext_oneapi_level_zero>(
         { sync_event, sycl::ext::oneapi::level_zero::ownership::keep }, context);
-#elif DPCPP_VERSION < 140000
+#elif ICPX_VERSION < 140000
     return sycl::level_zero::make<sycl::event>(
         context, sync_event, sycl::level_zero::ownership::keep);
-#endif // DPCPP_VERSION
+#endif // ICPX_VERSION
 }
 #endif // CCL_ENABLE_SYCL_INTEROP_EVENT
 

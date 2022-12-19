@@ -216,11 +216,11 @@ ze_event_handle_t dynamic_event_pool::get_event() {
 void dynamic_event_pool::put_event(ze_event_handle_t event) {
     std::lock_guard<std::mutex> lg(lock);
 
-    auto it = event_alloc_info.find(event);
-    CCL_THROW_IF_NOT(it != event_alloc_info.end(), "event is not from the pool");
+    auto alloc_info_it = event_alloc_info.find(event);
+    CCL_THROW_IF_NOT(alloc_info_it != event_alloc_info.end(), "event is not from the pool");
 
-    event_info slot = it->second;
-    event_alloc_info.erase(it);
+    event_info slot = alloc_info_it->second;
+    event_alloc_info.erase(alloc_info_it);
 
     // make sure we always release the completed event
     CCL_ASSERT(zeEventQueryStatus(event) == ZE_RESULT_SUCCESS);

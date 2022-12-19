@@ -95,49 +95,49 @@ public:
         CCL_ASSERT(check_offset());
     }
 
-    ccl_buffer& operator=(const ccl_buffer& src) {
-        if (this != &src) {
-            this->src = src.src;
-            this->size = src.size;
-            this->offset = src.offset;
-            this->type = src.type;
+    ccl_buffer& operator=(const ccl_buffer& other) {
+        if (this != &other) {
+            this->src = other.src;
+            this->size = other.size;
+            this->offset = other.offset;
+            this->type = other.type;
             CCL_ASSERT(check_offset());
         }
         return *this;
     }
 
-    void set(void* src, ssize_t size, size_t offset, ccl_buffer_type type) {
+    void set(void* buf_src, ssize_t buf_size, size_t buf_offset, ccl_buffer_type buf_type) {
         LOG_TRACE("set: src ",
-                  src,
+                  buf_src,
                   ", size ",
-                  size,
+                  buf_size,
                   ", offset ",
-                  offset,
+                  buf_offset,
                   ", type ",
-                  type,
+                  buf_type,
                   ", old src: ",
                   this->src);
-        CCL_ASSERT(src, "new src is null");
+        CCL_ASSERT(buf_src, "new src is null");
 
-        this->src = src;
-        this->size = size;
-        this->offset = offset;
-        this->type = type;
+        this->src = buf_src;
+        this->size = buf_size;
+        this->offset = buf_offset;
+        this->type = buf_type;
 
         CCL_ASSERT(check_offset());
     }
 
-    void set(void* src) {
-        set(src, -1, 0, ccl_buffer_type::DIRECT);
+    void set(void* buf_src) {
+        set(buf_src, -1, 0, ccl_buffer_type::DIRECT);
     }
-    void set(void* src, ssize_t size) {
-        set(src, size, 0, ccl_buffer_type::DIRECT);
+    void set(void* buf_src, ssize_t buf_size) {
+        set(buf_src, buf_size, 0, ccl_buffer_type::DIRECT);
     }
-    void set(void* src, ssize_t size, ccl_buffer_type type) {
-        set(src, size, 0, type);
+    void set(void* buf_src, ssize_t buf_size, ccl_buffer_type buf_type) {
+        set(buf_src, buf_size, 0, buf_type);
     }
-    void set(void* src, ssize_t size, size_t offset) {
-        set(src, size, offset, ccl_buffer_type::DIRECT);
+    void set(void* buf_src, ssize_t buf_size, size_t buf_offset) {
+        set(buf_src, buf_size, buf_offset, ccl_buffer_type::DIRECT);
     }
 
     void* get_src() const {

@@ -20,9 +20,10 @@
 #include "coll/coll_check.hpp"
 #include "common/env/env.hpp"
 #include "common/global/global.hpp"
-#include "common/utils/sycl_utils.hpp"
 
 #ifdef CCL_ENABLE_SYCL
+#include "common/utils/sycl_utils.hpp"
+
 void ccl_check_usm_pointers(const ccl_coll_param& param) {
     auto bufs = param.get_all_non_zero_bufs();
     if (bufs.empty()) {

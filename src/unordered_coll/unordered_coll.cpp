@@ -113,9 +113,9 @@ ccl_request* ccl_unordered_coll_manager::postpone(ccl_sched* sched) {
             lock.unlock();
 
             CCL_ASSERT(sched->coll_param.comm);
-            auto comm = sched->coll_param.comm->clone_with_new_id(comm_id);
-            add_comm(match_id, comm);
-            run_sched(sched, comm.get());
+            auto new_comm = sched->coll_param.comm->clone_with_new_id(comm_id);
+            add_comm(match_id, new_comm);
+            run_sched(sched, new_comm.get());
         }
     }
 

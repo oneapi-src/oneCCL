@@ -74,3 +74,24 @@ void ze_a2a_gatherv_entry::init_ze_hook() {
                  nullptr));
     }
 }
+
+std::string ze_a2a_gatherv_entry::name_ext() const {
+    std::stringstream out;
+    out << name() << ":" << send_bytes;
+    return out.str();
+}
+
+void ze_a2a_gatherv_entry::dump_detail(std::stringstream& str) const {
+    ccl_logger::format(str,
+                       "dt ",
+                       ccl::global_data::get().dtypes->name(dtype),
+                       ", send_buf ",
+                       send_buf,
+                       ", recv_buf ",
+                       recv_buf,
+                       ", comm ",
+                       comm->to_string(),
+                       ", context ",
+                       context,
+                       "\n");
+}

@@ -110,7 +110,7 @@ atl_status_t atl_ofi_comm::allgatherv(size_t ep_idx,
         if (peer == rank)
             continue;
 
-        uint64_t op_tag = tag->create(rank, tag_comm_id, tag_counter);
+        uint64_t op_tag = tag_creator->create(rank, tag_comm_id, tag_counter);
         // LOG_DEBUG("ofi_allgatherv: send: rank: ", rank,
         //     ", peer: ", peer,
         //     ", comm_id: ", comm_id,
@@ -128,7 +128,7 @@ atl_status_t atl_ofi_comm::allgatherv(size_t ep_idx,
             }
         } while (ret == ATL_STATUS_AGAIN);
 
-        op_tag = tag->create(peer, tag_comm_id, tag_counter);
+        op_tag = tag_creator->create(peer, tag_comm_id, tag_counter);
         // LOG_DEBUG("ofi_allgatherv: recv: rank: ", rank,
         //     ", peer: ", peer,
         //     ", comm_id: ", comm_id,
@@ -202,8 +202,7 @@ atl_ofi_comm::atl_ofi_comm(atl_ofi_comm* parent, int color) {
     coord.local_count = 0;
 
     std::vector<rank_info_t> ranks_info(parent_size);
-    int parent_proc_idx = parent->rank2proc_map[parent_rank];
-    rank_info_t rank_info{ color, parent_rank, parent_proc_idx, coord.hostname_hash };
+    rank_info_t rank_info{ color, parent_rank, coord.hostname_hash };
     std::vector<int> recv_lens(parent_size, sizeof(rank_info));
     std::vector<int> offsets(parent_size);
     offsets[0] = 0;
@@ -221,27 +220,26 @@ atl_ofi_comm::atl_ofi_comm(atl_ofi_comm* parent, int color) {
                        req);
     wait(0, req);
 
-    CCL_THROW_IF_NOT(rank2rank_map.empty());
     CCL_THROW_IF_NOT(rank2proc_map.empty());
+    CCL_THROW_IF_NOT(rank2rank_map.empty());
 
     size = 0;
 
     for (auto& it : ranks_info) {
         int recv_color;
         int recv_rank;
-        int recv_proc_idx;
         size_t recv_hash;
-        std::tie(recv_color, recv_rank, recv_proc_idx, recv_hash) = it;
+        std::tie(recv_color, recv_rank, recv_hash) = it;
         if (recv_color == color) {
+            rank2proc_map.push_back(parent->rank2proc_map[recv_rank]);
             rank2rank_map.push_back(recv_rank);
-            rank2proc_map.push_back(recv_proc_idx);
 
             if (recv_hash == coord.hostname_hash) {
                 coord.local_count++;
             }
 
             if (recv_rank == parent_rank) {
-                coord.global_idx = rank = rank2rank_map.size() - 1;
+                coord.global_idx = rank = rank2proc_map.size() - 1;
                 coord.local_idx = (coord.local_count - 1);
             }
             size++;
@@ -253,10 +251,6 @@ atl_ofi_comm::atl_ofi_comm(atl_ofi_comm* parent, int color) {
               color,
               ", ",
               to_string(coord),
-              ", rank2rank_map: ",
-              ccl::utils::vec_to_string(rank2rank_map),
-              ", parent rank2rank_map: ",
-              ccl::utils::vec_to_string(parent->rank2rank_map),
               ", rank2proc_map: ",
               ccl::utils::vec_to_string(rank2proc_map),
               ", parent rank2proc_map: ",
@@ -297,8 +291,11 @@ atl_status_t atl_ofi_comm::init_transport(bool is_new) {
         coord = transport->get_proc_coord();
         coord.validate(rank, size);
 
-        rank2proc_map.resize(size);
-        transport->get_rank2rank_map(pmi, rank2proc_map);
+        transport->get_rank2proc_map(pmi, rank2proc_map);
+        rank2rank_map.resize(size);
+        for (int i = 0; i < size; i++) {
+            rank2rank_map[i] = i;
+        }
     }
 
     init_tag();

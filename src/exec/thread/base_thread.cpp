@@ -113,13 +113,13 @@ int ccl_base_thread::get_real_cpu_affinity() {
         LOG_ERROR("pthread_getaffinity_np failed, err ", pthread_err);
     }
 
-    for (int idx = 0; idx < CPU_SETSIZE; idx++) {
-        if (__CPU_ISSET_S(idx, sizeof(cpu_set_t), &cpuset)) {
+    for (int cpu_idx = 0; cpu_idx < CPU_SETSIZE; cpu_idx++) {
+        if (__CPU_ISSET_S(cpu_idx, sizeof(cpu_set_t), &cpuset)) {
             if (result == CCL_UNDEFINED_CPU_ID) {
-                result = idx;
+                result = cpu_idx;
             }
             else {
-                CCL_THROW("multiple affinity cores, previous ", result, ", new ", idx);
+                CCL_THROW("multiple affinity cores, previous ", result, ", new ", cpu_idx);
             }
         }
     }

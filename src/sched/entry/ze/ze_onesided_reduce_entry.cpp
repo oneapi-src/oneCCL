@@ -32,7 +32,8 @@ ze_onesided_reduce_entry::ze_onesided_reduce_entry(ccl_sched* sched,
                                                    reduction op,
                                                    int root,
                                                    ccl_comm* comm,
-                                                   std::vector<ze_event_handle_t> wait_events)
+                                                   std::vector<ze_event_handle_t> wait_events,
+                                                   size_t peer_buf_offset)
         : ze_base_entry(sched, comm, 2 /* request additional events */, wait_events),
           send_buf(send_buf),
           recv_buf(recv_buf),
@@ -41,6 +42,7 @@ ze_onesided_reduce_entry::ze_onesided_reduce_entry(ccl_sched* sched,
           op(op),
           root(root),
           buf_size_bytes(dtype.size() * cnt),
+          peer_buf_offset_bytes(dtype.size() * peer_buf_offset),
           empty_kernel_event(nullptr),
           empty_kernel(nullptr),
           empty_kernel_name("empty_kernel") {
@@ -76,9 +78,12 @@ void ze_onesided_reduce_entry::init_ze_hook() {
     LOG_DEBUG(
         "get IPC pointers from ", peer_rank, " by ", root, ", right_send_buf: ", right_send_buf);
 
+    send_buf_ptr = send_buf.get_ptr();
+    recv_buf_ptr = recv_buf.get_ptr();
+
     // TODO: in place case check! diff idx for handle_mngr
 
-    right_send_buf_ptr = right_send_buf.get_ptr();
+    right_send_buf_ptr = static_cast<char*>(right_send_buf.get_ptr()) + peer_buf_offset_bytes;
 
     void* kernel_input_buf2 = right_send_buf_ptr;
     if (global_data::env().enable_kernel_1s_copy_ops) {
@@ -163,6 +168,9 @@ void ze_onesided_reduce_entry::init_ze_hook() {
 }
 
 void ze_onesided_reduce_entry::finalize_ze_hook() {
+    if (comm->size() == 1) {
+        return;
+    }
     if (empty_kernel_event) {
         ccl::global_data::get().ze_data->cache->push(
             worker_idx, module, empty_kernel_name, empty_kernel);
@@ -198,4 +206,29 @@ void ze_onesided_reduce_entry::update() {
         ccl::global_data::get().ze_data->kernel_counter > 0) {
         ccl::global_data::get().ze_data->kernel_counter--;
     }
+}
+
+std::string ze_onesided_reduce_entry::name_ext() const {
+    std::stringstream out;
+    out << name() << ":" << cnt * dtype.size();
+    return out.str();
+}
+
+void ze_onesided_reduce_entry::dump_detail(std::stringstream& str) const {
+    ccl_logger::format(str,
+                       "dt ",
+                       ccl::global_data::get().dtypes->name(dtype),
+                       ", cnt ",
+                       cnt,
+                       ", send_buf ",
+                       send_buf,
+                       ", recv_buf ",
+                       recv_buf,
+                       ", op ",
+                       ccl_reduction_to_str(op),
+                       ", comm ",
+                       comm->to_string(),
+                       ", context ",
+                       context,
+                       "\n");
 }

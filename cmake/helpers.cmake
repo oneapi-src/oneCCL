@@ -22,7 +22,7 @@ function(set_lp_env)
     else()
         set(CCL_BF16_COMPILER OFF)
     endif()
-    message(STATUS "BF16 compiler: ${CCL_BF16_COMPILER}")
+    message(STATUS "BF16 AVX512F compiler: ${CCL_BF16_COMPILER}")
 
     execute_process(COMMAND ld -v
             OUTPUT_VARIABLE BINUTILS_VERSION_RAW
@@ -55,7 +55,7 @@ function(set_lp_env)
         message(STATUS "BF16 target attributes: ${CCL_BF16_TARGET_ATTRIBUTES}")
     endif()
 
-    option(CCL_BF16_GPU_TRUNCATE "Truncate BF16 in GPU operations" ON)
+    option(CCL_BF16_GPU_TRUNCATE "Truncate BF16 in GPU operations" OFF)
     if (CCL_BF16_GPU_TRUNCATE)
         add_definitions(-DCCL_BF16_GPU_TRUNCATE)
     endif()
@@ -204,7 +204,7 @@ function(activate_compute_backend MODULES_PATH COMPUTE_BACKEND)
         # remember current target for `target_link_libraries` in ccl
         set (COMPUTE_BACKEND_TARGET_NAME Intel::SYCL_level_zero)
         set (COMPUTE_BACKEND_TARGET_NAME Intel::SYCL_level_zero PARENT_SCOPE)
-        message ("COMPUTE_BACKEND_TARGET_NAME=${COMPUTE_BACKEND_TARGET_NAME} requested. Using DPC++ provider")
+        message (STATUS "COMPUTE_BACKEND_TARGET_NAME: ${COMPUTE_BACKEND_TARGET_NAME} requested. Using DPC++ provider")
     endif()
 
     # extract target properties
@@ -230,6 +230,18 @@ function(activate_compute_backend MODULES_PATH COMPUTE_BACKEND)
     set(COMPUTE_BACKEND_INCLUDE_DIRS ${COMPUTE_BACKEND_INCLUDE_DIRS_LOCAL}  PARENT_SCOPE)
 
 endfunction(activate_compute_backend)
+
+function(define_compute_backend)
+    if (NOT DEFINED COMPUTE_BACKEND)
+        message(STATUS "COMPUTE_BACKEND is not defined")
+        if (${CMAKE_CXX_COMPILER} MATCHES ".*dpcpp")
+            set(COMPUTE_BACKEND "dpcpp" CACHE STRING "compute backend value")
+            message(STATUS "COMPUTE_BACKEND: ${COMPUTE_BACKEND} (set by default)")
+        endif()
+    else()
+        message(STATUS "COMPUTE_BACKEND: ${COMPUTE_BACKEND} (set by user)")
+    endif()
+endfunction(define_compute_backend)
 
 function(set_compute_backend COMMON_CMAKE_DIR)
     activate_compute_backend("${COMMON_CMAKE_DIR}" ${COMPUTE_BACKEND})
@@ -257,13 +269,13 @@ function(set_compute_backend COMMON_CMAKE_DIR)
         set(CCL_ENABLE_ZE ON PARENT_SCOPE)
         message(STATUS "Enable CCL Level Zero support")
 
-        execute_process(COMMAND dpcpp -v
-            OUTPUT_VARIABLE DPCPP_VERSION
-            ERROR_VARIABLE DPCPP_VERSION
+        execute_process(COMMAND icpx -v
+            OUTPUT_VARIABLE ICPX_VERSION
+            ERROR_VARIABLE ICPX_VERSION
             OUTPUT_STRIP_TRAILING_WHITESPACE
             ERROR_STRIP_TRAILING_WHITESPACE
         )
-        message(STATUS "DPC++ compiler version:\n" "${DPCPP_VERSION}")
+        message(STATUS "DPC++ compiler version:\n" "${ICPX_VERSION}")
     endif()
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMPUTE_BACKEND_FLAGS}")

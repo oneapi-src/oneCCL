@@ -40,9 +40,10 @@ if (CCL_ENABLE_SYCL AND CCL_ENABLE_ZE)
         sched/entry/ze/ze_primitives.cpp
         sched/entry/ze/ze_reduce_local_entry.cpp
 
-        common/global/ze_data.cpp
+        common/global/ze/ze_data.cpp
+        common/global/ze/ze_fd_manager.cpp
         common/utils/sycl_utils.cpp
-        common/ze/ze_api_wrapper.cpp
+        common/api_wrapper/ze_api_wrapper.cpp
 
         sched/ze/ze_event_manager.cpp
         sched/ze/ze_handle_manager.cpp
@@ -89,7 +90,6 @@ set(CCL_SRC
     coll/coll_util.cpp
     coll/algorithms/allgatherv.cpp
     coll/algorithms/allreduce/allreduce.cpp
-    coll/algorithms/allreduce/allreduce_2d.cpp
     coll/algorithms/allreduce/allreduce_rma.cpp
     coll/algorithms/algorithm_utils.cpp
     coll/algorithms/alltoall.cpp
@@ -127,12 +127,18 @@ set(CCL_SRC
     common/log/log.cpp
     common/request/request.cpp
     common/stream/stream.cpp
-    common/utils/memcpy.cpp
+    common/utils/exchange_utils.cpp
     common/utils/fd_info.cpp
+    common/utils/memcpy.cpp
     common/utils/spinlock.cpp
     common/utils/utils.cpp
     common/utils/version.cpp
     common/utils/yield.cpp
+
+    common/api_wrapper/api_wrapper.cpp
+    common/api_wrapper/mpi_api_wrapper.cpp
+    common/api_wrapper/ofi_api_wrapper.cpp
+    common/api_wrapper/pmix_api_wrapper.cpp
 
     comp/bf16/bf16.cpp
     comp/bf16/bf16_intrisics.cpp
@@ -216,7 +222,6 @@ set(SRC_INCLUDE_DIRS)
 set(SRC_LINK_DIRS)
 set(SRC_LINK_LIBS)
 
-# common settings of security options
 if (USE_SECURITY_FLAGS)
     set(SRC_C_FLAGS "${SRC_C_FLAGS} -Wformat -Wformat-security -D_FORTIFY_SOURCE=2 -fstack-protector")
     set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -Wformat -Wformat-security -D_FORTIFY_SOURCE=2 -fstack-protector")
@@ -229,12 +234,16 @@ if (USE_SECURITY_FLAGS)
     endif()
 endif()
 
+if (ENABLE_LINKER_RUNPATH)
+    set(SRC_SHARED_LINKER_FLAGS "${SRC_SHARED_LINKER_FLAGS} -Wl,--enable-new-dtags -Wl,-rpath='$ORIGIN'")
+endif()
+
 set(SRC_SHARED_LINKER_FLAGS "${SRC_SHARED_LINKER_FLAGS} -Wl,--version-script=${PROJECT_SOURCE_DIR}/ccl.map")
 
 if (${CMAKE_C_COMPILER_ID} STREQUAL "Intel" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
-    #To suppress for 'offsetof applied to non-POD (Plain Old Data) types is nonstandar'
+    # To suppress for 'offsetof applied to non-POD (Plain Old Data) types is nonstandar'
     set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -diag-disable=1875")
-    # To supress "overloaded virtual function is only partially overridden in class", as we intentially
+    # To suppress "overloaded virtual function is only partially overridden in class", as we intentially
     # don't override some base class' overloads in order to keep a default implementation for them
     set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -diag-disable=654")
 endif()
@@ -256,13 +265,20 @@ list(APPEND SRC_INCLUDE_DIRS
      ${HWLOC_INCLUDE_DIR}
      ${ITT_INCLUDE_DIR})
 
-list(APPEND SRC_LINK_DIRS ${LIBFABRIC_LIB_DIR})
+if (ENABLE_DRM)
+    list(APPEND SRC_SYSTEM_INCLUDE_DIRS
+         ${DRM_INCLUDE_DIR})
+endif()
+
+if (ENABLE_PMIX)
+    list(APPEND SRC_INCLUDE_DIRS
+         ${PMIX_INCLUDE_DIR})
+endif()
 
 list(APPEND SRC_LINK_LIBS
      dl
      pthread
      ${EXTERNAL_LIBS}
-     fabric
      ${HWLOC_LIB_DIR}/libhwloc.a
      ${ITT_LIB_DIR}/libittnotify.a)
 
@@ -270,8 +286,6 @@ if (ENABLE_MPI)
     set(SRC_C_FLAGS "${SRC_C_FLAGS} -DCCL_ENABLE_MPI")
     set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -DCCL_ENABLE_MPI")
     list(APPEND SRC_INCLUDE_DIRS ${MPI_INCLUDE_DIR})
-    list(APPEND SRC_LINK_DIRS ${MPI_LIB_DIR})
-    list(APPEND SRC_LINK_LIBS mpi)
 endif()
 
 link_directories(${SRC_LINK_DIRS})
@@ -284,6 +298,7 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${SRC_SHARED_LINKER_
 add_library(ccl-objects OBJECT ${CCL_SRC})
 set_target_properties(ccl-objects PROPERTIES POSITION_INDEPENDENT_CODE 1)
 target_include_directories(ccl-objects PRIVATE ${SRC_INCLUDE_DIRS})
+target_include_directories(ccl-objects SYSTEM PRIVATE ${SRC_SYSTEM_INCLUDE_DIRS})
 
 if (COMPUTE_BACKEND_TARGET_NAME)
     target_include_directories(ccl-objects PUBLIC ${INTERFACE_INCLUDE_DIRECTORIES})

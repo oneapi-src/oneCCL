@@ -27,7 +27,7 @@ class ccl_comm;
 #include <CL/sycl.hpp>
 
 template <class native_type>
-using ccl_sycl_typed_buffer_t = cl::sycl::buffer<native_type, 1>;
+using ccl_sycl_typed_buffer_t = sycl::buffer<native_type, 1>;
 
 /* ordering should be aligned with ccl::datatype */
 using ccl_sycl_buffer_one_dim_types = std::tuple<ccl_sycl_typed_buffer_t<int8_t>,
@@ -105,6 +105,7 @@ struct ccl_coll_param {
     ccl_stream* stream;
     ccl_comm* comm;
     std::vector<ccl::event> deps;
+    bool is_scaleout;
 
     ccl_coll_param();
     ccl_coll_param(const ccl_coll_param& other);

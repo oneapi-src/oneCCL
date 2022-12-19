@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include "common/ze/ze_api_wrapper.hpp"
+#include "common/api_wrapper/ze_api_wrapper.hpp"
 #include "sched/entry/ze/ze_call.hpp"
 
 namespace ccl {
@@ -29,6 +29,12 @@ namespace ze {
 #define ZE_CALL(ze_name, ze_args) ccl::ze::ze_call().do_call(ze_name ze_args, #ze_name)
 
 enum class device_id : uint32_t { unknown = 0x0, id1 = 0x200, id2 = 0xbd0 };
+
+enum class copy_engine_mode { none, main, link, auto_mode };
+enum class h2d_copy_engine_mode { none, main, auto_mode };
+
+extern std::map<copy_engine_mode, std::string> copy_engine_names;
+extern std::map<h2d_copy_engine_mode, std::string> h2d_copy_engine_names;
 
 constexpr ze_context_desc_t default_context_desc = { .stype = ZE_STRUCTURE_TYPE_CONTEXT_DESC,
                                                      .pNext = nullptr,
@@ -110,12 +116,23 @@ void get_suggested_group_count(const ze_group_size_t& group_size,
                                size_t elem_count,
                                ze_group_count_t* group_count);
 
+// use a maximum peer size of 5 since for 6 PVCs in Aurora.
+// TODO: Need to generalize the peer count for other configs.
+constexpr size_t max_peer_count = 5;
+
 struct ze_kernel_arg_t {
     template <class T>
     constexpr ze_kernel_arg_t(const T* arg) noexcept
             : size{ sizeof(T) },
               ptr{ static_cast<const void*>(arg) } {}
+    template <class T>
+    constexpr ze_kernel_arg_t(const T* arg, const size_t count) noexcept
+            : size{ sizeof(T) },
+              count{ count },
+              ptr{ static_cast<const void*>(arg) } {}
     const size_t size;
+    //TODO: should we use a vector of ptr instead of keeping ptr and count
+    const size_t count = 1;
     const void* ptr;
 };
 
@@ -137,6 +154,7 @@ bool get_buffer_context_and_device(const void* buf,
                                    ze_memory_allocation_properties_t* props = nullptr);
 bool get_context_global_id(ze_context_handle_t context, ssize_t* id);
 bool get_device_global_id(ze_device_handle_t device, ssize_t* id);
+uint32_t get_parent_device_id(ze_device_handle_t device);
 
 int get_fd_from_handle(const ze_ipc_mem_handle_t& handle);
 void close_handle_fd(const ze_ipc_mem_handle_t& handle);
@@ -149,50 +167,11 @@ bool is_same_dev_uuid(const ze_device_uuid_t& uuid1, const ze_device_uuid_t& uui
 bool is_same_fabric_port(const zes_fabric_port_id_t& port1, const zes_fabric_port_id_t& port2);
 
 struct pci_address_comparator {
-    bool operator()(const zes_pci_address_t& a, const zes_pci_address_t& b) const {
-        if (a.domain == b.domain) {
-            if (a.bus == b.bus) {
-                if (a.device == b.device) {
-                    if (a.function == b.function) {
-                        return false;
-                    }
-                    else {
-                        return (a.function < b.function);
-                    }
-                }
-                else {
-                    return (a.device < b.device);
-                }
-            }
-            else {
-                return (a.bus < b.bus);
-            }
-        }
-        else {
-            return (a.domain < b.domain);
-        }
-    }
+    bool operator()(const zes_pci_address_t& a, const zes_pci_address_t& b) const;
 };
 
 struct fabric_port_comparator {
-    bool operator()(const zes_fabric_port_id_t& a, const zes_fabric_port_id_t& b) const {
-        if (a.fabricId == b.fabricId) {
-            if (a.attachId == b.attachId) {
-                if (a.portNumber == b.portNumber) {
-                    return false;
-                }
-                else {
-                    return (a.portNumber < b.portNumber);
-                }
-            }
-            else {
-                return (a.attachId < b.attachId);
-            }
-        }
-        else {
-            return (a.fabricId < b.fabricId);
-        }
-    }
+    bool operator()(const zes_fabric_port_id_t& a, const zes_fabric_port_id_t& b) const;
 };
 
 std::string to_string(ze_result_t result);
@@ -217,6 +196,7 @@ template <typename T>
 std::string flags_to_string(uint32_t flags) {
     constexpr size_t bits = 8;
     std::vector<std::string> output;
+
     for (size_t i = 0; i < sizeof(flags) * bits; ++i) {
         const size_t mask = 1UL << i;
         const auto flag = flags & mask;
@@ -224,6 +204,11 @@ std::string flags_to_string(uint32_t flags) {
             output.emplace_back(to_string(static_cast<T>(flag)));
         }
     }
+
+    if (output.empty()) {
+        output.emplace_back("<empty>");
+    }
+
     return join_strings(output, " | ");
 }
 

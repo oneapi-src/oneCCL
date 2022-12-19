@@ -68,8 +68,7 @@ public:
     void wait(const ccl_request* req);
     bool test(const ccl_request* req);
 
-    void start_workers();
-    void start_workers(int local_proc_idx, int local_proc_count);
+    void start_workers(atl_proc_coord_t& coord);
     bool are_workers_started() {
         return workers_started;
     };
@@ -85,13 +84,6 @@ public:
     void unlock_workers();
     bool is_locked = false;
 
-    int get_local_proc_idx() const {
-        return local_proc_idx;
-    }
-    int get_local_proc_count() const {
-        return local_proc_count;
-    }
-
     static size_t calculate_atl_ep_count(size_t worker_count);
     static atl_attr_t generate_atl_attr(const ccl::env_data& env);
 
@@ -101,18 +93,11 @@ private:
 
     std::unique_ptr<ccl_sched_queue> create_sched_queue(size_t idx, size_t ep_per_worker);
     void do_work();
-    void set_local_coord(int proc_idx, int proc_count);
-    void getenv_local_coord(const char* local_idx_env_name, const char* local_count_env_name);
 
     std::vector<std::unique_ptr<ccl_worker>> workers;
     // TODO: Rework to support listener
     //  std::unique_ptr<ccl_listener> listener;
 
-    typedef size_t (ccl_executor::*get_worker_idx_fn_t)(ccl_sched* sched);
-    get_worker_idx_fn_t get_worker_idx_fn;
-    size_t rr_worker_idx = 0; /* to distribute work in round-robin */
-    int local_proc_idx;
-    int local_proc_count;
     bool workers_started = false;
 };
 
@@ -126,13 +111,14 @@ inline void ccl_release_sched(ccl_sched* sched) {
 }
 
 inline void ccl_release_request(ccl_request* req) {
-    CCL_THROW_IF_NOT(req->get_sched(), "sched is not set for request");
-
     auto* sched = req->get_sched();
+
+    CCL_THROW_IF_NOT(sched, "sched is not set for request");
+
     // if the released request is not the current active one, then we need
     // to explicitly delete it, otherwise it's going to be deleted in sched's
     // destructor
-    if (req != req->get_sched()->get_request()) {
+    if (req != sched->get_request()) {
         LOG_DEBUG("deleting req ", req, " detached from sched ", sched);
         delete req;
     }
@@ -149,7 +135,8 @@ inline void ccl_wait_impl(ccl_executor* exec, ccl_request* request) {
             request,
             " completed, sched ",
             ccl_coll_type_to_str(static_cast<sched_type*>(request->get_sched())->coll_param.ctype));
-        ccl_release_request(request);
+        if (!request->synchronous)
+            ccl_release_request(request);
     }
 }
 

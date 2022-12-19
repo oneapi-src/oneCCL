@@ -27,33 +27,37 @@
 
 namespace ccl {
 
-void sched_timer::start() noexcept {
+void sched_timer::start() {
     start_time = std::chrono::high_resolution_clock::now();
+    started = true;
 }
 
-void sched_timer::stop() {
-    time_usec = get_elapsed_usec();
-}
-
-std::string sched_timer::str() const {
-    std::stringstream ss;
-    ss.precision(2);
-    ss << std::fixed << time_usec;
-    return ss.str();
-}
-
-void sched_timer::print(std::string title) const {
-    logger.info(title, ": ", this->str());
-}
-
-void sched_timer::reset() noexcept {
-    time_usec = 0;
-}
-
-long double sched_timer::get_elapsed_usec() const noexcept {
+void sched_timer::update() {
+    CCL_THROW_IF_NOT(started, "timer is not started, but update is requested");
     auto current_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::micro> time_span = current_time - start_time;
-    return time_span.count();
+    time_usec += time_span.count();
+    start_time = current_time;
+}
+
+void sched_timer::reset() {
+    time_usec = 0;
+    started = false;
+}
+
+bool sched_timer::is_started() const {
+    return started;
+}
+
+long double sched_timer::get_elapsed_usec() const {
+    return time_usec;
+}
+
+std::string to_string(const sched_timer& timer) {
+    std::stringstream ss;
+    ss.precision(2);
+    ss << std::fixed << timer.get_elapsed_usec();
+    return ss.str();
 }
 
 #if defined(CCL_ENABLE_ITT)

@@ -27,10 +27,7 @@ std::unique_ptr<ccl_stream> stream_selector::create(stream_native_t& native_stre
     stream_type type = stream_type::host;
 
 #ifdef CCL_ENABLE_SYCL
-    if (native_stream.get_device().is_host()) {
-        type = stream_type::host;
-    }
-    else if (native_stream.get_device().is_cpu()) {
+    if (native_stream.get_device().is_cpu()) {
         type = stream_type::cpu;
     }
     else if (native_stream.get_device().is_gpu()) {
@@ -41,7 +38,7 @@ std::unique_ptr<ccl_stream> stream_selector::create(stream_native_t& native_stre
             "core",
             "create_stream",
             std::string("unsupported SYCL queue's device type:\n") +
-                native_stream.get_device().template get_info<cl::sycl::info::device::name>() +
+                native_stream.get_device().template get_info<sycl::info::device::name>() +
                 std::string("supported types: host, cpu, gpu"));
     }
 #endif // CCL_ENABLE_SYCL

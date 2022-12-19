@@ -15,17 +15,31 @@
 */
 #include "common/request/request.hpp"
 #include "common/event/impls/host_event.hpp"
-#include "common/utils/sycl_utils.hpp"
 #include "exec/exec.hpp"
+
+#ifdef CCL_ENABLE_SYCL
+#include "common/utils/sycl_utils.hpp"
+#endif // CCL_ENABLE_SYCL
 
 namespace ccl {
 
 host_event_impl::host_event_impl(ccl_request* r) : req(r) {
     if (!req) {
+        completed = true;
+        return;
+    }
+#ifdef CCL_ENABLE_SYCL
+    native_event = req->share_native_event();
+#endif // CCL_ENABLE_SYCL
+    if (req->synchronous) {
+        if (!ccl::global_data::get().executor.get()->is_locked) {
+            ccl_release_request(req);
+        }
         // if the user calls collective with coll_attr->synchronous=1 then it will be progressed
-        // in place and API will return null event. In this case mark request as completed,
+        // in place and in this case we mark request as completed,
         // all calls to wait() or test() will do nothing
         completed = true;
+        synchronous = true;
     }
 }
 
@@ -50,7 +64,11 @@ host_event_impl::~host_event_impl() {
 
 void host_event_impl::wait() {
     if (!completed) {
-        ccl_wait_impl(ccl::global_data::get().executor.get(), req);
+        auto* exec = ccl::global_data::get().executor.get();
+        ccl_wait_impl(exec, req);
+        if (synchronous && !exec->is_locked) {
+            ccl_release_request(req);
+        }
         completed = true;
     }
 }
@@ -69,7 +87,7 @@ bool host_event_impl::cancel() {
 event::native_t& host_event_impl::get_native() {
 #ifdef CCL_ENABLE_SYCL
     if (ccl::global_data::env().enable_sycl_output_event) {
-        return req->get_native_event();
+        return *native_event;
     }
     else {
         CCL_THROW("get_native() is not available without CCL_SYCL_OUTPUT_EVENT=1 env variable");

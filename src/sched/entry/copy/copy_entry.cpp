@@ -13,14 +13,12 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#include "common/global/global.hpp"
 #include "sched/entry/copy/copy_entry.hpp"
 #include "sched/queue/queue.hpp"
 
 #ifdef CCL_ENABLE_SYCL
-#include <CL/sycl.hpp>
-#include <CL/sycl/backend_types.hpp>
 #include "common/utils/sycl_utils.hpp"
-
 #ifdef CCL_ENABLE_ZE
 #include "sched/entry/ze/ze_copy_entry.hpp"
 #endif // CCL_ENABLE_ZE
@@ -179,6 +177,25 @@ void copy_entry::reset(size_t idx) {
         ze_copier->reset(idx);
     }
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+}
+
+void copy_entry::dump_detail(std::stringstream& str) const {
+    ccl_logger::format(str,
+                       "dt ",
+                       ccl::global_data::get().dtypes->name(dtype),
+                       ", count ",
+                       count,
+                       ", in_buf ",
+                       in_buf,
+                       ", out_buf ",
+                       out_buf,
+                       ", in_buf_offset ",
+                       attr.in_buf_offset,
+                       ", out_buf_offset ",
+                       attr.out_buf_offset,
+                       ", direction ",
+                       to_string(attr.direction),
+                       "\n");
 }
 
 void copy_entry::do_regular_copy() {

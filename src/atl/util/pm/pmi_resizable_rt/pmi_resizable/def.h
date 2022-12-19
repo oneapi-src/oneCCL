@@ -157,7 +157,7 @@ typedef enum { KVS_STATUS_SUCCESS, KVS_STATUS_FAILURE, KVS_STATUS_UNSUPPORTED } 
 #define INITIAL_RANK_NUM   "0"
 #define MAX_CLEAN_CHECKS   3
 
-extern char my_hostname[MAX_KVS_VAL_LENGTH];
+extern char pmi_hostname[MAX_KVS_VAL_LENGTH];
 
 void inline kvs_str_copy(char* dst, const char* src, size_t bytes) {
     strncpy(dst, src, bytes - 1);

@@ -61,7 +61,7 @@ ccl_spinlock atl_base_comm::comm_id_storage_guard{};
 atl_base_comm::~atl_base_comm() {
     std::lock_guard<ccl_spinlock> lock{ comm_id_storage_guard };
     transport->get_comm_id_storage().release(comm_id);
-    tag.reset();
+    tag_creator.reset();
     comm_count--;
     if (comm_count.load() == 0) {
         transport->finalize(rank);
@@ -137,9 +137,10 @@ int atl_base_comm::create_comm_id() {
 }
 
 void atl_base_comm::init_tag() {
-    tag = std::shared_ptr<ccl_atl_tag>(new ccl_atl_tag(attr.out.tag_bits, attr.out.max_tag));
+    tag_creator =
+        std::shared_ptr<ccl_atl_tag>(new ccl_atl_tag(attr.out.tag_bits, attr.out.max_tag));
     if (rank == 0) {
-        LOG_DEBUG("atl tag: ", tag->to_string());
+        LOG_DEBUG("atl tag: ", tag_creator->to_string());
     }
 }
 
@@ -148,7 +149,7 @@ void atl_base_comm::update_executor() {
         if (rank < coord.local_count)
             LOG_INFO(
                 "start workers for local process [", coord.local_idx, ":", coord.local_count, "]");
-        executor->start_workers(coord.local_idx, coord.local_count);
+        executor->start_workers(coord);
     }
 }
 

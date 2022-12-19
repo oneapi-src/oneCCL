@@ -17,7 +17,7 @@
 
 #include <list>
 #include <unordered_map>
-#include "common/ze/ze_api_wrapper.hpp"
+#include "common/api_wrapper/ze_api_wrapper.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
 
 class ccl_stream;

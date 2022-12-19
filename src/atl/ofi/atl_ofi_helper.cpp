@@ -126,10 +126,6 @@ atl_ofi_prov_t* atl_ofi_get_prov(atl_ofi_ctx_t& ctx,
     return &(ctx.provs[prov_idx]);
 }
 
-fi_addr_t atl_ofi_get_addr(atl_ofi_ctx_t& ctx, atl_ofi_prov_t* prov, int proc_idx, size_t ep_idx) {
-    return *(prov->addr_table + ((ctx.ep_count * (proc_idx - prov->first_proc_idx)) + ep_idx));
-}
-
 atl_status_t atl_ofi_get_local_proc_coord(atl_proc_coord_t& coord, std::shared_ptr<ipmi> pmi) {
     atl_status_t ret = ATL_STATUS_SUCCESS;
     int i;
@@ -217,7 +213,7 @@ atl_status_t atl_ofi_prov_update_addr_table(atl_ofi_ctx_t& ctx,
                                             const atl_proc_coord_t& coord,
                                             size_t prov_idx,
                                             std::shared_ptr<ipmi> pmi,
-                                            std::list<std::vector<char>>& ep_names) {
+                                            ep_names_t& ep_names) {
     atl_ofi_prov_t* prov = &(ctx.provs[prov_idx]);
 
     atl_status_t ret = ATL_STATUS_SUCCESS;
@@ -441,7 +437,7 @@ atl_status_t atl_ofi_prov_eps_connect(atl_ofi_ctx_t& ctx,
                                       const atl_proc_coord_t& coord,
                                       size_t prov_idx,
                                       std::shared_ptr<ipmi> pmi,
-                                      std::list<std::vector<char>>& ep_names) {
+                                      ep_names_t& ep_names) {
     int ret;
     size_t ep_idx;
 
@@ -901,7 +897,7 @@ atl_status_t atl_ofi_prov_init(atl_ofi_ctx_t& ctx,
                                atl_ofi_prov_t* prov,
                                atl_attr_t* attr,
                                std::shared_ptr<ipmi> pmi,
-                               std::list<std::vector<char>>& ep_names) {
+                               ep_names_t& ep_names) {
     struct fi_av_attr av_attr;
     size_t ep_idx = 0;
     ssize_t ret = 0;
@@ -1201,7 +1197,7 @@ atl_status_t atl_ofi_open_nw_provs(atl_ofi_ctx_t& ctx,
                                    struct fi_info* base_hints,
                                    atl_attr_t* attr,
                                    std::shared_ptr<ipmi> pmi,
-                                   std::list<std::vector<char>>& ep_names,
+                                   std::vector<ep_names_t>& ep_names,
                                    bool log_on_error) {
     atl_status_t ret = ATL_STATUS_SUCCESS;
     struct fi_info* prov_list = nullptr;
@@ -1331,13 +1327,17 @@ atl_status_t atl_ofi_open_nw_provs(atl_ofi_ctx_t& ctx,
     /* 6. create network providers */
     LOG_INFO("found ", final_provs.size(), " nic(s) according to all filters");
     ctx.nw_prov_count = final_provs.size();
+    if (ep_names.size() < ctx.nw_prov_count + ctx.nw_prov_first_idx) {
+        ep_names.resize(ctx.nw_prov_count + ctx.nw_prov_first_idx);
+    }
     for (idx = 0; idx < ctx.nw_prov_count; idx++) {
         prov_idx = ctx.nw_prov_first_idx + idx;
         prov = &ctx.provs[prov_idx];
         prov->idx = prov_idx;
         prov->is_shm = 0;
-        ATL_CALL(atl_ofi_prov_init(ctx, coord, final_provs[idx], prov, attr, pmi, ep_names),
-                 goto err);
+        ATL_CALL(
+            atl_ofi_prov_init(ctx, coord, final_provs[idx], prov, attr, pmi, ep_names[prov->idx]),
+            goto err);
     }
 
 exit:

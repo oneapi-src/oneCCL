@@ -48,24 +48,7 @@ public:
     }
 
 protected:
-    void dump_detail(std::stringstream& str) const override {
-        ccl_logger::format(str,
-                           ", recv_buf ",
-                           recv_buf,
-                           ", copy_buf ",
-                           copy_buf,
-                           ", bytes ",
-                           bytes,
-                           ", src ",
-                           src,
-                           ", atl_tag ",
-                           atl_tag,
-                           ", comm_id ",
-                           comm->get_comm_id(),
-                           ", req ",
-                           req,
-                           "\n");
-    }
+    void dump_detail(std::stringstream& str) const override;
 
 private:
     ccl_buffer recv_buf;

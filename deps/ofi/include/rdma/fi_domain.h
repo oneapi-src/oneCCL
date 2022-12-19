@@ -52,7 +52,15 @@ extern "C" {
 #define FI_SYMMETRIC		(1ULL << 59)
 #define FI_SYNC_ERR		(1ULL << 58)
 #define FI_UNIVERSE		(1ULL << 57)
-
+#define FI_BARRIER_SET		(1ULL << 40)
+#define FI_BROADCAST_SET	(1ULL << 41)
+#define FI_ALLTOALL_SET		(1ULL << 42)
+#define FI_ALLREDUCE_SET	(1ULL << 43)
+#define FI_ALLGATHER_SET	(1ULL << 44)
+#define FI_REDUCE_SCATTER_SET	(1ULL << 45)
+#define FI_REDUCE_SET		(1ULL << 46)
+#define FI_SCATTER_SET		(1ULL << 47)
+#define FI_GATHER_SET		(1ULL << 48)
 
 struct fi_av_attr {
 	enum fi_av_type		type;
@@ -118,6 +126,8 @@ enum fi_hmem_iface {
 	FI_HMEM_CUDA,
 	FI_HMEM_ROCR,
 	FI_HMEM_ZE,
+	FI_HMEM_NEURON,
+	FI_HMEM_SYNAPSEAI,
 };
 
 struct fi_mr_attr {
@@ -134,6 +144,8 @@ struct fi_mr_attr {
 		uint64_t	reserved;
 		int		cuda;
 		int		ze;
+		int		neuron;
+		int		synapseai;
 	} device;
 };
 

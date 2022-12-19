@@ -148,7 +148,7 @@ atl_status_t pmi_resizable_simple_internal::barrier_reg() {
     return ATL_STATUS_SUCCESS;
 }
 
-atl_status_t pmi_resizable_simple_internal::pmrt_main_addr_reserve(char* main_addr) {
+atl_status_t pmi_resizable_simple_internal::pmrt_main_addr_reserve(char* addr) {
     LOG_ERROR("unsupported");
     return ATL_STATUS_UNSUPPORTED;
 }
@@ -239,7 +239,7 @@ atl_status_t pmi_resizable_simple_internal::pmrt_kvs_get(char* kvs_key,
                                                          size_t kvs_val_len) {
     int ret;
     char key_storage[max_keylen];
-    std::string val_storage;
+    std::string val_storage_str;
 
     ret = snprintf(key_storage, max_keylen - 1, RESIZABLE_PMI_RT_KEY_FORMAT, kvs_key, proc_idx);
     if (ret < 0) {
@@ -247,9 +247,9 @@ atl_status_t pmi_resizable_simple_internal::pmrt_kvs_get(char* kvs_key,
         return ATL_STATUS_FAILURE;
     }
 
-    ATL_CHECK_STATUS(kvs_get_value(KVS_NAME, key_storage, val_storage), "failed to get val");
+    ATL_CHECK_STATUS(kvs_get_value(KVS_NAME, key_storage, val_storage_str), "failed to get val");
 
-    ret = decode(val_storage.c_str(), kvs_val, kvs_val_len);
+    ret = decode(val_storage_str.c_str(), kvs_val, kvs_val_len);
     if (ret) {
         LOG_ERROR("decode failed");
         return ATL_STATUS_FAILURE;
@@ -299,7 +299,7 @@ atl_status_t pmi_resizable_simple_internal::kvs_get_value(const std::string& kvs
         KVS_2_ATL_CHECK_STATUS(k->kvs_get_value_by_name_key(result_kvs_name, key, value),
                                "failed to get value");
         kvs_get_time = time(NULL) - start_time;
-    } while (value.length() == 0 && kvs_get_time < kvs_get_timeout);
+    } while (value.empty() && kvs_get_time < kvs_get_timeout);
 
     if (kvs_get_time >= kvs_get_timeout) {
         LOG_ERROR("KVS get error: timeout limit (%zu > %zu), prefix: %s, key %s\n",
@@ -324,8 +324,7 @@ atl_status_t pmi_resizable_simple_internal::get_local_kvs_id(size_t& res) {
 
 atl_status_t pmi_resizable_simple_internal::set_local_kvs_id(size_t local_kvs_id) {
     /*TODO: change it for collect local_per_rank id, not global*/
-    return k->kvs_set_value(LOCAL_KVS_ID, "ID", std::to_string(local_kvs_id).c_str()) ==
-                   KVS_STATUS_SUCCESS
+    return k->kvs_set_value(LOCAL_KVS_ID, "ID", std::to_string(local_kvs_id)) == KVS_STATUS_SUCCESS
                ? ATL_STATUS_SUCCESS
                : ATL_STATUS_FAILURE;
 }

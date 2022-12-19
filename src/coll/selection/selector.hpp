@@ -52,6 +52,8 @@ struct ccl_selector_param {
 #endif // CCL_ENABLE_SYCL
 
     ccl_coll_algo hint_algo = {};
+
+    bool is_scaleout = false;
 };
 
 template <ccl_coll_type coll_id>
@@ -69,6 +71,7 @@ using ccl_selection_table_iter_t = typename ccl_selection_table_t<algo_group_typ
     struct ccl_algorithm_selector_base { \
         ccl_selection_table_t<algo_group_type> main_table{}; \
         ccl_selection_table_t<algo_group_type> fallback_table{}; \
+        ccl_selection_table_t<algo_group_type> scaleout_table{}; \
         ccl_algorithm_selector_base(){}; \
         void init(); \
         void print() const; \

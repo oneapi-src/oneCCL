@@ -23,6 +23,8 @@ struct ccl_coll_entry_param {
     ccl_buffer recv_buf{};
     size_t count{};
     size_t send_count{};
+    std::vector<ccl_buffer> send_bufs;
+    std::vector<ccl_buffer> recv_bufs;
     const size_t* send_counts{};
     const size_t* recv_counts{};
     ccl_datatype dtype{};
@@ -31,4 +33,5 @@ struct ccl_coll_entry_param {
     ccl_comm* comm{};
     ccl_stream* stream{};
     ccl_coll_algo hint_algo{};
+    bool is_scaleout{ false };
 };

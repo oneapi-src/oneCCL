@@ -38,7 +38,8 @@ ccl::status coll_entry::build_sched(ccl_sched* sched, const ccl_coll_entry_param
                                            param.count,
                                            param.dtype,
                                            param.reduction,
-                                           param.comm);
+                                           param.comm,
+                                           param.is_scaleout);
             break;
         }
         case ccl_coll_alltoall: {

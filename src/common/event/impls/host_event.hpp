@@ -36,6 +36,12 @@ public:
 private:
     ccl_request* req = nullptr;
     bool completed = false;
+    bool synchronous = false;
+
+#ifdef CCL_ENABLE_SYCL
+    // the actual sycl::event returned to the user via ccl::event.get_native()
+    std::shared_ptr<sycl::event> native_event;
+#endif // CCL_ENABLE_SYCL
 };
 
 } // namespace ccl

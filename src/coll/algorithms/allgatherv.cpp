@@ -162,7 +162,6 @@ ccl::status ccl_coll_get_allgatherv_bufs_and_offsets(const ccl_coll_param& coll_
     }
     else {
         size_t offset = 0;
-        size_t dtype_size = coll_param.dtype.size();
         for (int idx = 0; idx < comm_size; idx++) {
             size_t bytes = coll_param.get_recv_count(idx) * dtype_size;
             recv_bufs[idx].set(coll_param.get_recv_buf(), offset + bytes, offset);
@@ -338,6 +337,7 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
     ccl_comm* pair_comm = comm->get_pair_comm().get();
     ccl_comm* even_comm = comm->get_even_comm().get();
     ccl_comm* node_comm = comm->get_node_comm().get();
+    ccl_comm* r2r_comm = comm->get_r2r_comm().get();
 
     const int lead_rank = ccl::global_data::env().kernel_1s_lead;
     const bool is_lead_rank = pair_comm->rank() == lead_rank;
@@ -345,7 +345,7 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
     const int even_comm_size = even_comm->size();
     const bool is_multi_card = (even_comm_size > 1);
     const ccl::topo_manager& topo_manager = comm->get_topo_manager();
-    CCL_THROW_IF_NOT(topo_manager.is_single_card != is_multi_card);
+    bool is_single_node = topo_manager.is_single_node;
 
     /* IPC exchange */
     std::vector<ze_handle_exchange_entry::mem_desc_t> in_buffers{
@@ -367,14 +367,150 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
     // using add_sched_barrier_for_parallel_copies function
     std::list<ze_event_handle_t> parallel_copy_events;
 
-    // for small msg sizes we get more performance without main blitter using (overhead?)
-    const bool can_use_main_blitter = (send_count * dtype.size()) > 1048576;
+    auto add_sched_barrier_for_parallel_copies = [&]() {
+        wait_events.insert(
+            wait_events.end(), parallel_copy_events.begin(), parallel_copy_events.end());
+        parallel_copy_events.clear();
+        sched->add_barrier();
+    };
+
+    if (!is_single_node) {
+        if (!is_inplace) {
+            // copy data from my send_buf to my recv_buf
+            copy_attr attr{};
+            attr.direction = copy_direction::d2d;
+            auto entry = entry_factory::create<ze_copy_entry>(sched,
+                                                              send_buf,
+                                                              recv_bufs[comm->rank()],
+                                                              recv_counts[comm->rank()],
+                                                              dtype,
+                                                              attr,
+                                                              wait_events);
+            parallel_copy_events.push_back(entry->entry_event);
+        }
+
+        // pack data to be used for scaleout
+        std::vector<ccl_buffer> recv_bufs_r2r;
+        std::vector<size_t> recv_counts_r2r;
+        for (int i = 0; i < r2r_comm->size(); i++) {
+            const int global_rank = r2r_comm->get_global_rank(i);
+            recv_bufs_r2r.push_back(recv_bufs[global_rank]);
+            recv_counts_r2r.push_back(recv_counts[global_rank]);
+        }
+
+        if (!is_single_node) {
+            ccl_coll_entry_param coll_param_scaleout{};
+            coll_param_scaleout.ctype = ccl_coll_allgatherv;
+            coll_param_scaleout.send_buf = send_buf;
+            coll_param_scaleout.recv_bufs = recv_bufs_r2r;
+            coll_param_scaleout.send_count = send_count;
+            coll_param_scaleout.recv_counts = recv_counts_r2r.data();
+            coll_param_scaleout.dtype = dtype;
+            coll_param_scaleout.comm = r2r_comm;
+
+            ccl::add_scaleout(sched, coll_param_scaleout, is_single_node, wait_events);
+        }
+
+        ccl::add_comm_barrier(sched, even_comm, wait_events);
+        auto recv_send_peers = [&](ccl_comm* recv_comm,
+                                   ccl_comm* send_comm,
+                                   size_t scaleout_offset = 0,
+                                   bool is_inplace = false) {
+            for (int peer_idx = 1; peer_idx < recv_comm->size(); peer_idx++) {
+                // copy data from all peers in even_comm
+                const int peer_rank = (recv_comm->rank() + peer_idx) % recv_comm->size();
+                CCL_THROW_IF_NOT(recv_comm->rank() != peer_rank, "Do not copy from own rank");
+                const int global_rank =
+                    (recv_comm->get_global_rank(peer_rank) + scaleout_offset) % comm->size();
+                copy_attr attr{};
+                attr.peer_rank = peer_rank;
+                if (is_inplace)
+                    attr.peer_buf_idx = recv_buf_idx_start + global_rank;
+                else
+                    attr.peer_buf_idx = send_buf_idx;
+                attr.direction = copy_direction::c2c;
+                attr.map_comm = recv_comm;
+                attr.hint_queue_index = parallel_copy_events.size();
+                auto entry = entry_factory::create<ze_copy_entry>(sched,
+                                                                  ccl_buffer(),
+                                                                  recv_bufs[global_rank],
+                                                                  recv_counts[global_rank],
+                                                                  dtype,
+                                                                  attr,
+                                                                  wait_events);
+                parallel_copy_events.push_back(entry->entry_event);
+
+                // do not do mdfi copy if only one tile is used
+                if (send_comm->size() == 1) {
+                    continue;
+                }
+
+                // copy the data recieved from even_comm peer (xelink) to pair_comm peer (mdfi)
+                int send_rank = (send_comm->rank() + 1) % send_comm->size();
+                copy_attr attr_send{};
+                attr_send.peer_rank = send_rank;
+                attr_send.peer_buf_idx = recv_buf_idx_start + global_rank;
+                attr_send.direction = copy_direction::t2t;
+                attr_send.map_comm = send_comm;
+                auto entry_send =
+                    entry_factory::create<ze_copy_entry>(sched,
+                                                         recv_bufs[global_rank],
+                                                         ccl_buffer(),
+                                                         recv_counts[global_rank],
+                                                         dtype,
+                                                         attr_send,
+                                                         wait_events,
+                                                         std::vector{ entry->entry_event });
+                parallel_copy_events.push_back(entry_send->entry_event);
+            }
+        };
+
+        size_t node_offset = 0;
+        // in case of scaleout, data is already copied to recv_buf and we can use in_place
+        bool is_use_inplace = is_inplace || !is_single_node;
+        for (int r2r_rank = 0; r2r_rank < r2r_comm->size(); r2r_rank++) {
+            // copy data from even_comm peers (xelink) that they recieved during scaleout
+            // and write the copied data to pair_comm peer (mdfi)
+            recv_send_peers(even_comm, pair_comm, node_offset, is_use_inplace);
+            node_offset += node_comm->size();
+
+            // do not do mdfi copy if only one tile is used
+            if (pair_comm->size() == 1) {
+                continue;
+            }
+
+            // write the data recieved during scaleout to pair_comm peer (mdfi)
+            int send_rank = (pair_comm->rank() + 1) % pair_comm->size();
+            copy_attr attr_send{};
+            attr_send.peer_rank = send_rank;
+            const int global_rank = r2r_comm->get_global_rank(r2r_rank);
+            attr_send.peer_buf_idx = recv_buf_idx_start + global_rank;
+            attr_send.direction = copy_direction::t2t;
+            attr_send.map_comm = pair_comm;
+            auto entry_send = entry_factory::create<ze_copy_entry>(sched,
+                                                                   recv_bufs[global_rank],
+                                                                   ccl_buffer(),
+                                                                   recv_counts[global_rank],
+                                                                   dtype,
+                                                                   attr_send,
+                                                                   wait_events);
+
+            parallel_copy_events.push_back(entry_send->entry_event);
+        }
+        add_sched_barrier_for_parallel_copies();
+        ccl::add_comm_barrier(sched, pair_comm, wait_events);
+
+        return ccl::status::success;
+    }
+
+    // for small msg sizes we get more performance without main CE using (main CE has overhead)
+    const bool can_use_small_msg_optimization = (send_count * dtype.size()) <= (1 * 1024 * 1024);
 
     // we use small scale algorithm by default and enable large scale algorithm using knob,
     // because small scale algorithm show more perfomance for today
     // TODO: and also we need to replace this knob with more intelligent switching in the future
     const bool can_use_large_scale_algorithm = ccl::global_data::env().allgatherv_topo_large_scale;
-    //ccl::global_data::env().ze_copy_engine != ccl_ze_copy_engine_none && is_multi_card &&
+    //comm->get_env()->get_ze_copy_engine() != ccl::ze::copy_engine_mode::none && is_multi_card &&
     //ccl::global_data::env().ze_max_copy_queues /* here must be real queue count */ >= even_comm_size-1) or unspecified;
 
     auto send_to_peers = [&](ccl_comm* comm, ccl_buffer in_buf, size_t count, size_t peer_buf_idx) {
@@ -384,10 +520,11 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
             copy_attr attr{};
             attr.peer_rank = peer_rank;
             attr.peer_buf_idx = peer_buf_idx;
-            attr.direction = copy_direction::d2d;
+            // using of link CE for small msgs give us more performance
+            const bool use_c2c_direction = (comm == even_comm) || can_use_small_msg_optimization;
+            attr.direction = (use_c2c_direction) ? copy_direction::c2c : copy_direction::d2d;
             attr.map_comm = comm;
             attr.hint_queue_index = parallel_copy_events.size();
-            attr.is_peer_card_copy = (comm == even_comm) ? true : !can_use_main_blitter;
             auto entry = entry_factory::create<ze_copy_entry>(
                 sched, in_buf, ccl_buffer(), count, dtype, attr, wait_events);
             parallel_copy_events.push_back(entry->entry_event);
@@ -402,10 +539,10 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
             copy_attr attr{};
             attr.peer_rank = peer_rank;
             attr.peer_buf_idx = send_buf_idx;
-            attr.direction = copy_direction::d2d;
+            const bool use_c2c_direction = (comm == even_comm) || can_use_small_msg_optimization;
+            attr.direction = (use_c2c_direction) ? copy_direction::c2c : copy_direction::d2d;
             attr.map_comm = comm;
             attr.hint_queue_index = parallel_copy_events.size();
-            attr.is_peer_card_copy = (comm == even_comm) ? true : !can_use_main_blitter;
             auto entry = entry_factory::create<ze_copy_entry>(sched,
                                                               ccl_buffer(),
                                                               recv_bufs[global_rank],
@@ -417,19 +554,12 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
         }
     };
 
-    auto add_sched_barrier_for_parallel_copies = [&]() {
-        wait_events.insert(
-            wait_events.end(), parallel_copy_events.begin(), parallel_copy_events.end());
-        parallel_copy_events.clear();
-        sched->add_barrier();
-    };
-
     const bool do_self_copy = !is_inplace;
     if (do_self_copy) {
         /* copy data from my send_buf to my recv_buf */
         copy_attr attr{};
         attr.hint_queue_index = parallel_copy_events.size();
-        attr.is_peer_card_copy = true;
+        attr.direction = copy_direction::t2t;
         auto entry = entry_factory::create<ze_copy_entry>(sched,
                                                           send_buf,
                                                           recv_bufs[comm->rank()],
@@ -442,11 +572,11 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
 
     const bool is_small_scale_algorithm = is_multi_card && !can_use_large_scale_algorithm;
     if (is_small_scale_algorithm) {
-        LOG_DEBUG("Use small scale algorithm");
+        LOG_DEBUG("use small scale algorithm");
     }
     const bool is_large_scale_algorithm = is_multi_card && can_use_large_scale_algorithm;
     if (is_large_scale_algorithm) {
-        LOG_DEBUG("Use large scale algorithm");
+        LOG_DEBUG("use large scale algorithm");
     }
 
     if (is_small_scale_algorithm) {
@@ -458,8 +588,7 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
         /* Small scale algorithm: step 2 & 3. intra-card copy */
         LOG_DEBUG("topo/scale_up/intra: copy from self to peers");
         if (!is_lead_rank && !ccl::global_data::env().enable_ze_bidir_algo) {
-            auto barrier_event = ccl::add_comm_barrier(sched, pair_comm, wait_events);
-            wait_events.push_back(barrier_event);
+            ccl::add_comm_barrier(sched, pair_comm, wait_events);
         }
 
         for (int rank = pair_comm->rank(); rank < comm->size(); rank += pair_comm->size()) {
@@ -468,8 +597,7 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
         add_sched_barrier_for_parallel_copies();
 
         if (is_lead_rank && !ccl::global_data::env().enable_ze_bidir_algo) {
-            auto barrier_event = ccl::add_comm_barrier(sched, pair_comm, wait_events);
-            wait_events.push_back(barrier_event);
+            ccl::add_comm_barrier(sched, pair_comm, wait_events);
         }
     }
     else {
@@ -477,14 +605,12 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
         /* Large scale algorithm: step 1 & 2. intra-card copy */
         LOG_DEBUG("topo/scale_up/intra: copy to self from peers");
         if (!is_lead_rank && !ccl::global_data::env().enable_ze_bidir_algo) {
-            auto barrier_event = ccl::add_comm_barrier(sched, pair_comm, wait_events);
-            wait_events.push_back(barrier_event);
+            ccl::add_comm_barrier(sched, pair_comm, wait_events);
         }
         recv_from_peers(pair_comm);
         add_sched_barrier_for_parallel_copies();
         if (is_lead_rank && !ccl::global_data::env().enable_ze_bidir_algo) {
-            auto barrier_event = ccl::add_comm_barrier(sched, pair_comm, wait_events);
-            wait_events.push_back(barrier_event);
+            ccl::add_comm_barrier(sched, pair_comm, wait_events);
         }
     }
 
@@ -503,10 +629,7 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
     }
 
     ccl_comm* barrier_comm = (is_large_scale_algorithm) ? even_comm : pair_comm;
-    auto barrier_event = ccl::add_comm_barrier(sched, barrier_comm, wait_events);
-    wait_events.push_back(barrier_event);
-
-    // TODO: scaleout here
+    ccl::add_comm_barrier(sched, barrier_comm, wait_events);
 
     return ccl::status::success;
 }

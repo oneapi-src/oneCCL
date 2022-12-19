@@ -29,6 +29,7 @@ rst_prolog = """
 .. |product_short| replace:: oneCCL
 .. |mpi| replace:: Intel\ |reg|\  MPI Library
 .. |reg| unicode:: U+000AE
+.. |tm| unicode:: U+2122
 .. |copy| unicode:: U+000A9
 .. |base_tk| replace:: Intel\ |reg|\  oneAPI Base Toolkit 
 .. |c_api| replace:: C API

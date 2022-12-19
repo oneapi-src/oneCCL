@@ -18,6 +18,7 @@
 #include <iostream>
 #include <type_traits>
 
+namespace ccl {
 namespace utils {
 namespace detail {
 struct failure_callback {
@@ -75,3 +76,4 @@ constexpr typename std::underlying_type<enumeration_type>::type enum_to_underlyi
     return static_cast<typename std::underlying_type<enumeration_type>::type>(val);
 }
 } // namespace utils
+} // namespace ccl

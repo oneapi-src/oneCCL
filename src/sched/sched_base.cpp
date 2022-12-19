@@ -20,9 +20,12 @@
 #include "coll/selection/selection.hpp"
 #include "common/global/global.hpp"
 #include "comm/comm.hpp"
-#include "common/utils/sycl_utils.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
 #include "sched/sched_base.hpp"
+
+#ifdef CCL_ENABLE_SYCL
+#include "common/utils/sycl_utils.hpp"
+#endif // CCL_ENABLE_SYCL
 
 ccl_sched_base::ccl_sched_base(const ccl_sched_create_param& param)
         : sched_type(param.type),
@@ -107,6 +110,7 @@ void ccl_sched_base::update_coll_param_and_attr(const ccl_coll_param& param,
     if (ccl::global_data::env().priority_mode == ccl_priority_direct) {
         coll_attr.priority = attr.priority;
     }
+    coll_param.stream = param.stream;
 }
 
 size_t ccl_sched_base::get_priority() const {

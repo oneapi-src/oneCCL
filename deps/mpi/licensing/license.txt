@@ -1,33 +1,33 @@
-Intel Simplified Software License (Version August 2021)
+Intel Simplified Software License (Version October 2022)
 
-Use and Redistribution. You may use and redistribute the software (the
-"Software"), without modification, provided the following conditions are met:
+Intel(R) MPI Library: Copyright (C) 2009 Intel Corporation
 
-* Redistributions must reproduce the above copyright notice and the following
-  terms of use in the Software and in the documentation and/or other materials
-  provided with the distribution.
-* Neither the name of Intel nor the names of its suppliers may be used to 
-  endorse or promote products derived from this Software without specific  
-  prior written permission.
-* No reverse engineering, decompilation, or disassembly of this Software is
-  permitted.
+Use and Redistribution. You may use and redistribute the software, which is
+provided in binary form only, (the "Software"), without modification, provided the
+following conditions are met:
+
+* Redistributions must reproduce the above copyright notice and these terms of use
+in the Software and in the documentation and/or other materials provided with
+the distribution.
+* Neither the name of Intel nor the names of its suppliers may be used to endorse
+or promote products derived from this Software without specific prior written
+permission.
+* No reverse engineering, decompilation, or disassembly of the Software is
+permitted, nor any modification or alteration of the Software or its operation
+at any time, including during execution.
 
 No other licenses. Except as provided in the preceding section, Intel grants no
 licenses or other rights by implication, estoppel or otherwise to, patent,
 copyright, trademark, trade name, service mark or other intellectual property
 licenses or rights of Intel.
 
-Third party software. The Software may contain Third Party Software. "Third
-Party Software" is open source software, third party software, or other Intel
-software that may be identified in the Software itself or in the files (if any)
-listed in the "third-party-software.txt" or similarly named text file included
-with the Software. Third Party Software, even if included with the distribution
-of the Software, may be governed by separate license terms, including without
-limitation, open source software license terms, third party software license
-terms, and other Intel software license terms. Those separate license terms
-solely govern your use of the Third Party Software, and nothing in this license
-limits any rights under, or grants rights that supersede, the terms of the
-applicable license terms.
+Third party software. "Third Party Software" means the files (if any) listed in
+the "third-party-software.txt" or other similarly-named text file that may be
+included with the Software. Third Party Software, even if included with the
+distribution of the Software, may be governed by separate license terms, including
+without limitation, third party license terms, open source software notices and
+terms, and/or other Intel software license terms. These separate license terms 
+solely govern Your use of the Third Party Software.
 
 DISCLAIMER. THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED
 WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -63,11 +63,10 @@ Compliance with laws. You agree to comply with all relevant laws and regulations
 governing your use, transfer, import or export (or prohibition thereof) of the
 Software.
 
-Governing law. All disputes will be governed by the laws of the United States of
-America and the State of Delaware without reference to conflict of law
-principles and subject to the exclusive jurisdiction of the state or federal
-courts sitting in the State of Delaware, and each party agrees that it submits
-to the personal jurisdiction and venue of those courts and waives any
-objections. The United Nations Convention on Contracts for the International
-Sale of Goods (1980) is specifically excluded and will not apply to the
-Software.
+Governing law.  All disputes will be governed by the laws of the United States of 
+America and the State of Delaware without reference to conflict of law principles 
+and subject to the exclusive jurisdiction of the state or federal courts sitting 
+in the State of Delaware, and each party agrees that it submits to the personal 
+jurisdiction and venue of those courts and waives any objections. THE UNITED 
+NATIONS CONVENTION ON CONTRACTS FOR THE INTERNATIONAL SALE OF GOODS (1980) IS 
+SPECIFICALLY EXCLUDED AND WILL NOT APPLY TO THE SOFTWARE.

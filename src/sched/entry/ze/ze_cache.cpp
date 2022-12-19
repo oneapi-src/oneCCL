@@ -365,12 +365,13 @@ void module_cache::load(ze_context_handle_t context,
     load_module(file_path, device, context, module);
 }
 
+// mem_handle cache
 mem_handle_cache::mem_handle_cache() {
-    if (!global_data::env().enable_ze_cache_ipc_handles) {
+    if (!global_data::env().enable_ze_cache_open_ipc_handles) {
         return;
     }
 
-    threshold = global_data::env().ze_cache_ipc_handles_threshold;
+    threshold = global_data::env().ze_cache_open_ipc_handles_threshold;
     cache.reserve(threshold + 1);
     LOG_DEBUG("cache threshold: ", threshold);
 }
@@ -425,7 +426,6 @@ void mem_handle_cache::get(ze_context_handle_t context,
         if (fd_is_valid(fd)) {
             // move key_value to the beginning of the list
             cache_list.splice(cache_list.begin(), cache_list, key_value->second);
-            close_handle_fd(info.handle);
             *out_value = value;
             found = true;
         }
@@ -438,13 +438,13 @@ void mem_handle_cache::get(ze_context_handle_t context,
     }
 
     if (!found) {
-        push(device, std::move(key), info.handle, out_value);
+        push(device, std::move(key), info, out_value);
     }
 }
 
 void mem_handle_cache::push(ze_device_handle_t device,
                             key_t&& key,
-                            const ze_ipc_mem_handle_t& handle,
+                            const ipc_handle_desc& info,
                             value_t* out_value) {
     make_clean(threshold);
 
@@ -453,6 +453,8 @@ void mem_handle_cache::push(ze_device_handle_t device,
     auto remote_context = global_data::get().ze_data->contexts.at(remote_context_id);
 
     void* ptr{};
+    ze_ipc_mem_handle_t handle = info.mem_to_ipc_handle();
+
     ZE_CALL(zeMemOpenIpcHandle, (remote_context, device, handle, {}, &ptr));
     *out_value = std::make_shared<const handle_desc>(remote_context, handle, ptr);
     cache_list.push_front(std::make_pair(key, *out_value));
@@ -496,6 +498,53 @@ mem_handle_cache::handle_desc::~handle_desc() {
     close_handle();
 }
 
+// ipc_handle cache
+void ipc_handle_cache::clear() {
+    LOG_DEBUG("clear ipc_handle_cache: size: ", cache.size());
+    std::lock_guard<std::mutex> lock(mutex);
+    for (auto& key_value : cache) {
+        close_handle_fd(key_value.second);
+    }
+    cache.clear();
+}
+
+ipc_handle_cache::~ipc_handle_cache() {
+    if (!cache.empty()) {
+        LOG_WARN("ipc_handle_cache is not empty, size: ", cache.size());
+        clear();
+    }
+}
+void ipc_handle_cache::get(ze_context_handle_t context,
+                           ze_device_handle_t device,
+                           const ipc_get_handle_desc& ipc_desc,
+                           value_t* out_value) {
+    CCL_THROW_IF_NOT(context);
+    CCL_THROW_IF_NOT(device);
+    CCL_THROW_IF_NOT(ipc_desc.ptr);
+
+    std::lock_guard<std::mutex> lock(mutex);
+
+    key_t key(ipc_desc.ptr, ipc_desc.mem_id);
+
+    auto key_value = cache.find(key);
+    if (key_value != cache.end()) {
+        value_t& value = key_value->second;
+        *out_value = value;
+    }
+    else {
+        LOG_DEBUG("ipc_handle is not found in the cache");
+        push(context, std::move(key), ipc_desc, out_value);
+    }
+}
+
+void ipc_handle_cache::push(ze_context_handle_t context,
+                            key_t&& key,
+                            const ipc_get_handle_desc& ipc_desc,
+                            value_t* out_value) {
+    ZE_CALL(zeMemGetIpcHandle, (context, ipc_desc.ptr, out_value));
+    cache.insert({ std::move(key), *out_value });
+}
+
 // cache
 cache::~cache() {
     for (size_t i = 0; i < instance_count; ++i) {
@@ -508,6 +557,7 @@ cache::~cache() {
 
     modules.clear();
     mem_handles.clear();
+    ipc_handles.clear();
 }
 
 } // namespace ze

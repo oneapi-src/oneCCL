@@ -24,7 +24,7 @@
 #include "oneapi/ccl/type_traits.hpp"
 
 #ifdef CCL_ENABLE_SYCL
-#include <CL/sycl/backend_types.hpp>
+#include "common/utils/sycl_utils.hpp"
 #endif // CCL_ENABLE_SYCL
 
 namespace ccl {
@@ -57,10 +57,11 @@ public:
     bool is_gpu() const;
 
 #ifdef CCL_ENABLE_SYCL
-    cl::sycl::backend get_backend() const;
+    sycl::backend get_backend() const;
 #ifdef CCL_ENABLE_ZE
     ze_device_handle_t get_ze_device() const;
     ze_context_handle_t get_ze_context() const;
+    ze_command_queue_handle_t get_ze_command_queue() const;
 #endif // CCL_ENABLE_ZE
 #endif // CCL_ENBALE_SYCL
 
@@ -93,11 +94,12 @@ private:
     ccl::device_family device_family;
 
 #ifdef CCL_ENABLE_SYCL
-    cl::sycl::backend backend;
+    sycl::backend backend;
 
 #ifdef CCL_ENABLE_ZE
     ze_device_handle_t device{};
     ze_context_handle_t context{};
+    ze_command_queue_handle_t cmd_queue{};
 #endif // CCL_ENABLE_ZE
 #endif // CCL_ENBALE_SYCL
 };

@@ -99,17 +99,11 @@ void FP16_TARGET_ATTRIBUTE_ALL fp16_max_op(void* in,
 }
 #endif // ATL_MPI_FP16
 
-#ifdef ATL_MPI_BF16
-
 void BF16_INLINE_TARGET_ATTRIBUTE_ALL bf16_base_op(void* in,
                                                    void* inout,
                                                    int* length,
                                                    ccl::reduction op) {
-    unsigned short* in_buf = (unsigned short*)in;
-    unsigned short* inout_buf = (unsigned short*)inout;
-
-    size_t len = *length;
-    ccl_bf16_reduce_impl(in_buf, inout_buf, len, op);
+    ccl_bf16_reduce(in, *length, inout, nullptr, op);
 }
 
 void BF16_TARGET_ATTRIBUTE_ALL bf16_sum_op(void* in,
@@ -143,7 +137,6 @@ void BF16_TARGET_ATTRIBUTE_ALL bf16_max_op(void* in,
     check_op_params(in, inout, length, datatype, __FUNCTION__);
     bf16_base_op(in, inout, length, ccl::reduction::max);
 }
-#endif // ATL_MPI_BF16
 
 size_t atl_mpi_ctx::get_nic_count(const char* nic_count_key) {
     size_t count = 1;
@@ -316,12 +309,6 @@ size_t atl_mpi_ctx::get_ep_count(const atl_attr_t& attr) {
 }
 
 int atl_mpi_ctx::bf16_init() {
-    if (ccl::global_data::env().bf16_impl_type <= ccl_bf16_no_hardware_support) {
-        return ATL_STATUS_SUCCESS;
-    }
-
-#ifdef ATL_MPI_BF16
-
     int ret = MPI_SUCCESS;
 
     // create custom MPI BF16 dtype
@@ -370,8 +357,6 @@ int atl_mpi_ctx::bf16_init() {
         print_mpi_error(ret);
         return ATL_STATUS_FAILURE;
     }
-
-#endif // ATL_MPI_BF16
 
     return ATL_STATUS_SUCCESS;
 }
@@ -481,7 +466,6 @@ void atl_mpi_ctx::fp16_finalize() {
     }
 }
 
-#ifdef ATL_MPI_BF16
 MPI_Op atl_mpi_ctx::atl2mpi_op_bf16(atl_reduction_t rtype) {
     switch (rtype) {
         case ATL_REDUCTION_SUM: return bf16.sum_op;
@@ -491,7 +475,6 @@ MPI_Op atl_mpi_ctx::atl2mpi_op_bf16(atl_reduction_t rtype) {
         default: printf("unknown reduction type: %d\n", rtype); exit(1);
     }
 }
-#endif // ATL_MPI_BF16
 
 #ifdef ATL_MPI_FP16
 MPI_Op atl_mpi_ctx::atl2mpi_op_fp16(atl_reduction_t rtype) {

@@ -16,11 +16,7 @@
 #pragma once
 
 #include "common/utils/buffer.hpp"
-#include "comp/comp.hpp"
 #include "sched/entry/ze/ze_base_entry.hpp"
-
-#include <atomic>
-#include <sstream>
 
 class ze_onesided_allreduce_entry : public ze_base_entry {
 public:
@@ -32,12 +28,7 @@ public:
         return class_name();
     }
 
-    virtual std::string name_ext() const override {
-        std::stringstream out;
-        out << name() << " ";
-        out << "size: " << cnt;
-        return out.str();
-    }
+    virtual std::string name_ext() const override;
 
     ze_onesided_allreduce_entry() = delete;
     explicit ze_onesided_allreduce_entry(ccl_sched* sched,
@@ -48,7 +39,7 @@ public:
                                          ccl::reduction op,
                                          ccl_comm* comm,
                                          std::vector<ze_event_handle_t> wait_events = {},
-                                         const size_t buf_offset_cnt = 0);
+                                         size_t peer_buf_offset = 0);
 
     void init_ze_hook() override;
     void finalize_ze_hook() override;
@@ -57,24 +48,7 @@ public:
     void update() override;
 
 protected:
-    void dump_detail(std::stringstream& str) const override {
-        ccl_logger::format(str,
-                           "dt ",
-                           ccl::global_data::get().dtypes->name(dtype),
-                           ", cnt ",
-                           cnt,
-                           ", send_buf ",
-                           send_buf,
-                           ", recv_buf ",
-                           recv_buf,
-                           ", op ",
-                           ccl_reduction_to_str(op),
-                           ", comm ",
-                           comm->to_string(),
-                           ", context ",
-                           context,
-                           "\n");
-    }
+    void dump_detail(std::stringstream& str) const override;
 
 private:
     const ccl_buffer send_buf;
@@ -100,4 +74,6 @@ private:
 
     ze_kernel_handle_t empty_kernel{};
     std::string empty_kernel_name{ "empty_kernel" };
+
+    std::vector<ze_kernel> kernels;
 };
