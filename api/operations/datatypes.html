@@ -4,10 +4,11 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Datatypes &#8212; oneCCL  documentation</title>
     
-  <link href="../../_static/css/theme.css" rel="stylesheet" />
-  <link href="../../_static/css/index.c5995385ac14fb8791e8eb36b4908be2.css" rel="stylesheet" />
+  <link href="../../_static/css/theme.css" rel="stylesheet">
+  <link href="../../_static/css/index.ff1ffe594081f20da1ef19478df9384b.css" rel="stylesheet">
 
     
   <link rel="stylesheet"
@@ -21,19 +22,17 @@
       
 
     
-    <link rel="stylesheet" href="../../_static/sphinx-book-theme.acff12b8f9c144ce68a297486a2fa670.css" type="text/css" />
-    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-book-theme.css?digest=c3fdc42140077d1ad13ad2f1588a4309" />
     <link rel="stylesheet" type="text/css" href="../../_static/tabs.css" />
     
-  <link rel="preload" as="script" href="../../_static/js/index.1c5a1a01449ed65a7b51.js">
+  <link rel="preload" as="script" href="../../_static/js/index.be7d3bbb2ef33a8344ce.js">
 
-    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
     <script src="../../_static/jquery.js"></script>
     <script src="../../_static/underscore.js"></script>
     <script src="../../_static/doctools.js"></script>
-    <script src="../../_static/language_data.js"></script>
     <script src="../../_static/sphinx-book-theme.12a9622fbb08dcb3a2a40b2c02b83a57.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="../../_static/favicons.png"/>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -68,6 +67,10 @@
         <div class="navbar-brand-box">
     <a class="navbar-brand text-wrap" href="../../index.html">
       
+        <!-- `logo` is deprecated in Sphinx 4.0, so remove this when we stop supporting 3 -->
+        
+      
+      
       <img src="../../_static/oneAPI-rgb-rev-100.png" class="logo" alt="logo">
       
       
@@ -77,7 +80,7 @@
 </div><form class="bd-search d-flex align-items-center" action="../../search.html" method="get">
   <i class="icon fas fa-search"></i>
   <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
-</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
     <div class="bd-toc-item active">
         <p class="caption">
  <span class="caption-text">
@@ -446,72 +449,53 @@
                 
   <div class="section" id="datatypes">
 <h1>Datatypes<a class="headerlink" href="#datatypes" title="Permalink to this headline">¶</a></h1>
-<dl class="cpp function">
-<dt>
-<code class="sig-name descname">template&lt;class... attr_val_type&gt; datatype_attr CCL_API create_datatype_attr (attr_val_type &amp;&amp;... avs)</code></dt>
-<dd><p>Creates an attribute object that may be used to register custom datatype. </p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>an attribute object </p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="cpp function">
-<dt>
-<code class="sig-name descname">datatype CCL_API register_datatype (const datatype_attr &amp;attr)</code></dt>
-<dd><p>Registers custom datatype to be used in communication operations. </p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>attr</strong> – datatype attributes </p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>datatype handle </p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="cpp function">
-<dt>
-<code class="sig-name descname">void CCL_API deregister_datatype (datatype dtype)</code></dt>
-<dd><p>Deregisters custom datatype. </p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>dtype</strong> – custom datatype handle </p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="cpp function">
-<dt>
-<code class="sig-name descname">size_t CCL_API get_datatype_size (datatype dtype)</code></dt>
-<dd><p>Retrieves a datatype size in bytes. </p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>dtype</strong> – datatype handle </p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>datatype size </p>
-</dd>
-</dl>
-</dd></dl>
-
+<p><strong>template&lt;class… attr_val_type&gt; datatype_attr CCL_API create_datatype_attr (attr_val_type &amp;&amp;… avs)</strong>
+Creates an attribute object that may be used to register custom datatype.</p>
+<p><strong>Returns</strong>
+an attribute object</p>
+<p><strong>datatype CCL_API register_datatype (const datatype_attr &amp;attr)</strong>
+Registers custom datatype to be used in communication operations.</p>
+<p><strong>Parameters</strong>
+attr – datatype attributes</p>
+<p><strong>Returns</strong>
+datatype handle</p>
+<p><strong>void CCL_API deregister_datatype (datatype dtype)</strong>
+Deregisters custom datatype.</p>
+<p><strong>Parameters</strong>
+dtype – custom datatype handle</p>
+<p><strong>size_t CCL_API get_datatype_size (datatype dtype)</strong>
+Retrieves a datatype size in bytes.</p>
+<p><strong>Parameters</strong>
+dtype – datatype handle</p>
+<p><strong>Returns</strong>
+datatype size</p>
 </div>
 
 
               </div>
               
         
-        <div class='prev-next-bottom'>
-            
-    <a class='left-prev' id="prev-link" href="../operations.html" title="previous page">Communication operations</a>
-    <a class='right-next' id="next-link" href="collective-operations.html" title="next page">Collective Operations</a>
-
+            <!-- Previous / next buttons -->
+<div class='prev-next-area'> 
+    <a class='left-prev' id="prev-link" href="../operations.html" title="previous page">
+        <i class="fas fa-angle-left"></i>
+        <div class="prev-next-info">
+            <p class="prev-next-subtitle">previous</p>
+            <p class="prev-next-title">Communication operations</p>
         </div>
+    </a>
+    <a class='right-next' id="next-link" href="collective-operations.html" title="next page">
+    <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Collective Operations</p>
+    </div>
+    <i class="fas fa-angle-right"></i>
+    </a>
+</div>
         
         </div>
     </div>
-    <footer class="footer mt-5 mt-md-0">
+    <footer class="footer">
     <div class="container">
       <p>
         
@@ -530,8 +514,7 @@
       </div>
     </div>
   
-  <script src="../../_static/js/index.1c5a1a01449ed65a7b51.js"></script>
+  <script src="../../_static/js/index.be7d3bbb2ef33a8344ce.js"></script>
 
-  
   </body>
 </html>

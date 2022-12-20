@@ -1,7 +1,18 @@
 Barrier
 *******
 
-.. doxygengroup:: barrier
-   :project: oneccl
-   :content-only:
-   :no-link:
+**event CCL_API barrier (const communicator &comm, const stream &stream, const barrier_attr &attr=default_barrier_attr, const vector_class< event > &deps={})**
+Barrier synchronization is performed across all ranks of the communicator and it is completed only after all the ranks in the communicator have called it.
+
+**Parameters**
+
+* comm – the communicator for which the operation will be performed
+* stream – a stream associated with the operation
+* attr – optional attributes to customize operation
+* deps – an optional vector of the events that the operation should depend on
+
+**Returns**
+ccl::event an object to track the progress of the operation
+
+**event CCL_API barrier (const communicator &comm, const barrier_attr &attr=default_barrier_attr, const vector_class< event > &deps={})**
+This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.

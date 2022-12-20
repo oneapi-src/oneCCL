@@ -4,10 +4,11 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Enabling OFI/verbs/dmabuf Support &#8212; oneCCL  documentation</title>
     
-  <link href="../_static/css/theme.css" rel="stylesheet" />
-  <link href="../_static/css/index.c5995385ac14fb8791e8eb36b4908be2.css" rel="stylesheet" />
+  <link href="../_static/css/theme.css" rel="stylesheet">
+  <link href="../_static/css/index.ff1ffe594081f20da1ef19478df9384b.css" rel="stylesheet">
 
     
   <link rel="stylesheet"
@@ -21,19 +22,17 @@
       
 
     
-    <link rel="stylesheet" href="../_static/sphinx-book-theme.acff12b8f9c144ce68a297486a2fa670.css" type="text/css" />
-    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-book-theme.css?digest=c3fdc42140077d1ad13ad2f1588a4309" />
     <link rel="stylesheet" type="text/css" href="../_static/tabs.css" />
     
-  <link rel="preload" as="script" href="../_static/js/index.1c5a1a01449ed65a7b51.js">
+  <link rel="preload" as="script" href="../_static/js/index.be7d3bbb2ef33a8344ce.js">
 
-    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
     <script src="../_static/jquery.js"></script>
     <script src="../_static/underscore.js"></script>
     <script src="../_static/doctools.js"></script>
-    <script src="../_static/language_data.js"></script>
     <script src="../_static/sphinx-book-theme.12a9622fbb08dcb3a2a40b2c02b83a57.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="../_static/favicons.png"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -68,6 +67,10 @@
         <div class="navbar-brand-box">
     <a class="navbar-brand text-wrap" href="../index.html">
       
+        <!-- `logo` is deprecated in Sphinx 4.0, so remove this when we stop supporting 3 -->
+        
+      
+      
       <img src="../_static/oneAPI-rgb-rev-100.png" class="logo" alt="logo">
       
       
@@ -77,7 +80,7 @@
 </div><form class="bd-search d-flex align-items-center" action="../search.html" method="get">
   <i class="icon fas fa-search"></i>
   <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
-</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
     <div class="bd-toc-item active">
         <p class="caption">
  <span class="caption-text">
@@ -439,7 +442,7 @@
             <div class="tocsection onthispage pt-5 pb-3">
                 <i class="fas fa-list"></i> Contents
             </div>
-            <nav id="bd-toc-nav">
+            <nav id="bd-toc-nav" aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
  <li class="toc-h2 nav-item toc-entry">
   <a class="reference internal nav-link" href="#requirements">
@@ -504,11 +507,11 @@
 <h2>Build instructions<a class="headerlink" href="#build-instructions" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="ofi">
 <h3>OFI<a class="headerlink" href="#ofi" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="o">--</span><span class="n">single</span><span class="o">-</span><span class="n">branch</span> <span class="o">--</span><span class="n">branch</span> <span class="n">v1</span><span class="mf">.13.2</span> <span class="nl">https</span><span class="p">:</span><span class="c1">//github.com/ofiwg/libfabric.git</span>
-<span class="n">cd</span> <span class="n">libfabric</span>
-<span class="p">.</span><span class="o">/</span><span class="n">autogen</span><span class="p">.</span><span class="n">sh</span>
-<span class="p">.</span><span class="o">/</span><span class="n">configure</span> <span class="o">--</span><span class="n">prefix</span><span class="o">=&lt;</span><span class="n">ofi_install_dir</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">enable</span><span class="o">-</span><span class="n">verbs</span><span class="o">=&lt;</span><span class="n">rdma_core_install_dir</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">with</span><span class="o">-</span><span class="n">ze</span><span class="o">=&lt;</span><span class="n">level_zero_install_dir</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">enable</span><span class="o">-</span><span class="n">ze</span><span class="o">-</span><span class="n">dlopen</span><span class="o">=</span><span class="n">yes</span>
-<span class="n">make</span> <span class="o">-</span><span class="n">j</span> <span class="n">install</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">git</span><span class="w"> </span><span class="n">clone</span><span class="w"> </span><span class="o">--</span><span class="n">single</span><span class="o">-</span><span class="n">branch</span><span class="w"> </span><span class="o">--</span><span class="n">branch</span><span class="w"> </span><span class="n">v1</span><span class="mf">.13.2</span><span class="w"> </span><span class="nl">https</span><span class="p">:</span><span class="c1">//github.com/ofiwg/libfabric.git</span>
+<span class="n">cd</span><span class="w"> </span><span class="n">libfabric</span><span class="w"></span>
+<span class="p">.</span><span class="o">/</span><span class="n">autogen</span><span class="p">.</span><span class="n">sh</span><span class="w"></span>
+<span class="p">.</span><span class="o">/</span><span class="n">configure</span><span class="w"> </span><span class="o">--</span><span class="n">prefix</span><span class="o">=&lt;</span><span class="n">ofi_install_dir</span><span class="o">&gt;</span><span class="w"> </span><span class="o">--</span><span class="n">enable</span><span class="o">-</span><span class="n">verbs</span><span class="o">=&lt;</span><span class="n">rdma_core_install_dir</span><span class="o">&gt;</span><span class="w"> </span><span class="o">--</span><span class="n">with</span><span class="o">-</span><span class="n">ze</span><span class="o">=&lt;</span><span class="n">level_zero_install_dir</span><span class="o">&gt;</span><span class="w"> </span><span class="o">--</span><span class="n">enable</span><span class="o">-</span><span class="n">ze</span><span class="o">-</span><span class="n">dlopen</span><span class="o">=</span><span class="n">yes</span><span class="w"></span>
+<span class="n">make</span><span class="w"> </span><span class="o">-</span><span class="n">j</span><span class="w"> </span><span class="n">install</span><span class="w"></span>
 </pre></div>
 </div>
 <div class="admonition note">
@@ -519,8 +522,8 @@ No need to run autogen.sh if using the release package.</p>
 </div>
 <div class="section" id="product-short">
 <h3>oneCCL<a class="headerlink" href="#product-short" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">cmake</span> <span class="o">-</span><span class="n">DCMAKE_INSTALL_PREFIX</span><span class="o">=&lt;</span><span class="n">ccl_install_dir</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">DLIBFABRIC_DIR</span><span class="o">=&lt;</span><span class="n">ofi_install_dir</span><span class="o">&gt;</span> <span class="o">-</span><span class="n">DCMAKE_C_COMPILER</span><span class="o">=</span><span class="n">icx</span> <span class="o">-</span><span class="n">DCMAKE_CXX_COMPILER</span><span class="o">=</span><span class="n">dpcpp</span> <span class="o">-</span><span class="n">DCOMPUTE_BACKEND</span><span class="o">=</span><span class="n">dpcpp</span> <span class="o">-</span><span class="n">DENABLE_OFI_HMEM</span><span class="o">=</span><span class="mi">1</span> <span class="p">..</span>
-<span class="n">make</span> <span class="o">-</span><span class="n">j</span> <span class="n">install</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">cmake</span><span class="w"> </span><span class="o">-</span><span class="n">DCMAKE_INSTALL_PREFIX</span><span class="o">=&lt;</span><span class="n">ccl_install_dir</span><span class="o">&gt;</span><span class="w"> </span><span class="o">-</span><span class="n">DLIBFABRIC_DIR</span><span class="o">=&lt;</span><span class="n">ofi_install_dir</span><span class="o">&gt;</span><span class="w"> </span><span class="o">-</span><span class="n">DCMAKE_C_COMPILER</span><span class="o">=</span><span class="n">icx</span><span class="w"> </span><span class="o">-</span><span class="n">DCMAKE_CXX_COMPILER</span><span class="o">=</span><span class="n">icpx</span><span class="w"> </span><span class="o">-</span><span class="n">DCOMPUTE_BACKEND</span><span class="o">=</span><span class="n">dpcpp</span><span class="w"> </span><span class="o">-</span><span class="n">DENABLE_OFI_HMEM</span><span class="o">=</span><span class="mi">1</span><span class="w"> </span><span class="p">..</span><span class="w"></span>
+<span class="n">make</span><span class="w"> </span><span class="o">-</span><span class="n">j</span><span class="w"> </span><span class="n">install</span><span class="w"></span>
 </pre></div>
 </div>
 </div>
@@ -530,21 +533,21 @@ No need to run autogen.sh if using the release package.</p>
 <ol class="arabic">
 <li><p>Set the environment.</p>
 <p>If Intel® oneAPI Base Toolkit is used:</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">source</span> <span class="o">&lt;</span><span class="n">toolkit_install_dir</span><span class="o">&gt;/</span><span class="n">setvars</span><span class="p">.</span><span class="n">sh</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">source</span><span class="w"> </span><span class="o">&lt;</span><span class="n">toolkit_install_dir</span><span class="o">&gt;/</span><span class="n">setvars</span><span class="p">.</span><span class="n">sh</span><span class="w"></span>
 </pre></div>
 </div>
 <p>If software components are built from sources:</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span>source &lt;ccl_install_dir&gt;/env/setvars.sh
-export LD_LIBRARY_PATH=&lt;ofi_install_path&gt;/lib:${LD_LIBRARY_PATH}
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">source</span><span class="w"> </span><span class="o">&lt;</span><span class="n">ccl_install_dir</span><span class="o">&gt;/</span><span class="n">env</span><span class="o">/</span><span class="n">setvars</span><span class="p">.</span><span class="n">sh</span><span class="w"></span>
+<span class="k">export</span><span class="w"> </span><span class="n">LD_LIBRARY_PATH</span><span class="o">=&lt;</span><span class="n">ofi_install_path</span><span class="o">&gt;/</span><span class="nl">lib</span><span class="p">:</span><span class="n">$</span><span class="p">{</span><span class="n">LD_LIBRARY_PATH</span><span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 </li>
 <li><p>Run allreduce test with ring algorithm and SYCL USM device buffers:</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">export</span> <span class="n">CCL_ATL_TRANSPORT</span><span class="o">=</span><span class="n">ofi</span>
-<span class="k">export</span> <span class="n">CCL_ATL_HMEM</span><span class="o">=</span><span class="mi">1</span>
-<span class="k">export</span> <span class="n">CCL_ALLREDUCE</span><span class="o">=</span><span class="n">ring</span>
-<span class="k">export</span> <span class="n">FI_PROVIDER</span><span class="o">=</span><span class="n">verbs</span>
-<span class="n">mpiexec</span> <span class="o">-</span><span class="n">n</span> <span class="mi">2</span> <span class="o">&lt;</span><span class="n">ccl_install_dir</span><span class="o">&gt;/</span><span class="n">examples</span><span class="o">/</span><span class="n">sycl</span><span class="o">/</span><span class="n">sycl_allreduce_usm_test</span> <span class="n">gpu</span> <span class="n">device</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">export</span><span class="w"> </span><span class="n">CCL_ATL_TRANSPORT</span><span class="o">=</span><span class="n">ofi</span><span class="w"></span>
+<span class="k">export</span><span class="w"> </span><span class="n">CCL_ATL_HMEM</span><span class="o">=</span><span class="mi">1</span><span class="w"></span>
+<span class="k">export</span><span class="w"> </span><span class="n">CCL_ALLREDUCE</span><span class="o">=</span><span class="n">ring</span><span class="w"></span>
+<span class="k">export</span><span class="w"> </span><span class="n">FI_PROVIDER</span><span class="o">=</span><span class="n">verbs</span><span class="w"></span>
+<span class="n">mpiexec</span><span class="w"> </span><span class="o">-</span><span class="n">n</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">&lt;</span><span class="n">ccl_install_dir</span><span class="o">&gt;/</span><span class="n">examples</span><span class="o">/</span><span class="n">sycl</span><span class="o">/</span><span class="n">sycl_allreduce_usm_test</span><span class="w"> </span><span class="n">gpu</span><span class="w"> </span><span class="n">device</span><span class="w"></span>
 </pre></div>
 </div>
 </li>
@@ -556,16 +559,27 @@ export LD_LIBRARY_PATH=&lt;ofi_install_path&gt;/lib:${LD_LIBRARY_PATH}
               </div>
               
         
-        <div class='prev-next-bottom'>
-            
-    <a class='left-prev' id="prev-link" href="operation-fusion.html" title="previous page">Fusion of Communication Operations</a>
-    <a class='right-next' id="next-link" href="../api.html" title="next page">oneCCL API</a>
-
+            <!-- Previous / next buttons -->
+<div class='prev-next-area'> 
+    <a class='left-prev' id="prev-link" href="operation-fusion.html" title="previous page">
+        <i class="fas fa-angle-left"></i>
+        <div class="prev-next-info">
+            <p class="prev-next-subtitle">previous</p>
+            <p class="prev-next-title">Fusion of Communication Operations</p>
         </div>
+    </a>
+    <a class='right-next' id="next-link" href="../api.html" title="next page">
+    <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">oneCCL API</p>
+    </div>
+    <i class="fas fa-angle-right"></i>
+    </a>
+</div>
         
         </div>
     </div>
-    <footer class="footer mt-5 mt-md-0">
+    <footer class="footer">
     <div class="container">
       <p>
         
@@ -584,8 +598,7 @@ export LD_LIBRARY_PATH=&lt;ofi_install_path&gt;/lib:${LD_LIBRARY_PATH}
       </div>
     </div>
   
-  <script src="../_static/js/index.1c5a1a01449ed65a7b51.js"></script>
+  <script src="../_static/js/index.be7d3bbb2ef33a8344ce.js"></script>
 
-  
   </body>
 </html>

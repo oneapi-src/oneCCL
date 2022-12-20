@@ -1,7 +1,33 @@
 Datatypes
-***********************
+*********************
 
-.. doxygengroup:: datatype
-   :project: oneccl
-   :content-only:
-   :no-link:
+**template<class... attr_val_type> datatype_attr CCL_API create_datatype_attr (attr_val_type &&... avs)**
+Creates an attribute object that may be used to register custom datatype.
+
+**Returns**
+an attribute object
+
+**datatype CCL_API register_datatype (const datatype_attr &attr)**
+Registers custom datatype to be used in communication operations.
+
+**Parameters**
+attr – datatype attributes
+
+**Returns**
+datatype handle
+
+**void CCL_API deregister_datatype (datatype dtype)**
+Deregisters custom datatype.
+
+**Parameters**
+dtype – custom datatype handle
+
+**size_t CCL_API get_datatype_size (datatype dtype)**
+Retrieves a datatype size in bytes.
+
+**Parameters**
+dtype – datatype handle
+
+**Returns**
+datatype size
+

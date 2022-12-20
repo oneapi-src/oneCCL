@@ -74,11 +74,11 @@ You can customize CLI-based installation (for example, specify directory, compil
 
 .. _enable_sycl:
 
-*  To enable ``SYCL`` devices communication support, specify ``SYCL`` compiler and set ``-DCOMPUTE_BACKEND`` (only DPC++ is supported):
+*  To enable ``SYCL`` devices communication support, specify ``SYCL`` compiler (only Intel\ |reg|\  oneAPI DPC++/C++ Compiler is supported):
 
   ::
 
-     cmake .. -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=dpcpp -DCOMPUTE_BACKEND=dpcpp
+     cmake .. -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DCOMPUTE_BACKEND=dpcpp
 
 * To specify the **build type**, modify the ``cmake`` command:
 

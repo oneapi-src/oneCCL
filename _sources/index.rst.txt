@@ -13,7 +13,7 @@
 - Works across various interconnects: InfiniBand*, Cornelis Networks*, and Ethernet.
 - Provides common API sufficient to support communication workflows within Deep Learning / distributed frameworks (such as `PyTorch* <https://github.com/pytorch/pytorch>`_, `Horovod* <https://github.com/horovod/horovod>`_).
 
-|product_short| package comprises the |product_short| Software Development Kit (SDK) and the Intel(R) MPI Library Runtime components.
+|product_short| package comprises the |product_short| Software Development Kit (SDK) and the |mpi| Runtime components.
 
 
 .. toctree::
