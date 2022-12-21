@@ -4,10 +4,11 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Environment Variables &#8212; oneCCL  documentation</title>
     
-  <link href="_static/css/theme.css" rel="stylesheet" />
-  <link href="_static/css/index.c5995385ac14fb8791e8eb36b4908be2.css" rel="stylesheet" />
+  <link href="_static/css/theme.css" rel="stylesheet">
+  <link href="_static/css/index.ff1ffe594081f20da1ef19478df9384b.css" rel="stylesheet">
 
     
   <link rel="stylesheet"
@@ -21,19 +22,17 @@
       
 
     
-    <link rel="stylesheet" href="_static/sphinx-book-theme.acff12b8f9c144ce68a297486a2fa670.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-book-theme.css?digest=c3fdc42140077d1ad13ad2f1588a4309" />
     <link rel="stylesheet" type="text/css" href="_static/tabs.css" />
     
-  <link rel="preload" as="script" href="_static/js/index.1c5a1a01449ed65a7b51.js">
+  <link rel="preload" as="script" href="_static/js/index.be7d3bbb2ef33a8344ce.js">
 
-    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
-    <script src="_static/language_data.js"></script>
     <script src="_static/sphinx-book-theme.12a9622fbb08dcb3a2a40b2c02b83a57.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="_static/favicons.png"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -68,6 +67,10 @@
         <div class="navbar-brand-box">
     <a class="navbar-brand text-wrap" href="index.html">
       
+        <!-- `logo` is deprecated in Sphinx 4.0, so remove this when we stop supporting 3 -->
+        
+      
+      
       <img src="_static/oneAPI-rgb-rev-100.png" class="logo" alt="logo">
       
       
@@ -77,7 +80,7 @@
 </div><form class="bd-search d-flex align-items-center" action="search.html" method="get">
   <i class="icon fas fa-search"></i>
   <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
-</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
     <div class="bd-toc-item active">
         <p class="caption">
  <span class="caption-text">
@@ -439,7 +442,7 @@
             <div class="tocsection onthispage pt-5 pb-3">
                 <i class="fas fa-list"></i> Contents
             </div>
-            <nav id="bd-toc-nav">
+            <nav id="bd-toc-nav" aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
  <li class="toc-h2 nav-item toc-entry">
   <a class="reference internal nav-link" href="#collective-algorithms-selection">
@@ -709,11 +712,11 @@
 <h3>CCL_&lt;coll_name&gt;<a class="headerlink" href="#ccl-coll-name" title="Permalink to this headline">¶</a></h3>
 <p><strong>Syntax</strong></p>
 <p>To set a specific algorithm for the whole message size range:</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_</span><span class="o">&lt;</span><span class="n">coll_name</span><span class="o">&gt;=&lt;</span><span class="n">algo_name</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_</span><span class="o">&lt;</span><span class="n">coll_name</span><span class="o">&gt;=&lt;</span><span class="n">algo_name</span><span class="o">&gt;</span><span class="w"></span>
 </pre></div>
 </div>
 <p>To set a specific algorithm for a specific message size range:</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_</span><span class="o">&lt;</span><span class="n">coll_name</span><span class="o">&gt;=</span><span class="s">&quot;&lt;algo_name_1&gt;[:&lt;size_range_1&gt;][;&lt;algo_name_2&gt;:&lt;size_range_2&gt;][;...]&quot;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_</span><span class="o">&lt;</span><span class="n">coll_name</span><span class="o">&gt;=</span><span class="s">&quot;&lt;algo_name_1&gt;[:&lt;size_range_1&gt;][;&lt;algo_name_2&gt;:&lt;size_range_2&gt;][;...]&quot;</span><span class="w"></span>
 </pre></div>
 </div>
 <p>Where:</p>
@@ -726,7 +729,7 @@ Size is specified in bytes. Use reserved word <code class="docutils literal notr
 <p>oneCCL internally fills algorithm selection table with sensible defaults. User input complements the selection table.
 To see the actual table values set <code class="docutils literal notranslate"><span class="pre">CCL_LOG_LEVEL=info</span></code>.</p>
 <p class="rubric">Example</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_ALLREDUCE</span><span class="o">=</span><span class="s">&quot;recursive_doubling:0-8192;rabenseifner:8193-1048576;ring:1048577-max&quot;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_ALLREDUCE</span><span class="o">=</span><span class="s">&quot;recursive_doubling:0-8192;rabenseifner:8193-1048576;ring:1048577-max&quot;</span><span class="w"></span>
 </pre></div>
 </div>
 </div>
@@ -800,6 +803,11 @@ to control pipelining on reduce_scatter phase.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">2d</span></code></p></td>
 <td><p>Two-dimensional algorithm (reduce_scatter + allreduce + allgather)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">topo</span></code></p></td>
+<td><p>Optimized algorithm for GPU data and all-to-all network topology.
+Use <code class="docutils literal notranslate"><span class="pre">CCL_REDUCE_SCATTER_MONOLITHIC_KERNEL=1</span></code> to use compute kernels,
+instead of copy engines, to move the data across the GPU.</p></td>
 </tr>
 </tbody>
 </table>
@@ -898,6 +906,11 @@ to control pipelining on reduce_scatter phase.</p></td>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">double_tree</span></code></p></td>
 <td><p>Double-tree algorithm</p></td>
 </tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">topo</span></code></p></td>
+<td><p>Optimized algorithm for GPU data and all-to-all network topology.
+Use <code class="docutils literal notranslate"><span class="pre">CCL_REDUCE_SCATTER_MONOLITHIC_KERNEL=1</span></code> to use compute kernels,
+instead of copy engines, to move the data across the GPU.</p></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -922,7 +935,7 @@ to control pipelining.</p></td>
 <div class="section" id="ccl-rs-chunk-count">
 <h4>CCL_RS_CHUNK_COUNT<a class="headerlink" href="#ccl-rs-chunk-count" title="Permalink to this headline">¶</a></h4>
 <p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_RS_CHUNK_COUNT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_RS_CHUNK_COUNT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span><span class="w"></span>
 </pre></div>
 </div>
 <p><strong>Arguments</strong></p>
@@ -948,7 +961,7 @@ to control pipelining.</p></td>
 <div class="section" id="ccl-rs-min-chunk-size">
 <h4>CCL_RS_MIN_CHUNK_SIZE<a class="headerlink" href="#ccl-rs-min-chunk-size" title="Permalink to this headline">¶</a></h4>
 <p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_RS_MIN_CHUNK_SIZE</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_RS_MIN_CHUNK_SIZE</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span><span class="w"></span>
 </pre></div>
 </div>
 <p><strong>Arguments</strong></p>
@@ -979,7 +992,7 @@ to control pipelining.</p></td>
 <div class="section" id="ccl-worker-count">
 <h3>CCL_WORKER_COUNT<a class="headerlink" href="#ccl-worker-count" title="Permalink to this headline">¶</a></h3>
 <p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_WORKER_COUNT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_WORKER_COUNT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span><span class="w"></span>
 </pre></div>
 </div>
 <p><strong>Arguments</strong></p>
@@ -1005,7 +1018,7 @@ to control pipelining.</p></td>
 <div class="section" id="ccl-worker-affinity">
 <h3>CCL_WORKER_AFFINITY<a class="headerlink" href="#ccl-worker-affinity" title="Permalink to this headline">¶</a></h3>
 <p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_WORKER_AFFINITY</span><span class="o">=&lt;</span><span class="n">cpulist</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_WORKER_AFFINITY</span><span class="o">=&lt;</span><span class="n">cpulist</span><span class="o">&gt;</span><span class="w"></span>
 </pre></div>
 </div>
 <p><strong>Arguments</strong></p>
@@ -1041,7 +1054,7 @@ The number should not exceed the number of cores available on the system.</p></t
 <div class="section" id="ccl-worker-mem-affinity">
 <h3>CCL_WORKER_MEM_AFFINITY<a class="headerlink" href="#ccl-worker-mem-affinity" title="Permalink to this headline">¶</a></h3>
 <p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_WORKER_MEM_AFFINITY</span><span class="o">=&lt;</span><span class="n">nodelist</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_WORKER_MEM_AFFINITY</span><span class="o">=&lt;</span><span class="n">nodelist</span><span class="o">&gt;</span><span class="w"></span>
 </pre></div>
 </div>
 <p><strong>Arguments</strong></p>
@@ -1076,7 +1089,7 @@ The number should not exceed the number of NUMA nodes available on the system.</
 <div class="section" id="ccl-atl-transport">
 <h3>CCL_ATL_TRANSPORT<a class="headerlink" href="#ccl-atl-transport" title="Permalink to this headline">¶</a></h3>
 <p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_ATL_TRANSPORT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_ATL_TRANSPORT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span><span class="w"></span>
 </pre></div>
 </div>
 <p><strong>Arguments</strong></p>
@@ -1105,7 +1118,7 @@ The number should not exceed the number of NUMA nodes available on the system.</
 <div class="section" id="ccl-atl-hmem">
 <h3>CCL_ATL_HMEM<a class="headerlink" href="#ccl-atl-hmem" title="Permalink to this headline">¶</a></h3>
 <p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_ATL_HMEM</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_ATL_HMEM</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span><span class="w"></span>
 </pre></div>
 </div>
 <p><strong>Arguments</strong></p>
@@ -1140,7 +1153,7 @@ oneCCL workers will be pinned on selected NICs in a round-robin way.</p>
 <div class="section" id="ccl-mnic">
 <h3>CCL_MNIC<a class="headerlink" href="#ccl-mnic" title="Permalink to this headline">¶</a></h3>
 <p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_MNIC</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_MNIC</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span><span class="w"></span>
 </pre></div>
 </div>
 <p><strong>Arguments</strong></p>
@@ -1172,7 +1185,7 @@ oneCCL workers will be pinned on selected NICs in a round-robin way.</p>
 <div class="section" id="ccl-mnic-name">
 <h3>CCL_MNIC_NAME<a class="headerlink" href="#ccl-mnic-name" title="Permalink to this headline">¶</a></h3>
 <p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_MNIC_NAME</span><span class="o">=&lt;</span><span class="n">namelist</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_MNIC_NAME</span><span class="o">=&lt;</span><span class="n">namelist</span><span class="o">&gt;</span><span class="w"></span>
 </pre></div>
 </div>
 <p><strong>Arguments</strong></p>
@@ -1201,7 +1214,7 @@ will be selected, while <code class="docutils literal notranslate"><span class="
 <div class="section" id="ccl-mnic-count">
 <h3>CCL_MNIC_COUNT<a class="headerlink" href="#ccl-mnic-count" title="Permalink to this headline">¶</a></h3>
 <p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_MNIC_COUNT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_MNIC_COUNT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span><span class="w"></span>
 </pre></div>
 </div>
 <p><strong>Arguments</strong></p>
@@ -1233,7 +1246,7 @@ The actual number of NICs selected may be smaller due to limitations on transpor
 <div class="section" id="ccl-bf16">
 <h3>CCL_BF16<a class="headerlink" href="#ccl-bf16" title="Permalink to this headline">¶</a></h3>
 <p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_BF16</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_BF16</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span><span class="w"></span>
 </pre></div>
 </div>
 <p><strong>Arguments</strong></p>
@@ -1263,7 +1276,7 @@ Default value depends on instruction set support on specific CPU. <code class="d
 <div class="section" id="ccl-fp16">
 <h3>CCL_FP16<a class="headerlink" href="#ccl-fp16" title="Permalink to this headline">¶</a></h3>
 <p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_FP16</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_FP16</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span><span class="w"></span>
 </pre></div>
 </div>
 <p><strong>Arguments</strong></p>
@@ -1294,7 +1307,7 @@ Default value depends on instruction set support on specific CPU. <code class="d
 <div class="section" id="ccl-log-level">
 <h2>CCL_LOG_LEVEL<a class="headerlink" href="#ccl-log-level" title="Permalink to this headline">¶</a></h2>
 <p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_LOG_LEVEL</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_LOG_LEVEL</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span><span class="w"></span>
 </pre></div>
 </div>
 <p><strong>Arguments</strong></p>
@@ -1325,7 +1338,7 @@ Default value depends on instruction set support on specific CPU. <code class="d
 <div class="section" id="ccl-itt-level">
 <h2>CCL_ITT_LEVEL<a class="headerlink" href="#ccl-itt-level" title="Permalink to this headline">¶</a></h2>
 <p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_ITT_LEVEL</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_ITT_LEVEL</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span><span class="w"></span>
 </pre></div>
 </div>
 <p><strong>Arguments</strong></p>
@@ -1349,9 +1362,9 @@ Default value depends on instruction set support on specific CPU. <code class="d
 </tbody>
 </table>
 <p><strong>Description</strong></p>
-<p>Set this environment variable to specify <code class="docutils literal notranslate"><span class="pre">Intel(R)</span> <span class="pre">Instrumentation</span> <span class="pre">and</span> <span class="pre">Tracing</span> <span class="pre">Technology</span></code> (ITT) profiling level.
+<p>Set this environment variable to specify Intel® Instrumentation and Tracing Technology (ITT) profiling level.
 Once the environment variable is enabled (value &gt; 0), it is possible to collect and display profiling
-data for oneCCL using tools such as <code class="docutils literal notranslate"><span class="pre">Intel(R)</span> <span class="pre">VTune(TM)</span> <span class="pre">Amplifier</span></code>.</p>
+data for oneCCL using tools such as Intel® VTune™ Profiler.</p>
 </div>
 <div class="section" id="fusion">
 <h2>Fusion<a class="headerlink" href="#fusion" title="Permalink to this headline">¶</a></h2>
@@ -1359,7 +1372,7 @@ data for oneCCL using tools such as <code class="docutils literal notranslate"><
 <div class="section" id="ccl-fusion">
 <h3>CCL_FUSION<a class="headerlink" href="#ccl-fusion" title="Permalink to this headline">¶</a></h3>
 <p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_FUSION</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_FUSION</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span><span class="w"></span>
 </pre></div>
 </div>
 <p><strong>Arguments</strong></p>
@@ -1389,7 +1402,7 @@ The real fusion depends on additional settings described below.</p>
 <div class="section" id="ccl-fusion-bytes-threshold">
 <h3>CCL_FUSION_BYTES_THRESHOLD<a class="headerlink" href="#ccl-fusion-bytes-threshold" title="Permalink to this headline">¶</a></h3>
 <p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_FUSION_BYTES_THRESHOLD</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_FUSION_BYTES_THRESHOLD</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span><span class="w"></span>
 </pre></div>
 </div>
 <p><strong>Arguments</strong></p>
@@ -1416,7 +1429,7 @@ to <code class="docutils literal notranslate"><span class="pre">SIZE</span></cod
 <div class="section" id="ccl-fusion-count-threshold">
 <h3>CCL_FUSION_COUNT_THRESHOLD<a class="headerlink" href="#ccl-fusion-count-threshold" title="Permalink to this headline">¶</a></h3>
 <p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_FUSION_COUNT_THRESHOLD</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_FUSION_COUNT_THRESHOLD</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span><span class="w"></span>
 </pre></div>
 </div>
 <p><strong>Arguments</strong></p>
@@ -1443,7 +1456,7 @@ oneCCL can fuse together no more than <code class="docutils literal notranslate"
 <div class="section" id="ccl-fusion-cycle-ms">
 <h3>CCL_FUSION_CYCLE_MS<a class="headerlink" href="#ccl-fusion-cycle-ms" title="Permalink to this headline">¶</a></h3>
 <p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_FUSION_CYCLE_MS</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_FUSION_CYCLE_MS</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span><span class="w"></span>
 </pre></div>
 </div>
 <p><strong>Arguments</strong></p>
@@ -1475,7 +1488,7 @@ oneCCL can fuse together no more than <code class="docutils literal notranslate"
 <div class="section" id="ccl-priority">
 <h2>CCL_PRIORITY<a class="headerlink" href="#ccl-priority" title="Permalink to this headline">¶</a></h2>
 <p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_PRIORITY</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_PRIORITY</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span><span class="w"></span>
 </pre></div>
 </div>
 <p><strong>Arguments</strong></p>
@@ -1507,7 +1520,7 @@ oneCCL can fuse together no more than <code class="docutils literal notranslate"
 <div class="section" id="ccl-max-short-size">
 <h2>CCL_MAX_SHORT_SIZE<a class="headerlink" href="#ccl-max-short-size" title="Permalink to this headline">¶</a></h2>
 <p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_MAX_SHORT_SIZE</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_MAX_SHORT_SIZE</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span><span class="w"></span>
 </pre></div>
 </div>
 <p><strong>Arguments</strong></p>
@@ -1533,7 +1546,7 @@ oneCCL can fuse together no more than <code class="docutils literal notranslate"
 <div class="section" id="ccl-sycl-output-event">
 <h2>CCL_SYCL_OUTPUT_EVENT<a class="headerlink" href="#ccl-sycl-output-event" title="Permalink to this headline">¶</a></h2>
 <p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_SYCL_OUTPUT_EVENT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_SYCL_OUTPUT_EVENT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span><span class="w"></span>
 </pre></div>
 </div>
 <p><strong>Arguments</strong></p>
@@ -1564,7 +1577,7 @@ oneCCL event must be associated with oneCCL communication operation.</p>
 <div class="section" id="ccl-ze-library-path">
 <h2>CCL_ZE_LIBRARY_PATH<a class="headerlink" href="#ccl-ze-library-path" title="Permalink to this headline">¶</a></h2>
 <p><strong>Syntax</strong></p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_ZE_LIBRARY_PATH</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_ZE_LIBRARY_PATH</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span><span class="w"></span>
 </pre></div>
 </div>
 <p><strong>Arguments</strong></p>
@@ -1593,16 +1606,27 @@ oneCCL event must be associated with oneCCL communication operation.</p>
               </div>
               
         
-        <div class='prev-next-bottom'>
-            
-    <a class='left-prev' id="prev-link" href="api/operations/collective-operations/reduce-scatter.html" title="previous page">ReduceScatter</a>
-    <a class='right-next' id="next-link" href="legal.html" title="next page">Notices and Disclaimers</a>
-
+            <!-- Previous / next buttons -->
+<div class='prev-next-area'> 
+    <a class='left-prev' id="prev-link" href="api/operations/collective-operations/reduce-scatter.html" title="previous page">
+        <i class="fas fa-angle-left"></i>
+        <div class="prev-next-info">
+            <p class="prev-next-subtitle">previous</p>
+            <p class="prev-next-title">ReduceScatter</p>
         </div>
+    </a>
+    <a class='right-next' id="next-link" href="legal.html" title="next page">
+    <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Notices and Disclaimers</p>
+    </div>
+    <i class="fas fa-angle-right"></i>
+    </a>
+</div>
         
         </div>
     </div>
-    <footer class="footer mt-5 mt-md-0">
+    <footer class="footer">
     <div class="container">
       <p>
         
@@ -1621,8 +1645,7 @@ oneCCL event must be associated with oneCCL communication operation.</p>
       </div>
     </div>
   
-  <script src="_static/js/index.1c5a1a01449ed65a7b51.js"></script>
+  <script src="_static/js/index.be7d3bbb2ef33a8344ce.js"></script>
 
-  
   </body>
 </html>

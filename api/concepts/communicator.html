@@ -4,10 +4,11 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Communicator &#8212; oneCCL  documentation</title>
     
-  <link href="../../_static/css/theme.css" rel="stylesheet" />
-  <link href="../../_static/css/index.c5995385ac14fb8791e8eb36b4908be2.css" rel="stylesheet" />
+  <link href="../../_static/css/theme.css" rel="stylesheet">
+  <link href="../../_static/css/index.ff1ffe594081f20da1ef19478df9384b.css" rel="stylesheet">
 
     
   <link rel="stylesheet"
@@ -21,19 +22,17 @@
       
 
     
-    <link rel="stylesheet" href="../../_static/sphinx-book-theme.acff12b8f9c144ce68a297486a2fa670.css" type="text/css" />
-    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-book-theme.css?digest=c3fdc42140077d1ad13ad2f1588a4309" />
     <link rel="stylesheet" type="text/css" href="../../_static/tabs.css" />
     
-  <link rel="preload" as="script" href="../../_static/js/index.1c5a1a01449ed65a7b51.js">
+  <link rel="preload" as="script" href="../../_static/js/index.be7d3bbb2ef33a8344ce.js">
 
-    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
     <script src="../../_static/jquery.js"></script>
     <script src="../../_static/underscore.js"></script>
     <script src="../../_static/doctools.js"></script>
-    <script src="../../_static/language_data.js"></script>
     <script src="../../_static/sphinx-book-theme.12a9622fbb08dcb3a2a40b2c02b83a57.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="shortcut icon" href="../../_static/favicons.png"/>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -68,6 +67,10 @@
         <div class="navbar-brand-box">
     <a class="navbar-brand text-wrap" href="../../index.html">
       
+        <!-- `logo` is deprecated in Sphinx 4.0, so remove this when we stop supporting 3 -->
+        
+      
+      
       <img src="../../_static/oneAPI-rgb-rev-100.png" class="logo" alt="logo">
       
       
@@ -77,7 +80,7 @@
 </div><form class="bd-search d-flex align-items-center" action="../../search.html" method="get">
   <i class="icon fas fa-search"></i>
   <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
-</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
     <div class="bd-toc-item active">
         <p class="caption">
  <span class="caption-text">
@@ -446,139 +449,88 @@
                 
   <div class="section" id="communicator">
 <h1>Communicator<a class="headerlink" href="#communicator" title="Permalink to this headline">¶</a></h1>
-<dl class="cpp function">
-<dt>
-<code class="sig-name descname">template&lt;class... attr_val_type&gt; comm_attr CCL_API create_comm_attr (attr_val_type &amp;&amp;... avs)</code></dt>
-<dd><p>Creates an attribute object that may be used to control the create_communicator operation. </p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>an attribute object </p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="cpp function">
-<dt>
-<code class="sig-name descname">template&lt;class... attr_val_type&gt; comm_split_attr CCL_API create_comm_split_attr (attr_val_type &amp;&amp;... avs)</code></dt>
-<dd><p>Creates an attribute object that may be used to control the split_communicator operation. </p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>an attribute object </p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="cpp function">
-<dt>
-<code class="sig-name descname">template&lt;class DeviceType, class ContextType&gt; vector_class&lt; communicator &gt; CCL_API create_communicators (int size, const vector_class&lt; pair_class&lt; int, DeviceType &gt;&gt; &amp;devices, const ContextType &amp;context, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</code></dt>
-<dd><p>Creates new communicators with user supplied size, ranks, local device-rank mapping and kvs. </p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>size</strong> – user-supplied total number of ranks </p></li>
-<li><p><strong>rank</strong> – user-supplied rank </p></li>
-<li><p><strong>device</strong> – local device </p></li>
-<li><p><strong>devices</strong> – user-supplied mapping of local ranks on devices </p></li>
-<li><p><strong>context</strong> – context containing the devices </p></li>
-<li><p><strong>kvs</strong> – key-value store for ranks wire-up </p></li>
-<li><p><strong>attr</strong> – optional communicator attributes </p></li>
+<p><strong>template&lt;class… attr_val_type&gt; comm_attr CCL_API create_comm_attr (attr_val_type &amp;&amp;… avs)</strong>
+Creates an attribute object that may be used to control the create_communicator operation.</p>
+<p><strong>Returns</strong>
+an attribute object</p>
+<p><strong>template&lt;class… attr_val_type&gt; comm_split_attr CCL_API create_comm_split_attr (attr_val_type &amp;&amp;… avs)</strong>
+Creates an attribute object that may be used to control the split_communicator operation.</p>
+<p>Returns
+an attribute object</p>
+<p><strong>template&lt;class DeviceType, class ContextType&gt; vector_class&lt; communicator &gt; CCL_API create_communicators (int size, const vector_class&lt; pair_class&lt; int, DeviceType &gt;&gt; &amp;devices, const ContextType &amp;context, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</strong>
+Creates new communicators with user supplied size, ranks, local device-rank mapping and kvs.</p>
+<p><strong>Parameters</strong></p>
+<ul class="simple">
+<li><p>size – user-supplied total number of ranks</p></li>
+<li><p>rank – user-supplied rank</p></li>
+<li><p>device – local device</p></li>
+<li><p>devices – user-supplied mapping of local ranks on devices</p></li>
+<li><p>context – context containing the devices</p></li>
+<li><p>kvs – key-value store for ranks wire-up</p></li>
+<li><p>attr – optional communicator attributes</p></li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>vector of communicators / communicator </p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="cpp function">
-<dt>
-<code class="sig-name descname">template&lt;class DeviceType, class ContextType&gt; vector_class&lt; communicator &gt; CCL_API create_communicators (int size, const map_class&lt; int, DeviceType &gt; &amp;devices, const ContextType &amp;context, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</code></dt>
-<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt>
-<code class="sig-name descname">template&lt;class DeviceType, class ContextType&gt; communicator CCL_API create_communicator (int size, int rank, DeviceType &amp;device, const ContextType &amp;context, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</code></dt>
-<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt>
-<code class="sig-name descname">communicator CCL_API create_communicator (int size, int rank, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</code></dt>
-<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt>
-<code class="sig-name descname">template&lt;class DeviceType, class ContextType&gt; vector_class&lt; communicator &gt; CCL_API create_communicators (int size, const vector_class&lt; DeviceType &gt; &amp;devices, const ContextType &amp;context, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</code></dt>
-<dd><p>Creates a new communicators with user supplied size, local devices and kvs. Ranks will be assigned automatically. </p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>size</strong> – user-supplied total number of ranks </p></li>
-<li><p><strong>devices</strong> – user-supplied device objects for local ranks </p></li>
-<li><p><strong>context</strong> – context containing the devices </p></li>
-<li><p><strong>kvs</strong> – key-value store for ranks wire-up </p></li>
-<li><p><strong>attr</strong> – optional communicator attributes </p></li>
+<p><strong>Returns</strong>
+vector of communicators / communicator</p>
+<p><strong>template&lt;class DeviceType, class ContextType&gt; vector_class&lt; communicator &gt; CCL_API create_communicators (int size, const map_class&lt; int, DeviceType &gt; &amp;devices, const ContextType &amp;context, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</strong>
+This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p><strong>template&lt;class DeviceType, class ContextType&gt; communicator CCL_API create_communicator (int size, int rank, DeviceType &amp;device, const ContextType &amp;context, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</strong>
+This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p><strong>communicator CCL_API create_communicator (int size, int rank, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</strong>
+This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p><strong>template&lt;class DeviceType, class ContextType&gt; vector_class&lt; communicator &gt; CCL_API create_communicators (int size, const vector_class&lt; DeviceType &gt; &amp;devices, const ContextType &amp;context, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</strong>
+Creates a new communicators with user supplied size, local devices and kvs. Ranks will be assigned automatically.</p>
+<p><strong>Parameters</strong></p>
+<ul class="simple">
+<li><p>size – user-supplied total number of ranks</p></li>
+<li><p>devices – user-supplied device objects for local ranks</p></li>
+<li><p>context – context containing the devices</p></li>
+<li><p>kvs – key-value store for ranks wire-up</p></li>
+<li><p>attr – optional communicator attributes</p></li>
 </ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>vector of communicators / communicator </p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="cpp function">
-<dt>
-<code class="sig-name descname">communicator CCL_API create_communicator (int size, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</code></dt>
-<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt>
-<code class="sig-name descname">communicator CCL_API create_communicator (const comm_attr &amp;attr=default_comm_attr)</code></dt>
-<dd><p>Creates a new communicator with externally provided size, rank and kvs. Implementation is platform specific and non portable. </p>
+<p><strong>Returns</strong>
+vector of communicators / communicator</p>
+<p><strong>communicator CCL_API create_communicator (int size, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</strong>
+This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p><strong>communicator CCL_API create_communicator (const comm_attr &amp;attr=default_comm_attr)</strong>
+Creates a new communicator with externally provided size, rank and kvs. Implementation is platform specific and non portable.</p>
 <p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>attr</strong> – optional communicator attributes </p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>communicator </p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="cpp function">
-<dt>
-<code class="sig-name descname">vector_class&lt; communicator &gt; CCL_API split_communicators (const vector_class&lt; pair_class&lt; communicator, comm_split_attr &gt;&gt; &amp;attrs)</code></dt>
-<dd><p>Splits communicators according to attributes. </p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>attrs</strong> – split attributes for local communicators </p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>vector of communicators </p>
-</dd>
-</dl>
-</dd></dl>
-
+<p><strong>Parameters</strong>
+attr – optional communicator attributes</p>
+<p><strong>Returns</strong>
+communicator</p>
+<p><strong>vector_class&lt; communicator &gt; CCL_API split_communicators (const vector_class&lt; pair_class&lt; communicator, comm_split_attr &gt;&gt; &amp;attrs)</strong>
+Splits communicators according to attributes.</p>
+<p><strong>Parameters</strong>
+attrs – split attributes for local communicators</p>
+<p><strong>Returns</strong>
+vector of communicators</p>
 </div>
 
 
               </div>
               
         
-        <div class='prev-next-bottom'>
-            
-    <a class='left-prev' id="prev-link" href="../concepts.html" title="previous page">oneCCL Concepts</a>
-    <a class='right-next' id="next-link" href="context.html" title="next page">Context</a>
-
+            <!-- Previous / next buttons -->
+<div class='prev-next-area'> 
+    <a class='left-prev' id="prev-link" href="../concepts.html" title="previous page">
+        <i class="fas fa-angle-left"></i>
+        <div class="prev-next-info">
+            <p class="prev-next-subtitle">previous</p>
+            <p class="prev-next-title">oneCCL Concepts</p>
         </div>
+    </a>
+    <a class='right-next' id="next-link" href="context.html" title="next page">
+    <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Context</p>
+    </div>
+    <i class="fas fa-angle-right"></i>
+    </a>
+</div>
         
         </div>
     </div>
-    <footer class="footer mt-5 mt-md-0">
+    <footer class="footer">
     <div class="container">
       <p>
         
@@ -597,8 +549,7 @@
       </div>
     </div>
   
-  <script src="../../_static/js/index.1c5a1a01449ed65a7b51.js"></script>
+  <script src="../../_static/js/index.be7d3bbb2ef33a8344ce.js"></script>
 
-  
   </body>
 </html>

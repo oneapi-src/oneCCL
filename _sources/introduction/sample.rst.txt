@@ -11,15 +11,15 @@ The sample code below shows how to use |product_short| API to perform allreduce 
 Build details
 *************
 
-#. :ref:`Build <enable_sycl>` |product_short| with ``SYCL`` support (only DPC++ is supported).
+#. :ref:`Build <enable_sycl>` |product_short| with ``SYCL`` support (only Intel\ |reg|\  oneAPI DPC++/C++ Compiler is supported).
 
 #. :ref:`Set up <prerequisites>` the library environment.
 
-#. Use ``dpcpp`` compiler to build the sample:
+#. Use the C++ driver with the -fsycl option to build the sample:
 
    ::
 
-      dpcpp -o sample sample.cpp -lccl -lmpi
+      icpx -o sample sample.cpp -lccl -lmpi
 
 
 Run the sample

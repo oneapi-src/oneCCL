@@ -10,7 +10,8 @@ Collective Operations
 Operation Attributes
 ********************
 
-.. doxygengroup:: operation
-   :project: oneccl
-   :content-only:
-   :no-link:
+**template<class coll_attribute_type, class... attr_val_type> coll_attribute_type CCL_API create_operation_attr (attr_val_type &&... avs)**
+Creates an attribute object that may be used to customize communication operation.
+
+**Returns**
+an attribute object

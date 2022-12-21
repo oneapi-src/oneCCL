@@ -4,10 +4,11 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Device Communication &#8212; oneCCL  documentation</title>
     
-  <link href="../_static/css/theme.css" rel="stylesheet" />
-  <link href="../_static/css/index.c5995385ac14fb8791e8eb36b4908be2.css" rel="stylesheet" />
+  <link href="../_static/css/theme.css" rel="stylesheet">
+  <link href="../_static/css/index.ff1ffe594081f20da1ef19478df9384b.css" rel="stylesheet">
 
     
   <link rel="stylesheet"
@@ -21,19 +22,18 @@
       
 
     
-    <link rel="stylesheet" href="../_static/sphinx-book-theme.acff12b8f9c144ce68a297486a2fa670.css" type="text/css" />
-    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-book-theme.css?digest=c3fdc42140077d1ad13ad2f1588a4309" />
     <link rel="stylesheet" type="text/css" href="../_static/tabs.css" />
     
-  <link rel="preload" as="script" href="../_static/js/index.1c5a1a01449ed65a7b51.js">
+  <link rel="preload" as="script" href="../_static/js/index.be7d3bbb2ef33a8344ce.js">
 
-    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
     <script src="../_static/jquery.js"></script>
     <script src="../_static/underscore.js"></script>
     <script src="../_static/doctools.js"></script>
-    <script src="../_static/language_data.js"></script>
     <script src="../_static/sphinx-book-theme.12a9622fbb08dcb3a2a40b2c02b83a57.js"></script>
-    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <link rel="shortcut icon" href="../_static/favicons.png"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -68,6 +68,10 @@
         <div class="navbar-brand-box">
     <a class="navbar-brand text-wrap" href="../index.html">
       
+        <!-- `logo` is deprecated in Sphinx 4.0, so remove this when we stop supporting 3 -->
+        
+      
+      
       <img src="../_static/oneAPI-rgb-rev-100.png" class="logo" alt="logo">
       
       
@@ -77,7 +81,7 @@
 </div><form class="bd-search d-flex align-items-center" action="../search.html" method="get">
   <i class="icon fas fa-search"></i>
   <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
-</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
     <div class="bd-toc-item active">
         <p class="caption">
  <span class="caption-text">
@@ -452,112 +456,112 @@
 <p>Consider a simple oneCCL <code class="docutils literal notranslate"><span class="pre">allreduce</span></code> example for GPU:</p>
 <ol class="arabic">
 <li><p>Create oneCCL communicator objects with user-supplied size, rank &lt;-&gt; SYCL device mapping, SYCL context and key-value store:</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">auto</span> <span class="n">ccl_context</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">::</span><span class="n">create_context</span><span class="p">(</span><span class="n">sycl_context</span><span class="p">);</span>
-<span class="k">auto</span> <span class="n">ccl_device</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">::</span><span class="n">create_device</span><span class="p">(</span><span class="n">sycl_device</span><span class="p">);</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">auto</span><span class="w"> </span><span class="n">ccl_context</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ccl</span><span class="o">::</span><span class="n">create_context</span><span class="p">(</span><span class="n">sycl_context</span><span class="p">);</span><span class="w"></span>
+<span class="k">auto</span><span class="w"> </span><span class="n">ccl_device</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ccl</span><span class="o">::</span><span class="n">create_device</span><span class="p">(</span><span class="n">sycl_device</span><span class="p">);</span><span class="w"></span>
 
-<span class="k">auto</span> <span class="n">comms</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">::</span><span class="n">create_communicators</span><span class="p">(</span>
-   <span class="n">size</span><span class="p">,</span>
-   <span class="n">vector_class</span><span class="o">&lt;</span><span class="n">pair_class</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="p">,</span> <span class="n">device</span><span class="o">&gt;&gt;</span><span class="p">{</span> <span class="p">{</span> <span class="n">rank</span><span class="p">,</span> <span class="n">ccl_device</span> <span class="p">}</span> <span class="p">},</span>
-   <span class="n">ccl_context</span><span class="p">,</span>
-   <span class="n">kvs</span><span class="p">);</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">comms</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ccl</span><span class="o">::</span><span class="n">create_communicators</span><span class="p">(</span><span class="w"></span>
+<span class="w">   </span><span class="n">size</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">vector_class</span><span class="o">&lt;</span><span class="n">pair_class</span><span class="o">&lt;</span><span class="kt">size_t</span><span class="p">,</span><span class="w"> </span><span class="n">device</span><span class="o">&gt;&gt;</span><span class="p">{</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">rank</span><span class="p">,</span><span class="w"> </span><span class="n">ccl_device</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span><span class="w"></span>
+<span class="w">   </span><span class="n">ccl_context</span><span class="p">,</span><span class="w"></span>
+<span class="w">   </span><span class="n">kvs</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
 </li>
 <li><p>Create oneCCL stream object from user-supplied <code class="docutils literal notranslate"><span class="pre">sycl::queue</span></code> object:</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">auto</span> <span class="n">stream</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">::</span><span class="n">create_stream</span><span class="p">(</span><span class="n">sycl_queue</span><span class="p">);</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">auto</span><span class="w"> </span><span class="n">stream</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ccl</span><span class="o">::</span><span class="n">create_stream</span><span class="p">(</span><span class="n">sycl_queue</span><span class="p">);</span><span class="w"></span>
 </pre></div>
 </div>
 </li>
 <li><p>Initialize <code class="docutils literal notranslate"><span class="pre">send_buf</span></code> (in real scenario it is supplied by the user):</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">const</span> <span class="kt">size_t</span> <span class="n">elem_count</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">N</span><span class="o">&gt;</span><span class="p">;</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">const</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">elem_count</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&lt;</span><span class="n">N</span><span class="o">&gt;</span><span class="p">;</span><span class="w"></span>
 
-<span class="cm">/* using SYCL buffer and accessor */</span>
-<span class="k">auto</span> <span class="n">send_buf_host_acc</span> <span class="o">=</span> <span class="n">send_buf</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">mode</span><span class="o">::</span><span class="n">write</span><span class="o">&gt;</span><span class="p">();</span>
-<span class="k">for</span> <span class="p">(</span><span class="n">idx</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">idx</span> <span class="o">&lt;</span> <span class="n">elem_count</span><span class="p">;</span> <span class="n">idx</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-   <span class="n">send_buf_host_acc</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">rank</span><span class="p">;</span>
-<span class="p">}</span>
+<span class="cm">/* using SYCL buffer and accessor */</span><span class="w"></span>
+<span class="k">auto</span><span class="w"> </span><span class="n">send_buf_host_acc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">send_buf</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">mode</span><span class="o">::</span><span class="n">write</span><span class="o">&gt;</span><span class="p">();</span><span class="w"></span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">idx</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">elem_count</span><span class="p">;</span><span class="w"> </span><span class="n">idx</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">send_buf_host_acc</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">rank</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cm">/* or using SYCL USM */</span>
-<span class="k">for</span> <span class="p">(</span><span class="n">idx</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">idx</span> <span class="o">&lt;</span> <span class="n">elem_count</span><span class="p">;</span> <span class="n">idx</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-   <span class="n">send_buf</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">rank</span><span class="p">;</span>
-<span class="p">}</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cm">/* or using SYCL USM */</span><span class="w"></span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">idx</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">elem_count</span><span class="p">;</span><span class="w"> </span><span class="n">idx</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">send_buf</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">rank</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 </li>
 <li><p>For demonstration purposes, modify the <code class="docutils literal notranslate"><span class="pre">send_buf</span></code> on the GPU side:</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cm">/* using SYCL buffer and accessor */</span>
-<span class="n">sycl_queue</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">handler</span><span class="o">&amp;</span> <span class="n">h</span><span class="p">)</span> <span class="p">{</span>
-   <span class="k">auto</span> <span class="n">send_buf_dev_acc</span> <span class="o">=</span> <span class="n">send_buf</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">mode</span><span class="o">::</span><span class="n">write</span><span class="o">&gt;</span><span class="p">(</span><span class="n">h</span><span class="p">);</span>
-   <span class="n">h</span><span class="p">.</span><span class="n">parallel_for</span><span class="p">(</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">{</span><span class="n">elem_count</span><span class="p">},</span> <span class="p">[</span><span class="o">=</span><span class="p">](</span><span class="n">item</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span> <span class="n">idx</span><span class="p">)</span> <span class="p">{</span>
-         <span class="n">send_buf_dev_acc</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span><span class="p">;</span>
-   <span class="p">});</span>
-<span class="p">});</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cm">/* using SYCL buffer and accessor */</span><span class="w"></span>
+<span class="n">sycl_queue</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">handler</span><span class="o">&amp;</span><span class="w"> </span><span class="n">h</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="k">auto</span><span class="w"> </span><span class="n">send_buf_dev_acc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">send_buf</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">mode</span><span class="o">::</span><span class="n">write</span><span class="o">&gt;</span><span class="p">(</span><span class="n">h</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">h</span><span class="p">.</span><span class="n">parallel_for</span><span class="p">(</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">{</span><span class="n">elem_count</span><span class="p">},</span><span class="w"> </span><span class="p">[</span><span class="o">=</span><span class="p">](</span><span class="n">item</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="w"> </span><span class="n">idx</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">         </span><span class="n">send_buf_dev_acc</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="p">});</span><span class="w"></span>
+<span class="p">});</span><span class="w"></span>
 </pre></div>
 </div>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cm">/* or using SYCL USM */</span>
-<span class="k">for</span> <span class="p">(</span><span class="n">idx</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">idx</span> <span class="o">&lt;</span> <span class="n">elem_count</span><span class="p">;</span> <span class="n">idx</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-   <span class="n">send_buf</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">+</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
-<span class="p">}</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cm">/* or using SYCL USM */</span><span class="w"></span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">idx</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">elem_count</span><span class="p">;</span><span class="w"> </span><span class="n">idx</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">send_buf</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">+</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 </li>
 <li><p><code class="docutils literal notranslate"><span class="pre">allreduce</span></code> invocation performs reduction of values from all processes and then distributes the result to all processes. In this case, the result is an array with <code class="docutils literal notranslate"><span class="pre">elem_count</span></code> elements, where all elements are equal to the sum of arithmetical progression:</p>
 <div class="math notranslate nohighlight">
 \[p \cdot (p + 1) / 2\]</div>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">event</span><span class="o">&gt;</span> <span class="n">events</span><span class="p">;</span>
-<span class="k">for</span> <span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span> <span class="nl">comm</span> <span class="p">:</span> <span class="n">comms</span><span class="p">)</span> <span class="p">{</span>
-   <span class="n">events</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">ccl</span><span class="o">::</span><span class="n">allreduce</span><span class="p">(</span><span class="n">send_buf</span><span class="p">,</span>
-                                    <span class="n">recv_buf</span><span class="p">,</span>
-                                    <span class="n">elem_count</span><span class="p">,</span>
-                                    <span class="n">reduction</span><span class="o">::</span><span class="n">sum</span><span class="p">,</span>
-                                    <span class="n">comm</span><span class="p">,</span>
-                                    <span class="n">streams</span><span class="p">[</span><span class="n">comm</span><span class="p">.</span><span class="n">rank</span><span class="p">()]));</span>
-<span class="p">}</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">event</span><span class="o">&gt;</span><span class="w"> </span><span class="n">events</span><span class="p">;</span><span class="w"></span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="nl">comm</span> <span class="p">:</span><span class="w"> </span><span class="n">comms</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">events</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">ccl</span><span class="o">::</span><span class="n">allreduce</span><span class="p">(</span><span class="n">send_buf</span><span class="p">,</span><span class="w"></span>
+<span class="w">                                    </span><span class="n">recv_buf</span><span class="p">,</span><span class="w"></span>
+<span class="w">                                    </span><span class="n">elem_count</span><span class="p">,</span><span class="w"></span>
+<span class="w">                                    </span><span class="n">reduction</span><span class="o">::</span><span class="n">sum</span><span class="p">,</span><span class="w"></span>
+<span class="w">                                    </span><span class="n">comm</span><span class="p">,</span><span class="w"></span>
+<span class="w">                                    </span><span class="n">streams</span><span class="p">[</span><span class="n">comm</span><span class="p">.</span><span class="n">rank</span><span class="p">()]));</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 
-<span class="k">for</span> <span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span> <span class="nl">e</span> <span class="p">:</span> <span class="n">events</span><span class="p">)</span> <span class="p">{</span>
-   <span class="n">e</span><span class="p">.</span><span class="n">wait</span><span class="p">();</span>
-<span class="p">}</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="nl">e</span> <span class="p">:</span><span class="w"> </span><span class="n">events</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="n">e</span><span class="p">.</span><span class="n">wait</span><span class="p">();</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 </li>
 <li><p>Check the correctness of <code class="docutils literal notranslate"><span class="pre">allreduce</span></code> operation on the GPU:</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cm">/* using SYCL buffer and accessor */</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cm">/* using SYCL buffer and accessor */</span><span class="w"></span>
 
-<span class="k">auto</span> <span class="n">comm_size</span> <span class="o">=</span> <span class="n">comm</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
-<span class="k">auto</span> <span class="n">expected</span> <span class="o">=</span> <span class="n">comm_size</span> <span class="o">*</span> <span class="p">(</span><span class="n">comm_size</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">comm_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">comm</span><span class="p">.</span><span class="n">size</span><span class="p">();</span><span class="w"></span>
+<span class="k">auto</span><span class="w"> </span><span class="n">expected</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">comm_size</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">comm_size</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span><span class="w"></span>
 
-<span class="n">sycl_queue</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="n">handler</span><span class="o">&amp;</span> <span class="n">h</span><span class="p">)</span> <span class="p">{</span>
-   <span class="k">auto</span> <span class="n">recv_buf_dev_acc</span> <span class="o">=</span> <span class="n">recv_buf</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">mode</span><span class="o">::</span><span class="n">write</span><span class="o">&gt;</span><span class="p">(</span><span class="n">h</span><span class="p">);</span>
-   <span class="n">h</span><span class="p">.</span><span class="n">parallel_for</span><span class="p">(</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">{</span><span class="n">elem_count</span><span class="p">},</span> <span class="p">[</span><span class="o">=</span><span class="p">](</span><span class="n">item</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span> <span class="n">idx</span><span class="p">)</span> <span class="p">{</span>
-         <span class="k">if</span> <span class="p">(</span><span class="n">recv_buf_dev_acc</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">!=</span> <span class="n">expected</span><span class="p">)</span> <span class="p">{</span>
-            <span class="n">recv_buf_dev_acc</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
-         <span class="p">}</span>
-   <span class="p">});</span>
-<span class="p">});</span>
+<span class="n">sycl_queue</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="n">handler</span><span class="o">&amp;</span><span class="w"> </span><span class="n">h</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="k">auto</span><span class="w"> </span><span class="n">recv_buf_dev_acc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">recv_buf</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">mode</span><span class="o">::</span><span class="n">write</span><span class="o">&gt;</span><span class="p">(</span><span class="n">h</span><span class="p">);</span><span class="w"></span>
+<span class="w">   </span><span class="n">h</span><span class="p">.</span><span class="n">parallel_for</span><span class="p">(</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">{</span><span class="n">elem_count</span><span class="p">},</span><span class="w"> </span><span class="p">[</span><span class="o">=</span><span class="p">](</span><span class="n">item</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="w"> </span><span class="n">idx</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">         </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">recv_buf_dev_acc</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">expected</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="n">recv_buf_dev_acc</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">-1</span><span class="p">;</span><span class="w"></span>
+<span class="w">         </span><span class="p">}</span><span class="w"></span>
+<span class="w">   </span><span class="p">});</span><span class="w"></span>
+<span class="p">});</span><span class="w"></span>
 
-<span class="p">...</span>
+<span class="p">...</span><span class="w"></span>
 
-<span class="k">auto</span> <span class="n">recv_buf_host_acc</span> <span class="o">=</span> <span class="n">recv_buf</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">mode</span><span class="o">::</span><span class="n">read</span><span class="o">&gt;</span><span class="p">();</span>
-<span class="k">for</span> <span class="p">(</span><span class="n">idx</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">idx</span> <span class="o">&lt;</span> <span class="n">elem_count</span><span class="p">;</span> <span class="n">idx</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-   <span class="k">if</span> <span class="p">(</span><span class="n">recv_buf_host_acc</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
-         <span class="n">std</span><span class="o">::</span><span class="n">count</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;unexpected value at index &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">idx</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
-         <span class="k">break</span><span class="p">;</span>
-   <span class="p">}</span>
-<span class="p">}</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">recv_buf_host_acc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">recv_buf</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">mode</span><span class="o">::</span><span class="n">read</span><span class="o">&gt;</span><span class="p">();</span><span class="w"></span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">idx</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">elem_count</span><span class="p">;</span><span class="w"> </span><span class="n">idx</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">recv_buf_host_acc</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">-1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">         </span><span class="n">std</span><span class="o">::</span><span class="n">count</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;unexpected value at index &quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">idx</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span><span class="w"></span>
+<span class="w">         </span><span class="k">break</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cm">/* or using SYCL USM */</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cm">/* or using SYCL USM */</span><span class="w"></span>
 
-<span class="k">auto</span> <span class="n">comm_size</span> <span class="o">=</span> <span class="n">comm</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
-<span class="k">auto</span> <span class="n">expected</span> <span class="o">=</span> <span class="n">comm_size</span> <span class="o">*</span> <span class="p">(</span><span class="n">comm_size</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">;</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">comm_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">comm</span><span class="p">.</span><span class="n">size</span><span class="p">();</span><span class="w"></span>
+<span class="k">auto</span><span class="w"> </span><span class="n">expected</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">comm_size</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">comm_size</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span><span class="w"></span>
 
-<span class="k">for</span> <span class="p">(</span><span class="n">idx</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">idx</span> <span class="o">&lt;</span> <span class="n">elem_count</span><span class="p">;</span> <span class="n">idx</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-   <span class="k">if</span> <span class="p">(</span><span class="n">recv_buf</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">!=</span> <span class="n">expected</span><span class="p">)</span> <span class="p">{</span>
-         <span class="n">std</span><span class="o">::</span><span class="n">count</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;unexpected value at index &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">idx</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
-         <span class="k">break</span><span class="p">;</span>
-   <span class="p">}</span>
-<span class="p">}</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">idx</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">elem_count</span><span class="p">;</span><span class="w"> </span><span class="n">idx</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">recv_buf</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">expected</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">         </span><span class="n">std</span><span class="o">::</span><span class="n">count</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;unexpected value at index &quot;</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">idx</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span><span class="w"></span>
+<span class="w">         </span><span class="k">break</span><span class="p">;</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 </li>
@@ -568,16 +572,27 @@
               </div>
               
         
-        <div class='prev-next-bottom'>
-            
-    <a class='left-prev' id="prev-link" href="host-communication.html" title="previous page">Host Communication</a>
-    <a class='right-next' id="next-link" href="limitations.html" title="next page">Limitations</a>
-
+            <!-- Previous / next buttons -->
+<div class='prev-next-area'> 
+    <a class='left-prev' id="prev-link" href="host-communication.html" title="previous page">
+        <i class="fas fa-angle-left"></i>
+        <div class="prev-next-info">
+            <p class="prev-next-subtitle">previous</p>
+            <p class="prev-next-title">Host Communication</p>
         </div>
+    </a>
+    <a class='right-next' id="next-link" href="limitations.html" title="next page">
+    <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Limitations</p>
+    </div>
+    <i class="fas fa-angle-right"></i>
+    </a>
+</div>
         
         </div>
     </div>
-    <footer class="footer mt-5 mt-md-0">
+    <footer class="footer">
     <div class="container">
       <p>
         
@@ -596,8 +611,7 @@
       </div>
     </div>
   
-  <script src="../_static/js/index.1c5a1a01449ed65a7b51.js"></script>
+  <script src="../_static/js/index.be7d3bbb2ef33a8344ce.js"></script>
 
-  
   </body>
 </html>

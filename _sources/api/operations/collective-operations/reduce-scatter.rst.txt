@@ -1,7 +1,36 @@
 ReduceScatter
 *************
 
-.. doxygengroup:: reducescatter
-   :project: oneccl
-   :content-only:
-   :no-link:
+**event CCL_API reduce_scatter (const void *send_buf, void *recv_buf, size_t recv_count, datatype dtype, reduction rtype, const communicator &comm, const stream &stream, const reduce_scatter_attr &attr=default_reduce_scatter_attr, const vector_class< event > &deps={})**
+Reduce-scatter is a collective communication operation that performs the global reduction operation on values from all ranks of the communicator and scatters the result in blocks back to all ranks.
+
+**Parameters**
+
+* end_buf – the buffer with comm_size * count elements of dtype that stores local data to be reduced
+* recv_buf – [out] the buffer to store result block containing recv_count elements of type dtype
+* recv_count – the number of elements of type dtype in receive block
+* dtype – the datatype of elements in send_buf and recv_buf
+* rtype – the type of the reduction operation to be applied
+* comm – the communicator for which the operation will be performed
+* stream – a stream associated with the operation
+* attr – optional attributes to customize operation
+* deps – an optional vector of the events that the operation should depend on
+
+**Returns**
+ccl::event an object to track the progress of the operation
+
+**event CCL_API reduce_scatter (const void *send_buf, void *recv_buf, size_t recv_count, datatype dtype, reduction rtype, const communicator &comm, const reduce_scatter_attr &attr=default_reduce_scatter_attr, const vector_class< event > &deps={})**
+This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.
+
+**template<class BufferType, class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type> event CCL_API reduce_scatter (const BufferType *send_buf, BufferType *recv_buf, size_t recv_count, reduction rtype, const communicator &comm, const stream &stream, const reduce_scatter_attr &attr=default_reduce_scatter_attr, const vector_class< event > &deps={})**
+This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.
+
+**template<class BufferType, class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type> event CCL_API reduce_scatter (const BufferType *send_buf, BufferType *recv_buf, size_t recv_count, reduction rtype, const communicator &comm, const reduce_scatter_attr &attr=default_reduce_scatter_attr, const vector_class< event > &deps={})**
+This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.
+
+**template<class BufferObjectType, class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type> event CCL_API reduce_scatter (const BufferObjectType &send_buf, BufferObjectType &recv_buf, size_t recv_count, reduction rtype, const communicator &comm, const stream &stream, const reduce_scatter_attr &attr=default_reduce_scatter_attr, const vector_class< event > &deps={})**
+This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.
+
+**template<class BufferObjectType, class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type> event CCL_API reduce_scatter (const BufferObjectType &send_buf, BufferObjectType &recv_buf, size_t recv_count, reduction rtype, const communicator &comm, const reduce_scatter_attr &attr=default_reduce_scatter_attr, const vector_class< event > &deps={})**
+This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.
+
