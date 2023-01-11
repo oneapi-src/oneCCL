@@ -1,17 +1,26 @@
 Initialization
-***********************
+*********************
 
-**template<class... attr_val_type> init_attr CCL_API create_init_attr (attr_val_type &&... avs)**
+**template<class… attr_val_type> init_attr CCL_API create_init_attr (attr_val_type &&… avs)**
+
 Creates an attribute object that may be used to control the init operation.
 
+
 **Returns**
+
 an attribute object
 
 **void CCL_API init (const init_attr &attr=default_init_attr)**
+
 Initializes the library. Optional for invocation.
 
+
 **Parameters**
+
 attr – optional init attributes
 
+
+
 **library_version CCL_API get_library_version ()**
+
 Retrieves the library version.

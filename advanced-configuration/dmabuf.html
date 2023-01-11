@@ -82,7 +82,7 @@
   <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
 </form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
     <div class="bd-toc-item active">
-        <p class="caption">
+        <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Get Started
  </span>
@@ -109,7 +109,7 @@
   </a>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Developer Guide
  </span>
@@ -207,7 +207,7 @@
   </ul>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Developer Reference
  </span>
@@ -347,7 +347,7 @@
   </a>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Notices and Disclaimers
  </span>
@@ -507,7 +507,7 @@
 <h2>Build instructions<a class="headerlink" href="#build-instructions" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="ofi">
 <h3>OFI<a class="headerlink" href="#ofi" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">git</span><span class="w"> </span><span class="n">clone</span><span class="w"> </span><span class="o">--</span><span class="n">single</span><span class="o">-</span><span class="n">branch</span><span class="w"> </span><span class="o">--</span><span class="n">branch</span><span class="w"> </span><span class="n">v1</span><span class="mf">.13.2</span><span class="w"> </span><span class="nl">https</span><span class="p">:</span><span class="c1">//github.com/ofiwg/libfabric.git</span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">git</span><span class="w"> </span><span class="n">clone</span><span class="w"> </span><span class="o">--</span><span class="n">single</span><span class="o">-</span><span class="n">branch</span><span class="w"> </span><span class="o">--</span><span class="n">branch</span><span class="w"> </span><span class="n">v1</span><span class="mf">.13.2</span><span class="w"> </span><span class="n">https</span><span class="o">:</span><span class="c1">//github.com/ofiwg/libfabric.git</span>
 <span class="n">cd</span><span class="w"> </span><span class="n">libfabric</span><span class="w"></span>
 <span class="p">.</span><span class="o">/</span><span class="n">autogen</span><span class="p">.</span><span class="n">sh</span><span class="w"></span>
 <span class="p">.</span><span class="o">/</span><span class="n">configure</span><span class="w"> </span><span class="o">--</span><span class="n">prefix</span><span class="o">=&lt;</span><span class="n">ofi_install_dir</span><span class="o">&gt;</span><span class="w"> </span><span class="o">--</span><span class="n">enable</span><span class="o">-</span><span class="n">verbs</span><span class="o">=&lt;</span><span class="n">rdma_core_install_dir</span><span class="o">&gt;</span><span class="w"> </span><span class="o">--</span><span class="n">with</span><span class="o">-</span><span class="n">ze</span><span class="o">=&lt;</span><span class="n">level_zero_install_dir</span><span class="o">&gt;</span><span class="w"> </span><span class="o">--</span><span class="n">enable</span><span class="o">-</span><span class="n">ze</span><span class="o">-</span><span class="n">dlopen</span><span class="o">=</span><span class="n">yes</span><span class="w"></span>
@@ -538,7 +538,7 @@ No need to run autogen.sh if using the release package.</p>
 </div>
 <p>If software components are built from sources:</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">source</span><span class="w"> </span><span class="o">&lt;</span><span class="n">ccl_install_dir</span><span class="o">&gt;/</span><span class="n">env</span><span class="o">/</span><span class="n">setvars</span><span class="p">.</span><span class="n">sh</span><span class="w"></span>
-<span class="k">export</span><span class="w"> </span><span class="n">LD_LIBRARY_PATH</span><span class="o">=&lt;</span><span class="n">ofi_install_path</span><span class="o">&gt;/</span><span class="nl">lib</span><span class="p">:</span><span class="n">$</span><span class="p">{</span><span class="n">LD_LIBRARY_PATH</span><span class="p">}</span><span class="w"></span>
+<span class="k">export</span><span class="w"> </span><span class="n">LD_LIBRARY_PATH</span><span class="o">=&lt;</span><span class="n">ofi_install_path</span><span class="o">&gt;/</span><span class="n">lib</span><span class="o">:</span><span class="n">$</span><span class="p">{</span><span class="n">LD_LIBRARY_PATH</span><span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 </li>

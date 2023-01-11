@@ -83,7 +83,7 @@
   <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
 </form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
     <div class="bd-toc-item active">
-        <p class="caption">
+        <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Get Started
  </span>
@@ -110,7 +110,7 @@
   </a>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Developer Guide
  </span>
@@ -208,7 +208,7 @@
   </ul>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Developer Reference
  </span>
@@ -348,7 +348,7 @@
   </a>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Notices and Disclaimers
  </span>
@@ -510,7 +510,7 @@
 <div class="math notranslate nohighlight">
 \[p \cdot (p + 1) / 2\]</div>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">event</span><span class="o">&gt;</span><span class="w"> </span><span class="n">events</span><span class="p">;</span><span class="w"></span>
-<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="nl">comm</span> <span class="p">:</span><span class="w"> </span><span class="n">comms</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">comm</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">comms</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
 <span class="w">   </span><span class="n">events</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">ccl</span><span class="o">::</span><span class="n">allreduce</span><span class="p">(</span><span class="n">send_buf</span><span class="p">,</span><span class="w"></span>
 <span class="w">                                    </span><span class="n">recv_buf</span><span class="p">,</span><span class="w"></span>
 <span class="w">                                    </span><span class="n">elem_count</span><span class="p">,</span><span class="w"></span>
@@ -519,7 +519,7 @@
 <span class="w">                                    </span><span class="n">streams</span><span class="p">[</span><span class="n">comm</span><span class="p">.</span><span class="n">rank</span><span class="p">()]));</span><span class="w"></span>
 <span class="p">}</span><span class="w"></span>
 
-<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="nl">e</span> <span class="p">:</span><span class="w"> </span><span class="n">events</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">e</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">events</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
 <span class="w">   </span><span class="n">e</span><span class="p">.</span><span class="n">wait</span><span class="p">();</span><span class="w"></span>
 <span class="p">}</span><span class="w"></span>
 </pre></div>

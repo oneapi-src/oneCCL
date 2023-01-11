@@ -82,7 +82,7 @@
   <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
 </form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
     <div class="bd-toc-item active">
-        <p class="caption">
+        <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Get Started
  </span>
@@ -109,7 +109,7 @@
   </a>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Developer Guide
  </span>
@@ -207,7 +207,7 @@
   </ul>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Developer Reference
  </span>
@@ -347,7 +347,7 @@
   </a>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Notices and Disclaimers
  </span>
@@ -449,26 +449,26 @@
                 
   <div class="section" id="datatypes">
 <h1>Datatypes<a class="headerlink" href="#datatypes" title="Permalink to this headline">¶</a></h1>
-<p><strong>template&lt;class… attr_val_type&gt; datatype_attr CCL_API create_datatype_attr (attr_val_type &amp;&amp;… avs)</strong>
-Creates an attribute object that may be used to register custom datatype.</p>
-<p><strong>Returns</strong>
-an attribute object</p>
-<p><strong>datatype CCL_API register_datatype (const datatype_attr &amp;attr)</strong>
-Registers custom datatype to be used in communication operations.</p>
-<p><strong>Parameters</strong>
-attr – datatype attributes</p>
+<p><strong>template&lt;class… attr_val_type&gt; datatype_attr CCL_API create_datatype_attr (attr_val_type &amp;&amp;… avs)</strong></p>
+<p>Creates an attribute object that may be used to register custom datatype.</p>
+<p><strong>Returns</strong></p>
+<p>an attribute object</p>
+<p><strong>datatype CCL_API register_datatype (const datatype_attr &amp;attr)</strong></p>
+<p>Registers custom datatype to be used in communication operations.</p>
+<p><strong>Parameters</strong></p>
+<p>attr – datatype attributes</p>
 <p><strong>Returns</strong>
 datatype handle</p>
-<p><strong>void CCL_API deregister_datatype (datatype dtype)</strong>
-Deregisters custom datatype.</p>
-<p><strong>Parameters</strong>
-dtype – custom datatype handle</p>
-<p><strong>size_t CCL_API get_datatype_size (datatype dtype)</strong>
-Retrieves a datatype size in bytes.</p>
-<p><strong>Parameters</strong>
-dtype – datatype handle</p>
-<p><strong>Returns</strong>
-datatype size</p>
+<p><strong>void CCL_API deregister_datatype (datatype dtype)</strong></p>
+<p>Deregisters custom datatype.</p>
+<p><strong>Parameters</strong></p>
+<p>dtype – custom datatype handle</p>
+<p><strong>size_t CCL_API get_datatype_size (datatype dtype)</strong></p>
+<p>Retrieves a datatype size in bytes.</p>
+<p><strong>Parameters</strong></p>
+<p>dtype – datatype handle</p>
+<p><strong>Returns</strong></p>
+<p>datatype size</p>
 </div>
 
 

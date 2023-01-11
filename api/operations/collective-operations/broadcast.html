@@ -82,7 +82,7 @@
   <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
 </form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
     <div class="bd-toc-item active">
-        <p class="caption">
+        <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Get Started
  </span>
@@ -109,7 +109,7 @@
   </a>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Developer Guide
  </span>
@@ -207,7 +207,7 @@
   </ul>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Developer Reference
  </span>
@@ -347,7 +347,7 @@
   </a>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Notices and Disclaimers
  </span>
@@ -449,8 +449,8 @@
                 
   <div class="section" id="broadcast">
 <h1>Broadcast<a class="headerlink" href="#broadcast" title="Permalink to this headline">¶</a></h1>
-<p><strong>event CCL_API broadcast (void *buf, size_t count, datatype dtype, int root, const communicator &amp;comm, const stream &amp;stream, const broadcast_attr &amp;attr=default_broadcast_attr, const vector_class&lt; event &gt; &amp;deps={})</strong>
-Broadcast is a collective communication operation that broadcasts data from one rank of communicator (denoted as root) to all other ranks.</p>
+<p><strong>event CCL_API broadcast (void *buf, size_t count, datatype dtype, int root, const communicator &amp;comm, const stream &amp;stream, const broadcast_attr &amp;attr=default_broadcast_attr, const vector_class&lt; event &gt; &amp;deps={})</strong></p>
+<p>Broadcast is a collective communication operation that broadcasts data from one rank of communicator (denoted as root) to all other ranks.</p>
 <p><strong>Parameters</strong></p>
 <ul class="simple">
 <li><p>buf – [in,out] the buffer with count elements of dtype serves as send buffer for root and as receive buffer for other ranks</p></li>
@@ -462,18 +462,18 @@ Broadcast is a collective communication operation that broadcasts data from one 
 <li><p>attr – optional attributes to customize operation</p></li>
 <li><p>deps – an optional vector of the events that the operation should depend on</p></li>
 </ul>
-<p><strong>Returns</strong>
-ccl::event an object to track the progress of the operation</p>
-<p><strong>event CCL_API broadcast (void *buf, size_t count, datatype dtype, int root, const communicator &amp;comm, const broadcast_attr &amp;attr=default_broadcast_attr, const vector_class&lt; event &gt; &amp;deps={})</strong>
-This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
-<p><strong>template&lt;class BufferType, class = typename std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(), event&gt;::type&gt; event CCL_API broadcast (BufferType *buf, size_t count, int root, const communicator &amp;comm, const stream &amp;stream, const broadcast_attr &amp;attr=default_broadcast_attr, const vector_class&lt; event &gt; &amp;deps={})</strong>
-This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
-<p><strong>template&lt;class BufferType, class = typename std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(), event&gt;::type&gt; event CCL_API broadcast (BufferType *buf, size_t count, int root, const communicator &amp;comm, const broadcast_attr &amp;attr=default_broadcast_attr, const vector_class&lt; event &gt; &amp;deps={})</strong>
-This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
-<p><strong>template&lt;class BufferObjectType, class = typename std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(), event&gt;::type&gt; event CCL_API broadcast (BufferObjectType &amp;buf, size_t count, int root, const communicator &amp;comm, const stream &amp;stream, const broadcast_attr &amp;attr=default_broadcast_attr, const vector_class&lt; event &gt; &amp;deps={})</strong>
-This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
-<p><strong>template&lt;class BufferObjectType, class = typename std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(), event&gt;::type&gt; event CCL_API broadcast (BufferObjectType &amp;buf, size_t count, int root, const communicator &amp;comm, const broadcast_attr &amp;attr=default_broadcast_attr, const vector_class&lt; event &gt; &amp;deps={})</strong>
-This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p><strong>Returns</strong></p>
+<p>ccl::event an object to track the progress of the operation</p>
+<p><strong>event CCL_API broadcast (void *buf, size_t count, datatype dtype, int root, const communicator &amp;comm, const broadcast_attr &amp;attr=default_broadcast_attr, const vector_class&lt; event &gt; &amp;deps={})</strong></p>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p><strong>template&lt;class BufferType, class = typename std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(), event&gt;::type&gt; event CCL_API broadcast (BufferType *buf, size_t count, int root, const communicator &amp;comm, const stream &amp;stream, const broadcast_attr &amp;attr=default_broadcast_attr, const vector_class&lt; event &gt; &amp;deps={})</strong></p>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p><strong>template&lt;class BufferType, class = typename std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(), event&gt;::type&gt; event CCL_API broadcast (BufferType *buf, size_t count, int root, const communicator &amp;comm, const broadcast_attr &amp;attr=default_broadcast_attr, const vector_class&lt; event &gt; &amp;deps={})</strong></p>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p><strong>template&lt;class BufferObjectType, class = typename std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(), event&gt;::type&gt; event CCL_API broadcast (BufferObjectType &amp;buf, size_t count, int root, const communicator &amp;comm, const stream &amp;stream, const broadcast_attr &amp;attr=default_broadcast_attr, const vector_class&lt; event &gt; &amp;deps={})</strong></p>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p><strong>template&lt;class BufferObjectType, class = typename std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(), event&gt;::type&gt; event CCL_API broadcast (BufferObjectType &amp;buf, size_t count, int root, const communicator &amp;comm, const broadcast_attr &amp;attr=default_broadcast_attr, const vector_class&lt; event &gt; &amp;deps={})</strong></p>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
 </div>
 
 

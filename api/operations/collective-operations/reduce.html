@@ -82,7 +82,7 @@
   <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
 </form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
     <div class="bd-toc-item active">
-        <p class="caption">
+        <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Get Started
  </span>
@@ -109,7 +109,7 @@
   </a>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Developer Guide
  </span>
@@ -207,7 +207,7 @@
   </ul>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Developer Reference
  </span>
@@ -347,7 +347,7 @@
   </a>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Notices and Disclaimers
  </span>
@@ -449,8 +449,8 @@
                 
   <div class="section" id="reduce">
 <h1>Reduce<a class="headerlink" href="#reduce" title="Permalink to this headline">¶</a></h1>
-<p><strong>event CCL_API reduce (const void *send_buf, void *recv_buf, size_t count, datatype dtype, reduction rtype, int root, const communicator &amp;comm, const stream &amp;stream, const reduce_attr &amp;attr=default_reduce_attr, const vector_class&lt; event &gt; &amp;deps={})</strong>
-Reduce is a collective communication operation that performs the global reduction operation on values from all ranks of the communicator and returns the result to the root rank.</p>
+<p><strong>event CCL_API reduce (const void *send_buf, void *recv_buf, size_t count, datatype dtype, reduction rtype, int root, const communicator &amp;comm, const stream &amp;stream, const reduce_attr &amp;attr=default_reduce_attr, const vector_class&lt; event &gt; &amp;deps={})</strong></p>
+<p>Reduce is a collective communication operation that performs the global reduction operation on values from all ranks of the communicator and returns the result to the root rank.</p>
 <p><strong>Parameters</strong></p>
 <ul class="simple">
 <li><p>send_buf – the buffer with count elements of dtype that stores local data to be reduced</p></li>
@@ -464,18 +464,18 @@ Reduce is a collective communication operation that performs the global reductio
 <li><p>attr – optional attributes to customize operation</p></li>
 <li><p>deps – an optional vector of the events that the operation should depend on</p></li>
 </ul>
-<p><strong>Returns</strong>
-ccl::event an object to track the progress of the operation</p>
-<p><strong>event CCL_API reduce (const void *send_buf, void *recv_buf, size_t count, datatype dtype, reduction rtype, int root, const communicator &amp;comm, const reduce_attr &amp;attr=default_reduce_attr, const vector_class&lt; event &gt; &amp;deps={})</strong>
-This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
-<p><strong>template&lt;class BufferType, class = typename std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(), event&gt;::type&gt; event CCL_API reduce (const BufferType *send_buf, BufferType *recv_buf, size_t count, reduction rtype, int root, const communicator &amp;comm, const stream &amp;stream, const reduce_attr &amp;attr=default_reduce_attr, const vector_class&lt; event &gt; &amp;deps={})</strong>
-This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
-<p><strong>template&lt;class BufferType, class = typename std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(), event&gt;::type&gt; event CCL_API reduce (const BufferType *send_buf, BufferType *recv_buf, size_t count, reduction rtype, int root, const communicator &amp;comm, const reduce_attr &amp;attr=default_reduce_attr, const vector_class&lt; event &gt; &amp;deps={})</strong>
-This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
-<p><strong>template&lt;class BufferObjectType, class = typename std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(), event&gt;::type&gt; event CCL_API reduce (const BufferObjectType &amp;send_buf, BufferObjectType &amp;recv_buf, size_t count, reduction rtype, int root, const communicator &amp;comm, const stream &amp;stream, const reduce_attr &amp;attr=default_reduce_attr, const vector_class&lt; event &gt; &amp;deps={})</strong>
-This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
-<p><strong>template&lt;class BufferObjectType, class = typename std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(), event&gt;::type&gt; event CCL_API reduce (const BufferObjectType &amp;send_buf, BufferObjectType &amp;recv_buf, size_t count, reduction rtype, int root, const communicator &amp;comm, const reduce_attr &amp;attr=default_reduce_attr, const vector_class&lt; event &gt; &amp;deps={})</strong>
-This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p><strong>Returns</strong></p>
+<p>ccl::event an object to track the progress of the operation</p>
+<p><strong>event CCL_API reduce (const void *send_buf, void *recv_buf, size_t count, datatype dtype, reduction rtype, int root, const communicator &amp;comm, const reduce_attr &amp;attr=default_reduce_attr, const vector_class&lt; event &gt; &amp;deps={})</strong></p>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p><strong>template&lt;class BufferType, class = typename std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(), event&gt;::type&gt; event CCL_API reduce (const BufferType *send_buf, BufferType *recv_buf, size_t count, reduction rtype, int root, const communicator &amp;comm, const stream &amp;stream, const reduce_attr &amp;attr=default_reduce_attr, const vector_class&lt; event &gt; &amp;deps={})</strong></p>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p><strong>template&lt;class BufferType, class = typename std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(), event&gt;::type&gt; event CCL_API reduce (const BufferType *send_buf, BufferType *recv_buf, size_t count, reduction rtype, int root, const communicator &amp;comm, const reduce_attr &amp;attr=default_reduce_attr, const vector_class&lt; event &gt; &amp;deps={})</strong></p>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p><strong>template&lt;class BufferObjectType, class = typename std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(), event&gt;::type&gt; event CCL_API reduce (const BufferObjectType &amp;send_buf, BufferObjectType &amp;recv_buf, size_t count, reduction rtype, int root, const communicator &amp;comm, const stream &amp;stream, const reduce_attr &amp;attr=default_reduce_attr, const vector_class&lt; event &gt; &amp;deps={})</strong></p>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p><strong>template&lt;class BufferObjectType, class = typename std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(), event&gt;::type&gt; event CCL_API reduce (const BufferObjectType &amp;send_buf, BufferObjectType &amp;recv_buf, size_t count, reduction rtype, int root, const communicator &amp;comm, const reduce_attr &amp;attr=default_reduce_attr, const vector_class&lt; event &gt; &amp;deps={})</strong></p>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
 </div>
 
 
