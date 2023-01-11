@@ -82,7 +82,7 @@
   <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
 </form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
     <div class="bd-toc-item active">
-        <p class="caption">
+        <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Get Started
  </span>
@@ -109,7 +109,7 @@
   </a>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Developer Guide
  </span>
@@ -207,7 +207,7 @@
   </ul>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Developer Reference
  </span>
@@ -347,7 +347,7 @@
   </a>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Notices and Disclaimers
  </span>
@@ -449,16 +449,16 @@
                 
   <div class="section" id="communicator">
 <h1>Communicator<a class="headerlink" href="#communicator" title="Permalink to this headline">¶</a></h1>
-<p><strong>template&lt;class… attr_val_type&gt; comm_attr CCL_API create_comm_attr (attr_val_type &amp;&amp;… avs)</strong>
-Creates an attribute object that may be used to control the create_communicator operation.</p>
-<p><strong>Returns</strong>
-an attribute object</p>
-<p><strong>template&lt;class… attr_val_type&gt; comm_split_attr CCL_API create_comm_split_attr (attr_val_type &amp;&amp;… avs)</strong>
-Creates an attribute object that may be used to control the split_communicator operation.</p>
-<p>Returns
-an attribute object</p>
-<p><strong>template&lt;class DeviceType, class ContextType&gt; vector_class&lt; communicator &gt; CCL_API create_communicators (int size, const vector_class&lt; pair_class&lt; int, DeviceType &gt;&gt; &amp;devices, const ContextType &amp;context, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</strong>
-Creates new communicators with user supplied size, ranks, local device-rank mapping and kvs.</p>
+<p><strong>template&lt;class… attr_val_type&gt; comm_attr CCL_API create_comm_attr (attr_val_type &amp;&amp;… avs)</strong></p>
+<p>Creates an attribute object that may be used to control the create_communicator operation.</p>
+<p><strong>Returns</strong></p>
+<p>an attribute object</p>
+<p><strong>template&lt;class… attr_val_type&gt; comm_split_attr CCL_API create_comm_split_attr (attr_val_type &amp;&amp;… avs)</strong></p>
+<p>Creates an attribute object that may be used to control the split_communicator operation.</p>
+<p><strong>Returns</strong></p>
+<p>an attribute object</p>
+<p><strong>template&lt;class DeviceType, class ContextType&gt; vector_class&lt; communicator &gt; CCL_API create_communicators (int size, const vector_class&lt; pair_class&lt; int, DeviceType &gt;&gt; &amp;devices, const ContextType &amp;context, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</strong></p>
+<p>Creates new communicators with user supplied size, ranks, local device-rank mapping and kvs.</p>
 <p><strong>Parameters</strong></p>
 <ul class="simple">
 <li><p>size – user-supplied total number of ranks</p></li>
@@ -469,16 +469,16 @@ Creates new communicators with user supplied size, ranks, local device-rank mapp
 <li><p>kvs – key-value store for ranks wire-up</p></li>
 <li><p>attr – optional communicator attributes</p></li>
 </ul>
-<p><strong>Returns</strong>
-vector of communicators / communicator</p>
-<p><strong>template&lt;class DeviceType, class ContextType&gt; vector_class&lt; communicator &gt; CCL_API create_communicators (int size, const map_class&lt; int, DeviceType &gt; &amp;devices, const ContextType &amp;context, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</strong>
-This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
-<p><strong>template&lt;class DeviceType, class ContextType&gt; communicator CCL_API create_communicator (int size, int rank, DeviceType &amp;device, const ContextType &amp;context, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</strong>
-This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
-<p><strong>communicator CCL_API create_communicator (int size, int rank, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</strong>
-This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
-<p><strong>template&lt;class DeviceType, class ContextType&gt; vector_class&lt; communicator &gt; CCL_API create_communicators (int size, const vector_class&lt; DeviceType &gt; &amp;devices, const ContextType &amp;context, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</strong>
-Creates a new communicators with user supplied size, local devices and kvs. Ranks will be assigned automatically.</p>
+<p><strong>Returns</strong></p>
+<p>vector of communicators / communicator</p>
+<p><strong>template&lt;class DeviceType, class ContextType&gt; vector_class&lt; communicator &gt; CCL_API create_communicators (int size, const map_class&lt; int, DeviceType &gt; &amp;devices, const ContextType &amp;context, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</strong></p>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p><strong>template&lt;class DeviceType, class ContextType&gt; communicator CCL_API create_communicator (int size, int rank, DeviceType &amp;device, const ContextType &amp;context, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</strong></p>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p><strong>communicator CCL_API create_communicator (int size, int rank, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</strong></p>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p><strong>template&lt;class DeviceType, class ContextType&gt; vector_class&lt; communicator &gt; CCL_API create_communicators (int size, const vector_class&lt; DeviceType &gt; &amp;devices, const ContextType &amp;context, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</strong></p>
+<p>Creates a new communicators with user supplied size, local devices and kvs. Ranks will be assigned automatically.</p>
 <p><strong>Parameters</strong></p>
 <ul class="simple">
 <li><p>size – user-supplied total number of ranks</p></li>
@@ -487,23 +487,23 @@ Creates a new communicators with user supplied size, local devices and kvs. Rank
 <li><p>kvs – key-value store for ranks wire-up</p></li>
 <li><p>attr – optional communicator attributes</p></li>
 </ul>
-<p><strong>Returns</strong>
-vector of communicators / communicator</p>
-<p><strong>communicator CCL_API create_communicator (int size, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</strong>
-This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
-<p><strong>communicator CCL_API create_communicator (const comm_attr &amp;attr=default_comm_attr)</strong>
-Creates a new communicator with externally provided size, rank and kvs. Implementation is platform specific and non portable.</p>
+<p><strong>Returns</strong></p>
+<p>vector of communicators / communicator</p>
+<p><strong>communicator CCL_API create_communicator (int size, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</strong></p>
 <p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
-<p><strong>Parameters</strong>
-attr – optional communicator attributes</p>
-<p><strong>Returns</strong>
-communicator</p>
-<p><strong>vector_class&lt; communicator &gt; CCL_API split_communicators (const vector_class&lt; pair_class&lt; communicator, comm_split_attr &gt;&gt; &amp;attrs)</strong>
-Splits communicators according to attributes.</p>
-<p><strong>Parameters</strong>
-attrs – split attributes for local communicators</p>
-<p><strong>Returns</strong>
-vector of communicators</p>
+<p><strong>communicator CCL_API create_communicator (const comm_attr &amp;attr=default_comm_attr)</strong></p>
+<p>Creates a new communicator with externally provided size, rank and kvs. Implementation is platform specific and non portable.</p>
+<p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p><strong>Parameters</strong></p>
+<p>attr – optional communicator attributes</p>
+<p><strong>Returns</strong></p>
+<p>communicator</p>
+<p><strong>vector_class&lt; communicator &gt; CCL_API split_communicators (const vector_class&lt; pair_class&lt; communicator, comm_split_attr &gt;&gt; &amp;attrs)</strong></p>
+<p>Splits communicators according to attributes.</p>
+<p><strong>Parameters</strong></p>
+<p>attrs – split attributes for local communicators</p>
+<p><strong>Returns</strong></p>
+<p>vector of communicators</p>
 </div>
 
 

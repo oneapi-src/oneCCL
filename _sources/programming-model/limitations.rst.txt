@@ -8,3 +8,4 @@ The list of scenarios not yet supported by oneCCL:
 
 
 .. note:: Currently, collectives are synchronizing the host thread.
+    

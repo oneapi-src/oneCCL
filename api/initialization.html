@@ -82,7 +82,7 @@
   <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
 </form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
     <div class="bd-toc-item active">
-        <p class="caption">
+        <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Get Started
  </span>
@@ -109,7 +109,7 @@
   </a>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Developer Guide
  </span>
@@ -207,7 +207,7 @@
   </ul>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Developer Reference
  </span>
@@ -347,7 +347,7 @@
   </a>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Notices and Disclaimers
  </span>
@@ -449,16 +449,16 @@
                 
   <div class="section" id="initialization">
 <h1>Initialization<a class="headerlink" href="#initialization" title="Permalink to this headline">¶</a></h1>
-<p><strong>template&lt;class… attr_val_type&gt; init_attr CCL_API create_init_attr (attr_val_type &amp;&amp;… avs)</strong>
-Creates an attribute object that may be used to control the init operation.</p>
-<p><strong>Returns</strong>
-an attribute object</p>
-<p><strong>void CCL_API init (const init_attr &amp;attr=default_init_attr)</strong>
-Initializes the library. Optional for invocation.</p>
-<p><strong>Parameters</strong>
-attr – optional init attributes</p>
-<p><strong>library_version CCL_API get_library_version ()</strong>
-Retrieves the library version.</p>
+<p><strong>template&lt;class… attr_val_type&gt; init_attr CCL_API create_init_attr (attr_val_type &amp;&amp;… avs)</strong></p>
+<p>Creates an attribute object that may be used to control the init operation.</p>
+<p><strong>Returns</strong></p>
+<p>an attribute object</p>
+<p><strong>void CCL_API init (const init_attr &amp;attr=default_init_attr)</strong></p>
+<p>Initializes the library. Optional for invocation.</p>
+<p><strong>Parameters</strong></p>
+<p>attr – optional init attributes</p>
+<p><strong>library_version CCL_API get_library_version ()</strong></p>
+<p>Retrieves the library version.</p>
 </div>
 
 

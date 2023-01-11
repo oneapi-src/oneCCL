@@ -1,24 +1,34 @@
 Key-value Store
 ***********************
 
-**template<class... attr_val_type> kvs_attr CCL_API create_kvs_attr (attr_val_type &&... avs)**
-**shared_ptr_class< kvs > CCL_API create_main_kvs (const kvs_attr &attr=default_kvs_attr)**
+**template<class… attr_val_type> kvs_attr CCL_API create_kvs_attr (attr_val_type &&… avs) shared_ptr_class< kvs > CCL_API create_main_kvs (const kvs_attr &attr=default_kvs_attr)**
+
 Creates a main key-value store. Its address should be distributed using out of band communication mechanism and be used to create key-value stores on other processes.
 
+
 **Parameters**
+
 attr – optional kvs attributes
 
+
+
 **Returns**
+
 kvs object
 
+
 **shared_ptr_class< kvs > CCL_API create_kvs (const kvs::address_type &addr, const kvs_attr &attr=default_kvs_attr)**
+
 Creates a new key-value store from main kvs address.
+
+
 
 **Parameters**
 
 * addr – address of main kvs
 * attr – optional kvs attributes
 
-**Returns**
-kvs object
 
+**Returns**
+
+kvs object

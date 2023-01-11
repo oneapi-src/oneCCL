@@ -82,7 +82,7 @@
   <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
 </form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
     <div class="bd-toc-item active">
-        <p class="caption">
+        <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Get Started
  </span>
@@ -109,7 +109,7 @@
   </a>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Developer Guide
  </span>
@@ -207,7 +207,7 @@
   </ul>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Developer Reference
  </span>
@@ -347,7 +347,7 @@
   </a>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Notices and Disclaimers
  </span>
@@ -449,10 +449,13 @@
                 
   <div class="section" id="context">
 <h1>Context<a class="headerlink" href="#context" title="Permalink to this headline">¶</a></h1>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>doxygengroup: Cannot find file: /mnt/c/users/aepanchi/doxygen/xml/index.xml</p>
-</div>
+<p><strong>template&lt;class native_context_type, class = typename std::enable_if&lt;is_context_supported&lt;native_context_type&gt;()&gt;::type&gt; context CCL_API create_context (native_context_type &amp;&amp;native_context)</strong></p>
+<p>Creates a new context from .</p>
+<p><strong>Parameters</strong></p>
+<p>native_context – the existing handle of context</p>
+<p><strong>Returns</strong></p>
+<p>context object</p>
+<p><strong>context CCL_API create_context ()</strong></p>
 </div>
 
 

@@ -82,7 +82,7 @@
   <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
 </form><nav class="bd-links" id="bd-docs-nav" aria-label="Main">
     <div class="bd-toc-item active">
-        <p class="caption">
+        <p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Get Started
  </span>
@@ -109,7 +109,7 @@
   </a>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Developer Guide
  </span>
@@ -207,7 +207,7 @@
   </ul>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Developer Reference
  </span>
@@ -347,7 +347,7 @@
   </a>
  </li>
 </ul>
-<p class="caption">
+<p aria-level="2" class="caption" role="heading">
  <span class="caption-text">
   Notices and Disclaimers
  </span>
@@ -470,13 +470,13 @@ that can be passed to the
 <a class="reference external" href="https://cmake.org/cmake/help/latest/command/target_link_libraries.html">target_link_libraries</a> command.</p>
 <p>For example:</p>
 <div class="highlight-cmake notranslate"><div class="highlight"><pre><span></span><span class="nb">project</span><span class="p">(</span><span class="s">Foo</span><span class="p">)</span>
-<span class="nb">add_executable</span><span class="p">(</span><span class="s">foo</span> <span class="s">foo.cpp</span><span class="p">)</span>
+<span class="nb">add_executable</span><span class="p">(</span><span class="s">foo</span><span class="w"> </span><span class="s">foo.cpp</span><span class="p">)</span>
 
 <span class="c"># Search for oneCCL</span>
-<span class="nb">find_package</span><span class="p">(</span><span class="s">oneCCL</span> <span class="s">REQUIRED</span><span class="p">)</span>
+<span class="nb">find_package</span><span class="p">(</span><span class="s">oneCCL</span><span class="w"> </span><span class="s">REQUIRED</span><span class="p">)</span>
 
 <span class="c"># Connect oneCCL to foo</span>
-<span class="nb">target_link_libraries</span><span class="p">(</span><span class="s">foo</span> <span class="s">oneCCL</span><span class="p">)</span>
+<span class="nb">target_link_libraries</span><span class="p">(</span><span class="s">foo</span><span class="w"> </span><span class="s">oneCCL</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="section" id="onecclconfig-files-generation">
