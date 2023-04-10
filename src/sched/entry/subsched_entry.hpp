@@ -29,8 +29,13 @@ public:
     subsched_entry(ccl_sched* sched,
                    ccl_op_id_t op_id,
                    std::function<void(ccl_sched*)> build_fn,
-                   const char* subsched_name)
-            : sched_entry(sched),
+                   const char* subsched_name,
+                   bool is_coll = false)
+            : sched_entry(sched,
+                          false /*is_barrier*/,
+                          false /*is_urgent*/,
+                          false /*is_nonblocking*/,
+                          is_coll),
               build_fn(build_fn),
               op_id(op_id),
               subsched_name(subsched_name),
@@ -54,6 +59,8 @@ public:
         ccl::global_data& data = ccl::global_data::get();
         subsched.reset(new ccl_sched(sched_param));
         bool update_sched_id = false;
+        //copy to_cache value to enable master subsched to be reused in scaleout
+        subsched->coll_attr.to_cache = sched->coll_attr.to_cache;
         subsched->commit(data.parallelizer.get(), update_sched_id);
         CCL_THROW_IF_NOT(subsched->sched_id == build_sched_id);
         auto& subscheds = subsched->get_subscheds();

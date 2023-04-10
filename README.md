@@ -153,6 +153,6 @@ See [CONTRIBUTING](CONTRIBUTING.md) for more information.
 Distributed under the Apache License 2.0 license. See [LICENSE](LICENSE) for more
 information.
 
-## Security <!-- omit in toc -->
+## Security Policy <!-- omit in toc -->
 
-To report a vulnerability, refer to [Intel vulnerability reporting policy](https://www.intel.com/content/www/us/en/security-center/default.html).
+See [SECURITY](SECURITY.md) for more information.

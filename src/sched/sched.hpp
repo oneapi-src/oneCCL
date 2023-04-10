@@ -41,6 +41,8 @@ enum ccl_sched_in_bin_status {
 class ccl_sched;
 typedef ccl::status (*ccl_sched_finalize_fn_t)(ccl_sched*, const void*);
 
+static constexpr int invalid_entry_idx = -1;
+
 class sched_restart_manager;
 
 class ccl_sched_key;
@@ -90,6 +92,11 @@ public:
     static ccl_sched_ptr create(const ccl_coll_param& param, const ccl_coll_attr& attr);
 
     bool is_strict_order_satisfied();
+
+#ifdef CCL_ENABLE_SYCL
+    int configure_preparation();
+    void prerun();
+#endif // CCL_ENABLE_SYCL
 
     void do_progress();
 
@@ -220,6 +227,9 @@ public:
     size_t entries_count() const;
     sched_type_t type;
 
+    bool configured_preparation = false;
+    bool finished_preparation = false;
+
 private:
     void reset_state();
     void prepare_subscheds(bool update_sched_id = true);
@@ -257,6 +267,7 @@ private:
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
     const bool use_output_event = false;
+    int prerun_entry_idx = invalid_entry_idx;
 #endif
     const bool top_level_sched;
 

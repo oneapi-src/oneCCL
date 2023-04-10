@@ -149,6 +149,8 @@ ccl::status ccl_coll_build_naive_alltoallv(ccl_sched* main_sched,
     for (int idx = 0; idx < comm_size; idx++) {
         if (idx == comm_rank)
             continue;
+        if (recv_counts[idx] == 0 || send_counts[idx] == 0)
+            continue;
 
         size_t sched_idx = (comm_rank + idx) % sched_count;
 
@@ -436,46 +438,6 @@ ccl::status ccl_coll_build_topo_alltoallv(ccl_sched* main_sched,
     std::vector<ze_event_handle_t> wait_events;
     std::list<ze_event_handle_t> parallel_copy_events;
 
-    auto copy_to_peers = [&](std::vector<ccl_buffer>& bufs,
-                             std::vector<size_t>& counts,
-                             ccl_comm* comm,
-                             int start_buf_idx,
-                             int offset) {
-        auto card_count = even_comm->size();
-        auto tile_count = pair_comm->size();
-        for (int card_idx = 0; card_idx < card_count; card_idx++) {
-            for (int tile_idx = 0; tile_idx < tile_count; tile_idx++) {
-                auto peer_rank = (card_idx * tile_count + tile_idx);
-                if (peer_rank == comm->rank())
-                    continue;
-                copy_attr attr{};
-                attr.peer_rank = peer_rank;
-                attr.peer_buf_idx = start_buf_idx + offset;
-                attr.map_comm = comm;
-                attr.hint_queue_index = parallel_copy_events.size();
-                attr.direction = copy_direction::c2c;
-
-                if (!is_single_node) {
-                    // in order to get the correct offset for peer rank for example(2)
-                    peer_rank = peer_rank + (r2r_comm->rank() * node_comm->size());
-                }
-
-                auto src = bufs[peer_rank];
-                auto dst = ccl_buffer();
-                if (is_read) {
-                    src = ccl_buffer();
-                    dst = bufs[peer_rank];
-                    LOG_DEBUG("ze_copy: read copy is enabled")
-                }
-
-                auto entry = entry_factory::create<ze_copy_entry>(
-                    sched, src, dst, counts[peer_rank], dtype, attr, wait_events);
-                parallel_copy_events.push_back(entry->entry_event);
-            }
-        }
-        LOG_DEBUG("copy_to_peers phase done")
-    };
-
     auto add_sched_barrier_for_parallel_copies = [&]() {
         wait_events.insert(
             wait_events.end(), parallel_copy_events.begin(), parallel_copy_events.end());
@@ -493,63 +455,9 @@ ccl::status ccl_coll_build_topo_alltoallv(ccl_sched* main_sched,
         LOG_DEBUG("copy_to_self phase done")
     };
 
-    auto inplace_mode = [&](ccl_comm* comm, int offset) {
-        for (int idx = 0; idx < comm_size; idx++) {
-            CCL_THROW_IF_NOT(send_bufs[idx].get_ptr() == recv_bufs[idx].get_ptr(),
-                             "unexpected send_buf ptr for inplace case");
-        }
-
-        // copy from all recvs to tmps
-        for (int idx = 0; idx < comm_size; idx++) {
-            copy_to_self(recv_bufs[idx], tmp_bufs[idx], send_counts[idx]);
-        }
-        add_sched_barrier_for_parallel_copies();
-        ccl::add_comm_barrier(sched, node_comm, wait_events);
-
-        // copy from peer rank send to peer rank recv
-        if (is_read) {
-            copy_to_peers(recv_bufs, recv_counts, comm, tmp_buf_idx_start, offset);
-        }
-        else {
-            copy_to_peers(tmp_bufs, send_counts, comm, recv_buf_idx_start, offset);
-        }
-    };
-
-    // the case, when it only goes on a single node,
-    // scale up is performing
-    if (is_single_node) {
-        LOG_DEBUG("topo/scale_up/intra: in single node case");
-        if (is_inplace) {
-            LOG_DEBUG("inplace/topo/scale_up/intra: in single node case");
-            // do scale up for inplace on a global comm
-            inplace_mode(comm, comm->rank());
-        }
-        else {
-            LOG_DEBUG("outofplace/topo/scale_up/intra: in single node case");
-            // do scale up for outofplace on a global comm
-            // copy from own send to own recv
-            copy_to_self(
-                send_bufs[comm->rank()], recv_bufs[comm->rank()], send_counts[comm->rank()]);
-            // copy from peer rank send to peer rank recv
-            if (is_read) {
-                copy_to_peers(recv_bufs, recv_counts, comm, send_buf_idx_start, comm->rank());
-            }
-            else {
-                copy_to_peers(send_bufs, send_counts, comm, recv_buf_idx_start, comm->rank());
-            }
-        }
-    }
-
-    // the last part of scale out case is intra scale up
-    // it runs when it is multi
-    if (!is_single_node) {
-        // Here is example of the whole flow:
-        // input data:      scale-out:(1)  scale-up:(2)   result:
-        // 0r 0  1  2  3    |x  x  8  12   |0  4  x  x   |0  4  8  12
-        // 1r 4  5  6  7    |x  x  9  13   |1  5  x  x   |1  5  9  13
-        // 2r 8  9  10 11   |2  6  x  x    |x  x  10 14  |2  6  10 14
-        // 3r 12 13 14 15   |3  7  x  x    |x  x  11 15  |3  7  11 15
-
+    auto add_scaleout_op = [&](std::vector<ccl_buffer>& send_bufs,
+                               std::vector<ccl_buffer>& recv_bufs) {
+        LOG_DEBUG("topo/scale_out: scale-out op");
         // set it by default to use
         // scatter algo for scale out phase
         auto ze_multi_workers_saved = ccl::global_data::env().ze_multi_workers;
@@ -571,46 +479,200 @@ ccl::status ccl_coll_build_topo_alltoallv(ccl_sched* main_sched,
             }
         }
 
+        auto in_bufs = send_bufs;
+        auto out_bufs = recv_bufs;
+        if (is_inplace) {
+            // copy from all recvs to tmps
+            for (int idx = 0; idx < comm->size(); idx++) {
+                copy_to_self(recv_bufs[idx], tmp_bufs[idx], send_counts[idx]);
+            }
+            add_sched_barrier_for_parallel_copies();
+            ccl::add_comm_barrier(sched, node_comm, wait_events);
+
+            in_bufs = tmp_bufs;
+            out_bufs = recv_bufs;
+        }
+
         // preparation for host alltoall coll
         ccl_coll_entry_param host_coll_param{ .ctype = ccl_coll_alltoallv,
-                                              .send_bufs = send_bufs,
-                                              .recv_bufs = recv_bufs,
+                                              .send_bufs = in_bufs,
+                                              .recv_bufs = out_bufs,
                                               .send_counts = tmp_send_counts.data(),
                                               .recv_counts = tmp_recv_counts.data(),
                                               .dtype = dtype,
                                               .comm = comm };
-        if (is_inplace) {
-            host_coll_param.recv_bufs = send_bufs;
-        }
+
         host_coll_param.hint_algo.alltoallv = ccl_coll_alltoallv_direct;
 
         // do alltoall on the host (scale out) using global comm
         ccl::add_scaleout(sched, host_coll_param, is_single_node, wait_events);
         // returned back saved value
         ccl::global_data::env().ze_multi_workers = ze_multi_workers_saved;
+    };
 
-        LOG_DEBUG("topo/scale_up/intra: in scale out case");
-        if (is_inplace) {
-            LOG_DEBUG("inplace/topo/scale_up/intra: in multi node case");
-            // do scale up for inplace on a node comm
-            inplace_mode(node_comm, comm_rank);
+    if (ccl::global_data::env().alltoallv_monolithic_kernel) {
+        auto add_scaleup_mono_op = [&](std::vector<ccl_buffer>& send_bufs,
+                                       std::vector<ccl_buffer>& recv_bufs,
+                                       ccl_comm* comm) {
+            auto buf_idx_start = send_buf_idx_start;
+            auto counts = recv_counts;
+            auto in_bufs = send_bufs;
+            auto out_bufs = recv_bufs;
+
+            if (is_inplace) {
+                // copy from all recvs to tmps
+                for (int idx = 0; idx < comm->size(); idx++) {
+                    copy_to_self(recv_bufs[idx], tmp_bufs[idx], send_counts[idx]);
+                }
+                add_sched_barrier_for_parallel_copies();
+                ccl::add_comm_barrier(sched, node_comm, wait_events);
+
+                buf_idx_start = tmp_buf_idx_start;
+                counts = send_counts;
+                in_bufs = tmp_bufs;
+                out_bufs = recv_bufs;
+            }
+            auto entry = entry_factory::create<ze_alltoallv_entry>(
+                sched, in_bufs, out_bufs, counts, buf_idx_start, dtype, comm, wait_events);
+            wait_events.push_back(entry->entry_event);
+            sched->add_barrier();
+        };
+
+        if (is_single_node) {
+            add_scaleup_mono_op(send_bufs, recv_bufs, comm);
+        }
+        else if (!is_single_node) {
+            add_scaleout_op(send_bufs, recv_bufs);
+            add_scaleup_mono_op(send_bufs, recv_bufs, node_comm);
         }
         else {
-            LOG_DEBUG("outofplace/topo/scale_up/intra: in multi node case");
-            // do scale up for outofplace on a node comm
-            // copy from own send to own recv
-            copy_to_self(
-                send_bufs[comm->rank()], recv_bufs[comm->rank()], send_counts[comm->rank()]);
-            // copy from peer rank send to peer rank recv
-            if (is_read) {
-                copy_to_peers(recv_bufs, recv_counts, node_comm, send_buf_idx_start, comm_rank);
-            }
-            else {
-                copy_to_peers(send_bufs, send_counts, node_comm, recv_buf_idx_start, comm_rank);
-            }
+            CCL_THROW("unexpected case for alltoallv");
         }
     }
-    add_sched_barrier_for_parallel_copies();
+    else {
+        auto copy_to_peers = [&](std::vector<ccl_buffer>& bufs,
+                                 std::vector<size_t>& counts,
+                                 ccl_comm* comm,
+                                 int start_buf_idx,
+                                 int offset) {
+            auto card_count = even_comm->size();
+            auto tile_count = pair_comm->size();
+            for (int card_idx = 0; card_idx < card_count; card_idx++) {
+                for (int tile_idx = 0; tile_idx < tile_count; tile_idx++) {
+                    auto peer_rank = (card_idx * tile_count + tile_idx);
+                    if (peer_rank == comm->rank())
+                        continue;
+                    copy_attr attr{};
+                    attr.peer_rank = peer_rank;
+                    attr.peer_buf_idx = start_buf_idx + offset;
+                    attr.map_comm = comm;
+                    attr.hint_queue_index = parallel_copy_events.size();
+                    attr.direction = copy_direction::c2c;
+
+                    if (!is_single_node) {
+                        // in order to get the correct offset for peer rank for example(2)
+                        peer_rank = peer_rank + (r2r_comm->rank() * node_comm->size());
+                    }
+
+                    auto src = bufs[peer_rank];
+                    auto dst = ccl_buffer();
+                    if (is_read) {
+                        src = ccl_buffer();
+                        dst = bufs[peer_rank];
+                        LOG_DEBUG("ze_copy: read copy is enabled")
+                    }
+
+                    auto entry = entry_factory::create<ze_copy_entry>(
+                        sched, src, dst, counts[peer_rank], dtype, attr, wait_events);
+                    parallel_copy_events.push_back(entry->entry_event);
+                }
+            }
+            LOG_DEBUG("copy_to_peers phase done")
+        };
+
+        auto inplace_mode = [&](ccl_comm* comm, int offset) {
+            for (int idx = 0; idx < comm_size; idx++) {
+                CCL_THROW_IF_NOT(send_bufs[idx].get_ptr() == recv_bufs[idx].get_ptr(),
+                                 "unexpected send_buf ptr for inplace case");
+            }
+
+            // copy from all recvs to tmps
+            for (int idx = 0; idx < comm_size; idx++) {
+                copy_to_self(recv_bufs[idx], tmp_bufs[idx], send_counts[idx]);
+            }
+            add_sched_barrier_for_parallel_copies();
+            ccl::add_comm_barrier(sched, node_comm, wait_events);
+
+            // copy from peer rank send to peer rank recv
+            if (is_read) {
+                copy_to_peers(recv_bufs, recv_counts, comm, tmp_buf_idx_start, offset);
+            }
+            else {
+                copy_to_peers(tmp_bufs, send_counts, comm, recv_buf_idx_start, offset);
+            }
+        };
+
+        // the case, when it only goes on a single node,
+        // scale up is performing
+        if (is_single_node) {
+            LOG_DEBUG("topo/scale_up/intra: in single node case");
+            if (is_inplace) {
+                LOG_DEBUG("inplace/topo/scale_up/intra: in single node case");
+                // do scale up for inplace on a global comm
+                inplace_mode(comm, comm->rank());
+            }
+            else {
+                LOG_DEBUG("outofplace/topo/scale_up/intra: in single node case");
+                // do scale up for outofplace on a global comm
+                // copy from own send to own recv
+                copy_to_self(
+                    send_bufs[comm->rank()], recv_bufs[comm->rank()], send_counts[comm->rank()]);
+                // copy from peer rank send to peer rank recv
+                if (is_read) {
+                    copy_to_peers(recv_bufs, recv_counts, comm, send_buf_idx_start, comm->rank());
+                }
+                else {
+                    copy_to_peers(send_bufs, send_counts, comm, recv_buf_idx_start, comm->rank());
+                }
+            }
+        }
+
+        // the last part of scale out case is intra scale up
+        // it runs when it is multi
+        if (!is_single_node) {
+            // Here is example of the whole flow:
+            // input data:      scale-out:(1)  scale-up:(2)   result:
+            // 0r 0  1  2  3    |x  x  8  12   |0  4  x  x   |0  4  8  12
+            // 1r 4  5  6  7    |x  x  9  13   |1  5  x  x   |1  5  9  13
+            // 2r 8  9  10 11   |2  6  x  x    |x  x  10 14  |2  6  10 14
+            // 3r 12 13 14 15   |3  7  x  x    |x  x  11 15  |3  7  11 15
+
+            // add scaleout part
+            add_scaleout_op(send_bufs, recv_bufs);
+
+            LOG_DEBUG("topo/scale_up/intra: in scale out case");
+            if (is_inplace) {
+                LOG_DEBUG("inplace/topo/scale_up/intra: in multi node case");
+                // do scale up for inplace on a node comm
+                inplace_mode(node_comm, comm_rank);
+            }
+            else {
+                LOG_DEBUG("outofplace/topo/scale_up/intra: in multi node case");
+                // do scale up for outofplace on a node comm
+                // copy from own send to own recv
+                copy_to_self(
+                    send_bufs[comm->rank()], recv_bufs[comm->rank()], send_counts[comm->rank()]);
+                // copy from peer rank send to peer rank recv
+                if (is_read) {
+                    copy_to_peers(recv_bufs, recv_counts, node_comm, send_buf_idx_start, comm_rank);
+                }
+                else {
+                    copy_to_peers(send_bufs, send_counts, node_comm, recv_buf_idx_start, comm_rank);
+                }
+            }
+        }
+        add_sched_barrier_for_parallel_copies();
+    }
     ccl::add_comm_barrier(sched, node_comm, wait_events);
 
     return ccl::status::success;

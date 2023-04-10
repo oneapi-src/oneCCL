@@ -30,5 +30,8 @@ foreach(src ${sources})
     install(TARGETS ${executable} RUNTIME DESTINATION ${CCL_INSTALL_EXAMPLES}/external_launcher OPTIONAL)
 endforeach()
 
-configure_file(run.sh ${CCL_INSTALL_EXAMPLES}/external_launcher/run.sh @ONLY)
-configure_file(run_binary.sh ${CCL_INSTALL_EXAMPLES}/external_launcher/run_binary.sh @ONLY)
+configure_file(run.sh ${CMAKE_CURRENT_BINARY_DIR}/run.sh @ONLY)
+configure_file(run_binary.sh ${CMAKE_CURRENT_BINARY_DIR}/run_binary.sh @ONLY)
+install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/run.sh DESTINATION ${CCL_INSTALL_EXAMPLES}/external_launcher/  OPTIONAL)
+install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/run_binary.sh DESTINATION ${CCL_INSTALL_EXAMPLES}/external_launcher/ OPTIONAL)
+    

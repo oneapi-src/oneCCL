@@ -18,6 +18,7 @@
 #include "common/utils/buffer.hpp"
 #include "sched/entry/ze/ze_base_entry.hpp"
 
+// ze_a2a_allgatherv_entry
 class ze_a2a_allgatherv_entry : public ze_base_entry {
 public:
     static constexpr const char* class_name() noexcept {
@@ -39,32 +40,13 @@ public:
                                      ccl_comm* comm,
                                      std::vector<ze_event_handle_t> wait_events = {},
                                      size_t peer_buf_idx = 0,
-                                     size_t peer_buf_offset = 0);
+                                     size_t peer_buf_offset = 0,
+                                     bool is_monolithic_pipeline = false,
+                                     ccl_comm* pipeline_comm = nullptr);
 
     void init_ze_hook() override;
 
     void update() override;
-
-    static void fill_list(const ze_base_entry* entry,
-                          int comm_rank,
-                          ccl_buffer send_buf,
-                          const std::vector<ccl_buffer>& recv_bufs,
-                          const std::vector<ccl_buffer>& peer_bufs,
-                          int peer_count,
-                          const std::vector<size_t>& copy_bytes,
-                          const ccl_datatype& dtype,
-                          const std::vector<size_t>& rank_buf_offsets,
-                          bool is_inplace,
-                          std::vector<ze_event_handle_t>& copy_events,
-                          std::vector<ze_event_handle_t>& wait_events,
-                          std::vector<ze_kernel>& kernels,
-                          ze_module_handle_t module,
-                          ze_device_handle_t device,
-                          ze_context_handle_t context,
-                          size_t worker_idx,
-                          size_t peer_buf_offset,
-                          bool is_read,
-                          bool is_monolithic);
 
 protected:
     void dump_detail(std::stringstream& str) const override;
@@ -80,43 +62,69 @@ private:
     const size_t peer_buf_idx;
     const size_t peer_buf_offset;
     const int peer_count;
+    const bool is_monolithic_pipeline;
+    ccl_comm* pipeline_comm;
 
     std::vector<ze_event_handle_t> copy_events;
     std::vector<ze_kernel> kernels;
     std::vector<ze_event_handle_t> kernel_events;
+};
 
-    static void fill_list_read(const ze_base_entry* entry,
-                               int comm_rank,
-                               ccl_buffer send_buf,
-                               const std::vector<ccl_buffer>& recv_bufs,
-                               const std::vector<ccl_buffer>& peer_send_bufs,
-                               int peer_count,
-                               const std::vector<size_t>& copy_bytes,
-                               const ccl_datatype& dtype,
-                               const std::vector<size_t>& rank_buf_offsets,
-                               bool is_inplace,
-                               std::vector<ze_event_handle_t>& copy_events,
-                               std::vector<ze_event_handle_t>& wait_events,
-                               size_t peer_buf_offset,
-                               bool is_monolithic);
+// ze_a2a_allgatherv_op
+class ze_a2a_allgatherv_op {
+public:
+    ze_a2a_allgatherv_op() = delete;
+    ze_a2a_allgatherv_op(const ze_a2a_allgatherv_op&) = delete;
+    ze_a2a_allgatherv_op(ccl_sched* sched,
+                         const ze_base_entry* entry,
+                         ccl_comm* comm,
+                         ccl_comm* pipeline_comm,
+                         const ccl_datatype& dtype,
+                         ccl_buffer send_buf,
+                         const std::vector<ccl_buffer>& recv_bufs,
+                         const std::vector<ccl_buffer>& peer_bufs,
+                         const std::vector<ccl_buffer>& pair_peer_bufs,
+                         const std::vector<size_t>& copy_bytes,
+                         const std::vector<size_t>& recv_counts,
+                         int peer_count,
+                         const std::vector<size_t>& rank_buf_offsets,
+                         size_t peer_buf_offset,
+                         std::vector<ze_event_handle_t>& copy_events,
+                         std::vector<ze_event_handle_t>& wait_events,
+                         bool is_monolithic,
+                         bool is_monolithic_pipeline,
+                         bool is_inplace = false);
+    // methods
+    static void select(ze_a2a_allgatherv_op& args, std::vector<ze_kernel>& kernels);
+    // common
+    ccl_sched* sched;
+    const ze_base_entry* entry;
+    ccl_comm* comm;
+    // pipeline_comm is used for pipeline across MDFI
+    ccl_comm* pipeline_comm;
+    const ccl_datatype& dtype;
+    // bufs
+    ccl_buffer send_buf;
+    const std::vector<ccl_buffer>& recv_bufs;
+    const std::vector<ccl_buffer>& peer_bufs;
+    const std::vector<ccl_buffer>& pair_peer_bufs;
+    // other
+    const std::vector<size_t>& copy_bytes;
+    const std::vector<size_t>& recv_counts;
+    int peer_count;
+    // offsets
+    const std::vector<size_t>& rank_buf_offsets;
+    size_t peer_buf_offset;
+    // events
+    std::vector<ze_event_handle_t>& copy_events;
+    std::vector<ze_event_handle_t>& wait_events;
+    // flags
+    bool is_monolithic;
+    bool is_monolithic_pipeline;
+    bool is_inplace;
 
-    static void fill_list_write(const ze_base_entry* entry,
-                                int comm_rank,
-                                ccl_buffer send_buf,
-                                const std::vector<ccl_buffer>& recv_bufs,
-                                const std::vector<ccl_buffer>& peer_recv_bufs,
-                                int peer_count,
-                                const std::vector<size_t>& copy_bytes,
-                                const ccl_datatype& dtype,
-                                const std::vector<size_t>& rank_buf_offsets,
-                                bool is_inplace,
-                                std::vector<ze_event_handle_t>& copy_events,
-                                std::vector<ze_event_handle_t>& wait_events,
-                                std::vector<ze_kernel>& kernels,
-                                ze_module_handle_t module,
-                                ze_device_handle_t device,
-                                ze_context_handle_t context,
-                                size_t worker_idx,
-                                size_t peer_buf_offset,
-                                bool is_monolithic);
+private:
+    static void read_write(ze_a2a_allgatherv_op& args, std::vector<ze_kernel>& kernels);
+    static void read(ze_a2a_allgatherv_op& args);
+    static void write(ze_a2a_allgatherv_op& args, std::vector<ze_kernel>& kernels);
 };

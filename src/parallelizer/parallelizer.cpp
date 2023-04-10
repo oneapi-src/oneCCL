@@ -232,6 +232,7 @@ ccl::status ccl_parallelizer::process_base(ccl_sched* sched, bool update_sched_i
             }
             break;
         case ccl_coll_alltoall:
+            selector_param.is_scaleout = coll_param.is_scaleout;
             algo.alltoall = data.algorithm_selector->get<ccl_coll_alltoall>(selector_param);
             if (algo.alltoall == ccl_coll_alltoall_direct) {
                 part_count = 1;
@@ -241,6 +242,7 @@ ccl::status ccl_parallelizer::process_base(ccl_sched* sched, bool update_sched_i
             }
             break;
         case ccl_coll_alltoallv:
+            selector_param.is_scaleout = coll_param.is_scaleout;
             algo.alltoallv = data.algorithm_selector->get<ccl_coll_alltoallv>(selector_param);
             if (algo.alltoallv == ccl_coll_alltoallv_direct) {
                 part_count = 1;
@@ -250,6 +252,7 @@ ccl::status ccl_parallelizer::process_base(ccl_sched* sched, bool update_sched_i
             }
             break;
         case ccl_coll_allgatherv:
+            selector_param.is_scaleout = coll_param.is_scaleout;
             selector_param.recv_counts = coll_param.recv_counts.data();
             algo.allgatherv = data.algorithm_selector->get<ccl_coll_allgatherv>(selector_param);
 
@@ -420,6 +423,7 @@ ccl::status ccl_parallelizer::process_base(ccl_sched* sched, bool update_sched_i
                 param.root = coll_param.root;
                 param.comm = comm;
                 param.stream = coll_param.stream;
+                param.is_scaleout = coll_param.is_scaleout;
                 ccl::add_coll_entry(part_scheds[idx].get(), param);
             }
             break;
@@ -475,7 +479,6 @@ ccl::status ccl_parallelizer::process_base(ccl_sched* sched, bool update_sched_i
         }
 
         case ccl_coll_allgatherv: {
-            selector_param.recv_counts = coll_param.recv_counts.data();
             if (algo.allgatherv == ccl_coll_allgatherv_direct ||
                 algo.allgatherv == ccl_coll_allgatherv_naive ||
                 algo.allgatherv == ccl_coll_allgatherv_ring) {
@@ -491,6 +494,7 @@ ccl::status ccl_parallelizer::process_base(ccl_sched* sched, bool update_sched_i
                 param.dtype = dtype;
                 param.comm = comm;
                 param.stream = coll_param.stream;
+                param.is_scaleout = coll_param.is_scaleout;
                 ccl::add_coll_entry(part_scheds[0].get(), param);
             }
             else {
@@ -538,6 +542,7 @@ ccl::status ccl_parallelizer::process_base(ccl_sched* sched, bool update_sched_i
                     coll_param.get_recv_buf_ptr(), a2av_recv_bytes, ccl_buffer_type::INDIRECT);
                 param.dtype = dtype;
                 param.comm = comm;
+                param.is_scaleout = coll_param.is_scaleout;
 
                 if (coll_type == ccl_coll_alltoall) {
                     param.count = coll_param.get_send_count();

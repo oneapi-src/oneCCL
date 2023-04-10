@@ -21,7 +21,8 @@
 class base_coll_entry : public sched_entry {
 public:
     base_coll_entry() = delete;
-    base_coll_entry(ccl_sched* sched) : sched_entry(sched) {
+    base_coll_entry(ccl_sched* sched, bool is_nonblocking = false)
+            : sched_entry(sched, false /*is_barrier*/, false /*is_urgent*/, is_nonblocking) {
         sched->strict_order = true;
     }
 

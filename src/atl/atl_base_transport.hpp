@@ -176,7 +176,9 @@ public:
     virtual atl_status_t comm_split(const std::vector<atl_ep_t>& base_eps,
                                     std::vector<atl_ep_t>& eps,
                                     size_t color,
-                                    int local_idx) = 0;
+                                    int key,
+                                    int local_idx,
+                                    int local_count) = 0;
 
     virtual atl_status_t get_rank2proc_map(std::shared_ptr<ipmi> pmi,
                                            std::vector<int>& rank2proc_map) = 0;

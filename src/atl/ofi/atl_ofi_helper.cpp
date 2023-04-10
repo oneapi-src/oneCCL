@@ -85,12 +85,9 @@ atl_ofi_prov_t* atl_ofi_get_prov(atl_ofi_ctx_t& ctx,
     CCL_THROW_IF_NOT(
         ctx.prov_count <= ATL_OFI_MAX_PROV_COUNT, "unexpected prov_count ", ctx.prov_count);
 
-    int my_node_idx = coord.global_idx / coord.local_count;
-    int peer_node_idx = peer_proc_idx / coord.local_count;
-
     int has_shm = (ctx.prov_count == ctx.nw_prov_count + 1) ? 1 : 0;
 
-    if (has_shm && (my_node_idx == peer_node_idx) &&
+    if (has_shm && (coord.global2local_map[peer_proc_idx] != -1) &&
         (msg_size <= ctx.provs[ctx.shm_prov_idx].max_msg_size)) {
         prov_idx = ctx.shm_prov_idx;
     }
@@ -103,12 +100,12 @@ atl_ofi_prov_t* atl_ofi_get_prov(atl_ofi_ctx_t& ctx,
               ep.idx,
               ", local_proc_idx ",
               coord.local_idx,
-              ", nic_idx ",
+              ", prov_idx ",
               prov_idx,
-              ", my_node_idx ",
-              my_node_idx,
-              ", peer_node_idx ",
-              peer_node_idx,
+              ", my_proc_idx ",
+              coord.global_idx,
+              ", peer_proc_idx ",
+              peer_proc_idx,
               ", msg_size ",
               msg_size,
               ", has_shm ",
@@ -182,7 +179,9 @@ atl_status_t atl_ofi_get_local_proc_coord(atl_proc_coord_t& coord, std::shared_p
             goto fn_err;
         }
     }
-
+    /* initialize the map with all local ids invalid */
+    coord.global2local_map.clear();
+    coord.global2local_map.resize(coord.global_count, -1);
     for (i = 0; i < coord.global_count; i++) {
         if (!strncmp(my_hostname,
                      all_hostnames + i * ATL_MAX_HOSTNAME_LEN,
@@ -192,6 +191,8 @@ atl_status_t atl_ofi_get_local_proc_coord(atl_proc_coord_t& coord, std::shared_p
             sscanf(all_hostnames + i * ATL_MAX_HOSTNAME_LEN + my_hostname_len + 1,
                    "%d",
                    &peer_global_proc_idx);
+            /* mark the global ids of local node ranks as valid */
+            coord.global2local_map[peer_global_proc_idx] = 1;
             if (my_global_proc_idx > peer_global_proc_idx)
                 local_idx++;
         }
@@ -199,6 +200,15 @@ atl_status_t atl_ofi_get_local_proc_coord(atl_proc_coord_t& coord, std::shared_p
 
     coord.local_idx = local_idx;
     coord.local_count = local_count;
+
+    local_idx = 0;
+    /* assign local ids to local node ranks */
+    for (i = 0; i < coord.global_count; i++) {
+        if (coord.global2local_map[i] == 1) {
+            coord.global2local_map[i] = local_idx;
+            local_idx++;
+        }
+    }
 
 fn_exit:
     free(all_hostnames);
@@ -223,18 +233,14 @@ atl_status_t atl_ofi_prov_update_addr_table(atl_ofi_ctx_t& ctx,
 
     size_t addr_idx = 0;
     char* ep_names_table;
+    char* next_ep_name = 0;
     size_t ep_names_table_len;
 
     size_t named_ep_count = (prov->sep ? 1 : ctx.ep_count);
 
-    int local_count = coord.local_count;
-    int node_idx = coord.global_idx / local_count;
-    int shm_start_idx = node_idx * local_count;
-    int shm_end_idx = (node_idx + 1) * local_count;
-
-    LOG_DEBUG("shm_start_idx ", shm_start_idx, ", shm_end_idx ", shm_end_idx);
-
     int proc_count = prov->is_shm ? coord.local_count : coord.global_count;
+    /* shm provider address length is variable and hence allocate maximum size */
+    int addr_len = prov->is_shm ? static_cast<int>(FI_NAME_MAX) : prov->addr_len;
 
     if (proc_count == 0)
         return ATL_STATUS_SUCCESS;
@@ -253,7 +259,7 @@ atl_status_t atl_ofi_prov_update_addr_table(atl_ofi_ctx_t& ctx,
               proc_count);
 
     /* allocate OFI EP names table that will contain all published names */
-    ep_names_table_len = prov->addr_len * named_ep_count * proc_count;
+    ep_names_table_len = addr_len * named_ep_count * proc_count;
 
     if (ep_names_table_len == 0) {
         LOG_ERROR("ep_names_table_len == 0, addr_len ",
@@ -273,27 +279,35 @@ atl_status_t atl_ofi_prov_update_addr_table(atl_ofi_ctx_t& ctx,
 
     ATL_CHECK_STATUS(pmi->pmrt_barrier(), "barrier failed");
 
-    std::vector<char> ret_ep_name(prov->addr_len, '\0');
+    std::vector<char> ret_ep_name(addr_len, '\0');
+    next_ep_name = ep_names_table;
     /* retrieve all OFI EP names in order */
     for (i = 0; i < coord.global_count; i++) {
         if (prov->is_shm) {
-            if (!(i >= shm_start_idx && i < shm_end_idx)) {
+            if (coord.global2local_map[i] == -1) {
                 continue;
             }
         }
 
         for (j = 0; j < named_ep_count; j++) {
+            /* shm provider address length is variable and hence resize to maximum size */
+            if (prov->is_shm) {
+                ret_ep_name.resize(FI_NAME_MAX, '\0');
+            }
             ret = pmi->pmrt_kvs_get(
                 (char*)ATL_OFI_FI_ADDR_PM_KEY,
                 i * ATL_OFI_PMI_PROC_MULTIPLIER + prov_idx * ATL_OFI_PMI_PROV_MULTIPLIER + j,
                 (void*)ret_ep_name.data(),
-                prov->addr_len);
-
+                ret_ep_name.size());
+            /* shm provider address is a string and hence resize it to the actual string length including terminating null */
+            if (prov->is_shm) {
+                ret_ep_name.resize(strnlen(ret_ep_name.data(), FI_NAME_MAX) + 1);
+            }
             auto it = std::find(ep_names.begin(), ep_names.end(), ret_ep_name);
             if (it == ep_names.end()) {
                 ep_names.push_back(ret_ep_name);
             }
-            memcpy(ep_names_table + addr_idx * prov->addr_len, ret_ep_name.data(), prov->addr_len);
+            memcpy(next_ep_name, ret_ep_name.data(), ret_ep_name.size());
             if (ret) {
                 LOG_ERROR("kvs_get error: ret ",
                           ret,
@@ -307,6 +321,7 @@ atl_status_t atl_ofi_prov_update_addr_table(atl_ofi_ctx_t& ctx,
             }
 
             addr_idx++;
+            next_ep_name += ret_ep_name.size();
         }
     }
 
@@ -445,8 +460,6 @@ atl_status_t atl_ofi_prov_eps_connect(atl_ofi_ctx_t& ctx,
     size_t named_ep_count = (prov->sep ? 1 : ctx.ep_count);
 
     prov->addr_len = 0;
-    prov->first_proc_idx =
-        (prov->is_shm) ? ((coord.global_idx / coord.local_count) * coord.local_count) : 0;
 
     for (ep_idx = 0; ep_idx < ctx.ep_count; ep_idx++) {
         ret = atl_ofi_prov_ep_get_name(prov, ep_idx);

@@ -174,7 +174,7 @@ foreach(proc_map ${PROC_MAPS})
             add_test (NAME bcast_${algo}_${N}_${ppn} CONFIGURATIONS bcast_${algo}_${N}_${ppn} COMMAND mpiexec.hydra -l -n ${N} -ppn ${ppn} ${CCL_INSTALL_TESTS}/bcast_test --gtest_output=xml:${CCL_INSTALL_TESTS}/bcast_${algo}_${N}_${ppn}_report.junit.xml)
         endforeach()
 
-        foreach(algo direct; rabenseifner; tree; double_tree; topo)
+        foreach(algo direct; rabenseifner; ring; tree; double_tree; topo)
             add_test (NAME reduce_${algo}_${N}_${ppn} CONFIGURATIONS reduce_${algo}_${N}_${ppn} COMMAND mpiexec.hydra -l -n ${N} -ppn ${ppn} ${CCL_INSTALL_TESTS}/reduce_test --gtest_output=xml:${CCL_INSTALL_TESTS}/reduce_${algo}_${N}_${ppn}_report.junit.xml)
         endforeach()
 

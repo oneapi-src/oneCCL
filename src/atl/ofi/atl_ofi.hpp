@@ -169,7 +169,9 @@ public:
     atl_status_t comm_split(const std::vector<atl_ep_t>& base_eps,
                             std::vector<atl_ep_t>& eps,
                             size_t color,
-                            int local_idx) override {
+                            int key,
+                            int local_idx,
+                            int local_count) override {
         throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
         return ATL_STATUS_UNSUPPORTED;
     }

@@ -50,11 +50,14 @@ host_event_impl::~host_event_impl() {
     if (!completed
 #ifdef CCL_ENABLE_SYCL
         && (ccl::global_data::env().enable_sycl_output_event &&
-            !utils::is_sycl_event_completed(get_native()))
-#endif // CCL_ENABLE_SYCL
+            !utils::is_sycl_event_completed(get_native()))) {
+        LOG_WARN("not completed event is destroyed");
+    }
+#else // CCL_ENABLE_SYCL
     ) {
         LOG_ERROR("not completed event is destroyed");
     }
+#endif // NOT CCL_ENABLE_SYCL
 
     // when using native event user might not call wait/test on ccl event(complete = false)
     // but we need to ensure that the bound schedule is actually destroyed. For this

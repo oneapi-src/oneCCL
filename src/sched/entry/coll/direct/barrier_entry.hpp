@@ -24,7 +24,9 @@ public:
     }
 
     barrier_entry() = delete;
-    barrier_entry(ccl_sched* sched, ccl_comm* comm) : base_coll_entry(sched), comm(comm) {}
+    barrier_entry(ccl_sched* sched, ccl_comm* comm)
+            : base_coll_entry(sched, true /*is_nonblocking*/),
+              comm(comm) {}
 
     void start() override {
         LOG_DEBUG("BARRIER entry req ", &req);

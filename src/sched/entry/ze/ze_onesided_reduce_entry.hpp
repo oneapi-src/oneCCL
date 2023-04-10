@@ -71,13 +71,12 @@ private:
     ze_event_handle_t empty_kernel_event;
     ze_event_handle_t copy_from_peer_event;
 
-    ze_group_count_t group_count;
-
-    ze_kernel_handle_t main_kernel;
     std::string main_kernel_name;
 
     ze_kernel_handle_t empty_kernel;
     std::string empty_kernel_name;
+
+    std::vector<ze_kernel> kernels;
 
     bool skip_entry{};
 };

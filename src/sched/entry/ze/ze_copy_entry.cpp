@@ -26,7 +26,7 @@ ze_copy_entry::ze_copy_entry(ccl_sched* sched,
                              const copy_attr& attr,
                              std::vector<ze_event_handle_t> wait_events,
                              std::vector<ze_event_handle_t> dep_events)
-        : ze_base_entry(sched, nullptr, 1, wait_events),
+        : ze_base_entry(sched, nullptr, 1, wait_events, true /*is_nonblocking*/),
           sched(sched),
           in_buf(in_buf),
           out_buf(out_buf),

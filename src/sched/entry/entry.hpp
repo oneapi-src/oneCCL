@@ -52,7 +52,18 @@ enum ccl_condition {
 class alignas(CACHELINE_SIZE) sched_entry {
 public:
     sched_entry() = delete;
-    explicit sched_entry(ccl_sched* sched, bool is_barrier = false);
+    explicit sched_entry(ccl_sched* sched,
+                         bool is_barrier = false,
+                         bool is_urgent = false,
+                         bool is_nonblocking = false,
+                         bool is_coll = false);
+    // is_nonblocking == true means we don't need to submit such entry before setting the dependent event
+    // and returning from oneCCL API in Main thread even in 1CCS case. For some entries it is set to
+    // avoid extra work before returning from API and to gain some performance. For ZE_EVENT_SIGNAL entry
+    // it is needed because if we submit ZE_EVENT_SIGNAL before actually running entries it will cause
+    // wrong behavior.
+    // is_urgent == true means that we need to complete such entry before submitting some of the others.
+    // This is needed for DEPS (dependencies) entry and ZE_HANDLES entry.
 
     virtual ~sched_entry() {}
 
@@ -67,6 +78,9 @@ public:
 
     void make_barrier();
     bool is_barrier() const;
+    bool is_urgent() const;
+    bool is_nonblocking() const;
+    bool is_coll() const;
     ccl_sched_entry_status get_status() const;
     void set_status(ccl_sched_entry_status s);
     void set_exec_mode(ccl_sched_entry_exec_mode mode);
@@ -92,6 +106,9 @@ protected:
 
     ccl_sched* sched = nullptr;
     bool barrier = false;
+    bool urgent = false;
+    bool nonblocking = false;
+    bool coll = false;
     size_t start_idx = 0;
     ccl_sched_entry_status status = ccl_sched_entry_status_not_started;
     ccl_sched_entry_exec_mode exec_mode = ccl_sched_entry_exec_regular;

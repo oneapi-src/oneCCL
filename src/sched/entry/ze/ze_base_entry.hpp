@@ -24,6 +24,7 @@ class ccl_comm;
 
 using namespace ccl::ze;
 
+// ze_base_entry
 class ze_base_entry : public sched_entry {
 public:
     ze_base_entry() = delete;
@@ -49,7 +50,8 @@ protected:
     explicit ze_base_entry(ccl_sched *sched,
                            ccl_comm *comm = nullptr,
                            uint32_t add_event_count = 0,
-                           std::vector<ze_event_handle_t> wait_events = {});
+                           std::vector<ze_event_handle_t> wait_events = {},
+                           bool is_nonblocking = false);
 
     void init() override;
     void finalize() override;
@@ -89,6 +91,7 @@ private:
     std::vector<ze_event_handle_t> wait_events;
 };
 
+// ze_kernel
 class ze_kernel {
 public:
     ze_kernel(ze_module_handle_t module, const std::string &kernel_name, size_t worker_idx = 0);

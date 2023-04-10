@@ -349,6 +349,65 @@ ccl::status ccl_coll_build_rabenseifner_reduce(ccl_sched* sched,
     return status;
 }
 
+ccl::status ccl_coll_build_ring_reduce(ccl_sched* sched,
+                                       ccl_buffer send_buf,
+                                       ccl_buffer recv_buf,
+                                       size_t count,
+                                       const ccl_datatype& dtype,
+                                       ccl::reduction reduction,
+                                       int root,
+                                       ccl_comm* comm) {
+    LOG_DEBUG("build ring reduce");
+    size_t dtype_size = dtype.size();
+    int local_root = static_cast<int>(root);
+    int rank = comm->rank();
+    int comm_size = comm->size();
+    ccl::status status = ccl::status::success;
+
+    if (rank != local_root) {
+        recv_buf = sched->alloc_buffer({ count * dtype_size, send_buf });
+    }
+
+    CCL_THROW_IF_NOT(sched && send_buf && recv_buf,
+                     "incorrect values: sched ",
+                     sched,
+                     ", send ",
+                     send_buf,
+                     " recv ",
+                     recv_buf);
+
+    ccl_coll_build_ring_reduce_scatter(sched, send_buf, recv_buf, count, dtype, reduction, comm);
+    sched->add_barrier();
+
+    size_t main_block_count = count / comm_size;
+    size_t last_block_count = main_block_count + count % comm_size;
+    std::vector<size_t> recv_counts(comm_size, main_block_count);
+    if (count % comm_size) {
+        recv_counts[comm_size - 1] = last_block_count;
+    }
+
+    std::vector<size_t> offsets(comm_size, 0);
+    for (int rank_idx = 1; rank_idx < comm_size; ++rank_idx) {
+        offsets[rank_idx] = offsets[rank_idx - 1] + recv_counts[rank_idx - 1] * dtype_size;
+    }
+
+    if (rank == local_root) {
+        for (int idx = 0; idx < comm_size; idx++) {
+            if (idx != local_root) {
+                entry_factory::create<recv_entry>(
+                    sched, recv_buf + offsets[idx], recv_counts[idx], dtype, idx, comm);
+            }
+        }
+    }
+    else {
+        entry_factory::create<send_entry>(
+            sched, recv_buf + offsets[rank], recv_counts[rank], dtype, local_root, comm);
+    }
+    sched->add_barrier();
+
+    return status;
+}
+
 ccl::status ccl_coll_build_binomial_reduce(ccl_sched* sched,
                                            ccl_buffer send_buf,
                                            ccl_buffer recv_buf,
@@ -507,8 +566,6 @@ ccl::status ccl_coll_build_topo_reduce(ccl_sched* sched,
 
     CCL_THROW_IF_NOT(comm_size % 2 == 0, "unexpected comm_size ", comm_size);
     CCL_THROW_IF_NOT(node_comm_size % 2 == 0, "unexpected node_comm_size ", node_comm_size);
-    CCL_THROW_IF_NOT(
-        count >= size_t(comm_size), "unexpected count:", count, " < comm_size:", comm_size);
 
     if (is_single_card) {
         LOG_DEBUG("topo/scale_up/intra: use ze_onesided_reduce");

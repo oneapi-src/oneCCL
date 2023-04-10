@@ -187,7 +187,7 @@ atl_status_t atl_ofi_comm::allgatherv(size_t ep_idx,
     return ATL_STATUS_SUCCESS;
 }
 
-std::shared_ptr<atl_base_comm> atl_ofi_comm::comm_split(int color) {
+std::shared_ptr<atl_base_comm> atl_ofi_comm::comm_split(int color, int key) {
     return std::shared_ptr<atl_base_comm>(new atl_ofi_comm(this, color));
 }
 

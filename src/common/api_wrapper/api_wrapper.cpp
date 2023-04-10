@@ -80,7 +80,18 @@ void api_wrappers_fini() {
 }
 
 void load_library(lib_info_t& info) {
-    //TODO: MLSL-1384, finish with parse of lib_path
+    // Check if the path to the library passed in info is correct
+    // - if it contains invalid characters log an error and leave the handle empty.
+    bool is_invalid_path =
+        ((info.path.find("..") != std::string::npos) ||
+         (info.path.find("./") != std::string::npos) || (info.path.find("%") != std::string::npos));
+    if (is_invalid_path) {
+        LOG_WARN("library path is not valid: ",
+                 info.path.c_str(),
+                 ", error: path contains invalid characters");
+        return;
+    }
+
     info.handle = dlopen(info.path.c_str(), RTLD_LAZY | RTLD_GLOBAL);
     if (!info.handle) {
         LOG_WARN("could not open the library: ", info.path.c_str(), ", error: ", dlerror());

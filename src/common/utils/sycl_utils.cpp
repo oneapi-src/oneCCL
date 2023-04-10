@@ -27,7 +27,9 @@ bool is_sycl_event_completed(sycl::event event) {
 
 bool should_use_sycl_output_event(const ccl_stream* stream) {
     return (stream && stream->is_sycl_device_stream() && stream->is_gpu() &&
-            ccl::global_data::env().enable_sycl_output_event);
+            ccl::global_data::env().enable_sycl_output_event &&
+            (getenv("SYCL_DEVICE_FILTER") == nullptr ||
+             !strcmp(getenv("SYCL_DEVICE_FILTER"), "level_zero")));
 }
 
 std::string usm_type_to_str(sycl::usm::alloc type) {

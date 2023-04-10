@@ -18,7 +18,7 @@
 
 ze_event_wait_entry::ze_event_wait_entry(ccl_sched* sched,
                                          std::vector<ze_event_handle_t> wait_events)
-        : sched_entry(sched),
+        : sched_entry(sched, false /*is_barrier*/, false /*is_urgent*/, true /*is_nonblocking*/),
           wait_events(wait_events.cbegin(), wait_events.cend()) {
     CCL_THROW_IF_NOT(sched, "no sched");
 }

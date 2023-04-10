@@ -163,7 +163,7 @@ public:
             eps[ep_idx], buf, len, mr, addr, remote_key, rank2proc_map[dst_proc_idx], req);
     }
 
-    std::shared_ptr<atl_base_comm> comm_split(int color) override;
+    std::shared_ptr<atl_base_comm> comm_split(int color, int key) override;
 
 private:
     friend atl_comm_manager;

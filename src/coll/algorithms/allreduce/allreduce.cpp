@@ -596,7 +596,7 @@ static void ccl_allreduce_2d_add_allreduce_allgather(ccl_sched* sched,
     // with different order on different ranks
     sched->hint_algo.allgatherv = ccl_coll_allgatherv_ring;
     ccl_coll_build_allgatherv(
-        sched, rbuf, ar_count, rbuf, ag_recv_counts.data(), dtype, first_dim_comm);
+        sched, rbuf, ar_count, rbuf, ag_recv_counts.data(), dtype, first_dim_comm, false);
     sched->hint_algo.allgatherv = ccl_coll_allgatherv_undefined;
 }
 
@@ -792,7 +792,7 @@ ccl::status ccl_coll_build_topo_allreduce(ccl_sched* sched,
     size_t pair_comm_offset = 0;
     size_t pair_comm_offset_bytes = 0;
 
-    if (ccl::global_data::env().enable_ze_bidir_algo) {
+    if (ccl::global_data::env().enable_ze_bidir_algo && (base_count / pair_comm->size()) > 0) {
         base_count = count / pair_comm->size();
         pair_comm_offset = base_count * pair_comm->rank();
         pair_comm_offset_bytes = pair_comm_offset * dtype.size();
@@ -800,7 +800,6 @@ ccl::status ccl_coll_build_topo_allreduce(ccl_sched* sched,
         if (pair_comm->rank() == pair_comm->size() - 1)
             base_count += count % pair_comm->size();
     }
-
     else if (pair_comm->rank() != ccl::global_data::env().kernel_1s_lead) {
         ccl::add_comm_barrier(sched, pair_comm, ipc_event_pool, ipc_event_count++);
         CCL_THROW_IF_NOT(ipc_event_count <= max_ipc_event_count,

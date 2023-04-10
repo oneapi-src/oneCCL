@@ -13,7 +13,7 @@ public:
     }
 
     deps_entry() = delete;
-    deps_entry(ccl_sched* sched) : sched_entry(sched) {}
+    deps_entry(ccl_sched* sched) : sched_entry(sched, false /*is_barrier*/, true /*is_urgent*/) {}
 
     void start() override {
         status = ccl_sched_entry_status_started;

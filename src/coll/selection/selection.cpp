@@ -187,7 +187,13 @@ static bool ccl_is_device_side_algo(ccl_coll_algo algo, const ccl_selector_param
         return algo.reduce == ccl_coll_reduce_topo;
     }
     else if (param.ctype == ccl_coll_reduce_scatter) {
+        // limitation: topo algorithm is disabled for reduce_scatter with unidirectional algo
+#ifdef CCL_ENABLE_SYCL
+        return algo.reduce_scatter == ccl_coll_reduce_scatter_topo &&
+               ccl::global_data::env().enable_ze_bidir_algo;
+#else
         return algo.reduce_scatter == ccl_coll_reduce_scatter_topo;
+#endif // CCL_ENABLE_SYCL
     }
 
     return false;
@@ -332,8 +338,7 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
                     "unsupported comm size for ",
                     ccl_coll_type_to_str(param.ctype));
 
-    RETURN_FALSE_IF((param.ctype == ccl_coll_bcast || param.ctype == ccl_coll_reduce_scatter) &&
-                        !checkers::is_single_node(param),
+    RETURN_FALSE_IF(param.ctype == ccl_coll_bcast && !checkers::is_single_node(param),
                     "multi-node for ",
                     ccl_coll_type_to_str(param.ctype),
                     " is not supported");
@@ -350,11 +355,8 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
     RETURN_FALSE_IF(!checkers::is_single_card(param) && !checkers::is_single_node(param) &&
                         (local_proc_count % 2 != 0),
                     "odd proc count per node is not supported");
-
-    RETURN_FALSE_IF((param.ctype == ccl_coll_reduce || param.ctype == ccl_coll_allreduce) &&
-                        (param.count < size_t(param.comm->size())),
+    RETURN_FALSE_IF((param.ctype == ccl_coll_reduce) && (param.count < size_t(param.comm->size())),
                     "reduce with count < comm_size not supported");
-
     return true;
 }
 

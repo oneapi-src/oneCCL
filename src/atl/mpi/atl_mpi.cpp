@@ -553,8 +553,15 @@ void atl_mpi::comms_free(std::vector<atl_ep_t>& eps) {
 atl_status_t atl_mpi::comm_split(const std::vector<atl_ep_t>& base_eps,
                                  std::vector<atl_ep_t>& eps,
                                  size_t color,
-                                 int local_idx) {
+                                 int key,
+                                 int local_idx,
+                                 int local_count) {
     int ret = 0;
+    int thread_count = local_count * ctx.ep_count;
+    int thread_id = 0;
+    int thread_per_nic_count =
+        thread_count / ctx.mnic_count + ((thread_count % ctx.mnic_count) ? 1 : 0);
+
     for (size_t idx = 0; idx < ctx.ep_count; idx++) {
         atl_ep_t ep;
 
@@ -567,7 +574,7 @@ atl_status_t atl_mpi::comm_split(const std::vector<atl_ep_t>& base_eps,
         size_t nic_idx = 0;
         char nic_idx_str[MPI_MAX_INFO_VAL] = { 0 };
 
-        ret = MPI_Comm_split(base_mpi_ep->mpi_comm, color, 0, &mpi_ep->mpi_comm);
+        ret = MPI_Comm_split(base_mpi_ep->mpi_comm, color, key, &mpi_ep->mpi_comm);
         if (ret) {
             LOG_ERROR("MPI_Comm_split error, ep_idx ", idx);
             break;
@@ -585,12 +592,39 @@ atl_status_t atl_mpi::comm_split(const std::vector<atl_ep_t>& base_eps,
         MPI_Info_set(info, "mpi_assert_no_any_tag", "true");
 
         if (ctx.mnic_type != ATL_MNIC_NONE) {
-            /* set NIC index */
-            nic_idx = idx;
-            if (ctx.mnic_offset == ATL_MNIC_OFFSET_LOCAL_PROC_IDX) {
-                nic_idx += local_idx;
+            if (ctx.ep_count > 1) {
+                thread_id = ctx.ep_count * local_idx + idx;
+                LOG_DEBUG("num_threads = ",
+                          thread_count,
+                          " threads_per_nic = ",
+                          thread_per_nic_count,
+                          " local_id = ",
+                          local_idx,
+                          " ep_idx = ",
+                          idx);
+                /* this formula ensures balanced distribution of the threads to NICs */
+                nic_idx = thread_id / thread_per_nic_count;
             }
-            nic_idx %= ctx.mnic_count;
+            else if (ctx.mnic_offset == ATL_MNIC_OFFSET_LOCAL_PROC_IDX) {
+                /* offset = local_proc_idx is necessary so that the
+		* first thread gets the preferred NIC of the corresponding rank */
+                nic_idx = idx;
+                nic_idx += local_idx;
+                nic_idx %= ctx.mnic_count;
+            }
+            else if (ctx.mnic_count > 1) {
+                if (local_idx < local_count / 2) {
+                    /* assuming half the ranks are bound to a socket */
+                    nic_idx = local_idx % (ctx.mnic_count / 2);
+                }
+                else {
+                    nic_idx = local_idx % ctx.mnic_count;
+                    if (nic_idx < ctx.mnic_count / 2) {
+                        nic_idx += ctx.mnic_count / 2;
+                    }
+                }
+            }
+
             snprintf(nic_idx_str, MPI_MAX_INFO_VAL, "%zu", nic_idx);
             MPI_Info_set(info, ctx.NIC_IDX_KEY, nic_idx_str);
 
@@ -601,7 +635,7 @@ atl_status_t atl_mpi::comm_split(const std::vector<atl_ep_t>& base_eps,
         MPI_Comm_set_info(mpi_ep->mpi_comm, info);
 
         if (ctx.progress_mode == ATL_PROGRESS_POLL) {
-            ret = MPI_Comm_split(base_mpi_ep->dummy_comm, color, 0, &mpi_ep->dummy_comm);
+            ret = MPI_Comm_split(base_mpi_ep->dummy_comm, color, key, &mpi_ep->dummy_comm);
             if (ret) {
                 LOG_ERROR("MPI_Comm_split error, ep_idx ", idx);
                 break;
@@ -726,7 +760,10 @@ atl_status_t atl_mpi::comm_create(int comm_size,
     return ATL_STATUS_SUCCESS;
 }
 
-atl_status_t atl_mpi::ep_init(std::vector<atl_ep_t>& eps, MPI_Comm global_comm, int local_idx) {
+atl_status_t atl_mpi::ep_init(std::vector<atl_ep_t>& eps,
+                              MPI_Comm global_comm,
+                              int local_idx,
+                              int local_count) {
     atl_ep_t base_ep;
     base_ep.idx = 0;
 
@@ -735,7 +772,7 @@ atl_status_t atl_mpi::ep_init(std::vector<atl_ep_t>& eps, MPI_Comm global_comm, 
     mpi_ep->dummy_comm = global_comm;
 
     std::vector<atl_ep_t> base_eps(ctx.ep_count, base_ep);
-    return comm_split(base_eps, eps, 0, local_idx);
+    return comm_split(base_eps, eps, 0, 0, local_idx, local_count);
 }
 
 void atl_mpi::set_env(const atl_attr_t& attr) {

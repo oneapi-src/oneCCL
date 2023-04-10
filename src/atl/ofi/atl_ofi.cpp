@@ -46,6 +46,8 @@ atl_status_t atl_ofi::init(int* argc,
     int enable_shm = 0;
     bool should_open_provs = true;
 
+    enable_shm = attr->in.enable_shm;
+
     CCL_THROW_IF_NOT((sizeof(atl_ofi_req_t) <= sizeof(atl_req_t) - offsetof(atl_req_t, internal)),
                      "unexpected offset: atl_ofi_request size ",
                      sizeof(atl_ofi_req_t),
@@ -445,8 +447,7 @@ atl_status_t atl_ofi::probe(atl_ep_t& ep,
         req = &(reqs[idx]);
         msg = &(msgs[idx]);
 
-        if (prov->is_shm && ((src_proc_idx < prov->first_proc_idx) ||
-                             (src_proc_idx >= (prov->first_proc_idx + coord.local_count)))) {
+        if (prov->is_shm && (coord.global2local_map[src_proc_idx] == -1)) {
             req->prov_ep = nullptr;
             continue;
         }
@@ -728,14 +729,22 @@ atl_status_t atl_ofi::get_rank2proc_map(std::shared_ptr<ipmi> pmi,
         ATL_CHECK_STATUS(pmi->pmrt_barrier(), "barrier failed");
         for (size_t ep_idx = 0; ep_idx < named_ep_count; ep_idx++) {
             for (size_t i = 0; i < pmi_size; i++) {
+                /* shm provider address length is variable and hence resize to maximum size */
+                if (prov.is_shm) {
+                    addr_name.resize(FI_NAME_MAX, '\0');
+                }
                 ret = pmi->pmrt_kvs_get((char*)ATL_OFI_FI_ADDR_PM_KEY,
                                         i * ATL_OFI_PMI_PROC_MULTIPLIER +
                                             prov_idx * ATL_OFI_PMI_PROV_MULTIPLIER + ep_idx,
                                         (void*)addr_name.data(),
-                                        prov.addr_len);
+                                        addr_name.size());
                 if (ret) {
                     LOG_ERROR("pmrt_kvs_get: ret: ", ret);
                     return ATL_STATUS_FAILURE;
+                }
+                /* shm provider address is a string and hence resize it to the actual string length including terminating null */
+                if (prov.is_shm) {
+                    addr_name.resize(strnlen(addr_name.data(), FI_NAME_MAX) + 1);
                 }
                 auto it = std::find(prov_ep_names.begin(), prov_ep_names.end(), addr_name);
                 if (it == prov_ep_names.end()) {
@@ -1192,5 +1201,11 @@ void atl_ofi::mr_cache::push(fid_mr* mr) {
 
 fi_addr_t atl_ofi::atl_ofi_get_addr(atl_ofi_prov_t* prov, int proc_idx, size_t ep_idx) {
     std::lock_guard<ccl_spinlock> lock{ addr_table_guard };
-    return *(prov->addr_table + ((ctx.ep_count * (proc_idx - prov->first_proc_idx)) + ep_idx));
+    if (prov->is_shm) {
+        /* convert from global to local id */
+        proc_idx = coord.global2local_map[proc_idx];
+        CCL_THROW_IF_NOT(
+            proc_idx >= 0, "convertion from global to local id falied: proc_idx", proc_idx);
+    }
+    return *(prov->addr_table + ((ctx.ep_count * proc_idx) + ep_idx));
 }

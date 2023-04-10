@@ -33,7 +33,7 @@ ze_handle_exchange_entry::ze_handle_exchange_entry(ccl_sched* sched,
                                                    ccl_comm* comm,
                                                    const std::vector<mem_desc_t>& in_buffers,
                                                    int skip_rank)
-        : sched_entry(sched),
+        : sched_entry(sched, false /*is_barrier*/, true /*is_urgent*/),
           comm(comm),
           in_buffers(in_buffers),
           rank(comm->rank()),

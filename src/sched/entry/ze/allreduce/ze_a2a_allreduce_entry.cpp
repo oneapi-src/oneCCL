@@ -191,26 +191,28 @@ void ze_a2a_allreduce_entry::init_ze_hook() {
     for (int i = 0; i < comm_size; i++) {
         recv_bufs.push_back(recv_buf + i * main_block_bytes);
     }
-    ze_a2a_allgatherv_entry::fill_list(this,
-                                       comm_rank,
-                                       tmp_buf,
-                                       recv_bufs,
-                                       peer_recv_bufs,
-                                       peer_count,
-                                       block_bytes,
-                                       dtype,
-                                       rank_buf_offsets,
-                                       false,
-                                       post_copy_events,
-                                       kernel_events,
-                                       kernels,
-                                       module,
-                                       device,
-                                       context,
-                                       worker_idx,
-                                       peer_buf_offset,
-                                       ccl::global_data::env().allgatherv_topo_read,
-                                       is_monolithic_allgat);
+
+    std::vector<ccl_buffer> empty_bufs;
+    std::vector<size_t> empty_counts;
+    ze_a2a_allgatherv_op init_params(sched,
+                                     this,
+                                     comm,
+                                     nullptr,
+                                     dtype,
+                                     tmp_buf,
+                                     recv_bufs,
+                                     peer_recv_bufs,
+                                     empty_bufs,
+                                     block_bytes,
+                                     empty_counts,
+                                     peer_count,
+                                     rank_buf_offsets,
+                                     peer_buf_offset,
+                                     post_copy_events,
+                                     kernel_events,
+                                     is_monolithic_allgat,
+                                     false);
+    ze_a2a_allgatherv_op::select(init_params, kernels);
 }
 
 void ze_a2a_allreduce_entry::start() {

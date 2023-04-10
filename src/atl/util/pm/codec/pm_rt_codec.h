@@ -47,11 +47,12 @@ static inline int encode(const void *inval, int invallen, char *outval, int outv
 static inline int decode(const char *inval, void *outval, int outvallen) {
     int i;
     char *ret = (char *)outval;
+    int vallen = strlen(inval) / 2;
 
-    if (outvallen != (int)strlen(inval) / 2)
+    if (outvallen < vallen)
         return -1;
 
-    for (i = 0; i < outvallen; ++i) {
+    for (i = 0; i < vallen; ++i) {
         if (*inval >= '0' && *inval <= '9')
             ret[i] = *inval - '0';
         else

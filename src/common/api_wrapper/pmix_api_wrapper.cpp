@@ -38,7 +38,8 @@ bool get_pmix_local_coord(int *local_proc_idx, int *local_proc_count) {
     }
 
     PMIX_PROC_CONSTRUCT(&proc);
-    strcpy(proc.nspace, global_proc.nspace);
+    memset(proc.nspace, '\0', PMIX_MAX_NSLEN);
+    memcpy(proc.nspace, global_proc.nspace, strnlen(global_proc.nspace, PMIX_MAX_NSLEN - 1));
     proc.rank = PMIX_RANK_WILDCARD;
 
     // number of local ranks on node

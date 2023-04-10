@@ -302,7 +302,7 @@ file(GLOB spv_kernels "${PROJECT_SOURCE_DIR}/src/kernels/kernels.spv")
 endif()
 
 set(CCL_MAJOR_VERSION     "2021")
-set(CCL_MINOR_VERSION     "8")
+set(CCL_MINOR_VERSION     "9")
 set(CCL_UPDATE_VERSION    "0")
 set(CCL_PRODUCT_STATUS    "Gold")
 string(TIMESTAMP CCL_PRODUCT_BUILD_DATE "%Y-%m-%dT %H:%M:%SZ")
@@ -316,11 +316,14 @@ set(PROJECT_VERSION "${CCL_MAJOR_VERSION}.${CCL_MINOR_VERSION}.${CCL_UPDATE_VERS
 
 if (BUILD_CONFIG)
     configure_file("cmake/templates/oneCCLConfig.cmake.in"
-                   "${CCL_INSTALL_LIB}/cmake/oneCCL/oneCCLConfig.cmake"
+                   "${CMAKE_CURRENT_BINARY_DIR}/oneCCLConfig.cmake"
                    COPYONLY)
     configure_file("cmake/templates/oneCCLConfigVersion.cmake.in"
-                   "${CCL_INSTALL_LIB}/cmake/oneCCL/oneCCLConfigVersion.cmake"
+                   "${CMAKE_CURRENT_BINARY_DIR}/oneCCLConfigVersion.cmake"
                    @ONLY)
+    install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/oneCCLConfig.cmake DESTINATION ${CCL_INSTALL_LIB}/cmake/oneCCL/)
+    install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/oneCCLConfigVersion.cmake DESTINATION ${CCL_INSTALL_LIB}/cmake/oneCCL/)
+
 endif()
 
 # include other CMakeLists

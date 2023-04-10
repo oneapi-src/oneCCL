@@ -28,7 +28,8 @@ ccl::status coll_entry::build_sched(ccl_sched* sched, const ccl_coll_entry_param
                                             param.recv_buf,
                                             param.recv_counts,
                                             param.dtype,
-                                            param.comm);
+                                            param.comm,
+                                            param.is_scaleout);
             break;
         }
         case ccl_coll_allreduce: {
@@ -43,8 +44,13 @@ ccl::status coll_entry::build_sched(ccl_sched* sched, const ccl_coll_entry_param
             break;
         }
         case ccl_coll_alltoall: {
-            res = ccl_coll_build_alltoall(
-                sched, param.send_buf, param.recv_buf, param.count, param.dtype, param.comm);
+            res = ccl_coll_build_alltoall(sched,
+                                          param.send_buf,
+                                          param.recv_buf,
+                                          param.count,
+                                          param.dtype,
+                                          param.comm,
+                                          param.is_scaleout);
             break;
         }
         case ccl_coll_alltoallv: {
@@ -54,7 +60,8 @@ ccl::status coll_entry::build_sched(ccl_sched* sched, const ccl_coll_entry_param
                                            param.recv_buf,
                                            param.recv_counts,
                                            param.dtype,
-                                           param.comm);
+                                           param.comm,
+                                           param.is_scaleout);
             break;
         }
         case ccl_coll_barrier: {
@@ -74,7 +81,8 @@ ccl::status coll_entry::build_sched(ccl_sched* sched, const ccl_coll_entry_param
                                         param.dtype,
                                         param.reduction,
                                         param.root,
-                                        param.comm);
+                                        param.comm,
+                                        param.is_scaleout);
             break;
         }
         case ccl_coll_reduce_scatter: {

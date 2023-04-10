@@ -127,7 +127,7 @@ env_data::env_data()
           enable_strict_order(0),
           staging_buffer(ccl_staging_regular),
 #ifdef CCL_ENABLE_SYCL
-          enable_op_sync(1),
+          enable_op_sync(0),
 #else // CCL_ENABLE_SYCL
           enable_op_sync(0),
 #endif // CCL_ENABLE_SYCL
@@ -143,7 +143,10 @@ env_data::env_data()
           allgatherv_topo_read(1),
           alltoallv_topo_read(1),
           reduce_scatter_monolithic_kernel(0),
-          allgatherv_monolithic_kernel(0),
+          allgatherv_monolithic_kernel(0), // monolithic kernel for xelink transfer
+          allgatherv_monolithic_pipeline_kernel(
+              0), // pipelined monolithic kernel for xelink + mdfi transfer
+          alltoallv_monolithic_kernel(1),
 #endif // CCL_ENABLE_SYCL
 
           allreduce_nreduce_buffering(0),
@@ -301,13 +304,18 @@ void env_data::parse() {
     env_2_type(CCL_ALGO_FALLBACK, enable_algo_fallback);
     env_2_type(CCL_ALLGATHERV, allgatherv_algo_raw);
     env_2_type(CCL_ALLREDUCE, allreduce_algo_raw);
-    env_2_type(CCL_ALLREDUCE_SCALEOUT, allreduce_scaleout_algo_raw);
     env_2_type(CCL_ALLTOALL, alltoall_algo_raw);
     env_2_type(CCL_ALLTOALLV, alltoallv_algo_raw);
     env_2_type(CCL_BARRIER, barrier_algo_raw);
     env_2_type(CCL_BCAST, bcast_algo_raw);
     env_2_type(CCL_REDUCE, reduce_algo_raw);
     env_2_type(CCL_REDUCE_SCATTER, reduce_scatter_algo_raw);
+    env_2_type(CCL_ALLGATHERV_SCALEOUT, allgatherv_scaleout_algo_raw);
+    env_2_type(CCL_ALLREDUCE_SCALEOUT, allreduce_scaleout_algo_raw);
+    env_2_type(CCL_ALLTOALL_SCALEOUT, alltoall_scaleout_algo_raw);
+    env_2_type(CCL_ALLTOALLV_SCALEOUT, alltoallv_scaleout_algo_raw);
+    env_2_type(CCL_REDUCE_SCALEOUT, reduce_scaleout_algo_raw);
+
     env_2_type(CCL_UNORDERED_COLL, enable_unordered_coll);
     if (enable_unordered_coll && atl_transport != ccl_atl_ofi) {
         CCL_THROW("unordered collectives are supported for OFI transport only");
@@ -371,6 +379,8 @@ void env_data::parse() {
     env_2_type(CCL_ALLTOALLV_TOPO_READ, alltoallv_topo_read);
     env_2_type(CCL_REDUCE_SCATTER_MONOLITHIC_KERNEL, reduce_scatter_monolithic_kernel);
     env_2_type(CCL_ALLGATHERV_MONOLITHIC_KERNEL, allgatherv_monolithic_kernel);
+    env_2_type(CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL, allgatherv_monolithic_pipeline_kernel);
+    env_2_type(CCL_ALLTOALLV_MONOLITHIC_KERNEL, alltoallv_monolithic_kernel);
 #endif // CCL_ENABLE_SYCL
 
     env_2_type(CCL_ALLREDUCE_NREDUCE_BUFFERING, allreduce_nreduce_buffering);
@@ -603,10 +613,6 @@ void env_data::print(int rank) {
     LOG_INFO(CCL_ALLREDUCE,
              ": ",
              (allreduce_algo_raw.length()) ? allreduce_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
-    LOG_INFO(CCL_ALLREDUCE_SCALEOUT,
-             ": ",
-             (allreduce_scaleout_algo_raw.length()) ? allreduce_scaleout_algo_raw
-                                                    : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_ALLTOALL,
              ": ",
              (alltoall_algo_raw.length()) ? alltoall_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
@@ -624,6 +630,37 @@ void env_data::print(int rank) {
         CCL_REDUCE_SCATTER,
         ": ",
         (reduce_scatter_algo_raw.length()) ? reduce_scatter_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_ALLGATHERV,
+             ": ",
+             (allgatherv_algo_raw.length()) ? allgatherv_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_ALLTOALL,
+             ": ",
+             (alltoall_algo_raw.length()) ? alltoall_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_ALLTOALLV,
+             ": ",
+             (alltoallv_algo_raw.length()) ? alltoallv_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(
+        CCL_REDUCE, ": ", (reduce_algo_raw.length()) ? reduce_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_ALLGATHERV_SCALEOUT,
+             ": ",
+             (allgatherv_scaleout_algo_raw.length()) ? allgatherv_scaleout_algo_raw
+                                                     : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_ALLREDUCE_SCALEOUT,
+             ": ",
+             (allreduce_scaleout_algo_raw.length()) ? allreduce_scaleout_algo_raw
+                                                    : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_ALLTOALL_SCALEOUT,
+             ": ",
+             (alltoall_scaleout_algo_raw.length()) ? alltoall_scaleout_algo_raw
+                                                   : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_ALLTOALLV_SCALEOUT,
+             ": ",
+             (alltoallv_scaleout_algo_raw.length()) ? alltoallv_scaleout_algo_raw
+                                                    : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(
+        CCL_REDUCE_SCALEOUT,
+        ": ",
+        (reduce_scaleout_algo_raw.length()) ? reduce_scaleout_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_UNORDERED_COLL, ": ", enable_unordered_coll);
 
     LOG_INFO(CCL_FUSION, ": ", enable_fusion);
@@ -659,6 +696,9 @@ void env_data::print(int rank) {
     LOG_INFO(CCL_ALLTOALLV_TOPO_READ, ": ", alltoallv_topo_read);
     LOG_INFO(CCL_REDUCE_SCATTER_MONOLITHIC_KERNEL, ": ", reduce_scatter_monolithic_kernel);
     LOG_INFO(CCL_ALLGATHERV_MONOLITHIC_KERNEL, ": ", allgatherv_monolithic_kernel);
+    LOG_INFO(
+        CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL, ": ", allgatherv_monolithic_pipeline_kernel);
+    LOG_INFO(CCL_ALLTOALLV_MONOLITHIC_KERNEL, ": ", alltoallv_monolithic_kernel);
 #endif // CCL_ENABLE_SYCL
 
     LOG_INFO(CCL_ALLREDUCE_NREDUCE_BUFFERING, ": ", allreduce_nreduce_buffering);

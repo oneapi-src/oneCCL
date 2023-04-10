@@ -68,6 +68,11 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
     if (ccl::global_data::env().enable_op_sync)
         attr.synchronous = 1;
 
+    // TODO: remove after MLSL-1915 (ring barrier is broken) is done
+    // this is needed because OFI transport means we need ring barrier
+    if (ccl::global_data::env().atl_transport == ccl_atl_ofi)
+        attr.synchronous = 1;
+
     if (param.stream && ccl::global_data::env().enable_external_queue) {
         LOG_DEBUG("use external queue in CCL for compute kernel.");
         // Todo: need to submit kernel before this API return. Now, just use wait execution as WA.
@@ -116,7 +121,13 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
     ccl_sched* sched = ccl_sched::create(param, attr);
 
     /* 3. fuse schedule */
-    if (!postpone_schedule && ccl::global_data::env().enable_fusion) {
+    if (!postpone_schedule &&
+        ccl::global_data::env().enable_fusion
+#ifdef CCL_ENABLE_SYCL
+        // TODO: enable fusion for async case with CCL_SYCL_OUTPUT_EVENT
+        && (attr.synchronous || !ccl::utils::should_use_sycl_output_event(sched->coll_param.stream))
+#endif //CCL_ENABLE_SYCL
+    ) {
         if (data.fusion_manager->add(sched)) {
             LOG_DEBUG("sched ",
                       sched,
@@ -145,6 +156,26 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
         request->synchronous = true;
         ccl_wait_impl<ccl_sched>(data.executor.get(), request);
     }
+#ifdef CCL_ENABLE_SYCL
+    else if (ccl::utils::should_use_sycl_output_event(sched->coll_param.stream)) {
+        bool prepared = false;
+        request->urgent = true;
+        while (!prepared) {
+            prepared = true;
+            for (auto& subsched : sched->get_subscheds()) {
+                if (!subsched->finished_preparation) {
+                    prepared = false;
+                }
+            }
+            if (!prepared) {
+                data.executor.get()->do_work();
+            }
+        }
+        request->urgent = false;
+        request->set_native_event(ccl::utils::submit_barrier(
+            sched->coll_param.stream->get_native_stream(), request->get_sync_event()));
+    }
+#endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_ITT
     ccl::profile::itt::task_end(ccl::profile::itt::task_type::api_call);
@@ -159,7 +190,8 @@ ccl::status ccl_coll_build_allgatherv(ccl_sched* sched,
                                       ccl_buffer recv_buf,
                                       const size_t* recv_counts,
                                       const ccl_datatype& dtype,
-                                      ccl_comm* comm) {
+                                      ccl_comm* comm,
+                                      bool is_scaleout) {
     ccl::status status = ccl::status::success;
 
     ccl_selector_param selector_param;
@@ -174,6 +206,7 @@ ccl::status ccl_coll_build_allgatherv(ccl_sched* sched,
     selector_param.is_sycl_buf = sched->coll_attr.is_sycl_buf;
 #endif // CCL_ENABLE_SYCL
     selector_param.hint_algo = sched->hint_algo;
+    selector_param.is_scaleout = is_scaleout;
 
     auto algo =
         ccl::global_data::get().algorithm_selector->get<ccl_coll_allgatherv>(selector_param);
@@ -312,7 +345,8 @@ ccl::status ccl_coll_build_alltoall(ccl_sched* sched,
                                     ccl_buffer recv_buf,
                                     size_t count,
                                     const ccl_datatype& dtype,
-                                    ccl_comm* comm) {
+                                    ccl_comm* comm,
+                                    bool is_scaleout) {
     ccl::status status = ccl::status::success;
 
     ccl_selector_param param;
@@ -325,6 +359,7 @@ ccl::status ccl_coll_build_alltoall(ccl_sched* sched,
     param.is_sycl_buf = sched->coll_attr.is_sycl_buf;
 #endif // CCL_ENABLE_SYCL
     param.hint_algo = sched->hint_algo;
+    param.is_scaleout = is_scaleout;
 
     auto algo = ccl::global_data::get().algorithm_selector->get<ccl_coll_alltoall>(param);
 
@@ -346,7 +381,8 @@ ccl::status ccl_coll_build_alltoallv(ccl_sched* sched,
                                      ccl_buffer recv_buf,
                                      const size_t* recv_counts,
                                      const ccl_datatype& dtype,
-                                     ccl_comm* comm) {
+                                     ccl_comm* comm,
+                                     bool is_scaleout) {
     ccl::status status = ccl::status::success;
 
     ccl_selector_param param;
@@ -358,6 +394,7 @@ ccl::status ccl_coll_build_alltoallv(ccl_sched* sched,
     param.is_sycl_buf = sched->coll_attr.is_sycl_buf;
 #endif // CCL_ENABLE_SYCL
     param.hint_algo = sched->hint_algo;
+    param.is_scaleout = is_scaleout;
 
     auto algo = ccl::global_data::get().algorithm_selector->get<ccl_coll_alltoallv>(param);
 
@@ -463,7 +500,8 @@ ccl::status ccl_coll_build_reduce(ccl_sched* sched,
                                   const ccl_datatype& dtype,
                                   ccl::reduction reduction,
                                   int root,
-                                  ccl_comm* comm) {
+                                  ccl_comm* comm,
+                                  bool is_scaleout) {
     ccl::status status = ccl::status::success;
     CCL_THROW_IF_NOT(root >= 0 && root < comm->size(), "wrong root");
 
@@ -478,6 +516,7 @@ ccl::status ccl_coll_build_reduce(ccl_sched* sched,
     param.is_sycl_buf = sched->coll_attr.is_sycl_buf;
 #endif // CCL_ENABLE_SYCL
     param.hint_algo = sched->hint_algo;
+    param.is_scaleout = is_scaleout;
 
     auto algo = ccl::global_data::get().algorithm_selector->get<ccl_coll_reduce>(param);
 
@@ -488,6 +527,10 @@ ccl::status ccl_coll_build_reduce(ccl_sched* sched,
             break;
         case ccl_coll_reduce_rabenseifner:
             CCL_CALL(ccl_coll_build_rabenseifner_reduce(
+                sched, send_buf, recv_buf, count, dtype, reduction, root, comm));
+            break;
+        case ccl_coll_reduce_ring:
+            CCL_CALL(ccl_coll_build_ring_reduce(
                 sched, send_buf, recv_buf, count, dtype, reduction, root, comm));
             break;
         case ccl_coll_reduce_tree:

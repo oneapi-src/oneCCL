@@ -35,7 +35,7 @@ ze_onesided_allreduce_entry::ze_onesided_allreduce_entry(ccl_sched* sched,
                                                          ccl_comm* comm,
                                                          std::vector<ze_event_handle_t> wait_events,
                                                          size_t peer_buf_offset)
-        : ze_base_entry(sched, comm, 3 /* request additional events */, wait_events),
+        : ze_base_entry(sched, comm, 5 /* request additional events */, wait_events),
           send_buf(send_buf),
           recv_buf(recv_buf),
           cnt(cnt),
@@ -177,14 +177,23 @@ void ze_onesided_allreduce_entry::init_ze_hook() {
         const unsigned long counts[kernel_count] = { pre_align_offset_byte / dtype.size(),
                                                      cnt - pre_align_offset_byte / dtype.size() };
         ze_event_handle_t events[kernel_count];
-        int start_kernel = (int)ccl::utils::align_kernels::unaligned;
-        // when pre_align_offset_byte is 0, only aligned kernel is needed
-        if (pre_align_offset_byte == 0) {
-            start_kernel = (int)ccl::utils::align_kernels::aligned;
+        size_t start_kernel_idx = 0;
+        size_t end_kernel_idx = kernel_count;
+        bool use_single_kernel = false;
+        // when counts[0] is 0, only aligned kernel is needed
+        if (counts[(int)ccl::utils::align_kernels::unaligned] == 0) {
+            use_single_kernel = true;
+            start_kernel_idx++;
         }
+        // when counts[1] is 0, aligned kernel is not needed
+        if (counts[(int)ccl::utils::align_kernels::aligned] == 0) {
+            use_single_kernel = true;
+            end_kernel_idx--;
+        }
+
         // if the initial data is aligned, we need only one kernel
         // otherwise run two kernels, one for unaligned and one for aligned data
-        for (int i = start_kernel; i < kernel_count; i++) {
+        for (size_t i = start_kernel_idx; i < end_kernel_idx; i++) {
             kernels.emplace_back(module, main_kernel_name, worker_idx);
 
             void* send_buf_ptr_tmp = static_cast<char*>(send_buf_ptr) + offsets[i];
@@ -201,9 +210,8 @@ void ze_onesided_allreduce_entry::init_ze_hook() {
 
             kernels.back().set_args(main_kernel_args);
             kernels.back().calculate_group_size(counts[i]);
-            events[i] = (start_kernel == (int)ccl::utils::align_kernels::aligned)
-                            ? ze_base_entry::entry_event
-                            : ze_base_entry::create_event();
+            events[i] =
+                (use_single_kernel) ? ze_base_entry::entry_event : ze_base_entry::create_event();
 
             ZE_CALL(zeCommandListAppendLaunchKernel,
                     (ze_base_entry::get_comp_list(),
@@ -215,7 +223,7 @@ void ze_onesided_allreduce_entry::init_ze_hook() {
         }
 
         // use a barrier to combine the events of the unalinged and aligned kernel
-        if (start_kernel == (int)ccl::utils::align_kernels::unaligned) {
+        if (!use_single_kernel) {
             ZE_CALL(
                 zeCommandListAppendBarrier,
                 (ze_base_entry::get_comp_list(), ze_base_entry::entry_event, kernel_count, events));

@@ -19,14 +19,14 @@
 #include "sched/sched.hpp"
 
 ze_event_signal_entry::ze_event_signal_entry(ccl_sched* sched, ccl_sched* master_sched)
-        : sched_entry(sched),
+        : sched_entry(sched, false /*is_barrier*/, false /*is_urgent*/, true /*is_nonblocking*/),
           master_sched(master_sched) {
     CCL_THROW_IF_NOT(sched, "no sched");
     CCL_THROW_IF_NOT(master_sched, "no master_sched");
 }
 
 ze_event_signal_entry::ze_event_signal_entry(ccl_sched* sched, ze_event_handle_t event)
-        : sched_entry(sched),
+        : sched_entry(sched, false /*is_barrier*/, false /*is_urgent*/, true /*is_nonblocking*/),
           event(event) {
     CCL_THROW_IF_NOT(sched, "no sched");
 }
