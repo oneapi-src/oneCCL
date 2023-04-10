@@ -212,7 +212,7 @@ ccl::status ccl_coll_build_double_tree_op(ccl_sched* sched,
                 entry_factory::create<subsched_entry>(
                     sched,
                     t1_op_id,
-                    [t1_work_buf, t1_work_count, &dtype, t1, comm](ccl_sched* s) {
+                    [t1_work_buf, t1_work_count, dtype, t1, comm](ccl_sched* s) {
                         bcast_tree(t1, s, t1_work_buf, t1_work_count, dtype, comm);
                     },
                     "bcast_t1");
@@ -220,7 +220,7 @@ ccl::status ccl_coll_build_double_tree_op(ccl_sched* sched,
                 entry_factory::create<subsched_entry>(
                     sched,
                     t2_op_id,
-                    [t2_work_buf, t2_work_count, &dtype, t2, comm](ccl_sched* s) {
+                    [t2_work_buf, t2_work_count, dtype, t2, comm](ccl_sched* s) {
                         bcast_tree(t2, s, t2_work_buf, t2_work_count, dtype, comm);
                     },
                     "bcast_t2");
@@ -232,7 +232,7 @@ ccl::status ccl_coll_build_double_tree_op(ccl_sched* sched,
                     entry_factory::create<subsched_entry>(
                         sched,
                         t2_op_id,
-                        [t2_work_buf, t2_work_count, &dtype, op, t2, comm](ccl_sched* s) {
+                        [t2_work_buf, t2_work_count, dtype, op, t2, comm](ccl_sched* s) {
                             reduce_tree(t2, s, t2_work_buf, t2_work_count, dtype, op, comm);
                         },
                         "reduce_t2");
@@ -240,7 +240,7 @@ ccl::status ccl_coll_build_double_tree_op(ccl_sched* sched,
                     entry_factory::create<subsched_entry>(
                         sched,
                         t1_op_id,
-                        [t1_work_buf, t1_work_count, &dtype, op, t1, comm](ccl_sched* s) {
+                        [t1_work_buf, t1_work_count, dtype, op, t1, comm](ccl_sched* s) {
                             reduce_tree(t1, s, t1_work_buf, t1_work_count, dtype, op, comm);
                         },
                         "reduce_t1");
@@ -249,7 +249,7 @@ ccl::status ccl_coll_build_double_tree_op(ccl_sched* sched,
                     entry_factory::create<subsched_entry>(
                         sched,
                         t2_op_id,
-                        [t2_work_buf, t2_work_count, &dtype, op, t2, comm](ccl_sched* s) {
+                        [t2_work_buf, t2_work_count, dtype, op, t2, comm](ccl_sched* s) {
                             reduce_tree(t2, s, t2_work_buf, t2_work_count, dtype, op, comm);
                         },
                         "reduce_t2");
@@ -257,7 +257,7 @@ ccl::status ccl_coll_build_double_tree_op(ccl_sched* sched,
                     entry_factory::create<subsched_entry>(
                         sched,
                         t1_op_id,
-                        [t1_work_buf, t1_work_count, &dtype, op, t1, comm](ccl_sched* s) {
+                        [t1_work_buf, t1_work_count, dtype, op, t1, comm](ccl_sched* s) {
                             reduce_tree(t1, s, t1_work_buf, t1_work_count, dtype, op, comm);
                         },
                         "reduce_t1");
@@ -271,7 +271,7 @@ ccl::status ccl_coll_build_double_tree_op(ccl_sched* sched,
                     entry_factory::create<subsched_entry>(
                         sched,
                         t2_op_id,
-                        [t2_work_buf, t2_work_count, &dtype, op, t2, comm](ccl_sched* s) {
+                        [t2_work_buf, t2_work_count, dtype, op, t2, comm](ccl_sched* s) {
                             reduce_bcast_tree(t2, s, t2_work_buf, t2_work_count, dtype, op, comm);
                         },
                         "reduce_bcast_t2");
@@ -279,7 +279,7 @@ ccl::status ccl_coll_build_double_tree_op(ccl_sched* sched,
                     entry_factory::create<subsched_entry>(
                         sched,
                         t1_op_id,
-                        [t1_work_buf, t1_work_count, &dtype, op, t1, comm](ccl_sched* s) {
+                        [t1_work_buf, t1_work_count, dtype, op, t1, comm](ccl_sched* s) {
                             reduce_bcast_tree(t1, s, t1_work_buf, t1_work_count, dtype, op, comm);
                         },
                         "reduce_bcast_t1");
@@ -288,7 +288,7 @@ ccl::status ccl_coll_build_double_tree_op(ccl_sched* sched,
                     entry_factory::create<subsched_entry>(
                         sched,
                         t1_op_id,
-                        [t1_work_buf, t1_work_count, &dtype, op, t1, comm](ccl_sched* s) {
+                        [t1_work_buf, t1_work_count, dtype, op, t1, comm](ccl_sched* s) {
                             reduce_bcast_tree(t1, s, t1_work_buf, t1_work_count, dtype, op, comm);
                         },
                         "reduce_bcast_t1");
@@ -296,7 +296,7 @@ ccl::status ccl_coll_build_double_tree_op(ccl_sched* sched,
                     entry_factory::create<subsched_entry>(
                         sched,
                         t2_op_id,
-                        [t2_work_buf, t2_work_count, &dtype, op, t2, comm](ccl_sched* s) {
+                        [t2_work_buf, t2_work_count, dtype, op, t2, comm](ccl_sched* s) {
                             reduce_bcast_tree(t2, s, t2_work_buf, t2_work_count, dtype, op, comm);
                         },
                         "reduce_bcast_t2");

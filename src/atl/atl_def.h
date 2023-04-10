@@ -180,6 +180,7 @@ typedef struct atl_proc_coord {
     int global_count;
     int local_idx;
     int local_count;
+    std::vector<int> global2local_map{};
     size_t hostname_hash;
     void reset() {
         global_idx = 0;

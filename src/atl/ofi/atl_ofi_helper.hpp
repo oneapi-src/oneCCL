@@ -110,7 +110,7 @@
                 CCL_THROW("OFI function error"); \
                 break; \
             } \
-            (void)poll(ep); \
+            (void)progress_ep(ep); \
             retry_count++; \
         } while (((ret_val) == -FI_EAGAIN) && (retry_count < max_retry_count)); \
     } while (0)
@@ -184,7 +184,6 @@ typedef struct {
     /* table[0..proc_count][0..ep_count] */
     fi_addr_t* addr_table;
     size_t addr_len;
-    int first_proc_idx;
 } atl_ofi_prov_t;
 
 typedef struct {

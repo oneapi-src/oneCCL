@@ -108,5 +108,6 @@ WORK_DIR=$(get_script_path "${vars_script_name:-}")
 CCL_ROOT="$(cd "${WORK_DIR}"/../; pwd -P)"; export CCL_ROOT
 
 CPATH=$(prepend_path "${CCL_ROOT}/include" "${CPATH:-}"); export CPATH
+CMAKE_PREFIX_PATH=$(prepend_path "${CCL_ROOT}/lib/cmake/oneCCL" "${CMAKE_PREFIX_PATH:-}"); export CMAKE_PREFIX_PATH
 LIBRARY_PATH=$(prepend_path "${CCL_ROOT}/lib" "${LIBRARY_PATH:-}"); export LIBRARY_PATH
 LD_LIBRARY_PATH=$(prepend_path "${CCL_ROOT}/lib" "${LD_LIBRARY_PATH:-}"); export LD_LIBRARY_PATH

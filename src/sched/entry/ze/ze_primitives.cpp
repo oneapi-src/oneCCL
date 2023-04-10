@@ -149,7 +149,9 @@ void get_suggested_group_count(const ze_group_size_t& group_size,
                      ", count: ",
                      to_string(*group_count),
                      ", elem_count: ",
-                     std::to_string(elem_count));
+                     std::to_string(elem_count),
+                     ", rem: ",
+                     rem);
 }
 
 void set_kernel_args(ze_kernel_handle_t kernel, const ze_kernel_args_t& kernel_args) {

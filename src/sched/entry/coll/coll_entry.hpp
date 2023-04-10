@@ -40,7 +40,8 @@ public:
                   [this](ccl_sched* s) {
                       coll_entry::build_sched(s, this->param);
                   },
-                  "coll_entry"),
+                  "coll_entry",
+                  true /*is_coll*/),
               param(param) {}
 
     void start() override;

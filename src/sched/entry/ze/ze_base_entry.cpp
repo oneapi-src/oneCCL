@@ -27,11 +27,13 @@
 using namespace ccl;
 using namespace ccl::ze;
 
+// ze_base_entry
 ze_base_entry::ze_base_entry(ccl_sched *sched,
                              ccl_comm *comm,
                              uint32_t add_event_count,
-                             std::vector<ze_event_handle_t> wait_events)
-        : sched_entry(sched),
+                             std::vector<ze_event_handle_t> wait_events,
+                             bool is_nonblocking)
+        : sched_entry(sched, false /*is_barrier*/, false /*is_urgent*/, is_nonblocking),
           comm(comm),
           use_single_list(sched->use_single_list),
           wait_events(wait_events) {
@@ -198,6 +200,9 @@ void ze_base_entry::update() {
             reset_events();
         }
 
+        sched->configured_preparation = false;
+        sched->finished_preparation = false;
+
         // Finalize must go after all operation with the event because it's destroyed there.
         if (!sched->coll_attr.to_cache) {
             if (use_single_list) {
@@ -282,6 +287,7 @@ void ze_base_entry::destroy_events() {
     events.clear();
 }
 
+// ze_kernel
 ze_kernel::ze_kernel(ze_module_handle_t module, const std::string &kernel_name, size_t worker_idx)
         : module(module),
           kernel_name(kernel_name),

@@ -200,7 +200,7 @@ public:
         return transport->check(eps[ep_idx], req);
     }
 
-    virtual std::shared_ptr<atl_base_comm> comm_split(int color) = 0;
+    virtual std::shared_ptr<atl_base_comm> comm_split(int color, int key) = 0;
 
     int get_rank() const {
         return rank;

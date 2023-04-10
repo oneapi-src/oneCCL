@@ -23,19 +23,15 @@ std::map<ccl_coll_barrier_algo, std::string>
     };
 
 ccl_algorithm_selector<ccl_coll_barrier>::ccl_algorithm_selector() {
+    // TODO: make ring barrier default after MLSL-1915 is done
     if (ccl::global_data::env().atl_transport == ccl_atl_ofi)
         insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_barrier_ring);
     else if (ccl::global_data::env().atl_transport == ccl_atl_mpi)
         insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_barrier_direct);
-
     insert(fallback_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_barrier_ring);
 
-    // scale-out table by default duplicates the main table
-    // TODO: fill the table with algorithms which is suitable for the better scale-out performance.
-    // Explanation: when implementing it was a simple scenario that does not contradict with the selection logic.
-    // If there are no environemnt variable provided, scale-out path will go through the scaleout_table like it is a main_table
-    // and use fallback path if nothing is suitable. Correct default behavior of each algorithm`s scale-out path is another task with discussion
-    // and performance measurements.
+    // barrier currently does not support scale-out selection, but the table
+    // has to be defined, therefore duplicating main table
     scaleout_table = main_table;
 }
 

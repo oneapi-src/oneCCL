@@ -117,7 +117,7 @@ CC="gcc"
 MPICH_VERSION="3.4a2"
 CFLAGS=""
 CPPFLAGS=""
-MPIVERSION="2021.8"
+MPIVERSION="2021.9"
 MPILIBNAME="mpi"                           
 
 

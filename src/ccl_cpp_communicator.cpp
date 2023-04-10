@@ -80,6 +80,16 @@ CCL_API int communicator::size() const {
     return get_impl()->size();
 }
 
+CCL_API device communicator::get_device() const {
+    CCL_THROW_IF_NOT(get_impl()->get_device(), "ccl::device is not available");
+    return device::create_device(get_impl()->get_device()->get_native());
+}
+
+CCL_API context communicator::get_context() const {
+    CCL_THROW_IF_NOT(get_impl()->get_context(), "ccl::context is not available");
+    return context::create_context(get_impl()->get_context()->get_native());
+}
+
 CCL_API communicator communicator::split(const comm_split_attr& attr) {
     return communicator(get_impl()->split(attr));
 }

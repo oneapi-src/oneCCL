@@ -18,7 +18,16 @@
 #include "sched/entry/entry.hpp"
 #include "sched/sched.hpp"
 
-sched_entry::sched_entry(ccl_sched* sched, bool is_barrier) : sched(sched), barrier(is_barrier) {
+sched_entry::sched_entry(ccl_sched* sched,
+                         bool is_barrier,
+                         bool is_urgent,
+                         bool is_nonblocking,
+                         bool is_coll)
+        : sched(sched),
+          barrier(is_barrier),
+          urgent(is_urgent),
+          nonblocking(is_nonblocking),
+          coll(is_coll) {
     use_total_timer = ccl::global_data::env().sched_profile;
     detect_update_time_expiration =
         ccl::global_data::env().entry_max_update_time_sec != CCL_ENV_SIZET_NOT_SPECIFIED;
@@ -83,7 +92,7 @@ void sched_entry::do_progress() {
 
         // ignore timeout on coll entry
         // actual timeout will be reported from sub-entries
-        if (strcmp(name(), "COLL") != 0) {
+        if (!is_coll()) {
             CCL_THROW_IF_NOT(
                 !is_update_time_expired, "entry ", name(), " ", this, " update time expired");
         }
@@ -139,6 +148,9 @@ void sched_entry::reset(size_t idx) {
         is_update_time_expired = false;
     }
 
+    sched->configured_preparation = false;
+    sched->finished_preparation = false;
+
     if (status == ccl_sched_entry_status_complete_once) {
         return;
     }
@@ -182,6 +194,18 @@ void sched_entry::make_barrier() {
 
 bool sched_entry::is_barrier() const {
     return barrier;
+}
+
+bool sched_entry::is_urgent() const {
+    return urgent;
+}
+
+bool sched_entry::is_nonblocking() const {
+    return nonblocking;
+}
+
+bool sched_entry::is_coll() const {
+    return coll;
 }
 
 ccl_sched_entry_status sched_entry::get_status() const {

@@ -211,7 +211,9 @@ public:
     atl_status_t comm_split(const std::vector<atl_ep_t>& base_eps,
                             std::vector<atl_ep_t>& eps,
                             size_t color,
-                            int local_idx) override;
+                            int key,
+                            int local_idx,
+                            int local_count) override;
 
     atl_status_t get_rank2proc_map(std::shared_ptr<ipmi> pmi,
                                    std::vector<int>& rank2proc_map) override {
@@ -227,7 +229,10 @@ public:
                              std::shared_ptr<ipmi> pmi,
                              MPI_Comm* new_comm);
 
-    atl_status_t ep_init(std::vector<atl_ep_t>& eps, MPI_Comm global_comm, int local_idx);
+    atl_status_t ep_init(std::vector<atl_ep_t>& eps,
+                         MPI_Comm global_comm,
+                         int local_idx,
+                         int local_count);
 
     static void set_env(const atl_attr_t& attr);
     static atl_mpi_env_info_t get_env_info(const char* key);

@@ -42,12 +42,8 @@ ccl_algorithm_selector<ccl_coll_bcast>::ccl_algorithm_selector() {
 
     insert(fallback_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_bcast_naive);
 
-    // scale-out table by default duplicates the main table
-    // TODO: fill the table with algorithms which is suitable for the better scale-out performance.
-    // Explanation: when implementing it was a simple scenario that does not contradict with the selection logic.
-    // If there are no environemnt variable provided, scale-out path will go through the scaleout_table like it is a main_table
-    // and use fallback path if nothing is suitable. Correct default behavior of each algorithm`s scale-out path is another task with discussion
-    // and performance measurements.
+    // bcast currently does not support scale-out selection, but the table
+    // has to be defined, therefore duplicating main table
     scaleout_table = main_table;
 }
 

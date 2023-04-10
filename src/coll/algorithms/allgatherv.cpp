@@ -502,6 +502,47 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
 
         return ccl::status::success;
     }
+    else if (ccl::global_data::env().allgatherv_monolithic_pipeline_kernel &&
+             even_comm->size() > 1) {
+        // pipeline is not possible when there is no xelink neighbor in even_comm
+
+        // copy local data to pair_comm neighbor
+        if (pair_comm->size() > 1) {
+            size_t peer_pair_rank = (pair_comm->rank() + 1) % pair_comm->size();
+            copy_attr attr{};
+            attr.peer_rank = peer_pair_rank;
+            attr.peer_buf_idx = recv_buf_idx_start + comm->rank();
+            attr.direction = copy_direction::t2t;
+            attr.map_comm = pair_comm;
+            // copy send buffer to the pair_comm tile recv buffer
+            auto entry_pair = entry_factory::create<ze_copy_entry>(
+                sched, send_buf, ccl_buffer(), recv_counts[comm->rank()], dtype, attr, wait_events);
+            wait_events.push_back(entry_pair->entry_event);
+        }
+
+        // pipelined kernel that copies from even_comm peers using xelink and to pair_comm peer using MDFI
+        auto entry =
+            entry_factory::create<ze_a2a_allgatherv_entry>(sched,
+                                                           send_buf,
+                                                           send_count,
+                                                           recv_bufs,
+                                                           recv_counts,
+                                                           dtype,
+                                                           even_comm,
+                                                           wait_events,
+                                                           send_buf_idx,
+                                                           0 /* pair_comm_offset */,
+                                                           true /* is_monolithic_pipeline */,
+                                                           pair_comm);
+
+        wait_events.push_back(entry->entry_event);
+        sched->add_barrier();
+        // TODO: understand barrier logic and see whether a smaller communicator can be used
+        ccl::add_comm_barrier(sched, node_comm, wait_events);
+        return ccl::status::success;
+    }
+
+    // original allgatherv code path without using entries
 
     // for small msg sizes we get more performance without main CE using (main CE has overhead)
     const bool can_use_small_msg_optimization = (send_count * dtype.size()) <= (1 * 1024 * 1024);
@@ -591,9 +632,11 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
             ccl::add_comm_barrier(sched, pair_comm, wait_events);
         }
 
-        for (int rank = pair_comm->rank(); rank < comm->size(); rank += pair_comm->size()) {
+        for (int even_comm_rank = 0; even_comm_rank < even_comm->size(); even_comm_rank++) {
+            size_t rank = even_comm->get_global_rank(even_comm_rank);
             send_to_peers(pair_comm, recv_bufs[rank], recv_counts[rank], recv_buf_idx_start + rank);
         }
+
         add_sched_barrier_for_parallel_copies();
 
         if (is_lead_rank && !ccl::global_data::env().enable_ze_bidir_algo) {

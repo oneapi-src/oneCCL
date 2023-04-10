@@ -67,6 +67,7 @@ public:
     void start(ccl_sched* sched, bool extra_sched = false);
     void wait(const ccl_request* req);
     bool test(const ccl_request* req);
+    void do_work();
 
     void start_workers(atl_proc_coord_t& coord);
     bool are_workers_started() {
@@ -92,7 +93,6 @@ private:
     size_t get_worker_idx_by_sched_id(ccl_sched* sched);
 
     std::unique_ptr<ccl_sched_queue> create_sched_queue(size_t idx, size_t ep_per_worker);
-    void do_work();
 
     std::vector<std::unique_ptr<ccl_worker>> workers;
     // TODO: Rework to support listener

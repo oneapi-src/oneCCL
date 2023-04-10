@@ -14,6 +14,7 @@
  limitations under the License.
 */
 #include "coll/coll_check.hpp"
+#include "coll/selection/selection.hpp"
 #include "common/global/global.hpp"
 #include "common/log/log.hpp"
 #include "common/request/request.hpp"
@@ -47,6 +48,8 @@ ccl_sched::ccl_sched(const ccl_sched_create_param& param, ccl_sched* master_sche
 #endif
           top_level_sched(false),
           restart_manager() {
+    configured_preparation = false;
+    finished_preparation = false;
     type = sched_type_t::extra;
     strict_order = ccl::global_data::env().enable_strict_order;
 }
@@ -145,6 +148,9 @@ ccl_request* ccl_sched::start(ccl_executor* exec,
 
     /* sanity check the schedule */
     CCL_THROW_IF_NOT(coll_param.comm);
+
+    configured_preparation = false;
+    finished_preparation = false;
 
     LOG_DEBUG("starting schedule ", this, ", type ", ccl_coll_type_to_str(coll_param.ctype));
 
@@ -311,10 +317,95 @@ ccl_sched::ccl_sched_ptr ccl_sched::create(const ccl_coll_param& param, const cc
             "found sched, reuse ", sched, ", type ", ccl_coll_type_to_str(sched->coll_param.ctype));
     }
 
+    sched->configured_preparation = false;
+    sched->finished_preparation = false;
+
     return sched;
 }
 
+#ifdef CCL_ENABLE_SYCL
+int ccl_sched::configure_preparation() {
+    if (configured_preparation) {
+        return prerun_entry_idx;
+    }
+    configured_preparation = true;
+    ccl_selector_param param;
+    param.ctype = parent_sched->coll_param.ctype;
+    param.count = parent_sched->coll_param.get_send_count();
+    param.send_counts = parent_sched->coll_param.send_counts.data();
+    param.recv_counts = parent_sched->coll_param.recv_counts.data();
+    param.dtype = parent_sched->coll_param.dtype;
+    param.comm = parent_sched->coll_param.comm;
+    param.stream = parent_sched->coll_param.stream;
+    param.buf = parent_sched->coll_param.send_bufs.back();
+    param.is_sycl_buf = parent_sched->coll_attr.is_sycl_buf;
+    param.hint_algo = parent_sched->hint_algo;
+    param.is_scaleout = parent_sched->coll_param.is_scaleout;
+    // here the cases are proceded where "early submission" solution doesn't work currently
+    // early submission without restrictions requires entry-sched architecture to be rewritten
+    if (coll_attr.to_cache ||
+        (parent_sched->coll_param.ctype != ccl_coll_allreduce &&
+         parent_sched->coll_param.ctype != ccl_coll_allgatherv) ||
+        (!ccl_is_device_side_algo(param) &&
+         !(parent_sched->coll_param.ctype == ccl_coll_allreduce &&
+           ccl::global_data::get().algorithm_selector->get<ccl_coll_allreduce>(param) ==
+               ccl_coll_allreduce_ring_rma)) ||
+        ccl::global_data::get().executor->get_worker_count() > 1 ||
+        ccl::global_data::env().atl_transport == ccl_atl_ofi ||
+        !ccl::global_data::env().enable_ze_bidir_algo ||
+        !ccl::global_data::env().enable_ze_single_list ||
+        (ccl::global_data::env().enable_p2p_access != CCL_ENV_INT_NOT_SPECIFIED &&
+         !ccl::global_data::env().enable_p2p_access)) {
+        return entries.size() - 1;
+    }
+    else {
+        for (int entry_idx = entries.size() - 1; entry_idx >= 0; --entry_idx) {
+            // completion of some entries is required before submitting other entries
+            if (entries[entry_idx]->is_urgent()) {
+                return entry_idx;
+            }
+        }
+    }
+    return invalid_entry_idx;
+}
+
+void ccl_sched::prerun() {
+    CCL_THROW_IF_NOT(prerun_entry_idx != invalid_entry_idx, "invalid early submission entry idx");
+    // run entries to submit them to level-zero
+    for (size_t i = prerun_entry_idx; i < entries.size(); ++i) {
+        // some entries are not being prerun because they don't require immediate submission
+        if (!entries[i]->is_nonblocking()) {
+            entries[i]->do_progress();
+        }
+    }
+    // run coll entries again to submit their subsched to level-zero
+    for (auto& entry : entries) {
+        if (entry->is_coll()) {
+            entry->do_progress();
+        }
+    }
+}
+#endif // CCL_ENABLE_SYCL
+
 void ccl_sched::do_progress() {
+#ifdef CCL_ENABLE_SYCL
+    bool prepared = true;
+    if (parent_sched != nullptr && subscheds.size() == 0 && !parent_sched->coll_attr.synchronous &&
+        !finished_preparation &&
+        ccl::utils::should_use_sycl_output_event(parent_sched->coll_param.stream)) {
+        prerun_entry_idx = configure_preparation();
+        if (prerun_entry_idx > invalid_entry_idx &&
+            entries[prerun_entry_idx]->get_status() < ccl_sched_entry_status_complete) {
+            prepared = false;
+        }
+        if (prepared) {
+            ++prerun_entry_idx;
+            prerun();
+        }
+    }
+    finished_preparation = prepared;
+#endif // CCL_ENABLE_SYCL
+
     for (auto entry_idx = start_idx; entry_idx < entries.size(); ++entry_idx) {
         auto& entry = entries[entry_idx];
 
@@ -365,6 +456,11 @@ void ccl_sched::do_progress() {
             break;
         }
     }
+#ifdef CCL_ENABLE_SYCL
+    if (!prepared && entries[entries.size() - 1]->get_status() >= ccl_sched_entry_status_complete) {
+        finished_preparation = true;
+    }
+#endif // CCL_ENABLE_SYCL
 }
 
 bool ccl_sched::is_strict_order_satisfied() {
@@ -463,6 +559,9 @@ void ccl_sched::renew(bool need_update_id, bool reset) {
 
     if (reset)
         reset_state();
+
+    configured_preparation = false;
+    finished_preparation = false;
 }
 
 void ccl_sched::add_barrier() {
@@ -519,10 +618,7 @@ void ccl_sched::set_output_event(ccl_request* request) {
     }
     else {
         request->set_sync_event(sync_event);
-        if (this->coll_attr.synchronous)
-            request->set_native_event(ccl::utils::submit_barrier(q));
-        else
-            request->set_native_event(ccl::utils::submit_barrier(q, sync_event));
+        request->set_native_event(ccl::utils::submit_barrier(q));
     }
 
 #else // CCL_ENABLE_SYCL_INTEROP_EVENT

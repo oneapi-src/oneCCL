@@ -89,6 +89,7 @@ enum ccl_coll_reduce_algo {
 
     ccl_coll_reduce_direct,
     ccl_coll_reduce_rabenseifner,
+    ccl_coll_reduce_ring,
     ccl_coll_reduce_tree,
     ccl_coll_reduce_double_tree,
     ccl_coll_reduce_topo

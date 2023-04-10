@@ -35,7 +35,8 @@ ccl::status ccl_coll_build_allgatherv(ccl_sched* sched,
                                       ccl_buffer recv_buf,
                                       const size_t* recv_counts,
                                       const ccl_datatype& dtype,
-                                      ccl_comm* comm);
+                                      ccl_comm* comm,
+                                      bool is_scaleout);
 
 // TODO: pack this arguments in ccl_coll_build parameters structure
 ccl::status ccl_coll_build_allreduce(ccl_sched* sched,
@@ -52,7 +53,8 @@ ccl::status ccl_coll_build_alltoall(ccl_sched* sched,
                                     ccl_buffer recv_buf,
                                     size_t count,
                                     const ccl_datatype& dtype,
-                                    ccl_comm* comm);
+                                    ccl_comm* comm,
+                                    bool is_scaleout);
 
 ccl::status ccl_coll_build_alltoallv(ccl_sched* sched,
                                      ccl_buffer send_buf,
@@ -60,7 +62,8 @@ ccl::status ccl_coll_build_alltoallv(ccl_sched* sched,
                                      ccl_buffer recv_buf,
                                      const size_t* recv_counts,
                                      const ccl_datatype& dtype,
-                                     ccl_comm* comm);
+                                     ccl_comm* comm,
+                                     bool is_scaleout);
 
 ccl::status ccl_coll_build_barrier(ccl_sched* sched, ccl_comm* comm);
 
@@ -78,7 +81,8 @@ ccl::status ccl_coll_build_reduce(ccl_sched* sched,
                                   const ccl_datatype& dtype,
                                   ccl::reduction reduction,
                                   int root,
-                                  ccl_comm* comm);
+                                  ccl_comm* comm,
+                                  bool is_scaleout);
 
 ccl::status ccl_coll_build_reduce_scatter(ccl_sched* sched,
                                           ccl_buffer send_buf,

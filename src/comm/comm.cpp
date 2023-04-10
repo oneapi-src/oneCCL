@@ -219,12 +219,13 @@ void ccl_comm::create_topo_subcomms() {
     node_comm = std::shared_ptr<ccl_comm>(create_subcomm(topo_manager.get_host_idx()));
     even_comm = std::shared_ptr<ccl_comm>(
         create_subcomm(topo_manager.get_inter_card_color(atl_comm->get_rank())));
-    pair_comm = std::shared_ptr<ccl_comm>(
-        create_subcomm(topo_manager.get_intra_card_color(atl_comm->get_rank())));
+    pair_comm = std::shared_ptr<ccl_comm>(create_subcomm(
+        topo_manager.get_intra_card_color(atl_comm->get_rank()),
+        topo_manager.get_inter_card_color(atl_comm->get_rank()) % topo_manager.max_ranks_per_card));
 }
 
-ccl_comm* ccl_comm::create_subcomm(int color) const {
-    std::shared_ptr<atl_base_comm> new_atl_comm = get_atl_comm()->comm_split(color);
+ccl_comm* ccl_comm::create_subcomm(int color, int key) const {
+    std::shared_ptr<atl_base_comm> new_atl_comm = get_atl_comm()->comm_split(color, key);
     ccl_comm* comm = new ccl_comm(
         new_atl_comm->get_comm_id(), new_atl_comm, true /*share_resources*/, true /*subcomm*/);
     comm->set_parent_comm(const_cast<ccl_comm*>(this));

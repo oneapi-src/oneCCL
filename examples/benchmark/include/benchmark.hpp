@@ -416,10 +416,10 @@ void print_timings(const ccl::communicator& comm,
             }
         }
 
-        double total_avg_time = std::accumulate(total_timers.begin(), total_timers.end(), 0);
+        double total_avg_time = std::accumulate(total_timers.begin(), total_timers.end(), 0.0);
         total_avg_time /= iter_count * nranks;
 
-        double wait_avg_time = std::accumulate(wait_timers.begin(), wait_timers.end(), 0);
+        double wait_avg_time = std::accumulate(wait_timers.begin(), wait_timers.end(), 0.0);
         wait_avg_time /= iter_count * nranks;
 
         double sum = 0;
@@ -429,10 +429,10 @@ void print_timings(const ccl::communicator& comm,
         }
         double stddev = std::sqrt((double)sum / nranks) / total_avg_time * 100;
 
-        double min_time = std::accumulate(min_timers.begin(), min_timers.end(), 0);
+        double min_time = std::accumulate(min_timers.begin(), min_timers.end(), 0.0);
         min_time /= iter_count;
 
-        double max_time = std::accumulate(max_timers.begin(), max_timers.end(), 0);
+        double max_time = std::accumulate(max_timers.begin(), max_timers.end(), 0.0);
         max_time /= iter_count;
 
         size_t bytes = elem_count * ccl::get_datatype_size(dtype) * buf_count;

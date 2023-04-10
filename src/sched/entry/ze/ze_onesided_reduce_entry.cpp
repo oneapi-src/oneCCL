@@ -34,7 +34,8 @@ ze_onesided_reduce_entry::ze_onesided_reduce_entry(ccl_sched* sched,
                                                    ccl_comm* comm,
                                                    std::vector<ze_event_handle_t> wait_events,
                                                    size_t peer_buf_offset)
-        : ze_base_entry(sched, comm, 2 /* request additional events */, wait_events),
+        : ze_base_entry(sched, comm, 4 /* request additional events */, wait_events),
+          // one event for empty_kernel, one for kernel_1s_copy_ops and two for aligning monolithic kernel
           send_buf(send_buf),
           recv_buf(recv_buf),
           cnt(cnt),
@@ -100,20 +101,6 @@ void ze_onesided_reduce_entry::init_ze_hook() {
     main_kernel_name =
         "reduce_local_outofplace_kernel_" + to_string(dtype.idx()) + "_" + ccl_reduction_to_str(op);
     LOG_DEBUG("get kernel: name: ", main_kernel_name);
-    ccl::global_data::get().ze_data->cache->get(worker_idx, module, main_kernel_name, &main_kernel);
-
-    LOG_DEBUG("kernel ", main_kernel, " args:\n", to_string(reduce_local_kernel_args));
-    set_kernel_args(main_kernel, reduce_local_kernel_args);
-
-    ze_group_size_t group_size;
-    get_suggested_group_size(main_kernel, cnt, &group_size);
-    LOG_DEBUG("suggested group size: ", to_string(group_size));
-
-    get_suggested_group_count(group_size, cnt, &group_count);
-    LOG_DEBUG("suggested group count: ", to_string(group_count));
-
-    ZE_CALL(zeKernelSetGroupSize,
-            (main_kernel, group_size.groupSizeX, group_size.groupSizeY, group_size.groupSizeZ));
 
     if (ccl::global_data::env().enable_kernel_1s_ipc_wa) {
         LOG_DEBUG("get kernel: name: ", empty_kernel_name);
@@ -158,13 +145,68 @@ void ze_onesided_reduce_entry::init_ze_hook() {
         LOG_DEBUG("one-sided monolithic algorithm");
     }
 
-    ZE_CALL(zeCommandListAppendLaunchKernel,
-            (get_comp_list(),
-             main_kernel,
-             &group_count,
-             entry_event,
-             (kernel_wait_event) ? 1 : 0,
-             &kernel_wait_event));
+    LOG_DEBUG("ze_onesided_reduce_entry with aligned monolithic kernels");
+    // use recv_buf_ptr instead of right_recv_buf_ptr since we cannot make sure
+    // if right_recv_buf_ptr got using ipc has the same alignment as remote recv_buf_ptr.
+    // we assume local recv_buf_ptr and remote recv_buf_ptr has the same alignment
+    unsigned long pre_align_offset_byte = ccl::utils::get_aligned_offset_byte(
+        recv_buf_ptr, buf_size_bytes, ccl::global_data::env().kernel_mem_align);
+
+    // first kernel starts from location 0 to pre_align_offset_byte
+    // and the second kernel starts from location pre_align_offset_byte to the rest
+    constexpr int kernel_count = (int)ccl::utils::align_kernels::count;
+    const unsigned long offsets[kernel_count] = { 0, pre_align_offset_byte };
+    const unsigned long counts[kernel_count] = { pre_align_offset_byte / dtype.size(),
+                                                 cnt - pre_align_offset_byte / dtype.size() };
+    ze_event_handle_t events[kernel_count];
+    size_t start_kernel_idx = 0;
+    size_t end_kernel_idx = kernel_count;
+    bool use_single_kernel = false;
+    // when counts[0] is 0, only aligned kernel is needed
+    if (counts[(int)ccl::utils::align_kernels::unaligned] == 0) {
+        use_single_kernel = true;
+        start_kernel_idx++;
+    }
+    // when counts[1] is 0, aligned kernel is not needed
+    if (counts[(int)ccl::utils::align_kernels::aligned] == 0) {
+        use_single_kernel = true;
+        end_kernel_idx--;
+    }
+
+    // if the initial data is aligned, we need only one kernel
+    // otherwise run two kernels, one for unaligned and one for aligned data
+    for (size_t idx = start_kernel_idx; idx < end_kernel_idx; idx++) {
+        kernels.emplace_back(module, main_kernel_name, worker_idx);
+
+        void* send_buf_ptr_with_offset = static_cast<char*>(send_buf_ptr) + offsets[idx];
+        void* recv_buf_ptr_with_offset = static_cast<char*>(recv_buf_ptr) + offsets[idx];
+        void* kernel_input_buf2_with_offset = static_cast<char*>(kernel_input_buf2) + offsets[idx];
+        ze_kernel_args_t main_kernel_args{ &comm_rank,
+                                           &comm_size,
+                                           &counts[idx],
+                                           &send_buf_ptr_with_offset,
+                                           &kernel_input_buf2_with_offset,
+                                           &recv_buf_ptr_with_offset };
+
+        kernels.back().set_args(main_kernel_args);
+        kernels.back().calculate_group_size(counts[idx]);
+        events[idx] =
+            (use_single_kernel) ? ze_base_entry::entry_event : ze_base_entry::create_event();
+
+        ZE_CALL(zeCommandListAppendLaunchKernel,
+                (ze_base_entry::get_comp_list(),
+                 kernels.back().get_kernel(),
+                 kernels.back().get_group_count(),
+                 events[idx],
+                 (kernel_wait_event) ? 1 : 0,
+                 &kernel_wait_event));
+    }
+
+    // use a barrier to combine the events of the unalinged and aligned kernel
+    if (!use_single_kernel) {
+        ZE_CALL(zeCommandListAppendBarrier,
+                (ze_base_entry::get_comp_list(), ze_base_entry::entry_event, kernel_count, events));
+    }
 }
 
 void ze_onesided_reduce_entry::finalize_ze_hook() {
@@ -175,7 +217,6 @@ void ze_onesided_reduce_entry::finalize_ze_hook() {
         ccl::global_data::get().ze_data->cache->push(
             worker_idx, module, empty_kernel_name, empty_kernel);
     }
-    ccl::global_data::get().ze_data->cache->push(worker_idx, module, main_kernel_name, main_kernel);
 }
 
 void ze_onesided_reduce_entry::start() {

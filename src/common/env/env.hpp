@@ -76,7 +76,6 @@ constexpr const char* CCL_MNIC_OFFSET = "CCL_MNIC_OFFSET";
 constexpr const char* CCL_ALGO_FALLBACK = "CCL_ALGO_FALLBACK";
 constexpr const char* CCL_ALLGATHERV = "CCL_ALLGATHERV";
 constexpr const char* CCL_ALLREDUCE = "CCL_ALLREDUCE";
-constexpr const char* CCL_ALLREDUCE_SCALEOUT = "CCL_ALLREDUCE_SCALEOUT";
 constexpr const char* CCL_ALLTOALL = "CCL_ALLTOALL";
 constexpr const char* CCL_ALLTOALLV = "CCL_ALLTOALLV";
 constexpr const char* CCL_BARRIER = "CCL_BARRIER";
@@ -84,6 +83,11 @@ constexpr const char* CCL_BCAST = "CCL_BCAST";
 constexpr const char* CCL_REDUCE = "CCL_REDUCE";
 constexpr const char* CCL_REDUCE_SCATTER = "CCL_REDUCE_SCATTER";
 constexpr const char* CCL_UNORDERED_COLL = "CCL_UNORDERED_COLL";
+constexpr const char* CCL_ALLGATHERV_SCALEOUT = "CCL_ALLGATHERV_SCALEOUT";
+constexpr const char* CCL_ALLREDUCE_SCALEOUT = "CCL_ALLREDUCE_SCALEOUT";
+constexpr const char* CCL_ALLTOALL_SCALEOUT = "CCL_ALLTOALL_SCALEOUT";
+constexpr const char* CCL_ALLTOALLV_SCALEOUT = "CCL_ALLTOALLV_SCALEOUT";
+constexpr const char* CCL_REDUCE_SCALEOUT = "CCL_REDUCE_SCALEOUT";
 
 constexpr const char* CCL_FUSION = "CCL_FUSION";
 constexpr const char* CCL_FUSION_BYTES_THRESHOLD = "CCL_FUSION_BYTES_THRESHOLD";
@@ -116,6 +120,9 @@ constexpr const char* CCL_ALLGATHERV_TOPO_READ = "CCL_ALLGATHERV_TOPO_READ";
 constexpr const char* CCL_ALLTOALLV_TOPO_READ = "CCL_ALLTOALLV_TOPO_READ";
 constexpr const char* CCL_REDUCE_SCATTER_MONOLITHIC_KERNEL = "CCL_REDUCE_SCATTER_MONOLITHIC_KERNEL";
 constexpr const char* CCL_ALLGATHERV_MONOLITHIC_KERNEL = "CCL_ALLGATHERV_MONOLITHIC_KERNEL";
+constexpr const char* CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL =
+    "CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL";
+constexpr const char* CCL_ALLTOALLV_MONOLITHIC_KERNEL = "CCL_ALLTOALLV_MONOLITHIC_KERNEL";
 #endif // CCL_ENABLE_SYCL
 
 constexpr const char* CCL_ALLREDUCE_NREDUCE_BUFFERING = "CCL_ALLREDUCE_NREDUCE_BUFFERING";
@@ -334,6 +341,8 @@ public:
     int alltoallv_topo_read;
     int reduce_scatter_monolithic_kernel;
     int allgatherv_monolithic_kernel;
+    int allgatherv_monolithic_pipeline_kernel;
+    int alltoallv_monolithic_kernel;
 #endif // CCL_ENABLE_SYCL
 
     int allreduce_nreduce_buffering;

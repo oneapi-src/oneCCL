@@ -349,7 +349,7 @@ void fd_manager::exchange_device_fds() {
 
             setsockopt(all_socks[i], SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
             sockaddr.sun_family = AF_UNIX;
-            strcpy(sockaddr.sun_path, sock_name.c_str());
+            strncpy(sockaddr.sun_path, sock_name.c_str(), sizeof(sockaddr.sun_path) - 1);
 
             sock_err = bind(all_socks[i], (struct sockaddr *)&sockaddr, sockaddr_len);
             CCL_THROW_IF_NOT(sock_err != ccl::utils::invalid_err_code,
@@ -360,7 +360,9 @@ void fd_manager::exchange_device_fds() {
 
             // connect to remote socket for local proc j
             remote_sockaddr.sun_family = AF_UNIX;
-            strcpy(remote_sockaddr.sun_path, remote_sock_name.c_str());
+            strncpy(remote_sockaddr.sun_path,
+                    remote_sock_name.c_str(),
+                    sizeof(remote_sockaddr.sun_path) - 1);
 
             sock_err = connect(all_socks[i], (struct sockaddr *)&remote_sockaddr, sockaddr_len);
             if (sock_err < 0) {
@@ -391,7 +393,7 @@ void fd_manager::exchange_device_fds() {
 
         setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
         sockaddr.sun_family = AF_UNIX;
-        strcpy(sockaddr.sun_path, sock_name.c_str());
+        strncpy(sockaddr.sun_path, sock_name.c_str(), sizeof(sockaddr.sun_path) - 1);
 
         sock_err = bind(sock, (struct sockaddr *)&sockaddr, sockaddr_len);
         CCL_THROW_IF_NOT(sock_err != ccl::utils::invalid_err_code,

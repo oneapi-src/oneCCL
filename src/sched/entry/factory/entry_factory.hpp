@@ -50,6 +50,7 @@
 #include "sched/entry/ze/ze_a2a_allgatherv_entry.hpp"
 #include "sched/entry/ze/ze_a2a_gatherv_entry.hpp"
 #include "sched/entry/ze/ze_a2a_reduce_scatter_entry.hpp"
+#include "sched/entry/ze/ze_alltoallv_entry.hpp"
 #include "sched/entry/ze/ze_barrier_entry.hpp"
 #include "sched/entry/ze/ze_copy_entry.hpp"
 #include "sched/entry/ze/ze_handle_exchange_entry.hpp"

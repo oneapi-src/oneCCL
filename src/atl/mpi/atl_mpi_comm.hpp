@@ -36,11 +36,11 @@ public:
         return ATL_STATUS_SUCCESS;
     }
 
-    std::shared_ptr<atl_base_comm> comm_split(int color) override;
+    std::shared_ptr<atl_base_comm> comm_split(int color, int key) override;
 
 private:
     friend atl_comm_manager;
-    atl_mpi_comm(atl_mpi_comm* parent, int color);
+    atl_mpi_comm(atl_mpi_comm* parent, int color, int key);
     void update_eps();
     atl_status_t init_transport(bool is_new,
                                 int comm_size = 0,

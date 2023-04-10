@@ -42,16 +42,21 @@ atl_mpi_comm::atl_mpi_comm(int comm_size,
     init_transport(true /* new communicator */, comm_size, comm_ranks);
 }
 
-std::shared_ptr<atl_base_comm> atl_mpi_comm::comm_split(int color) {
-    return std::shared_ptr<atl_base_comm>(new atl_mpi_comm(this, color));
+std::shared_ptr<atl_base_comm> atl_mpi_comm::comm_split(int color, int key) {
+    return std::shared_ptr<atl_base_comm>(new atl_mpi_comm(this, color, key));
 }
 
-atl_mpi_comm::atl_mpi_comm(atl_mpi_comm* parent, int color) {
+atl_mpi_comm::atl_mpi_comm(atl_mpi_comm* parent, int color, int key) {
     parent_rank = parent->rank;
     parent_size = parent->size;
 
     std::vector<atl_ep_t>& parent_eps = parent->eps;
-    transport->comm_split(parent_eps, eps, color, parent_eps[0].coord.local_idx);
+    transport->comm_split(parent_eps,
+                          eps,
+                          color,
+                          key,
+                          parent_eps[0].coord.local_idx,
+                          parent_eps[0].coord.local_count);
 
     coord = transport->create_proc_coord(eps[0]);
     rank = coord.global_idx;
@@ -114,7 +119,7 @@ atl_status_t atl_mpi_comm::init_transport(bool is_new,
 
         atl_mpi* mpi_transport = (atl_mpi*)transport;
         coord = mpi_transport->create_proc_coord(global_comm);
-        mpi_transport->ep_init(eps, global_comm, coord.local_idx);
+        mpi_transport->ep_init(eps, global_comm, coord.local_idx, coord.local_count);
         parent_rank = rank = coord.global_idx;
         parent_size = size = coord.global_count;
 

@@ -45,16 +45,8 @@ ccl_algorithm_selector<ccl_coll_allgatherv>::ccl_algorithm_selector() {
         insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_allgatherv_direct);
     }
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
-
+    insert(scaleout_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_allgatherv_ring);
     insert(fallback_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_allgatherv_flat);
-
-    // scale-out table by default duplicates the main table
-    // TODO: fill the table with algorithms which is suitable for the better scale-out performance.
-    // Explanation: when implementing it was a simple scenario that does not contradict with the selection logic.
-    // If there are no environemnt variable provided, scale-out path will go through the scaleout_table like it is a main_table
-    // and use fallback path if nothing is suitable. Correct default behavior of each algorithm`s scale-out path is another task with discussion
-    // and performance measurements.
-    scaleout_table = main_table;
 }
 
 template <>
@@ -73,6 +65,16 @@ bool ccl_algorithm_selector_helper<ccl_coll_allgatherv_algo>::can_use(
     }
     else if (algo == ccl_coll_allgatherv_multi_bcast &&
              ccl::global_data::env().atl_transport == ccl_atl_mpi) {
+        can_use = false;
+    }
+    else if (algo == ccl_coll_allgatherv_direct && param.is_scaleout &&
+             ccl::global_data::env().worker_count > 1
+#ifdef CCL_ENABLE_SYCL
+             && ccl::global_data::env().ze_multi_workers
+#endif // CCL_ENABLE_SYCL
+    ) {
+        // MLSL-1757: scale-up topo + scale-out direct combination hangs
+        // for CCL_ZE_MULTI_WORKERS=1 + CC_WORKER_COUNT > 1 cases
         can_use = false;
     }
 

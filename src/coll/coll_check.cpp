@@ -112,7 +112,7 @@ void ccl_coll_validate_user_input(const ccl_coll_param& param, const ccl_coll_at
 
 #ifdef CCL_ENABLE_SYCL
     if (param.comm->get_device() && param.comm->get_context() &&
-        (param.comm->get_device()->get_native().is_gpu())) {
+        (param.comm->get_device()->get_native().is_gpu()) && param.stream) {
         CCL_THROW_IF_NOT(
             param.stream, "specify stream for ", ccl_coll_type_to_str(param.ctype), " operation");
 

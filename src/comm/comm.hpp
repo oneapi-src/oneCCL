@@ -197,7 +197,7 @@ private:
     static std::shared_ptr<ikvs_wrapper> get_kvs_wrapper(std::shared_ptr<ccl::kvs_interface> kvs);
 
 public:
-    ccl_comm* create_subcomm(int color) const;
+    ccl_comm* create_subcomm(int color, int key = 0) const;
 
     std::shared_ptr<ccl_comm> clone_with_new_id(int comm_id);
 
