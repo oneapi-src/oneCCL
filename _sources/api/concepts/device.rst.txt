@@ -5,16 +5,12 @@ Device
 
 Creates a new device from .
 
-
 **Parameters**
 
-native_device – the existing handle of device
-
+* native_device – the existing handle of device
 
 **Returns**
 
 device object
-
-
 
 **device CCL_API create_device ()**

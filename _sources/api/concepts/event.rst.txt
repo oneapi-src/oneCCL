@@ -5,11 +5,9 @@ Event
 
 Creates a new event from .
 
-
-**Parameters** 
+**Parameters**
 
 native_event – the existing event
-
 
 **Returns**
 

@@ -5,15 +5,12 @@ Context
 
 Creates a new context from .
 
-
 **Parameters**
 
 native_context – the existing handle of context
 
-
 **Returns**
 
 context object
-
 
 **context CCL_API create_context ()**

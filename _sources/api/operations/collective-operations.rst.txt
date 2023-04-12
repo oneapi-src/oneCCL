@@ -14,8 +14,6 @@ Operation Attributes
 
 Creates an attribute object that may be used to customize communication operation.
 
-
-
 **Returns**
 
 an attribute object

@@ -5,8 +5,6 @@ Alltoall
 
 Alltoall is a collective communication operation in which each rank sends distinct equal-sized blocks of data to each rank. The j-th block of send_buf sent from the i-th rank is received by the j-th rank and is placed in the i-th block of recvbuf.
 
-
-
 **Parameters**
 
 * send_buf – the buffer with count elements of dtype that stores local data to be sent
@@ -25,35 +23,25 @@ Alltoall is a collective communication operation in which each rank sends distin
 
 ccl::event an object to track the progress of the operation
 
-
-
 **event CCL_API alltoall (const void *send_buf, void *recv_buf, size_t count, datatype dtype, const communicator &comm, const alltoall_attr &attr=default_alltoall_attr, const vector_class< event > &deps={})**
 
 This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.
-
 
 **event CCL_API alltoall (const vector_class< void *> &send_buf, const vector_class< void *> &recv_buf, size_t count, datatype dtype, const communicator &comm, const stream &stream, const alltoall_attr &attr=default_alltoall_attr, const vector_class< event > &deps={})**
 
 This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.
 
-
-
 **event CCL_API alltoall (const vector_class< void *> &send_buf, const vector_class< void *> &recv_buf, size_t count, datatype dtype, const communicator &comm, const alltoall_attr &attr=default_alltoall_attr, const vector_class< event > &deps={})**
 
 This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.
-
-
 
 **template<class BufferType, class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type> event CCL_API alltoall (const BufferType *send_buf, BufferType *recv_buf, size_t count, const communicator &comm, const stream &stream, const alltoall_attr &attr=default_alltoall_attr, const vector_class< event > &deps={})**
 
 This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.
 
-
-
 **template<class BufferType, class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type> event CCL_API alltoall (const BufferType *send_buf, BufferType *recv_buf, size_t count, const communicator &comm, const alltoall_attr &attr=default_alltoall_attr, const vector_class< event > &deps={})**
 
 This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.
-
 
 **template<class BufferType, class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type> event CCL_API alltoall (const vector_class< BufferType *> &send_buf, const vector_class< BufferType *> &recv_buf, size_t count, const communicator &comm, const stream &stream, const alltoall_attr &attr=default_alltoall_attr, const vector_class< event > &deps={})**
 
@@ -63,22 +51,17 @@ This is an overloaded member function, provided for convenience. It differs from
 
 This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.
 
-
-
 **template<class BufferObjectType, class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type> event CCL_API alltoall (const BufferObjectType &send_buf, BufferObjectType &recv_buf, size_t count, const communicator &comm, const stream &stream, const alltoall_attr &attr=default_alltoall_attr, const vector_class< event > &deps={})**
 
 This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.
-
 
 **template<class BufferObjectType, class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type> event CCL_API alltoall (const BufferObjectType &send_buf, BufferObjectType &recv_buf, size_t count, const communicator &comm, const alltoall_attr &attr=default_alltoall_attr, const vector_class< event > &deps={})**
 
 This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.
 
-
 **template<class BufferObjectType, class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type> event CCL_API alltoall (const vector_class< reference_wrapper_class< BufferObjectType >> &send_buf, const vector_class< reference_wrapper_class< BufferObjectType >> &recv_buf, size_t count, const communicator &comm, const stream &stream, const alltoall_attr &attr=default_alltoall_attr, const vector_class< event > &deps={})**
 
 This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.
-
 
 **template<class BufferObjectType, class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type> event CCL_API alltoall (const vector_class< reference_wrapper_class< BufferObjectType >> &send_buf, const vector_class< reference_wrapper_class< BufferObjectType >> &recv_buf, size_t count, const communicator &comm, const alltoall_attr &attr=default_alltoall_attr, const vector_class< event > &deps={})**
 
