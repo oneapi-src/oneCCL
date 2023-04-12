@@ -1,23 +1,16 @@
 Stream
 ***********************
 
-**template<class native_stream_type, class = typename 
-std::enable_if<is_stream_supported<native_stream_type>()>::type> stream CCL_API c
-reate_stream (native_stream_type &native_stream)** 
+**template<class native_stream_type, class = typename std::enable_if<is_stream_supported<native_stream_type>()>::type> stream CCL_API c reate_stream (native_stream_type &native_stream)**
 
 Creates a new stream from .
 
-
-
 **Parameters**
 
-native_stream – the existing handle of stream
-
-
+* native_stream – the existing handle of stream
 
 **Returns**
 
 stream object
-
 
 **stream CCL_API create_stream ()**

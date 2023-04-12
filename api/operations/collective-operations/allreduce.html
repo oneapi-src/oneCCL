@@ -451,7 +451,7 @@
 <h1>Allreduce<a class="headerlink" href="#allreduce" title="Permalink to this headline">¶</a></h1>
 <p><strong>event CCL_API allreduce (const void *send_buf, void *recv_buf, size_t count, datatype dtype, reduction rtype, const communicator &amp;comm, const stream &amp;stream, const allreduce_attr &amp;attr=default_allreduce_attr, const vector_class&lt; event &gt; &amp;deps={})</strong></p>
 <p>Allreduce is a collective communication operation that performs the global reduction operation on values from all ranks of communicator and distributes the result back to all ranks.</p>
-<p><strong>Parameters</strong></p>
+<p><strong>parameters</strong></p>
 <ul class="simple">
 <li><p>send_buf – the buffer with count elements of dtype that stores local data to be reduced</p></li>
 <li><p>recv_buf – [out] the buffer to store reduced result, must have the same dimension as send_buf</p></li>
@@ -507,7 +507,7 @@
         
           By Intel<br/>
         
-            &copy; Copyright 2019–2022.<br/>
+            &copy; Copyright Intel Corporation.<br/>
           <div class="extra_footer">
             <p align="right"><a href="https://www.intel.com/content/www/us/en/privacy/intel-cookie-notice.html">Cookies</a></p>
           </div>

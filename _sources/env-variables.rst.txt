@@ -4,40 +4,142 @@ Environment Variables
 
 Collective algorithms selection
 ###############################
+oneCCL supports collective operations for the host (CPU) memory buffers and device (GPU) memory buffers. Below you can see how to select the collective algorithm depending on the type of buffer being utilized. 
 
-CCL_<coll_name>
-***************
+Device (GPU) Memory Buffers
+***************************
+Collectives that use GPU buffers are implemented using two phases:
+
+* Scaleup phase. Communication between ranks/processes in the same node.
+* Scaleout phase. Communication between ranks/processes on different nodes.
+
+SCALEUP
++++++++
+Use the following environment variables to select the scaleup algorithm:
+
+:: 
+  
+  CCL_REDUCE_SCATTER_MONOLITHIC_KERNEL 
+
 **Syntax**
 
-To set a specific algorithm for the whole message size range:
+:: 
+  
+  CCL_REDUCE_SCATTER_MONOLITHIC_KERNEL=<value>
+
+**Arguments**
+
+.. list-table:: 
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+   
+   * - <value>
+     - Description
+   * - ``1``
+     - Uses compute kernels to transfer data across GPUs for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER`` collectives. 
+   * - ``0``
+     - Uses copy engines to transfer data across GPUs for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER`` collectives. The default value.
+
+
+**Description**
+
+Set this environment variable to enable compute kernels for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER`` collectives using device (GPU) buffers. 
+
+
+
+CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL
++++++++++++++++++++++++++++++++++++++++++
+
+**Syntax**
 
 ::
 
-  CCL_<coll_name>=<algo_name>
+  CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL=<value> 
 
-To set a specific algorithm for a specific message size range:
+
+**Arguments**
+
+.. list-table:: 
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+   
+   * - <value>
+     - Description
+   * - ``1``
+     - Uses compute kernels to transfer data across GPUs for the ``ALLGATHERV`` collective. 
+   * - ``0``
+     - Uses copy engines to transfer data across GPUs for the ``ALLGATHERV`` collective. The default value.
+  
+**Description**
+
+Set this environment variable to enable compute kernels for the ``ALLGATHERV`` collective using device (GPU) buffers. 
+
+CCL_ALLTOALLV_MONOLITHIC_KERNEL 
++++++++++++++++++++++++++++++++
+
+**Syntax**
 
 ::
 
-  CCL_<coll_name>="<algo_name_1>[:<size_range_1>][;<algo_name_2>:<size_range_2>][;...]"
+  CCL_ALLTOALLV_MONOLITHIC_KERNEL=<value> 
+
+**Arguments**
+
+.. list-table:: 
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+   
+   * - <value>
+     - Description
+   * - ``1``
+     - Uses compute kernels to transfer data across GPUs for the ``ALLTOALL`` and ``ALLTOALLV`` collectives. The default value.
+   * - ``0``
+     - Uses copy engines to transfer data across GPUs for the ``ALLTOALL`` and ``ALLTOALLV`` collectives.
+  
+**Description**
+
+Set this environment variable to enable compute kernels for the ``ALLTOALL`` and ``ALLTOALLV`` collectives using device (GPU) buffers
+``CCL_<coll_name>_SCALEOUT``. 
+
+SCALEOUT
+++++++++
+
+The following environment variables can be used to select the scaleout algorithm used. 
+
+**Syntax**
+
+To set a specific algorithm for scaleout for the device (GPU) buffers for the whole message size range:
+
+::
+   
+   CCL_<coll_name>_SCALEOUT=<algo_name>
+
+To set a specific algorithm for scaleout for the device (GPU) buffers for a specific message size range:
+
+::
+
+  CCL_<coll_name>_SCALEOUT="<algo_name_1>[:<size_range_1>][;<algo_name_2>:<size_range_2>][;...]"
+
 
 Where:
 
-- ``<coll_name>`` is selected from a list of available collective operations (`Available collectives`_).
-- ``<algo_name>`` is selected from a list of available algorithms for a specific collective operation (`Available algorithms`_).
-- ``<size_range>`` is described by the left and the right size borders in a format ``<left>-<right>``. 
-  Size is specified in bytes. Use reserved word ``max`` to specify the maximum message size.
+* ``<coll_name>`` is selected from a list of the available collective operations (`Available collectives`_).
+* ``<algo_name>`` is selected from a list of the available algorithms for the specific collective operation (`Available collectives`_).
+* ``<size_range>`` is described by the left and the right size borders in the ``<left>-<right>`` format. The size is specified in bytes. To specify the maximum message size, use reserved word max. 
 
-|product_short| internally fills algorithm selection table with sensible defaults. User input complements the selection table. 
-To see the actual table values set ``CCL_LOG_LEVEL=info``.
+oneCCL internally fills the algorithm selection table with sensible defaults. Your input complements the selection table. 
+To see the actual table values, set ``CCL_LOG_LEVEL=info``.
 
 .. rubric:: Example
 
 :: 
 
-  CCL_ALLREDUCE="recursive_doubling:0-8192;rabenseifner:8193-1048576;ring:1048577-max"
+  CCL_ALLREDUCE_SCALEOUT="recursive_doubling:0-8192;rabenseifner:8193-1048576;ring:1048577-max"
 
-Available collectives
+Available Collectives
 *********************
 
 Available collective operations (``<coll_name>``):
@@ -72,6 +174,8 @@ Available algorithms for each collective operation (``<algo_name>``):
      - Alltoall-based algorithm
    * - ``multi_bcast``
      - Series of broadcast operations with different root ranks
+   * - ``ring``
+     - Ring-based algorithm
 
 
 ``ALLREDUCE`` algorithms
@@ -96,11 +200,7 @@ Available algorithms for each collective operation (``<algo_name>``):
    * - ``recursive_doubling``
      - Recursive doubling algorithm
    * - ``2d``
-     - Two-dimensional algorithm (reduce_scatter + allreduce + allgather)
-   * - ``topo``
-     - Optimized algorithm for GPU data and all-to-all network topology.
-       Use ``CCL_REDUCE_SCATTER_MONOLITHIC_KERNEL=1`` to use compute kernels, 
-       instead of copy engines, to move the data across the GPU.
+     - Two-dimensional algorithm (reduce_scatter + allreduce + allgather). Only available for the host (CPU) buffers.
 
 
 ``ALLTOALL`` algorithms
@@ -114,6 +214,8 @@ Available algorithms for each collective operation (``<algo_name>``):
      - Based on ``MPI_Ialltoall``
    * - ``naive``
      - Send to all, receive from all
+   * - ``scatter``
+     - Scatter-based algorithm
 
 
 ``ALLTOALLV`` algorithms
@@ -127,6 +229,8 @@ Available algorithms for each collective operation (``<algo_name>``):
      - Based on ``MPI_Ialltoallv``
    * - ``naive``
      - Send to all, receive from all
+   * - ``scatter``
+     - Scatter-based algorithm
 
 
 ``BARRIER`` algorithms
@@ -140,6 +244,8 @@ Available algorithms for each collective operation (``<algo_name>``):
      - Based on ``MPI_Ibarrier``
    * - ``ring``
      - Ring-based algorithm
+
+.. note:: The ``BARRIER``` algorithm does not support the ``CCL_BARRIER_SCALEOUT`` environment variable. To change the algorithm for ``BARRIER``, use the ``CCL_BARRIER`` environment variable.
 
 
 ``BCAST`` algorithms
@@ -158,6 +264,8 @@ Available algorithms for each collective operation (``<algo_name>``):
    * - ``naive``
      - Send to all from root rank
 
+.. note:: The ``BCAST`` algorithm does not yet support the ``CCL_BCAST_SCALEOUT`` environment variable. To change the algorithm for ``BCAST``, use the ``CCL_BCAST`` environment variable.
+
 
 ``REDUCE`` algorithms
 +++++++++++++++++++++
@@ -174,10 +282,6 @@ Available algorithms for each collective operation (``<algo_name>``):
      - Tree algorithm
    * - ``double_tree``
      - Double-tree algorithm
-   * - ``topo``
-     - Optimized algorithm for GPU data and all-to-all network topology.
-       Use ``CCL_REDUCE_SCATTER_MONOLITHIC_KERNEL=1`` to use compute kernels, 
-       instead of copy engines, to move the data across the GPU.
 
 
 ``REDUCE_SCATTER`` algorithms
@@ -193,6 +297,43 @@ Available algorithms for each collective operation (``<algo_name>``):
      - Use ``CCL_RS_CHUNK_COUNT`` and ``CCL_RS_MIN_CHUNK_SIZE``
        to control pipelining.
 
+.. note:: The ``REDUCE_SCATTER`` algorithm does not yet support the ``CCL_REDUCE_SCATTER_SCALEOUT`` environment variable. To change the algorithm for ``REDUCE_SCATTER``, use the ``CCL_REDUCE_SCATTER`` environment variable.
+
+Host (CPU) Memory Buffers
+*************************
+
+CCL_<coll_name>
++++++++++++++++
+
+**Syntax**
+
+To set a specific algorithm for the host (CPU) buffers for the whole message size range:
+
+::
+
+  CCL_<coll_name>=<algo_name>
+
+To set a specific algorithm for the host (CPU) buffers for a specific message size range:
+
+::
+
+  CCL_<coll_name>="<algo_name_1>[:<size_range_1>][;<algo_name_2>:<size_range_2>][;...]"
+
+Where:
+
+- ``<coll_name>`` is selected from a list of available collective operations (`Available collectives`_).
+- ``<algo_name>`` is selected from a list of available algorithms for a specific collective operation (`Available algorithms`_).
+- ``<size_range>`` is described by the left and the right size borders in a format ``<left>-<right>``. 
+  Size is specified in bytes. Use reserved word ``max`` to specify the maximum message size.
+
+|product_short| internally fills algorithm selection table with sensible defaults. User input complements the selection table. 
+To see the actual table values set ``CCL_LOG_LEVEL=info``.
+
+.. rubric:: Example
+
+:: 
+
+  CCL_ALLREDUCE="recursive_doubling:0-8192;rabenseifner:8193-1048576;ring:1048577-max"
 
 CCL_RS_CHUNK_COUNT
 ++++++++++++++++++
@@ -401,7 +542,118 @@ CCL_ATL_HMEM
 Set this environment variable to enable handling of HMEM/GPU buffers by the transport layer.
 The actual HMEM support depends on the limitations on the transport level and system configuration.
 
+CCL_ATL_SHM
+***********
 
+**Syntax**
+:: 
+
+  CCL_ATL_SHM=<value>
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``0``
+     - Disables the OFI shared memory provider. The default value.
+   * - ``1``
+     - Enables the OFI shared memory provider. 
+
+**Description**
+
+Set this environment variable to enable the OFI shared memory provider to communicate between ranks in the same node of the host (CPU) buffers.
+
+CCL_PROCESS_LAUNCHER
+********************
+
+**Syntax**
+:: 
+
+  CCL_PROCESS_LAUNCHER=<value>
+  
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``hydra``
+     - Uses the MPI hydra job launcher. The default value.
+   * - ``torch``
+     - Uses a torch job launcher. 
+   * - ``pmix``
+     - Is used with the PALS job launcher that uses the pmix API. The ``mpiexec`` command should be similar to:
+       
+       ::
+         
+         CCL_PROCESS_LAUNCHER=pmix CCL_ATL_TRANSPORT=mpi mpiexec -np 2 -ppn 2 --pmi=pmix ...
+   * - ``none``
+     - No job launcher is used. You should specify the values for ``CCL_LOCAL_SIZE and CCL_LOCAL_RANK``.  
+
+
+**Description**
+
+Set this environment variable to specify the job launcher.
+
+
+CCL_LOCAL_SIZE
+**************
+
+**Syntax**
+:: 
+
+  CCL_LOCAL_SIZE=<value>
+  
+  
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``SIZE``
+     - A total number of ranks on the local host.
+
+**Description**
+
+Set this environment variable to specify a total number of ranks on a local host. 
+
+CCL_LOCAL_RANK
+**************
+
+**Syntax**
+:: 
+
+  CCL_LOCAL_RANK=<value>
+  
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``RANK``
+     - Rank number of the current process on the local host. 
+     
+ 
+**Description**
+ 
+Set this environment variable to specify the rank number of the current process in the local host.
+  
 Multi-NIC
 #########
 
@@ -469,6 +721,7 @@ Set this environment variable to control multi-NIC selection by NIC names.
 
 CCL_MNIC_COUNT
 **************
+
 **Syntax**
 
 ::

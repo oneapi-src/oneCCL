@@ -468,22 +468,7 @@
   <div class="section" id="sample-application">
 <h1>Sample Application<a class="headerlink" href="#sample-application" title="Permalink to this headline">¶</a></h1>
 <p>The sample code below shows how to use oneCCL API to perform allreduce communication for SYCL USM memory.</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cm">/*</span>
-<span class="cm"> Copyright 2016-2020 Intel Corporation</span>
-<span class="cm"> </span>
-<span class="cm"> Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
-<span class="cm"> you may not use this file except in compliance with the License.</span>
-<span class="cm"> You may obtain a copy of the License at</span>
-<span class="cm"> </span>
-<span class="cm">     http://www.apache.org/licenses/LICENSE-2.0</span>
-<span class="cm"> </span>
-<span class="cm"> Unless required by applicable law or agreed to in writing, software</span>
-<span class="cm"> distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
-<span class="cm"> WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
-<span class="cm"> See the License for the specific language governing permissions and</span>
-<span class="cm"> limitations under the License.</span>
-<span class="cm">*/</span><span class="w"></span>
-<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;iostream&gt;</span><span class="cp"></span>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;iostream&gt;</span><span class="cp"></span>
 <span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;mpi.h&gt;</span><span class="cp"></span>
 <span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;oneapi/ccl.hpp&quot;</span><span class="cp"></span>
 
@@ -598,8 +583,8 @@
 <ol class="arabic">
 <li><p><a class="reference internal" href="installation.html#enable-sycl"><span class="std std-ref">Build</span></a> oneCCL with <code class="docutils literal notranslate"><span class="pre">SYCL</span></code> support (only Intel® oneAPI DPC++/C++ Compiler is supported).</p></li>
 <li><p><a class="reference internal" href="installation.html#prerequisites"><span class="std std-ref">Set up</span></a> the library environment.</p></li>
-<li><p>Use the C++ driver with the -fsycl option to build the sample:</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">icpx</span><span class="w"> </span><span class="o">-</span><span class="n">o</span><span class="w"> </span><span class="n">sample</span><span class="w"> </span><span class="n">sample</span><span class="p">.</span><span class="n">cpp</span><span class="w"> </span><span class="o">-</span><span class="n">lccl</span><span class="w"> </span><span class="o">-</span><span class="n">lmpi</span><span class="w"></span>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">dpcpp</span></code> compiler to build the sample:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">dpcpp</span><span class="w"> </span><span class="o">-</span><span class="n">o</span><span class="w"> </span><span class="n">sample</span><span class="w"> </span><span class="n">sample</span><span class="p">.</span><span class="n">cpp</span><span class="w"> </span><span class="o">-</span><span class="n">lccl</span><span class="w"> </span><span class="o">-</span><span class="n">lmpi</span><span class="w"></span>
 </pre></div>
 </div>
 </li>
@@ -646,7 +631,7 @@
         
           By Intel<br/>
         
-            &copy; Copyright 2019–2022.<br/>
+            &copy; Copyright Intel Corporation.<br/>
           <div class="extra_footer">
             <p align="right"><a href="https://www.intel.com/content/www/us/en/privacy/intel-cookie-notice.html">Cookies</a></p>
           </div>

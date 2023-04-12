@@ -5,8 +5,7 @@ Allreduce
 
 Allreduce is a collective communication operation that performs the global reduction operation on values from all ranks of communicator and distributes the result back to all ranks.
 
-
-**Parameters**
+**parameters**
 
 * send_buf – the buffer with count elements of dtype that stores local data to be reduced
 * recv_buf – [out] the buffer to store reduced result, must have the same dimension as send_buf
@@ -18,12 +17,9 @@ Allreduce is a collective communication operation that performs the global reduc
 * attr – optional attributes to customize operation
 * deps – an optional vector of the events that the operation should depend on
 
-
-
 **Returns**
 
 ccl::event an object to track the progress of the operation
-
 
 **event CCL_API allreduce (const void *send_buf, void *recv_buf, size_t count, datatype dtype, reduction rtype, const communicator &comm, const allreduce_attr &attr=default_allreduce_attr, const vector_class< event > &deps={})**
 

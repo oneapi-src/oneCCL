@@ -1,26 +1,23 @@
 Communicator
 ***********************
 
-**template<class… attr_val_type> comm_attr CCL_API create_comm_attr (attr_val_type &&… avs)** 
+**template<class… attr_val_type> comm_attr CCL_API create_comm_attr (attr_val_type &&… avs)**
 
 Creates an attribute object that may be used to control the create_communicator operation.
 
-**Returns** 
+**Returns**
 
 an attribute object
-
 
 **template<class… attr_val_type> comm_split_attr CCL_API create_comm_split_attr (attr_val_type &&… avs)**
 
 Creates an attribute object that may be used to control the split_communicator operation.
 
-
-**Returns** 
+**Returns**
 
 an attribute object
 
-
-**template<class DeviceType, class ContextType> vector_class< communicator > CCL_API create_communicators (int size, const vector_class< pair_class< int, DeviceType >> &devices, const ContextType &context, shared_ptr_class< kvs_interface > kvs, const comm_attr &attr=default_comm_attr)** 
+**template<class DeviceType, class ContextType> vector_class< communicator > CCL_API create_communicators (int size, const vector_class< pair_class< int, DeviceType >> &devices, const ContextType &context, shared_ptr_class< kvs_interface > kvs, const comm_attr &attr=default_comm_attr)**
 
 Creates new communicators with user supplied size, ranks, local device-rank mapping and kvs.
 
@@ -34,31 +31,25 @@ Creates new communicators with user supplied size, ranks, local device-rank mapp
 * kvs – key-value store for ranks wire-up
 * attr – optional communicator attributes
 
-**Returns** 
+**Returns**
 
 vector of communicators / communicator
-
 
 **template<class DeviceType, class ContextType> vector_class< communicator > CCL_API create_communicators (int size, const map_class< int, DeviceType > &devices, const ContextType &context, shared_ptr_class< kvs_interface > kvs, const comm_attr &attr=default_comm_attr)**
 
 This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.
 
-
 **template<class DeviceType, class ContextType> communicator CCL_API create_communicator (int size, int rank, DeviceType &device, const ContextType &context, shared_ptr_class< kvs_interface > kvs, const comm_attr &attr=default_comm_attr)**
 
 This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.
 
-
-**communicator CCL_API create_communicator (int size, int rank, shared_ptr_class< kvs_interface > kvs, const comm_attr &attr=default_comm_attr)** 
+**communicator CCL_API create_communicator (int size, int rank, shared_ptr_class< kvs_interface > kvs, const comm_attr &attr=default_comm_attr)**
 
 This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.
-
-
 
 **template<class DeviceType, class ContextType> vector_class< communicator > CCL_API create_communicators (int size, const vector_class< DeviceType > &devices, const ContextType &context, shared_ptr_class< kvs_interface > kvs, const comm_attr &attr=default_comm_attr)**
 
 Creates a new communicators with user supplied size, local devices and kvs. Ranks will be assigned automatically.
-
 
 **Parameters**
 
@@ -68,16 +59,13 @@ Creates a new communicators with user supplied size, local devices and kvs. Rank
 * kvs – key-value store for ranks wire-up
 * attr – optional communicator attributes
 
-
 **Returns**
 
 vector of communicators / communicator
 
-
-**communicator CCL_API create_communicator (int size, shared_ptr_class< kvs_interface > kvs, const comm_attr &attr=default_comm_attr)** 
+**communicator CCL_API create_communicator (int size, shared_ptr_class< kvs_interface > kvs, const comm_attr &attr=default_comm_attr)**
 
 This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.
-
 
 **communicator CCL_API create_communicator (const comm_attr &attr=default_comm_attr)**
 
@@ -87,23 +75,19 @@ This is an overloaded member function, provided for convenience. It differs from
 
 **Parameters**
 
-attr – optional communicator attributes
-
+* attr – optional communicator attributes
 
 **Returns**
 
 communicator
 
-
 **vector_class< communicator > CCL_API split_communicators (const vector_class< pair_class< communicator, comm_split_attr >> &attrs)**
 
 Splits communicators according to attributes.
 
-
 **Parameters**
 
-attrs – split attributes for local communicators
-
+* attrs – split attributes for local communicators
 
 **Returns**
 
