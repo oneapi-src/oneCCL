@@ -1,5 +1,5 @@
 .. |sys_req| replace:: |product_full| System Requirements
-.. _sys_req: https://software.intel.com/content/www/us/en/develop/articles/oneapi-collective-communication-library-system-requirements.html
+.. _sys_req: https://www.intel.com/content/www/us/en/developer/articles/system-requirements/oneapi-collective-communication-library-system-requirements.html
 .. |tgz_file| replace:: tar.gz file
 .. _tgz_file: https://github.com/oneapi-src/oneCCL/releases
 .. highlight:: bash

@@ -14,6 +14,7 @@
  limitations under the License.
 */
 #include "sched/entry/copy/copy_helper.hpp"
+#include "sched/entry/factory/entry_factory.hpp"
 #include "sched/entry/ze/ze_copy_entry.hpp"
 
 using namespace ccl;
@@ -24,16 +25,18 @@ ze_copy_entry::ze_copy_entry(ccl_sched* sched,
                              size_t count,
                              const ccl_datatype& dtype,
                              const copy_attr& attr,
-                             std::vector<ze_event_handle_t> wait_events,
-                             std::vector<ze_event_handle_t> dep_events)
-        : ze_base_entry(sched, nullptr, 1, wait_events, true /*is_nonblocking*/),
+                             const std::vector<ze_event_handle_t>& wait_events)
+        : ze_base_entry(sched,
+                        wait_events,
+                        nullptr /*comm*/,
+                        1 /*add_event_count*/,
+                        true /*is_nonblocking*/),
           sched(sched),
           in_buf(in_buf),
           out_buf(out_buf),
           dtype(dtype),
           attr(attr),
-          count(count),
-          dep_events(dep_events) {
+          count(count) {
     CCL_THROW_IF_NOT(sched, "no sched");
 }
 
@@ -55,14 +58,14 @@ void ze_copy_entry::init_ze_hook() {
 
     ze_command_list_handle_t list =
         ze_base_entry::get_copy_list(attr.direction, attr.hint_queue_index);
-    ZE_CALL(zeCommandListAppendMemoryCopy,
-            (list,
-             dst,
-             src,
-             dtype.size() * count,
-             ze_base_entry::entry_event,
-             dep_events.size(),
-             dep_events.data()));
+
+    ZE_APPEND_CALL(ze_cmd_memory_copy,
+                   list,
+                   dst,
+                   src,
+                   dtype.size() * count,
+                   ze_base_entry::entry_event,
+                   wait_events);
 }
 
 std::string ze_copy_entry::name_ext() const {

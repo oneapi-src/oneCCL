@@ -929,6 +929,146 @@ event reduce_scatter(const BufferObjectType& send_buf,
         send_buf, recv_buf, recv_count, reduction, disp(default_stream), attr, deps);
 }
 
+/* recv */
+event recv(void* recv_buf,
+           size_t recv_count,
+           datatype dtype,
+           int peer,
+           const communicator& comm,
+           const stream& op_stream,
+           const pt2pt_attr& attr,
+           const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->recv(recv_buf, recv_count, dtype, peer, disp(op_stream), attr, deps);
+}
+
+event recv(void* recv_buf,
+           size_t recv_count,
+           datatype dtype,
+           int peer,
+           const communicator& comm,
+           const pt2pt_attr& attr,
+           const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->recv(recv_buf, recv_count, dtype, peer, disp(default_stream), attr, deps);
+}
+
+template <class BufferType, typename T>
+event recv(BufferType* recv_buf,
+           size_t recv_count,
+           int peer,
+           const communicator& comm,
+           const stream& op_stream,
+           const pt2pt_attr& attr,
+           const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->recv(recv_buf, recv_count, peer, disp(op_stream), attr, deps);
+}
+
+template <class BufferType, typename T>
+event recv(BufferType* recv_buf,
+           size_t recv_count,
+           int peer,
+           const communicator& comm,
+           const pt2pt_attr& attr,
+           const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->recv(recv_buf, recv_count, peer, disp(default_stream), attr, deps);
+}
+
+template <class BufferObjectType, typename T>
+event recv(BufferObjectType& recv_buf,
+           size_t recv_count,
+           int peer,
+           const communicator& comm,
+           const stream& op_stream,
+           const pt2pt_attr& attr,
+           const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->recv(recv_buf, recv_count, peer, disp(op_stream), attr, deps);
+}
+
+template <class BufferObjectType, typename T>
+event recv(BufferObjectType& recv_buf,
+           size_t recv_count,
+           int peer,
+           const communicator& comm,
+           const pt2pt_attr& attr,
+           const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->recv(recv_buf, recv_count, peer, disp(default_stream), attr, deps);
+}
+
+/* send */
+event send(void* send_buf,
+           size_t send_count,
+           datatype dtype,
+           int peer,
+           const communicator& comm,
+           const stream& op_stream,
+           const pt2pt_attr& attr,
+           const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->send(send_buf, send_count, dtype, peer, disp(op_stream), attr, deps);
+}
+
+event send(void* send_buf,
+           size_t send_count,
+           datatype dtype,
+           int peer,
+           const communicator& comm,
+           const pt2pt_attr& attr,
+           const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->send(send_buf, send_count, dtype, peer, disp(default_stream), attr, deps);
+}
+
+template <class BufferType, typename T>
+event send(BufferType* send_buf,
+           size_t send_count,
+           int peer,
+           const communicator& comm,
+           const stream& op_stream,
+           const pt2pt_attr& attr,
+           const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->send(send_buf, send_count, peer, disp(op_stream), attr, deps);
+}
+
+template <class BufferType, typename T>
+event send(BufferType* send_buf,
+           size_t send_count,
+           int peer,
+           const communicator& comm,
+           const pt2pt_attr& attr,
+           const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->send(send_buf, send_count, peer, disp(default_stream), attr, deps);
+}
+
+template <class BufferObjectType, typename T>
+event send(BufferObjectType& send_buf,
+           size_t send_count,
+           int peer,
+           const communicator& comm,
+           const stream& op_stream,
+           const pt2pt_attr& attr,
+           const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->send(send_buf, send_count, peer, disp(op_stream), attr, deps);
+}
+
+template <class BufferObjectType, typename T>
+event send(BufferObjectType& send_buf,
+           size_t send_count,
+           int peer,
+           const communicator& comm,
+           const pt2pt_attr& attr,
+           const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->send(send_buf, send_count, peer, disp(default_stream), attr, deps);
+}
+
 } // namespace v1
 
 namespace v1 {

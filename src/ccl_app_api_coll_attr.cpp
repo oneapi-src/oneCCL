@@ -22,7 +22,7 @@
 
 // Core file with PIMPL implementation
 #include "coll_attr_impl.hpp"
-#include "coll/coll_attributes.hpp"
+#include "coll/attr/ccl_attrs.hpp"
 
 namespace ccl {
 
@@ -205,6 +205,30 @@ CCL_API broadcast_attr& broadcast_attr::operator=(const broadcast_attr& src) {
 CCL_API broadcast_attr::~broadcast_attr() {}
 
 /**
+ * point to point operation attributes
+ */
+CCL_API pt2pt_attr::pt2pt_attr(pt2pt_attr&& src) : base_t(std::move(src)) {}
+
+CCL_API pt2pt_attr::pt2pt_attr(const pt2pt_attr& src) : base_t(src) {}
+
+CCL_API pt2pt_attr::pt2pt_attr(
+    const typename detail::ccl_api_type_attr_traits<operation_attr_id,
+                                                    operation_attr_id::version>::type& version)
+        : base_t(impl_value_t(new impl_t(version))) {}
+
+CCL_API pt2pt_attr& pt2pt_attr::operator=(pt2pt_attr&& src) noexcept {
+    this->acc_policy_t::create(this, std::move(src));
+    return *this;
+}
+
+CCL_API pt2pt_attr& pt2pt_attr::operator=(const pt2pt_attr& src) {
+    this->acc_policy_t::create(this, src);
+    return *this;
+}
+
+CCL_API pt2pt_attr::~pt2pt_attr() {}
+
+/**
  * reduce coll attributes
  */
 CCL_API reduce_attr::reduce_attr(reduce_attr&& src) : base_t(std::move(src)) {}
@@ -262,6 +286,7 @@ COMMON_API_FORCE_INSTANTIATION(alltoall_attr)
 COMMON_API_FORCE_INSTANTIATION(alltoallv_attr)
 COMMON_API_FORCE_INSTANTIATION(barrier_attr)
 COMMON_API_FORCE_INSTANTIATION(broadcast_attr)
+COMMON_API_FORCE_INSTANTIATION(pt2pt_attr)
 COMMON_API_FORCE_INSTANTIATION(reduce_attr)
 COMMON_API_FORCE_INSTANTIATION(reduce_scatter_attr)
 
@@ -277,6 +302,10 @@ API_FORCE_INSTANTIATION(reduce_scatter_attr,
                         reduce_scatter_attr_id,
                         reduce_scatter_attr_id::reduction_fn,
                         ccl::reduction_fn)
+API_FORCE_INSTANTIATION(pt2pt_attr,
+                        pt2pt_attr_id,
+                        pt2pt_attr_id::group_id,
+                        int /*type of group id*/)
 
 #undef API_FORCE_INSTANTIATION
 #undef COMMON_API_FORCE_INSTANTIATION

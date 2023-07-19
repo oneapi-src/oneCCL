@@ -36,7 +36,8 @@ public:
                                    ccl_buffer inout_buf,
                                    size_t* out_cnt,
                                    const ccl_datatype& dtype,
-                                   ccl::reduction op);
+                                   ccl::reduction op,
+                                   const std::vector<ze_event_handle_t>& wait_events = {});
 
     void init_ze_hook() override;
     void finalize_ze_hook() override;
@@ -49,6 +50,5 @@ private:
     const ccl::reduction op;
 
     ze_module_handle_t module{};
-    ze_kernel_handle_t kernel{};
     std::string kernel_name{};
 };

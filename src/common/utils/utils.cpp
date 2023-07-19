@@ -87,5 +87,16 @@ uintptr_t get_aligned_offset_byte(const void* ptr,
     return pre_align_offset_byte;
 }
 
+std::string join_strings(const std::vector<std::string>& tokens, const std::string& delimeter) {
+    std::stringstream ss;
+    for (size_t i = 0; i < tokens.size(); ++i) {
+        ss << tokens[i];
+        if (i < tokens.size() - 1) {
+            ss << delimeter;
+        }
+    }
+    return ss.str();
+}
+
 } // namespace utils
 } // namespace ccl

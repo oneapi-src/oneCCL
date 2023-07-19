@@ -38,7 +38,7 @@ public:
                                          const ccl_datatype& dtype,
                                          ccl::reduction op,
                                          ccl_comm* comm,
-                                         std::vector<ze_event_handle_t> wait_events = {},
+                                         const std::vector<ze_event_handle_t>& wait_events,
                                          size_t peer_buf_offset = 0);
 
     void init_ze_hook() override;
@@ -67,13 +67,7 @@ private:
     ze_event_handle_t copy_from_peer_event{};
     ze_event_handle_t reduce_local_kernel_event{};
 
-    ze_group_count_t group_count{};
-
-    ze_kernel_handle_t main_kernel{};
     std::string main_kernel_name{};
-
-    ze_kernel_handle_t empty_kernel{};
-    std::string empty_kernel_name{ "empty_kernel" };
 
     std::vector<ze_kernel> kernels;
 };

@@ -28,8 +28,9 @@ ze_reduce_local_entry::ze_reduce_local_entry(ccl_sched* sched,
                                              ccl_buffer inout_buf,
                                              size_t* out_cnt,
                                              const ccl_datatype& dtype,
-                                             ccl::reduction op)
-        : ze_base_entry(sched),
+                                             ccl::reduction op,
+                                             const std::vector<ze_event_handle_t>& wait_events)
+        : ze_base_entry(sched, wait_events),
           in_buf(in_buf),
           in_cnt(in_cnt),
           inout_buf(inout_buf),
@@ -41,39 +42,22 @@ void ze_reduce_local_entry::init_ze_hook() {
 
     kernel_name =
         "reduce_local_inplace_kernel_" + to_string(dtype.idx()) + "_" + ccl_reduction_to_str(op);
-    global_data::get().ze_data->cache->get(worker_idx, module, kernel_name, &kernel);
-    LOG_DEBUG("get kernel: name: ", kernel_name);
-
-    ze_group_size_t group_size{};
-    get_suggested_group_size(kernel, in_cnt, &group_size);
-    LOG_DEBUG("suggested group size: ", to_string(group_size));
-
-    ze_group_count_t group_count{};
-    get_suggested_group_count(group_size, in_cnt, &group_count);
-    LOG_DEBUG("suggested group count: ", to_string(group_count));
-
-    ZE_CALL(zeKernelSetGroupSize,
-            (kernel, group_size.groupSizeX, group_size.groupSizeY, group_size.groupSizeZ));
 
     size_t bytes = in_cnt * dtype.size();
     void* in_buf_ptr = in_buf.get_ptr(bytes);
     void* inout_buf_ptr = inout_buf.get_ptr(bytes);
     ze_kernel_args_t kernel_args{ &in_cnt, &in_buf_ptr, &inout_buf_ptr };
-    LOG_DEBUG("kernel ", kernel, " args:\n", to_string(kernel_args));
-    set_kernel_args(kernel, kernel_args);
 
-    ZE_CALL(zeCommandListAppendLaunchKernel,
-            (ze_base_entry::get_comp_list(),
-             kernel,
-             &group_count,
-             ze_base_entry::entry_event,
-             0,
-             nullptr));
+    ze_kernel kernel(module, kernel_name, kernel_args, in_cnt, worker_idx);
+
+    ZE_APPEND_CALL(ze_cmd_launch_kernel,
+                   ze_base_entry::get_comp_list(),
+                   std::move(kernel),
+                   ze_base_entry::entry_event,
+                   wait_events);
 }
 
-void ze_reduce_local_entry::finalize_ze_hook() {
-    global_data::get().ze_data->cache->push(worker_idx, module, kernel_name, kernel);
-}
+void ze_reduce_local_entry::finalize_ze_hook() {}
 
 std::string ze_reduce_local_entry::name_ext() const {
     std::stringstream out;

@@ -31,21 +31,24 @@ public:
 
     virtual std::string name_ext() const override;
 
-    explicit ze_a2a_allgatherv_entry(ccl_sched* sched,
-                                     ccl_buffer send_buf,
-                                     size_t send_count,
-                                     std::vector<ccl_buffer> recv_bufs,
-                                     std::vector<size_t> recv_counts,
-                                     const ccl_datatype& dtype,
-                                     ccl_comm* comm,
-                                     std::vector<ze_event_handle_t> wait_events = {},
-                                     size_t peer_buf_idx = 0,
-                                     size_t peer_buf_offset = 0,
-                                     bool is_monolithic_pipeline = false,
-                                     ccl_comm* pipeline_comm = nullptr);
+    explicit ze_a2a_allgatherv_entry(
+        ccl_sched* sched,
+        ccl_buffer send_buf,
+        size_t send_count,
+        std::vector<ccl_buffer> recv_bufs,
+        std::vector<size_t> recv_counts,
+        const ccl_datatype& dtype,
+        ccl_comm* comm,
+        const std::vector<ze_event_handle_t>& wait_events = {},
+        size_t peer_buf_idx = 0,
+        size_t peer_buf_offset = 0,
+        bool is_monolithic_pipeline = false,
+        ccl_comm* pipeline_comm = nullptr,
+        // whether ipc handle exchange done only for start of the buffer
+        // or separate handles for the buffer partition of each rank
+        bool is_separate_block_handles = true);
 
     void init_ze_hook() override;
-
     void update() override;
 
 protected:
@@ -64,6 +67,7 @@ private:
     const int peer_count;
     const bool is_monolithic_pipeline;
     ccl_comm* pipeline_comm;
+    const bool is_separate_block_handles;
 
     std::vector<ze_event_handle_t> copy_events;
     std::vector<ze_kernel> kernels;
@@ -93,7 +97,8 @@ public:
                          std::vector<ze_event_handle_t>& wait_events,
                          bool is_monolithic,
                          bool is_monolithic_pipeline,
-                         bool is_inplace = false);
+                         bool is_inplace = false,
+                         bool is_separate_block_handles = true);
     // methods
     static void select(ze_a2a_allgatherv_op& args, std::vector<ze_kernel>& kernels);
     // common
@@ -122,6 +127,7 @@ public:
     bool is_monolithic;
     bool is_monolithic_pipeline;
     bool is_inplace;
+    bool is_separate_block_handles;
 
 private:
     static void read_write(ze_a2a_allgatherv_op& args, std::vector<ze_kernel>& kernels);

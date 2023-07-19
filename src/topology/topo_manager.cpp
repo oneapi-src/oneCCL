@@ -1064,6 +1064,52 @@ bool topo_manager::is_unique_uuid(std::vector<ze_device_uuid_t>& unique_vec,
             }) == unique_vec.end());
 }
 
+void topo_manager::detect_tune_port_count(const std::vector<ze::device_info>& devices) {
+    if (!global_data::env().enable_ze_auto_tune_ports) {
+        LOG_INFO("auto tune with port counts disabled");
+        return;
+    }
+
+    LOG_INFO("auto tune with port counts enabled");
+    if (!devices.empty()) {
+        uint32_t first_dev_port_count = 0;
+        if (zesDeviceEnumFabricPorts((zes_device_handle_t)devices[0].device,
+                                     &first_dev_port_count,
+                                     NULL) != ZE_RESULT_SUCCESS) {
+            LOG_INFO("can not retrieve ze fabric ports");
+            return;
+        }
+        else {
+            LOG_INFO("ze fabric ports: ", first_dev_port_count, " were able to be detected");
+        }
+
+        for (size_t idx = 1; idx < devices.size(); idx++) {
+            uint32_t port_count = 0;
+            if (zesDeviceEnumFabricPorts((zes_device_handle_t)devices[idx].device,
+                                         &port_count,
+                                         NULL) != ZE_RESULT_SUCCESS) {
+                LOG_INFO("can not retrieve ze fabric ports");
+                return;
+            }
+            if (first_dev_port_count != port_count) {
+                LOG_INFO("on the current system, port number is different per device"
+                         " unable to detect system");
+                return;
+            }
+        }
+
+        if (first_dev_port_count == topo_manager::tune_port_count) {
+            global_data::env().reduce_scatter_topo_read = 0;
+            global_data::env().allgatherv_topo_read = 0;
+            global_data::env().alltoallv_topo_read = 0;
+            global_data::env().alltoallv_monolithic_read_kernel = 0;
+            LOG_INFO("12 ports system is detected, write mode is set");
+        }
+    }
+    else {
+        LOG_INFO("read/write mode could not be detected");
+    }
+}
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
 rank_info_vec_t topo_manager::get_filtered_rank_info_vec(int filter_host_idx) const {

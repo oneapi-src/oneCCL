@@ -73,7 +73,7 @@ void print_help_usage(const char* app) {
           "\t[-d,--dtype <datatypes list/all>]: %s\n"
           "\t[-r,--reduction <reductions list/all>]: %s\n"
           "\t[-o,--csv_filepath <file to store CSV-formatted data into>]: %s\n"
-          "\t[-x,--ext <show additional information>]\n"
+          "\t[-x,--ext <show additional information>]: %s\n"
           "\t[-h,--help]\n\n"
           "example:\n\t--coll allgatherv,allreduce --backend host --elem_counts 64,1024\n",
           app,
@@ -101,7 +101,8 @@ void print_help_usage(const char* app) {
           DEFAULT_COLL_LIST,
           DEFAULT_DTYPES_LIST,
           DEFAULT_REDUCTIONS_LIST,
-          DEFAULT_CSV_FILEPATH);
+          DEFAULT_CSV_FILEPATH,
+          ext_values_names[DEFAULT_EXT_VALUES].c_str());
 }
 
 template <class Dtype, class Container>
@@ -197,6 +198,29 @@ int set_check_values(const std::string& option_value, check_values_t& check) {
     }
     else if (option_value == check_values_names[CHECK_ALL_ITERS]) {
         check = CHECK_ALL_ITERS;
+    }
+
+    return 0;
+}
+
+int set_ext_info(const std::string& option_value, ext_values_t& ext) {
+    std::string option_name = "ext";
+
+    std::set<std::string> supported_option_values{ ext_values_names[EXT_OFF],
+                                                   ext_values_names[EXT_AUTO],
+                                                   ext_values_names[EXT_ON] };
+
+    if (check_supported_options(option_name, option_value, supported_option_values))
+        return -1;
+
+    if (option_value == ext_values_names[EXT_OFF]) {
+        ext = EXT_OFF;
+    }
+    else if (option_value == ext_values_names[EXT_AUTO]) {
+        ext = EXT_AUTO;
+    }
+    else if (option_value == ext_values_names[EXT_ON]) {
+        ext = EXT_ON;
     }
 
     return 0;
@@ -332,6 +356,26 @@ size_t get_iter_count(size_t bytes, size_t max_iter_count, iter_policy_t policy)
     return res;
 }
 
+bool show_extened_info(ext_values_t ext_info) {
+    bool result = false;
+    switch (ext_info) {
+        case EXT_OFF:
+            setenv("CCL_PLATFORM_INFO_HIDE", "1", 0);
+            result = false;
+            break;
+        case EXT_AUTO:
+            setenv("CCL_PLATFORM_INFO_HIDE", "0", 0);
+            result = false;
+            break;
+        case EXT_ON:
+            setenv("CCL_PLATFORM_INFO_HIDE", "0", 0);
+            result = true;
+            break;
+        default: ASSERT(0, "unknown value for --ext %d", ext_info); break;
+    }
+    return result;
+}
+
 void store_to_csv(const user_options_t& options,
                   size_t nranks,
                   size_t elem_count,
@@ -358,9 +402,10 @@ void store_to_csv(const user_options_t& options,
             };
 
             csvf << nranks << "," << cop << "," << get_op_name() << "," << dtype_names.at(dtype)
-                 << "," << ccl::get_datatype_size(dtype) << "," << elem_count << "," << buf_count
-                 << "," << iter_count << "," << min_time << "," << max_time << "," << avg_time
-                 << "," << stddev << "," << wait_avg_time << std::endl;
+                 << "," << ccl::get_datatype_size(dtype) << "," << elem_count << ","
+                 << ccl::get_datatype_size(dtype) * elem_count << "," << buf_count << ","
+                 << iter_count << "," << min_time << "," << max_time << "," << avg_time << ","
+                 << stddev << "," << wait_avg_time << std::endl;
         }
         csvf.close();
     }
@@ -444,7 +489,7 @@ void print_timings(const ccl::communicator& comm,
            << std::setw(COL_WIDTH - 3) << std::setprecision(COL_PRECISION) << stddev
            << std::setw(COL_WIDTH + 3);
 
-        if (options.show_additional_info) {
+        if (show_extened_info(options.show_additional_info)) {
             ss << std::right << std::fixed << std::setprecision(COL_PRECISION) << wait_avg_time;
         }
         ss << std::endl;
@@ -535,7 +580,7 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
 
     char short_options[1024] = { 0 };
 
-    const char* base_options = "b:i:w:j:n:f:t:c:p:q:o:s:l:d:r:y:xh";
+    const char* base_options = "b:i:w:j:n:f:t:c:p:q:o:s:l:d:r:y:x:h";
     memcpy(short_options, base_options, strlen(base_options));
 
 #ifdef CCL_ENABLE_NUMA
@@ -573,7 +618,7 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
         { "dtype", required_argument, nullptr, 'd' },
         { "reduction", required_argument, nullptr, 'r' },
         { "csv_filepath", required_argument, nullptr, 'o' },
-        { "ext", no_argument, nullptr, 'x' },
+        { "ext", required_argument, nullptr, 'x' },
         { "help", no_argument, nullptr, 'h' },
         { nullptr, 0, nullptr, 0 } // required at end of array.
     };
@@ -694,7 +739,12 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
                 should_parse_reductions = true;
                 break;
             case 'o': options.csv_filepath = std::string(optarg); break;
-            case 'x': options.show_additional_info = true; break;
+            case 'x':
+                if (set_ext_info(optarg, options.show_additional_info)) {
+                    PRINT("failed to parse 'ext' option");
+                    errors++;
+                };
+                break;
             case 'h': return -1;
             default:
                 PRINT("failed to parse unknown option");
@@ -790,6 +840,8 @@ void print_user_options(const user_options_t& options, const ccl::communicator& 
     std::string backend_str = find_str_val(backend_names, options.backend);
     std::string iter_policy_str = find_str_val(iter_policy_names, options.iter_policy);
     std::string check_values_str = find_str_val(check_values_names, options.check_values);
+    std::string show_additional_info_str =
+        find_str_val(ext_values_names, options.show_additional_info);
 
 #ifdef CCL_ENABLE_SYCL
     std::string sycl_dev_type_str = find_str_val(sycl_dev_names, options.sycl_dev_type);
@@ -823,6 +875,7 @@ void print_user_options(const user_options_t& options, const ccl::communicator& 
                   "\n  collectives:    %s"
                   "\n  datatypes:      %s"
                   "\n  reductions:     %s"
+                  "\n  extended info:  %s"
                   "\n  csv_filepath:   %s",
                   comm.size(),
                   backend_str.c_str(),
@@ -850,5 +903,6 @@ void print_user_options(const user_options_t& options, const ccl::communicator& 
                   collectives_str.c_str(),
                   datatypes_str.c_str(),
                   reductions_str.c_str(),
+                  show_additional_info_str.c_str(),
                   options.csv_filepath.c_str());
 }

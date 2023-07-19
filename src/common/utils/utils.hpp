@@ -225,5 +225,15 @@ std::string get_substring_between_delims(std::string& full_str,
 uintptr_t get_aligned_offset_byte(const void* ptr,
                                   const size_t buf_size_bytes,
                                   const size_t mem_align_bytes);
+
+std::string join_strings(const std::vector<std::string>& tokens, const std::string& delimeter);
+
+template <typename T>
+void clear_and_push_back(std::vector<T>& v, T elem) {
+    // vector::clear() leaves the capacity() of the vector unchanged
+    v.clear();
+    v.push_back(elem);
+}
+
 } // namespace utils
 } // namespace ccl

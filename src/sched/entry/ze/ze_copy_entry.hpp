@@ -37,8 +37,7 @@ public:
                            size_t count,
                            const ccl_datatype& dtype,
                            const copy_attr& attr = {},
-                           std::vector<ze_event_handle_t> wait_events = {},
-                           std::vector<ze_event_handle_t> dep_events = {});
+                           const std::vector<ze_event_handle_t>& wait_events = {});
 
     void init_ze_hook() override;
 
@@ -49,5 +48,4 @@ private:
     const ccl_datatype dtype;
     const copy_attr attr;
     const size_t count;
-    std::vector<ze_event_handle_t> dep_events;
 };

@@ -77,7 +77,8 @@ void load_module(const std::string& file_path,
     desc.pInputModule = reinterpret_cast<const uint8_t*>(module_data.data());
     desc.inputSize = module_data.size();
 
-    if (zeModuleCreate(context, device, &desc, module, &build_log) != ZE_RESULT_SUCCESS) {
+    if (ZE_CALL(zeModuleCreate, (context, device, &desc, module, &build_log)) !=
+        ZE_RESULT_SUCCESS) {
         CCL_THROW(
             "failed to create module: ", file_path, ", log: ", get_build_log_string(build_log));
     }
@@ -85,7 +86,7 @@ void load_module(const std::string& file_path,
         LOG_DEBUG("module loading completed: directory: file: ", file_path);
     }
 
-    zeModuleBuildLogDestroy(build_log);
+    ZE_CALL(zeModuleBuildLogDestroy, (build_log));
 }
 
 void create_kernel(ze_module_handle_t module, std::string kernel_name, ze_kernel_handle_t* kernel) {
@@ -93,7 +94,7 @@ void create_kernel(ze_module_handle_t module, std::string kernel_name, ze_kernel
     // convert to lowercase
     std::transform(kernel_name.begin(), kernel_name.end(), kernel_name.begin(), ::tolower);
     desc.pKernelName = kernel_name.c_str();
-    ze_result_t res = zeKernelCreate(module, &desc, kernel);
+    ze_result_t res = ZE_CALL(zeKernelCreate, (module, &desc, kernel));
     if (res != ZE_RESULT_SUCCESS) {
         CCL_THROW("error at zeKernelCreate: kernel name: ", kernel_name, " ret: ", to_string(res));
     }
@@ -154,13 +155,17 @@ void get_suggested_group_count(const ze_group_size_t& group_size,
                      rem);
 }
 
-void set_kernel_args(ze_kernel_handle_t kernel, const ze_kernel_args_t& kernel_args) {
+void set_kernel_args(ze_kernel_handle_t kernel, const std::vector<ze_kernel_arg_t>& kernel_args) {
     uint32_t idx = 0;
     for (const auto& arg : kernel_args) {
-        // each arg can be an array with arg.count elements
-        for (size_t i = 0; i < arg.count; i++) {
-            auto ptr = &((char*)arg.ptr)[i * arg.size];
-            auto res = zeKernelSetArgumentValue(kernel, idx, arg.size, ptr);
+        if (arg.is_skip_arg()) {
+            // skip argument - don't call zeKernelSetArgumentValue
+            ++idx;
+            continue;
+        }
+        for (const auto& elem : arg.elems) {
+            auto ptr = elem.get();
+            auto res = ZE_CALL(zeKernelSetArgumentValue, (kernel, idx, arg.size, ptr));
             if (res != ZE_RESULT_SUCCESS) {
                 CCL_THROW("zeKernelSetArgumentValue failed with error ",
                           to_string(res),
@@ -233,7 +238,7 @@ bool get_buffer_context_and_device(const void* buf,
     auto mem_alloc_props = default_alloc_props;
     for (auto ctx : contexts) {
         ze_device_handle_t dev{};
-        ze_result_t res = zeMemGetAllocProperties(ctx, buf, &mem_alloc_props, &dev);
+        ze_result_t res = ZE_CALL(zeMemGetAllocProperties, (ctx, buf, &mem_alloc_props, &dev));
         if (res == ZE_RESULT_SUCCESS) {
             *context = ctx;
             if (device) {
@@ -298,8 +303,28 @@ uint32_t get_parent_device_id(ze_device_handle_t device) {
     ccl::ze::get_device_global_id(device, &dev_id);
     CCL_THROW_IF_NOT(dev_id != ccl::utils::invalid_device_id, "unexpected dev_id");
     LOG_DEBUG("device_id: ", dev_id);
-
     return ccl::global_data::get().ze_data->devices[dev_id].parent_idx;
+}
+
+uint32_t get_physical_device_id(ze_device_handle_t device) {
+    ssize_t dev_id = ccl::utils::invalid_device_id;
+    ccl::ze::get_device_global_id(device, &dev_id);
+    auto parent_idx = get_parent_device_id(device);
+    auto idx = ccl::global_data::get().ze_data->devices[parent_idx].physical_idx;
+    LOG_DEBUG("physical_idx ", idx, ", dev_id: ", dev_id, ", parent_idx: ", parent_idx);
+    return idx;
+}
+
+uint32_t get_device_id(ze_device_handle_t device) {
+    // here we can control which device idx we can take
+    // parent_idx which is based on logical idx
+    // or physical idx, which is based on BDF
+    auto dev_id = get_physical_device_id(device);
+    if (!ccl::global_data::env().ze_drm_bdf_support ||
+        (int)dev_id == fd_manager::invalid_physical_idx) {
+        dev_id = get_parent_device_id(device);
+    }
+    return dev_id;
 }
 
 device_family get_device_family(ze_device_handle_t device) {
@@ -479,8 +504,10 @@ std::string to_string(const ze_kernel_args_t& kernel_args) {
     for (const auto& arg : kernel_args) {
         // TODO: can we distinguish argument types in order to properly print them instead of printing
         // as a void* ptr?
-        ss << "  idx: " << idx << ", { " << arg.size << ", " << *(void**)arg.ptr << " }\n";
-        ++idx;
+        for (const auto& elem : arg.elems) {
+            ss << "  idx: " << idx << ", ptr: " << elem.get() << "\n";
+            ++idx;
+        }
     }
     ss << "}";
     return ss.str();
@@ -598,17 +625,6 @@ std::string to_string(const zes_fabric_port_state_t& state) {
 
     ss << " }";
 
-    return ss.str();
-}
-
-std::string join_strings(const std::vector<std::string>& tokens, const std::string& delimeter) {
-    std::stringstream ss;
-    for (size_t i = 0; i < tokens.size(); ++i) {
-        ss << tokens[i];
-        if (i < tokens.size() - 1) {
-            ss << delimeter;
-        }
-    }
     return ss.str();
 }
 

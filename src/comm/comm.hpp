@@ -143,7 +143,14 @@ public:
     static constexpr int invalid_rank = -1;
 
     // maximum value of schedule id in scope of the current communicator
-    static constexpr ccl_sched_id_t max_sched_count = std::numeric_limits<ccl_sched_id_t>::max();
+    static constexpr ccl_sched_id_t max_sched_count =
+        std::numeric_limits<ccl_sched_id_t>::max() - 1;
+    // We have declared the tag using the data type ccl_sched_id_t,
+    // which is equivalent to a 16-bit unsigned integer. For pt2pt,
+    // we use the maximum value that can be represented with these 16
+    // bits as the tag. This approach works effectively because the
+    // schedule_id in the tag also uses 16 bits
+    static constexpr ccl_sched_id_t pt2pt_sched_id = std::numeric_limits<ccl_sched_id_t>::max();
 
     void init(int comm_id,
               std::shared_ptr<atl_base_comm> atl_comm,

@@ -23,6 +23,8 @@ __kernel void empty_kernel(int my_rank,
 #define PTR_ARGS4(Dtype, name) PTR_ARGS3(Dtype, name), PTR_ARGS(Dtype, name, 4)
 #define PTR_ARGS5(Dtype, name) PTR_ARGS4(Dtype, name), PTR_ARGS(Dtype, name, 5)
 
+#define ALL_PTR_ARGS(Dtype, name, N) PTR_ARGS(Dtype, name, 0), PTR_ARGS##N(Dtype, name)
+
 #define CONST_ARGS(Dtype, name, b) const Dtype name##b
 
 #define CONST_ARGS1(Dtype, name) CONST_ARGS(Dtype, name, 1)
@@ -75,6 +77,57 @@ __kernel void empty_kernel(int my_rank,
         size_t work_group_size = get_global_size(0); \
         size_t thread_id = get_global_id(0); \
         ALLTOALLV_COPY##N \
+    }
+
+// reduction for local_reduce
+#define REDUCTION(OpFunc, b) \
+    xelink_tmp_buf##b[idx] = OpFunc(local_send_buf##b[idx], mdfi_buf##b[idx]);
+
+#define REDUCTION1(OpFunc) REDUCTION(OpFunc, 0)
+#define REDUCTION2(OpFunc) REDUCTION1(OpFunc) REDUCTION(OpFunc, 1)
+#define REDUCTION3(OpFunc) REDUCTION2(OpFunc) REDUCTION(OpFunc, 2)
+#define REDUCTION4(OpFunc) REDUCTION3(OpFunc) REDUCTION(OpFunc, 3)
+#define REDUCTION5(OpFunc) REDUCTION4(OpFunc) REDUCTION(OpFunc, 4)
+
+// reduction for local_reduce
+#define FIRST_REDUCE(OpFunc, b0, b1) \
+    output_buf[idx] = OpFunc(xelink_tmp_buf##b0[idx], xelink_tmp_buf##b1[idx]);
+
+#define REDUCE(OpFunc, b) output_buf[idx] = OpFunc(output_buf[idx], xelink_tmp_buf##b[idx]);
+
+#define REDUCE1(OpFunc) FIRST_REDUCE(OpFunc, 0, 1)
+#define REDUCE2(OpFunc) REDUCE1(OpFunc) REDUCE(OpFunc, 2)
+#define REDUCE3(OpFunc) REDUCE2(OpFunc) REDUCE(OpFunc, 3)
+#define REDUCE4(OpFunc) REDUCE3(OpFunc) REDUCE(OpFunc, 4)
+#define REDUCE5(OpFunc) REDUCE4(OpFunc) REDUCE(OpFunc, 5)
+
+#define DEFINE_REDUCE_READ_WRITE_KERNEL(DtypeName, Dtype, OpName, OpFunc, N) \
+    __kernel void reduce_read_write_kernel_##N##_##DtypeName##_##OpName( \
+        ALL_PTR_ARGS(Dtype, local_send_buf, N), \
+        ALL_PTR_ARGS(Dtype, mdfi_buf, N), \
+        ALL_PTR_ARGS(Dtype, xelink_tmp_buf, N), \
+        ulong count, \
+        ulong last_count) { \
+        DEBUG_BLOCK(printf("in reduce_read_write_kernel count %ld\n", count)); \
+        size_t work_group_size = get_global_size(0); \
+        size_t thread_id = get_global_id(0); \
+        for (size_t idx = thread_id; idx < count; idx += work_group_size) { \
+            REDUCTION##N(OpFunc) \
+        } \
+        for (size_t idx = thread_id; idx < last_count; idx += work_group_size) { \
+            REDUCTION(OpFunc, N) \
+        } \
+    }
+
+#define DEFINE_LOCAL_REDUCE_KERNEL(DtypeName, Dtype, OpName, OpFunc, N) \
+    __kernel void local_reduce_kernel_##N##_##DtypeName##_##OpName( \
+        ulong count, ALL_PTR_ARGS(Dtype, xelink_tmp_buf, N), __global Dtype* output_buf) { \
+        size_t work_group_size = get_global_size(0); \
+        size_t thread_id = get_global_id(0); \
+        DEBUG_BLOCK(printf("in local_reduce_kernel count %ld\n", count)); \
+        for (size_t idx = thread_id; idx < count; idx += work_group_size) { \
+            REDUCE##N(OpFunc) \
+        } \
     }
 
 #define DEFINE_ALLREDUCE_KERNEL(DtypeName, Dtype, OpName, OpFunc) \
@@ -468,9 +521,28 @@ DEFINE_FP16OPS(half)
     DEFINE_ALL_KERNELS_N(KernelName, 4) \
     DEFINE_ALL_KERNELS_N(KernelName, 5)
 
-DEFINE_ALL_KERNELS_PEERS(ALLTOALLV)
+#define DEFINE_ALL_KERNELS_OP_N(KernelName, N) \
+    DEFINE_KERNELS_WITH_OP_N(KernelName, sum, N) \
+    DEFINE_KERNELS_WITH_OP_N(KernelName, prod, N) \
+    DEFINE_KERNELS_WITH_OP_N(KernelName, min, N) \
+    DEFINE_KERNELS_WITH_OP_N(KernelName, max, N) \
+\
+    DEFINE_KERNELS_WITH_LP_OP_N(KernelName, sum, N) \
+    DEFINE_KERNELS_WITH_LP_OP_N(KernelName, prod, N) \
+    DEFINE_KERNELS_WITH_LP_OP_N(KernelName, min, N) \
+    DEFINE_KERNELS_WITH_LP_OP_N(KernelName, max, N)
 
+#define DEFINE_ALL_KERNELS_PEERS_PLANE_OP(KernelName) \
+    DEFINE_ALL_KERNELS_OP_N(KernelName, 1) \
+    DEFINE_ALL_KERNELS_OP_N(KernelName, 2) \
+    DEFINE_ALL_KERNELS_OP_N(KernelName, 3) \
+    DEFINE_ALL_KERNELS_OP_N(KernelName, 4) \
+    DEFINE_ALL_KERNELS_OP_N(KernelName, 5)
+
+DEFINE_ALL_KERNELS_PEERS(ALLTOALLV)
 DEFINE_ALL_KERNELS_PEERS_PLANE(READ_WRITE_MONOLITHIC)
+DEFINE_ALL_KERNELS_PEERS_PLANE_OP(REDUCE_READ_WRITE)
+DEFINE_ALL_KERNELS_PEERS_PLANE_OP(LOCAL_REDUCE)
 
 DEFINE_ALL_KERNELS(ALLREDUCE)
 DEFINE_ALL_KERNELS(REDUCE_LOCAL_OUTOFPLACE)

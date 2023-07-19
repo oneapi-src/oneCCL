@@ -42,6 +42,10 @@ public:
     bool is_closed{};
     bool is_executed{};
 
+#ifdef ENABLE_DEBUG
+    std::string list_name{};
+#endif //ENABLE_DEBUG
+
 private:
     friend class list_factory;
     ze_command_list_handle_t list{};
@@ -74,10 +78,7 @@ using queue_info_t = typename std::shared_ptr<queue_info>;
 
 class queue_factory {
 public:
-    queue_factory(ze_device_handle_t device,
-                  ze_context_handle_t context,
-                  queue_group_type type,
-                  ze_command_queue_handle_t cmd_queue);
+    queue_factory(ze_device_handle_t device, ze_context_handle_t context, queue_group_type type);
     queue_factory& operator=(const queue_factory&) = delete;
     queue_factory& operator=(queue_factory&&) = delete;
     ~queue_factory();
@@ -96,7 +97,6 @@ private:
     const ze_context_handle_t context;
     const bool is_copy_queue;
     const queue_group_type type;
-    const ze_command_queue_handle_t cmd_queue;
 
     static constexpr ssize_t worker_idx = 0;
 
@@ -159,7 +159,6 @@ private:
     const ccl_sched_base* sched;
     const ze_device_handle_t device;
     const ze_context_handle_t context;
-    const ze_command_queue_handle_t cmd_queue;
     std::unique_ptr<queue_factory> comp_queue_factory;
     std::unique_ptr<queue_factory> link_queue_factory;
     std::unique_ptr<queue_factory> main_queue_factory;

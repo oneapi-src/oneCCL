@@ -95,6 +95,16 @@ ccl::status coll_entry::build_sched(ccl_sched* sched, const ccl_coll_entry_param
                                                 param.comm);
             break;
         }
+        case ccl_coll_recv: {
+            res = ccl_coll_build_recv(
+                sched, param.recv_buf, param.count, param.dtype, param.peer_rank, param.comm);
+            break;
+        }
+        case ccl_coll_send: {
+            res = ccl_coll_build_send(
+                sched, param.send_buf, param.count, param.dtype, param.peer_rank, param.comm);
+            break;
+        }
         default: CCL_FATAL("not supported coll_type ", param.ctype); break;
     }
     return res;

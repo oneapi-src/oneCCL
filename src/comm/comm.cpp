@@ -17,8 +17,8 @@
 #include "atl/util/pm/pmi_resizable_rt/pmi_resizable/kvs/users_kvs.h"
 #include "exec/exec.hpp"
 #include "coll/coll.hpp"
-#include "coll/coll_common_attributes.hpp"
-#include "coll/ccl_allgather_op_attr.hpp"
+#include "coll/attr/ccl_common_op_attrs.hpp"
+#include "coll/attr/ccl_allgather_op_attr.hpp"
 #include "comm/comm.hpp"
 #include "comm/comm_impl.hpp"
 #include "common/global/global.hpp"
@@ -350,8 +350,8 @@ ccl::event ccl_comm::barrier(const ccl::stream::impl_value_t& stream,
 ccl::event ccl_comm::barrier_impl(const ccl::stream::impl_value_t& stream,
                                   const ccl::barrier_attr& attr,
                                   const ccl::vector_class<ccl::event>& deps) {
-    ccl_barrier_impl(this, stream.get(), deps);
-    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(nullptr));
+    ccl_request* req = ccl_barrier_impl(this, stream.get(), deps);
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
 }
 
 /* allgatherv */
@@ -546,6 +546,34 @@ ccl::event ccl_comm::reduce_scatter_impl(const void* send_buf,
                                          const ccl::vector_class<ccl::event>& deps) {
     ccl_request* req = ccl_reduce_scatter_impl(
         send_buf, recv_buf, recv_count, dtype, reduction, attr, this, get_stream_ptr(stream), deps);
+
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
+}
+
+/* recv */
+ccl::event ccl_comm::recv_impl(void* recv_buf,
+                               size_t recv_count,
+                               ccl::datatype dtype,
+                               int peer,
+                               const ccl::stream::impl_value_t& stream,
+                               const ccl::pt2pt_attr& attr,
+                               const ccl::vector_class<ccl::event>& deps) {
+    ccl_request* req =
+        ccl_recv_impl(recv_buf, recv_count, dtype, peer, attr, this, get_stream_ptr(stream), deps);
+
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
+}
+
+/* send */
+ccl::event ccl_comm::send_impl(void* send_buf,
+                               size_t send_count,
+                               ccl::datatype dtype,
+                               int peer,
+                               const ccl::stream::impl_value_t& stream,
+                               const ccl::pt2pt_attr& attr,
+                               const ccl::vector_class<ccl::event>& deps) {
+    ccl_request* req =
+        ccl_send_impl(send_buf, send_count, dtype, peer, attr, this, get_stream_ptr(stream), deps);
 
     return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
 }

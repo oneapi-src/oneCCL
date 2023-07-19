@@ -26,6 +26,8 @@
 
 #define MIN(a, b) std::min(a, b)
 
+using namespace ccl::utils;
+
 ccl::status ccl_coll_build_direct_bcast(ccl_sched* sched,
                                         ccl_buffer buf,
                                         size_t count,
@@ -250,14 +252,26 @@ ccl::status ccl_coll_build_topo_bcast(ccl_sched* sched,
     };
     LOG_DEBUG("BCAST buf = ", buf.get_ptr(), " and root = ", root);
 
-    ccl::add_handle_exchange(sched, node_comm, buffers);
+    std::vector<ze_event_handle_t> wait_events;
+    ze_event_handle_t out_event;
+
+    ccl::add_handle_exchange(sched, node_comm, wait_events, out_event, buffers);
+    clear_and_push_back(wait_events, out_event);
 
     if (comm->rank() != root) {
-        entry_factory::create<copy_entry>(
-            sched, ccl_buffer(), buf, count, dtype, copy_attr(root, 0, copy_direction::d2d));
+        auto entry = entry_factory::create<ze_copy_entry>(sched,
+                                                          ccl_buffer(),
+                                                          buf,
+                                                          count,
+                                                          dtype,
+                                                          copy_attr(root, 0, copy_direction::d2d),
+                                                          wait_events);
+        clear_and_push_back(wait_events, entry->entry_event);
     }
 
-    ccl::add_comm_barrier(sched, node_comm);
+    ccl::add_comm_barrier(sched, node_comm, wait_events, out_event);
+
+    entry_factory::create<execute_cmdlists_entry>(sched);
 
     return ccl::status::success;
 }

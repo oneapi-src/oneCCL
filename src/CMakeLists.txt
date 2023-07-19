@@ -24,17 +24,18 @@ if (CCL_ENABLE_SYCL AND CCL_ENABLE_ZE)
 
         sched/entry/ze/allreduce/ze_a2a_allreduce_entry.cpp
         sched/entry/ze/allreduce/ze_onesided_allreduce_entry.cpp
-        sched/entry/ze/allreduce/ze_ring_allreduce_entry.cpp
         sched/entry/ze/ze_a2a_allgatherv_entry.cpp
-        sched/entry/ze/ze_a2a_gatherv_entry.cpp
         sched/entry/ze/ze_a2a_reduce_scatter_entry.cpp
+        sched/entry/ze/ze_a2a_pipeline_reduce_scatter_entry.cpp
         sched/entry/ze/ze_alltoallv_entry.cpp
         sched/entry/ze/ze_base_entry.cpp
         sched/entry/ze/ze_barrier_entry.cpp
         sched/entry/ze/ze_cache.cpp
         sched/entry/ze/ze_call.cpp
+        sched/entry/ze/ze_command.cpp
         sched/entry/ze/ze_copy_entry.cpp
         sched/entry/ze/ze_handle_exchange_entry.cpp
+        sched/entry/ze/ze_kernel.cpp
         sched/entry/ze/ze_event_signal_entry.cpp
         sched/entry/ze/ze_event_wait_entry.cpp
         sched/entry/ze/ze_onesided_reduce_entry.cpp
@@ -78,15 +79,16 @@ set(CCL_SRC
     atl/util/pm/pmi_rt/pmi/simple_pmi.c
     atl/util/pm/pmi_rt/pmi/simple_pmiutil.c
 
-    coll/coll_common_attributes.cpp
-    coll/ccl_allgather_op_attr.cpp
-    coll/ccl_allreduce_op_attr.cpp
-    coll/ccl_alltoall_op_attr.cpp
-    coll/ccl_alltoallv_op_attr.cpp
-    coll/ccl_bcast_op_attr.cpp
-    coll/ccl_reduce_op_attr.cpp
-    coll/ccl_reduce_scatter_op_attr.cpp
-    coll/ccl_barrier_op_attr.cpp
+    coll/attr/ccl_common_op_attrs.cpp
+    coll/attr/ccl_allgather_op_attr.cpp
+    coll/attr/ccl_allreduce_op_attr.cpp
+    coll/attr/ccl_alltoall_op_attr.cpp
+    coll/attr/ccl_alltoallv_op_attr.cpp
+    coll/attr/ccl_barrier_op_attr.cpp
+    coll/attr/ccl_bcast_op_attr.cpp
+    coll/attr/ccl_pt2pt_op_attr.cpp
+    coll/attr/ccl_reduce_op_attr.cpp
+    coll/attr/ccl_reduce_scatter_op_attr.cpp
     coll/coll_param.cpp
     coll/coll_util.cpp
     coll/algorithms/allgatherv.cpp

@@ -174,10 +174,11 @@ dynamic_event_pool::dynamic_event_pool(const ccl_stream* stream) {
 dynamic_event_pool::~dynamic_event_pool() {
     // we expect that all events are released by the callee, at this point there
     // must be no allocated events, otherwise this indicates an error in the event handling
-    if (!event_alloc_info.empty())
-        LOG_ERROR("all events are expected to be released");
-    if (!event_pools.empty())
-        LOG_ERROR("all event pools are expected to be released");
+    // TODO: return warnings
+    // if (!event_alloc_info.empty())
+    //     LOG_ERROR("all events are expected to be released");
+    // if (!event_pools.empty())
+    //     LOG_ERROR("all event pools are expected to be released");
 }
 
 ze_event_pool_desc_t dynamic_event_pool::get_default_event_pool_desc() {

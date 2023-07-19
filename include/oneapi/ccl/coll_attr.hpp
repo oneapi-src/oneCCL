@@ -30,6 +30,7 @@ class ccl_alltoall_attr_impl_t;
 class ccl_alltoallv_attr_impl_t;
 class ccl_barrier_attr_impl_t;
 class ccl_broadcast_attr_impl_t;
+class ccl_pt2pt_attr_impl_t;
 class ccl_reduce_attr_impl_t;
 class ccl_reduce_scatter_attr_impl_t;
 
@@ -514,6 +515,65 @@ private:
 };
 
 /**
+ * Point to point operation attributes
+ */
+class pt2pt_attr : public ccl_api_base_copyable<pt2pt_attr,
+                                                copy_on_write_access_policy,
+                                                ccl_pt2pt_attr_impl_t> {
+public:
+    using base_t =
+        ccl_api_base_copyable<pt2pt_attr, copy_on_write_access_policy, ccl_pt2pt_attr_impl_t>;
+
+    /**
+     * Declare PIMPL type
+     */
+    using impl_value_t = typename base_t::impl_value_t;
+
+    /**
+     * Declare implementation type
+     */
+    using impl_t = typename impl_value_t::element_type;
+
+    pt2pt_attr(pt2pt_attr&& src);
+    pt2pt_attr(const pt2pt_attr& src);
+    pt2pt_attr& operator=(pt2pt_attr&& src) noexcept;
+    pt2pt_attr& operator=(const pt2pt_attr& src);
+    ~pt2pt_attr();
+
+    /**
+     * Set specific value for attribute by @attrId.
+     * Previous attibute value would be returned
+     */
+    template <pt2pt_attr_id attrId,
+              class Value/*,
+              class = typename std::enable_if<is_attribute_value_supported<attrId, Value>()>::type*/>
+    typename detail::ccl_api_type_attr_traits<pt2pt_attr_id, attrId>::return_type set(const Value& v);
+
+    template <operation_attr_id attrId,
+              class Value/*,
+              class = typename std::enable_if<is_attribute_value_supported<attrId, Value>()>::type*/>
+    typename detail::ccl_api_type_attr_traits<operation_attr_id, attrId>::return_type set(const Value& v);
+
+    /**
+     * Get specific attribute value by @attrId
+     */
+    template <pt2pt_attr_id attrId>
+    const typename detail::ccl_api_type_attr_traits<pt2pt_attr_id, attrId>::return_type& get()
+        const;
+
+    template <operation_attr_id attrId>
+    const typename detail::ccl_api_type_attr_traits<operation_attr_id, attrId>::return_type& get()
+        const;
+
+private:
+    friend class ccl::detail::environment;
+    friend struct ccl::ccl_empty_attr;
+    pt2pt_attr(
+        const typename detail::ccl_api_type_attr_traits<operation_attr_id,
+                                                        operation_attr_id::version>::type& version);
+};
+
+/**
  * Declare extern empty attributes
  */
 extern allgatherv_attr default_allgatherv_attr;
@@ -522,6 +582,7 @@ extern alltoall_attr default_alltoall_attr;
 extern alltoallv_attr default_alltoallv_attr;
 extern barrier_attr default_barrier_attr;
 extern broadcast_attr default_broadcast_attr;
+extern pt2pt_attr default_pt2pt_attr;
 extern reduce_attr default_reduce_attr;
 extern reduce_scatter_attr default_reduce_scatter_attr;
 
@@ -563,6 +624,11 @@ constexpr auto attr_val(value_type v)
     return detail::attr_value_triple<broadcast_attr_id, t, value_type>(v);
 }
 
+template <pt2pt_attr_id t, class value_type>
+constexpr auto attr_val(value_type v) -> detail::attr_value_triple<pt2pt_attr_id, t, value_type> {
+    return detail::attr_value_triple<pt2pt_attr_id, t, value_type>(v);
+}
+
 template <reduce_attr_id t, class value_type>
 constexpr auto attr_val(value_type v) -> detail::attr_value_triple<reduce_attr_id, t, value_type> {
     return detail::attr_value_triple<reduce_attr_id, t, value_type>(v);
@@ -594,6 +660,7 @@ using v1::alltoall_attr;
 using v1::alltoallv_attr;
 using v1::barrier_attr;
 using v1::broadcast_attr;
+using v1::pt2pt_attr;
 using v1::reduce_attr;
 using v1::reduce_scatter_attr;
 
@@ -603,6 +670,7 @@ using v1::default_alltoall_attr;
 using v1::default_alltoallv_attr;
 using v1::default_barrier_attr;
 using v1::default_broadcast_attr;
+using v1::default_pt2pt_attr;
 using v1::default_reduce_attr;
 using v1::default_reduce_scatter_attr;
 

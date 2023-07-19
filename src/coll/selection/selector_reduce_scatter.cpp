@@ -26,16 +26,18 @@ std::map<ccl_coll_reduce_scatter_algo, std::string>
     };
 
 ccl_algorithm_selector<ccl_coll_reduce_scatter>::ccl_algorithm_selector() {
-    if (ccl::global_data::env().atl_transport == ccl_atl_ofi)
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_reduce_scatter_topo);
+#else // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+    if (ccl::global_data::env().atl_transport == ccl_atl_ofi) {
         insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_reduce_scatter_ring);
-    else if (ccl::global_data::env().atl_transport == ccl_atl_mpi)
+    }
+    else if (ccl::global_data::env().atl_transport == ccl_atl_mpi) {
         insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_reduce_scatter_direct);
-
+    }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+    insert(scaleout_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_reduce_scatter_ring);
     insert(fallback_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_reduce_scatter_ring);
-
-    // reduce_scatter currently does not support scale-out selection, but the table
-    // has to be defined, therefore duplicating main table
-    scaleout_table = main_table;
 }
 
 template <>

@@ -85,6 +85,15 @@ void ze_handle_exchange_entry::start() {
     }
 }
 
+uint32_t ze_handle_exchange_entry::get_remote_device_id(ccl::ze::device_info& info) {
+    auto idx = info.physical_idx;
+    if (!ccl::global_data::env().ze_drm_bdf_support ||
+        (int)idx == ccl::ze::fd_manager::invalid_physical_idx) {
+        idx = info.parent_idx;
+    }
+    return idx;
+}
+
 void ze_handle_exchange_entry::create_local_ipc_handles(const std::vector<mem_desc_t>& bufs) {
     if (comm_size == 1) {
         this->skip_rank = rank;
@@ -102,7 +111,10 @@ void ze_handle_exchange_entry::create_local_ipc_handles(const std::vector<mem_de
     for (size_t buf_idx = 0; buf_idx < in_buffers.size(); buf_idx++) {
         int mem_handle = ccl::utils::invalid_mem_handle;
         auto mem_ptr = in_buffers[buf_idx].first;
-        CCL_THROW_IF_NOT(mem_ptr, "memory pointer is nullptr");
+        if (mem_ptr == nullptr) {
+            continue;
+        }
+
         auto mem_type = in_buffers[buf_idx].second;
         mem_info_t mem_info{};
 
@@ -118,10 +130,11 @@ void ze_handle_exchange_entry::create_local_ipc_handles(const std::vector<mem_de
                 sched->get_memory().handle_manager.get_handle(mem_info.first, &ipc_handle);
 
                 if (ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::drmfd) {
-                    device_fds = ccl::global_data::get().ze_data->fd_manager->get_device_fds();
+                    physical_devices =
+                        ccl::global_data::get().ze_data->fd_manager->get_physical_devices();
                     mem_handle = ipc_to_mem_handle(
                         ipc_handle,
-                        ccl::ze::get_parent_device_id(sched->coll_param.stream->get_ze_device()));
+                        ccl::ze::get_device_id(sched->coll_param.stream->get_ze_device()));
                 }
                 else if (ccl::global_data::env().ze_ipc_exchange ==
                          ccl::ze::ipc_exchange_mode::pidfd) {
@@ -159,15 +172,15 @@ void ze_handle_exchange_entry::create_local_ipc_handles(const std::vector<mem_de
 }
 
 int ze_handle_exchange_entry::ipc_to_mem_handle(const ze_ipc_mem_handle_t& ipc_handle,
-                                                const int parent_dev_id) {
+                                                const int dev_id) {
     int dmabuf_fd;
     int mem_handle = ccl::utils::invalid_mem_handle;
-
     if (ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::drmfd) {
         // convert dma_buf fd to GEM handle
         memcpy(&dmabuf_fd, &ipc_handle, sizeof(dmabuf_fd));
-        mem_handle = ccl::ze::fd_manager::fd_to_mem_handle(device_fds[parent_dev_id], dmabuf_fd);
-        LOG_DEBUG("device_fd: ", device_fds[parent_dev_id]);
+
+        mem_handle = ccl::ze::fd_manager::fd_to_mem_handle(physical_devices[dev_id].fd, dmabuf_fd);
+        LOG_DEBUG("device_fd: ", physical_devices[dev_id].fd);
     }
     else if (ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::pidfd) {
         memcpy(&mem_handle, &ipc_handle, sizeof(int));
@@ -191,10 +204,14 @@ void ze_handle_exchange_entry::fill_payload(payload_t& payload,
     payload.mem_offset = handles[rank][buf_idx].mem_offset;
     payload.remote_pid = getpid();
     const void* ptr = bufs[buf_idx].first;
+    if (ptr == nullptr) {
+        return;
+    }
 
     ze_context_handle_t remote_context{};
     ze_device_handle_t remote_device{};
-    ze_memory_allocation_properties_t mem_alloc_props;
+    ze_memory_allocation_properties_t mem_alloc_props{};
+
     if (!ccl::ze::get_buffer_context_and_device(
             ptr, &remote_context, &remote_device, &mem_alloc_props)) {
         CCL_THROW("unable to get context from ptr\n");
@@ -252,9 +269,12 @@ void ze_handle_exchange_entry::common_fd_mode_exchange(const std::vector<mem_des
             }
 
             if (ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::drmfd) {
-                int remote_device_id = payloads[idx].remote_device_id;
-                payloads[idx].device_fd = device_fds
-                    [ccl::global_data::get().ze_data->devices[remote_device_id].parent_idx];
+                auto remote_device_id = payloads[idx].remote_device_id;
+                auto device = ccl::global_data::get().ze_data->devices[remote_device_id];
+                // empty buffers do not have devices specified
+                payloads[idx].device_fd = (physical_devices.size() > 0)
+                                              ? physical_devices[get_remote_device_id(device)].fd
+                                              : -1;
             }
             else if (ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::pidfd) {
                 opened_pidfds.push_back(ccl::ze::fd_manager::pidfd_open(payloads[idx].remote_pid));

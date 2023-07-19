@@ -18,7 +18,7 @@
 #include "oneapi/ccl/types.hpp"
 #include "oneapi/ccl/environment.hpp"
 
-#include "coll/coll_attributes.hpp"
+#include "coll/attr/ccl_attrs.hpp"
 
 #include "comm/comm_common_attr.hpp"
 #include "comm_attr_impl.hpp"

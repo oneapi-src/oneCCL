@@ -55,8 +55,8 @@ struct sycl_reduce_scatter_coll : sycl_base_coll<Dtype, reduce_scatter_strategy_
             else {
                 auto send_buf = (static_cast<sycl_buffer_t<Dtype>*>(send_bufs[b_idx][rank_idx]));
                 auto recv_buf = (static_cast<sycl_buffer_t<Dtype>*>(recv_bufs[b_idx][rank_idx]));
-                auto send_buf_acc = send_buf->template get_access<mode::read>();
-                auto recv_buf_acc = recv_buf->template get_access<mode::read>();
+                auto send_buf_acc = send_buf->template get_host_access(sycl::read_only);
+                auto recv_buf_acc = recv_buf->template get_host_access(sycl::read_only);
 
                 stream.get_native()
                     .memcpy(host_send_buf.data(), send_buf_acc.get_pointer(), send_bytes)

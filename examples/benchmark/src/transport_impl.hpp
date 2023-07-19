@@ -111,6 +111,8 @@ void transport_data::init_comms(user_options_t& options) {
     }
 #ifdef CCL_ENABLE_SYCL
     else if (options.backend == BACKEND_SYCL) {
+        show_extened_info(options.show_additional_info);
+
         auto sycl_queues = create_sycl_queues(
             sycl_dev_names[options.sycl_dev_type], proc_ranks, options.sycl_root_dev);
         ASSERT(!sycl_queues.empty(), "queues should contain at least one queue");

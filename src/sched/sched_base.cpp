@@ -89,6 +89,8 @@ void ccl_sched_base::update_coll_param_and_attr(const ccl_coll_param& param,
         coll_param.recv_bufs = param.recv_bufs;
     }
 
+    coll_param.stream = param.stream;
+
     int comm_size = coll_param.comm->size();
 
     if (coll_param.ctype == ccl_coll_allgatherv) {
@@ -110,7 +112,6 @@ void ccl_sched_base::update_coll_param_and_attr(const ccl_coll_param& param,
     if (ccl::global_data::env().priority_mode == ccl_priority_direct) {
         coll_attr.priority = attr.priority;
     }
-    coll_param.stream = param.stream;
 }
 
 size_t ccl_sched_base::get_priority() const {
@@ -360,6 +361,11 @@ void ccl_sched_base::get_pre_post_copy_counts(std::vector<size_t>& d2h_counts,
             d2h_counts.push_back(param.get_send_count());
             h2d_counts.push_back(param.get_recv_count());
             break;
+        case ccl_coll_send: d2h_counts.push_back(param.get_send_count()); break;
+        case ccl_coll_recv:
+            d2h_counts.push_back(param.get_recv_count());
+            h2d_counts.push_back(param.get_recv_count());
+            break;
         default: break;
     }
 }
@@ -381,9 +387,20 @@ void ccl_sched_base::alloc_buffers_for_pre_post_copy() {
     selector_param.is_sycl_buf = coll_attr.is_sycl_buf;
     selector_param.recv_counts = param.recv_counts.data();
 
+    bool enable_hmem = (ccl::global_data::env().use_hmem && atl_base_comm::attr.out.enable_hmem);
+    LOG_DEBUG("value of hmem is = ", enable_hmem);
+
     if (!param.stream || !param.stream->is_sycl_device_stream() ||
         ccl_is_device_side_algo(selector_param)) {
         return;
+    }
+
+    if ((param.ctype == ccl_coll_send || param.ctype == ccl_coll_recv) &&
+        (param.stream || param.stream->is_sycl_device_stream())) {
+        if (enable_hmem) {
+            LOG_DEBUG("hmem is enabled, no need for pre/post copy");
+            return;
+        }
     }
 
     bool should_alloc_buffers = true;

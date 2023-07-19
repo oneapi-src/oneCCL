@@ -15,6 +15,7 @@
 */
 #include <numeric>
 
+#include "coll/coll_util.hpp"
 #include "coll/coll_param.hpp"
 #include "common/global/global.hpp"
 
@@ -56,6 +57,11 @@ ccl_coll_attr::ccl_coll_attr(const ccl::barrier_attr& attr) {
 
 ccl_coll_attr::ccl_coll_attr(const ccl::broadcast_attr& attr) {
     COPY_COMMON_OP_ATTRS(attr, this);
+}
+
+ccl_coll_attr::ccl_coll_attr(const ccl::pt2pt_attr& attr) {
+    COPY_COMMON_OP_ATTRS(attr, this);
+    group_id = attr.get<ccl::pt2pt_attr_id::group_id>();
 }
 
 ccl_coll_attr::ccl_coll_attr(const ccl::reduce_attr& attr) {
@@ -461,7 +467,7 @@ void ccl_coll_param::sync_deps(const ccl_stream* s, const std::vector<ccl::event
     // We don't really need anything like this for the case when user has out-of-order queue as
     // there is no ordering requirement unless dependencies are explicitly provided and which we
     // handle as well.
-    if (s != nullptr && s->is_sycl_device_stream() && s->get_native_stream().is_in_order()) {
+    if (ccl::is_queue_in_order(s)) {
         // TODO: it would be nice to pass here all the dependencies as parameters to submit_barrier
         // and get a single event to use later. Note: submit_barrier with empty event vector doesn't
         // do anything and just return an empty event as opposed to submit_barrier without paramers
@@ -485,7 +491,7 @@ ccl_coll_param ccl_coll_param::create_allgatherv_param(const void* send_buf,
                                                        ccl_comm* comm,
                                                        const ccl_stream* stream,
                                                        const std::vector<ccl::event>& deps) {
-    ccl_coll_param param;
+    ccl_coll_param param{};
 
     param.ctype = ccl_coll_allgatherv;
     param.send_bufs.push_back((void*)send_buf);
@@ -512,7 +518,7 @@ ccl_coll_param ccl_coll_param::create_allreduce_param(const void* send_buf,
                                                       ccl_comm* comm,
                                                       const ccl_stream* stream,
                                                       const std::vector<ccl::event>& deps) {
-    ccl_coll_param param;
+    ccl_coll_param param{};
 
     param.ctype = ccl_coll_allreduce;
     param.send_bufs.push_back((void*)send_buf);
@@ -534,7 +540,7 @@ ccl_coll_param ccl_coll_param::create_alltoall_param(const void* send_buf,
                                                      ccl_comm* comm,
                                                      const ccl_stream* stream,
                                                      const std::vector<ccl::event>& deps) {
-    ccl_coll_param param;
+    ccl_coll_param param{};
 
     param.ctype = ccl_coll_alltoall;
     param.send_bufs.push_back((void*)send_buf);
@@ -556,7 +562,7 @@ ccl_coll_param ccl_coll_param::create_alltoallv_param(const void* send_buf,
                                                       ccl_comm* comm,
                                                       const ccl_stream* stream,
                                                       const std::vector<ccl::event>& deps) {
-    ccl_coll_param param;
+    ccl_coll_param param{};
 
     param.ctype = ccl_coll_alltoallv;
     //send
@@ -585,7 +591,7 @@ ccl_coll_param ccl_coll_param::create_alltoallv_param(const void* send_buf,
 ccl_coll_param ccl_coll_param::create_barrier_param(ccl_comm* comm,
                                                     const ccl_stream* stream,
                                                     const std::vector<ccl::event>& deps) {
-    ccl_coll_param param;
+    ccl_coll_param param{};
 
     param.ctype = ccl_coll_barrier;
     param.send_counts.push_back(0);
@@ -604,7 +610,7 @@ ccl_coll_param ccl_coll_param::create_broadcast_param(void* buf,
                                                       ccl_comm* comm,
                                                       const ccl_stream* stream,
                                                       const std::vector<ccl::event>& deps) {
-    ccl_coll_param param;
+    ccl_coll_param param{};
 
     param.ctype = ccl_coll_bcast;
     param.send_bufs.push_back(buf);
@@ -628,7 +634,7 @@ ccl_coll_param ccl_coll_param::create_reduce_param(const void* send_buf,
                                                    ccl_comm* comm,
                                                    const ccl_stream* stream,
                                                    const std::vector<ccl::event>& deps) {
-    ccl_coll_param param;
+    ccl_coll_param param{};
 
     param.ctype = ccl_coll_reduce;
     param.send_bufs.push_back((void*)send_buf);
@@ -652,7 +658,7 @@ ccl_coll_param ccl_coll_param::create_reduce_scatter_param(const void* send_buf,
                                                            ccl_comm* comm,
                                                            const ccl_stream* stream,
                                                            const std::vector<ccl::event>& deps) {
-    ccl_coll_param param;
+    ccl_coll_param param{};
 
     param.ctype = ccl_coll_reduce_scatter;
     param.send_bufs.push_back((void*)send_buf);
@@ -660,6 +666,50 @@ ccl_coll_param ccl_coll_param::create_reduce_scatter_param(const void* send_buf,
     param.recv_bufs.push_back(recv_buf);
     param.recv_counts.push_back(recv_count);
     param.reduction = reduction;
+    param.set_common_fields(dtype, comm, stream, deps);
+    param.validate();
+
+    return param;
+}
+
+ccl_coll_param ccl_coll_param::create_recv_param(void* recv_buf,
+                                                 size_t recv_count,
+                                                 ccl::datatype dtype,
+                                                 int peer_rank,
+                                                 const ccl_coll_attr& attr,
+                                                 ccl_comm* comm,
+                                                 const ccl_stream* stream,
+                                                 const std::vector<ccl::event>& deps) {
+    ccl_coll_param param{};
+
+    param.ctype = ccl_coll_recv;
+    param.send_bufs.push_back(recv_buf);
+    param.send_counts.push_back(recv_count);
+    param.recv_bufs.push_back(recv_buf);
+    param.recv_counts.push_back(recv_count);
+    param.peer_rank = peer_rank;
+    param.set_common_fields(dtype, comm, stream, deps);
+    param.validate();
+
+    return param;
+}
+
+ccl_coll_param ccl_coll_param::create_send_param(const void* send_buf,
+                                                 size_t send_count,
+                                                 ccl::datatype dtype,
+                                                 int peer_rank,
+                                                 const ccl_coll_attr& attr,
+                                                 ccl_comm* comm,
+                                                 const ccl_stream* stream,
+                                                 const std::vector<ccl::event>& deps) {
+    ccl_coll_param param{};
+
+    param.ctype = ccl_coll_send;
+    param.send_bufs.push_back((void*)send_buf);
+    param.send_counts.push_back(send_count);
+    param.recv_bufs.push_back((void*)send_buf);
+    param.recv_counts.push_back(send_count);
+    param.peer_rank = peer_rank;
     param.set_common_fields(dtype, comm, stream, deps);
     param.validate();
 

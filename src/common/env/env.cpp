@@ -126,12 +126,7 @@ env_data::env_data()
           enable_buffer_cache(1),
           enable_strict_order(0),
           staging_buffer(ccl_staging_regular),
-#ifdef CCL_ENABLE_SYCL
           enable_op_sync(0),
-#else // CCL_ENABLE_SYCL
-          enable_op_sync(0),
-#endif // CCL_ENABLE_SYCL
-          enable_external_queue(0),
 
           chunk_count(1),
           min_chunk_size(65536),
@@ -142,11 +137,18 @@ env_data::env_data()
           allgatherv_topo_large_scale(0),
           allgatherv_topo_read(1),
           alltoallv_topo_read(1),
+          reduce_scatter_topo_read(1),
+          // monolithic kernel for xelink transfer
           reduce_scatter_monolithic_kernel(0),
+          // reduce_scatter pipelined monolithic kernel for xelink + mdfi transfer
+          reduce_scatter_monolithic_pipeline_kernel(0),
+          // reduce_scatter fallback implementation using allreduce
+          reduce_scatter_fallback_algo(0),
           allgatherv_monolithic_kernel(0), // monolithic kernel for xelink transfer
           allgatherv_monolithic_pipeline_kernel(
               0), // pipelined monolithic kernel for xelink + mdfi transfer
           alltoallv_monolithic_kernel(1),
+          alltoallv_monolithic_read_kernel(1),
 #endif // CCL_ENABLE_SYCL
 
           allreduce_nreduce_buffering(0),
@@ -195,14 +197,21 @@ env_data::env_data()
           enable_kernel_single_reduce_peers(1),
           enable_close_fd_wa(1),
 
-          enable_sycl_output_event(0),
+          enable_sycl_output_event(1),
           use_hmem(1),
 
           enable_ze_barrier(0),
           enable_ze_bidir_algo(1),
           enable_ze_cache(1),
+
+          // Note: env. vars are required when
+          // functionality is completed to support bypass/cache
+          enable_ze_cache_cmdlists(1),
+          enable_ze_cache_cmdqueues(1),
+          enable_ze_cache_event_pools(1),
+
           enable_ze_cache_open_ipc_handles(1),
-          ze_cache_open_ipc_handles_threshold(100),
+          ze_cache_open_ipc_handles_threshold(1000),
           enable_ze_cache_get_ipc_handles(1),
           enable_ze_single_list(1),
           disable_ze_family_check(0),
@@ -217,11 +226,22 @@ env_data::env_data()
           enable_ze_list_dump(0),
           ze_queue_index_offset(0),
           ze_close_ipc_wa(0),
+          enable_ze_cmd_bypass(1),
           ze_lib_path(),
           ze_enable(1),
           ze_fini_wa(0),
           ze_multi_workers(0),
+          enable_ze_auto_tune_ports(1),
+#ifdef CCL_ENABLE_DRM
           ze_ipc_exchange(ccl::ze::ipc_exchange_mode::drmfd),
+#else // CCL_ENABLE_DRM
+          ze_ipc_exchange(ccl::ze::ipc_exchange_mode::none),
+#endif // CCL_ENABLE_DRM
+#ifdef ZE_PCI_PROPERTIES_EXT_NAME
+          ze_drm_bdf_support(1),
+#else // ZE_PCI_PROPERTIES_EXT_NAME
+          ze_drm_bdf_support(0),
+#endif // ZE_PCI_PROPERTIES_EXT_NAME
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_PMIX
@@ -360,7 +380,6 @@ void env_data::parse() {
     }
     env_2_enum(CCL_STAGING_BUFFER, staging_buffer_names, staging_buffer);
     env_2_type(CCL_OP_SYNC, enable_op_sync);
-    env_2_type(CCL_USE_EXTERNAL_QUEUE, enable_external_queue);
 
     env_2_type(CCL_CHUNK_COUNT, chunk_count);
     CCL_THROW_IF_NOT(chunk_count >= 1, "incorrect ", CCL_CHUNK_COUNT, " ", chunk_count);
@@ -377,10 +396,15 @@ void env_data::parse() {
     env_2_type(CCL_ALLGATHERV_TOPO_LARGE_SCALE, allgatherv_topo_large_scale);
     env_2_type(CCL_ALLGATHERV_TOPO_READ, allgatherv_topo_read);
     env_2_type(CCL_ALLTOALLV_TOPO_READ, alltoallv_topo_read);
+    env_2_type(CCL_REDUCE_SCATTER_TOPO_READ, reduce_scatter_topo_read);
     env_2_type(CCL_REDUCE_SCATTER_MONOLITHIC_KERNEL, reduce_scatter_monolithic_kernel);
+    env_2_type(CCL_REDUCE_SCATTER_MONOLITHIC_PIPELINE_KERNEL,
+               reduce_scatter_monolithic_pipeline_kernel);
+    env_2_type(CCL_REDUCE_SCATTER_FALLBACK_ALGO, reduce_scatter_fallback_algo);
     env_2_type(CCL_ALLGATHERV_MONOLITHIC_KERNEL, allgatherv_monolithic_kernel);
     env_2_type(CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL, allgatherv_monolithic_pipeline_kernel);
     env_2_type(CCL_ALLTOALLV_MONOLITHIC_KERNEL, alltoallv_monolithic_kernel);
+    env_2_type(CCL_ALLTOALLV_MONOLITHIC_READ_KERNEL, alltoallv_monolithic_read_kernel);
 #endif // CCL_ENABLE_SYCL
 
     env_2_type(CCL_ALLREDUCE_NREDUCE_BUFFERING, allreduce_nreduce_buffering);
@@ -495,7 +519,9 @@ void env_data::parse() {
     env_2_type(CCL_ZE_ENABLE, ze_enable);
     env_2_type(CCL_ZE_FINI_WA, ze_fini_wa);
     env_2_type(CCL_ZE_MULTI_WORKERS, ze_multi_workers);
+    env_2_type(CCL_ZE_AUTO_TUNE_PORTS, enable_ze_auto_tune_ports);
     env_2_enum(CCL_ZE_IPC_EXCHANGE, ze::ipc_exchange_names, ze_ipc_exchange);
+    env_2_type(CCL_ZE_DRM_BDF_SUPPORT, ze_drm_bdf_support);
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_PMIX
@@ -683,7 +709,6 @@ void env_data::print(int rank) {
     LOG_INFO(CCL_STRICT_ORDER, ": ", enable_strict_order);
     LOG_INFO(CCL_STAGING_BUFFER, ": ", str_by_enum(staging_buffer_names, staging_buffer));
     LOG_INFO(CCL_OP_SYNC, ": ", enable_op_sync);
-    LOG_INFO(CCL_USE_EXTERNAL_QUEUE, ": ", enable_external_queue);
 
     LOG_INFO(CCL_CHUNK_COUNT, ": ", chunk_count);
     LOG_INFO(CCL_MIN_CHUNK_SIZE, ": ", min_chunk_size);
@@ -694,11 +719,17 @@ void env_data::print(int rank) {
     LOG_INFO(CCL_ALLGATHERV_TOPO_LARGE_SCALE, ": ", allgatherv_topo_large_scale);
     LOG_INFO(CCL_ALLGATHERV_TOPO_READ, ": ", allgatherv_topo_read);
     LOG_INFO(CCL_ALLTOALLV_TOPO_READ, ": ", alltoallv_topo_read);
+    LOG_INFO(CCL_REDUCE_SCATTER_TOPO_READ, ": ", reduce_scatter_topo_read);
     LOG_INFO(CCL_REDUCE_SCATTER_MONOLITHIC_KERNEL, ": ", reduce_scatter_monolithic_kernel);
+    LOG_INFO(CCL_REDUCE_SCATTER_MONOLITHIC_PIPELINE_KERNEL,
+             ": ",
+             reduce_scatter_monolithic_pipeline_kernel);
+    LOG_INFO(CCL_REDUCE_SCATTER_FALLBACK_ALGO, ": ", reduce_scatter_fallback_algo);
     LOG_INFO(CCL_ALLGATHERV_MONOLITHIC_KERNEL, ": ", allgatherv_monolithic_kernel);
     LOG_INFO(
         CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL, ": ", allgatherv_monolithic_pipeline_kernel);
     LOG_INFO(CCL_ALLTOALLV_MONOLITHIC_KERNEL, ": ", alltoallv_monolithic_kernel);
+    LOG_INFO(CCL_ALLTOALLV_MONOLITHIC_READ_KERNEL, ": ", alltoallv_monolithic_read_kernel);
 #endif // CCL_ENABLE_SYCL
 
     LOG_INFO(CCL_ALLREDUCE_NREDUCE_BUFFERING, ": ", allreduce_nreduce_buffering);
@@ -803,7 +834,9 @@ void env_data::print(int rank) {
     LOG_INFO(CCL_ZE_ENABLE, ": ", ze_enable);
     LOG_INFO(CCL_ZE_FINI_WA, ": ", ze_fini_wa);
     LOG_INFO(CCL_ZE_MULTI_WORKERS, ": ", ze_multi_workers);
+    LOG_INFO(CCL_ZE_AUTO_TUNE_PORTS, ": ", enable_ze_auto_tune_ports);
     LOG_INFO(CCL_ZE_IPC_EXCHANGE, ": ", str_by_enum(ze::ipc_exchange_names, ze_ipc_exchange));
+    LOG_INFO(CCL_ZE_DRM_BDF_SUPPORT, ": ", ze_drm_bdf_support);
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_PMIX
@@ -1057,7 +1090,7 @@ void env_data::env_2_atl_transport() {
 
 bool env_data::with_mpirun() {
     return (getenv("MPI_LOCALRANKID") || getenv("MPI_LOCALNRANKS") || getenv("PMI_RANK") ||
-            getenv("PMI_SIZE"))
+            getenv("PMI_SIZE") || getenv("PMIX_RANK"))
                ? true
                : false;
 }

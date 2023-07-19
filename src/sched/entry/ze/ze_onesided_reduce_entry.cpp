@@ -18,23 +18,25 @@
 #include "sched/entry/ze/ze_onesided_reduce_entry.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
 #include "sched/queue/queue.hpp"
+#include "sched/entry/factory/entry_factory.hpp"
 
 #include <string>
 
 using namespace ccl;
 using namespace ccl::ze;
 
-ze_onesided_reduce_entry::ze_onesided_reduce_entry(ccl_sched* sched,
-                                                   ccl_buffer send_buf,
-                                                   ccl_buffer recv_buf,
-                                                   size_t cnt,
-                                                   const ccl_datatype& dtype,
-                                                   reduction op,
-                                                   int root,
-                                                   ccl_comm* comm,
-                                                   std::vector<ze_event_handle_t> wait_events,
-                                                   size_t peer_buf_offset)
-        : ze_base_entry(sched, comm, 4 /* request additional events */, wait_events),
+ze_onesided_reduce_entry::ze_onesided_reduce_entry(
+    ccl_sched* sched,
+    ccl_buffer send_buf,
+    ccl_buffer recv_buf,
+    size_t cnt,
+    const ccl_datatype& dtype,
+    reduction op,
+    int root,
+    ccl_comm* comm,
+    const std::vector<ze_event_handle_t>& wait_events,
+    size_t peer_buf_offset)
+        : ze_base_entry(sched, wait_events, comm, 4 /* request additional events */),
           // one event for empty_kernel, one for kernel_1s_copy_ops and two for aligning monolithic kernel
           send_buf(send_buf),
           recv_buf(recv_buf),
@@ -44,9 +46,7 @@ ze_onesided_reduce_entry::ze_onesided_reduce_entry(ccl_sched* sched,
           root(root),
           buf_size_bytes(dtype.size() * cnt),
           peer_buf_offset_bytes(dtype.size() * peer_buf_offset),
-          empty_kernel_event(nullptr),
-          empty_kernel(nullptr),
-          empty_kernel_name("empty_kernel") {
+          empty_kernel_event(nullptr) {
     skip_entry = !cnt || ((comm->size() == 1) && (send_buf == recv_buf));
     if (skip_entry) {
         // skip entry init and finalize
@@ -61,14 +61,13 @@ void ze_onesided_reduce_entry::init_ze_hook() {
     recv_buf_ptr = recv_buf.get_ptr();
 
     if (comm->size() == 1) {
-        ZE_CALL(zeCommandListAppendMemoryCopy,
-                (ze_base_entry::get_copy_list(),
-                 recv_buf_ptr,
-                 send_buf_ptr,
-                 buf_size_bytes,
-                 ze_base_entry::entry_event,
-                 0,
-                 nullptr));
+        ZE_APPEND_CALL(ze_cmd_memory_copy,
+                       ze_base_entry::get_copy_list(),
+                       recv_buf_ptr,
+                       send_buf_ptr,
+                       buf_size_bytes,
+                       ze_base_entry::entry_event,
+                       wait_events);
         return;
     }
 
@@ -93,36 +92,37 @@ void ze_onesided_reduce_entry::init_ze_hook() {
         kernel_input_buf2 = tmp_buf_ptr;
     }
 
-    ze_kernel_args_t reduce_local_kernel_args{ &comm_rank,    &comm_size,         &cnt,
-                                               &send_buf_ptr, &kernel_input_buf2, &recv_buf_ptr };
-
     ccl::global_data::get().ze_data->cache->get(context, device, "kernels.spv", &module);
 
     main_kernel_name =
         "reduce_local_outofplace_kernel_" + to_string(dtype.idx()) + "_" + ccl_reduction_to_str(op);
     LOG_DEBUG("get kernel: name: ", main_kernel_name);
 
-    if (ccl::global_data::env().enable_kernel_1s_ipc_wa) {
-        LOG_DEBUG("get kernel: name: ", empty_kernel_name);
-        ccl::global_data::get().ze_data->cache->get(
-            worker_idx, module, empty_kernel_name, &empty_kernel);
-        CCL_THROW_IF_NOT(empty_kernel, "null empty_kernel");
-        /* use allreduce_kernel_args since they have pointers to peer mem */
-        set_kernel_args(empty_kernel, reduce_local_kernel_args);
-    }
-
-    if (empty_kernel) {
-        empty_kernel_event = ze_base_entry::create_event();
-    }
-
+    bool use_empty_kernel{};
     ze_event_handle_t kernel_wait_event = nullptr;
-    /* do appends */
-    if (empty_kernel) {
+    if (ccl::global_data::env().enable_kernel_1s_ipc_wa) {
+        use_empty_kernel = true;
+        empty_kernel_event = ze_base_entry::create_event();
+
         LOG_DEBUG("append empty kernel");
         ze_group_count_t empty_group_count = { 1, 1, 1 };
-        ZE_CALL(
-            zeCommandListAppendLaunchKernel,
-            (get_comp_list(), empty_kernel, &empty_group_count, empty_kernel_event, 0, nullptr));
+        ze_kernel_args_t reduce_local_kernel_args{
+            &comm_rank, &comm_size, &cnt, &send_buf_ptr, &kernel_input_buf2, &recv_buf_ptr
+        };
+
+        ze_kernel kernel(module,
+                         "empty_kernel",
+                         reduce_local_kernel_args,
+                         cnt, // maybe 1 instead of cnt?
+                         empty_group_count,
+                         worker_idx);
+
+        ZE_APPEND_CALL(ze_cmd_launch_kernel,
+                       get_comp_list(),
+                       std::move(kernel),
+                       empty_kernel_event,
+                       wait_events);
+
         kernel_wait_event = empty_kernel_event;
     }
 
@@ -131,14 +131,13 @@ void ze_onesided_reduce_entry::init_ze_hook() {
 
         copy_from_peer_event = ze_base_entry::create_event();
         // copy to tmp buf
-        ZE_CALL(zeCommandListAppendMemoryCopy,
-                (ze_base_entry::get_copy_list(),
-                 kernel_input_buf2,
-                 right_send_buf_ptr,
-                 buf_size_bytes,
-                 copy_from_peer_event,
-                 (empty_kernel_event) ? 1 : 0,
-                 &empty_kernel_event));
+        ZE_APPEND_CALL(ze_cmd_memory_copy,
+                       ze_base_entry::get_copy_list(),
+                       kernel_input_buf2,
+                       right_send_buf_ptr,
+                       buf_size_bytes,
+                       copy_from_peer_event,
+                       (use_empty_kernel) ? ze_events_t({ empty_kernel_event }) : wait_events);
         kernel_wait_event = copy_from_peer_event;
     }
     else {
@@ -176,8 +175,6 @@ void ze_onesided_reduce_entry::init_ze_hook() {
     // if the initial data is aligned, we need only one kernel
     // otherwise run two kernels, one for unaligned and one for aligned data
     for (size_t idx = start_kernel_idx; idx < end_kernel_idx; idx++) {
-        kernels.emplace_back(module, main_kernel_name, worker_idx);
-
         void* send_buf_ptr_with_offset = static_cast<char*>(send_buf_ptr) + offsets[idx];
         void* recv_buf_ptr_with_offset = static_cast<char*>(recv_buf_ptr) + offsets[idx];
         void* kernel_input_buf2_with_offset = static_cast<char*>(kernel_input_buf2) + offsets[idx];
@@ -188,36 +185,28 @@ void ze_onesided_reduce_entry::init_ze_hook() {
                                            &kernel_input_buf2_with_offset,
                                            &recv_buf_ptr_with_offset };
 
-        kernels.back().set_args(main_kernel_args);
-        kernels.back().calculate_group_size(counts[idx]);
+        ze_kernel kernel(module, main_kernel_name, main_kernel_args, counts[idx], worker_idx);
+
         events[idx] =
             (use_single_kernel) ? ze_base_entry::entry_event : ze_base_entry::create_event();
 
-        ZE_CALL(zeCommandListAppendLaunchKernel,
-                (ze_base_entry::get_comp_list(),
-                 kernels.back().get_kernel(),
-                 kernels.back().get_group_count(),
-                 events[idx],
-                 (kernel_wait_event) ? 1 : 0,
-                 &kernel_wait_event));
+        ZE_APPEND_CALL(ze_cmd_launch_kernel,
+                       ze_base_entry::get_comp_list(),
+                       std::move(kernel),
+                       events[idx],
+                       (kernel_wait_event) ? ze_events_t({ kernel_wait_event }) : wait_events);
     }
 
     // use a barrier to combine the events of the unalinged and aligned kernel
     if (!use_single_kernel) {
-        ZE_CALL(zeCommandListAppendBarrier,
-                (ze_base_entry::get_comp_list(), ze_base_entry::entry_event, kernel_count, events));
+        ZE_APPEND_CALL(ze_cmd_barrier,
+                       ze_base_entry::get_comp_list(),
+                       ze_base_entry::entry_event,
+                       ze_events_t({ events[0], events[1] }));
     }
 }
 
-void ze_onesided_reduce_entry::finalize_ze_hook() {
-    if (comm->size() == 1) {
-        return;
-    }
-    if (empty_kernel_event) {
-        ccl::global_data::get().ze_data->cache->push(
-            worker_idx, module, empty_kernel_name, empty_kernel);
-    }
-}
+void ze_onesided_reduce_entry::finalize_ze_hook() {}
 
 void ze_onesided_reduce_entry::start() {
     if (skip_entry) {

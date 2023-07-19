@@ -30,6 +30,7 @@ struct ccl_coll_entry_param {
     ccl_datatype dtype{};
     ccl::reduction reduction{ ccl::reduction::sum };
     int root{};
+    int peer_rank = CCL_INVALID_PEER_RANK_IDX;
     ccl_comm* comm{};
     ccl_stream* stream{};
     ccl_coll_algo hint_algo{};

@@ -44,7 +44,9 @@ using ccl_sycl_buffer_one_dim_types = std::tuple<ccl_sycl_typed_buffer_t<int8_t>
                                                  ccl_sycl_typed_buffer_t<uint16_t>>;
 #endif // CCL_ENABLE_SYCL
 
-#define CCL_INVALID_PROC_IDX (-1)
+#define CCL_INVALID_GROUP_IDX     (-1)
+#define CCL_INVALID_PROC_IDX      (-1)
+#define CCL_INVALID_PEER_RANK_IDX (-1)
 
 struct ccl_coll_attr {
     ccl_coll_attr() = default;
@@ -57,6 +59,7 @@ struct ccl_coll_attr {
     ccl_coll_attr(const ccl::alltoallv_attr& attr);
     ccl_coll_attr(const ccl::barrier_attr& attr);
     ccl_coll_attr(const ccl::broadcast_attr& attr);
+    ccl_coll_attr(const ccl::pt2pt_attr& attr);
     ccl_coll_attr(const ccl::reduce_attr& attr);
     ccl_coll_attr(const ccl::reduce_scatter_attr& attr);
 
@@ -71,6 +74,8 @@ struct ccl_coll_attr {
     int synchronous = 0;
     int to_cache = 0;
     std::string match_id{};
+
+    int group_id = CCL_INVALID_GROUP_IDX;
 
     /* change how user-supplied buffers have to be interpreted */
     int is_vector_buf = 0;
@@ -101,7 +106,8 @@ struct ccl_coll_param {
 
     ccl_datatype dtype;
     ccl::reduction reduction;
-    int root;
+    int root, peer_rank = CCL_INVALID_PEER_RANK_IDX;
+    int group_id = CCL_INVALID_GROUP_IDX;
     ccl_stream* stream;
     ccl_comm* comm;
     std::vector<ccl::event> deps;
@@ -212,6 +218,24 @@ struct ccl_coll_param {
                                                       ccl_comm* comm,
                                                       const ccl_stream* stream,
                                                       const std::vector<ccl::event>& deps = {});
+
+    static ccl_coll_param create_recv_param(void* recv_buf,
+                                            size_t recv_count,
+                                            ccl::datatype dtype,
+                                            int peer_rank,
+                                            const ccl_coll_attr& attr,
+                                            ccl_comm* comm,
+                                            const ccl_stream* stream,
+                                            const std::vector<ccl::event>& deps = {});
+
+    static ccl_coll_param create_send_param(const void* send_buf,
+                                            size_t send_count,
+                                            ccl::datatype dtype,
+                                            int peer_rank,
+                                            const ccl_coll_attr& attr,
+                                            ccl_comm* comm,
+                                            const ccl_stream* stream,
+                                            const std::vector<ccl::event>& deps = {});
 
 private:
     void copy(const ccl_coll_param& other);

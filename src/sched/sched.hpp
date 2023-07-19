@@ -23,14 +23,19 @@
 
 //todo: sequence diagram
 //workflow:
-//1. new ccl_sched()
-//2. set_coll_attr [opt]
-//3. sched->commit(parallelizer)
-//4. sched->start(executor)
-//  4.1 prepare_partial_scheds()
-//      4.1.1 update_id()
-//      4.1.2 renew()
-//  4.2 reset_request()
+//   if(!found in cache) {
+//      1a. new ccl_sched()
+//      2. set_coll_attr
+//      3. alloc_buffers_for_pre_post_copy
+//   } else {
+//      1b. restart_manager->add_launch_params
+//   }
+//   3. sched->commit(parallelizer)
+//   4. sched->start(executor)
+//      4.1 prepare_partial_scheds()
+//          4.1.1 update_id()
+//          4.1.2 renew()
+//      4.2 reset_request()
 
 enum ccl_sched_in_bin_status {
     ccl_sched_in_bin_none,
@@ -92,11 +97,6 @@ public:
     static ccl_sched_ptr create(const ccl_coll_param& param, const ccl_coll_attr& attr);
 
     bool is_strict_order_satisfied();
-
-#ifdef CCL_ENABLE_SYCL
-    int configure_preparation();
-    void prerun();
-#endif // CCL_ENABLE_SYCL
 
     void do_progress();
 
@@ -227,9 +227,6 @@ public:
     size_t entries_count() const;
     sched_type_t type;
 
-    bool configured_preparation = false;
-    bool finished_preparation = false;
-
 private:
     void reset_state();
     void prepare_subscheds(bool update_sched_id = true);
@@ -255,6 +252,9 @@ public:
     // schedule
     void release_sync_event(ccl_request* req);
 
+    void set_submitted_to_gpu(bool submitted_to_gpu);
+    bool is_submitted_to_gpu();
+
 private:
     void set_output_event(ccl_request* request);
     void update_active_request(bool use_delayed);
@@ -266,12 +266,19 @@ private:
     ccl_request* req;
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    void ze_commands_submit();
+
     const bool use_output_event = false;
-    int prerun_entry_idx = invalid_entry_idx;
 #endif
     const bool top_level_sched;
+
+    // pointer to the parent sched if this sched is part of a subsched_entry, nullptr otherwise
+    ccl_sched* subsched_entry_parent_sched = nullptr;
+    std::atomic<bool> volatile submitted_to_gpu{};
 
     std::unique_ptr<sched_restart_manager> restart_manager;
 
     friend class sched_restart_manager;
+    friend class execute_cmdlists_entry; // need to call ze_commands_submit();
+    friend class subsched_entry; // need to call ze_commands_submit();
 };

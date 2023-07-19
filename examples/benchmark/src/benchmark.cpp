@@ -104,7 +104,7 @@ void run(ccl::communicator& service_comm,
                    << std::setw(COL_WIDTH) << "t_max[usec]" << std::setw(COL_WIDTH) << "t_avg[usec]"
                    << std::setw(COL_WIDTH - 3) << "stddev[%]";
 
-                if (options.show_additional_info) {
+                if (show_extened_info(options.show_additional_info)) {
                     ss << std::right << std::setw(COL_WIDTH + 3) << "wait_t_avg[usec]";
                 }
                 ss << std::endl;
@@ -400,6 +400,7 @@ int main(int argc, char* argv[]) {
              << "dtype,"
              << "dtype_size,"
              << "#elements/buffer,"
+             << "message_size,"
              << "#buffers,"
              << "#repetitions,"
              << "t_min[usec],"

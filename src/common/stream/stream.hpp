@@ -15,7 +15,7 @@
 */
 #pragma once
 
-#include "coll/coll_common_attributes.hpp"
+#include "coll/attr/ccl_common_op_attrs.hpp"
 #include "common/stream/stream_selector.hpp"
 #include "common/utils/utils.hpp"
 #include "oneapi/ccl/stream_attr_ids.hpp"
@@ -61,7 +61,6 @@ public:
 #ifdef CCL_ENABLE_ZE
     ze_device_handle_t get_ze_device() const;
     ze_context_handle_t get_ze_context() const;
-    ze_command_queue_handle_t get_ze_command_queue() const;
 #endif // CCL_ENABLE_ZE
 #endif // CCL_ENBALE_SYCL
 
@@ -99,7 +98,6 @@ private:
 #ifdef CCL_ENABLE_ZE
     ze_device_handle_t device{};
     ze_context_handle_t context{};
-    ze_command_queue_handle_t cmd_queue{};
 #endif // CCL_ENABLE_ZE
 #endif // CCL_ENBALE_SYCL
 };

@@ -13,24 +13,24 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "coll/ccl_reduce_op_attr.hpp"
+#include "coll/attr/ccl_pt2pt_op_attr.hpp"
 
 namespace ccl {
 
-ccl_reduce_attr_impl_t::ccl_reduce_attr_impl_t(
+ccl_pt2pt_attr_impl_t::ccl_pt2pt_attr_impl_t(
     const typename ccl_operation_attr_impl_t::version_traits_t::type& version)
         : base_t(version) {}
 
-typename ccl_reduce_attr_impl_t::reduction_fn_traits_t::return_type
-ccl_reduce_attr_impl_t::set_attribute_value(typename reduction_fn_traits_t::type val,
-                                            const reduction_fn_traits_t& t) {
-    auto old = reduction_fn_val;
-    reduction_fn_val = typename reduction_fn_traits_t::return_type{ val };
-    return typename reduction_fn_traits_t::return_type{ old };
+typename ccl_pt2pt_attr_impl_t::group_id_traits_t::return_type
+ccl_pt2pt_attr_impl_t::set_attribute_value(typename group_id_traits_t::type val,
+                                           const group_id_traits_t& t) {
+    auto old = group_id;
+    std::swap(group_id, val);
+    return old;
 }
 
-const typename ccl_reduce_attr_impl_t::reduction_fn_traits_t::return_type&
-ccl_reduce_attr_impl_t::get_attribute_value(const reduction_fn_traits_t& id) const {
-    return reduction_fn_val;
+const typename ccl_pt2pt_attr_impl_t::group_id_traits_t::return_type&
+ccl_pt2pt_attr_impl_t::get_attribute_value(const group_id_traits_t& id) const {
+    return group_id;
 }
 } // namespace ccl

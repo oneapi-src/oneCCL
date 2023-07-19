@@ -108,18 +108,6 @@ void ipc_handle_manager::clear() {
             auto mem_type = handle_info.mem_type;
             size_t mem_offset = handle_info.mem_offset;
 
-            LOG_DEBUG("close ipc_handle: { base_ptr: ",
-                      mem_ptr,
-                      ", offset: ",
-                      mem_offset,
-                      ", fd: ",
-                      get_fd_from_handle(ipc_handle),
-                      ", rank: ",
-                      rank,
-                      ", buf_idx: ",
-                      buf_idx,
-                      " }");
-
             // when closing the ipc_handle we need to take care of pointers that points to the
             // same level zero allocation. They're simply offsetted from some base pointer
             // although represented by different FDs. If we close this base pointer,
@@ -141,6 +129,17 @@ void ipc_handle_manager::clear() {
                         res = ZE_RESULT_SUCCESS;
                     }
                     else {
+                        LOG_DEBUG("close ipc_handle: { base_ptr: ",
+                                  mem_ptr,
+                                  ", offset: ",
+                                  mem_offset,
+                                  ", fd: ",
+                                  get_fd_from_handle(ipc_handle),
+                                  ", rank: ",
+                                  rank,
+                                  ", buf_idx: ",
+                                  buf_idx,
+                                  " }");
                         res = zeMemCloseIpcHandle(context, mem_ptr);
                     }
                 }

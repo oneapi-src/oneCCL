@@ -1332,15 +1332,21 @@ typedef int pmix_status_t;
 #define PMIX_ERR_JOB_INSUFFICIENT_RESOURCES         -234
 #define PMIX_ERR_JOB_SYS_OP_FAILED                  -235
 
-/* job-related non-error events */
+/* job/session-related non-error events */
 #define PMIX_EVENT_JOB_START                        -191
 #define PMIX_EVENT_JOB_END                          -145
 #define PMIX_EVENT_SESSION_START                    -192
 #define PMIX_EVENT_SESSION_END                      -193
 
 /* process-related events */
+#define PMIX_ERR_PROC_REQUESTED_ABORT               -8
 #define PMIX_ERR_PROC_TERM_WO_SYNC                  -200
 #define PMIX_EVENT_PROC_TERMINATED                  -201
+#define PMIX_ERR_PROC_KILLED_BY_CMD                 -400
+#define PMIX_ERR_PROC_FAILED_TO_START               -401
+#define PMIX_ERR_PROC_ABORTED_BY_SIG                -402
+#define PMIX_ERR_PROC_SENSOR_BOUND_EXCEEDED         -403
+#define PMIX_ERR_EXIT_NONZERO_TERM                  -404
 
 /* system failures */
 #define PMIX_EVENT_SYS_BASE                         -230
@@ -2640,7 +2646,7 @@ typedef struct {
             for (_ek=0; _ek < (n); _ek++) {         \
                PMIX_ENVAR_DESTRUCT(&(m)[_ek]);      \
             }                                       \
-            pmix_free((m));                              \
+            pmix_free((m));                         \
         }                                           \
     } while (0)
 #define PMIX_ENVAR_CONSTRUCT(m)        \
@@ -2652,11 +2658,11 @@ typedef struct {
 #define PMIX_ENVAR_DESTRUCT(m)         \
     do {                               \
         if (NULL != (m)->envar) {      \
-            pmix_free((m)->envar);          \
+            pmix_free((m)->envar);     \
             (m)->envar = NULL;         \
         }                              \
         if (NULL != (m)->value) {      \
-            pmix_free((m)->value);          \
+            pmix_free((m)->value);      \
             (m)->value = NULL;         \
         }                              \
     } while(0)
@@ -2691,9 +2697,9 @@ typedef struct {
 #define PMIX_DATA_BUFFER_RELEASE(m)             \
     do {                                        \
         if (NULL != (m)->base_ptr) {            \
-            pmix_free((m)->base_ptr);                \
+            pmix_free((m)->base_ptr);           \
         }                                       \
-        pmix_free((m));                              \
+        pmix_free((m));                         \
         (m) = NULL;                             \
     } while (0)
 #define PMIX_DATA_BUFFER_CONSTRUCT(m)       \
@@ -2701,7 +2707,7 @@ typedef struct {
 #define PMIX_DATA_BUFFER_DESTRUCT(m)        \
     do {                                    \
         if (NULL != (m)->base_ptr) {        \
-            pmix_free((m)->base_ptr);            \
+            pmix_free((m)->base_ptr);       \
             (m)->base_ptr = NULL;           \
         }                                   \
         (m)->pack_ptr = NULL;               \
@@ -2776,11 +2782,11 @@ typedef struct pmix_proc {
         }                                       \
     } while (0)
 
-#define PMIX_PROC_LOAD(m, n, r)                             \
-    do {                                                    \
-        PMIX_PROC_CONSTRUCT((m));                           \
-        pmix_strncpy((char*)(m)->nspace, (n), PMIX_MAX_NSLEN);    \
-        (m)->rank = (r);                                    \
+#define PMIX_PROC_LOAD(m, n, r)                                 \
+    do {                                                        \
+        PMIX_PROC_CONSTRUCT((m));                               \
+        pmix_strncpy((char*)(m)->nspace, (n), PMIX_MAX_NSLEN);  \
+        (m)->rank = (r);                                        \
     } while(0)
 
 #define PMIX_MULTICLUSTER_NSPACE_CONSTRUCT(t, c, n)                         \
@@ -2855,11 +2861,11 @@ typedef struct pmix_proc_info {
 #define PMIX_PROC_INFO_DESTRUCT(m)              \
     do {                                        \
         if (NULL != (m)->hostname) {            \
-            pmix_free((m)->hostname);                \
+            pmix_free((m)->hostname);           \
             (m)->hostname = NULL;               \
         }                                       \
         if (NULL != (m)->executable_name) {     \
-            pmix_free((m)->executable_name);         \
+            pmix_free((m)->executable_name);    \
             (m)->executable_name = NULL;        \
         }                                       \
     } while(0)
@@ -2871,7 +2877,7 @@ typedef struct pmix_proc_info {
             for (_k=0; _k < (n); _k++) {            \
                 PMIX_PROC_INFO_DESTRUCT(&(m)[_k]);  \
             }                                       \
-            pmix_free((m));                              \
+            pmix_free((m));                         \
         }                                           \
     } while (0)
 
@@ -3618,7 +3624,7 @@ typedef struct pmix_app {
 #define PMIX_APP_RELEASE(m)                     \
     do {                                        \
         PMIX_APP_DESTRUCT((m));                 \
-        pmix_free((m));                              \
+        pmix_free((m));                         \
         (m) = NULL;                             \
     } while (0)
 
@@ -3664,7 +3670,7 @@ typedef struct pmix_query {
 #define PMIX_QUERY_RELEASE(m)       \
     do {                            \
         PMIX_QUERY_DESTRUCT((m));   \
-        pmix_free((m));                  \
+        pmix_free((m));             \
         (m) = NULL;                 \
     } while (0)
 
@@ -3678,9 +3684,9 @@ typedef struct pmix_query {
         size_t _qi;                                             \
         if (NULL != (m)->keys) {                                \
             for (_qi=0; NULL != (m)->keys[_qi]; _qi++) {        \
-                pmix_free((m)->keys[_qi]);                           \
+                pmix_free((m)->keys[_qi]);                      \
             }                                                   \
-            pmix_free((m)->keys);                                    \
+            pmix_free((m)->keys);                               \
             (m)->keys = NULL;                                   \
         }                                                       \
         if (NULL != (m)->qualifiers) {                          \
@@ -3697,7 +3703,7 @@ typedef struct pmix_query {
             for (_qs=0; _qs < (n); _qs++) {         \
                 PMIX_QUERY_DESTRUCT(&((m)[_qs]));   \
             }                                       \
-            pmix_free((m));                              \
+            pmix_free((m));                         \
             (m) = NULL;                             \
         }                                           \
     } while (0)
@@ -3747,7 +3753,7 @@ typedef struct pmix_regattr_t {
     do {                                            \
         if (NULL != (a)) {                          \
             if (NULL != (a)->name) {                \
-                pmix_free((a)->name);                    \
+                pmix_free((a)->name);               \
             }                                       \
             if (NULL != (a)->description) {         \
                 PMIX_ARGV_FREE((a)->description);   \
@@ -3770,11 +3776,12 @@ typedef struct pmix_regattr_t {
 #define PMIX_REGATTR_FREE(m, n)                         \
     do {                                                \
         size_t _ra;                                     \
+        pmix_regattr_t *_m = (pmix_regattr_t*)(m);      \
         if (NULL != (m)) {                              \
             for (_ra=0; _ra < (n); _ra++) {             \
-                PMIX_REGATTR_DESTRUCT(&((m)[_ra]));     \
+                PMIX_REGATTR_DESTRUCT(&((_m)[_ra]));    \
             }                                           \
-            pmix_free((m));                                  \
+            pmix_free((m));                             \
             (m) = NULL;                                 \
         }                                               \
     } while (0)
@@ -4070,140 +4077,140 @@ typedef void (*pmix_device_dist_cbfunc_t)(pmix_status_t status,
         (m)->size = 0;                  \
     } while(0)
 
-#define PMIX_DATA_ARRAY_CONSTRUCT(m, n, t)                          \
-    do {                                                            \
-        (m)->type = (t);                                            \
-        (m)->size = (n);                                            \
-        if (0 < (n)) {                                              \
-            if (PMIX_INFO == (t)) {                                 \
-                PMIX_INFO_CREATE((m)->array, (n));                  \
-                                                                    \
-            } else if (PMIX_PROC == (t)) {                          \
-                PMIX_PROC_CREATE((m)->array, (n));                  \
-                                                                    \
-            } else if (PMIX_PROC_INFO == (t)) {                     \
-                PMIX_PROC_INFO_CREATE((m)->array, (n));             \
-                                                                    \
-            } else if (PMIX_ENVAR == (t)) {                         \
-                PMIX_ENVAR_CREATE((m)->array, (n));                 \
-                                                                    \
-            } else if (PMIX_VALUE == (t)) {                         \
-                PMIX_VALUE_CREATE((m)->array, (n));                 \
-                                                                    \
-            } else if (PMIX_PDATA == (t)) {                         \
-                PMIX_PDATA_CREATE((m)->array, (n));                 \
-                                                                    \
-            } else if (PMIX_QUERY == (t)) {                         \
-                PMIX_QUERY_CREATE((m)->array, (n));                 \
-                                                                    \
-            } else if (PMIX_APP == (t)) {                           \
-                PMIX_APP_CREATE((m)->array, (n));                   \
-                                                                    \
-            } else if (PMIX_BYTE_OBJECT == (t) ||                   \
-                       PMIX_COMPRESSED_STRING == (t)) {             \
-                PMIX_BYTE_OBJECT_CREATE((m)->array, (n));           \
-                                                                    \
-            } else if (PMIX_ALLOC_DIRECTIVE == (t) ||               \
-                       PMIX_PROC_STATE == (t) ||                    \
-                       PMIX_PERSIST == (t) ||                       \
-                       PMIX_SCOPE == (t) ||                         \
-                       PMIX_DATA_RANGE == (t) ||                    \
-                       PMIX_BYTE == (t) ||                          \
-                       PMIX_INT8 == (t) ||                          \
-                       PMIX_UINT8 == (t) ||                         \
-                       PMIX_POINTER == (t)) {                       \
-                (m)->array = pmix_calloc((n), sizeof(int8_t));           \
-                                                                    \
-            } else if (PMIX_STRING == (t)) {                        \
-                (m)->array = pmix_calloc((n), sizeof(char*));            \
-                                                                    \
-            } else if (PMIX_SIZE == (t)) {                          \
-                (m)->array = pmix_calloc((n), sizeof(size_t));           \
-                                                                    \
-            } else if (PMIX_PID == (t)) {                           \
-                (m)->array = pmix_calloc((n), sizeof(pid_t));            \
-                                                                    \
-            } else if (PMIX_INT == (t) ||                           \
-                       PMIX_UINT == (t) ||                          \
-                       PMIX_STATUS == (t)) {                        \
-                (m)->array = pmix_calloc((n), sizeof(int));              \
-                                                                    \
-            } else if (PMIX_IOF_CHANNEL == (t) ||                   \
-                       PMIX_DATA_TYPE == (t) ||                     \
-                       PMIX_INT16 == (t) ||                         \
-                       PMIX_UINT16 == (t)) {                        \
-                (m)->array = pmix_calloc((n), sizeof(int16_t));          \
-                                                                    \
-            } else if (PMIX_PROC_RANK == (t) ||                     \
-                       PMIX_INFO_DIRECTIVES == (t) ||               \
-                       PMIX_INT32 == (t) ||                         \
-                       PMIX_UINT32 == (t)) {                        \
-                (m)->array = pmix_calloc((n), sizeof(int32_t));          \
-                                                                    \
-            } else if (PMIX_INT64 == (t) ||                         \
-                       PMIX_UINT64 == (t)) {                        \
-                (m)->array = pmix_calloc((n), sizeof(int64_t));          \
-                                                                    \
-            } else if (PMIX_FLOAT == (t)) {                         \
-                (m)->array = pmix_calloc((n), sizeof(float));            \
-                                                                    \
-            } else if (PMIX_DOUBLE == (t)) {                        \
-                (m)->array = pmix_calloc((n), sizeof(double));           \
-                                                                    \
-            } else if (PMIX_TIMEVAL == (t)) {                       \
-                (m)->array = pmix_calloc((n), sizeof(struct timeval));   \
-                                                                    \
-            } else if (PMIX_TIME == (t)) {                          \
-                (m)->array = pmix_calloc((n), sizeof(time_t));           \
-                                                                    \
-            } else if (PMIX_REGATTR == (t)) {                       \
-                PMIX_REGATTR_CREATE((m)->array, (n));               \
-                                                                    \
-            } else if (PMIX_BOOL == (t)) {                          \
-                (m)->array = pmix_calloc((n), sizeof(bool));             \
-                                                                    \
-            } else if (PMIX_COORD == (t)) {                         \
-                (m)->array = pmix_calloc((n), sizeof(pmix_coord_t));  \
-                                                                    \
-            } else if (PMIX_LINK_STATE == (t)) {                    \
-                (m)->array = pmix_calloc((n), sizeof(pmix_link_state_t));  \
-                                                                    \
-            } else if (PMIX_ENDPOINT == (t)) {                         \
-                PMIX_ENDPOINT_CREATE((m)->array, n);                   \
-                                                                    \
-            } else if (PMIX_PROC_NSPACE == (t)) {                         \
-                (m)->array = pmix_calloc((n), sizeof(pmix_nspace_t));     \
-                                                                    \
-            } else if (PMIX_PROC_STATS == (t)) {                         \
-                PMIX_PROC_STATS_CREATE((m)->array, n);                   \
-                                                                    \
-            } else if (PMIX_DISK_STATS == (t)) {                         \
-                PMIX_DISK_STATS_CREATE((m)->array, n);                   \
-                                                                    \
-            } else if (PMIX_NET_STATS == (t)) {                         \
-                PMIX_NET_STATS_CREATE((m)->array, n);                   \
-                                                                    \
-            } else if (PMIX_NODE_STATS == (t)) {                         \
-                PMIX_NODE_STATS_CREATE((m)->array, n);                   \
-                                                                    \
-            } else if (PMIX_DEVICE_DIST == (t)) {                         \
-                PMIX_DEVICE_DIST_CREATE((m)->array, n);                   \
-                                                                    \
-            } else if (PMIX_GEOMETRY == (t)) {                         \
-                PMIX_GEOMETRY_CREATE((m)->array, n);                   \
-                                                                    \
-            } else if (PMIX_REGATTR == (t)) {                         \
-                PMIX_REGATTR_CREATE((m)->array, n);                   \
-                                                                    \
-            } else if (PMIX_PROC_CPUSET == (t)) {                         \
-                PMIX_CPUSET_CREATE((m)->array, n);                   \
-            } else {                                                \
-                (m)->array = NULL;                                  \
-                (m)->size = 0;                                      \
-            }                                                       \
-        } else {                                                    \
-            (m)->array = NULL;                                      \
-        }                                                           \
+#define PMIX_DATA_ARRAY_CONSTRUCT(m, n, t)                                  \
+    do {                                                                    \
+        (m)->type = (t);                                                    \
+        (m)->size = (n);                                                    \
+        if (0 < (n)) {                                                      \
+            if (PMIX_INFO == (t)) {                                         \
+                PMIX_INFO_CREATE((m)->array, (n));                          \
+                                                                            \
+            } else if (PMIX_PROC == (t)) {                                  \
+                PMIX_PROC_CREATE((m)->array, (n));                          \
+                                                                            \
+            } else if (PMIX_PROC_INFO == (t)) {                             \
+                PMIX_PROC_INFO_CREATE((m)->array, (n));                     \
+                                                                            \
+            } else if (PMIX_ENVAR == (t)) {                                 \
+                PMIX_ENVAR_CREATE((m)->array, (n));                         \
+                                                                            \
+            } else if (PMIX_VALUE == (t)) {                                 \
+                PMIX_VALUE_CREATE((m)->array, (n));                         \
+                                                                            \
+            } else if (PMIX_PDATA == (t)) {                                 \
+                PMIX_PDATA_CREATE((m)->array, (n));                         \
+                                                                            \
+            } else if (PMIX_QUERY == (t)) {                                 \
+                PMIX_QUERY_CREATE((m)->array, (n));                         \
+                                                                            \
+            } else if (PMIX_APP == (t)) {                                   \
+                PMIX_APP_CREATE((m)->array, (n));                           \
+                                                                            \
+            } else if (PMIX_BYTE_OBJECT == (t) ||                           \
+                       PMIX_COMPRESSED_STRING == (t)) {                     \
+                PMIX_BYTE_OBJECT_CREATE((m)->array, (n));                   \
+                                                                            \
+            } else if (PMIX_ALLOC_DIRECTIVE == (t) ||                       \
+                       PMIX_PROC_STATE == (t) ||                            \
+                       PMIX_PERSIST == (t) ||                               \
+                       PMIX_SCOPE == (t) ||                                 \
+                       PMIX_DATA_RANGE == (t) ||                            \
+                       PMIX_BYTE == (t) ||                                  \
+                       PMIX_INT8 == (t) ||                                  \
+                       PMIX_UINT8 == (t) ||                                 \
+                       PMIX_POINTER == (t)) {                               \
+                (m)->array = pmix_calloc((n), sizeof(int8_t));              \
+                                                                            \
+            } else if (PMIX_STRING == (t)) {                                \
+                (m)->array = pmix_calloc((n), sizeof(char*));               \
+                                                                            \
+            } else if (PMIX_SIZE == (t)) {                                  \
+                (m)->array = pmix_calloc((n), sizeof(size_t));              \
+                                                                            \
+            } else if (PMIX_PID == (t)) {                                   \
+                (m)->array = pmix_calloc((n), sizeof(pid_t));               \
+                                                                            \
+            } else if (PMIX_INT == (t) ||                                   \
+                       PMIX_UINT == (t) ||                                  \
+                       PMIX_STATUS == (t)) {                                \
+                (m)->array = pmix_calloc((n), sizeof(int));                 \
+                                                                            \
+            } else if (PMIX_IOF_CHANNEL == (t) ||                           \
+                       PMIX_DATA_TYPE == (t) ||                             \
+                       PMIX_INT16 == (t) ||                                 \
+                       PMIX_UINT16 == (t)) {                                \
+                (m)->array = pmix_calloc((n), sizeof(int16_t));             \
+                                                                            \
+            } else if (PMIX_PROC_RANK == (t) ||                             \
+                       PMIX_INFO_DIRECTIVES == (t) ||                       \
+                       PMIX_INT32 == (t) ||                                 \
+                       PMIX_UINT32 == (t)) {                                \
+                (m)->array = pmix_calloc((n), sizeof(int32_t));             \
+                                                                            \
+            } else if (PMIX_INT64 == (t) ||                                 \
+                       PMIX_UINT64 == (t)) {                                \
+                (m)->array = pmix_calloc((n), sizeof(int64_t));             \
+                                                                            \
+            } else if (PMIX_FLOAT == (t)) {                                 \
+                (m)->array = pmix_calloc((n), sizeof(float));               \
+                                                                            \
+            } else if (PMIX_DOUBLE == (t)) {                                \
+                (m)->array = pmix_calloc((n), sizeof(double));              \
+                                                                            \
+            } else if (PMIX_TIMEVAL == (t)) {                               \
+                (m)->array = pmix_calloc((n), sizeof(struct timeval));      \
+                                                                            \
+            } else if (PMIX_TIME == (t)) {                                  \
+                (m)->array = pmix_calloc((n), sizeof(time_t));              \
+                                                                            \
+            } else if (PMIX_REGATTR == (t)) {                               \
+                PMIX_REGATTR_CREATE((m)->array, (n));                       \
+                                                                            \
+            } else if (PMIX_BOOL == (t)) {                                  \
+                (m)->array = pmix_calloc((n), sizeof(bool));                \
+                                                                            \
+            } else if (PMIX_COORD == (t)) {                                 \
+                (m)->array = pmix_calloc((n), sizeof(pmix_coord_t));        \
+                                                                            \
+            } else if (PMIX_LINK_STATE == (t)) {                            \
+                (m)->array = pmix_calloc((n), sizeof(pmix_link_state_t));   \
+                                                                            \
+            } else if (PMIX_ENDPOINT == (t)) {                              \
+                PMIX_ENDPOINT_CREATE((m)->array, n);                        \
+                                                                            \
+            } else if (PMIX_PROC_NSPACE == (t)) {                           \
+                (m)->array = pmix_calloc((n), sizeof(pmix_nspace_t));       \
+                                                                            \
+            } else if (PMIX_PROC_STATS == (t)) {                            \
+                PMIX_PROC_STATS_CREATE((m)->array, n);                      \
+                                                                            \
+            } else if (PMIX_DISK_STATS == (t)) {                            \
+                PMIX_DISK_STATS_CREATE((m)->array, n);                      \
+                                                                            \
+            } else if (PMIX_NET_STATS == (t)) {                             \
+                PMIX_NET_STATS_CREATE((m)->array, n);                       \
+                                                                            \
+            } else if (PMIX_NODE_STATS == (t)) {                            \
+                PMIX_NODE_STATS_CREATE((m)->array, n);                      \
+                                                                            \
+            } else if (PMIX_DEVICE_DIST == (t)) {                           \
+                PMIX_DEVICE_DIST_CREATE((m)->array, n);                     \
+                                                                            \
+            } else if (PMIX_GEOMETRY == (t)) {                              \
+                PMIX_GEOMETRY_CREATE((m)->array, n);                        \
+                                                                            \
+            } else if (PMIX_REGATTR == (t)) {                               \
+                PMIX_REGATTR_CREATE((m)->array, n);                         \
+                                                                            \
+            } else if (PMIX_PROC_CPUSET == (t)) {                           \
+                PMIX_CPUSET_CREATE((m)->array, n);                          \
+            } else {                                                        \
+                (m)->array = NULL;                                          \
+                (m)->size = 0;                                              \
+            }                                                               \
+        } else {                                                            \
+            (m)->array = NULL;                                              \
+        }                                                                   \
     } while(0)
 #define PMIX_DATA_ARRAY_CREATE(m, n, t)                                     \
     do {                                                                    \
@@ -4225,7 +4232,7 @@ typedef void (*pmix_device_dist_cbfunc_t)(pmix_status_t status,
 #define PMIX_VALUE_RELEASE(m)       \
     do {                            \
         PMIX_VALUE_DESTRUCT((m));   \
-        pmix_free((m));                  \
+        pmix_free((m));             \
         (m) = NULL;                 \
     } while (0)
 
@@ -4310,7 +4317,7 @@ static inline void pmix_app_free(pmix_app_t *ap, size_t n)
     do {                                    \
         if (NULL != (m)) {                  \
             PMIX_DATA_ARRAY_DESTRUCT(m);    \
-            pmix_free((m));                      \
+            pmix_free((m));                 \
             (m) = NULL;                     \
         }                                   \
     } while(0)

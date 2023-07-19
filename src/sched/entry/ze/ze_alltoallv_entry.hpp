@@ -42,7 +42,7 @@ public:
                                 size_t buf_idx_start,
                                 const ccl_datatype& dtype,
                                 ccl_comm* comm,
-                                std::vector<ze_event_handle_t> wait_events = {});
+                                const std::vector<ze_event_handle_t>& wait_events = {});
 
     void init_ze_hook() override;
     void finalize_ze_hook() override;
@@ -63,6 +63,5 @@ private:
 
     const ccl_datatype dtype;
 
-    std::vector<ze_kernel> kernels;
     std::string kernel_name;
 };

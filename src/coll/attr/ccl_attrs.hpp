@@ -13,10 +13,14 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "coll/ccl_alltoallv_op_attr.hpp"
-namespace ccl {
-
-ccl_alltoallv_attr_impl_t::ccl_alltoallv_attr_impl_t(
-    const typename ccl_operation_attr_impl_t::version_traits_t::type& version)
-        : base_t(version) {}
-} // namespace ccl
+#pragma once
+#include "coll/attr/ccl_common_op_attrs.hpp"
+#include "coll/attr/ccl_allgather_op_attr.hpp"
+#include "coll/attr/ccl_allreduce_op_attr.hpp"
+#include "coll/attr/ccl_alltoall_op_attr.hpp"
+#include "coll/attr/ccl_alltoallv_op_attr.hpp"
+#include "coll/attr/ccl_barrier_op_attr.hpp"
+#include "coll/attr/ccl_bcast_op_attr.hpp"
+#include "coll/attr/ccl_pt2pt_op_attr.hpp"
+#include "coll/attr/ccl_reduce_op_attr.hpp"
+#include "coll/attr/ccl_reduce_scatter_op_attr.hpp"
