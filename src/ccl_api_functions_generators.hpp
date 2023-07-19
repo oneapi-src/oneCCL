@@ -191,7 +191,37 @@ namespace v1 {
                                           reduction reduction, \
                                           const communicator& comm, \
                                           const reduce_scatter_attr& attr, \
-                                          const vector_class<event>& deps);
+                                          const vector_class<event>& deps); \
+\
+    template event CCL_API recv(BufferType* recv_buf, \
+                                size_t recv_count, \
+                                int peer, \
+                                const communicator& comm, \
+                                const stream& op_stream, \
+                                const pt2pt_attr& attr, \
+                                const vector_class<event>& deps); \
+\
+    template event CCL_API recv(BufferType* recv_buf, \
+                                size_t recv_count, \
+                                int peer, \
+                                const communicator& comm, \
+                                const pt2pt_attr& attr, \
+                                const vector_class<event>& deps); \
+\
+    template event CCL_API send(BufferType* send_buf, \
+                                size_t send_count, \
+                                int peer, \
+                                const communicator& comm, \
+                                const stream& op_stream, \
+                                const pt2pt_attr& attr, \
+                                const vector_class<event>& deps); \
+\
+    template event CCL_API send(BufferType* send_buf, \
+                                size_t send_count, \
+                                int peer, \
+                                const communicator& comm, \
+                                const pt2pt_attr& attr, \
+                                const vector_class<event>& deps);
 
 #define API_COMM_OP_REF_EXPLICIT_INSTANTIATION(BufferObjectType) \
 \
@@ -365,7 +395,37 @@ namespace v1 {
                                           reduction reduction, \
                                           const communicator& comm, \
                                           const reduce_scatter_attr& attr, \
-                                          const vector_class<event>& deps);
+                                          const vector_class<event>& deps); \
+\
+    template event CCL_API recv(BufferObjectType& recv_buf, \
+                                size_t recv_count, \
+                                int peer, \
+                                const communicator& comm, \
+                                const stream& op_stream, \
+                                const pt2pt_attr& attr, \
+                                const vector_class<event>& deps); \
+\
+    template event CCL_API recv(BufferObjectType& recv_buf, \
+                                size_t recv_count, \
+                                int peer, \
+                                const communicator& comm, \
+                                const pt2pt_attr& attr, \
+                                const vector_class<event>& deps); \
+\
+    template event CCL_API send(BufferObjectType& send_buf, \
+                                size_t send_count, \
+                                int peer, \
+                                const communicator& comm, \
+                                const stream& op_stream, \
+                                const pt2pt_attr& attr, \
+                                const vector_class<event>& deps); \
+\
+    template event CCL_API send(BufferObjectType& send_buf, \
+                                size_t send_count, \
+                                int peer, \
+                                const communicator& comm, \
+                                const pt2pt_attr& attr, \
+                                const vector_class<event>& deps);
 
 } // namespace v1
 

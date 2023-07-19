@@ -53,7 +53,7 @@ struct sycl_bcast_coll : sycl_base_coll<Dtype, bcast_strategy_impl> {
                     .submit([&](handler& h) {
                         auto recv_buf =
                             (static_cast<sycl_buffer_t<Dtype>*>(recv_bufs[b_idx][rank_idx]));
-                        auto recv_buf_acc = recv_buf->template get_access<mode::write>(h);
+                        auto recv_buf_acc = recv_buf->template get_host_access(h, sycl::write_only);
                         h.parallel_for(range<1>{ elem_count }, [=](item<1> e_idx) {
                             if (comm_rank == COLL_ROOT)
                                 recv_buf_acc[e_idx] = e_idx.get_id(0);
@@ -80,7 +80,7 @@ struct sycl_bcast_coll : sycl_base_coll<Dtype, bcast_strategy_impl> {
             }
             else {
                 auto recv_buf = (static_cast<sycl_buffer_t<Dtype>*>(recv_bufs[b_idx][rank_idx]));
-                auto recv_buf_acc = recv_buf->template get_access<mode::read>();
+                auto recv_buf_acc = recv_buf->template get_host_access(sycl::read_only);
 
                 stream.get_native()
                     .memcpy(host_recv_buf.data(), recv_buf_acc.get_pointer(), bytes)

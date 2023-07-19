@@ -18,45 +18,8 @@
 using namespace std;
 using namespace sycl;
 
-int main(int argc, char *argv[]) {
+int vectorized_counts(queue &q, ccl::communicator &comm, ccl::stream &stream, int size, int rank) {
     const size_t count = 10 * 1024 * 1024;
-
-    int size = 0;
-    int rank = 0;
-
-    ccl::init();
-
-    MPI_Init(NULL, NULL);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-    atexit(mpi_finalize);
-
-    queue q;
-    if (!create_sycl_queue(argc, argv, rank, q)) {
-        return -1;
-    }
-
-    /* create kvs */
-    ccl::shared_ptr_class<ccl::kvs> kvs;
-    ccl::kvs::address_type main_addr;
-    if (rank == 0) {
-        kvs = ccl::create_main_kvs();
-        main_addr = kvs->get_address();
-        MPI_Bcast((void *)main_addr.data(), main_addr.size(), MPI_BYTE, 0, MPI_COMM_WORLD);
-    }
-    else {
-        MPI_Bcast((void *)main_addr.data(), main_addr.size(), MPI_BYTE, 0, MPI_COMM_WORLD);
-        kvs = ccl::create_kvs(main_addr);
-    }
-
-    /* create communicator */
-    auto dev = ccl::create_device(q.get_device());
-    auto ctx = ccl::create_context(q.get_context());
-    auto comm = ccl::create_communicator(size, rank, dev, ctx, kvs);
-
-    /* create stream */
-    auto stream = ccl::create_stream(q);
 
     /* create buffers */
     buffer<int> send_buf(count * size);
@@ -105,20 +68,151 @@ int main(int argc, char *argv[]) {
     if (!handle_exception(q))
         return -1;
 
-    /* print out the result of the test on the host side */
+    /* check the result of the test on the host side */
     {
         host_accessor recv_buf_acc(recv_buf, read_only);
-        size_t i;
-        for (i = 0; i < count * size; i++) {
+        for (size_t i = 0; i < count * size; i++) {
             if (recv_buf_acc[i] == -1) {
                 cout << "FAILED\n";
-                break;
+                return -1;
             }
         }
-        if (i == count * size) {
-            cout << "PASSED\n";
+        cout << "PASSED\n";
+    }
+
+    return 0;
+}
+
+// Variable send/recv counts alltoallv flow example.
+// The data in the brackets are just integer values.
+// RANK 0:
+// * SEND -> (1) (2) (3) (4) (total send count = 4)
+// * RECV -> (1) (1 1) (1 1 1) (1 1 1 1) (total recv count = 10)
+// RANK 1:
+// * SEND -> (1 1) (2 2) (3 3) (4 4) (total send count = 6)
+// * RECV -> (2) (2 2) (2 2 2) (2 2 2 2) (total recv count = 10)
+// RANK 2:
+// * SEND -> (1 1 1) (2 2 2) (3 3 3) (4 4 4) (total send count = 12)
+// * RECV -> (3) (3 3) (3 3 3) (3 3 3 3) (total recv count = 10)
+// RANK 3:
+// * SEND -> (1 1 1 1) (2 2 2 2) (3 3 3 3) (4 4 4 4) (total send count = 16)
+// * RECV -> (4) (4 4) (4 4 4) (4 4 4 4) (total recv count = 10)
+int non_vectorized_counts(queue &q,
+                          ccl::communicator &comm,
+                          ccl::stream &stream,
+                          int size,
+                          int rank) {
+    const size_t count = rank + 1;
+    const size_t recv_size = (size * (size + 1) / 2);
+    const size_t send_size = count * size;
+
+    vector<int> send_buf_host(send_size);
+    vector<int> recv_buf_host(recv_size);
+    vector<size_t> send_counts(size, count);
+    vector<size_t> recv_counts(size);
+
+    // initialize host buffer
+    for (int i = 0; i < size; i++) {
+        for (size_t j = 0; j < count; j++) {
+            send_buf_host[(i * count) + j] = i + 1;
         }
     }
+
+    const size_t send_bytes = count * size * sizeof(int);
+    const size_t recv_bytes = recv_size * sizeof(int);
+    auto send_buf_device = sycl::malloc_device(send_bytes, q);
+    auto recv_buf_device = sycl::malloc_device(recv_bytes, q);
+
+    if (!handle_exception(q))
+        return -1;
+
+    q.memcpy(send_buf_device, send_buf_host.data(), send_bytes);
+
+    if (!handle_exception(q))
+        return -1;
+
+    // initialize recv_counts
+    // send counts:    recv counts:
+    // 0r 1  1  1  1  |1  2  3  4
+    // 1r 2  2  2  2  |1  2  3  4
+    // 2r 3  3  3  3  |1  2  3  4
+    // 3r 4  4  4  4  |1  2  3  4
+    MPI_Alltoall(send_counts.data(), 1, MPI_LONG, recv_counts.data(), 1, MPI_LONG, MPI_COMM_WORLD);
+
+    /* invoke alltoallv */
+    ccl::alltoallv(send_buf_device,
+                   send_counts,
+                   recv_buf_device,
+                   recv_counts,
+                   ccl::datatype::int32,
+                   comm,
+                   stream)
+        .wait();
+
+    q.memcpy(const_cast<int *>(recv_buf_host.data()), recv_buf_device, recv_bytes);
+
+    if (!handle_exception(q))
+        return -1;
+
+    for (size_t i = 0; i < recv_size; i++) {
+        if (recv_buf_host[i] != rank + 1) {
+            cout << "FAILED\n";
+            return -1;
+        }
+    }
+    cout << "PASSED\n";
+
+    sycl::free(send_buf_device, q);
+    sycl::free(recv_buf_device, q);
+
+    return 0;
+}
+
+int main(int argc, char *argv[]) {
+    int size = 0;
+    int rank = 0;
+
+    ccl::init();
+
+    MPI_Init(NULL, NULL);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    atexit(mpi_finalize);
+
+    queue q;
+    if (!create_sycl_queue(argc, argv, rank, q)) {
+        return -1;
+    }
+
+    /* create kvs */
+    ccl::shared_ptr_class<ccl::kvs> kvs;
+    ccl::kvs::address_type main_addr;
+    if (rank == 0) {
+        kvs = ccl::create_main_kvs();
+        main_addr = kvs->get_address();
+        MPI_Bcast((void *)main_addr.data(), main_addr.size(), MPI_BYTE, 0, MPI_COMM_WORLD);
+    }
+    else {
+        MPI_Bcast((void *)main_addr.data(), main_addr.size(), MPI_BYTE, 0, MPI_COMM_WORLD);
+        kvs = ccl::create_kvs(main_addr);
+    }
+
+    /* create communicator */
+    auto dev = ccl::create_device(q.get_device());
+    auto ctx = ccl::create_context(q.get_context());
+    auto comm = ccl::create_communicator(size, rank, dev, ctx, kvs);
+
+    /* create stream */
+    auto stream = ccl::create_stream(q);
+
+    /* run examples */
+    int ret = vectorized_counts(q, comm, stream, size, rank);
+    if (ret == -1)
+        return -1;
+    ret = non_vectorized_counts(q, comm, stream, size, rank);
+    if (ret == -1)
+        return -1;
 
     return 0;
 }

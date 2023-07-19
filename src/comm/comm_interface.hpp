@@ -43,6 +43,7 @@ class alltoall_attr;
 class alltoallv_attr;
 class barrier_attr;
 class broadcast_attr;
+class pt2pt_attr;
 class reduce_attr;
 class reduce_scatter_attr;
 } // namespace v1

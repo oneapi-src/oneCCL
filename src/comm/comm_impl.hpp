@@ -21,7 +21,7 @@
 #include "common/event/impls/host_event.hpp"
 
 #include "coll/coll.hpp"
-#include "coll/coll_common_attributes.hpp"
+#include "coll/attr/ccl_common_op_attrs.hpp"
 
 /* allgatherv */
 template <class buffer_type>
@@ -469,6 +469,92 @@ ccl::event ccl_comm::reduce_scatter_impl(const buffer_type& send_buf,
                                                this,
                                                get_stream_ptr(stream),
                                                deps);
+
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
+}
+
+/* recv */
+template <class buffer_type>
+ccl::event ccl_comm::recv_impl(buffer_type* recv_buf,
+                               size_t recv_count,
+                               int peer,
+                               const ccl::stream::impl_value_t& stream,
+                               const ccl::pt2pt_attr& attr,
+                               const ccl::vector_class<ccl::event>& deps) {
+    ccl_request* req = ccl_recv_impl(reinterpret_cast<void*>(recv_buf),
+                                     recv_count,
+                                     ccl::native_type_info<buffer_type>::dtype,
+                                     peer,
+                                     attr,
+                                     this,
+                                     get_stream_ptr(stream),
+                                     deps);
+
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
+}
+
+template <class buffer_type>
+ccl::event ccl_comm::recv_impl(buffer_type& recv_buf,
+                               size_t recv_count,
+                               int peer,
+                               const ccl::stream::impl_value_t& stream,
+                               const ccl::pt2pt_attr& attr,
+                               const ccl::vector_class<ccl::event>& deps) {
+    ccl_coll_attr internal_attr(attr);
+#ifdef CCL_ENABLE_SYCL
+    internal_attr.is_sycl_buf = 1;
+#endif // CCL_ENABLE_SYCL
+    ccl_request* req = ccl_recv_impl(reinterpret_cast<void*>(&recv_buf),
+                                     recv_count,
+                                     ccl::native_type_info<buffer_type>::dtype,
+                                     peer,
+                                     internal_attr,
+                                     this,
+                                     get_stream_ptr(stream),
+                                     deps);
+
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
+}
+
+/* send */
+template <class buffer_type>
+ccl::event ccl_comm::send_impl(buffer_type* send_buf,
+                               size_t send_count,
+                               int peer,
+                               const ccl::stream::impl_value_t& stream,
+                               const ccl::pt2pt_attr& attr,
+                               const ccl::vector_class<ccl::event>& deps) {
+    ccl_request* req = ccl_send_impl(reinterpret_cast<void*>(send_buf),
+                                     send_count,
+                                     ccl::native_type_info<buffer_type>::dtype,
+                                     peer,
+                                     attr,
+                                     this,
+                                     get_stream_ptr(stream),
+                                     deps);
+
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
+}
+
+template <class buffer_type>
+ccl::event ccl_comm::send_impl(buffer_type& send_buf,
+                               size_t send_count,
+                               int peer,
+                               const ccl::stream::impl_value_t& stream,
+                               const ccl::pt2pt_attr& attr,
+                               const ccl::vector_class<ccl::event>& deps) {
+    ccl_coll_attr internal_attr(attr);
+#ifdef CCL_ENABLE_SYCL
+    internal_attr.is_sycl_buf = 1;
+#endif // CCL_ENABLE_SYCL
+    ccl_request* req = ccl_send_impl(reinterpret_cast<void*>(&send_buf),
+                                     send_count,
+                                     ccl::native_type_info<buffer_type>::dtype,
+                                     peer,
+                                     internal_attr,
+                                     this,
+                                     get_stream_ptr(stream),
+                                     deps);
 
     return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
 }

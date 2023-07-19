@@ -113,11 +113,29 @@ inline bool check_sycl_usm(queue& q, usm::alloc alloc_type) {
     return ret;
 }
 
+inline bool hide_platform_info() {
+    int hide_info = false;
+    char* hide_info_str = getenv("CCL_PLATFORM_INFO_HIDE");
+    if (hide_info_str) {
+        if (strcmp(hide_info_str, "0") == 0) {
+            hide_info = false;
+        }
+        else if (strcmp(hide_info_str, "1") == 0) {
+            hide_info = true;
+        }
+        else {
+            throw std::runtime_error("invalid value for CCL_PLATFORM_INFO_HIDE: " +
+                                     std::string(hide_info_str));
+        }
+    }
+    return hide_info;
+}
+
 inline std::string get_preferred_gpu_platform_name() {
     std::string result;
 
     std::string filter = "level-zero";
-    char* env = getenv("SYCL_DEVICE_FILTER");
+    char* env = getenv("ONEAPI_DEVICE_SELECTOR");
     if (env) {
         if (std::strstr(env, "level_zero")) {
             filter = "level-zero";
@@ -250,8 +268,10 @@ inline std::vector<sycl::device> create_sycl_gpu_devices(bool select_root_device
         throw std::runtime_error("no GPU devices found");
     }
 
-    ss << "preferred platform: " << preferred_platform_name << ", found: " << result.size()
-       << " GPU device(s)\n";
+    if (!hide_platform_info()) {
+        ss << "preferred platform: " << preferred_platform_name << ", found: " << result.size()
+           << " GPU device(s)\n";
+    }
     ss << ss_warn.str();
     printf("%s", ss.str().c_str());
 
@@ -379,11 +399,16 @@ inline std::vector<sycl::queue> create_sycl_queues(const std::string& device_typ
 
     std::vector<sycl::queue> queues;
 
-    cout << "Created context from devices of type: " << device_type << "\n";
-    cout << "Devices [" << ctx_devices.size() << "]:\n";
+    if (!hide_platform_info()) {
+        cout << "Created context from devices of type: " << device_type << "\n";
+        cout << "Devices [" << ctx_devices.size() << "]:\n";
+    }
 
     for (size_t idx = 0; idx < ctx_devices.size(); idx++) {
-        cout << "[" << idx << "]: [" << ctx_devices[idx].get_info<info::device::name>() << "]\n";
+        if (!hide_platform_info()) {
+            cout << "[" << idx << "]: [" << ctx_devices[idx].get_info<info::device::name>()
+                 << "]\n";
+        }
         queues.push_back(sycl::queue(ctx_devices[idx], exception_handler, queue_props));
     }
 

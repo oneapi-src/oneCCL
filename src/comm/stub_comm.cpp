@@ -151,6 +151,28 @@ ccl::event stub_comm::reduce_scatter_impl(const void* send_buf,
     return process_stub_backend();
 }
 
+/* recv */
+ccl::event stub_comm::recv_impl(void* recv_buf,
+                                size_t recv_count,
+                                ccl::datatype dtype,
+                                int peer,
+                                const ccl::stream::impl_value_t& stream,
+                                const ccl::pt2pt_attr& attr,
+                                const ccl::vector_class<ccl::event>& deps) {
+    return process_stub_backend();
+}
+
+/* send */
+ccl::event stub_comm::send_impl(void* send_buf,
+                                size_t send_count,
+                                ccl::datatype dtype,
+                                int peer,
+                                const ccl::stream::impl_value_t& stream,
+                                const ccl::pt2pt_attr& attr,
+                                const ccl::vector_class<ccl::event>& deps) {
+    return process_stub_backend();
+}
+
 ccl::event stub_comm::process_stub_backend() {
     std::stringstream s;
     s << "running stub communicator id: " << kvs_impl->get_id();

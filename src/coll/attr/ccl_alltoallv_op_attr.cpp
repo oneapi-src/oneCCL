@@ -13,11 +13,10 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "coll/ccl_allgather_op_attr.hpp"
-
+#include "coll/attr/ccl_alltoallv_op_attr.hpp"
 namespace ccl {
 
-ccl_allgatherv_attr_impl_t::ccl_allgatherv_attr_impl_t(
+ccl_alltoallv_attr_impl_t::ccl_alltoallv_attr_impl_t(
     const typename ccl_operation_attr_impl_t::version_traits_t::type& version)
         : base_t(version) {}
 } // namespace ccl

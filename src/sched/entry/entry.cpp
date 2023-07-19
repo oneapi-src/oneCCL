@@ -148,9 +148,6 @@ void sched_entry::reset(size_t idx) {
         is_update_time_expired = false;
     }
 
-    sched->configured_preparation = false;
-    sched->finished_preparation = false;
-
     if (status == ccl_sched_entry_status_complete_once) {
         return;
     }
@@ -215,6 +212,23 @@ ccl_sched_entry_status sched_entry::get_status() const {
 void sched_entry::set_status(ccl_sched_entry_status s) {
     status = s;
 }
+
+#if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
+const ze_commands_t& sched_entry::get_ze_commands() const {
+    return ze_commands;
+}
+
+void sched_entry::ze_commands_submit() {
+    LOG_DEBUG("entry ", name(), " ze_commands.size() ", ze_commands.size());
+    for (auto& command : ze_commands) {
+        LOG_DEBUG("adding command ", command->name(), " to command list");
+        command->ze_call();
+    }
+    LOG_DEBUG("entry ", name(), " all commands submitted");
+    // TODO: determine the effect of destroying the commands on the cache (e.g. kernel cache)
+    ze_commands.clear();
+}
+#endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
 
 void sched_entry::set_exec_mode(ccl_sched_entry_exec_mode mode) {
     exec_mode = mode;

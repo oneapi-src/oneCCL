@@ -33,8 +33,8 @@ ze_alltoallv_entry::ze_alltoallv_entry(ccl_sched* sched,
                                        size_t buf_idx_start,
                                        const ccl_datatype& dtype,
                                        ccl_comm* comm,
-                                       std::vector<ze_event_handle_t> wait_events)
-        : ze_base_entry(sched, comm, 1 /* request additional events */, wait_events),
+                                       const std::vector<ze_event_handle_t>& wait_events)
+        : ze_base_entry(sched, wait_events, comm, 1 /* request additional events */),
           send_bufs(send_bufs),
           recv_bufs(recv_bufs),
           counts(counts),
@@ -53,62 +53,71 @@ void ze_alltoallv_entry::init_ze_hook() {
         "alltoallv_kernel_" + std::to_string(comm_size) + "_" + to_string(dtype.idx()) + "_custom";
     LOG_DEBUG("kernel name: ", kernel_name);
 
-    kernels.emplace_back(module, kernel_name, worker_idx);
-    kernels.back().calculate_group_size(counts[comm_rank]);
+    auto init_in_out_bufs = [&](std::vector<void*>& src_bufs1,
+                                std::vector<void*>& src_bufs2,
+                                std::vector<ccl_buffer>& dest_bufs1,
+                                std::vector<ccl_buffer>& dest_bufs2) {
+        for (int idx = 0; idx < comm_size; idx++) {
+            const auto global_rank = comm->get_global_rank(idx);
+            if (counts[global_rank] == 0) {
+                continue;
+            }
 
-    for (int idx = 0; idx < comm_size; idx++) {
-        const auto global_rank = comm->get_global_rank(idx);
-        if (idx == comm_rank) {
-            // fill local send buf
-            in_bufs[global_rank] = send_bufs[global_rank].get_ptr();
+            if (idx == comm_rank) {
+                // fill local send buf
+                src_bufs1[global_rank] = dest_bufs1[global_rank].get_ptr();
+            }
+            else {
+                ccl_buffer buf{};
+                sched->get_memory().handle_manager.get(
+                    idx, buf_idx_start + comm->get_global_rank(comm_rank), buf, comm);
+                CCL_THROW_IF_NOT(buf.get_ptr(), "null IPC buffer is received");
+                src_bufs1[global_rank] = buf.get_ptr();
+            }
         }
-        else {
-            ccl_buffer buf{};
-            sched->get_memory().handle_manager.get(
-                idx, buf_idx_start + comm->get_global_rank(comm_rank), buf, comm);
-            CCL_THROW_IF_NOT(buf.get_ptr(), "null IPC buffer is received");
-            in_bufs[global_rank] = buf.get_ptr();
+
+        // recv bufs are local bufs
+        for (int idx = 0; idx < comm_size; idx++) {
+            const int peer_rank = (comm_rank + idx + 1) % comm_size;
+            const auto global_peer_rank = comm->get_global_rank(peer_rank);
+            src_bufs2[global_peer_rank] = dest_bufs2[global_peer_rank].get_ptr();
         }
+    };
+
+    if (ccl::global_data::env().alltoallv_monolithic_read_kernel) {
+        init_in_out_bufs(in_bufs, out_bufs, send_bufs, recv_bufs);
+        LOG_DEBUG("alltoallv monolithic read kernel");
     }
-
-    // recv bufs are local bufs
-    for (int idx = 0; idx < comm_size; idx++) {
-        const int peer_rank = (comm_rank + idx + 1) % comm_size;
-        const auto global_rank = comm->get_global_rank(idx);
-        const auto global_peer_rank = comm->get_global_rank(peer_rank);
-        if (global_rank != global_peer_rank) {
-            out_bufs[global_peer_rank] = recv_bufs[global_peer_rank].get_ptr();
-        }
-        else {
-            out_bufs[global_rank] = recv_bufs[global_rank].get_ptr();
-        }
+    else {
+        init_in_out_bufs(out_bufs, in_bufs, recv_bufs, send_bufs);
+        LOG_DEBUG("alltoallv monolithic write kernel");
     }
 
     // sets in/out bufs for kernel
-    int arg_idx = 0;
+    std::vector<ze_kernel_arg_t> kernel_args;
+    kernel_args.reserve(3 * comm_size + 1);
     for (int idx = 0; idx < comm_size; idx++) {
         const auto global_rank = comm->get_global_rank(idx);
-        ZE_CALL(zeKernelSetArgumentValue,
-                (kernels.back().get_kernel(), arg_idx, dtype.size(), &(in_bufs[global_rank])));
-        arg_idx++;
-        ZE_CALL(zeKernelSetArgumentValue,
-                (kernels.back().get_kernel(), arg_idx, dtype.size(), &(out_bufs[global_rank])));
-        arg_idx++;
-        ZE_CALL(zeKernelSetArgumentValue,
-                (kernels.back().get_kernel(), arg_idx, sizeof(unsigned long), &(counts[idx])));
-        arg_idx++;
+        if (in_bufs[global_rank]) {
+            kernel_args.push_back(&(in_bufs[global_rank]));
+        }
+        else {
+            CCL_THROW_IF_NOT(counts[idx] == 0, "kernel input buffer is null but counts > 0");
+            kernel_args.push_back({});
+        }
+        kernel_args.push_back(&(out_bufs[global_rank]));
+        kernel_args.push_back(&(counts[idx]));
     }
 
-    ZE_CALL(zeKernelSetArgumentValue,
-            (kernels.back().get_kernel(), 3 * comm_size, sizeof(int), &comm_size));
+    kernel_args.push_back(&comm_size);
 
-    ZE_CALL(zeCommandListAppendLaunchKernel,
-            (ze_base_entry::get_comp_list(),
-             kernels.back().get_kernel(),
-             kernels.back().get_group_count(),
-             ze_base_entry::entry_event,
-             0,
-             nullptr));
+    ze_kernel kernel(module, kernel_name, kernel_args, counts[comm_rank], worker_idx);
+
+    ZE_APPEND_CALL(ze_cmd_launch_kernel,
+                   ze_base_entry::get_comp_list(),
+                   std::move(kernel),
+                   ze_base_entry::entry_event,
+                   wait_events);
 }
 
 void ze_alltoallv_entry::finalize_ze_hook() {

@@ -71,6 +71,16 @@ void ccl_sched_key::set(const ccl_coll_param& param, const ccl_coll_attr& attr) 
             f.count1 = param.get_send_count();
             f.reduction = param.reduction;
             break;
+        case ccl_coll_recv:
+            f.count1 = param.get_recv_count();
+            f.peer_rank = param.peer_rank;
+            f.group_id = param.group_id;
+            break;
+        case ccl_coll_send:
+            f.count1 = param.get_send_count();
+            f.peer_rank = param.peer_rank;
+            f.group_id = param.group_id;
+            break;
         default: CCL_THROW("unexpected coll_type ", f.ctype);
     }
 }
@@ -102,6 +112,14 @@ bool ccl_sched_key::check(const ccl_coll_param& param, const ccl_coll_attr& attr
             break;
         case ccl_coll_reduce_scatter:
             result &= (param.get_send_count() == f.count1 && param.reduction == f.reduction);
+            break;
+        case ccl_coll_recv:
+            result &= (param.get_recv_count() == f.count1 && param.peer_rank == f.peer_rank &&
+                       param.group_id == f.group_id);
+            break;
+        case ccl_coll_send:
+            result &= (param.get_send_count() == f.count1 && param.peer_rank == f.peer_rank &&
+                       param.group_id == f.group_id);
             break;
         default: CCL_THROW("unexpected coll_type ", f.ctype);
     }

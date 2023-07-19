@@ -43,7 +43,7 @@ public:
                                       ccl::reduction op,
                                       int root,
                                       ccl_comm* comm,
-                                      std::vector<ze_event_handle_t> wait_events = {},
+                                      const std::vector<ze_event_handle_t>& wait_events,
                                       size_t peer_buf_offset = 0);
 
     void init_ze_hook() override;
@@ -73,10 +73,7 @@ private:
 
     std::string main_kernel_name;
 
-    ze_kernel_handle_t empty_kernel;
     std::string empty_kernel_name;
-
-    std::vector<ze_kernel> kernels;
 
     bool skip_entry{};
 };

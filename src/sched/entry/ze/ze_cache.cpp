@@ -128,7 +128,8 @@ void list_cache::get(ze_context_handle_t context,
     CCL_THROW_IF_NOT(device);
     CCL_THROW_IF_NOT(list);
     std::lock_guard<std::mutex> lock(mutex);
-    if (get_from_cache(
+    if (global_data::env().enable_ze_cache_cmdlists &&
+        get_from_cache(
             cache, *list, context, device, list_desc.commandQueueGroupOrdinal, list_desc.flags)) {
         ZE_CALL(zeCommandListReset, (*list));
     }
@@ -145,7 +146,8 @@ void list_cache::push(ze_context_handle_t context,
     CCL_THROW_IF_NOT(device);
     CCL_THROW_IF_NOT(list);
     std::lock_guard<std::mutex> lock(mutex);
-    if (!push_to_cache(
+    if (!global_data::env().enable_ze_cache_cmdlists ||
+        !push_to_cache(
             cache, list, context, device, list_desc.commandQueueGroupOrdinal, list_desc.flags)) {
         ZE_CALL(zeCommandListDestroy, (list));
     }
@@ -176,15 +178,15 @@ void queue_cache::get(ze_context_handle_t context,
     CCL_THROW_IF_NOT(device);
     CCL_THROW_IF_NOT(queue);
     std::lock_guard<std::mutex> lock(mutex);
-    if (!get_from_cache(cache,
-                        *queue,
-                        context,
-                        device,
-                        queue_desc.index,
-                        queue_desc.ordinal,
-                        queue_desc.flags,
-                        queue_desc.mode,
-                        queue_desc.priority)) {
+    if (!global_data::env().enable_ze_cache_cmdqueues || !get_from_cache(cache,
+                                                                         *queue,
+                                                                         context,
+                                                                         device,
+                                                                         queue_desc.index,
+                                                                         queue_desc.ordinal,
+                                                                         queue_desc.flags,
+                                                                         queue_desc.mode,
+                                                                         queue_desc.priority)) {
         ZE_CALL(zeCommandQueueCreate, (context, device, &queue_desc, queue));
     }
 }
@@ -197,15 +199,15 @@ void queue_cache::push(ze_context_handle_t context,
     CCL_THROW_IF_NOT(device);
     CCL_THROW_IF_NOT(queue);
     std::lock_guard<std::mutex> lock(mutex);
-    if (!push_to_cache(cache,
-                       queue,
-                       context,
-                       device,
-                       queue_desc.index,
-                       queue_desc.ordinal,
-                       queue_desc.flags,
-                       queue_desc.mode,
-                       queue_desc.priority)) {
+    if (!global_data::env().enable_ze_cache_cmdqueues || !push_to_cache(cache,
+                                                                        queue,
+                                                                        context,
+                                                                        device,
+                                                                        queue_desc.index,
+                                                                        queue_desc.ordinal,
+                                                                        queue_desc.flags,
+                                                                        queue_desc.mode,
+                                                                        queue_desc.priority)) {
         ZE_CALL(zeCommandQueueDestroy, (queue));
     }
 }
@@ -234,7 +236,8 @@ void event_pool_cache::get(ze_context_handle_t context,
     CCL_THROW_IF_NOT(event_pool);
     std::lock_guard<std::mutex> lock(mutex);
     // TODO: we can potentially use pool with count >= pool_desc.count
-    if (!get_from_cache(cache, *event_pool, context, pool_desc.flags, pool_desc.count)) {
+    if (!global_data::env().enable_ze_cache_event_pools ||
+        !get_from_cache(cache, *event_pool, context, pool_desc.flags, pool_desc.count)) {
         ZE_CALL(zeEventPoolCreate, (context, &pool_desc, 0, nullptr, event_pool));
     }
 }
@@ -245,7 +248,8 @@ void event_pool_cache::push(ze_context_handle_t context,
     CCL_THROW_IF_NOT(context);
     CCL_THROW_IF_NOT(event_pool);
     std::lock_guard<std::mutex> lock(mutex);
-    if (!push_to_cache(cache, event_pool, context, pool_desc.flags, pool_desc.count)) {
+    if (!global_data::env().enable_ze_cache_event_pools ||
+        !push_to_cache(cache, event_pool, context, pool_desc.flags, pool_desc.count)) {
         ZE_CALL(zeEventPoolDestroy, (event_pool));
     }
 }
@@ -392,12 +396,25 @@ void mem_handle_cache::clear() {
 }
 
 void mem_handle_cache::make_clean(size_t limit) {
+    static bool limit_warning_printed = false;
+    // the function cleans up the cache by removing elements
+    // from it until its size reaches the specified limit
     while (cache.size() > limit) {
         auto it = cache_list.end();
         --it;
         // handle will be closed from handle_desc class destructor
         cache.erase(it->first);
         cache_list.pop_back();
+        if (!limit_warning_printed && limit != 0) {
+            LOG_WARN(
+                "mem handle cache limit is reached: mem_handle_cache size: ",
+                cache.size(),
+                ", limit: ",
+                limit,
+                ", it will remove older elements from the cache."
+                " Cache size can be increased with 'CCL_ZE_CACHE_OPEN_IPC_HANDLES_THRESHOLD=value'");
+            limit_warning_printed = true;
+        }
     }
 }
 

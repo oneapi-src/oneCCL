@@ -49,6 +49,7 @@ public:
                    ccl_sched_create_param sched_param,
                    const char* subsched_name)
             : sched_entry(sched),
+              coll_param(sched->coll_param),
               op_id(op_id),
               subsched_name(subsched_name),
               build_sched_id(sched_param.id),
@@ -61,6 +62,7 @@ public:
         bool update_sched_id = false;
         //copy to_cache value to enable master subsched to be reused in scaleout
         subsched->coll_attr.to_cache = sched->coll_attr.to_cache;
+        subsched->subsched_entry_parent_sched = sched;
         subsched->commit(data.parallelizer.get(), update_sched_id);
         CCL_THROW_IF_NOT(subsched->sched_id == build_sched_id);
         auto& subscheds = subsched->get_subscheds();
@@ -94,6 +96,19 @@ public:
         subsched->flow_control.set_max_credits(sched->flow_control.get_max_credits());
     }
 
+#if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
+    // Submits all ze commands that have been stored both in the entry or on the subsched
+    void ze_commands_submit() override {
+        LOG_DEBUG("entry ", name(), " calling parent ze_commands_submit");
+        sched_entry::ze_commands_submit();
+
+        if (subsched) {
+            LOG_DEBUG("entry ", name(), " calling subsched ze_commands_submit");
+            subsched->ze_commands_submit();
+        }
+    }
+#endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
+
     void build_subsched(const ccl_sched_create_param& create_param,
                         ccl_sched* master_sched = nullptr) {
         if (subsched || is_master_sched) {
@@ -113,6 +128,7 @@ public:
         }
         else {
             build_subsched({ build_sched_id, sched->coll_param });
+            subsched->subsched_entry_parent_sched = sched;
             subsched->renew();
             subsched->get_request()->set_counter(1);
             subsched->bin = sched->bin;
@@ -142,7 +158,7 @@ public:
             subsched->do_progress();
             if (subsched->start_idx == subsched->entries.size()) {
                 status = ccl_sched_entry_status_complete;
-                ((ccl_sched*)subsched.get())->complete();
+                subsched->complete();
             }
         }
     }
@@ -175,6 +191,7 @@ protected:
     }
 
     std::unique_ptr<ccl_sched> subsched;
+    ccl_coll_param coll_param{};
 
 private:
     std::function<void(ccl_sched*)> build_fn;

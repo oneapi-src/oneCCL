@@ -117,7 +117,9 @@ public:
                   buf_type,
                   ", old src: ",
                   this->src);
-        CCL_ASSERT(buf_src, "new src is null");
+
+        // check buf_src pointer only if buf_size > 0
+        CCL_ASSERT(!(buf_size > 0) || buf_src, "new src is null");
 
         this->src = buf_src;
         this->size = buf_size;

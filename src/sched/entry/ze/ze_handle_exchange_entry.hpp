@@ -82,6 +82,7 @@ private:
     std::string left_peer_socket_name;
 
     std::vector<int> device_fds;
+    std::vector<ccl::ze::device_bdf_info> physical_devices;
 
     struct payload_t {
         int mem_handle{ ccl::utils::invalid_mem_handle };
@@ -102,7 +103,7 @@ private:
                             const size_t buf_idx);
 
     int ipc_to_mem_handle(const ze_ipc_mem_handle_t& ipc_handle,
-                          const int parent_dev_id = ccl::utils::invalid_device_id);
+                          const int dev_id = ccl::utils::invalid_device_id);
 
     void create_local_ipc_handles(const std::vector<mem_desc_t>& bufs);
     int sockets_mode_exchange(const std::vector<mem_desc_t>& bufs);
@@ -138,4 +139,6 @@ private:
 
     void unlink_sockets();
     void close_sockets();
+
+    uint32_t get_remote_device_id(ccl::ze::device_info& info);
 };

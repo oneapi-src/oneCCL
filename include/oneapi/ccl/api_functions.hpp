@@ -1173,6 +1173,196 @@ event CCL_API broadcast(BufferObjectType& buf,
 
 /** @} */ // end of broadcast
 
+/** @defgroup recv
+ * \ingroup operation
+ * @{
+ */
+
+/**
+ * \brief Recv is a pt2pt communication operation that receives data
+ *        from one rank of communicator.
+ * @param buf [in,out] the buffer with @c count elements of @c dtype
+ *        serves as send buffer for root and as receive buffer for other ranks
+ * @param count the number of elements of type @c dtype in @c buf
+ * @param dtype the datatype of elements in @c buf
+ * @param peer the rank that sends @c buf
+ * @param comm the communicator for which the operation will be performed
+ * @param stream a stream associated with the operation
+ * @param attr optional attributes to customize operation
+ * @param deps an optional vector of the events that the operation should depend on
+ * @return @ref ccl::event an object to track the progress of the operation
+ */
+event CCL_API recv(void* buf,
+                   size_t count,
+                   datatype dtype,
+                   int peer,
+                   const communicator& comm,
+                   const stream& stream,
+                   const pt2pt_attr& attr = default_pt2pt_attr,
+                   const vector_class<event>& deps = {});
+
+/*!
+ * \overload
+ */
+event CCL_API recv(void* buf,
+                   size_t count,
+                   datatype dtype,
+                   int peer,
+                   const communicator& comm,
+                   const pt2pt_attr& attr = default_pt2pt_attr,
+                   const vector_class<event>& deps = {});
+
+/*!
+ * \overload
+ */
+/* Type safety version */
+template <class BufferType,
+          class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
+event CCL_API recv(BufferType* buf,
+                   size_t count,
+                   int peer,
+                   const communicator& comm,
+                   const stream& stream,
+                   const pt2pt_attr& attr = default_pt2pt_attr,
+                   const vector_class<event>& deps = {});
+
+/*!
+ * \overload
+ */
+/* Type safety version */
+template <class BufferType,
+          class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
+event CCL_API recv(BufferType* buf,
+                   size_t count,
+                   int peer,
+                   const communicator& comm,
+                   const pt2pt_attr& attr = default_pt2pt_attr,
+                   const vector_class<event>& deps = {});
+
+/*!
+ * \overload
+ */
+/* Type safety version */
+template <class BufferObjectType,
+          class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
+event CCL_API recv(BufferObjectType& buf,
+                   size_t count,
+                   int peer,
+                   const communicator& comm,
+                   const stream& stream,
+                   const pt2pt_attr& attr = default_pt2pt_attr,
+                   const vector_class<event>& deps = {});
+
+/*!
+ * \overload
+ */
+/* Type safety version */
+template <class BufferObjectType,
+          class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
+event CCL_API recv(BufferObjectType& buf,
+                   size_t count,
+                   int peer,
+                   const communicator& comm,
+                   const pt2pt_attr& attr = default_pt2pt_attr,
+                   const vector_class<event>& deps = {});
+
+/** @} */ // end of recv
+
+/** @defgroup send
+ * \ingroup operation
+ * @{
+ */
+
+/**
+ * \brief Send is a pt2pt communication operation that sends data
+ *        from one rank of communicator.
+ * @param buf [in,out] the buffer with @c count elements of @c dtype
+ *        serves as send buffer for root and as receive buffer for other ranks
+ * @param count the number of elements of type @c dtype in @c buf
+ * @param dtype the datatype of elements in @c buf
+ * @param peer the rank that receives @c buf
+ * @param comm the communicator for which the operation will be performed
+ * @param stream a stream associated with the operation
+ * @param attr optional attributes to customize operation
+ * @param deps an optional vector of the events that the operation should depend on
+ * @return @ref ccl::event an object to track the progress of the operation
+ */
+event CCL_API send(void* buf,
+                   size_t count,
+                   datatype dtype,
+                   int peer,
+                   const communicator& comm,
+                   const stream& stream,
+                   const pt2pt_attr& attr = default_pt2pt_attr,
+                   const vector_class<event>& deps = {});
+
+/*!
+ * \overload
+ */
+event CCL_API send(void* buf,
+                   size_t count,
+                   datatype dtype,
+                   int peer,
+                   const communicator& comm,
+                   const pt2pt_attr& attr = default_pt2pt_attr,
+                   const vector_class<event>& deps = {});
+
+/*!
+ * \overload
+ */
+/* Type safety version */
+template <class BufferType,
+          class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
+event CCL_API send(BufferType* buf,
+                   size_t count,
+                   int peer,
+                   const communicator& comm,
+                   const stream& stream,
+                   const pt2pt_attr& attr = default_pt2pt_attr,
+                   const vector_class<event>& deps = {});
+
+/*!
+ * \overload
+ */
+/* Type safety version */
+template <class BufferType,
+          class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
+event CCL_API send(BufferType* buf,
+                   size_t count,
+                   int peer,
+                   const communicator& comm,
+                   const pt2pt_attr& attr = default_pt2pt_attr,
+                   const vector_class<event>& deps = {});
+
+/*!
+ * \overload
+ */
+/* Type safety version */
+template <class BufferObjectType,
+          class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
+event CCL_API send(BufferObjectType& buf,
+                   size_t count,
+                   int peer,
+                   const communicator& comm,
+                   const stream& stream,
+                   const pt2pt_attr& attr = default_pt2pt_attr,
+                   const vector_class<event>& deps = {});
+
+/*!
+ * \overload
+ */
+/* Type safety version */
+template <class BufferObjectType,
+          class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
+event CCL_API send(BufferObjectType& buf,
+                   size_t count,
+                   int peer,
+                   const communicator& comm,
+                   const pt2pt_attr& attr = default_pt2pt_attr,
+                   const vector_class<event>& deps = {});
+
+/** @} */ // end of send
+
 /** @defgroup reduce
  * \ingroup operation
  * @{

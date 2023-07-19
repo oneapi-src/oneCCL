@@ -27,6 +27,8 @@
 #include "sched/entry/factory/chunked_entry_factory.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
 
+using namespace ccl::utils;
+
 ccl::status ccl_coll_build_direct_alltoallv(ccl_sched* sched,
                                             ccl_buffer send_buf,
                                             const size_t* send_counts,
@@ -131,6 +133,10 @@ ccl::status ccl_coll_build_naive_alltoallv(ccl_sched* main_sched,
                                         total_send_bytes,
                                         total_recv_bytes);
 
+    if (total_send_count + total_recv_count == 0) {
+        return ccl::status::success;
+    }
+
     if (!inplace && send_counts[comm_rank] && recv_counts[comm_rank]) {
         size_t sched_idx = (2 * comm_rank) % sched_count;
         entry_factory::create<copy_entry>(scheds[sched_idx],
@@ -155,31 +161,34 @@ ccl::status ccl_coll_build_naive_alltoallv(ccl_sched* main_sched,
         size_t sched_idx = (comm_rank + idx) % sched_count;
 
         ccl_buffer recv_buf;
+        if (recv_counts[idx] > 0) {
+            if (inplace)
+                recv_buf = scheds[sched_idx]->alloc_buffer(
+                    { recv_counts[idx] * dtype_size, coll_param.get_recv_buf() });
+            else
+                recv_buf = ccl_buffer(coll_param.get_recv_buf_ptr(),
+                                      total_recv_bytes,
+                                      recv_offsets[idx],
+                                      ccl_buffer_type::INDIRECT);
 
-        if (inplace)
-            recv_buf = scheds[sched_idx]->alloc_buffer(
-                { recv_counts[idx] * dtype_size, coll_param.get_recv_buf() });
-        else
-            recv_buf = ccl_buffer(coll_param.get_recv_buf_ptr(),
-                                  total_recv_bytes,
-                                  recv_offsets[idx],
-                                  ccl_buffer_type::INDIRECT);
+            entry_factory::make_chunked_recv_entry(
+                scheds, sched_idx, recv_buf, recv_counts[idx], dtype, idx, comm);
+        }
 
-        entry_factory::make_chunked_recv_entry(
-            scheds, sched_idx, recv_buf, recv_counts[idx], dtype, idx, comm);
+        if (send_counts[idx] > 0) {
+            entry_factory::make_chunked_send_entry(scheds,
+                                                   sched_idx,
+                                                   ccl_buffer(coll_param.get_send_buf_ptr(),
+                                                              total_send_bytes,
+                                                              send_offsets[idx],
+                                                              ccl_buffer_type::INDIRECT),
+                                                   send_counts[idx],
+                                                   dtype,
+                                                   idx,
+                                                   comm);
+        }
 
-        entry_factory::make_chunked_send_entry(scheds,
-                                               sched_idx,
-                                               ccl_buffer(coll_param.get_send_buf_ptr(),
-                                                          total_send_bytes,
-                                                          send_offsets[idx],
-                                                          ccl_buffer_type::INDIRECT),
-                                               send_counts[idx],
-                                               dtype,
-                                               idx,
-                                               comm);
-
-        if (inplace) {
+        if (inplace && (total_recv_bytes > 0)) {
             scheds[sched_idx]->add_barrier();
             entry_factory::create<copy_entry>(scheds[sched_idx],
                                               recv_buf,
@@ -231,6 +240,10 @@ ccl::status ccl_coll_build_scatter_alltoallv(ccl_sched* main_sched,
                                         total_recv_count,
                                         total_send_bytes,
                                         total_recv_bytes);
+
+    if (total_send_count + total_recv_count == 0) {
+        return ccl::status::success;
+    }
 
     std::vector<ccl_buffer> recv_bufs;
     if (inplace)
@@ -300,11 +313,11 @@ ccl::status ccl_coll_build_scatter_alltoallv(ccl_sched* main_sched,
         int dst = (comm_rank - idx + comm_size) % comm_size;
         if (dst == comm_rank)
             continue;
-
-        size_t sched_idx = (comm_rank + dst) % sched_count;
         if (send_counts[dst] == 0) {
             continue;
         }
+
+        size_t sched_idx = (comm_rank + dst) % sched_count;
         entry_factory::make_chunked_send_entry(send_scheds,
                                                sched_idx,
                                                ccl_buffer(coll_param.get_send_buf_ptr(),
@@ -433,10 +446,14 @@ ccl::status ccl_coll_build_topo_alltoallv(ccl_sched* main_sched,
         }
     }
 
-    ccl::add_handle_exchange(sched, node_comm, in_buffers);
     sched->try_enable_ze_single_list();
+
     std::vector<ze_event_handle_t> wait_events;
     std::list<ze_event_handle_t> parallel_copy_events;
+    ze_event_handle_t out_event;
+
+    ccl::add_handle_exchange(sched, node_comm, wait_events, out_event, in_buffers);
+    clear_and_push_back(wait_events, out_event);
 
     auto add_sched_barrier_for_parallel_copies = [&]() {
         wait_events.insert(
@@ -446,6 +463,9 @@ ccl::status ccl_coll_build_topo_alltoallv(ccl_sched* main_sched,
     };
 
     auto copy_to_self = [&](ccl_buffer& send, ccl_buffer& recv, const size_t count) {
+        if (count == 0) {
+            return;
+        }
         copy_attr attr{};
         attr.hint_queue_index = parallel_copy_events.size();
         attr.direction = copy_direction::c2c;
@@ -487,7 +507,8 @@ ccl::status ccl_coll_build_topo_alltoallv(ccl_sched* main_sched,
                 copy_to_self(recv_bufs[idx], tmp_bufs[idx], send_counts[idx]);
             }
             add_sched_barrier_for_parallel_copies();
-            ccl::add_comm_barrier(sched, node_comm, wait_events);
+            ccl::add_comm_barrier(sched, node_comm, wait_events, out_event);
+            clear_and_push_back(wait_events, out_event);
 
             in_bufs = tmp_bufs;
             out_bufs = recv_bufs;
@@ -505,16 +526,29 @@ ccl::status ccl_coll_build_topo_alltoallv(ccl_sched* main_sched,
         host_coll_param.hint_algo.alltoallv = ccl_coll_alltoallv_direct;
 
         // do alltoall on the host (scale out) using global comm
-        ccl::add_scaleout(sched, host_coll_param, is_single_node, wait_events);
+        ccl::add_scaleout(sched, host_coll_param, is_single_node, wait_events, out_event);
+        CCL_THROW_IF_NOT(out_event, "scaleout should have been enabled but it hasn't");
+        clear_and_push_back(wait_events, out_event);
+
         // returned back saved value
         ccl::global_data::env().ze_multi_workers = ze_multi_workers_saved;
     };
 
-    if (ccl::global_data::env().alltoallv_monolithic_kernel) {
+    // TODO: enable alltoallv vectorized support for monolithic kernel MLSL-1371
+    bool can_use_monolithic = true;
+    for (int idx = 0; idx < comm_size; idx++) {
+        // alltoallv with equal counts functionaly the same as a simple alltoall
+        if (send_counts[idx] != recv_counts[idx]) {
+            can_use_monolithic = false;
+            break;
+        }
+    }
+
+    if (ccl::global_data::env().alltoallv_monolithic_kernel && can_use_monolithic) {
         auto add_scaleup_mono_op = [&](std::vector<ccl_buffer>& send_bufs,
                                        std::vector<ccl_buffer>& recv_bufs,
+                                       size_t buf_idx_start,
                                        ccl_comm* comm) {
-            auto buf_idx_start = send_buf_idx_start;
             auto counts = recv_counts;
             auto in_bufs = send_bufs;
             auto out_bufs = recv_bufs;
@@ -525,29 +559,39 @@ ccl::status ccl_coll_build_topo_alltoallv(ccl_sched* main_sched,
                     copy_to_self(recv_bufs[idx], tmp_bufs[idx], send_counts[idx]);
                 }
                 add_sched_barrier_for_parallel_copies();
-                ccl::add_comm_barrier(sched, node_comm, wait_events);
+                ccl::add_comm_barrier(sched, node_comm, wait_events, out_event);
+                clear_and_push_back(wait_events, out_event);
 
                 buf_idx_start = tmp_buf_idx_start;
                 counts = send_counts;
                 in_bufs = tmp_bufs;
                 out_bufs = recv_bufs;
             }
-            auto entry = entry_factory::create<ze_alltoallv_entry>(
-                sched, in_bufs, out_bufs, counts, buf_idx_start, dtype, comm, wait_events);
-            wait_events.push_back(entry->entry_event);
+            // check if there is any data to exchnge before creating alltoallv entry
+            bool counts_not_empty =
+                std::any_of(counts.begin(), counts.end(), [](const size_t size) {
+                    return size > 0;
+                });
+            if (counts_not_empty) {
+                auto entry = entry_factory::create<ze_alltoallv_entry>(
+                    sched, in_bufs, out_bufs, counts, buf_idx_start, dtype, comm, wait_events);
+                clear_and_push_back(wait_events, entry->entry_event);
+            } // else skip adding alltoallv_entry
+            // ze_alltoallv_entry doesn't need all ranks to participate
             sched->add_barrier();
         };
 
-        if (is_single_node) {
-            add_scaleup_mono_op(send_bufs, recv_bufs, comm);
+        size_t buf_idx_start = send_buf_idx_start;
+        if (!ccl::global_data::env().alltoallv_monolithic_read_kernel) {
+            buf_idx_start = recv_buf_idx_start;
         }
-        else if (!is_single_node) {
+
+        auto mono_comm = comm;
+        if (!is_single_node) {
             add_scaleout_op(send_bufs, recv_bufs);
-            add_scaleup_mono_op(send_bufs, recv_bufs, node_comm);
+            mono_comm = node_comm;
         }
-        else {
-            CCL_THROW("unexpected case for alltoallv");
-        }
+        add_scaleup_mono_op(send_bufs, recv_bufs, buf_idx_start, mono_comm);
     }
     else {
         auto copy_to_peers = [&](std::vector<ccl_buffer>& bufs,
@@ -562,6 +606,9 @@ ccl::status ccl_coll_build_topo_alltoallv(ccl_sched* main_sched,
                     auto peer_rank = (card_idx * tile_count + tile_idx);
                     if (peer_rank == comm->rank())
                         continue;
+                    if (counts[peer_rank] == 0)
+                        continue;
+
                     copy_attr attr{};
                     attr.peer_rank = peer_rank;
                     attr.peer_buf_idx = start_buf_idx + offset;
@@ -601,7 +648,8 @@ ccl::status ccl_coll_build_topo_alltoallv(ccl_sched* main_sched,
                 copy_to_self(recv_bufs[idx], tmp_bufs[idx], send_counts[idx]);
             }
             add_sched_barrier_for_parallel_copies();
-            ccl::add_comm_barrier(sched, node_comm, wait_events);
+            ccl::add_comm_barrier(sched, node_comm, wait_events, out_event);
+            clear_and_push_back(wait_events, out_event);
 
             // copy from peer rank send to peer rank recv
             if (is_read) {
@@ -673,7 +721,9 @@ ccl::status ccl_coll_build_topo_alltoallv(ccl_sched* main_sched,
         }
         add_sched_barrier_for_parallel_copies();
     }
-    ccl::add_comm_barrier(sched, node_comm, wait_events);
+    ccl::add_comm_barrier(sched, node_comm, wait_events, out_event);
+
+    entry_factory::create<execute_cmdlists_entry>(sched);
 
     return ccl::status::success;
 }

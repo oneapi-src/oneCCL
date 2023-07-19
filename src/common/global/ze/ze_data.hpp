@@ -31,11 +31,16 @@ struct device_info {
     ze_device_handle_t device;
     uint32_t parent_idx;
     ze_device_uuid_t uuid;
+    int physical_idx;
+#ifdef ZE_PCI_PROPERTIES_EXT_NAME
+    ze_pci_address_ext_t pci;
+#endif // ZE_PCI_PROPERTIES_EXT_NAME
 
     device_info(ze_device_handle_t dev, uint32_t parent_idx);
 };
 
-struct global_data_desc {
+class global_data_desc {
+public:
     std::vector<ze_driver_handle_t> drivers;
     std::vector<ze_context_handle_t> contexts;
     std::vector<device_info> devices;
@@ -52,6 +57,9 @@ struct global_data_desc {
     global_data_desc& operator=(const global_data_desc&) = delete;
     global_data_desc& operator=(global_data_desc&&) = delete;
     ~global_data_desc();
+
+private:
+    void init_ipc_exchange_mode();
 };
 
 } // namespace ze

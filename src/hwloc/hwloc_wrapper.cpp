@@ -84,12 +84,11 @@ ccl_hwloc_wrapper::ccl_hwloc_wrapper()
         LOG_WARN("no support for memory binding of current thread");
     }
 
-    hwloc_const_bitmap_t nodeset = hwloc_topology_get_topology_nodeset(topology);
-    int numa_node_count = hwloc_bitmap_weight(nodeset);
-
-    for (int idx = 0; idx < numa_node_count; idx++) {
-        hwloc_obj_t numa_node = hwloc_get_numanode_obj_by_os_index(topology, idx);
-        int os_idx = numa_node->logical_index;
+    int idx = 0;
+    hwloc_obj_t numa_node = nullptr;
+    while ((numa_node = hwloc_get_next_obj_by_type(topology, HWLOC_OBJ_NUMANODE, numa_node)) !=
+           nullptr) {
+        int os_idx = numa_node->os_index;
         int mem_in_mb =
             (numa_node->attr) ? numa_node->attr->numanode.local_memory / (1024 * 1024) : 0;
         int core_count =
@@ -107,7 +106,8 @@ ccl_hwloc_wrapper::ccl_hwloc_wrapper()
             }
         }
         numa_nodes.push_back(
-            ccl_numa_node(idx, os_idx, mem_in_mb, core_count, cpus, check_membind(idx)));
+            ccl_numa_node(idx, os_idx, mem_in_mb, core_count, cpus, check_membind(os_idx)));
+        ++idx;
     }
 }
 

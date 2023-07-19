@@ -45,11 +45,10 @@ ccl_sched::ccl_sched(const ccl_sched_create_param& param, ccl_sched* master_sche
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
           // only type = "master" sched should use output event
           use_output_event(false),
-#endif
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
           top_level_sched(false),
+          subsched_entry_parent_sched(nullptr),
           restart_manager() {
-    configured_preparation = false;
-    finished_preparation = false;
     type = sched_type_t::extra;
     strict_order = ccl::global_data::env().enable_strict_order;
 }
@@ -61,8 +60,9 @@ ccl_sched::ccl_sched(const ccl_sched_create_param& param, bool top_level_sched)
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
           use_output_event(top_level_sched &&
                            ccl::utils::should_use_sycl_output_event(coll_param.stream)),
-#endif
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
           top_level_sched(top_level_sched),
+          subsched_entry_parent_sched(nullptr),
           restart_manager(std::unique_ptr<sched_restart_manager>(new sched_restart_manager(this))) {
     type = sched_type_t::master;
 
@@ -71,7 +71,7 @@ ccl_sched::ccl_sched(const ccl_sched_create_param& param, bool top_level_sched)
         ccl::global_data::get().ze_data->dynamic_event_pools.try_emplace(
             coll_param.stream->get_ze_context(), coll_param.stream);
     }
-#endif
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 }
 
 ccl_sched::~ccl_sched() {
@@ -130,6 +130,14 @@ void ccl_sched::commit(ccl_parallelizer* parallelizer, bool update_sched_id) {
               subscheds.size());
 }
 
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+void ccl_sched::ze_commands_submit() {
+    for (auto& entry : entries) {
+        entry->ze_commands_submit();
+    }
+};
+#endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
+
 void ccl_sched::reset_state() {
     reset_request();
 }
@@ -149,14 +157,11 @@ ccl_request* ccl_sched::start(ccl_executor* exec,
     /* sanity check the schedule */
     CCL_THROW_IF_NOT(coll_param.comm);
 
-    configured_preparation = false;
-    finished_preparation = false;
-
     LOG_DEBUG("starting schedule ", this, ", type ", ccl_coll_type_to_str(coll_param.ctype));
 
     prepare_subscheds(update_sched_id);
 
-    // don't reset request on restart, it's already have counter set to correct value
+    // don't reset request on restart, it's counter is already set to correct value
     if (reset_sched && !restart) {
         reset_state();
     }
@@ -185,7 +190,8 @@ ccl_request* ccl_sched::reset_request() {
 
 void ccl_sched::add_subsched(const ccl_coll_param& coll_param, bool update_sched_id) {
     ccl_sched_id_t param_sched_id =
-        update_sched_id ? coll_param.comm->get_sched_id(sched_type != ccl_sched_regular) : sched_id;
+        update_sched_id ? coll_param.comm->get_sched_id(sched_type != ccl_sched_regular)
+                        : this->sched_id;
 
     ccl_sched_create_param param = { sched_type, param_sched_id, coll_param };
 
@@ -317,95 +323,28 @@ ccl_sched::ccl_sched_ptr ccl_sched::create(const ccl_coll_param& param, const cc
             "found sched, reuse ", sched, ", type ", ccl_coll_type_to_str(sched->coll_param.ctype));
     }
 
-    sched->configured_preparation = false;
-    sched->finished_preparation = false;
-
     return sched;
 }
 
-#ifdef CCL_ENABLE_SYCL
-int ccl_sched::configure_preparation() {
-    if (configured_preparation) {
-        return prerun_entry_idx;
-    }
-    configured_preparation = true;
-    ccl_selector_param param;
-    param.ctype = parent_sched->coll_param.ctype;
-    param.count = parent_sched->coll_param.get_send_count();
-    param.send_counts = parent_sched->coll_param.send_counts.data();
-    param.recv_counts = parent_sched->coll_param.recv_counts.data();
-    param.dtype = parent_sched->coll_param.dtype;
-    param.comm = parent_sched->coll_param.comm;
-    param.stream = parent_sched->coll_param.stream;
-    param.buf = parent_sched->coll_param.send_bufs.back();
-    param.is_sycl_buf = parent_sched->coll_attr.is_sycl_buf;
-    param.hint_algo = parent_sched->hint_algo;
-    param.is_scaleout = parent_sched->coll_param.is_scaleout;
-    // here the cases are proceded where "early submission" solution doesn't work currently
-    // early submission without restrictions requires entry-sched architecture to be rewritten
-    if (coll_attr.to_cache ||
-        (parent_sched->coll_param.ctype != ccl_coll_allreduce &&
-         parent_sched->coll_param.ctype != ccl_coll_allgatherv) ||
-        (!ccl_is_device_side_algo(param) &&
-         !(parent_sched->coll_param.ctype == ccl_coll_allreduce &&
-           ccl::global_data::get().algorithm_selector->get<ccl_coll_allreduce>(param) ==
-               ccl_coll_allreduce_ring_rma)) ||
-        ccl::global_data::get().executor->get_worker_count() > 1 ||
-        ccl::global_data::env().atl_transport == ccl_atl_ofi ||
-        !ccl::global_data::env().enable_ze_bidir_algo ||
-        !ccl::global_data::env().enable_ze_single_list ||
-        (ccl::global_data::env().enable_p2p_access != CCL_ENV_INT_NOT_SPECIFIED &&
-         !ccl::global_data::env().enable_p2p_access)) {
-        return entries.size() - 1;
+bool ccl_sched::is_submitted_to_gpu() {
+    return submitted_to_gpu;
+}
+
+void ccl_sched::set_submitted_to_gpu(bool submitted) {
+    LOG_DEBUG(
+        "sched ", this, " parent_sched ", parent_sched, " set_submitted_to_gpu(", submitted, ")");
+    if (parent_sched) {
+        parent_sched->set_submitted_to_gpu(submitted);
     }
     else {
-        for (int entry_idx = entries.size() - 1; entry_idx >= 0; --entry_idx) {
-            // completion of some entries is required before submitting other entries
-            if (entries[entry_idx]->is_urgent()) {
-                return entry_idx;
-            }
-        }
+        submitted_to_gpu = submitted;
     }
-    return invalid_entry_idx;
-}
-
-void ccl_sched::prerun() {
-    CCL_THROW_IF_NOT(prerun_entry_idx != invalid_entry_idx, "invalid early submission entry idx");
-    // run entries to submit them to level-zero
-    for (size_t i = prerun_entry_idx; i < entries.size(); ++i) {
-        // some entries are not being prerun because they don't require immediate submission
-        if (!entries[i]->is_nonblocking()) {
-            entries[i]->do_progress();
-        }
-    }
-    // run coll entries again to submit their subsched to level-zero
-    for (auto& entry : entries) {
-        if (entry->is_coll()) {
-            entry->do_progress();
-        }
+    if (subsched_entry_parent_sched) {
+        subsched_entry_parent_sched->set_submitted_to_gpu(submitted);
     }
 }
-#endif // CCL_ENABLE_SYCL
 
 void ccl_sched::do_progress() {
-#ifdef CCL_ENABLE_SYCL
-    bool prepared = true;
-    if (parent_sched != nullptr && subscheds.size() == 0 && !parent_sched->coll_attr.synchronous &&
-        !finished_preparation &&
-        ccl::utils::should_use_sycl_output_event(parent_sched->coll_param.stream)) {
-        prerun_entry_idx = configure_preparation();
-        if (prerun_entry_idx > invalid_entry_idx &&
-            entries[prerun_entry_idx]->get_status() < ccl_sched_entry_status_complete) {
-            prepared = false;
-        }
-        if (prepared) {
-            ++prerun_entry_idx;
-            prerun();
-        }
-    }
-    finished_preparation = prepared;
-#endif // CCL_ENABLE_SYCL
-
     for (auto entry_idx = start_idx; entry_idx < entries.size(); ++entry_idx) {
         auto& entry = entries[entry_idx];
 
@@ -456,11 +395,6 @@ void ccl_sched::do_progress() {
             break;
         }
     }
-#ifdef CCL_ENABLE_SYCL
-    if (!prepared && entries[entries.size() - 1]->get_status() >= ccl_sched_entry_status_complete) {
-        finished_preparation = true;
-    }
-#endif // CCL_ENABLE_SYCL
 }
 
 bool ccl_sched::is_strict_order_satisfied() {
@@ -513,12 +447,13 @@ void ccl_sched::complete() {
         sched_complete_hook();
 
         // now we completed everything related to finalization of the current sched,
-        // so we can finaly complete it
-        get_request()->complete();
+        // so we can finally complete it
+        bool success = get_request()->complete();
+        CCL_THROW_IF_NOT(success, "request was not completed correctly!");
 
         if (parent_schedule) {
-            // after we call try_to_restart() on the parent, it's request might be changed
-            // so rememeber it here to call complete on
+            // after we call try_to_restart() on the parent, its request might be changed
+            // so rememeber it here to call complete on it
             auto parent_req = parent_schedule->get_request();
             // check for completed parent request, see comment above for how this works
             if (parent_req->complete_counter() == 1) {
@@ -559,9 +494,6 @@ void ccl_sched::renew(bool need_update_id, bool reset) {
 
     if (reset)
         reset_state();
-
-    configured_preparation = false;
-    finished_preparation = false;
 }
 
 void ccl_sched::add_barrier() {
@@ -596,6 +528,11 @@ void ccl_sched::set_output_event(ccl_request* request) {
     auto q = coll_param.stream->get_native_stream();
     auto context = q.get_context();
 #ifdef CCL_ENABLE_SYCL_INTEROP_EVENT
+    if (request->has_sync_event()) {
+        LOG_DEBUG("has a sync event, returning");
+        return;
+    }
+
     // even when we use cache in non-async case we cannot really guarantee that
     // some ccl event is not used by a user, so we cannot reuse request for another
     // operation, otherwise we could end up with multiple events referring to the
@@ -606,18 +543,11 @@ void ccl_sched::set_output_event(ccl_request* request) {
     CCL_THROW_IF_NOT(pool_it != pools.end(), "pool must be initialized for the context");
 
     ze_event_handle_t ev = pool_it->second.get_event();
-    LOG_DEBUG("convert L0 event: ", ev, "into a SYCL event and submit a barrier");
+    LOG_DEBUG("convert L0 event: ", ev, " into a SYCL event and submit a barrier");
 
     auto sync_event = ccl::utils::make_event(context, ev);
-    if (ccl::global_data::env().enable_external_queue) {
-        // Todo: when using external in-order queue, need to submit barrier after CCL kernel submission
-        LOG_DEBUG(
-            "Current external passed in-order queue means CCL kernel wait execution, so no need to submit barrier");
-        request->set_sync_event(sync_event);
-        request->set_native_event(sync_event);
-    }
-    else {
-        request->set_sync_event(sync_event);
+    request->set_sync_event(sync_event);
+    if (coll_attr.synchronous) {
         request->set_native_event(ccl::utils::submit_barrier(q));
     }
 

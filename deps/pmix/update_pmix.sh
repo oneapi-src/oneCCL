@@ -21,7 +21,10 @@ install_path_root=`pwd`
 install_path=`pwd`/_install
 
 git clone $REPO
-cd ./openpmix
+pushd ./openpmix
+target_version="v4.2.2"
+git checkout ${target_version}
+
 git submodule update --init --recursive
 ./autogen.pl
 ./configure --prefix=$install_path
@@ -30,5 +33,9 @@ cp $install_path_root/openpmix/include/pmix.h $install_path_root/include
 cp $install_path_root/openpmix/include/pmix_common.h $install_path_root/include
 cp $install_path_root/openpmix/include/pmix_deprecated.h $install_path_root/include
 cp $install_path_root/openpmix/include/pmix_version.h $install_path_root/include
+popd
+
+git add include
+git commit -m "deps: updated pmix to ${target_version}"
 
 rm -rf $install_path_root/openpmix

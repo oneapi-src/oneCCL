@@ -147,8 +147,8 @@ bool is_gpu_stream(const ccl_selector_param& param) {
 }
 
 bool is_single_node(const ccl_selector_param& param) {
-    size_t local_proc_count = ccl::global_data::get().get_local_proc_count();
-    return static_cast<size_t>(param.comm->size()) <= local_proc_count;
+    const ccl_comm* node_comm = param.comm->get_node_comm().get();
+    return param.comm->size() == node_comm->size();
 }
 
 bool is_single_card(const ccl_selector_param& param) {
@@ -351,6 +351,9 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
                     "ppn must be equal");
 
     RETURN_FALSE_IF((comm_size % 2 != 0), "odd comm_size is not supported");
+
+    const int node_comm_size = param.comm->get_node_comm().get()->size();
+    RETURN_FALSE_IF((node_comm_size % 2 != 0), "odd node_comm_size is not supported");
 
     RETURN_FALSE_IF(!checkers::is_single_card(param) && !checkers::is_single_node(param) &&
                         (local_proc_count % 2 != 0),

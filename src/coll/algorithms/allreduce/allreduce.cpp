@@ -28,6 +28,8 @@
 #include "sched/entry/factory/chunked_entry_factory.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
 
+using namespace ccl::utils;
+
 ccl::status ccl_coll_build_direct_allreduce(ccl_sched* sched,
                                             ccl_buffer send_buf,
                                             ccl_buffer recv_buf,
@@ -442,8 +444,15 @@ ccl::status ccl_coll_build_ring_allreduce(ccl_sched* sched,
         recv_counts[comm_size - 1] = last_block_count;
     }
 
-    ccl_coll_build_ring_allgatherv(
-        sched, recv_buf, recv_counts[comm->rank()], recv_buf, recv_counts.data(), dtype, comm);
+    std::vector<ccl_sched*> part_scheds = { sched };
+    ccl_coll_build_ring_allgatherv(nullptr,
+                                   part_scheds,
+                                   recv_buf,
+                                   recv_counts[comm->rank()],
+                                   recv_buf,
+                                   recv_counts.data(),
+                                   dtype,
+                                   comm);
 
     sched->add_barrier();
 
@@ -735,28 +744,14 @@ ccl::status ccl_coll_build_2d_allreduce(ccl_sched* sched,
 }
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-
-ccl::status ccl_coll_build_topo_allreduce(ccl_sched* sched,
-                                          ccl_buffer send_buf,
-                                          ccl_buffer recv_buf,
-                                          size_t count,
-                                          const ccl_datatype& dtype,
-                                          ccl::reduction op,
-                                          ccl_comm* comm) {
+ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
+                                               ccl_buffer send_buf,
+                                               ccl_buffer recv_buf,
+                                               size_t count,
+                                               const ccl_datatype& dtype,
+                                               ccl::reduction op,
+                                               ccl_comm* comm) {
     LOG_DEBUG("build topo allreduce");
-
-    std::vector<ze_handle_exchange_entry::mem_desc_t> in_buffers{
-        { send_buf.get_ptr(), ccl::ze::ipc_mem_type::memory }, // 0
-        { recv_buf.get_ptr(), ccl::ze::ipc_mem_type::memory }, // 1
-    };
-
-    size_t ipc_event_count{};
-    size_t max_ipc_event_count{ 6 };
-    ze_event_pool_handle_t ipc_event_pool{};
-    if (ccl::global_data::env().enable_ze_barrier) {
-        ipc_event_pool = sched->get_memory().ipc_event_pool_manager.create(max_ipc_event_count);
-        in_buffers.push_back({ static_cast<void*>(ipc_event_pool), ccl::ze::ipc_mem_type::pool });
-    }
 
     ccl_comm* pair_comm = comm->get_pair_comm().get();
     ccl_comm* even_comm = comm->get_even_comm().get();
@@ -772,21 +767,104 @@ ccl::status ccl_coll_build_topo_allreduce(ccl_sched* sched,
     bool is_single_card = topo_manager.is_single_card;
     bool is_multi_card = (even_comm_size > 1);
 
+    // use mdfi + xelink pipeline kernel for reduce_scatter phase
+    bool use_reduce_scatter_pipeline =
+        ccl::global_data::env().reduce_scatter_monolithic_pipeline_kernel &&
+        even_comm->size() > 1 && pair_comm->size() > 1 && count >= (size_t)comm_size &&
+        is_multi_card &&
+        ccl::global_data::env().allgatherv_topo_read; // TODO: remove after refactoring allgatherv
+
+    // tmp buff for write mode reduce scatter
+    // TODO: fix - write based reduce_scatter fails intermittently for int8. However, such
+    // failure has been seem for the read based path as well.
+    ccl_buffer tmp_write_buf;
+    bool is_rs_write =
+        !ccl::global_data::env().reduce_scatter_topo_read && !use_reduce_scatter_pipeline &&
+        !ccl::global_data::env().reduce_scatter_monolithic_kernel && dtype != ccl::datatype::int8;
+
+    // optimized allreduce_entry is for single node and uses allgatherv write protocol.
+    // this entry combines reduce_scatter and allgather across even_comm
+    // If write based copy is being used reduce_scatter, we should skip a2a_allreduce_entry
+    // because that path uses read based copy instead
+    bool use_a2a_allreduce_entry =
+        is_single_node && !ccl::global_data::env().allgatherv_topo_read && !is_rs_write;
+
+    if (is_rs_write) {
+        int n_even_comm_sets = comm->size() / even_comm->size();
+        size_t tmp_buf_bytes = dtype.size() * count / n_even_comm_sets + count % n_even_comm_sets;
+        ccl::alloc_param alloc_param(
+            tmp_buf_bytes, ccl::buffer_type::ze, ccl::buffer_place::device);
+        tmp_write_buf = sched->alloc_buffer(alloc_param);
+    }
+
+    std::vector<ze_handle_exchange_entry::mem_desc_t> in_buffers{
+        { send_buf.get_ptr(), ccl::ze::ipc_mem_type::memory }, // 0
+        { recv_buf.get_ptr(), ccl::ze::ipc_mem_type::memory }, // 1
+    };
+    size_t tmp_write_buf_idx = -1;
+    if (is_rs_write) {
+        in_buffers.push_back({ tmp_write_buf.get_ptr(), ccl::ze::ipc_mem_type::memory }); // 2
+        tmp_write_buf_idx = 2;
+    }
+
     size_t recv_buf_idx = 1;
 
     int skip_rank = ccl_comm::invalid_rank;
-    if (ccl::global_data::env().enable_kernel_1s_ipc_wa && is_single_card) {
+    if (ccl::global_data::env().enable_kernel_1s_ipc_wa && is_single_card &&
+        !use_reduce_scatter_pipeline) {
         skip_rank = ccl::global_data::env().kernel_1s_lead;
     }
 
-    ccl::add_handle_exchange(
-        sched, node_comm, in_buffers, skip_rank, ipc_event_pool, ipc_event_count++);
+    std::vector<ccl_buffer> tmp_bufs;
+    size_t tmp_buf_idx_start = -1;
+    if (use_reduce_scatter_pipeline) {
+        ze_utils::alloc_tmp_bufs(
+            sched, comm, tmp_bufs, in_buffers, tmp_buf_idx_start, count, dtype);
+    }
+
+    size_t ipc_event_count{};
+    // note: increase max_ipc_event_count for each new IPC operation added in the source code,
+    // which often also involves ipc_event_count++
+    size_t max_ipc_event_count{ 8 };
+    ze_event_pool_handle_t ipc_event_pool{};
+    if (ccl::global_data::env().enable_ze_barrier) {
+        ipc_event_pool = sched->get_memory().ipc_event_pool_manager.create(max_ipc_event_count);
+        in_buffers.push_back({ static_cast<void*>(ipc_event_pool), ccl::ze::ipc_mem_type::pool });
+    }
+
+    // This algorithm uses ze_events to link different ze commands (from within an
+    // entry or between different entries). It also uses these ze_events to link with
+    // host-side tasks (such as barriers, scaleout, etc.).
+    //
+    // We have implemented this algorithm (at least from the perspective of this file,
+    // without digging deeper into the contents of 'ze_entries') by linking tasks in a
+    // very linear way. For example, in practice, we mostly create task graphs (DAG)
+    // that look very linear (taskA -> taskB -> taskC), without forks.
+    //
+    // We are using wait_events to keep track of which events the next task needs to
+    // wait on. In most cases, we use clear_and_push_back as an easy way to say "all
+    // events in wait_events will have been signaled if the new event is signaled,
+    // therefore we only need to wait on the latter."
+    std::vector<ze_event_handle_t> wait_events{};
+    ze_event_handle_t out_event{};
+
+    // TODO: remove this if() condition. We want to always use a single list
+    if (!use_reduce_scatter_pipeline) {
+        sched->try_enable_ze_single_list();
+    }
+
+    ccl::add_handle_exchange(sched,
+                             node_comm,
+                             wait_events,
+                             out_event,
+                             in_buffers,
+                             skip_rank,
+                             ipc_event_pool,
+                             ipc_event_count++);
+    clear_and_push_back(wait_events, out_event);
 
     CCL_THROW_IF_NOT(comm_size % 2 == 0, "unexpected comm_size ", comm_size);
     CCL_THROW_IF_NOT(node_comm_size % 2 == 0, "unexpected node_comm_size ", node_comm_size);
-
-    sched->try_enable_ze_single_list();
-    std::vector<ze_event_handle_t> wait_events;
 
     size_t base_count = count;
     size_t pair_comm_offset = 0;
@@ -801,7 +879,8 @@ ccl::status ccl_coll_build_topo_allreduce(ccl_sched* sched,
             base_count += count % pair_comm->size();
     }
     else if (pair_comm->rank() != ccl::global_data::env().kernel_1s_lead) {
-        ccl::add_comm_barrier(sched, pair_comm, ipc_event_pool, ipc_event_count++);
+        ccl::add_comm_barrier(
+            sched, pair_comm, wait_events, out_event, ipc_event_pool, ipc_event_count++);
         CCL_THROW_IF_NOT(ipc_event_count <= max_ipc_event_count,
                          "unexpected ipc_event_count ",
                          ipc_event_count,
@@ -815,81 +894,211 @@ ccl::status ccl_coll_build_topo_allreduce(ccl_sched* sched,
     if (even_comm->rank() == even_comm_size - 1) {
         block_count += base_count % even_comm_size;
     }
-    size_t even_comm_offset_bytes = main_block_count * even_comm->rank() * dtype.size();
-    ccl_buffer pair_comm_send_buf = send_buf + pair_comm_offset_bytes;
-    ccl_buffer pair_comm_recv_buf = recv_buf + pair_comm_offset_bytes;
-    ccl_buffer even_comm_recv_buf = recv_buf + pair_comm_offset_bytes + even_comm_offset_bytes;
 
-    LOG_DEBUG("rank: ",
-              pair_comm->rank(),
-              ", count: ",
-              base_count,
-              ", pair_comm_offset: ",
-              pair_comm_offset);
-    if (is_single_card) {
-        entry_factory::create<ze_onesided_allreduce_entry>(sched,
-                                                           pair_comm_send_buf,
-                                                           pair_comm_recv_buf,
-                                                           base_count,
-                                                           dtype,
-                                                           op,
-                                                           pair_comm,
-                                                           wait_events,
-                                                           pair_comm_offset);
-    }
-    else {
-        LOG_DEBUG("topo/scale_up/intra: use ze_onesided_reduce");
-        auto entry = entry_factory::create<ze_onesided_reduce_entry>(sched,
-                                                                     pair_comm_send_buf,
-                                                                     pair_comm_recv_buf,
-                                                                     base_count,
-                                                                     dtype,
-                                                                     op,
-                                                                     pair_comm->rank(),
-                                                                     pair_comm,
-                                                                     wait_events,
-                                                                     pair_comm_offset);
-        wait_events.push_back(entry->entry_event);
-    }
-    sched->add_barrier();
+    const size_t even_comm_offset = main_block_count * even_comm->rank();
+    const size_t even_comm_offset_bytes = even_comm_offset * dtype.size();
+    ccl_buffer even_comm_recv_buf{};
+    ccl_buffer pair_comm_recv_buf{};
 
     bool is_read_allgatherv = ccl::global_data::env().allgatherv_topo_read;
-    if (is_multi_card) {
-        ccl::add_comm_barrier(sched, even_comm, wait_events, ipc_event_pool, ipc_event_count++);
-        // cannot use ze_a2a_allreduce_entry with allgatherv_read
-        // since comm_barrier is not available inside the entry
-        if (is_single_node && !is_read_allgatherv) {
-            LOG_DEBUG("topo/scale_up/intra: use ze_a2a_allreduce_entry");
-            auto entry = entry_factory::create<ze_a2a_allreduce_entry>(sched,
-                                                                       pair_comm_recv_buf,
-                                                                       pair_comm_recv_buf,
-                                                                       base_count,
-                                                                       dtype,
-                                                                       op,
-                                                                       even_comm,
-                                                                       wait_events,
-                                                                       recv_buf_idx,
-                                                                       recv_buf_idx,
-                                                                       pair_comm_offset);
-            wait_events.push_back(entry->entry_event);
-            ccl::add_comm_barrier(sched, even_comm, wait_events, ipc_event_pool, ipc_event_count++);
+    if (use_reduce_scatter_pipeline) {
+        LOG_DEBUG("topo/scale_up/intra: use ze_a2a_pipeline_read_write_entry");
+
+        ze_a2a_pipeline_read_write_entry::attr attrs{ .use_continous_data = true,
+                                                      .use_remote_target = true };
+        auto reduce_entry =
+            entry_factory::create<ze_a2a_pipeline_read_write_entry>(sched,
+                                                                    comm,
+                                                                    send_buf,
+                                                                    tmp_bufs,
+                                                                    tmp_buf_idx_start,
+                                                                    count,
+                                                                    dtype,
+                                                                    op,
+                                                                    wait_events,
+                                                                    attrs);
+        wait_events.clear();
+        wait_events.push_back(reduce_entry->entry_event);
+
+        ccl::add_comm_barrier(
+            sched, node_comm, wait_events, out_event, ipc_event_pool, ipc_event_count++);
+        clear_and_push_back(wait_events, out_event);
+
+        LOG_DEBUG("topo/scale_up/intra: use ze_a2a_pipeline_reduce_entry");
+        even_comm_recv_buf = recv_buf + pair_comm_offset_bytes + even_comm_offset_bytes;
+        pair_comm_recv_buf = recv_buf + pair_comm_offset_bytes;
+        auto scatter_entry = entry_factory::create<ze_a2a_pipeline_reduce_entry>(
+            sched, comm, even_comm_recv_buf, tmp_bufs, count, dtype, op, wait_events);
+        wait_events.clear();
+        wait_events.push_back(scatter_entry->entry_event);
+
+        ccl::add_comm_barrier(
+            sched, node_comm, wait_events, out_event, ipc_event_pool, ipc_event_count++);
+        clear_and_push_back(wait_events, out_event);
+    }
+    else {
+        ccl_buffer pair_comm_send_buf = send_buf + pair_comm_offset_bytes;
+        even_comm_recv_buf = recv_buf + pair_comm_offset_bytes + even_comm_offset_bytes;
+        pair_comm_recv_buf = recv_buf + pair_comm_offset_bytes;
+
+        LOG_DEBUG("rank: ",
+                  pair_comm->rank(),
+                  ", count: ",
+                  base_count,
+                  ", pair_comm_offset: ",
+                  pair_comm_offset);
+        if (is_single_card) {
+            // workaround for hardware issue that MDFI write from kernel
+            // with 8 bit and 16 bit data types are slow. Instead perform
+            // MDFI read + reduce in kernel and MDFI write using memcpy
+            if (dtype == ccl::datatype::int8 || dtype == ccl::datatype::float16 ||
+                dtype == ccl::datatype::bfloat16) {
+                auto entry = entry_factory::create<ze_onesided_reduce_entry>(sched,
+                                                                             pair_comm_send_buf,
+                                                                             pair_comm_recv_buf,
+                                                                             base_count,
+                                                                             dtype,
+                                                                             op,
+                                                                             pair_comm->rank(),
+                                                                             pair_comm,
+                                                                             wait_events,
+                                                                             pair_comm_offset);
+                wait_events.clear();
+                wait_events.push_back(entry->entry_event);
+                int peer_rank = (pair_comm->rank() + 1) % pair_comm->size();
+                auto copy_entry =
+                    entry_factory::create<ze_copy_entry>(sched,
+                                                         recv_buf,
+                                                         ccl_buffer(),
+                                                         base_count,
+                                                         dtype,
+                                                         copy_attr(peer_rank,
+                                                                   recv_buf_idx,
+                                                                   copy_direction::t2t,
+                                                                   pair_comm,
+                                                                   pair_comm_offset,
+                                                                   pair_comm_offset),
+                                                         wait_events);
+                clear_and_push_back(wait_events, copy_entry->entry_event);
+            }
+            else {
+                auto entry = entry_factory::create<ze_onesided_allreduce_entry>(sched,
+                                                                                pair_comm_send_buf,
+                                                                                pair_comm_recv_buf,
+                                                                                base_count,
+                                                                                dtype,
+                                                                                op,
+                                                                                pair_comm,
+                                                                                wait_events,
+                                                                                pair_comm_offset);
+                clear_and_push_back(wait_events, entry->entry_event);
+            }
         }
         else {
-            LOG_DEBUG("topo/scale_up/inter: use ze_a2a_reduce_scatter_entry");
-            std::vector<size_t> block_counts(even_comm->size(), main_block_count);
-            block_counts.back() += base_count % even_comm_size;
-            auto entry = entry_factory::create<ze_a2a_reduce_scatter_entry>(sched,
-                                                                            pair_comm_recv_buf,
-                                                                            even_comm_recv_buf,
-                                                                            block_counts.data(),
-                                                                            dtype,
-                                                                            op,
-                                                                            even_comm,
-                                                                            wait_events,
-                                                                            recv_buf_idx,
-                                                                            pair_comm_offset);
-            wait_events.push_back(entry->entry_event);
-            ccl::add_comm_barrier(sched, even_comm, wait_events, ipc_event_pool, ipc_event_count++);
+            LOG_DEBUG("topo/scale_up/intra: use ze_onesided_reduce");
+            auto entry = entry_factory::create<ze_onesided_reduce_entry>(sched,
+                                                                         pair_comm_send_buf,
+                                                                         pair_comm_recv_buf,
+                                                                         base_count,
+                                                                         dtype,
+                                                                         op,
+                                                                         pair_comm->rank(),
+                                                                         pair_comm,
+                                                                         wait_events,
+                                                                         pair_comm_offset);
+            clear_and_push_back(wait_events, entry->entry_event);
+        }
+        sched->add_barrier();
+
+        if (is_multi_card) {
+            ccl::add_comm_barrier(
+                sched, even_comm, wait_events, out_event, ipc_event_pool, ipc_event_count++);
+            clear_and_push_back(wait_events, out_event);
+
+            // cannot use ze_a2a_allreduce_entry with allgatherv_read
+            // since comm_barrier is not available inside the entry
+            if (use_a2a_allreduce_entry) {
+                LOG_DEBUG("topo/scale_up/intra: use ze_a2a_allreduce_entry");
+                auto entry = entry_factory::create<ze_a2a_allreduce_entry>(sched,
+                                                                           pair_comm_recv_buf,
+                                                                           pair_comm_recv_buf,
+                                                                           base_count,
+                                                                           dtype,
+                                                                           op,
+                                                                           even_comm,
+                                                                           wait_events,
+                                                                           recv_buf_idx,
+                                                                           recv_buf_idx,
+                                                                           pair_comm_offset);
+                clear_and_push_back(wait_events, entry->entry_event);
+                ccl::add_comm_barrier(
+                    sched, even_comm, wait_events, out_event, ipc_event_pool, ipc_event_count++);
+                clear_and_push_back(wait_events, out_event);
+            }
+            else {
+                std::vector<size_t> block_counts(even_comm->size(), main_block_count);
+                block_counts.back() += base_count % even_comm_size;
+                if (!is_rs_write) {
+                    LOG_DEBUG("topo/scale_up/inter: use ze_a2a_reduce_scatter_entry");
+                    auto entry =
+                        entry_factory::create<ze_a2a_reduce_scatter_entry>(sched,
+                                                                           pair_comm_recv_buf,
+                                                                           even_comm_recv_buf,
+                                                                           block_counts.data(),
+                                                                           dtype,
+                                                                           op,
+                                                                           even_comm,
+                                                                           wait_events,
+                                                                           recv_buf_idx,
+                                                                           pair_comm_offset);
+                    clear_and_push_back(wait_events, entry->entry_event);
+                    ccl::add_comm_barrier(sched,
+                                          even_comm,
+                                          wait_events,
+                                          out_event,
+                                          ipc_event_pool,
+                                          ipc_event_count++);
+                    clear_and_push_back(wait_events, out_event);
+                }
+                else {
+                    // copy using write
+                    LOG_DEBUG("topo/scale_up/inter: use ze_a2a_reduce_scatter_write_copy_entry ");
+
+                    reduce_scatter_args rs_args = { even_comm, block_counts, dtype, op };
+                    reduce_scatter_bufs rs_bufs = { recv_buf,
+                                                    even_comm_recv_buf,
+                                                    tmp_write_buf,
+                                                    tmp_write_buf_idx,
+                                                    pair_comm_offset };
+
+                    auto copy_entry = entry_factory::create<ze_a2a_reduce_scatter_write_copy_entry>(
+                        sched, rs_args, rs_bufs, wait_events);
+
+                    clear_and_push_back(wait_events, copy_entry->entry_event);
+                    ccl::add_comm_barrier(sched,
+                                          even_comm,
+                                          wait_events,
+                                          out_event,
+                                          ipc_event_pool,
+                                          ipc_event_count++);
+                    clear_and_push_back(wait_events, out_event);
+
+                    // local reduction
+                    LOG_DEBUG("topo/scale_up/inter: use ze_a2a_reduce_scatter_write_kernel_entry");
+                    auto kernel_entry =
+                        entry_factory::create<ze_a2a_reduce_scatter_write_kernel_entry>(
+                            sched, rs_args, rs_bufs, wait_events);
+
+                    clear_and_push_back(wait_events, kernel_entry->entry_event);
+                    ccl::add_comm_barrier(sched,
+                                          even_comm,
+                                          wait_events,
+                                          out_event,
+                                          ipc_event_pool,
+                                          ipc_event_count++);
+                    clear_and_push_back(wait_events, out_event);
+                }
+            }
         }
     }
 
@@ -901,14 +1110,25 @@ ccl::status ccl_coll_build_topo_allreduce(ccl_sched* sched,
                                      .reduction = op,
                                      .comm = r2r_comm };
 
-    ccl::add_scaleout(sched, coll_param, is_single_node, wait_events);
+    out_event = nullptr;
+    ccl::add_scaleout(sched, coll_param, is_single_node, wait_events, out_event);
+    if (out_event) {
+        clear_and_push_back(wait_events, out_event);
+    }
 
-    if (is_multi_card && (!is_single_node || is_read_allgatherv)) {
+    // allgatherv pipeline uses xelink read which is is_read_allgatherv=1
+    const bool use_allgatherv_pipeline =
+        ccl::global_data::env().allgatherv_monolithic_pipeline_kernel &&
+        count >= (size_t)comm_size && is_read_allgatherv;
+
+    if (is_multi_card && !use_a2a_allreduce_entry) {
         LOG_DEBUG("topo/scale_up/inter: use ze_a2a_allgatherv");
         // for multinode with allgatherv_read, use a comm_barrier to make sure all
         // r2r scaleout within even_comm has finished so that remote reads are valid
         if (!is_single_node && is_read_allgatherv) {
-            ccl::add_comm_barrier(sched, even_comm, wait_events, ipc_event_pool, ipc_event_count++);
+            ccl::add_comm_barrier(
+                sched, even_comm, wait_events, out_event, ipc_event_pool, ipc_event_count++);
+            clear_and_push_back(wait_events, out_event);
         }
 
         std::vector<size_t> recv_counts(even_comm_size, main_block_count);
@@ -919,6 +1139,9 @@ ccl::status ccl_coll_build_topo_allreduce(ccl_sched* sched,
         for (int i = 0; i < even_comm_size; i++) {
             recv_bufs.push_back(pair_comm_recv_buf + i * main_block_count * dtype.size());
         }
+        // allreduce topo has ipc handle exchange of start of the buffer whereas
+        // allgatherv topo use separate handles for the partitions of each rank
+        constexpr bool is_separate_block_handles = false;
         auto entry = entry_factory::create<ze_a2a_allgatherv_entry>(sched,
                                                                     recv_bufs[even_comm->rank()],
                                                                     block_count,
@@ -928,12 +1151,37 @@ ccl::status ccl_coll_build_topo_allreduce(ccl_sched* sched,
                                                                     even_comm,
                                                                     wait_events,
                                                                     recv_buf_idx,
-                                                                    pair_comm_offset);
-        wait_events.push_back(entry->entry_event);
-        ccl::add_comm_barrier(sched, even_comm, wait_events, ipc_event_pool, ipc_event_count++);
+                                                                    pair_comm_offset,
+                                                                    use_allgatherv_pipeline,
+                                                                    pair_comm,
+                                                                    is_separate_block_handles);
+        clear_and_push_back(wait_events, entry->entry_event);
+
+        // copy local data to pair_comm neighbor
+        if (pair_comm->size() > 1 && use_allgatherv_pipeline) {
+            const size_t peer_pair_rank = (pair_comm->rank() + 1) % pair_comm->size();
+            copy_attr attr{};
+            attr.peer_rank = peer_pair_rank;
+            attr.peer_buf_idx = recv_buf_idx;
+            attr.direction = copy_direction::t2t;
+            attr.map_comm = pair_comm;
+            attr.in_buf_offset = pair_comm_offset + even_comm_offset;
+            attr.out_buf_offset = pair_comm_offset + even_comm_offset;
+            // copy own buffer to the pair_comm neighbor recv buffer
+            auto entry_pair = entry_factory::create<ze_copy_entry>(
+                sched, recv_buf, ccl_buffer(), block_count, dtype, attr, wait_events);
+            clear_and_push_back(wait_events, entry_pair->entry_event);
+            wait_events.push_back(entry_pair->entry_event);
+        }
+
+        ccl::add_comm_barrier(
+            sched, even_comm, wait_events, out_event, ipc_event_pool, ipc_event_count++);
+        clear_and_push_back(wait_events, out_event);
     }
 
-    if (!is_single_card && pair_comm->size() > 1) {
+    // copy is not needed since allgatherv pipeline already
+    // performed the copy to pair_comm neighbor tile
+    if (!is_single_card && pair_comm->size() > 1 && !use_allgatherv_pipeline) {
         LOG_DEBUG("topo/scale_up/intra: use ze_onesided_bcast");
         int peer_rank = (pair_comm->rank() + 1) % pair_comm->size();
         auto entry = entry_factory::create<ze_copy_entry>(sched,
@@ -948,17 +1196,32 @@ ccl::status ccl_coll_build_topo_allreduce(ccl_sched* sched,
                                                                     pair_comm_offset,
                                                                     pair_comm_offset),
                                                           wait_events);
-        wait_events.push_back(entry->entry_event);
+        clear_and_push_back(wait_events, entry->entry_event);
         sched->add_barrier();
     }
 
-    ccl::add_comm_barrier(sched, pair_comm, ipc_event_pool, ipc_event_count++);
+    ccl::add_comm_barrier(
+        sched, pair_comm, wait_events, out_event, ipc_event_pool, ipc_event_count++);
 
     CCL_THROW_IF_NOT(ipc_event_count <= max_ipc_event_count,
                      "unexpected ipc_event_count ",
                      ipc_event_count,
                      ", expected max ",
                      max_ipc_event_count);
+
+    return ccl::status::success;
+}
+
+ccl::status ccl_coll_build_topo_allreduce(ccl_sched* sched,
+                                          ccl_buffer send_buf,
+                                          ccl_buffer recv_buf,
+                                          size_t count,
+                                          const ccl_datatype& dtype,
+                                          ccl::reduction op,
+                                          ccl_comm* comm) {
+    ccl_coll_build_topo_allreduce_fill(sched, send_buf, recv_buf, count, dtype, op, comm);
+
+    entry_factory::create<execute_cmdlists_entry>(sched);
 
     return ccl::status::success;
 }

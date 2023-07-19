@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "coll/ccl_reduce_scatter_op_attr.hpp"
+#include "coll/attr/ccl_reduce_scatter_op_attr.hpp"
 
 namespace ccl {
 

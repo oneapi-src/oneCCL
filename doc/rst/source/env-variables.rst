@@ -76,6 +76,37 @@ CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL
 
 Set this environment variable to enable compute kernels for the ``ALLGATHERV`` collective using device (GPU) buffers. 
 
+
+
+CCL_REDUCE_SCATTER_MONOLITHIC_PIPELINE_KERNEL 
++++++++++++++++++++++++++++++++++++++++++++++
+
+**Syntax**
+
+::
+
+  CCL_REDUCE_SCATTER_MONOLITHIC_PIPELINE_KERNEL=<value> 
+
+
+**Arguments**
+
+.. list-table:: 
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+   
+   * - <value>
+     - Description
+   * - ``1``
+     - Uses compute kernels for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER`` collectives. 
+   * - ``0``
+     - Uses copy engines to transfer data across GPUs for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER collectives``. The default value. 
+  
+**Description**
+
+Set this environment variable to enable compute kernels, that pipeline data transfers across tiles in the same GPU and across different GPUs, for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER`` collectives using the device (GPU) buffers. 
+ 
+
 CCL_ALLTOALLV_MONOLITHIC_KERNEL 
 +++++++++++++++++++++++++++++++
 
@@ -567,6 +598,22 @@ CCL_ATL_SHM
 **Description**
 
 Set this environment variable to enable the OFI shared memory provider to communicate between ranks in the same node of the host (CPU) buffers.
+This capability requires OFI as the transport (``CCL_ATL_TRANSPORT=ofi``). 
+
+The OFI/SHM provider has support to utilize the `Intel(R) Data Streaming Accelerator* (DSA) <https://01.org/blogs/2019/introducing-intel-data-streaming-accelerator>`_. 
+To run it with DSA*, you need:
+
+* Linux* OS kernel support for the DSA* shared work queues
+* Libfabric* 1.17 or later
+
+To enable DSA, set the following environment variables:   
+
+.. code::
+
+    FI_SHM_DISABLE_CMA=1  
+    FI_SHM_USE_DSA_SAR=1  
+
+Refer to Libfabric* Programmer's Manual for the additional details about DSA* support in the SHM provider: https://ofiwg.github.io/libfabric/main/man/fi_shm.7.html. 
 
 CCL_PROCESS_LAUNCHER
 ********************
@@ -1053,9 +1100,9 @@ CCL_SYCL_OUTPUT_EVENT
    * - <value>
      - Description
    * - ``1``
-     - Enable support for SYCL output event.
+     - Enable support for SYCL output event (**default**).
    * - ``0``
-     - Disable support for SYCL output event (**default**).
+     - Disable support for SYCL output event.
 
 **Description**
 

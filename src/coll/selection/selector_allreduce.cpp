@@ -84,6 +84,9 @@ bool ccl_algorithm_selector_helper<ccl_coll_allreduce_algo>::can_use(
         can_use = false;
     else if (algo == ccl_coll_allreduce_topo && !ccl_can_use_topo_algo(param))
         can_use = false;
+    //  skip topo if count is 1
+    else if (algo == ccl_coll_allreduce_topo && param.count < 2)
+        can_use = false;
     else if (algo == ccl_coll_allreduce_2d && param.is_scaleout)
         // MLSL-1762: scale-up topo + scale-out 2d combination fails.
         // Algorithms are not compatible.

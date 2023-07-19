@@ -23,6 +23,7 @@
 #include "sched/entry/ze/ze_call.hpp"
 
 namespace ccl {
+enum class device_family;
 
 namespace ze {
 
@@ -95,6 +96,14 @@ constexpr ze_event_desc_t default_event_desc = { .stype = ZE_STRUCTURE_TYPE_EVEN
                                                  .signal = 0,
                                                  .wait = 0 };
 
+#ifdef ZE_PCI_PROPERTIES_EXT_NAME
+constexpr ze_pci_ext_properties_t default_pci_property = { .stype =
+                                                               ZE_STRUCTURE_TYPE_PCI_EXT_PROPERTIES,
+                                                           .pNext = NULL,
+                                                           .address = {},
+                                                           .maxSpeed = {} };
+#endif // ZE_PCI_PROPERTIES_EXT_NAME
+
 void load_module(const std::string& file_path,
                  ze_device_handle_t device,
                  ze_context_handle_t context,
@@ -121,22 +130,30 @@ void get_suggested_group_count(const ze_group_size_t& group_size,
 constexpr size_t max_peer_count = 5;
 
 struct ze_kernel_arg_t {
+    /// create empty arg to skip argument setting
+    ze_kernel_arg_t() noexcept : size{ 0 } {}
+
     template <class T>
-    constexpr ze_kernel_arg_t(const T* arg) noexcept
-            : size{ sizeof(T) },
-              ptr{ static_cast<const void*>(arg) } {}
+    ze_kernel_arg_t(const T* arg) noexcept : size{ sizeof(T) } {
+        elems.push_back(std::make_shared<T>(*arg));
+    }
+
     template <class T>
-    constexpr ze_kernel_arg_t(const T* arg, const size_t count) noexcept
-            : size{ sizeof(T) },
-              count{ count },
-              ptr{ static_cast<const void*>(arg) } {}
-    const size_t size;
-    //TODO: should we use a vector of ptr instead of keeping ptr and count
-    const size_t count = 1;
-    const void* ptr;
+    ze_kernel_arg_t(const std::vector<T>& args) noexcept : size{ sizeof(T) } {
+        for (auto& arg : args) {
+            elems.push_back(std::make_shared<T>(arg));
+        }
+    }
+
+    bool is_skip_arg() const {
+        return size == 0;
+    }
+
+    size_t size = 0;
+    std::vector<std::shared_ptr<void>> elems;
 };
 
-using ze_kernel_args_t = typename std::initializer_list<ze_kernel_arg_t>;
+using ze_kernel_args_t = std::vector<ze_kernel_arg_t>;
 void set_kernel_args(ze_kernel_handle_t kernel, const ze_kernel_args_t& kernel_args);
 
 enum class queue_group_type : uint8_t { unknown, compute, main, link };
@@ -155,6 +172,8 @@ bool get_buffer_context_and_device(const void* buf,
 bool get_context_global_id(ze_context_handle_t context, ssize_t* id);
 bool get_device_global_id(ze_device_handle_t device, ssize_t* id);
 uint32_t get_parent_device_id(ze_device_handle_t device);
+uint32_t get_physical_device_id(ze_device_handle_t device);
+uint32_t get_device_id(ze_device_handle_t device);
 
 int get_fd_from_handle(const ze_ipc_mem_handle_t& handle);
 void close_handle_fd(const ze_ipc_mem_handle_t& handle);
@@ -190,8 +209,6 @@ std::string to_string(zes_fabric_port_failure_flag_t flag);
 std::string to_string(const zes_fabric_port_state_t& state);
 std::string to_string(queue_group_type type);
 
-std::string join_strings(const std::vector<std::string>& tokens, const std::string& delimeter);
-
 template <typename T>
 std::string flags_to_string(uint32_t flags) {
     constexpr size_t bits = 8;
@@ -209,7 +226,7 @@ std::string flags_to_string(uint32_t flags) {
         output.emplace_back("<empty>");
     }
 
-    return join_strings(output, " | ");
+    return ccl::utils::join_strings(output, " | ");
 }
 
 } // namespace ze

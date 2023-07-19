@@ -35,6 +35,7 @@ constexpr std::initializer_list<ccl::datatype> all_dtypes = {
 typedef enum { BACKEND_HOST, BACKEND_SYCL } backend_type_t;
 typedef enum { ITER_POLICY_OFF, ITER_POLICY_AUTO } iter_policy_t;
 typedef enum { CHECK_OFF, CHECK_LAST_ITER, CHECK_ALL_ITERS } check_values_t;
+typedef enum { EXT_OFF, EXT_AUTO, EXT_ON } ext_values_t;
 
 typedef enum { SYCL_DEV_HOST, SYCL_DEV_CPU, SYCL_DEV_GPU } sycl_dev_type_t;
 typedef enum { SYCL_MEM_USM, SYCL_MEM_BUF } sycl_mem_type_t;
@@ -52,6 +53,10 @@ std::map<check_values_t, std::string> check_values_names = {
     std::make_pair(CHECK_LAST_ITER, "last"),
     std::make_pair(CHECK_ALL_ITERS, "all")
 };
+
+std::map<ext_values_t, std::string> ext_values_names = { std::make_pair(EXT_OFF, "off"),
+                                                         std::make_pair(EXT_AUTO, "auto"),
+                                                         std::make_pair(EXT_ON, "on") };
 
 #ifdef CCL_ENABLE_SYCL
 std::map<sycl_dev_type_t, std::string> sycl_dev_names = { std::make_pair(SYCL_DEV_HOST, "host"),
@@ -137,7 +142,7 @@ typedef struct user_options_t {
     bool min_elem_count_set;
     bool max_elem_count_set;
     bool elem_counts_set;
-    bool show_additional_info;
+    ext_values_t show_additional_info;
 
     user_options_t() {
         backend = DEFAULT_BACKEND;
@@ -167,7 +172,7 @@ typedef struct user_options_t {
         min_elem_count_set = false;
         max_elem_count_set = false;
         elem_counts_set = false;
-        show_additional_info = false;
+        show_additional_info = DEFAULT_EXT_VALUES;
     }
 } user_options_t;
 

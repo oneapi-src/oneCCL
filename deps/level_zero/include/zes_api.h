@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: MIT
  *
  * @file zes_api.h
- * @version v1.3-r1.3.4
+ * @version v1.6-r1.6.3
  *
  */
 #ifndef _ZES_API_H
@@ -94,6 +94,10 @@ typedef struct _zes_ras_handle_t *zes_ras_handle_t;
 typedef struct _zes_diag_handle_t *zes_diag_handle_t;
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Handle for a Sysman device overclock domain
+typedef struct _zes_overclock_handle_t *zes_overclock_handle_t;
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Defines structure types
 typedef enum _zes_structure_type_t
 {
@@ -133,6 +137,11 @@ typedef enum _zes_structure_type_t
     ZES_STRUCTURE_TYPE_RAS_STATE = 0x22,            ///< ::zes_ras_state_t
     ZES_STRUCTURE_TYPE_TEMP_CONFIG = 0x23,          ///< ::zes_temp_config_t
     ZES_STRUCTURE_TYPE_PCI_BAR_PROPERTIES_1_2 = 0x24,   ///< ::zes_pci_bar_properties_1_2_t
+    ZES_STRUCTURE_TYPE_DEVICE_ECC_DESC = 0x25,      ///< ::zes_device_ecc_desc_t
+    ZES_STRUCTURE_TYPE_DEVICE_ECC_PROPERTIES = 0x26,///< ::zes_device_ecc_properties_t
+    ZES_STRUCTURE_TYPE_POWER_LIMIT_EXT_DESC = 0x27, ///< ::zes_power_limit_ext_desc_t
+    ZES_STRUCTURE_TYPE_POWER_EXT_PROPERTIES = 0x28, ///< ::zes_power_ext_properties_t
+    ZES_STRUCTURE_TYPE_OVERCLOCK_PROPERTIES = 0x29, ///< ::zes_overclock_properties_t
     ZES_STRUCTURE_TYPE_FORCE_UINT32 = 0x7fffffff
 
 } zes_structure_type_t;
@@ -142,7 +151,8 @@ typedef enum _zes_structure_type_t
 typedef struct _zes_base_properties_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    void* pNext;                                    ///< [in,out][optional] pointer to extension-specific structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
 
 } zes_base_properties_t;
 
@@ -151,7 +161,8 @@ typedef struct _zes_base_properties_t
 typedef struct _zes_base_desc_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    const void* pNext;                              ///< [in][optional] pointer to extension-specific structure
+    const void* pNext;                              ///< [in][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
 
 } zes_base_desc_t;
 
@@ -160,7 +171,8 @@ typedef struct _zes_base_desc_t
 typedef struct _zes_base_state_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    const void* pNext;                              ///< [in][optional] pointer to extension-specific structure
+    const void* pNext;                              ///< [in][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
 
 } zes_base_state_t;
 
@@ -169,7 +181,8 @@ typedef struct _zes_base_state_t
 typedef struct _zes_base_config_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    const void* pNext;                              ///< [in][optional] pointer to extension-specific structure
+    const void* pNext;                              ///< [in][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
 
 } zes_base_config_t;
 
@@ -178,7 +191,8 @@ typedef struct _zes_base_config_t
 typedef struct _zes_base_capability_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    const void* pNext;                              ///< [in][optional] pointer to extension-specific structure
+    const void* pNext;                              ///< [in][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
 
 } zes_base_capability_t;
 
@@ -243,12 +257,32 @@ typedef struct _zes_pci_bar_properties_1_2_t zes_pci_bar_properties_1_2_t;
 typedef struct _zes_pci_stats_t zes_pci_stats_t;
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare zes_overclock_properties_t
+typedef struct _zes_overclock_properties_t zes_overclock_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare zes_control_property_t
+typedef struct _zes_control_property_t zes_control_property_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare zes_vf_property_t
+typedef struct _zes_vf_property_t zes_vf_property_t;
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare zes_diag_test_t
 typedef struct _zes_diag_test_t zes_diag_test_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare zes_diag_properties_t
 typedef struct _zes_diag_properties_t zes_diag_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare zes_device_ecc_desc_t
+typedef struct _zes_device_ecc_desc_t zes_device_ecc_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare zes_device_ecc_properties_t
+typedef struct _zes_device_ecc_properties_t zes_device_ecc_properties_t;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief Forward-declare zes_engine_properties_t
@@ -430,6 +464,99 @@ typedef struct _zes_temp_threshold_t zes_temp_threshold_t;
 /// @brief Forward-declare zes_temp_config_t
 typedef struct _zes_temp_config_t zes_temp_config_t;
 
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare zes_power_limit_ext_desc_t
+typedef struct _zes_power_limit_ext_desc_t zes_power_limit_ext_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Forward-declare zes_power_ext_properties_t
+typedef struct _zes_power_ext_properties_t zes_power_ext_properties_t;
+
+
+#if !defined(__GNUC__)
+#pragma endregion
+#endif
+// Intel 'oneAPI' Level-Zero Tool APIs for System Resource Management (Sysman)
+#if !defined(__GNUC__)
+#pragma region driver
+#endif
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Supported sysman initialization flags
+typedef uint32_t zes_init_flags_t;
+typedef enum _zes_init_flag_t
+{
+    ZES_INIT_FLAG_PLACEHOLDER = ZE_BIT(0),          ///< placeholder for future use
+    ZES_INIT_FLAG_FORCE_UINT32 = 0x7fffffff
+
+} zes_init_flag_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Initialize 'oneAPI' System Resource Management (sysman)
+/// 
+/// @details
+///     - The application must call this function or ::zeInit with the
+///       ::ZES_ENABLE_SYSMAN environment variable set before calling any other
+///       sysman function.
+///     - If this function is not called then all other sysman functions will
+///       return ::ZE_RESULT_ERROR_UNINITIALIZED.
+///     - This function will only initialize sysman. To initialize other
+///       functions, call ::zeInit.
+///     - There is no requirement to call this function before or after
+///       ::zeInit.
+///     - Only one instance of sysman will be initialized per process.
+///     - The application must call this function after forking new processes.
+///       Each forked process must call this function.
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function must be thread-safe for scenarios
+///       where multiple libraries may initialize sysman simultaneously.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
+///         + `0x1 < flags`
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesInit(
+    zes_init_flags_t flags                          ///< [in] initialization flags.
+                                                    ///< currently unused, must be 0 (default).
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Retrieves sysman driver instances
+/// 
+/// @details
+///     - A sysman driver represents a collection of physical devices.
+///     - Multiple calls to this function will return identical sysman driver
+///       handles, in the same order.
+///     - The application may pass nullptr for pDrivers when only querying the
+///       number of sysman drivers.
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pCount`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesDriverGet(
+    uint32_t* pCount,                               ///< [in,out] pointer to the number of sysman driver instances.
+                                                    ///< if count is zero, then the loader shall update the value with the
+                                                    ///< total number of sysman drivers available.
+                                                    ///< if count is greater than the number of sysman drivers available, then
+                                                    ///< the loader shall update the value with the correct number of sysman
+                                                    ///< drivers available.
+    zes_driver_handle_t* phDrivers                  ///< [in,out][optional][range(0, *pCount)] array of sysman driver instance handles.
+                                                    ///< if count is less than the number of sysman drivers available, then the
+                                                    ///< loader shall only retrieve that number of sysman drivers.
+    );
 
 #if !defined(__GNUC__)
 #pragma endregion
@@ -438,6 +565,42 @@ typedef struct _zes_temp_config_t zes_temp_config_t;
 #if !defined(__GNUC__)
 #pragma region device
 #endif
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Retrieves sysman devices within a sysman driver
+/// 
+/// @details
+///     - Multiple calls to this function will return identical sysman device
+///       handles, in the same order.
+///     - The number and order of handles returned from this function is NOT
+///       affected by the ::ZE_AFFINITY_MASK or ::ZE_ENABLE_PCI_ID_DEVICE_ORDER
+///       environment variables.
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDriver`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pCount`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesDeviceGet(
+    zes_driver_handle_t hDriver,                    ///< [in] handle of the sysman driver instance
+    uint32_t* pCount,                               ///< [in,out] pointer to the number of sysman devices.
+                                                    ///< if count is zero, then the driver shall update the value with the
+                                                    ///< total number of sysman devices available.
+                                                    ///< if count is greater than the number of sysman devices available, then
+                                                    ///< the driver shall update the value with the correct number of sysman
+                                                    ///< devices available.
+    zes_device_handle_t* phDevices                  ///< [in,out][optional][range(0, *pCount)] array of handle of sysman devices.
+                                                    ///< if count is less than the number of sysman devices available, then
+                                                    ///< driver shall only retrieve that number of sysman devices.
+    );
+
 ///////////////////////////////////////////////////////////////////////////////
 #ifndef ZES_STRING_PROPERTY_SIZE
 /// @brief Maximum number of characters in string properties.
@@ -487,7 +650,8 @@ typedef enum _zes_reset_reason_flag_t
 typedef struct _zes_device_state_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    const void* pNext;                              ///< [in][optional] pointer to extension-specific structure
+    const void* pNext;                              ///< [in][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     zes_reset_reason_flags_t reset;                 ///< [out] Indicates if the device needs to be reset and for what reasons.
                                                     ///< returns 0 (none) or combination of ::zes_reset_reason_flag_t
     zes_repair_status_t repaired;                   ///< [out] Indicates if the device has been repaired
@@ -499,7 +663,8 @@ typedef struct _zes_device_state_t
 typedef struct _zes_device_properties_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    void* pNext;                                    ///< [in,out][optional] pointer to extension-specific structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     ze_device_properties_t core;                    ///< [out] Core device properties
     uint32_t numSubdevices;                         ///< [out] Number of sub-devices. A value of 0 indicates that this device
                                                     ///< doesn't have sub-devices.
@@ -535,6 +700,8 @@ typedef struct _zes_device_properties_t
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -557,6 +724,8 @@ zesDeviceGetProperties(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -584,6 +753,8 @@ zesDeviceGetState(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INSUFFICIENT_PERMISSIONS
@@ -607,7 +778,8 @@ zesDeviceReset(
 typedef struct _zes_process_state_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    const void* pNext;                              ///< [in][optional] pointer to extension-specific structure
+    const void* pNext;                              ///< [in][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     uint32_t processId;                             ///< [out] Host OS process ID.
     uint64_t memSize;                               ///< [out] Device memory size in bytes allocated by this process (may not
                                                     ///< necessarily be resident on the device at the time of reading).
@@ -635,6 +807,8 @@ typedef struct _zes_process_state_t
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -685,7 +859,8 @@ typedef struct _zes_pci_speed_t
 typedef struct _zes_pci_properties_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    void* pNext;                                    ///< [in,out][optional] pointer to extension-specific structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     zes_pci_address_t address;                      ///< [out] The BDF address
     zes_pci_speed_t maxSpeed;                       ///< [out] Fastest port configuration supported by the device (sum of all
                                                     ///< lanes)
@@ -737,7 +912,8 @@ typedef enum _zes_pci_link_stab_issue_flag_t
 typedef struct _zes_pci_state_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    const void* pNext;                              ///< [in][optional] pointer to extension-specific structure
+    const void* pNext;                              ///< [in][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     zes_pci_link_status_t status;                   ///< [out] The current status of the port
     zes_pci_link_qual_issue_flags_t qualityIssues;  ///< [out] If status is ::ZES_PCI_LINK_STATUS_QUALITY_ISSUES, 
                                                     ///< then this gives a combination of ::zes_pci_link_qual_issue_flag_t for
@@ -769,7 +945,8 @@ typedef enum _zes_pci_bar_type_t
 typedef struct _zes_pci_bar_properties_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    void* pNext;                                    ///< [in,out][optional] pointer to extension-specific structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     zes_pci_bar_type_t type;                        ///< [out] The type of bar
     uint32_t index;                                 ///< [out] The index of the bar
     uint64_t base;                                  ///< [out] Base address of the bar.
@@ -782,7 +959,8 @@ typedef struct _zes_pci_bar_properties_t
 typedef struct _zes_pci_bar_properties_1_2_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    void* pNext;                                    ///< [in,out][optional] pointer to extension-specific structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     zes_pci_bar_type_t type;                        ///< [out] The type of bar
     uint32_t index;                                 ///< [out] The index of the bar
     uint64_t base;                                  ///< [out] Base address of the bar.
@@ -840,6 +1018,8 @@ typedef struct _zes_pci_stats_t
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -861,6 +1041,8 @@ zesDevicePciGetProperties(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -882,6 +1064,8 @@ zesDevicePciGetState(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -911,6 +1095,8 @@ zesDevicePciGetBars(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -921,6 +1107,623 @@ ZE_APIEXPORT ze_result_t ZE_APICALL
 zesDevicePciGetStats(
     zes_device_handle_t hDevice,                    ///< [in] Sysman handle of the device.
     zes_pci_stats_t* pStats                         ///< [in,out] Will contain a snapshot of the latest stats.
+    );
+
+#if !defined(__GNUC__)
+#pragma endregion
+#endif
+// Intel 'oneAPI' Level-Zero Tool APIs for System Resource Management (Sysman) - Overclock controls, VF curve manipulation
+#if !defined(__GNUC__)
+#pragma region Overclock
+#endif
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Overclock domains.
+typedef enum _zes_overclock_domain_t
+{
+    ZES_OVERCLOCK_DOMAIN_CARD = 1,                  ///< Overclocking card level properties such as temperature limits.
+    ZES_OVERCLOCK_DOMAIN_PACKAGE = 2,               ///< Overclocking package level properties such as power limits.
+    ZES_OVERCLOCK_DOMAIN_GPU_ALL = 4,               ///< Overclocking a GPU that has all accelerator assets on the same PLL/VR.
+    ZES_OVERCLOCK_DOMAIN_GPU_RENDER_COMPUTE = 8,    ///< Overclocking a GPU with render and compute assets on the same PLL/VR.
+    ZES_OVERCLOCK_DOMAIN_GPU_RENDER = 16,           ///< Overclocking a GPU with render assets on its own PLL/VR.
+    ZES_OVERCLOCK_DOMAIN_GPU_COMPUTE = 32,          ///< Overclocking a GPU with compute assets on its own PLL/VR.
+    ZES_OVERCLOCK_DOMAIN_GPU_MEDIA = 64,            ///< Overclocking a GPU with media assets on its own PLL/VR.
+    ZES_OVERCLOCK_DOMAIN_VRAM = 128,                ///< Overclocking device local memory.
+    ZES_OVERCLOCK_DOMAIN_ADM = 256,                 ///< Overclocking LLC/L4 cache.
+    ZES_OVERCLOCK_DOMAIN_FORCE_UINT32 = 0x7fffffff
+
+} zes_overclock_domain_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Overclock controls.
+typedef enum _zes_overclock_control_t
+{
+    ZES_OVERCLOCK_CONTROL_VF = 1,                   ///< This control permits setting a custom V-F curve.
+    ZES_OVERCLOCK_CONTROL_FREQ_OFFSET = 2,          ///< The V-F curve of the overclock domain can be shifted up or down using
+                                                    ///< this control.
+    ZES_OVERCLOCK_CONTROL_VMAX_OFFSET = 4,          ///< This control is used to increase the permitted voltage above the
+                                                    ///< shipped voltage maximum.
+    ZES_OVERCLOCK_CONTROL_FREQ = 8,                 ///< This control permits direct changes to the operating frequency.
+    ZES_OVERCLOCK_CONTROL_VOLT_LIMIT = 16,          ///< This control prevents frequencies that would push the voltage above
+                                                    ///< this value, typically used by V-F scanners.
+    ZES_OVERCLOCK_CONTROL_POWER_SUSTAINED_LIMIT = 32,   ///< This control changes the sustained power limit (PL1).
+    ZES_OVERCLOCK_CONTROL_POWER_BURST_LIMIT = 64,   ///< This control changes the burst power limit (PL2).
+    ZES_OVERCLOCK_CONTROL_POWER_PEAK_LIMIT = 128,   ///< his control changes the peak power limit (PL4).
+    ZES_OVERCLOCK_CONTROL_ICCMAX_LIMIT = 256,       ///< This control changes the value of IccMax..
+    ZES_OVERCLOCK_CONTROL_TEMP_LIMIT = 512,         ///< This control changes the value of TjMax.
+    ZES_OVERCLOCK_CONTROL_ITD_DISABLE = 1024,       ///< This control permits disabling the adaptive voltage feature ITD
+    ZES_OVERCLOCK_CONTROL_ACM_DISABLE = 2048,       ///< This control permits disabling the adaptive voltage feature ACM.
+    ZES_OVERCLOCK_CONTROL_FORCE_UINT32 = 0x7fffffff
+
+} zes_overclock_control_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Overclock modes.
+typedef enum _zes_overclock_mode_t
+{
+    ZES_OVERCLOCK_MODE_MODE_OFF = 0,                ///< Overclock mode is off
+    ZES_OVERCLOCK_MODE_MODE_STOCK = 2,              ///< Stock (manufacturing settings) are being used.
+    ZES_OVERCLOCK_MODE_MODE_ON = 3,                 ///< Overclock mode is on.
+    ZES_OVERCLOCK_MODE_MODE_UNAVAILABLE = 4,        ///< Overclocking is unavailable at this time since the system is running
+                                                    ///< on battery.
+    ZES_OVERCLOCK_MODE_MODE_DISABLED = 5,           ///< Overclock mode is disabled.
+    ZES_OVERCLOCK_MODE_FORCE_UINT32 = 0x7fffffff
+
+} zes_overclock_mode_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Overclock control states.
+typedef enum _zes_control_state_t
+{
+    ZES_CONTROL_STATE_STATE_UNSET = 0,              ///< No overclock control has not been changed by the driver since the last
+                                                    ///< boot/reset.
+    ZES_CONTROL_STATE_STATE_ACTIVE = 2,             ///< The overclock control has been set and it is active.
+    ZES_CONTROL_STATE_STATE_DISABLED = 3,           ///< The overclock control value has been disabled due to the current power
+                                                    ///< configuration (typically when running on DC).
+    ZES_CONTROL_STATE_FORCE_UINT32 = 0x7fffffff
+
+} zes_control_state_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Overclock pending actions.
+typedef enum _zes_pending_action_t
+{
+    ZES_PENDING_ACTION_PENDING_NONE = 0,            ///< There no pending actions. .
+    ZES_PENDING_ACTION_PENDING_IMMINENT = 1,        ///< The requested change is in progress and should complete soon.
+    ZES_PENDING_ACTION_PENDING_COLD_RESET = 2,      ///< The requested change requires a device cold reset (hotplug, system
+                                                    ///< boot).
+    ZES_PENDING_ACTION_PENDING_WARM_RESET = 3,      ///< The requested change requires a device warm reset (PCIe FLR).
+    ZES_PENDING_ACTION_FORCE_UINT32 = 0x7fffffff
+
+} zes_pending_action_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Overclock V-F curve programing.
+typedef enum _zes_vf_program_type_t
+{
+    ZES_VF_PROGRAM_TYPE_VF_ARBITRARY = 0,           ///< Can program an arbitrary number of V-F points up to the maximum number
+                                                    ///< and each point can have arbitrary voltage and frequency values within
+                                                    ///< the min/max/step limits
+    ZES_VF_PROGRAM_TYPE_VF_FREQ_FIXED = 1,          ///< Can only program the voltage for the V-F points that it reads back -
+                                                    ///< the frequency of those points cannot be changed
+    ZES_VF_PROGRAM_TYPE_VF_VOLT_FIXED = 2,          ///< Can only program the frequency for the V-F points that is reads back -
+                                                    ///< the voltage of each point cannot be changed.
+    ZES_VF_PROGRAM_TYPE_FORCE_UINT32 = 0x7fffffff
+
+} zes_vf_program_type_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief VF type
+typedef enum _zes_vf_type_t
+{
+    ZES_VF_TYPE_VOLT = 0,                           ///< VF Voltage point
+    ZES_VF_TYPE_FREQ = 1,                           ///< VF Frequency point
+    ZES_VF_TYPE_FORCE_UINT32 = 0x7fffffff
+
+} zes_vf_type_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief VF type
+typedef enum _zes_vf_array_type_t
+{
+    ZES_VF_ARRAY_TYPE_USER_VF_ARRAY = 0,            ///< User V-F array
+    ZES_VF_ARRAY_TYPE_DEFAULT_VF_ARRAY = 1,         ///< Default V-F array
+    ZES_VF_ARRAY_TYPE_LIVE_VF_ARRAY = 2,            ///< Live V-F array
+    ZES_VF_ARRAY_TYPE_FORCE_UINT32 = 0x7fffffff
+
+} zes_vf_array_type_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Overclock properties
+/// 
+/// @details
+///     - Information on the overclock domain type and all the contols that are
+///       part of the domain.
+typedef struct _zes_overclock_properties_t
+{
+    zes_structure_type_t stype;                     ///< [in] type of this structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
+    zes_overclock_domain_t domainType;              ///< [out] The hardware block that this overclock domain controls (GPU,
+                                                    ///< VRAM, ...)
+    uint32_t AvailableControls;                     ///< [out] Returns the overclock controls that are supported (a bit for
+                                                    ///< each of enum ::zes_overclock_control_t). If no bits are set, the
+                                                    ///< domain doesn't support overclocking.
+    zes_vf_program_type_t VFProgramType;            ///< [out] Type of V-F curve programming that is permitted:.
+    uint32_t NumberOfVFPoints;                      ///< [out] Number of VF points that can be programmed - max_num_points
+
+} zes_overclock_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Overclock Control properties
+/// 
+/// @details
+///     - Provides all the control capabilities supported by the device for the
+///       overclock domain.
+typedef struct _zes_control_property_t
+{
+    double MinValue;                                ///< [out]  This provides information about the limits of the control value
+                                                    ///< so that the driver can calculate the set of valid values.
+    double MaxValue;                                ///< [out]  This provides information about the limits of the control value
+                                                    ///< so that the driver can calculate the set of valid values.
+    double StepValue;                               ///< [out]  This provides information about the limits of the control value
+                                                    ///< so that the driver can calculate the set of valid values.
+    double RefValue;                                ///< [out] The reference value provides the anchor point, UIs can combine
+                                                    ///< this with the user offset request to show the anticipated improvement.
+    double DefaultValue;                            ///< [out] The shipped out-of-box position of this control. Driver can
+                                                    ///< request this value at any time to return to the out-of-box behavior.
+
+} zes_control_property_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Overclock VF properties
+/// 
+/// @details
+///     - Provides all the VF capabilities supported by the device for the
+///       overclock domain.
+typedef struct _zes_vf_property_t
+{
+    double MinFreq;                                 ///< [out] Read the minimum frequency that can be be programmed in the
+                                                    ///< custom V-F point..
+    double MaxFreq;                                 ///< [out] Read the maximum frequency that can be be programmed in the
+                                                    ///< custom V-F point..
+    double StepFreq;                                ///< [out] Read the frequency step that can be be programmed in the custom
+                                                    ///< V-F point..
+    double MinVolt;                                 ///< [out] Read the minimum voltage that can be be programmed in the custom
+                                                    ///< V-F point..
+    double MaxVolt;                                 ///< [out] Read the maximum voltage that can be be programmed in the custom
+                                                    ///< V-F point..
+    double StepVolt;                                ///< [out] Read the voltage step that can be be programmed in the custom
+                                                    ///< V-F point.
+
+} zes_vf_property_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Set the overclock waiver.The overclock waiver setting is persistent
+///        until the next pcode boot
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDevice`
+///     - ::ZE_RESULT_ERROR_UNSUPPORTED_FEATURE
+///         + This product does not support overclocking
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesDeviceSetOverclockWaiver(
+    zes_device_handle_t hDevice                     ///< [in] Sysman handle of the device.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Get the list of supported overclock domains for this device
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDevice`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pOverclockDomains`
+///     - ::ZE_RESULT_ERROR_UNSUPPORTED_FEATURE
+///         + Overclocking is not supported on this control domain
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesDeviceGetOverclockDomains(
+    zes_device_handle_t hDevice,                    ///< [in] Sysman handle of the device.
+    uint32_t* pOverclockDomains                     ///< [in,out] Returns the overclock domains that are supported (a bit for
+                                                    ///< each of enum ::zes_overclock_domain_t). If no bits are set, the device
+                                                    ///< doesn't support overclocking.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Get the list of supported overclock controls available for one of the
+///        supported overclock domains on the device
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDevice`
+///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
+///         + `::ZES_OVERCLOCK_DOMAIN_ADM < domainType`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pAvailableControls`
+///     - ::ZE_RESULT_ERROR_UNSUPPORTED_FEATURE
+///         + Overclocking is not supported on this control domain
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesDeviceGetOverclockControls(
+    zes_device_handle_t hDevice,                    ///< [in] Sysman handle of the device.
+    zes_overclock_domain_t domainType,              ///< [in] Domain type.
+    uint32_t* pAvailableControls                    ///< [in,out] Returns the overclock controls that are supported for the
+                                                    ///< specified overclock domain (a bit for each of enum
+                                                    ///< ::zes_overclock_control_t).
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Reset all overclock settings to default values (shipped = 1 or
+///        manufacturing =0)
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDevice`
+///     - ::ZE_RESULT_ERROR_UNSUPPORTED_FEATURE
+///         + Overclocking is not supported on this control domain
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesDeviceResetOverclockSettings(
+    zes_device_handle_t hDevice,                    ///< [in] Sysman handle of the device.
+    ze_bool_t onShippedState                        ///< [in] True will reset to shipped state; false will reset to
+                                                    ///< manufacturing state
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Determine the state of overclocking
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDevice`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pOverclockMode`
+///         + `nullptr == pWaiverSetting`
+///         + `nullptr == pOverclockState`
+///         + `nullptr == pPendingAction`
+///         + `nullptr == pPendingReset`
+///     - ::ZE_RESULT_ERROR_UNSUPPORTED_FEATURE
+///         + Overclocking is not supported on this control domain
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesDeviceReadOverclockState(
+    zes_device_handle_t hDevice,                    ///< [in] Sysman handle of the device.
+    zes_overclock_mode_t* pOverclockMode,           ///< [out] One of overclock mode.
+    ze_bool_t* pWaiverSetting,                      ///< [out] Waiver setting: 0 = Waiver not set, 1 = waiver has been set.
+    ze_bool_t* pOverclockState,                     ///< [out] Current settings 0 =manufacturing state, 1= shipped state)..
+    zes_pending_action_t* pPendingAction,           ///< [out] This enum is returned when the driver attempts to set an
+                                                    ///< overclock control or reset overclock settings.
+    ze_bool_t* pPendingReset                        ///< [out] Pending reset 0 =manufacturing state, 1= shipped state)..
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Get handle of overclock domains
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDevice`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pCount`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesDeviceEnumOverclockDomains(
+    zes_device_handle_t hDevice,                    ///< [in] Sysman handle of the device.
+    uint32_t* pCount,                               ///< [in,out] pointer to the number of components of this type.
+                                                    ///< if count is zero, then the driver shall update the value with the
+                                                    ///< total number of components of this type that are available.
+                                                    ///< if count is greater than the number of components of this type that
+                                                    ///< are available, then the driver shall update the value with the correct
+                                                    ///< number of components.
+    zes_overclock_handle_t* phDomainHandle          ///< [in,out][optional][range(0, *pCount)] array of handle of components of
+                                                    ///< this type.
+                                                    ///< if count is less than the number of components of this type that are
+                                                    ///< available, then the driver shall only retrieve that number of
+                                                    ///< component handles.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Get overclock domain control properties
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDomainHandle`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pDomainProperties`
+///     - ::ZE_RESULT_ERROR_UNSUPPORTED_FEATURE
+///         + Overclocking is not supported on this control domain
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesOverclockGetDomainProperties(
+    zes_overclock_handle_t hDomainHandle,           ///< [in] Handle for the component domain.
+    zes_overclock_properties_t* pDomainProperties   ///< [in,out] The overclock properties for the specified domain.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Read overclock VF min,max and step values
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDomainHandle`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pVFProperties`
+///     - ::ZE_RESULT_ERROR_UNSUPPORTED_FEATURE
+///         + Overclocking is not supported on this control domain
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesOverclockGetDomainVFProperties(
+    zes_overclock_handle_t hDomainHandle,           ///< [in] Handle for the component domain.
+    zes_vf_property_t* pVFProperties                ///< [in,out] The VF min,max,step for a specified domain.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Read overclock control values - min/max/step/default/ref
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDomainHandle`
+///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
+///         + `::ZES_OVERCLOCK_CONTROL_ACM_DISABLE < DomainControl`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pControlProperties`
+///     - ::ZE_RESULT_ERROR_UNSUPPORTED_FEATURE
+///         + Overclocking is not supported on this control domain
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesOverclockGetDomainControlProperties(
+    zes_overclock_handle_t hDomainHandle,           ///< [in] Handle for the component domain.
+    zes_overclock_control_t DomainControl,          ///< [in] Handle for the component.
+    zes_control_property_t* pControlProperties      ///< [in,out] overclock control values.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Read the current value for a given overclock control
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDomainHandle`
+///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
+///         + `::ZES_OVERCLOCK_CONTROL_ACM_DISABLE < DomainControl`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pValue`
+///     - ::ZE_RESULT_ERROR_UNSUPPORTED_FEATURE
+///         + Overclocking is not supported on this control domain
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesOverclockGetControlCurrentValue(
+    zes_overclock_handle_t hDomainHandle,           ///< [in] Handle for the component.
+    zes_overclock_control_t DomainControl,          ///< [in] Overclock Control.
+    double* pValue                                  ///< [in,out] Getting overclock control value for the specified control.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Read the the reset pending value for a given overclock control
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDomainHandle`
+///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
+///         + `::ZES_OVERCLOCK_CONTROL_ACM_DISABLE < DomainControl`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pValue`
+///     - ::ZE_RESULT_ERROR_UNSUPPORTED_FEATURE
+///         + Overclocking is not supported on this control domain
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesOverclockGetControlPendingValue(
+    zes_overclock_handle_t hDomainHandle,           ///< [in] Handle for the component domain.
+    zes_overclock_control_t DomainControl,          ///< [in] Overclock Control.
+    double* pValue                                  ///< [out] Returns the pending value for a given control. The units and
+                                                    ///< format of the value depend on the control type.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Set the value for a given overclock control
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDomainHandle`
+///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
+///         + `::ZES_OVERCLOCK_CONTROL_ACM_DISABLE < DomainControl`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pPendingAction`
+///     - ::ZE_RESULT_ERROR_UNSUPPORTED_FEATURE
+///         + Overclocking is not supported on this control domain
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesOverclockSetControlUserValue(
+    zes_overclock_handle_t hDomainHandle,           ///< [in] Handle for the component domain.
+    zes_overclock_control_t DomainControl,          ///< [in] Domain Control.
+    double pValue,                                  ///< [in] The new value of the control. The units and format of the value
+                                                    ///< depend on the control type.
+    zes_pending_action_t* pPendingAction            ///< [out] Pending overclock setting.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Determine the state of an overclock control
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDomainHandle`
+///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
+///         + `::ZES_OVERCLOCK_CONTROL_ACM_DISABLE < DomainControl`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pControlState`
+///         + `nullptr == pPendingAction`
+///     - ::ZE_RESULT_ERROR_UNSUPPORTED_FEATURE
+///         + Overclocking is not supported on this control domain
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesOverclockGetControlState(
+    zes_overclock_handle_t hDomainHandle,           ///< [in] Handle for the component domain.
+    zes_overclock_control_t DomainControl,          ///< [in] Domain Control.
+    zes_control_state_t* pControlState,             ///< [out] Current overclock control state.
+    zes_pending_action_t* pPendingAction            ///< [out] Pending overclock setting.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Read the frequency or voltage of a V-F point from the default or
+///        custom V-F curve.
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDomainHandle`
+///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
+///         + `::ZES_VF_TYPE_FREQ < VFType`
+///         + `::ZES_VF_ARRAY_TYPE_LIVE_VF_ARRAY < VFArrayType`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == PointValue`
+///     - ::ZE_RESULT_ERROR_UNSUPPORTED_FEATURE
+///         + Overclocking is not supported on this control domain
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesOverclockGetVFPointValues(
+    zes_overclock_handle_t hDomainHandle,           ///< [in] Handle for the component domain.
+    zes_vf_type_t VFType,                           ///< [in] Voltage or Freqency point to read.
+    zes_vf_array_type_t VFArrayType,                ///< [in] User,Default or Live VF array to read from
+    uint32_t PointIndex,                            ///< [in] Point index - number between (0, max_num_points - 1).
+    uint32_t* PointValue                            ///< [out] Returns the frequency in 1kHz units or voltage in millivolt
+                                                    ///< units from the custom V-F curve at the specified zero-based index 
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Write the frequency or voltage of a V-F point to custom V-F curve.
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDomainHandle`
+///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
+///         + `::ZES_VF_TYPE_FREQ < VFType`
+///     - ::ZE_RESULT_ERROR_UNSUPPORTED_FEATURE
+///         + Overclocking is not supported on this control domain
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesOverclockSetVFPointValues(
+    zes_overclock_handle_t hDomainHandle,           ///< [in] Handle for the component domain.
+    zes_vf_type_t VFType,                           ///< [in] Voltage or Freqency point to read.
+    uint32_t PointIndex,                            ///< [in] Point index - number between (0, max_num_points - 1).
+    uint32_t PointValue                             ///< [in] Writes frequency in 1kHz units or voltage in millivolt units to
+                                                    ///< custom V-F curve at the specified zero-based index 
     );
 
 #if !defined(__GNUC__)
@@ -969,7 +1772,8 @@ typedef struct _zes_diag_test_t
 typedef struct _zes_diag_properties_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    void* pNext;                                    ///< [in,out][optional] pointer to extension-specific structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     ze_bool_t onSubdevice;                          ///< [out] True if the resource is located on a sub-device; false means
                                                     ///< that the resource is on the device of the calling Sysman handle
     uint32_t subdeviceId;                           ///< [out] If onSubdevice is true, this gives the ID of the sub-device
@@ -991,6 +1795,8 @@ typedef struct _zes_diag_properties_t
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -1022,6 +1828,8 @@ zesDeviceEnumDiagnosticTestSuites(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDiagnostics`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -1048,6 +1856,8 @@ zesDiagnosticsGetProperties(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDiagnostics`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -1086,6 +1896,8 @@ zesDiagnosticsGetTests(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDiagnostics`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -1100,6 +1912,160 @@ zesDiagnosticsRunTests(
     uint32_t endIndex,                              ///< [in] The index of the last test to run. Set to
                                                     ///< ::ZES_DIAG_LAST_TEST_INDEX to complete all tests after the start test.
     zes_diag_result_t* pResult                      ///< [in,out] The result of the diagnostics
+    );
+
+#if !defined(__GNUC__)
+#pragma endregion
+#endif
+// Intel 'oneAPI' Level-Zero Tool APIs for System Resource Management (Sysman) - ECC management
+#if !defined(__GNUC__)
+#pragma region ecc
+#endif
+///////////////////////////////////////////////////////////////////////////////
+/// @brief ECC State
+typedef enum _zes_device_ecc_state_t
+{
+    ZES_DEVICE_ECC_STATE_UNAVAILABLE = 0,           ///< None
+    ZES_DEVICE_ECC_STATE_ENABLED = 1,               ///< ECC enabled.
+    ZES_DEVICE_ECC_STATE_DISABLED = 2,              ///< ECC disabled.
+    ZES_DEVICE_ECC_STATE_FORCE_UINT32 = 0x7fffffff
+
+} zes_device_ecc_state_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief State Change Requirements
+typedef enum _zes_device_action_t
+{
+    ZES_DEVICE_ACTION_NONE = 0,                     ///< No action.
+    ZES_DEVICE_ACTION_WARM_CARD_RESET = 1,          ///< Warm reset of the card.
+    ZES_DEVICE_ACTION_COLD_CARD_RESET = 2,          ///< Cold reset of the card.
+    ZES_DEVICE_ACTION_COLD_SYSTEM_REBOOT = 3,       ///< Cold reboot of the system.
+    ZES_DEVICE_ACTION_FORCE_UINT32 = 0x7fffffff
+
+} zes_device_action_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief ECC State Descriptor
+typedef struct _zes_device_ecc_desc_t
+{
+    zes_structure_type_t stype;                     ///< [in] type of this structure
+    const void* pNext;                              ///< [in][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
+    zes_device_ecc_state_t state;                   ///< [out] ECC state
+
+} zes_device_ecc_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief ECC State
+typedef struct _zes_device_ecc_properties_t
+{
+    zes_structure_type_t stype;                     ///< [in] type of this structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
+    zes_device_ecc_state_t currentState;            ///< [out] Current ECC state
+    zes_device_ecc_state_t pendingState;            ///< [out] Pending ECC state
+    zes_device_action_t pendingAction;              ///< [out] Pending action
+
+} zes_device_ecc_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Is ECC functionality available - true or false?
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDevice`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pAvailable`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesDeviceEccAvailable(
+    zes_device_handle_t hDevice,                    ///< [in] Handle for the component.
+    ze_bool_t* pAvailable                           ///< [out] ECC functionality is available (true)/unavailable (false).
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Is ECC support configurable - true or false?
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDevice`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pConfigurable`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesDeviceEccConfigurable(
+    zes_device_handle_t hDevice,                    ///< [in] Handle for the component.
+    ze_bool_t* pConfigurable                        ///< [out] ECC can be enabled/disabled (true)/enabled/disabled (false).
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Get current ECC state, pending state, and pending action
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDevice`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pState`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesDeviceGetEccState(
+    zes_device_handle_t hDevice,                    ///< [in] Handle for the component.
+    zes_device_ecc_properties_t* pState             ///< [out] ECC state, pending state, and pending action for state change.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Set new ECC state
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+///     - ::zesDeviceGetState should be called to determine pending action
+///       required to implement state change.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hDevice`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == newState`
+///         + `nullptr == pState`
+///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
+///         + `::ZES_DEVICE_ECC_STATE_DISABLED < newState->state`
+///     - ::ZE_RESULT_WARNING_ACTION_REQUIRED
+///         + User must look at the pendingAction attribute of pState & perform the action required to complete the ECC state change.
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesDeviceSetEccState(
+    zes_device_handle_t hDevice,                    ///< [in] Handle for the component.
+    const zes_device_ecc_desc_t* newState,          ///< [in] Pointer to desired ECC state.
+    zes_device_ecc_properties_t* pState             ///< [out] ECC state, pending state, and pending action for state change.
     );
 
 #if !defined(__GNUC__)
@@ -1168,7 +2134,8 @@ typedef enum _zes_engine_group_t
 typedef struct _zes_engine_properties_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    void* pNext;                                    ///< [in,out][optional] pointer to extension-specific structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     zes_engine_group_t type;                        ///< [out] The engine group
     ze_bool_t onSubdevice;                          ///< [out] True if this resource is located on a sub-device; false means
                                                     ///< that the resource is on the device of the calling Sysman handle
@@ -1209,6 +2176,8 @@ typedef struct _zes_engine_stats_t
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -1240,6 +2209,8 @@ zesDeviceEnumEngineGroups(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hEngine`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -1261,6 +2232,8 @@ zesEngineGetProperties(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hEngine`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -1326,6 +2299,8 @@ typedef enum _zes_event_type_flag_t
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
@@ -1347,6 +2322,8 @@ zesDeviceEventRegister(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDriver`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -1390,6 +2367,8 @@ zesDriverEventListen(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDriver`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -1523,7 +2502,8 @@ typedef struct _zes_fabric_port_speed_t
 typedef struct _zes_fabric_port_properties_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    void* pNext;                                    ///< [in,out][optional] pointer to extension-specific structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     char model[ZES_MAX_FABRIC_PORT_MODEL_SIZE];     ///< [out] Description of port technology. Will be set to the string
                                                     ///< "unkown" if this cannot be determined for this port.
     ze_bool_t onSubdevice;                          ///< [out] True if the port is located on a sub-device; false means that
@@ -1541,9 +2521,8 @@ typedef struct _zes_fabric_port_properties_t
 /// @brief Provides information about the fabric link attached to a port
 typedef struct _zes_fabric_link_type_t
 {
-    char desc[ZES_MAX_FABRIC_LINK_TYPE_SIZE];       ///< [out] This provides a static textural description of the physic
-                                                    ///< attachment type. Will be set to the string "unkown" if this cannot be
-                                                    ///< determined for this port.
+    char desc[ZES_MAX_FABRIC_LINK_TYPE_SIZE];       ///< [out] Description of link technology. Will be set to the string
+                                                    ///< "unkown" if this cannot be determined for this link.
 
 } zes_fabric_link_type_t;
 
@@ -1552,7 +2531,8 @@ typedef struct _zes_fabric_link_type_t
 typedef struct _zes_fabric_port_config_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    const void* pNext;                              ///< [in][optional] pointer to extension-specific structure
+    const void* pNext;                              ///< [in][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     ze_bool_t enabled;                              ///< [in,out] Port is configured up/down
     ze_bool_t beaconing;                            ///< [in,out] Beaconing is configured on/off
 
@@ -1563,9 +2543,10 @@ typedef struct _zes_fabric_port_config_t
 typedef struct _zes_fabric_port_state_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    const void* pNext;                              ///< [in][optional] pointer to extension-specific structure
+    const void* pNext;                              ///< [in][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     zes_fabric_port_status_t status;                ///< [out] The current status of the port
-    zes_fabric_port_qual_issue_flags_t qualityIssues;   ///< [out] If status is ::ZES_FABRIC_PORT_STATUS_DEGRADED, 
+    zes_fabric_port_qual_issue_flags_t qualityIssues;   ///< [out] If status is ::ZES_FABRIC_PORT_STATUS_DEGRADED,
                                                     ///< then this gives a combination of ::zes_fabric_port_qual_issue_flag_t
                                                     ///< for quality issues that have been detected;
                                                     ///< otherwise, 0 indicates there are no quality issues with the link at
@@ -1614,6 +2595,8 @@ typedef struct _zes_fabric_port_throughput_t
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -1645,6 +2628,8 @@ zesDeviceEnumFabricPorts(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hPort`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -1666,6 +2651,8 @@ zesFabricPortGetProperties(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hPort`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -1688,6 +2675,8 @@ zesFabricPortGetLinkType(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hPort`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -1709,6 +2698,8 @@ zesFabricPortGetConfig(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hPort`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -1733,6 +2724,8 @@ zesFabricPortSetConfig(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hPort`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -1754,6 +2747,8 @@ zesFabricPortGetState(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hPort`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -1838,7 +2833,8 @@ typedef struct _zes_fan_speed_table_t
 typedef struct _zes_fan_properties_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    void* pNext;                                    ///< [in,out][optional] pointer to extension-specific structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     ze_bool_t onSubdevice;                          ///< [out] True if the resource is located on a sub-device; false means
                                                     ///< that the resource is on the device of the calling Sysman handle
     uint32_t subdeviceId;                           ///< [out] If onSubdevice is true, this gives the ID of the sub-device
@@ -1861,7 +2857,8 @@ typedef struct _zes_fan_properties_t
 typedef struct _zes_fan_config_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    const void* pNext;                              ///< [in][optional] pointer to extension-specific structure
+    const void* pNext;                              ///< [in][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     zes_fan_speed_mode_t mode;                      ///< [in,out] The fan speed mode (fixed, temp-speed table)
     zes_fan_speed_t speedFixed;                     ///< [in,out] The current fixed fan speed setting
     zes_fan_speed_table_t speedTable;               ///< [out] A table containing temperature/speed pairs
@@ -1879,6 +2876,8 @@ typedef struct _zes_fan_config_t
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -1910,6 +2909,8 @@ zesDeviceEnumFans(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFan`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -1932,6 +2933,8 @@ zesFanGetProperties(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFan`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -1954,6 +2957,8 @@ zesFanGetConfig(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFan`
 ///     - ::ZE_RESULT_ERROR_INSUFFICIENT_PERMISSIONS
@@ -1975,6 +2980,8 @@ zesFanSetDefaultMode(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFan`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -2001,6 +3008,8 @@ zesFanSetFixedSpeedMode(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFan`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -2028,6 +3037,8 @@ zesFanSetSpeedTableMode(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFan`
 ///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
@@ -2057,7 +3068,8 @@ zesFanGetState(
 typedef struct _zes_firmware_properties_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    void* pNext;                                    ///< [in,out][optional] pointer to extension-specific structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     ze_bool_t onSubdevice;                          ///< [out] True if the resource is located on a sub-device; false means
                                                     ///< that the resource is on the device of the calling Sysman handle
     uint32_t subdeviceId;                           ///< [out] If onSubdevice is true, this gives the ID of the sub-device
@@ -2081,6 +3093,8 @@ typedef struct _zes_firmware_properties_t
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -2112,6 +3126,8 @@ zesDeviceEnumFirmwares(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFirmware`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -2134,6 +3150,8 @@ zesFirmwareGetProperties(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFirmware`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -2160,6 +3178,7 @@ typedef enum _zes_freq_domain_t
 {
     ZES_FREQ_DOMAIN_GPU = 0,                        ///< GPU Core Domain.
     ZES_FREQ_DOMAIN_MEMORY = 1,                     ///< Local Memory Domain.
+    ZES_FREQ_DOMAIN_MEDIA = 2,                      ///< GPU Media Domain.
     ZES_FREQ_DOMAIN_FORCE_UINT32 = 0x7fffffff
 
 } zes_freq_domain_t;
@@ -2177,7 +3196,8 @@ typedef enum _zes_freq_domain_t
 typedef struct _zes_freq_properties_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    void* pNext;                                    ///< [in,out][optional] pointer to extension-specific structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     zes_freq_domain_t type;                         ///< [out] The hardware block that this frequency domain controls (GPU,
                                                     ///< memory, ...)
     ze_bool_t onSubdevice;                          ///< [out] True if this resource is located on a sub-device; false means
@@ -2194,21 +3214,29 @@ typedef struct _zes_freq_properties_t
 } zes_freq_properties_t;
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief Frequency range between which the hardware can operate. The limits can
-///        be above or below the hardware limits - the hardware will clamp
-///        appropriately.
+/// @brief Frequency range between which the hardware can operate.
+/// 
+/// @details
+///     - When setting limits, they will be clamped to the hardware limits.
+///     - When setting limits, ensure that the max frequency is greater than or
+///       equal to the min frequency specified.
+///     - When setting limits to return to factory settings, specify -1 for both
+///       the min and max limit.
 typedef struct _zes_freq_range_t
 {
     double min;                                     ///< [in,out] The min frequency in MHz below which hardware frequency
                                                     ///< management will not request frequencies. On input, setting to 0 will
-                                                    ///< permit the frequency to go down to the hardware minimum. On output, a
-                                                    ///< negative value indicates that no external minimum frequency limit is
-                                                    ///< in effect.
+                                                    ///< permit the frequency to go down to the hardware minimum while setting
+                                                    ///< to -1 will return the min frequency limit to the factory value (can be
+                                                    ///< larger than the hardware min). On output, a negative value indicates
+                                                    ///< that no external minimum frequency limit is in effect.
     double max;                                     ///< [in,out] The max frequency in MHz above which hardware frequency
                                                     ///< management will not request frequencies. On input, setting to 0 or a
                                                     ///< very big number will permit the frequency to go all the way up to the
-                                                    ///< hardware maximum. On output, a negative number indicates that no
-                                                    ///< external maximum frequency limit is in effect.
+                                                    ///< hardware maximum while setting to -1 will return the max frequency to
+                                                    ///< the factory value (which can be less than the hardware max). On
+                                                    ///< output, a negative number indicates that no external maximum frequency
+                                                    ///< limit is in effect.
 
 } zes_freq_range_t;
 
@@ -2234,7 +3262,8 @@ typedef enum _zes_freq_throttle_reason_flag_t
 typedef struct _zes_freq_state_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    const void* pNext;                              ///< [in][optional] pointer to extension-specific structure
+    const void* pNext;                              ///< [in][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     double currentVoltage;                          ///< [out] Current voltage in Volts. A negative value indicates that this
                                                     ///< property is not known.
     double request;                                 ///< [out] The current frequency request in MHz. A negative value indicates
@@ -2306,7 +3335,8 @@ typedef enum _zes_oc_mode_t
 typedef struct _zes_oc_capabilities_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    const void* pNext;                              ///< [in][optional] pointer to extension-specific structure
+    const void* pNext;                              ///< [in][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     ze_bool_t isOcSupported;                        ///< [out] Indicates if any overclocking features are supported on this
                                                     ///< frequency domain.
     double maxFactoryDefaultFrequency;              ///< [out] Factory default non-overclock maximum frequency in Mhz.
@@ -2345,6 +3375,8 @@ typedef struct _zes_oc_capabilities_t
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -2376,6 +3408,8 @@ zesDeviceEnumFrequencyDomains(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFrequency`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -2400,6 +3434,8 @@ zesFrequencyGetProperties(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFrequency`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -2429,6 +3465,8 @@ zesFrequencyGetAvailableClocks(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFrequency`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -2451,6 +3489,8 @@ zesFrequencyGetRange(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFrequency`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -2476,6 +3516,8 @@ zesFrequencySetRange(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFrequency`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -2497,6 +3539,8 @@ zesFrequencyGetState(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFrequency`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -2519,6 +3563,8 @@ zesFrequencyGetThrottleTime(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFrequency`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -2542,6 +3588,8 @@ zesFrequencyOcGetCapabilities(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFrequency`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -2574,6 +3622,8 @@ zesFrequencyOcGetFrequencyTarget(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFrequency`
 ///     - ::ZE_RESULT_ERROR_UNSUPPORTED_FEATURE
@@ -2603,6 +3653,8 @@ zesFrequencyOcSetFrequencyTarget(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFrequency`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -2638,6 +3690,8 @@ zesFrequencyOcGetVoltageTarget(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFrequency`
 ///     - ::ZE_RESULT_ERROR_UNSUPPORTED_FEATURE
@@ -2670,6 +3724,8 @@ zesFrequencyOcSetVoltageTarget(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFrequency`
 ///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
@@ -2699,6 +3755,8 @@ zesFrequencyOcSetMode(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFrequency`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -2728,6 +3786,8 @@ zesFrequencyOcGetMode(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFrequency`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -2754,6 +3814,8 @@ zesFrequencyOcGetIccMax(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFrequency`
 ///     - ::ZE_RESULT_ERROR_UNSUPPORTED_FEATURE
@@ -2782,6 +3844,8 @@ zesFrequencyOcSetIccMax(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFrequency`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -2807,6 +3871,8 @@ zesFrequencyOcGetTjMax(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hFrequency`
 ///     - ::ZE_RESULT_ERROR_UNSUPPORTED_FEATURE
@@ -2836,7 +3902,8 @@ zesFrequencyOcSetTjMax(
 typedef struct _zes_led_properties_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    void* pNext;                                    ///< [in,out][optional] pointer to extension-specific structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     ze_bool_t onSubdevice;                          ///< [out] True if the resource is located on a sub-device; false means
                                                     ///< that the resource is on the device of the calling Sysman handle
     uint32_t subdeviceId;                           ///< [out] If onSubdevice is true, this gives the ID of the sub-device
@@ -2864,7 +3931,8 @@ typedef struct _zes_led_color_t
 typedef struct _zes_led_state_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    const void* pNext;                              ///< [in][optional] pointer to extension-specific structure
+    const void* pNext;                              ///< [in][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     ze_bool_t isOn;                                 ///< [out] Indicates if the LED is on or off
     zes_led_color_t color;                          ///< [out] Color of the LED
 
@@ -2881,6 +3949,8 @@ typedef struct _zes_led_state_t
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -2912,6 +3982,8 @@ zesDeviceEnumLeds(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hLed`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -2933,6 +4005,8 @@ zesLedGetProperties(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hLed`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -2954,6 +4028,8 @@ zesLedGetState(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hLed`
 ///     - ::ZE_RESULT_ERROR_INSUFFICIENT_PERMISSIONS
@@ -2975,6 +4051,8 @@ zesLedSetState(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hLed`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -3054,7 +4132,8 @@ typedef enum _zes_mem_health_t
 typedef struct _zes_mem_properties_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    void* pNext;                                    ///< [in,out][optional] pointer to extension-specific structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     zes_mem_type_t type;                            ///< [out] The memory type
     ze_bool_t onSubdevice;                          ///< [out] True if this resource is located on a sub-device; false means
                                                     ///< that the resource is on the device of the calling Sysman handle
@@ -3079,7 +4158,8 @@ typedef struct _zes_mem_properties_t
 typedef struct _zes_mem_state_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    const void* pNext;                              ///< [in][optional] pointer to extension-specific structure
+    const void* pNext;                              ///< [in][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     zes_mem_health_t health;                        ///< [out] Indicates the health of the memory
     uint64_t free;                                  ///< [out] The free memory in bytes
     uint64_t size;                                  ///< [out] The total allocatable memory in bytes (can be less than
@@ -3100,7 +4180,7 @@ typedef struct _zes_mem_bandwidth_t
     uint64_t readCounter;                           ///< [out] Total bytes read from memory
     uint64_t writeCounter;                          ///< [out] Total bytes written to memory
     uint64_t maxBandwidth;                          ///< [out] Current maximum bandwidth in units of bytes/sec
-    uint64_t timestamp;                             ///< [out] The timestamp when these measurements were sampled.
+    uint64_t timestamp;                             ///< [out] The timestamp in microseconds when these measurements were sampled.
                                                     ///< This timestamp should only be used to calculate delta time between
                                                     ///< snapshots of this structure.
                                                     ///< Never take the delta of this timestamp with the timestamp from a
@@ -3121,6 +4201,8 @@ typedef struct _zes_mem_bandwidth_t
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -3152,6 +4234,8 @@ zesDeviceEnumMemoryModules(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hMemory`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -3173,6 +4257,8 @@ zesMemoryGetProperties(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hMemory`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -3194,6 +4280,8 @@ zesMemoryGetState(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hMemory`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -3203,8 +4291,8 @@ zesMemoryGetState(
 ZE_APIEXPORT ze_result_t ZE_APICALL
 zesMemoryGetBandwidth(
     zes_mem_handle_t hMemory,                       ///< [in] Handle for the component.
-    zes_mem_bandwidth_t* pBandwidth                 ///< [in,out] Will contain the current health, free memory, total memory
-                                                    ///< size.
+    zes_mem_bandwidth_t* pBandwidth                 ///< [in,out] Will contain the total number of bytes read from and written
+                                                    ///< to memory, as well as the current maximum bandwidth.
     );
 
 #if !defined(__GNUC__)
@@ -3219,7 +4307,8 @@ zesMemoryGetBandwidth(
 typedef struct _zes_perf_properties_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    void* pNext;                                    ///< [in,out][optional] pointer to extension-specific structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     ze_bool_t onSubdevice;                          ///< [out] True if this Performance Factor affects accelerators located on
                                                     ///< a sub-device
     uint32_t subdeviceId;                           ///< [out] If onSubdevice is true, this gives the ID of the sub-device
@@ -3241,6 +4330,8 @@ typedef struct _zes_perf_properties_t
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -3272,6 +4363,8 @@ zesDeviceEnumPerformanceFactorDomains(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hPerf`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -3294,6 +4387,8 @@ zesPerformanceFactorGetProperties(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hPerf`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -3321,6 +4416,8 @@ zesPerformanceFactorGetConfig(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hPerf`
 ZE_APIEXPORT ze_result_t ZE_APICALL
@@ -3337,11 +4434,67 @@ zesPerformanceFactorSetConfig(
 #pragma region power
 #endif
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief Power Domain
+typedef enum _zes_power_domain_t
+{
+    ZES_POWER_DOMAIN_UNKNOWN = 0,                   ///< The PUnit power domain level cannot be determined.
+    ZES_POWER_DOMAIN_CARD = 1,                      ///< The PUnit power domain is a card-level power domain.
+    ZES_POWER_DOMAIN_PACKAGE = 2,                   ///< The PUnit power domain is a package-level power domain.
+    ZES_POWER_DOMAIN_STACK = 3,                     ///< The PUnit power domain is a stack-level power domain.
+    ZES_POWER_DOMAIN_FORCE_UINT32 = 0x7fffffff
+
+} zes_power_domain_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Power Level Type
+typedef enum _zes_power_level_t
+{
+    ZES_POWER_LEVEL_UNKNOWN = 0,                    ///< The PUnit power monitoring duration cannot be determined.
+    ZES_POWER_LEVEL_SUSTAINED = 1,                  ///< The PUnit determines effective power draw by computing a moving
+                                                    ///< average of the actual power draw over a time interval (longer than
+                                                    ///< BURST).
+    ZES_POWER_LEVEL_BURST = 2,                      ///< The PUnit determines effective power draw by computing a moving
+                                                    ///< average of the actual power draw over a time interval (longer than
+                                                    ///< PEAK).
+    ZES_POWER_LEVEL_PEAK = 3,                       ///< The PUnit determines effective power draw by computing a moving
+                                                    ///< average of the actual power draw over a very short time interval.
+    ZES_POWER_LEVEL_INSTANTANEOUS = 4,              ///< The PUnit predicts effective power draw using the current device
+                                                    ///< configuration (frequency, voltage, etc...) & throttles proactively to
+                                                    ///< stay within the specified limit.
+    ZES_POWER_LEVEL_FORCE_UINT32 = 0x7fffffff
+
+} zes_power_level_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Power Source Type
+typedef enum _zes_power_source_t
+{
+    ZES_POWER_SOURCE_ANY = 0,                       ///< Limit active no matter whether the power source is mains powered or
+                                                    ///< battery powered.
+    ZES_POWER_SOURCE_MAINS = 1,                     ///< Limit active only when the device is mains powered.
+    ZES_POWER_SOURCE_BATTERY = 2,                   ///< Limit active only when the device is battery powered.
+    ZES_POWER_SOURCE_FORCE_UINT32 = 0x7fffffff
+
+} zes_power_source_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Limit Unit
+typedef enum _zes_limit_unit_t
+{
+    ZES_LIMIT_UNIT_UNKNOWN = 0,                     ///< The PUnit power monitoring unit cannot be determined.
+    ZES_LIMIT_UNIT_CURRENT = 1,                     ///< The limit is specified in milliamperes of current drawn.
+    ZES_LIMIT_UNIT_POWER = 2,                       ///< The limit is specified in milliwatts of power generated.
+    ZES_LIMIT_UNIT_FORCE_UINT32 = 0x7fffffff
+
+} zes_limit_unit_t;
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief Properties related to device power settings
 typedef struct _zes_power_properties_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    void* pNext;                                    ///< [in,out][optional] pointer to extension-specific structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     ze_bool_t onSubdevice;                          ///< [out] True if this resource is located on a sub-device; false means
                                                     ///< that the resource is on the device of the calling Sysman handle
     uint32_t subdeviceId;                           ///< [out] If onSubdevice is true, this gives the ID of the sub-device
@@ -3349,10 +4502,12 @@ typedef struct _zes_power_properties_t
                                                     ///< user has permissions.
     ze_bool_t isEnergyThresholdSupported;           ///< [out] Indicates if this power domain supports the energy threshold
                                                     ///< event (::ZES_EVENT_TYPE_FLAG_ENERGY_THRESHOLD_CROSSED).
-    int32_t defaultLimit;                           ///< [out] The factory default TDP power limit of the part in milliwatts. A
-                                                    ///< value of -1 means that this is not known.
-    int32_t minLimit;                               ///< [out] The minimum power limit in milliwatts that can be requested.
-    int32_t maxLimit;                               ///< [out] The maximum power limit in milliwatts that can be requested.
+    int32_t defaultLimit;                           ///< [out] (Deprecated) The factory default TDP power limit of the part in
+                                                    ///< milliwatts. A value of -1 means that this is not known.
+    int32_t minLimit;                               ///< [out] (Deprecated) The minimum power limit in milliwatts that can be
+                                                    ///< requested. A value of -1 means that this is not known.
+    int32_t maxLimit;                               ///< [out] (Deprecated) The maximum power limit in milliwatts that can be
+                                                    ///< requested. A value of -1 means that this is not known.
 
 } zes_power_properties_t;
 
@@ -3455,6 +4610,8 @@ typedef struct _zes_energy_threshold_t
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -3486,6 +4643,8 @@ zesDeviceEnumPowerDomains(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -3509,6 +4668,8 @@ zesDeviceGetCardPowerDomain(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hPower`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -3530,6 +4691,8 @@ zesPowerGetProperties(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hPower`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -3547,11 +4710,15 @@ zesPowerGetEnergyCounter(
 /// @details
 ///     - The application may call this function from simultaneous threads.
 ///     - The implementation of this function should be lock-free.
+///     - Note: This function is deprecated and replaced by
+///       ::zesPowerGetLimitsExt.
 /// 
 /// @returns
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hPower`
 ZE_APIEXPORT ze_result_t ZE_APICALL
@@ -3571,11 +4738,15 @@ zesPowerGetLimits(
 /// @details
 ///     - The application may call this function from simultaneous threads.
 ///     - The implementation of this function should be lock-free.
+///     - Note: This function is deprecated and replaced by
+///       ::zesPowerSetLimitsExt.
 /// 
 /// @returns
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hPower`
 ///     - ::ZE_RESULT_ERROR_INSUFFICIENT_PERMISSIONS
@@ -3604,6 +4775,8 @@ zesPowerSetLimits(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hPower`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -3644,6 +4817,8 @@ zesPowerGetEnergyThreshold(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hPower`
 ///     - ::ZE_RESULT_ERROR_UNSUPPORTED_FEATURE
@@ -3683,7 +4858,8 @@ typedef enum _zes_psu_voltage_status_t
 typedef struct _zes_psu_properties_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    void* pNext;                                    ///< [in,out][optional] pointer to extension-specific structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     ze_bool_t onSubdevice;                          ///< [out] True if the resource is located on a sub-device; false means
                                                     ///< that the resource is on the device of the calling Sysman handle
     uint32_t subdeviceId;                           ///< [out] If onSubdevice is true, this gives the ID of the sub-device
@@ -3699,7 +4875,8 @@ typedef struct _zes_psu_properties_t
 typedef struct _zes_psu_state_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    const void* pNext;                              ///< [in][optional] pointer to extension-specific structure
+    const void* pNext;                              ///< [in][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     zes_psu_voltage_status_t voltStatus;            ///< [out] The current PSU voltage status
     ze_bool_t fanFailed;                            ///< [out] Indicates if the fan has failed
     int32_t temperature;                            ///< [out] Read the current heatsink temperature in degrees Celsius. A
@@ -3720,6 +4897,8 @@ typedef struct _zes_psu_state_t
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -3751,6 +4930,8 @@ zesDeviceEnumPsus(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hPsu`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -3772,6 +4953,8 @@ zesPsuGetProperties(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hPsu`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -3829,7 +5012,8 @@ typedef enum _zes_ras_error_cat_t
 typedef struct _zes_ras_properties_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    void* pNext;                                    ///< [in,out][optional] pointer to extension-specific structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     zes_ras_error_type_t type;                      ///< [out] The type of RAS error
     ze_bool_t onSubdevice;                          ///< [out] True if the resource is located on a sub-device; false means
                                                     ///< that the resource is on the device of the calling Sysman handle
@@ -3842,7 +5026,8 @@ typedef struct _zes_ras_properties_t
 typedef struct _zes_ras_state_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    const void* pNext;                              ///< [in][optional] pointer to extension-specific structure
+    const void* pNext;                              ///< [in][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     uint64_t category[ZES_MAX_RAS_ERROR_CATEGORY_COUNT];///< [in][out] Breakdown of error by category
 
 } zes_ras_state_t;
@@ -3865,7 +5050,8 @@ typedef struct _zes_ras_state_t
 typedef struct _zes_ras_config_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    const void* pNext;                              ///< [in][optional] pointer to extension-specific structure
+    const void* pNext;                              ///< [in][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     uint64_t totalThreshold;                        ///< [in,out] If the total RAS errors exceeds this threshold, the event
                                                     ///< will be triggered. A value of 0ULL disables triggering the event based
                                                     ///< on the total counter.
@@ -3896,6 +5082,8 @@ typedef struct _zes_ras_config_t
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -3929,6 +5117,8 @@ zesDeviceEnumRasErrorSets(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hRas`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -3959,6 +5149,8 @@ zesRasGetProperties(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hRas`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -3992,6 +5184,8 @@ zesRasGetConfig(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hRas`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -4020,6 +5214,8 @@ zesRasSetConfig(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hRas`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -4068,7 +5264,8 @@ typedef enum _zes_sched_mode_t
 typedef struct _zes_sched_properties_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    void* pNext;                                    ///< [in,out][optional] pointer to extension-specific structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     ze_bool_t onSubdevice;                          ///< [out] True if this resource is located on a sub-device; false means
                                                     ///< that the resource is on the device of the calling Sysman handle
     uint32_t subdeviceId;                           ///< [out] If onSubdevice is true, this gives the ID of the sub-device
@@ -4093,7 +5290,8 @@ typedef struct _zes_sched_properties_t
 typedef struct _zes_sched_timeout_properties_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    void* pNext;                                    ///< [in,out][optional] pointer to extension-specific structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     uint64_t watchdogTimeout;                       ///< [in,out] The maximum time in microseconds that the scheduler will wait
                                                     ///< for a batch of work submitted to a hardware engine to complete or to
                                                     ///< be preempted so as to run another context.
@@ -4110,7 +5308,8 @@ typedef struct _zes_sched_timeout_properties_t
 typedef struct _zes_sched_timeslice_properties_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    void* pNext;                                    ///< [in,out][optional] pointer to extension-specific structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     uint64_t interval;                              ///< [in,out] The average interval in microseconds that a submission for a
                                                     ///< context will run on a hardware engine before being preempted out to
                                                     ///< run a pending submission for another context.
@@ -4137,6 +5336,8 @@ typedef struct _zes_sched_timeslice_properties_t
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -4168,6 +5369,8 @@ zesDeviceEnumSchedulers(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hScheduler`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -4189,6 +5392,8 @@ zesSchedulerGetProperties(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hScheduler`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -4212,6 +5417,8 @@ zesSchedulerGetCurrentMode(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hScheduler`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -4237,6 +5444,8 @@ zesSchedulerGetTimeoutModeProperties(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hScheduler`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -4267,6 +5476,8 @@ zesSchedulerGetTimesliceModeProperties(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hScheduler`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -4299,6 +5510,8 @@ zesSchedulerSetTimeoutMode(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hScheduler`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -4331,6 +5544,8 @@ zesSchedulerSetTimesliceMode(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hScheduler`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -4362,6 +5577,8 @@ zesSchedulerSetExclusiveMode(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hScheduler`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -4398,7 +5615,8 @@ typedef enum _zes_standby_type_t
 typedef struct _zes_standby_properties_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    void* pNext;                                    ///< [in,out][optional] pointer to extension-specific structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     zes_standby_type_t type;                        ///< [out] Which standby hardware component this controls
     ze_bool_t onSubdevice;                          ///< [out] True if the resource is located on a sub-device; false means
                                                     ///< that the resource is on the device of the calling Sysman handle
@@ -4428,6 +5646,8 @@ typedef enum _zes_standby_promo_mode_t
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -4459,6 +5679,8 @@ zesDeviceEnumStandbyDomains(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hStandby`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -4480,6 +5702,8 @@ zesStandbyGetProperties(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hStandby`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -4501,6 +5725,8 @@ zesStandbyGetMode(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hStandby`
 ///     - ::ZE_RESULT_ERROR_INVALID_ENUMERATION
@@ -4539,7 +5765,8 @@ typedef enum _zes_temp_sensors_t
 typedef struct _zes_temp_properties_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    void* pNext;                                    ///< [in,out][optional] pointer to extension-specific structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     zes_temp_sensors_t type;                        ///< [out] Which part of the device the temperature sensor measures
     ze_bool_t onSubdevice;                          ///< [out] True if the resource is located on a sub-device; false means
                                                     ///< that the resource is on the device of the calling Sysman handle
@@ -4573,7 +5800,8 @@ typedef struct _zes_temp_threshold_t
 typedef struct _zes_temp_config_t
 {
     zes_structure_type_t stype;                     ///< [in] type of this structure
-    const void* pNext;                              ///< [in][optional] pointer to extension-specific structure
+    const void* pNext;                              ///< [in][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
     ze_bool_t enableCritical;                       ///< [in,out] Indicates if event ::ZES_EVENT_TYPE_FLAG_TEMP_CRITICAL should
                                                     ///< be triggered by the driver.
     zes_temp_threshold_t threshold1;                ///< [in,out] Configuration controlling if and when event
@@ -4596,6 +5824,8 @@ typedef struct _zes_temp_config_t
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hDevice`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -4627,6 +5857,8 @@ zesDeviceEnumTemperatureSensors(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hTemperature`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -4649,6 +5881,8 @@ zesTemperatureGetProperties(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hTemperature`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -4688,6 +5922,8 @@ zesTemperatureGetConfig(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hTemperature`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -4719,6 +5955,8 @@ zesTemperatureSetConfig(
 ///     - ::ZE_RESULT_SUCCESS
 ///     - ::ZE_RESULT_ERROR_UNINITIALIZED
 ///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
 ///         + `nullptr == hTemperature`
 ///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
@@ -4728,6 +5966,146 @@ zesTemperatureGetState(
     zes_temp_handle_t hTemperature,                 ///< [in] Handle for the component.
     double* pTemperature                            ///< [in,out] Will contain the temperature read from the specified sensor
                                                     ///< in degrees Celsius.
+    );
+
+#if !defined(__GNUC__)
+#pragma endregion
+#endif
+// Intel 'oneAPI' Level-Zero Sysman Extension APIs for Power Limits
+#if !defined(__GNUC__)
+#pragma region powerLimits
+#endif
+///////////////////////////////////////////////////////////////////////////////
+#ifndef ZES_POWER_LIMITS_EXT_NAME
+/// @brief Power Limits Extension Name
+#define ZES_POWER_LIMITS_EXT_NAME  "ZES_extension_power_limits"
+#endif // ZES_POWER_LIMITS_EXT_NAME
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Power Limits Extension Version(s)
+typedef enum _zes_power_limits_ext_version_t
+{
+    ZES_POWER_LIMITS_EXT_VERSION_1_0 = ZE_MAKE_VERSION( 1, 0 ), ///< version 1.0
+    ZES_POWER_LIMITS_EXT_VERSION_CURRENT = ZE_MAKE_VERSION( 1, 0 ), ///< latest known version
+    ZES_POWER_LIMITS_EXT_VERSION_FORCE_UINT32 = 0x7fffffff
+
+} zes_power_limits_ext_version_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Device power/current limit descriptor.
+typedef struct _zes_power_limit_ext_desc_t
+{
+    zes_structure_type_t stype;                     ///< [in] type of this structure
+    const void* pNext;                              ///< [in][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
+    zes_power_level_t level;                        ///< [in,out] duration type over which the power draw is measured, i.e.
+                                                    ///< sustained, burst, peak, or critical.
+    zes_power_source_t source;                      ///< [out] source of power used by the system, i.e. AC or DC.
+    zes_limit_unit_t limitUnit;                     ///< [out] unit used for specifying limit, i.e. current units (milliamps)
+                                                    ///< or power units (milliwatts).
+    ze_bool_t enabledStateLocked;                   ///< [out] indicates if the power limit state (enabled/ignored) can be set
+                                                    ///< (false) or is locked (true).
+    ze_bool_t enabled;                              ///< [in,out] indicates if the limit is enabled (true) or ignored (false).
+                                                    ///< If enabledStateIsLocked is True, this value is ignored.
+    ze_bool_t intervalValueLocked;                  ///< [out] indicates if the interval can be modified (false) or is fixed
+                                                    ///< (true).
+    int32_t interval;                               ///< [in,out] power averaging window in milliseconds. If
+                                                    ///< intervalValueLocked is true, this value is ignored.
+    ze_bool_t limitValueLocked;                     ///< [out] indicates if the limit can be set (false) or if the limit is
+                                                    ///< fixed (true).
+    int32_t limit;                                  ///< [in,out] limit value. If limitValueLocked is true, this value is
+                                                    ///< ignored. The value should be provided in the unit specified by
+                                                    ///< limitUnit.
+
+} zes_power_limit_ext_desc_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Extension properties related to device power settings
+/// 
+/// @details
+///     - This structure may be returned from ::zesPowerGetProperties via the
+///       `pNext` member of ::zes_power_properties_t.
+///     - This structure may also be returned from ::zesPowerGetProperties via
+///       the `pNext` member of ::zes_power_ext_properties_t
+///     - Used for determining the power domain level, i.e. card-level v/s
+///       package-level v/s stack-level & the factory default power limits.
+typedef struct _zes_power_ext_properties_t
+{
+    zes_structure_type_t stype;                     ///< [in] type of this structure
+    void* pNext;                                    ///< [in,out][optional] must be null or a pointer to an extension-specific
+                                                    ///< structure (i.e. contains sType and pNext).
+    zes_power_domain_t domain;                      ///< [out] domain that the power limit belongs to.
+    zes_power_limit_ext_desc_t* defaultLimit;       ///< [out] the factory default limit of the part.
+
+} zes_power_ext_properties_t;
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Get power limits
+/// 
+/// @details
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+///     - This function returns all the power limits associated with the
+///       supplied power domain.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hPower`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pCount`
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesPowerGetLimitsExt(
+    zes_pwr_handle_t hPower,                        ///< [in] Power domain handle instance.
+    uint32_t* pCount,                               ///< [in,out] Pointer to the number of power limit descriptors. If count is
+                                                    ///< zero, then the driver shall update the value with the total number of
+                                                    ///< components of this type that are available. If count is greater than
+                                                    ///< the number of components of this type that are available, then the
+                                                    ///< driver shall update the value with the correct number of components.
+    zes_power_limit_ext_desc_t* pSustained          ///< [in,out][optional][range(0, *pCount)] Array of query results for power
+                                                    ///< limit descriptors. If count is less than the number of components of
+                                                    ///< this type that are available, then the driver shall only retrieve that
+                                                    ///< number of components.
+    );
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief Set power limits
+/// 
+/// @details
+///     - The application can only modify unlocked members of the limit
+///       descriptors returned by ::zesPowerGetLimitsExt.
+///     - Not all the limits returned by ::zesPowerGetLimitsExt need to be
+///       supplied to this function.
+///     - Limits do not have to be supplied in the same order as returned by
+///       ::zesPowerGetLimitsExt.
+///     - The same limit can be supplied multiple times. Limits are applied in
+///       the order in which they are supplied.
+///     - The application may call this function from simultaneous threads.
+///     - The implementation of this function should be lock-free.
+/// 
+/// @returns
+///     - ::ZE_RESULT_SUCCESS
+///     - ::ZE_RESULT_ERROR_UNINITIALIZED
+///     - ::ZE_RESULT_ERROR_DEVICE_LOST
+///     - ::ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY
+///     - ::ZE_RESULT_ERROR_OUT_OF_DEVICE_MEMORY
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_HANDLE
+///         + `nullptr == hPower`
+///     - ::ZE_RESULT_ERROR_INVALID_NULL_POINTER
+///         + `nullptr == pCount`
+///     - ::ZE_RESULT_ERROR_INSUFFICIENT_PERMISSIONS
+///         + User does not have permissions to make these modifications.
+///     - ::ZE_RESULT_ERROR_NOT_AVAILABLE
+///         + The device is in use, meaning that the GPU is under Over clocking, applying power limits under overclocking is not supported.
+ZE_APIEXPORT ze_result_t ZE_APICALL
+zesPowerSetLimitsExt(
+    zes_pwr_handle_t hPower,                        ///< [in] Handle for the component.
+    uint32_t* pCount,                               ///< [in] Pointer to the number of power limit descriptors.
+    zes_power_limit_ext_desc_t* pSustained          ///< [in][optional][range(0, *pCount)] Array of power limit descriptors.
     );
 
 #if !defined(__GNUC__)

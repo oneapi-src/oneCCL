@@ -113,6 +113,10 @@ public:
     static constexpr int max_ranks_per_plane = 8;
     static constexpr int max_domain_count = 2;
     static constexpr size_t invalid_device_uuids_count = 0;
+    // to determine the florence system, 12 number of ports
+    // is used: LRZ has 3 pairs and there're 2 links between pairs,
+    // so 3 * 2 * 2 = 12 ports
+    static constexpr uint32_t tune_port_count = 12;
 
     static constexpr int card_domain_idx = 0;
     static constexpr int plane_domain_idx = 1;
@@ -146,6 +150,7 @@ public:
     static p2p_matrix_t build_p2p_matrix(const std::vector<ze_device_handle_t>& devices);
     static bool is_sub_vector(const std::vector<ze_device_uuid_t>& vec,
                               const std::vector<ze_device_uuid_t>& sub_vec);
+    static void detect_tune_port_count(const std::vector<ze::device_info>& devices);
 
     bool has_oversubscription() const;
     bool is_oversubscription_detected = false;

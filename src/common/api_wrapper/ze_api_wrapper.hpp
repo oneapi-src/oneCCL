@@ -57,6 +57,7 @@ typedef struct ze_lib_ops {
     decltype(zeCommandListAppendMemoryCopy) *zeCommandListAppendMemoryCopy;
     decltype(zeCommandListAppendLaunchKernel) *zeCommandListAppendLaunchKernel;
     decltype(zeCommandListAppendWaitOnEvents) *zeCommandListAppendWaitOnEvents;
+    decltype(zeCommandListAppendSignalEvent) *zeCommandListAppendSignalEvent;
     decltype(zeCommandListAppendBarrier) *zeCommandListAppendBarrier;
     decltype(zeCommandListClose) *zeCommandListClose;
     decltype(zeCommandListReset) *zeCommandListReset;
@@ -95,6 +96,9 @@ typedef struct ze_lib_ops {
     decltype(zesFabricPortGetConfig) *zesFabricPortGetConfig;
     decltype(zesFabricPortGetProperties) *zesFabricPortGetProperties;
     decltype(zesFabricPortGetState) *zesFabricPortGetState;
+#ifdef ZE_PCI_PROPERTIES_EXT_NAME
+    decltype(zeDevicePciGetPropertiesExt) *zeDevicePciGetPropertiesExt;
+#endif // ZE_PCI_PROPERTIES_EXT_NAME
 } ze_lib_ops_t;
 
 static std::vector<std::string> ze_fn_names = {
@@ -127,6 +131,7 @@ static std::vector<std::string> ze_fn_names = {
     "zeCommandListAppendMemoryCopy",
     "zeCommandListAppendLaunchKernel",
     "zeCommandListAppendWaitOnEvents",
+    "zeCommandListAppendSignalEvent",
     "zeCommandListAppendBarrier",
     "zeCommandListClose",
     "zeCommandListReset",
@@ -165,6 +170,9 @@ static std::vector<std::string> ze_fn_names = {
     "zesFabricPortGetConfig",
     "zesFabricPortGetProperties",
     "zesFabricPortGetState",
+#ifdef ZE_PCI_PROPERTIES_EXT_NAME
+    "zeDevicePciGetPropertiesExt",
+#endif // ZE_PCI_PROPERTIES_EXT_NAME
 };
 
 extern ccl::ze_lib_ops_t ze_lib_ops;
@@ -199,6 +207,7 @@ extern ccl::ze_lib_ops_t ze_lib_ops;
 #define zeCommandListAppendMemoryCopy     ccl::ze_lib_ops.zeCommandListAppendMemoryCopy
 #define zeCommandListAppendLaunchKernel   ccl::ze_lib_ops.zeCommandListAppendLaunchKernel
 #define zeCommandListAppendWaitOnEvents   ccl::ze_lib_ops.zeCommandListAppendWaitOnEvents
+#define zeCommandListAppendSignalEvent    ccl::ze_lib_ops.zeCommandListAppendSignalEvent
 #define zeCommandListAppendBarrier        ccl::ze_lib_ops.zeCommandListAppendBarrier
 #define zeCommandListClose                ccl::ze_lib_ops.zeCommandListClose
 #define zeCommandListReset                ccl::ze_lib_ops.zeCommandListReset
@@ -237,7 +246,9 @@ extern ccl::ze_lib_ops_t ze_lib_ops;
 #define zesFabricPortGetConfig            ccl::ze_lib_ops.zesFabricPortGetConfig
 #define zesFabricPortGetProperties        ccl::ze_lib_ops.zesFabricPortGetProperties
 #define zesFabricPortGetState             ccl::ze_lib_ops.zesFabricPortGetState
-
+#ifdef ZE_PCI_PROPERTIES_EXT_NAME
+#define zeDevicePciGetPropertiesExt ccl::ze_lib_ops.zeDevicePciGetPropertiesExt
+#endif // ZE_PCI_PROPERTIES_EXT_NAME
 bool ze_api_init();
 void ze_api_fini();
 

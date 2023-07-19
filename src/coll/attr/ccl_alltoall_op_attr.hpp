@@ -13,13 +13,21 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include "coll/ccl_barrier_attr.hpp"
-
+#pragma once
+#include "oneapi/ccl/types.hpp"
+#include "oneapi/ccl/types_policy.hpp"
+#include "oneapi/ccl/coll_attr_ids.hpp"
+#include "oneapi/ccl/coll_attr_ids_traits.hpp"
+#include "coll/attr/ccl_common_op_attrs.hpp"
 namespace ccl {
-/**
- * Definition
- */
-ccl_barrier_attr_impl_t::ccl_barrier_attr_impl_t(
-    const typename ccl_operation_attr_impl_t::version_traits_t::type& version)
-        : base_t(version) {}
+
+class ccl_alltoall_attr_impl_t : public ccl_operation_attr_impl_t {
+public:
+    using base_t = ccl_operation_attr_impl_t;
+
+    ccl_alltoall_attr_impl_t(
+        const typename detail::ccl_api_type_attr_traits<operation_attr_id,
+                                                        operation_attr_id::version>::type& version);
+};
+
 } // namespace ccl
