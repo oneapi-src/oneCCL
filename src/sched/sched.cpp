@@ -32,7 +32,7 @@
 #include "common/utils/sycl_utils.hpp"
 
 #ifdef CCL_ENABLE_ZE
-#include "sched/entry/ze/ze_cache.hpp"
+#include "sched/entry/ze/cache/ze_cache.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
 
 #endif // CCL_ENABLE_ZE
@@ -131,11 +131,35 @@ void ccl_sched::commit(ccl_parallelizer* parallelizer, bool update_sched_id) {
 }
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-void ccl_sched::ze_commands_submit() {
+uint32_t ccl_sched::ze_commands_submit() {
+    uint32_t cmd_counter = 0;
     for (auto& entry : entries) {
-        entry->ze_commands_submit();
+        cmd_counter += entry->ze_commands_submit();
     }
+    return cmd_counter;
 };
+
+bool ccl_sched::get_ze_commands_bypass_flag() {
+    return is_ze_commands_bypass;
+}
+
+void ccl_sched::set_ze_commands_bypass_flag(bool bypass) {
+    if (subsched_entry_parent_sched) {
+        subsched_entry_parent_sched->set_ze_commands_bypass_flag(bypass);
+    }
+    if (parent_sched) {
+        parent_sched->set_ze_commands_bypass_flag(bypass);
+    }
+    is_ze_commands_bypass = bypass;
+}
+
+std::shared_ptr<sync_object>& ccl_sched::get_init_ze_hook_sync_obj() {
+    return init_ze_hook_sync_obj;
+}
+
+void ccl_sched::set_init_ze_hook_sync_obj(std::shared_ptr<sync_object> sync_obj) {
+    init_ze_hook_sync_obj = std::move(sync_obj);
+}
 #endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
 
 void ccl_sched::reset_state() {
@@ -190,8 +214,9 @@ ccl_request* ccl_sched::reset_request() {
 
 void ccl_sched::add_subsched(const ccl_coll_param& coll_param, bool update_sched_id) {
     ccl_sched_id_t param_sched_id =
-        update_sched_id ? coll_param.comm->get_sched_id(sched_type != ccl_sched_regular)
-                        : this->sched_id;
+        update_sched_id
+            ? coll_param.comm->get_sched_id(sched_type != ccl_sched_regular, coll_param.is_pt2pt)
+            : this->sched_id;
 
     ccl_sched_create_param param = { sched_type, param_sched_id, coll_param };
 
@@ -292,10 +317,24 @@ ccl_sched::ccl_sched_ptr ccl_sched::create(const ccl_coll_param& param, const cc
     ccl_sched_key key;
     ccl_sched_ptr sched;
     bool is_created = false;
-    auto create_fn = [param]() -> ccl_sched_ptr {
-        return new ccl_sched({ ccl_sched_regular, param.comm->get_sched_id(false), param },
-                             /* top-level sched */ true);
+    // WARNING be cautious while modifying the lambda-related code !
+    // `param` is captured by reference
+    // lifetimes:
+    //      - the lambda's lifetime ends at the end of `ccl_sched::create`
+    //      - `param`'s lifetime exceeds the end of `ccl_sched::create`
+    // `param` outlives the lambda, so the code is ok (there should be no memory issues)
+    // C++ does not check lifetimes, this has to be assured by a programmer !
+    // optionally, the code might be refactored in the future to use shared_ptr
+    auto create_fn = [&param]() -> ccl_sched_ptr {
+        return new ccl_sched(
+            { ccl_sched_regular, param.comm->get_sched_id(false, param.is_pt2pt), param },
+            /* top-level sched */ true);
     };
+
+#ifdef CCL_ENABLE_ITT
+    __itt_event sched_create_event = ccl::profile::itt::event_get("SCHED_CREATE");
+    ccl::profile::itt::event_start(sched_create_event);
+#endif // CCL_ENABLE_ITT
 
     if (attr.to_cache) {
         key.set(param, attr);
@@ -322,6 +361,10 @@ ccl_sched::ccl_sched_ptr ccl_sched::create(const ccl_coll_param& param, const cc
         LOG_DEBUG(
             "found sched, reuse ", sched, ", type ", ccl_coll_type_to_str(sched->coll_param.ctype));
     }
+
+#ifdef CCL_ENABLE_ITT
+    ccl::profile::itt::event_end(sched_create_event);
+#endif // CCL_ENABLE_ITT
 
     return sched;
 }
@@ -427,7 +470,6 @@ void ccl_sched::complete() {
                 ccl_coll_param* profile_param = &(coll_param);
                 ss << ccl_coll_type_to_str(profile_param->ctype);
 
-                /* TODO: tmp check, replace ccl_coll_entry_param by ccl_coll_param */
                 if (!profile_param->send_counts.empty()) {
                     ss << " count:" << profile_param->get_send_count();
                 }
@@ -494,6 +536,12 @@ void ccl_sched::renew(bool need_update_id, bool reset) {
 
     if (reset)
         reset_state();
+
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    if (init_ze_hook_sync_obj && ze_entries.empty()) {
+        init_ze_hook_sync_obj->visit();
+    }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 }
 
 void ccl_sched::add_barrier() {
@@ -583,27 +631,6 @@ void ccl_sched::try_to_restart() {
                 /* restart */ true);
 }
 
-void ccl_sched::release_sync_event(ccl_request* request) {
-#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-    if (use_output_event) {
-        // check if the event has been reset already(is_host is true for an empty one)
-        if (!request->has_sync_event()) {
-            LOG_DEBUG("request's event has been released already, skipping");
-        }
-        else {
-            auto& pools = ccl::global_data::get().ze_data->dynamic_event_pools;
-            auto pool_it = pools.find(coll_param.stream->get_ze_context());
-            CCL_THROW_IF_NOT(pool_it != pools.end(), "pool must be initialized for the context");
-
-            pool_it->second.put_event(ccl::utils::get_native_event(request->get_sync_event()));
-        }
-    }
-    else {
-        LOG_DEBUG("skip sync event destruction");
-    }
-#endif
-}
-
 void ccl_sched::update_active_request(bool use_delayed) {
     // at this point we reset the active request, but it still can
     // be referenced via an event, returned previously to the user.
@@ -614,15 +641,5 @@ void ccl_sched::update_active_request(bool use_delayed) {
 }
 
 void ccl_sched::complete_itt(const ccl_stream* stream) {
-#ifdef CCL_ENABLE_ITT
-#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-    // only applicable for device execution
-    if (stream) {
-        ccl::profile::itt::task_end(ccl::profile::itt::task_type::completion);
-    }
-#endif // CCL_ENABLE_SYCL
-    ccl::profile::itt::task_end(ccl::profile::itt::task_type::operation);
-#else
     (void)stream;
-#endif // CCL_ENABLE_ITT
 }

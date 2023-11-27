@@ -30,7 +30,8 @@ if (CCL_ENABLE_SYCL AND CCL_ENABLE_ZE)
         sched/entry/ze/ze_alltoallv_entry.cpp
         sched/entry/ze/ze_base_entry.cpp
         sched/entry/ze/ze_barrier_entry.cpp
-        sched/entry/ze/ze_cache.cpp
+        sched/entry/ze/cache/ze_cache.cpp
+        sched/entry/ze/cache/ze_device_cache.cpp
         sched/entry/ze/ze_call.cpp
         sched/entry/ze/ze_command.cpp
         sched/entry/ze/ze_copy_entry.cpp
@@ -38,8 +39,10 @@ if (CCL_ENABLE_SYCL AND CCL_ENABLE_ZE)
         sched/entry/ze/ze_kernel.cpp
         sched/entry/ze/ze_event_signal_entry.cpp
         sched/entry/ze/ze_event_wait_entry.cpp
+        sched/entry/ze/ze_membarrier_entry.cpp
         sched/entry/ze/ze_onesided_reduce_entry.cpp
         sched/entry/ze/ze_primitives.cpp
+        sched/entry/ze/ze_pt2pt_barrier_entry.cpp
         sched/entry/ze/ze_reduce_local_entry.cpp
 
         common/global/ze/ze_data.cpp
@@ -100,8 +103,10 @@ set(CCL_SRC
     coll/algorithms/barrier.cpp
     coll/algorithms/bcast.cpp
     coll/algorithms/double_tree_ops.cpp
+    coll/algorithms/recv.cpp
     coll/algorithms/reduce.cpp
     coll/algorithms/reduce_scatter.cpp
+    coll/algorithms/send.cpp
     coll/coll.cpp
     coll/coll_check.cpp
     coll/selection/selection.cpp
@@ -111,8 +116,10 @@ set(CCL_SRC
     coll/selection/selector_alltoallv.cpp
     coll/selection/selector_barrier.cpp
     coll/selection/selector_bcast.cpp
+    coll/selection/selector_recv.cpp
     coll/selection/selector_reduce.cpp
     coll/selection/selector_reduce_scatter.cpp
+    coll/selection/selector_send.cpp
 
     comm/atl_tag.cpp
     comm/comm.cpp
@@ -133,6 +140,7 @@ set(CCL_SRC
     common/utils/exchange_utils.cpp
     common/utils/fd_info.cpp
     common/utils/memcpy.cpp
+    common/utils/profile.cpp
     common/utils/spinlock.cpp
     common/utils/utils.cpp
     common/utils/version.cpp
@@ -351,7 +359,7 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
 if ("${LIBFABRIC_DIR}" STREQUAL "")
     # internal libfabric is used, install it into package
     install(DIRECTORY ${DEPS_DIR}/ofi/lib/
-            DESTINATION ${CCL_INSTALL_LIB})
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/opt/mpi/libfabric/lib)
 endif()
 
 if (ENABLE_MPI)
@@ -361,8 +369,8 @@ if (ENABLE_MPI)
             DESTINATION ${CCL_INSTALL_INCLUDE})
     install(DIRECTORY ${DEPS_DIR}/mpi/lib/
            DESTINATION ${CCL_INSTALL_LIB})
-    install(DIRECTORY ${DEPS_DIR}/mpi/etc/
-            DESTINATION ${CCL_INSTALL_ETC})
+    install(DIRECTORY ${DEPS_DIR}/mpi/opt/mpi/etc/
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/opt/mpi/etc/)
     install(DIRECTORY ${DEPS_DIR}/mpi/licensing/
             DESTINATION ${CCL_INSTALL_LICENSE}/mpi/)
 endif()

@@ -133,6 +133,9 @@ void global_data::init_resize_independent_objects() {
     algorithm_selector->init();
 
     hwloc_wrapper.reset(new ccl_hwloc_wrapper());
+
+    metrics_profiler.reset(new profile::metrics_manager());
+    metrics_profiler->init();
 }
 
 void global_data::reset_resize_dependent_objects() {
@@ -146,6 +149,7 @@ void global_data::reset_resize_independent_objects() {
     parallelizer.reset();
     algorithm_selector.reset();
     hwloc_wrapper.reset();
+    metrics_profiler.reset();
 }
 
 void global_data::getenv_local_coord(const char* local_proc_idx_env_name,

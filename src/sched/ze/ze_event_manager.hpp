@@ -139,7 +139,8 @@ private:
 
     // TODO: make some parameters configurable
     // TODO: check if another value would be better, as this one is chosen quite arbitrary
-    static constexpr size_t event_pool_size{ 50 };
+    static constexpr size_t event_pool_size{ 1000 };
+    int event_pool_request_idx{ 0 };
 
     static ze_event_pool_desc_t get_default_event_pool_desc();
     static const ze_event_pool_desc_t common_pool_desc;

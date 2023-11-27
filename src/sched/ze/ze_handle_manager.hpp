@@ -19,7 +19,7 @@
 #include "common/stream/stream.hpp"
 #include "common/utils/buffer.hpp"
 #include "common/utils/utils.hpp"
-#include "sched/entry/ze/ze_cache.hpp"
+#include "sched/entry/ze/cache/ze_cache.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
 
 #include <unordered_map>
@@ -68,6 +68,11 @@ struct ipc_handle_desc {
 
 class ipc_handle_manager {
 public:
+    // for pt2pt ops, it's assumed to have only 1 buffer for communication
+    // it means, only one handle is expected for each rank which is participated
+    // in pt2pt communication
+    static constexpr int pt2pt_handles_size = 1;
+
     // matrix with ipc handles, row - rank, column - buf_idx
     using mem_handle_map_t = typename std::vector<std::vector<ipc_handle_desc>>;
 
@@ -79,11 +84,19 @@ public:
     void init(const ccl_comm* comm, const ccl_stream* stream);
     void clear();
 
-    void set(const mem_handle_map_t& handles_arg);
+    void set(const mem_handle_map_t& handles_arg, bool pt2pt_op = false);
 
-    void* get_ptr(int rank, size_t buf_idx, const ccl_comm* map_comm);
-    void get(int rank, size_t buf_idx, ccl_buffer& buf, const ccl_comm* map_comm = nullptr);
-    void get(int rank, size_t buf_idx, ze_event_pool_handle_t& buf, const ccl_comm* map_comm);
+    void* get_ptr(int rank, size_t buf_idx, const ccl_comm* map_comm, bool pt2pt_op = false);
+    void get(int rank,
+             size_t buf_idx,
+             ccl_buffer& buf,
+             const ccl_comm* map_comm = nullptr,
+             bool pt2pt_op = false);
+    void get(int rank,
+             size_t buf_idx,
+             ze_event_pool_handle_t& buf,
+             const ccl_comm* map_comm,
+             bool pt2pt_op = false);
 
     void get_handle(void* ptr, ze_ipc_mem_handle_t* ipc_handle);
     void get_handle(ze_event_pool_handle_t pool, ze_ipc_event_pool_handle_t* ipc_handle);
@@ -109,7 +122,7 @@ private:
      */
     std::list<mem_handle_cache::value_t> cached_handles;
 
-    void check_rank(int rank, const ccl_comm* check_comm);
+    void check_rank(int rank, const ccl_comm* check_comm, bool pt2pt_op);
 };
 
 } // namespace ze

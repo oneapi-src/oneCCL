@@ -118,6 +118,56 @@ constexpr const char* CCL_REDUCE_SCATTER_FALLBACK_ALGO = "CCL_REDUCE_SCATTER_FAL
  * By-default: "1"
  */
 constexpr const char* CCL_ZE_AUTO_TUNE_PORTS = "CCL_ZE_AUTO_TUNE_PORTS";
+
+/**
+ * @brief Enable switching of read and write protocols for pt2pt topo algorithm
+ *
+ * @details Control pt2pt read/write protocols.\n Read Protocol:\n
+ * It means SEND side is exchanging the handle with RECV side.
+ * Then execute the copy operation on the RECV operation side, where the dst buf
+ * is the local buffer and the source buffer is the remote buffer.\n
+ *
+ * Write Protocol:\n
+ * it means RECV side is exchanging the handle with SEND side.
+ * Execute the copy operation on the SEND operation side, where the dst buf is the
+ * remote buffer and the source buffer is the local buffer.
+ *\n
+ * "<value>" :  "0", "1"
+ *\n
+ * By-default: "1"
+ */
+constexpr const char* CCL_ZE_PT2PT_READ = "CCL_ZE_PT2PT_READ";
+
+/**
+ * @brief Tunable value for collectives to adjust copy engine indexes
+ *
+ * @details use 2,4,6 copy engine indexes for host with 6 ports
+ * for allreduce, reduce and allgatherv
+ * "<value>":
+ * "on" - always use write mode with calculated indexes
+ * "off" - always disabled
+ * "detected" - determined by the logic in detection
+ * "undetected" - the default value, used before the logic in
+ * detection
+ *
+ * By-default: "undetected"
+ */
+constexpr const char* CCL_ZE_TYPE2_TUNE_PORTS = "CCL_ZE_TYPE2_TUNE_PORTS";
+
+/**
+ * @brief Switch ccl::barrier() host-sync / host-async options
+ *
+ * @details Historically ccl::barrier() was always synchronous.
+ * That does not match with oneCCL asynchronous concept. Same as other
+ * collectives, ccl::barrier() should be host-asynchronous if possible.
+ * As it would be too much to change in one moment, we start through
+ * experimental variable which introduces the option to make barrier
+ * host-asynchronous. Use CCL_BARRIER_SYNC=0 to achieve that.
+ *
+ * By-default: "1 (SYNC)"
+ */
+constexpr const char* CCL_BARRIER_SYNC = "CCL_BARRIER_SYNC";
+/** @} */
 /** @} */
 
 #endif // CCL_ENABLE_SYCL

@@ -232,7 +232,7 @@ private:
         void push(size_t idx, fid_mr* mr);
 
     private:
-        int enable_hmem;
+        int enable_hmem{ 0 };
         std::vector<mr_cache> memory_regions;
     };
 

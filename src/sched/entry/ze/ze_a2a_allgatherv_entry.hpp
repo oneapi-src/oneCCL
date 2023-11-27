@@ -46,7 +46,9 @@ public:
         ccl_comm* pipeline_comm = nullptr,
         // whether ipc handle exchange done only for start of the buffer
         // or separate handles for the buffer partition of each rank
-        bool is_separate_block_handles = true);
+        bool is_separate_block_handles = false,
+        bool is_scaleout = false,
+        size_t scaleout_offset = 0);
 
     void init_ze_hook() override;
     void update() override;
@@ -68,6 +70,8 @@ private:
     const bool is_monolithic_pipeline;
     ccl_comm* pipeline_comm;
     const bool is_separate_block_handles;
+    const bool is_scaleout;
+    const size_t scaleout_offset;
 
     std::vector<ze_event_handle_t> copy_events;
     std::vector<ze_kernel> kernels;
@@ -95,10 +99,13 @@ public:
                          size_t peer_buf_offset,
                          std::vector<ze_event_handle_t>& copy_events,
                          std::vector<ze_event_handle_t>& wait_events,
+                         ze_event_handle_t out_event,
                          bool is_monolithic,
                          bool is_monolithic_pipeline,
                          bool is_inplace = false,
-                         bool is_separate_block_handles = true);
+                         bool is_separate_block_handles = true,
+                         bool is_scaleout = false,
+                         size_t scaleout_offset = 0);
     // methods
     static void select(ze_a2a_allgatherv_op& args, std::vector<ze_kernel>& kernels);
     // common
@@ -123,11 +130,14 @@ public:
     // events
     std::vector<ze_event_handle_t>& copy_events;
     std::vector<ze_event_handle_t>& wait_events;
+    ze_event_handle_t out_event;
     // flags
     bool is_monolithic;
     bool is_monolithic_pipeline;
     bool is_inplace;
     bool is_separate_block_handles;
+    bool is_scaleout;
+    size_t scaleout_offset;
 
 private:
     static void read_write(ze_a2a_allgatherv_op& args, std::vector<ze_kernel>& kernels);

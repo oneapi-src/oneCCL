@@ -15,7 +15,7 @@
 */
 #include "sched/entry/ze/ze_reduce_local_entry.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
-#include "sched/entry/ze/ze_cache.hpp"
+#include "sched/entry/ze/cache/ze_cache.hpp"
 
 #include <string>
 

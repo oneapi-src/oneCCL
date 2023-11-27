@@ -14,6 +14,7 @@
  limitations under the License.
 */
 #pragma once
+#include "oneapi/ccl.hpp"
 #include "oneapi/ccl/types.hpp"
 #include "oneapi/ccl/types_policy.hpp"
 #include "common/event/impls/event_impl.hpp"
@@ -32,15 +33,21 @@ public:
     bool test() override;
     bool cancel() override;
     event::native_t& get_native() override;
+    host_event_impl& operator=(const host_event_impl&) = delete;
+    host_event_impl(const host_event_impl&) = delete;
 
 private:
     ccl_request* req = nullptr;
     bool completed = false;
-    bool synchronous = false;
 
 #ifdef CCL_ENABLE_SYCL
     // the actual sycl::event returned to the user via ccl::event.get_native()
     std::shared_ptr<sycl::event> native_event;
+    std::shared_ptr<sycl::event> sync_event;
+    ze_context_handle_t ze_context{};
+#ifdef CCL_ENABLE_ZE
+    ccl_stream* stream = nullptr;
+#endif // CCL_ENABLE_ZE
 #endif // CCL_ENABLE_SYCL
 };
 

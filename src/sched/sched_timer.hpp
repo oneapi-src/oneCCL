@@ -18,6 +18,11 @@
 #include <chrono>
 #include <string>
 
+#ifdef CCL_ENABLE_ITT
+#include "ittnotify.h"
+#include "coll/algorithms/algorithm_utils.hpp"
+#endif // CCL_ENABLE_ITT
+
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
 #include "common/api_wrapper/ze_api_wrapper.hpp"
 #endif
@@ -49,19 +54,11 @@ namespace itt {
 
 void set_thread_name(const std::string& name);
 
-enum class task_type : int {
-    operation = 0,
-    api_call = 1,
-#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-    preparation = 2,
-    device_work = 3,
-    deps_handling = 4,
-    completion = 5
-#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
-};
+static constexpr __itt_event invalid_event = -1;
 
-void task_start(task_type type);
-void task_end(task_type type);
+__itt_event event_get(const char* name);
+void event_start(__itt_event event);
+void event_end(__itt_event event);
 
 } // namespace itt
 } // namespace profile

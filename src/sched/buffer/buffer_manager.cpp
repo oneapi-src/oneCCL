@@ -18,7 +18,7 @@
 #include "sched/buffer/buffer_manager.hpp"
 
 #ifdef CCL_ENABLE_ZE
-#include "sched/entry/ze/ze_cache.hpp"
+#include "sched/entry/ze/cache/ze_cache.hpp"
 #endif // CCL_ENABLE_ZE
 
 namespace ccl {

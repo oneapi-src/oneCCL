@@ -38,7 +38,7 @@ void ccl_context_impl::build_from_params() {
         throw ccl::exception("error");
     }
 #ifdef CCL_ENABLE_SYCL
-    /* TODO unavailbale??
+    /* TODO unavailable??
     event_native_t event_candidate{native_context};
     std::swap(event_candidate, native_event); //TODO USE attributes fro sycl queue construction
     */

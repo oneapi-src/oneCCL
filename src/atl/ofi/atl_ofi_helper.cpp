@@ -277,9 +277,15 @@ atl_status_t atl_ofi_prov_update_addr_table(atl_ofi_ctx_t& ctx,
         return ATL_STATUS_FAILURE;
     }
 
-    ATL_CHECK_STATUS(pmi->pmrt_barrier(), "barrier failed");
-
+    /* variable initialization must happen before the first *goto* statement */
     std::vector<char> ret_ep_name(addr_len, '\0');
+
+    if (pmi->pmrt_barrier() != ATL_STATUS_SUCCESS) {
+        LOG_ERROR("barrier failed");
+        ret = ATL_STATUS_FAILURE;
+        goto err_ep_names;
+    }
+
     next_ep_name = ep_names_table;
     /* retrieve all OFI EP names in order */
     for (i = 0; i < coord.global_count; i++) {
@@ -822,7 +828,7 @@ atl_status_t atl_ofi_set_env(const atl_attr_t& attr) {
        to workaround issue with undefined symbols
        in case of out-of-tree providers, like OFI/PSM3
     */
-    global_data.dlhandle = dlopen("libfabric.so", RTLD_GLOBAL | RTLD_NOW);
+    global_data.dlhandle = dlopen(ccl::get_ofi_lib_path().c_str(), RTLD_GLOBAL | RTLD_NOW);
     if (global_data.dlhandle == nullptr) {
         LOG_WARN("dlopen (libfabric.so): ", dlerror());
     }
@@ -857,15 +863,13 @@ atl_status_t atl_ofi_get_prov_list(atl_ofi_ctx_t& ctx,
 
     ret = fi_getinfo(fi_version, nullptr, nullptr, 0ULL, hints, &prov_list);
 
-    if ((ret || !prov_list || !strcmp(prov_list->fabric_attr->prov_name, ATL_OFI_SHM_PROV_NAME)) &&
-        prov_list->caps & FI_HMEM) {
-        // skip OFI/SHM with HMEM capability
-        fi_freeinfo(hints);
-        fi_freeinfo(prov_list);
-        return ATL_STATUS_FAILURE;
-    }
     if (ret || !prov_list) {
         LOG_ERROR("fi_getinfo error: ret ", ret, ", providers ", (void*)prov_list);
+        goto err;
+    }
+    if (!strcmp(prov_list->fabric_attr->prov_name, ATL_OFI_SHM_PROV_NAME) &&
+        prov_list->caps & FI_HMEM) {
+        LOG_ERROR("skip OFI/SHM with HMEM capability");
         goto err;
     }
 
@@ -969,7 +973,7 @@ atl_status_t atl_ofi_prov_init(atl_ofi_ctx_t& ctx,
     }
 
     /* TODO: make separate function to be called on CCL comm creation */
-    ret = atl_ofi_prov_eps_connect(ctx, coord, prov->idx, pmi, ep_names);
+    ret = atl_ofi_prov_eps_connect(ctx, coord, prov->idx, std::move(pmi), ep_names);
     if (ret) {
         LOG_ERROR("atl_ofi_prov_eps_connect error, prov_idx ", prov->idx);
         goto err;
@@ -1348,9 +1352,9 @@ atl_status_t atl_ofi_open_nw_provs(atl_ofi_ctx_t& ctx,
         prov = &ctx.provs[prov_idx];
         prov->idx = prov_idx;
         prov->is_shm = 0;
-        ATL_CALL(
-            atl_ofi_prov_init(ctx, coord, final_provs[idx], prov, attr, pmi, ep_names[prov->idx]),
-            goto err);
+        ATL_CALL(atl_ofi_prov_init(
+                     ctx, coord, final_provs[idx], prov, attr, std::move(pmi), ep_names[prov->idx]),
+                 goto err);
     }
 
 exit:

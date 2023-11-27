@@ -15,7 +15,7 @@
 */
 #include "common/global/global.hpp"
 #include "common/log/log.hpp"
-#include "sched/entry/ze/ze_cache.hpp"
+#include "sched/entry/ze/cache/ze_cache.hpp"
 #include "sched/ze/ze_ipc_event_pool_manager.hpp"
 
 using namespace ccl;

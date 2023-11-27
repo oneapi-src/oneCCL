@@ -73,6 +73,10 @@ atl_status_t atl_ofi::init(int* argc,
 
     ctx.ep_count = attr->in.ep_count;
 
+    if (!pmi) {
+        LOG_ERROR("pmi is null");
+        goto err;
+    }
     coord.global_count = pmi->get_size();
     coord.global_idx = pmi->get_rank();
 
@@ -130,7 +134,8 @@ atl_status_t atl_ofi::init(int* argc,
     attr->out.max_tag = 0xFFFFFFFFFFFFFFFF;
 
 #ifdef CCL_ENABLE_OFI_HMEM
-    if (prov_env && (strstr(prov_env, "verbs") || strstr(prov_env, "cxi")) &&
+    if (prov_env &&
+        (strstr(prov_env, "verbs") || strstr(prov_env, "cxi") || strstr(prov_env, "psm3")) &&
         attr->in.enable_hmem) {
         struct fi_info* hmem_hints = fi_dupinfo(base_hints);
         atl_attr_t hmem_attr = *attr;
@@ -960,7 +965,6 @@ atl_status_t atl_ofi::open_providers(char* prov_env,
     size_t prov_idx = 0;
     int enable_shm = 0;
     ssize_t ret = 0;
-    char* prov_name = nullptr;
     struct fi_info *prov_list = nullptr, *prov_hints = nullptr;
     atl_ofi_prov_t* prov = nullptr;
 
@@ -1006,17 +1010,16 @@ atl_status_t atl_ofi::open_providers(char* prov_env,
     /* open SHM provider */
     if (enable_shm) {
         prov_idx = ctx.shm_prov_idx;
-        prov_name = strdup(ATL_OFI_SHM_PROV_NAME);
         prov = &ctx.provs[prov_idx];
         prov->idx = prov_idx;
         prov->is_shm = 1;
-        ATL_CALL(atl_ofi_get_prov_list(ctx, prov_name, base_hints, &prov_list), goto err);
+        ATL_CALL(atl_ofi_get_prov_list(ctx, ATL_OFI_SHM_PROV_NAME, base_hints, &prov_list),
+                 goto err);
         if (ep_names.size() < prov->idx + 1) {
             ep_names.resize(prov->idx + 1);
         }
         ATL_CALL(atl_ofi_prov_init(ctx, coord, prov_list, prov, attr, pmi, ep_names[prov->idx]),
                  goto err);
-        free(prov_name);
         fi_freeinfo(prov_list);
         ctx.prov_count++;
     }

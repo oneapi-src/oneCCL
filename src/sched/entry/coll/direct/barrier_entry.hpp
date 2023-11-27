@@ -35,8 +35,9 @@ public:
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("BARRIER entry failed. atl_status: ", atl_status_to_str(atl_status));
         }
-        else
+        else {
             status = ccl_sched_entry_status_started;
+        }
     }
 
     void update() override {
@@ -46,8 +47,9 @@ public:
             CCL_THROW("BARRIER entry failed. atl_status: ", atl_status_to_str(atl_status));
         }
 
-        if (req.is_completed)
+        if (req.is_completed) {
             status = ccl_sched_entry_status_complete;
+        }
     }
 
     const char* name() const override {

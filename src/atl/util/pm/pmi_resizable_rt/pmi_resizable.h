@@ -21,6 +21,39 @@
 #include "atl/util/pm/pmi_resizable_rt/pmi_resizable/helper.hpp"
 #include "atl/util/pm/pmi_resizable_rt/pmi_resizable/pmi_listener.hpp"
 
+// WARNING - the functionality related to this code is not documented and not tested !
+//
+// The functionality was marked in logs as *DEPRECATED*
+//
+// Some general comments with regards to the whole oneCCL, as of the moment of adding this commit:
+//
+// The following steps would have to be followed to instantiate pmi_resizable in oneCCL:
+//
+// 1.	CCL_PM_TYPE =resizable        # not tested and undocumented;
+//                                      the related code is not placed in the env module
+// 2.	CCL_ATL_TRANSPORT=ofi         # mpi transport layer does not support this functionality
+// 3.	create communicator via `ccl::preview::create_communicator()`,
+//                                      without specifying comm size: only one of our tests
+//                                      uses this function, as one of many options,
+//                                      buried within nested ifs
+//
+// There are 3 classes that implement the realated ipmi interface:
+//
+// pmi_resizable
+// pmi_resizable_simple
+// pmi_resizable_simple_internal
+//
+// but the latter two are instantiated in most cases and they don’t support the functionality:
+//
+// atl_status_t pmi_resizable_simple::pmrt_update() {
+//     return ATL_STATUS_UNSUPPORTED;
+// }
+//
+// atl_status_t pmi_resizable_simple_internal::pmrt_update() {
+//     LOG_ERROR("unsupported");
+//     return ATL_STATUS_UNSUPPORTED;
+// }
+
 #define PMIR_SUCCESS                0
 #define PMIR_FAIL                   -1
 #define PMIR_ERR_INIT               1
@@ -50,9 +83,16 @@ public:
     pmi_resizable() = delete;
     explicit pmi_resizable(std::shared_ptr<ikvs_wrapper> k, const char* main_addr = "")
             : main_addr(main_addr),
-              h(std::make_shared<helper>(k)) {}
+              h(std::make_shared<helper>(k)) {
+        LOG_WARN("WARNING: resizable pmi is an undocumented and deprecated functionality"
+                 " the functionality might be removed without notice");
+    }
 
     ~pmi_resizable() override;
+
+    pmi_resizable& operator=(const pmi_resizable&) = delete;
+
+    pmi_resizable(const pmi_resizable&) = delete;
 
     int is_pm_resize_enabled() override;
 

@@ -50,5 +50,6 @@ extern ccl::ofi_lib_ops_t ofi_lib_ops;
 
 bool ofi_api_init();
 void ofi_api_fini();
+std::string get_ofi_lib_path();
 
 } //namespace ccl

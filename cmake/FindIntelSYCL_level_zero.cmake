@@ -44,6 +44,7 @@ find_path(INTEL_SYCL_INCLUDE_DIRS
     PATHS
       ${sycl_root_hints}
       "${INTEL_SYCL_BINARY_DIR}/.."
+      "${INTEL_SYCL_BINARY_DIR}/../opt/compiler"
     PATH_SUFFIXES
         include
         include/sycl

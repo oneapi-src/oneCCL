@@ -149,6 +149,13 @@ env_data::env_data()
               0), // pipelined monolithic kernel for xelink + mdfi transfer
           alltoallv_monolithic_kernel(1),
           alltoallv_monolithic_read_kernel(1),
+
+          // TODO: not used values yet, add log_info and setting them
+          // once they are needed
+          allgatherv_pipe_chunk_count(0),
+          allreduce_pipe_chunk_count(0),
+          reduce_scatter_pipe_chunk_count(0),
+          reduce_pipe_chunk_count(0),
 #endif // CCL_ENABLE_SYCL
 
           allreduce_nreduce_buffering(0),
@@ -200,9 +207,15 @@ env_data::env_data()
           enable_sycl_output_event(1),
           use_hmem(1),
 
+          sync_barrier(1),
+
           enable_ze_barrier(0),
           enable_ze_bidir_algo(1),
           enable_ze_cache(1),
+          ze_device_cache_evict_smallest(1),
+          ze_device_cache_upper_limit(800 * 1024L * 1024L),
+          ze_device_cache_num_blocks_in_chunk(1),
+          ze_device_cache_policy(ccl::ze::device_cache_policy_mode::chunk),
 
           // Note: env. vars are required when
           // functionality is completed to support bypass/cache
@@ -216,7 +229,8 @@ env_data::env_data()
           enable_ze_single_list(1),
           disable_ze_family_check(0),
           disable_ze_port_check(0),
-          ze_disable_oversubscription_check(0),
+          ze_enable_oversubscription_fallback(1),
+          ze_enable_oversubscription_throw(1),
           ze_serialize_mode(0),
           ze_copy_engine(ccl::ze::copy_engine_mode::link),
           ze_h2d_copy_engine(ccl::ze::h2d_copy_engine_mode::none),
@@ -226,7 +240,6 @@ env_data::env_data()
           enable_ze_list_dump(0),
           ze_queue_index_offset(0),
           ze_close_ipc_wa(0),
-          enable_ze_cmd_bypass(1),
           ze_lib_path(),
           ze_enable(1),
           ze_fini_wa(0),
@@ -242,6 +255,8 @@ env_data::env_data()
 #else // ZE_PCI_PROPERTIES_EXT_NAME
           ze_drm_bdf_support(0),
 #endif // ZE_PCI_PROPERTIES_EXT_NAME
+          ze_pt2pt_read(1),
+          type2_mode(type2_tune_mode::undetected),
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_PMIX
@@ -322,14 +337,18 @@ void env_data::parse() {
     env_2_enum(CCL_MNIC_OFFSET, mnic_offset_names, mnic_offset);
 
     env_2_type(CCL_ALGO_FALLBACK, enable_algo_fallback);
+    // main algorithm selection
     env_2_type(CCL_ALLGATHERV, allgatherv_algo_raw);
     env_2_type(CCL_ALLREDUCE, allreduce_algo_raw);
     env_2_type(CCL_ALLTOALL, alltoall_algo_raw);
     env_2_type(CCL_ALLTOALLV, alltoallv_algo_raw);
     env_2_type(CCL_BARRIER, barrier_algo_raw);
     env_2_type(CCL_BCAST, bcast_algo_raw);
+    env_2_type(CCL_RECV, recv_algo_raw);
     env_2_type(CCL_REDUCE, reduce_algo_raw);
     env_2_type(CCL_REDUCE_SCATTER, reduce_scatter_algo_raw);
+    env_2_type(CCL_SEND, send_algo_raw);
+    // scale-out selection part
     env_2_type(CCL_ALLGATHERV_SCALEOUT, allgatherv_scaleout_algo_raw);
     env_2_type(CCL_ALLREDUCE_SCALEOUT, allreduce_scaleout_algo_raw);
     env_2_type(CCL_ALLTOALL_SCALEOUT, alltoall_scaleout_algo_raw);
@@ -405,6 +424,11 @@ void env_data::parse() {
     env_2_type(CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL, allgatherv_monolithic_pipeline_kernel);
     env_2_type(CCL_ALLTOALLV_MONOLITHIC_KERNEL, alltoallv_monolithic_kernel);
     env_2_type(CCL_ALLTOALLV_MONOLITHIC_READ_KERNEL, alltoallv_monolithic_read_kernel);
+
+    env_2_type(CCL_ALLGATHERV_PIPE_CHUNK_COUNT, allgatherv_pipe_chunk_count);
+    env_2_type(CCL_ALLREDUCE_PIPE_CHUNK_COUNT, allreduce_pipe_chunk_count);
+    env_2_type(CCL_REDUCE_SCATTER_PIPE_CHUNK_COUNT, reduce_scatter_pipe_chunk_count);
+    env_2_type(CCL_REDUCE_PIPE_CHUNK_COUNT, reduce_pipe_chunk_count);
 #endif // CCL_ENABLE_SYCL
 
     env_2_type(CCL_ALLREDUCE_NREDUCE_BUFFERING, allreduce_nreduce_buffering);
@@ -447,11 +471,16 @@ void env_data::parse() {
     if (kernel_path.empty()) {
         std::string ccl_root;
         char* ccl_root_env_value = getenv("CCL_ROOT");
+        char* oneapi_root_env_value = getenv("ONEAPI_ROOT");
         if (ccl_root_env_value) {
             ccl_root = ccl_root_env_value;
         }
-        CCL_THROW_IF_NOT(!ccl_root.empty(), "incorrect comm kernels path, CCL_ROOT not found!");
-        kernel_path = ccl_root + "/lib/kernels/";
+        else if (oneapi_root_env_value) {
+            ccl_root = oneapi_root_env_value;
+        }
+        CCL_THROW_IF_NOT(!ccl_root.empty(),
+                         "incorrect comm kernels path, neither CCL_ROOT nor ONEAPI_ROOT found!");
+        kernel_path = ccl_root + "/lib/ccl/kernels/";
     }
 
     env_2_type(CCL_KERNEL_DEBUG, kernel_debug);
@@ -468,9 +497,15 @@ void env_data::parse() {
     env_2_type(CCL_SYCL_OUTPUT_EVENT, enable_sycl_output_event);
     env_2_type(CCL_USE_HMEM, use_hmem);
 
+    env_2_type(CCL_BARRIER_SYNC, sync_barrier);
+
     env_2_type(CCL_ZE_BARRIER, enable_ze_barrier);
     env_2_type(CCL_ZE_BIDIR_ALGO, enable_ze_bidir_algo);
     env_2_type(CCL_ZE_CACHE, enable_ze_cache);
+    env_2_type(CCL_ZE_DEVICE_CACHE_EVICT_SMALLEST, ze_device_cache_evict_smallest);
+    env_2_type(CCL_ZE_DEVICE_CACHE_UPPER_LIMIT, ze_device_cache_upper_limit);
+    env_2_type(CCL_ZE_DEVICE_CACHE_NUM_BLOCKS_IN_CHUNK, ze_device_cache_num_blocks_in_chunk);
+    env_2_enum(CCL_ZE_DEVICE_CACHE_POLICY, ccl::ze::device_cache_policy_names, ze_device_cache_policy);
     env_2_type(CCL_ZE_CACHE_OPEN_IPC_HANDLES, enable_ze_cache_open_ipc_handles);
     env_2_type(CCL_ZE_CACHE_OPEN_IPC_HANDLES_THRESHOLD, ze_cache_open_ipc_handles_threshold);
     if (enable_ze_cache == 0) {
@@ -487,7 +522,8 @@ void env_data::parse() {
     env_2_type(CCL_ZE_SINGLE_LIST, enable_ze_single_list);
     env_2_type(CCL_ZE_DISABLE_FAMILY_CHECK, disable_ze_family_check);
     env_2_type(CCL_ZE_DISABLE_PORT_CHECK, disable_ze_port_check);
-    env_2_type(CCL_ZE_DISABLE_OVERSUBSCRIPTION_CHECK, ze_disable_oversubscription_check);
+    env_2_type(CCL_ZE_ENABLE_OVERSUBSCRIPTION_FALLBACK, ze_enable_oversubscription_fallback);
+    env_2_type(CCL_ZE_ENABLE_OVERSUBSCRIPTION_THROW, ze_enable_oversubscription_throw);
     env_2_type(CCL_ZE_SERIALIZE, ze_serialize_mode);
     env_2_enum(CCL_ZE_COPY_ENGINE, ccl::ze::copy_engine_names, ze_copy_engine);
     env_2_enum(CCL_ZE_H2D_COPY_ENGINE, ccl::ze::h2d_copy_engine_names, ze_h2d_copy_engine);
@@ -522,6 +558,8 @@ void env_data::parse() {
     env_2_type(CCL_ZE_AUTO_TUNE_PORTS, enable_ze_auto_tune_ports);
     env_2_enum(CCL_ZE_IPC_EXCHANGE, ze::ipc_exchange_names, ze_ipc_exchange);
     env_2_type(CCL_ZE_DRM_BDF_SUPPORT, ze_drm_bdf_support);
+    env_2_type(CCL_ZE_PT2PT_READ, ze_pt2pt_read);
+    env_2_enum(CCL_ZE_TYPE2_TUNE_PORTS, type2_tune_mode_names, type2_mode);
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_PMIX
@@ -650,12 +688,14 @@ void env_data::print(int rank) {
              (barrier_algo_raw.length()) ? barrier_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(
         CCL_BCAST, ": ", (bcast_algo_raw.length()) ? bcast_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_RECV, ": ", (recv_algo_raw.length()) ? recv_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(
         CCL_REDUCE, ": ", (reduce_algo_raw.length()) ? reduce_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(
         CCL_REDUCE_SCATTER,
         ": ",
         (reduce_scatter_algo_raw.length()) ? reduce_scatter_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_SEND, ": ", (send_algo_raw.length()) ? send_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_ALLGATHERV,
              ": ",
              (allgatherv_algo_raw.length()) ? allgatherv_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
@@ -730,6 +770,11 @@ void env_data::print(int rank) {
         CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL, ": ", allgatherv_monolithic_pipeline_kernel);
     LOG_INFO(CCL_ALLTOALLV_MONOLITHIC_KERNEL, ": ", alltoallv_monolithic_kernel);
     LOG_INFO(CCL_ALLTOALLV_MONOLITHIC_READ_KERNEL, ": ", alltoallv_monolithic_read_kernel);
+
+    LOG_INFO(CCL_ALLGATHERV_PIPE_CHUNK_COUNT, ": ", allgatherv_pipe_chunk_count);
+    LOG_INFO(CCL_ALLREDUCE_PIPE_CHUNK_COUNT, ": ", allreduce_pipe_chunk_count);
+    LOG_INFO(CCL_REDUCE_SCATTER_PIPE_CHUNK_COUNT, ": ", reduce_scatter_pipe_chunk_count);
+    LOG_INFO(CCL_REDUCE_PIPE_CHUNK_COUNT, ": ", reduce_pipe_chunk_count);
 #endif // CCL_ENABLE_SYCL
 
     LOG_INFO(CCL_ALLREDUCE_NREDUCE_BUFFERING, ": ", allreduce_nreduce_buffering);
@@ -797,18 +842,24 @@ void env_data::print(int rank) {
     LOG_INFO(CCL_KERNEL_CLOSE_FD_WA, ": ", enable_close_fd_wa);
 
     LOG_INFO(CCL_SYCL_OUTPUT_EVENT, ": ", enable_sycl_output_event);
+    LOG_INFO(CCL_BARRIER_SYNC, ": ", sync_barrier);
     LOG_INFO(CCL_USE_HMEM, ": ", use_hmem);
 
     LOG_INFO(CCL_ZE_BARRIER, ": ", enable_ze_barrier);
     LOG_INFO(CCL_ZE_BIDIR_ALGO, ": ", enable_ze_bidir_algo);
     LOG_INFO(CCL_ZE_CACHE, ": ", enable_ze_cache);
+    LOG_INFO(CCL_ZE_DEVICE_CACHE_EVICT_SMALLEST, ": ", ze_device_cache_evict_smallest);
+    LOG_INFO(CCL_ZE_DEVICE_CACHE_UPPER_LIMIT, ": ", ze_device_cache_upper_limit);
+    LOG_INFO(CCL_ZE_DEVICE_CACHE_NUM_BLOCKS_IN_CHUNK, ": ", ze_device_cache_num_blocks_in_chunk);
+    LOG_INFO(CCL_ZE_DEVICE_CACHE_POLICY, ": ", str_by_enum(ccl::ze::device_cache_policy_names, ze_device_cache_policy));
     LOG_INFO(CCL_ZE_CACHE_OPEN_IPC_HANDLES, ": ", enable_ze_cache_open_ipc_handles);
     LOG_INFO(CCL_ZE_CACHE_OPEN_IPC_HANDLES_THRESHOLD, ": ", ze_cache_open_ipc_handles_threshold);
     LOG_INFO(CCL_ZE_CACHE_GET_IPC_HANDLES, ": ", enable_ze_cache_get_ipc_handles);
     LOG_INFO(CCL_ZE_SINGLE_LIST, ": ", enable_ze_single_list);
     LOG_INFO(CCL_ZE_DISABLE_FAMILY_CHECK, ": ", disable_ze_family_check);
     LOG_INFO(CCL_ZE_DISABLE_PORT_CHECK, ": ", disable_ze_port_check);
-    LOG_INFO(CCL_ZE_DISABLE_OVERSUBSCRIPTION_CHECK, ": ", ze_disable_oversubscription_check);
+    LOG_INFO(CCL_ZE_ENABLE_OVERSUBSCRIPTION_FALLBACK, ": ", ze_enable_oversubscription_fallback);
+    LOG_INFO(CCL_ZE_ENABLE_OVERSUBSCRIPTION_THROW, ": ", ze_enable_oversubscription_throw);
     LOG_INFO(CCL_ZE_SERIALIZE, ": ", ze_serialize_mode);
     LOG_INFO(CCL_ZE_COPY_ENGINE, ": ", str_by_enum(ccl::ze::copy_engine_names, ze_copy_engine));
     LOG_INFO(CCL_ZE_H2D_COPY_ENGINE,
@@ -837,6 +888,8 @@ void env_data::print(int rank) {
     LOG_INFO(CCL_ZE_AUTO_TUNE_PORTS, ": ", enable_ze_auto_tune_ports);
     LOG_INFO(CCL_ZE_IPC_EXCHANGE, ": ", str_by_enum(ze::ipc_exchange_names, ze_ipc_exchange));
     LOG_INFO(CCL_ZE_DRM_BDF_SUPPORT, ": ", ze_drm_bdf_support);
+    LOG_INFO(CCL_ZE_PT2PT_READ, ": ", ze_pt2pt_read);
+    LOG_INFO(CCL_ZE_TYPE2_TUNE_PORTS, ": ", str_by_enum(type2_tune_mode_names, type2_mode));
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_PMIX
@@ -1020,6 +1073,7 @@ int env_data::env_2_worker_affinity(int local_proc_idx, int local_proc_count) {
 
     size_t idx;
     char* env_to_parse = getenv(CCL_WORKER_AFFINITY);
+    long int temp_system_core_count;
     size_t system_core_count;
     size_t affinity_size = local_proc_count * worker_count;
 
@@ -1031,7 +1085,12 @@ int env_data::env_2_worker_affinity(int local_proc_idx, int local_proc_count) {
         }
         else {
             /* generate auto affinity as last N cores */
-            system_core_count = sysconf(_SC_NPROCESSORS_ONLN);
+            temp_system_core_count = sysconf(_SC_NPROCESSORS_ONLN);
+            // throw an error on sysconf failure (-1) or if core_count is invalid
+            CCL_THROW_IF_NOT(temp_system_core_count > 0,
+                             "system_core_count is incorrect: ",
+                             temp_system_core_count);
+            system_core_count = static_cast<size_t>(temp_system_core_count);
             for (idx = 0; idx < affinity_size; idx++) {
                 if (idx < system_core_count) {
                     worker_affinity[idx] = system_core_count - idx - 1;

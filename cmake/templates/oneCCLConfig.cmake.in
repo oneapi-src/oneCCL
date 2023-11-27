@@ -17,22 +17,19 @@
 get_filename_component(_oneccl_root "${CMAKE_CURRENT_LIST_DIR}" REALPATH)
 get_filename_component(_oneccl_root "${_oneccl_root}/../../../" ABSOLUTE)
 
-set(_oneccl_subdir "cpu_gpu_dpcpp")
-
-if (EXISTS "${CCL_CONFIGURATION}")
-    set(_oneccl_subdir "${CCL_CONFIGURATION}")
-endif()
-
-if (_oneccl_subdir EQUAL "cpu")
+if ("$ENV{CCL_CONFIGURATION}" STREQUAL "cpu")
     include(CheckCXXCompilerFlag)
     check_cxx_compiler_flag("-fsycl" _fsycl_option)
     if (_fsycl_option)
         message(STATUS "STATUS: -fsycl not supported for CCL_CONFIGURATION=cpu")
     endif()
-endif()
 
-get_filename_component(_oneccl_headers "${_oneccl_root}/include/${_oneccl_subdir}" ABSOLUTE)
-get_filename_component(_oneccl_lib "${_oneccl_root}/lib/${_oneccl_subdir}/libccl.so" ABSOLUTE)
+    get_filename_component(_oneccl_headers "${_oneccl_root}/include" ABSOLUTE)
+    get_filename_component(_oneccl_lib "${_oneccl_root}/lib/ccl/cpu/lib/libccl.so" ABSOLUTE)
+else()
+    get_filename_component(_oneccl_headers "${_oneccl_root}/include" ABSOLUTE)
+    get_filename_component(_oneccl_lib "${_oneccl_root}/lib/libccl.so" ABSOLUTE)
+endif()
 
 if (EXISTS "${_oneccl_headers}" AND EXISTS "${_oneccl_lib}")
     if (NOT TARGET oneCCL)
@@ -60,4 +57,3 @@ else()
     endif()
     set(oneCCL_FOUND FALSE)
 endif()
-

@@ -22,7 +22,8 @@
 
 #define CCL_COLL_LIST \
     ccl_coll_allgatherv, ccl_coll_allreduce, ccl_coll_alltoall, ccl_coll_alltoallv, \
-        ccl_coll_barrier, ccl_coll_bcast, ccl_coll_reduce, ccl_coll_reduce_scatter
+        ccl_coll_barrier, ccl_coll_bcast, ccl_coll_recv, ccl_coll_reduce, ccl_coll_reduce_scatter, \
+        ccl_coll_send
 
 enum ccl_coll_allgatherv_algo {
     ccl_coll_allgatherv_undefined = 0,
@@ -84,6 +85,14 @@ enum ccl_coll_bcast_algo {
     ccl_coll_bcast_topo
 };
 
+enum ccl_coll_recv_algo {
+    ccl_coll_recv_undefined = 0,
+
+    ccl_coll_recv_direct,
+    ccl_coll_recv_offload,
+    ccl_coll_recv_topo
+};
+
 enum ccl_coll_reduce_algo {
     ccl_coll_reduce_undefined = 0,
 
@@ -103,6 +112,14 @@ enum ccl_coll_reduce_scatter_algo {
     ccl_coll_reduce_scatter_topo
 };
 
+enum ccl_coll_send_algo {
+    ccl_coll_send_undefined = 0,
+
+    ccl_coll_send_direct,
+    ccl_coll_send_offload,
+    ccl_coll_send_topo
+};
+
 union ccl_coll_algo {
     ccl_coll_allgatherv_algo allgatherv;
     ccl_coll_allreduce_algo allreduce;
@@ -110,8 +127,10 @@ union ccl_coll_algo {
     ccl_coll_alltoallv_algo alltoallv;
     ccl_coll_barrier_algo barrier;
     ccl_coll_bcast_algo bcast;
+    ccl_coll_recv_algo recv;
     ccl_coll_reduce_algo reduce;
     ccl_coll_reduce_scatter_algo reduce_scatter;
+    ccl_coll_send_algo send;
     int value;
 
     ccl_coll_algo() : value(0) {}
@@ -127,9 +146,9 @@ enum ccl_coll_type {
     ccl_coll_alltoallv,
     ccl_coll_barrier,
     ccl_coll_bcast,
+    ccl_coll_recv,
     ccl_coll_reduce,
     ccl_coll_reduce_scatter,
-    ccl_coll_recv,
     ccl_coll_send,
     ccl_coll_last_regular = ccl_coll_send,
 
@@ -145,3 +164,9 @@ void ccl_get_segment_sizes(size_t dtype_size,
                            size_t elem_count,
                            size_t requested_seg_size,
                            std::vector<size_t>& seg_sizes);
+
+class ccl_sched;
+
+#if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
+uint32_t submit_ze_commands_in_subsched_entries(ccl_sched* sched);
+#endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL

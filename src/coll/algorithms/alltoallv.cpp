@@ -86,8 +86,10 @@ ccl::status ccl_coll_calculate_alltoallv_counts(const ccl_coll_param& coll_param
         recv_offsets[idx] = recv_offsets[idx - 1] + recv_counts[idx - 1] * dtype_size;
     }
 
-    total_send_count = std::accumulate(send_counts.begin(), send_counts.end(), 0);
-    total_recv_count = std::accumulate(recv_counts.begin(), recv_counts.end(), 0);
+    total_send_count =
+        std::accumulate(send_counts.begin(), send_counts.end(), ccl::utils::initial_count_value);
+    total_recv_count =
+        std::accumulate(recv_counts.begin(), recv_counts.end(), ccl::utils::initial_count_value);
 
     total_send_bytes = total_send_count * dtype_size;
     total_recv_bytes = total_recv_count * dtype_size;
@@ -467,8 +469,7 @@ ccl::status ccl_coll_build_topo_alltoallv(ccl_sched* main_sched,
             return;
         }
         copy_attr attr{};
-        attr.hint_queue_index = parallel_copy_events.size();
-        attr.direction = copy_direction::c2c;
+        attr.direction = copy_direction::d2d;
         auto entry = entry_factory::create<ze_copy_entry>(
             sched, send, recv, count, dtype, attr, wait_events);
         parallel_copy_events.push_back(entry->entry_event);
@@ -515,14 +516,14 @@ ccl::status ccl_coll_build_topo_alltoallv(ccl_sched* main_sched,
         }
 
         // preparation for host alltoall coll
-        ccl_coll_entry_param host_coll_param{ .ctype = ccl_coll_alltoallv,
-                                              .send_bufs = in_bufs,
-                                              .recv_bufs = out_bufs,
-                                              .send_counts = tmp_send_counts.data(),
-                                              .recv_counts = tmp_recv_counts.data(),
-                                              .dtype = dtype,
-                                              .comm = comm };
-
+        ccl_coll_param host_coll_param{ false };
+        host_coll_param.ctype = ccl_coll_alltoallv;
+        host_coll_param.send_scale_out_bufs = in_bufs;
+        host_coll_param.recv_scale_out_bufs = out_bufs;
+        host_coll_param.send_counts = tmp_send_counts;
+        host_coll_param.recv_counts = tmp_recv_counts;
+        host_coll_param.dtype = dtype;
+        host_coll_param.comm = comm;
         host_coll_param.hint_algo.alltoallv = ccl_coll_alltoallv_direct;
 
         // do alltoall on the host (scale out) using global comm
@@ -533,7 +534,6 @@ ccl::status ccl_coll_build_topo_alltoallv(ccl_sched* main_sched,
         // returned back saved value
         ccl::global_data::env().ze_multi_workers = ze_multi_workers_saved;
     };
-
     // TODO: enable alltoallv vectorized support for monolithic kernel MLSL-1371
     bool can_use_monolithic = true;
     for (int idx = 0; idx < comm_size; idx++) {
@@ -613,7 +613,12 @@ ccl::status ccl_coll_build_topo_alltoallv(ccl_sched* main_sched,
                     attr.peer_rank = peer_rank;
                     attr.peer_buf_idx = start_buf_idx + offset;
                     attr.map_comm = comm;
-                    attr.hint_queue_index = parallel_copy_events.size();
+                    auto copy_engine_idx = card_idx * 2;
+                    if (ccl::global_data::env().type2_mode == ccl::type2_tune_mode::detected ||
+                        ccl::global_data::env().type2_mode == ccl::type2_tune_mode::on) {
+                        copy_engine_idx = parallel_copy_events.size() * 2;
+                    }
+                    attr.hint_queue_index = copy_engine_idx;
                     attr.direction = copy_direction::c2c;
 
                     if (!is_single_node) {
@@ -723,7 +728,7 @@ ccl::status ccl_coll_build_topo_alltoallv(ccl_sched* main_sched,
     }
     ccl::add_comm_barrier(sched, node_comm, wait_events, out_event);
 
-    entry_factory::create<execute_cmdlists_entry>(sched);
+    entry_factory::create<ze_execute_cmdlists_on_init_entry>(sched);
 
     return ccl::status::success;
 }

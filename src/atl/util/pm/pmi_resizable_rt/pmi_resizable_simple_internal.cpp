@@ -38,7 +38,7 @@ pmi_resizable_simple_internal::pmi_resizable_simple_internal(int size,
                                                              const char* main_addr)
         : comm_size(size),
           ranks(ranks),
-          k(k),
+          k(std::move(k)),
           main_addr(main_addr),
           max_keylen(MAX_KVS_KEY_LENGTH),
           max_vallen(MAX_KVS_VAL_LENGTH),
@@ -103,15 +103,19 @@ atl_status_t pmi_resizable_simple_internal::registration() {
 
     char* proc_count_str = const_cast<char*>(val_storage_vec.data());
     char* rank_str = strstr(proc_count_str, "_");
+    ATL_CHECK_PTR(rank_str, "proc_count_str contains corrupted data");
     rank_str[0] = '\0';
     rank_str++;
     char* proc_rank_count_str = strstr(rank_str, "_");
+    ATL_CHECK_PTR(proc_rank_count_str, "proc_count_str contains corrupted data");
     proc_rank_count_str[0] = '\0';
     proc_rank_count_str++;
     char* threads_count_str = strstr(proc_rank_count_str, "_");
+    ATL_CHECK_PTR(threads_count_str, "proc_count_str contains corrupted data");
     threads_count_str[0] = '\0';
     threads_count_str++;
     char* thread_num_str = strstr(threads_count_str, "_");
+    ATL_CHECK_PTR(thread_num_str, "proc_count_str contains corrupted data");
     thread_num_str[0] = '\0';
     thread_num_str++;
 

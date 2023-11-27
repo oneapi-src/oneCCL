@@ -17,7 +17,7 @@
 #include "comp/comp.hpp"
 #include "sched/entry/ze/ze_a2a_pipeline_reduce_scatter_entry.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
-#include "sched/entry/ze/ze_cache.hpp"
+#include "sched/entry/ze/cache/ze_cache.hpp"
 #include "sched/queue/queue.hpp"
 #include "coll/coll_util.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
@@ -43,7 +43,7 @@ ze_a2a_pipeline_read_write_entry::ze_a2a_pipeline_read_write_entry(
     const attr& attrs)
         : ze_base_entry(sched, wait_events, comm, 1 /* request additional events */),
           send_buf(send_buf),
-          tmp_bufs(tmp_bufs),
+          tmp_bufs(std::move(tmp_bufs)),
           tmp_buf_idx_start(tmp_buf_idx_start),
           count(count),
           dtype(dtype),
@@ -164,7 +164,7 @@ ze_a2a_pipeline_reduce_entry::ze_a2a_pipeline_reduce_entry(
     const std::vector<ze_event_handle_t>& wait_events)
         : ze_base_entry(sched, wait_events, comm, 1 /* request additional events */),
           recv_buf(recv_buf),
-          tmp_bufs(tmp_bufs),
+          tmp_bufs(std::move(tmp_bufs)),
           count(count),
           dtype(dtype),
           op(op) {}

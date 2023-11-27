@@ -51,6 +51,8 @@ struct ccl_selector_param {
     int is_sycl_buf = 0;
 #endif // CCL_ENABLE_SYCL
 
+    int peer_rank = CCL_INVALID_PEER_RANK_IDX;
+
     ccl_coll_algo hint_algo = {};
 
     bool is_scaleout = false;
@@ -66,21 +68,19 @@ using ccl_selection_table_t =
 template <typename algo_group_type>
 using ccl_selection_table_iter_t = typename ccl_selection_table_t<algo_group_type>::const_iterator;
 
-#define CCL_SELECTION_DECLARE_ALGO_SELECTOR_BASE() \
-    template <typename algo_group_type> \
-    struct ccl_algorithm_selector_base { \
-        ccl_selection_table_t<algo_group_type> main_table{}; \
-        ccl_selection_table_t<algo_group_type> fallback_table{}; \
-        ccl_selection_table_t<algo_group_type> scaleout_table{}; \
-        ccl_algorithm_selector_base(){}; \
-        void init(); \
-        void print() const; \
-        algo_group_type get(const ccl_selector_param& param) const; \
-        void insert(ccl_selection_table_t<algo_group_type>& table, \
-                    size_t left, \
-                    size_t right, \
-                    algo_group_type algo_id); \
-    };
+template <typename algo_group_type>
+struct ccl_algorithm_selector_base {
+    ccl_selection_table_t<algo_group_type> main_table;
+    ccl_selection_table_t<algo_group_type> fallback_table;
+    ccl_selection_table_t<algo_group_type> scaleout_table;
+    void init();
+    void print() const;
+    algo_group_type get(const ccl_selector_param& param) const;
+    static void insert(ccl_selection_table_t<algo_group_type>& table,
+                       size_t left,
+                       size_t right,
+                       algo_group_type algo_id);
+};
 
 #define CCL_SELECTION_DECLARE_ALGO_SELECTOR(coll_id, algo_group_type) \
     template <> \
@@ -89,15 +89,15 @@ using ccl_selection_table_iter_t = typename ccl_selection_table_t<algo_group_typ
         ccl_algorithm_selector(); \
     };
 
-CCL_SELECTION_DECLARE_ALGO_SELECTOR_BASE();
-
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_allgatherv, ccl_coll_allgatherv_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_allreduce, ccl_coll_allreduce_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_alltoall, ccl_coll_alltoall_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_alltoallv, ccl_coll_alltoallv_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_barrier, ccl_coll_barrier_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_bcast, ccl_coll_bcast_algo);
+CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_recv, ccl_coll_recv_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_reduce, ccl_coll_reduce_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_reduce_scatter, ccl_coll_reduce_scatter_algo);
+CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_send, ccl_coll_send_algo);
 
 #include "coll/selection/selector_impl.hpp"

@@ -24,16 +24,39 @@ std::string ccl_atl_tag::to_string() const {
     return ss.str();
 }
 
-uint64_t ccl_atl_tag::create(int rank,
-                             ccl_comm_id_t comm_id,
-                             ccl_sched_id_t sched_id,
-                             ccl_op_id_t op_id) {
+template <typename Layout>
+ccl_sched_id_t ccl_atl_tag_impl<Layout>::get_max_sched_count() {
+    return Layout::max_sched_count;
+}
+
+template <typename Layout>
+ccl_sched_id_t ccl_atl_tag_impl<Layout>::get_pt2pt_sched_id() {
+    return Layout::pt2pt_sched_id;
+}
+
+template <typename Layout>
+ccl_sched_id_t ccl_atl_tag_impl<Layout>::get_pt2pt_ack_tag() {
+    return Layout::pt2pt_ack_tag;
+}
+
+template <typename Layout>
+std::tuple<ccl_sched_id_t, ccl_sched_id_t> ccl_atl_tag_impl<Layout>::get_pt2pt_sync_tags() {
+    auto ack_first = Layout::pt2pt_ack_first;
+    auto ack_second = Layout::pt2pt_ack_second;
+    return std::make_tuple(ack_first, ack_second);
+}
+
+template <typename Layout>
+uint64_t ccl_atl_tag_impl<Layout>::create(int rank,
+                                          ccl_comm_id_t comm_id,
+                                          ccl_sched_id_t sched_id,
+                                          ccl_op_id_t op_id) {
     uint64_t tag = 0;
 
-    tag |= (((uint64_t)op_id) << op_id_shift) & op_id_mask;
-    tag |= (((uint64_t)sched_id) << sched_id_shift) & sched_id_mask;
-    tag |= (((uint64_t)comm_id) << comm_id_shift) & comm_id_mask;
-    tag |= (((uint64_t)rank) << rank_shift) & rank_mask;
+    tag |= (static_cast<uint64_t>(op_id) << Layout::op_id_shift) & Layout::op_id_mask;
+    tag |= (static_cast<uint64_t>(sched_id) << Layout::sched_id_shift) & Layout::sched_id_mask;
+    tag |= (static_cast<uint64_t>(comm_id) << Layout::comm_id_shift) & Layout::comm_id_mask;
+    tag |= (static_cast<uint64_t>(rank) << Layout::rank_shift) & Layout::rank_mask;
 
     if (tag > max_tag)
         tag &= max_tag_mask;
@@ -67,3 +90,8 @@ uint64_t ccl_atl_tag::create(int rank,
 
     return tag;
 }
+
+// Explicit template instantiation to avoid linker errors
+template class ccl_atl_tag_impl<common_tag_layout>;
+template class ccl_atl_tag_impl<ofi_cxi_tag_layout>;
+template class ccl_atl_tag_impl<mpi_tag_layout>;

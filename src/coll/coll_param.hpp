@@ -19,6 +19,7 @@
 
 #include "coll/algorithms/algorithm_utils.hpp"
 #include "common/datatype/datatype.hpp"
+#include "common/utils/buffer.hpp"
 #include "oneapi/ccl.hpp"
 
 class ccl_comm;
@@ -47,6 +48,7 @@ using ccl_sycl_buffer_one_dim_types = std::tuple<ccl_sycl_typed_buffer_t<int8_t>
 #define CCL_INVALID_GROUP_IDX     (-1)
 #define CCL_INVALID_PROC_IDX      (-1)
 #define CCL_INVALID_PEER_RANK_IDX (-1)
+#define CCL_INVALID_ROOT_RANK_IDX (-1)
 
 struct ccl_coll_attr {
     ccl_coll_attr() = default;
@@ -88,35 +90,53 @@ struct ccl_coll_attr {
 struct ccl_coll_param {
     enum class buf_type { regular, device };
 
-    ccl_coll_type ctype;
+    ccl_coll_type ctype = ccl_coll_last_value;
+    ccl_coll_algo hint_algo{};
 
-    std::vector<void*> send_bufs;
-    std::vector<void*> recv_bufs;
+    // for ccl_coll_build_<coll> of build_sched
+    ccl_buffer send_buf{};
+    ccl_buffer recv_buf{};
+
+    // in case of: ccl_coll_param::create_<coll>_param
+    std::vector<void*> send_bufs{};
+    std::vector<void*> recv_bufs{};
+
+    // for host transfer in add_scaleout case
+    // of topo algos in coll_param.cpp
+    std::vector<ccl_buffer> send_scale_out_bufs{};
+    std::vector<ccl_buffer> recv_scale_out_bufs{};
 
     /*
         filled if pre-post copy is used
         to keep original send/recv buffers
         send_buf and recv_buf fields are replaced by staging buffers
     */
-    std::vector<void*> device_send_bufs;
-    std::vector<void*> device_recv_bufs;
+    std::vector<void*> send_dev_bufs{};
+    std::vector<void*> recv_dev_bufs{};
 
-    std::vector<size_t> send_counts;
-    std::vector<size_t> recv_counts;
+    std::vector<size_t> send_counts{};
+    std::vector<size_t> recv_counts{};
+    size_t send_count{};
+    size_t count{};
 
-    ccl_datatype dtype;
-    ccl::reduction reduction;
-    int root, peer_rank = CCL_INVALID_PEER_RANK_IDX;
+    ccl_datatype dtype = {};
+    ccl::reduction reduction = ccl::reduction::sum;
+    int root = CCL_INVALID_ROOT_RANK_IDX, peer_rank = CCL_INVALID_PEER_RANK_IDX;
+
     int group_id = CCL_INVALID_GROUP_IDX;
-    ccl_stream* stream;
-    ccl_comm* comm;
-    std::vector<ccl::event> deps;
-    bool is_scaleout;
 
-    ccl_coll_param();
+    ccl_stream* stream = nullptr;
+    ccl_comm* comm = nullptr;
+
+    std::vector<ccl::event> deps{};
+    bool is_scaleout{ false };
+    bool is_validate{ true };
+    bool is_pt2pt{ false };
+
+    ccl_coll_param(bool in_is_validate = true);
     ccl_coll_param(const ccl_coll_param& other);
     ccl_coll_param& operator=(const ccl_coll_param& other) {
-        if (this != &other) {
+        if (this != &other && is_validate) {
             copy(other);
         }
         return *this;

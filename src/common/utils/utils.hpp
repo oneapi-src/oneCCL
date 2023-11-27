@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <chrono>
 #include <functional>
+#include <iomanip>
 #include <malloc.h>
 #include <map>
 #include <mutex>
@@ -31,6 +32,7 @@
 #include <sstream>
 #include <vector>
 
+#include "common/utils/profile.hpp"
 #include "common/utils/spinlock.hpp"
 #include "internal_types.hpp"
 
@@ -152,8 +154,19 @@ static constexpr int invalid_err_code = -1;
 static constexpr int invalid_fd = -1;
 static constexpr int invalid_mem_handle = -1;
 static constexpr int invalid_pid = -1;
+static constexpr size_t initial_count_value = 0;
+static constexpr int invalid_peer_rank = -1;
+static constexpr int invalid_rank = -1;
+static constexpr int invalid_host_idx = -1;
+static constexpr int invalid_bytes_value = -1;
 
 enum class align_kernels { unaligned, aligned, count };
+
+enum class pt2pt_handle_exchange_role { sender, receiver, none };
+struct pt2pt_handle_exchange_info {
+    int peer_rank = invalid_err_code;
+    pt2pt_handle_exchange_role role = pt2pt_handle_exchange_role::none;
+};
 
 size_t get_ptr_diff(const void* ptr1, const void* ptr2);
 size_t pof2(size_t number);
@@ -233,6 +246,13 @@ void clear_and_push_back(std::vector<T>& v, T elem) {
     // vector::clear() leaves the capacity() of the vector unchanged
     v.clear();
     v.push_back(elem);
+}
+
+template <typename T>
+std::string to_hex(T integer) {
+    std::stringstream ss;
+    ss << "0x" << std::hex << std::setw(sizeof(T) * 2) << std::setfill('0') << integer;
+    return ss.str();
 }
 
 } // namespace utils

@@ -18,14 +18,6 @@
 #include "sched/entry/ze/ze_command.hpp"
 #include "common/global/global.hpp"
 
-namespace ze_command {
-
-bool bypass_command_flag() {
-    return ccl::global_data::env().enable_ze_cmd_bypass;
-}
-
-} // namespace ze_command
-
 void ze_cmd_memory_copy::ze_call() {
     ZE_CALL(zeCommandListAppendMemoryCopy,
             (cmdlist, //ze_command_list_handle_t command_list_handle,
@@ -49,6 +41,20 @@ void ze_cmd_barrier::ze_call() {
              wait_events.size(), //uint32_t numwait_events,
              wait_events.data() //ze_event_handle_t *phwait_events)
              ));
+}
+
+void ze_cmd_mem_range_barrier::ze_call() {
+    ZE_CALL(
+        zeCommandListAppendMemoryRangesBarrier,
+        (cmdlist, //ze_command_list_handle_t command_list_handle,
+         range_sizes.size(), //uint32_t numRanges,  [in] number of memory ranges
+         &(range_sizes
+               [0]), // const size_t* pRangerange_sizes, [in][range(0, numRanges)] array of range_sizes of memory range
+         &(ranges[0]), // const void** pRanges, [in][range(0, numRanges)] array of memory ranges
+         signal_event, //ze_event_handle_t signal_event,
+         wait_events.size(), //uint32_t numwait_events,
+         wait_events.data() //ze_event_handle_t *phwait_events)
+         ));
 }
 
 void ze_cmd_wait_on_events::ze_call() {

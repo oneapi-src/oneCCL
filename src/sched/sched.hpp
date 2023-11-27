@@ -16,6 +16,7 @@
 #pragma once
 
 #include "common/request/request.hpp"
+#include "common/utils/sync_object.hpp"
 #include "sched/sched_base.hpp"
 #include "sched/sched_timer.hpp"
 #include "sched/queue/flow_control.hpp"
@@ -81,6 +82,16 @@ public:
                        // if true - we're restarting the same sched after it's been delayed
                        bool restart = false);
 
+#if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
+    void inherit_ze_managers_from(ccl_sched* sched) {
+        CCL_THROW_IF_NOT(entries.empty());
+        CCL_THROW_IF_NOT(subscheds.empty());
+        CCL_THROW_IF_NOT(sched);
+
+        memory.list_manager = sched->memory.list_manager;
+    }
+#endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
+
     /**
      * Reset completion counter of @b req
      * @return pointer to req that can be used to track completion
@@ -141,7 +152,6 @@ public:
 
     using ccl_sched_base::add_entry_front_t;
     using ccl_sched_base::add_entry_back_t;
-    using add_entry_default_t = add_entry_mode_t<ccl_sched_add_mode_last_value>;
 
     sched_entry* add_entry(std::unique_ptr<sched_entry>&& entry) {
         entry->set_exec_mode(exec_mode);
@@ -247,13 +257,17 @@ public:
     // cleanup structs related to the request from
     // the schedule
     bool release_request(ccl_request* req);
-    // release event associated with the request, this
-    // needs to be here because the pool is stored per
-    // schedule
-    void release_sync_event(ccl_request* req);
 
     void set_submitted_to_gpu(bool submitted_to_gpu);
     bool is_submitted_to_gpu();
+
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    bool get_ze_commands_bypass_flag();
+    void set_ze_commands_bypass_flag(bool bypass);
+
+    std::shared_ptr<sync_object>& get_init_ze_hook_sync_obj();
+    void set_init_ze_hook_sync_obj(std::shared_ptr<sync_object> sync_obj);
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
 private:
     void set_output_event(ccl_request* request);
@@ -266,10 +280,12 @@ private:
     ccl_request* req;
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-    void ze_commands_submit();
+    uint32_t ze_commands_submit();
+    bool is_ze_commands_bypass{ true };
+    std::shared_ptr<sync_object> init_ze_hook_sync_obj;
 
     const bool use_output_event = false;
-#endif
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
     const bool top_level_sched;
 
     // pointer to the parent sched if this sched is part of a subsched_entry, nullptr otherwise
@@ -279,6 +295,7 @@ private:
     std::unique_ptr<sched_restart_manager> restart_manager;
 
     friend class sched_restart_manager;
-    friend class execute_cmdlists_entry; // need to call ze_commands_submit();
+    friend class ze_execute_cmdlists_on_init_entry; // need to call ze_commands_submit();
+    friend class ze_execute_cmdlists_on_start_entry; // need to call ze_commands_submit();
     friend class subsched_entry; // need to call ze_commands_submit();
 };

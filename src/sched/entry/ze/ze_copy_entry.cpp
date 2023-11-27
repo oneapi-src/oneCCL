@@ -31,7 +31,6 @@ ze_copy_entry::ze_copy_entry(ccl_sched* sched,
                         nullptr /*comm*/,
                         1 /*add_event_count*/,
                         true /*is_nonblocking*/),
-          sched(sched),
           in_buf(in_buf),
           out_buf(out_buf),
           dtype(dtype),
@@ -41,15 +40,20 @@ ze_copy_entry::ze_copy_entry(ccl_sched* sched,
 }
 
 void ze_copy_entry::init_ze_hook() {
+    int peer_rank = attr.peer_rank;
+    if (attr.pt2pt_op) {
+        peer_rank = ccl::ze::ipc_handle_manager::pt2pt_handles_size - 1;
+    }
+
     if (attr.peer_rank != ccl_comm::invalid_rank) {
         if (!out_buf) {
             sched->get_memory().handle_manager.get(
-                attr.peer_rank, attr.peer_buf_idx, out_buf, attr.map_comm);
+                peer_rank, attr.peer_buf_idx, out_buf, attr.map_comm, attr.pt2pt_op);
         }
 
         if (!in_buf) {
             sched->get_memory().handle_manager.get(
-                attr.peer_rank, attr.peer_buf_idx, in_buf, attr.map_comm);
+                peer_rank, attr.peer_buf_idx, in_buf, attr.map_comm, attr.pt2pt_op);
         }
     }
 

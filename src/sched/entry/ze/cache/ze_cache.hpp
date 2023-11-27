@@ -17,7 +17,9 @@
 
 #include "common/log/log.hpp"
 #include "common/utils/hash.hpp"
+
 #include "sched/entry/ze/ze_primitives.hpp"
+#include "sched/entry/ze/cache/ze_device_cache.hpp"
 
 #include <unordered_map>
 
@@ -113,38 +115,6 @@ public:
 private:
     using key_t = typename std::tuple<ze_context_handle_t, ze_event_pool_flags_t, uint32_t>;
     using value_t = ze_event_pool_handle_t;
-    std::unordered_multimap<key_t, value_t, utils::tuple_hash> cache;
-    std::mutex mutex;
-};
-
-class device_mem_cache {
-public:
-    device_mem_cache() = default;
-    ~device_mem_cache();
-
-    void clear();
-
-    void get(ze_context_handle_t context,
-             ze_device_handle_t device,
-             const ze_device_mem_alloc_desc_t& device_mem_alloc_desc,
-             size_t bytes,
-             size_t alignment,
-             void** pptr);
-
-    void push(ze_context_handle_t context,
-              ze_device_handle_t device,
-              const ze_device_mem_alloc_desc_t& device_mem_alloc_desc,
-              size_t bytes,
-              size_t alignment,
-              void* ptr);
-
-private:
-    using key_t = typename std::tuple<ze_context_handle_t,
-                                      ze_device_handle_t,
-                                      size_t,
-                                      ze_device_mem_alloc_flags_t,
-                                      uint32_t>;
-    using value_t = void*;
     std::unordered_multimap<key_t, value_t, utils::tuple_hash> cache;
     std::mutex mutex;
 };
@@ -266,15 +236,7 @@ private:
 
 class cache {
 public:
-    cache(size_t instance_count)
-            : instance_count(instance_count),
-              kernels(instance_count),
-              lists(instance_count),
-              queues(instance_count),
-              event_pools(instance_count),
-              device_mems(instance_count) {
-        LOG_DEBUG("create cache with ", instance_count, " instances");
-    }
+    cache(size_t instance_count);
     cache(const cache&) = delete;
     cache& operator=(const cache&) = delete;
     ~cache();
@@ -316,10 +278,7 @@ public:
              const ze_device_mem_alloc_desc_t& device_mem_alloc_desc,
              size_t bytes,
              size_t alignment,
-             void** pptr) {
-        device_mems.at(instance_idx % device_mems.size())
-            .get(context, device, device_mem_alloc_desc, bytes, alignment, pptr);
-    }
+             void** pptr);
 
     void get(ze_context_handle_t context,
              ze_device_handle_t device,
@@ -379,10 +338,7 @@ public:
               const ze_device_mem_alloc_desc_t& device_mem_alloc_desc,
               size_t bytes,
               size_t alignment,
-              void* ptr) {
-        device_mems.at(instance_idx % device_mems.size())
-            .push(context, device, device_mem_alloc_desc, bytes, alignment, ptr);
-    }
+              void* ptr);
 
 private:
     const size_t instance_count;
@@ -390,7 +346,7 @@ private:
     std::vector<list_cache> lists;
     std::vector<queue_cache> queues;
     std::vector<event_pool_cache> event_pools;
-    std::vector<device_mem_cache> device_mems;
+    std::vector<std::unique_ptr<device_mem_cache>> device_mems;
     module_cache modules{};
     mem_handle_cache mem_handles{};
     ipc_handle_cache ipc_handles{};

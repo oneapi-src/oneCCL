@@ -71,7 +71,7 @@ private:
     ze_command_queue_handle_t queue{};
     ze_command_queue_desc_t desc{};
     bool is_copy_queue{};
-    queue_group_type type;
+    queue_group_type type{};
 };
 
 using queue_info_t = typename std::shared_ptr<queue_info>;
@@ -85,7 +85,6 @@ public:
     queue_info_t get(uint32_t index);
     void clear();
 
-    bool is_copy() const;
     uint32_t get_ordinal() const;
 
     static bool can_use_queue_group(ze_device_handle_t device,
@@ -118,8 +117,6 @@ public:
     list_info_t get(const queue_info_t& queue);
     void destroy(list_info_t& list);
 
-    bool is_copy() const;
-
 private:
     const ze_device_handle_t device;
     const ze_context_handle_t context;
@@ -151,8 +148,6 @@ public:
     void clear();
     void reset_execution_state();
 
-    bool can_use_copy_queue() const;
-    bool can_use_main_queue() const;
     bool is_executed() const;
 
 private:

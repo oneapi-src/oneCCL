@@ -186,7 +186,8 @@ int base_test<T>::check_error(test_operation<T>& op, T expected, size_t buf_idx,
         }
     }
 
-    if (fabs(max_error) < fabs((double)expected - (double)op.recv_bufs[buf_idx][elem_idx])) {
+    if (std::fabs(max_error) <
+        std::fabs((double)expected - (double)op.recv_bufs[buf_idx][elem_idx])) {
         printf("[%d] got op.recvBuf[%zu][%zu] = %0.7f, but expected = %0.7f, "
                "max_error = %0.10f, precision = %0.7f\n",
                op.comm_rank,

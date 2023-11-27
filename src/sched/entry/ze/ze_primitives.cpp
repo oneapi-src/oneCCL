@@ -336,6 +336,7 @@ device_family get_device_family(ze_device_handle_t device) {
     switch (id) {
         case static_cast<enum_t>(device_id::id1): return device_family::family1;
         case static_cast<enum_t>(device_id::id2): return device_family::family2;
+        case static_cast<enum_t>(device_id::id3): return device_family::family3;
         default: return device_family::unknown;
     }
 }
@@ -345,11 +346,11 @@ bool is_same_pci_addr(const zes_pci_address_t& addr1, const zes_pci_address_t& a
     if (!(addr1.domain == addr2.domain && addr1.bus == addr2.bus && addr1.device == addr2.device &&
           addr1.function == addr2.function)) {
         result = false;
-        LOG_DEBUG("pci addresses are not the same:"
-                  " addr1: ",
-                  ccl::ze::to_string(addr1),
-                  " addr2: ",
-                  ccl::ze::to_string(addr2));
+        //LOG_DEBUG("pci addresses are not the same:"
+        //          " addr1: ",
+        //          ccl::ze::to_string(addr1),
+        //          " addr2: ",
+        //          ccl::ze::to_string(addr2));
     }
     return result;
 }
@@ -425,6 +426,43 @@ bool fabric_port_comparator::operator()(const zes_fabric_port_id_t& a,
     else {
         return (a.fabricId < b.fabricId);
     }
+}
+
+std::string to_string(ze_event_scope_flag_t scope_flag) {
+    switch (scope_flag) {
+        case ZE_EVENT_SCOPE_FLAG_SUBDEVICE: return "ZE_EVENT_SCOPE_FLAG_SUBDEVICE";
+        case ZE_EVENT_SCOPE_FLAG_DEVICE: return "ZE_EVENT_SCOPE_FLAG_DEVICE";
+        case ZE_EVENT_SCOPE_FLAG_HOST: return "ZE_EVENT_SCOPE_FLAG_HOST";
+        default:
+            return "unknown ze_event_scope_flag_t value: " +
+                   std::to_string(static_cast<uint32_t>(scope_flag));
+    }
+}
+
+std::string to_string(ze_event_scope_flags_t _scope_flags) {
+    auto scope_flags = _scope_flags;
+    std::string out;
+    while (scope_flags) {
+        if (out.size())
+            out += "|";
+        if (scope_flags & ZE_EVENT_SCOPE_FLAG_SUBDEVICE) {
+            out += to_string(ZE_EVENT_SCOPE_FLAG_SUBDEVICE);
+            scope_flags &= ~ZE_EVENT_SCOPE_FLAG_SUBDEVICE;
+        }
+        else if (scope_flags & ZE_EVENT_SCOPE_FLAG_DEVICE) {
+            out += to_string(ZE_EVENT_SCOPE_FLAG_DEVICE);
+            scope_flags &= ~ZE_EVENT_SCOPE_FLAG_DEVICE;
+        }
+        else if (scope_flags & ZE_EVENT_SCOPE_FLAG_HOST) {
+            out += to_string(ZE_EVENT_SCOPE_FLAG_HOST);
+            scope_flags &= ~ZE_EVENT_SCOPE_FLAG_HOST;
+        }
+        else {
+            return "unknown ze_event_scope_flag_t value: " +
+                   std::to_string(static_cast<uint32_t>(_scope_flags));
+        }
+    }
+    return out;
 }
 
 std::string to_string(ze_result_t result) {

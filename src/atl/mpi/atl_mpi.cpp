@@ -99,6 +99,7 @@ atl_status_t atl_mpi::init(int* argc,
     attr->out.mnic_type = ctx.mnic_type;
     attr->out.mnic_count = ctx.mnic_count;
     attr->out.tag_bits = 32;
+    // MPI specification requires the user tag to be minimum 16 bits.
     attr->out.max_tag = (is_tag_ub_set) ? *((int*)tag_ub_ptr) : 0;
     attr->out.max_order_waw_size = 0;
 

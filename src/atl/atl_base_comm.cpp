@@ -23,6 +23,7 @@
 #include "atl/ofi/atl_ofi.hpp"
 #include "atl/util/pm/pm_rt.h"
 #include "common/utils/utils.hpp"
+#include "comm/atl_tag.hpp"
 #include "exec/exec.hpp"
 
 atl_attr_t atl_base_comm::attr = {
@@ -137,8 +138,32 @@ int atl_base_comm::create_comm_id() {
 }
 
 void atl_base_comm::init_tag() {
-    tag_creator =
-        std::shared_ptr<ccl_atl_tag>(new ccl_atl_tag(attr.out.tag_bits, attr.out.max_tag));
+    auto transport_type = ccl::global_data::env().atl_transport;
+
+    size_t tag_bits = attr.out.tag_bits;
+    size_t max_tag = attr.out.max_tag;
+
+    switch (transport_type) {
+        case ccl_atl_ofi:
+            if (tag_bits == tag_layout::cxi) {
+                tag_creator = std::shared_ptr<ccl_atl_tag>(
+                    new ccl_atl_tag_impl<ofi_cxi_tag_layout>(tag_bits, max_tag));
+            }
+            else {
+                tag_creator = std::shared_ptr<ccl_atl_tag>(
+                    new ccl_atl_tag_impl<common_tag_layout>(tag_bits, max_tag));
+            }
+            break;
+#ifdef CCL_ENABLE_MPI
+        case ccl_atl_mpi:
+            CCL_THROW_IF_NOT(max_tag >= mpi_tag_layout::op_id_mask + mpi_tag_layout::sched_id_mask,
+                             "sched_id and op_id have to be encoded uncut for MPI case");
+            tag_creator = std::shared_ptr<ccl_atl_tag>(
+                new ccl_atl_tag_impl<mpi_tag_layout>(tag_bits, max_tag));
+            break;
+#endif // CCL_ENABLE_MPI
+        default: LOG_ERROR("unsupported tag type"); break;
+    }
     if (rank == 0) {
         LOG_DEBUG("atl tag: ", tag_creator->to_string());
     }

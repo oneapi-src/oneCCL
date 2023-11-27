@@ -18,7 +18,7 @@
 #include <unordered_map>
 
 #include "common/global/ze/ze_fd_manager.hpp"
-#include "sched/entry/ze/ze_cache.hpp"
+#include "sched/entry/ze/cache/ze_cache.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
 #include "sched/ze/ze_event_manager.hpp"
 

@@ -30,25 +30,33 @@ std::string to_string(copy_direction val);
 class ccl_comm;
 
 struct copy_attr {
-    int peer_rank;
-    size_t peer_buf_idx;
+    int peer_rank = ccl::utils::invalid_peer_rank;
+    size_t peer_buf_idx = 0;
     copy_direction direction;
-    ccl_comm* map_comm;
-    size_t in_buf_offset;
-    size_t out_buf_offset;
-    bool use_nontemporal;
+    bool pt2pt_op = false;
+    ccl_comm* map_comm = nullptr;
+    size_t in_buf_offset = 0;
+    size_t out_buf_offset = 0;
+    bool use_nontemporal = false;
 
 #ifdef CCL_ENABLE_ZE
-    int hint_queue_index;
+    int hint_queue_index = 0;
 #endif // CCL_ENABLE_ZE
 
     copy_attr();
     copy_attr(int peer_rank,
               size_t peer_buf_idx,
               copy_direction direction,
+              bool pt2pt_op = false,
               ccl_comm* map_comm = nullptr,
               size_t in_buf_offset = 0,
-              size_t out_buf_offset = 0);
+              size_t out_buf_offset = 0,
+              bool use_nontemporal = false
+#ifdef CCL_ENABLE_ZE
+              ,
+              int hint_queue_index = 0
+#endif // CCL_ENABLE_ZE
+    );
     copy_attr(copy_direction direction, size_t in_buf_offset = 0, size_t out_buf_offset = 0);
 };
 
@@ -146,7 +154,7 @@ struct sycl_copier {
                         h, count, in_buf_offset);
                     auto dst_buf_acc = dst_buf.template get_access<sycl::access::mode::write>(
                         h, count, out_buf_offset);
-                    h.copy(src_buf_acc, dst_buf_acc);
+                    h.copy(std::move(src_buf_acc), std::move(dst_buf_acc));
                 });
             }
             else {
@@ -174,14 +182,14 @@ struct sycl_copier {
     std::string get_dtype_name(const ccl_datatype& dt) const;
 
     copy_direction direction;
-    ccl_buffer in_buf;
-    ccl_buffer out_buf;
-    size_t count;
-    ccl_datatype dtype;
-    bool is_sycl_buf;
-    sycl::queue* q;
-    size_t in_buf_offset;
-    size_t out_buf_offset;
-    sycl::event e;
+    ccl_buffer in_buf{};
+    ccl_buffer out_buf{};
+    size_t count = 0;
+    ccl_datatype dtype{};
+    bool is_sycl_buf = false;
+    sycl::queue* q{ nullptr };
+    size_t in_buf_offset = 0;
+    size_t out_buf_offset = 0;
+    sycl::event e{};
 };
 #endif // CCL_ENABLE_SYCL

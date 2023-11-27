@@ -29,7 +29,7 @@ namespace ze {
 
 #define ZE_CALL(ze_name, ze_args) ccl::ze::ze_call().do_call(ze_name ze_args, #ze_name)
 
-enum class device_id : uint32_t { unknown = 0x0, id1 = 0x200, id2 = 0xbd0 };
+enum class device_id : uint32_t { unknown = 0x0, id1 = 0x200, id2 = 0xbd0, id3 = 0xb60 };
 
 enum class copy_engine_mode { none, main, link, auto_mode };
 enum class h2d_copy_engine_mode { none, main, auto_mode };
@@ -77,12 +77,33 @@ constexpr ze_device_mem_alloc_desc_t default_device_mem_alloc_desc = {
 constexpr ze_memory_allocation_properties_t default_alloc_props = {
     .stype = ZE_STRUCTURE_TYPE_MEMORY_ALLOCATION_PROPERTIES,
     .pNext = nullptr,
-    .type = ZE_MEMORY_TYPE_UNKNOWN
+    .type = ZE_MEMORY_TYPE_UNKNOWN,
+    .id = 0,
+    .pageSize = 0
 };
 
 constexpr ze_device_properties_t default_device_props = { .stype =
                                                               ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES,
-                                                          .pNext = nullptr };
+                                                          .pNext = nullptr,
+                                                          .type = ZE_DEVICE_TYPE_GPU,
+                                                          .vendorId = 0,
+                                                          .deviceId = 0,
+                                                          .flags = 0,
+                                                          .subdeviceId = 0,
+                                                          .coreClockRate = 0,
+                                                          .maxMemAllocSize = 0,
+                                                          .maxHardwareContexts = 0,
+                                                          .maxCommandQueuePriority = 0,
+                                                          .numThreadsPerEU = 0,
+                                                          .physicalEUSimdWidth = 0,
+                                                          .numEUsPerSubslice = 0,
+                                                          .numSubslicesPerSlice = 0,
+                                                          .numSlices = 0,
+                                                          .timerResolution = 0,
+                                                          .timestampValidBits = 0,
+                                                          .kernelTimestampValidBits = 0,
+                                                          .uuid = {},
+                                                          .name = {} };
 
 constexpr ze_event_pool_desc_t default_event_pool_desc = { .stype =
                                                                ZE_STRUCTURE_TYPE_EVENT_POOL_DESC,
@@ -193,6 +214,8 @@ struct fabric_port_comparator {
     bool operator()(const zes_fabric_port_id_t& a, const zes_fabric_port_id_t& b) const;
 };
 
+std::string to_string(ze_event_scope_flag_t scope_flag);
+std::string to_string(ze_event_scope_flags_t scope_flags);
 std::string to_string(ze_result_t result);
 std::string to_string(const ze_group_size_t& group_size);
 std::string to_string(const ze_group_count_t& group_count);

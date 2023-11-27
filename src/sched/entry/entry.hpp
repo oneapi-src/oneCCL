@@ -102,8 +102,10 @@ public:
 
 #if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
     const ze_commands_t& get_ze_commands() const;
-    virtual void ze_commands_submit();
+    virtual uint32_t ze_commands_submit();
 #endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
+
+    ccl_sched* get_sched() const;
 
 protected:
     virtual void start() = 0;
@@ -126,6 +128,10 @@ protected:
     bool detect_update_time_expiration = false;
     bool use_update_timer = false;
     bool is_update_time_expired = false;
+
+#ifdef CCL_ENABLE_ITT
+    __itt_event itt_event = ccl::profile::itt::invalid_event;
+#endif // CCL_ENABLE_ITT
 
 #if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
     ze_commands_t ze_commands;

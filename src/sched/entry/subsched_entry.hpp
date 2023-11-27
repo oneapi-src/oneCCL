@@ -46,7 +46,7 @@ public:
 
     subsched_entry(ccl_sched* sched,
                    ccl_op_id_t op_id,
-                   ccl_sched_create_param sched_param,
+                   const ccl_sched_create_param& sched_param,
                    const char* subsched_name)
             : sched_entry(sched),
               coll_param(sched->coll_param),
@@ -77,6 +77,8 @@ public:
     }
 
     void set_params() {
+        subsched->subsched_entry_parent_sched = sched;
+
         if (!is_master_sched) {
             subsched->set_op_id(op_id);
 
@@ -98,14 +100,16 @@ public:
 
 #if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
     // Submits all ze commands that have been stored both in the entry or on the subsched
-    void ze_commands_submit() override {
+    uint32_t ze_commands_submit() override {
         LOG_DEBUG("entry ", name(), " calling parent ze_commands_submit");
-        sched_entry::ze_commands_submit();
+        uint32_t cmd_counter = sched_entry::ze_commands_submit();
 
         if (subsched) {
             LOG_DEBUG("entry ", name(), " calling subsched ze_commands_submit");
-            subsched->ze_commands_submit();
+            cmd_counter += subsched->ze_commands_submit();
         }
+
+        return cmd_counter;
     }
 #endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
 
@@ -124,11 +128,11 @@ public:
         if (is_master_sched) {
             ccl::global_data& data = ccl::global_data::get();
             bool update_sched_id = false;
+            CCL_THROW_IF_NOT(subsched, "master sched is null");
             subsched->start(data.executor.get(), true, update_sched_id);
         }
         else {
             build_subsched({ build_sched_id, sched->coll_param });
-            subsched->subsched_entry_parent_sched = sched;
             subsched->renew();
             subsched->get_request()->set_counter(1);
             subsched->bin = sched->bin;

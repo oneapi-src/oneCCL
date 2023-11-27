@@ -20,7 +20,6 @@
 #include "common/utils/utils.hpp"
 #include "common/utils/yield.hpp"
 
-#include <dirent.h>
 #ifdef CCL_ENABLE_DRM
 #include "i915_drm.h"
 #endif // CCL_ENABLE_DRM
@@ -75,8 +74,12 @@ bool fd_manager::is_pidfd_supported() {
         fds.push_back(fd);
     };
 
+    mode_t prev_umask = umask(rwe_umask);
+
     int file_fd = mkstemp(filename);
     check_fd(file_fd);
+
+    umask(prev_umask);
 
     int pidfd = syscall(__NR_pidfd_open, pid, 0);
     check_fd(pidfd);
@@ -208,6 +211,7 @@ std::vector<int> fd_manager::init_device_fds() {
 
     DIR *dir = opendir(device_dir);
     CCL_THROW_IF_NOT(dir, "opendir failed: could not open device directory");
+    dir_raii dir_obj(dir);
 
     LOG_DEBUG("search for all devices in the device directory");
     while ((ent = readdir(dir)) != nullptr) {
@@ -219,6 +223,7 @@ std::vector<int> fd_manager::init_device_fds() {
         CCL_THROW_IF_NOT(ret > 0 || ret <= NAME_MAX, "could not create device name");
         device_names.push_back(device_name);
     }
+
     return fill_device_fds(device_names);
 }
 
@@ -234,6 +239,7 @@ std::vector<bdf_info> fd_manager::init_device_bdfs(const size_t size) {
 
     DIR *dir = opendir(device_dir);
     CCL_THROW_IF_NOT(dir, "bdfs opendir failed: could not open device directory");
+    dir_raii dir_obj(dir);
 
     LOG_DEBUG("BDF search for all devices in the device directory");
     while ((ent = readdir(dir)) != nullptr) {
@@ -256,8 +262,6 @@ std::vector<bdf_info> fd_manager::init_device_bdfs(const size_t size) {
 
     qsort(&bdfs[0], bdfs.size(), sizeof(bdf_info), fd_manager::compare_bdf);
     LOG_DEBUG("sorted bdf size: ", bdfs.size());
-
-    closedir(dir);
 #endif // ZE_PCI_PROPERTIES_EXT_NAME
     return bdfs;
 }
@@ -558,7 +562,11 @@ void fd_manager::exchange_device_fds() {
                              ", errno: ",
                              strerror(errno));
 
-            setsockopt(all_socks[i], SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
+            if (setsockopt(all_socks[i], SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) ==
+                ccl::utils::invalid_err_code) {
+                CCL_THROW("setsockopt failed: sock: ", all_socks[i], ", errno: ", strerror(errno));
+            }
+
             sockaddr.sun_family = AF_UNIX;
             strncpy(sockaddr.sun_path, sock_name.c_str(), sizeof(sockaddr.sun_path) - 1);
 
@@ -602,7 +610,10 @@ void fd_manager::exchange_device_fds() {
                          ", errno: ",
                          strerror(errno));
 
-        setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
+        if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) ==
+            ccl::utils::invalid_err_code) {
+            CCL_THROW("setsockopt failed: sock: ", sock, ", errno: ", strerror(errno));
+        }
         sockaddr.sun_family = AF_UNIX;
         strncpy(sockaddr.sun_path, sock_name.c_str(), sizeof(sockaddr.sun_path) - 1);
 
@@ -631,7 +642,10 @@ void fd_manager::exchange_device_fds() {
                          ", errno: ",
                          strerror(errno));
 
-        setsockopt(all_socks[0], SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
+        if (setsockopt(all_socks[0], SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) ==
+            ccl::utils::invalid_err_code) {
+            CCL_THROW("setsockopt failed: sock: ", all_socks[0], ", errno: ", strerror(errno));
+        }
         close(sock);
     }
 

@@ -106,15 +106,6 @@ void print_help_usage(const char* app) {
 }
 
 template <class Dtype, class Container>
-std::string find_str_val(Container& mp, const Dtype& key) {
-    typename std::map<Dtype, std::string>::iterator it;
-    it = mp.find(key);
-    if (it != mp.end())
-        return it->second;
-    return NULL;
-}
-
-template <class Dtype, class Container>
 bool find_key_val(ccl::reduction& key, Container& mp, const Dtype& val) {
     for (auto& i : mp) {
         if (i.second == val) {
@@ -130,24 +121,6 @@ bool is_check_values_enabled(check_values_t check_values) {
     if (check_values == CHECK_LAST_ITER || check_values == CHECK_ALL_ITERS)
         return true;
     return ret;
-}
-
-int check_supported_options(const std::string& option_name,
-                            const std::string& option_value,
-                            const std::set<std::string>& supported_option_values) {
-    std::stringstream sstream;
-
-    if (supported_option_values.find(option_value) == supported_option_values.end()) {
-        PRINT("unsupported %s: %s", option_name.c_str(), option_value.c_str());
-
-        std::copy(supported_option_values.begin(),
-                  supported_option_values.end(),
-                  std::ostream_iterator<std::string>(sstream, " "));
-        PRINT("supported values: %s", sstream.str().c_str());
-        return -1;
-    }
-
-    return 0;
 }
 
 int set_backend(const std::string& option_value, backend_type_t& backend) {
@@ -549,16 +522,6 @@ void adjust_elem_counts(user_options_t& options) {
     else {
         generate_counts(options.elem_counts, options.min_elem_count, options.max_elem_count);
     }
-}
-
-bool is_valid_integer_option(const char* option) {
-    std::string str(option);
-    bool only_digits = (str.find_first_not_of("0123456789") == std::string::npos);
-    return (only_digits && atoi(option) >= 0);
-}
-
-bool is_valid_integer_option(int option) {
-    return (option >= 0);
 }
 
 void adjust_user_options(user_options_t& options) {

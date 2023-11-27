@@ -82,6 +82,13 @@
 #define MPICH_API_PUBLIC
 #endif
 
+
+#if defined(__SYCL_DEVICE_ONLY__)
+#define IMPI_DEVICE_EXPORT SYCL_EXTERNAL
+#else
+#define IMPI_DEVICE_EXPORT
+#endif
+
 /* Keep C++ compilers from getting confused */
 #if defined(__cplusplus)
 extern "C" {
@@ -354,6 +361,10 @@ typedef int MPI_Group;
 typedef int MPI_Win;
 #define MPI_WIN_NULL ((MPI_Win)0x20000000)
 
+/* for session */
+typedef int MPI_Session;
+#define MPI_SESSION_NULL     ((MPI_Session)0x38000000)
+
 /* File and IO */
 /* This define lets ROMIO know that MPI_File has been defined */
 #define MPI_FILE_DEFINED
@@ -419,6 +430,8 @@ static const MPI_Datatype mpich_mpi_datatype_null MPICH_ATTR_TYPE_TAG_MUST_BE_NU
 #define MPI_MAX_ERROR_STRING   512
 #define MPI_MAX_PORT_NAME      256
 #define MPI_MAX_OBJECT_NAME    128
+#define MPI_MAX_STRINGTAG_LEN  256
+#define MPI_MAX_PSET_NAME_LEN  256
 
 /* Pre-defined constants */
 #define MPI_UNDEFINED      (-32766)
@@ -472,11 +485,12 @@ typedef int (MPI_Win_delete_attr_function)(MPI_Win, int, void *, void *);
 typedef void (MPI_Comm_errhandler_function)(MPI_Comm *, int *, ...);
 typedef void (MPI_File_errhandler_function)(MPI_File *, int *, ...);
 typedef void (MPI_Win_errhandler_function)(MPI_Win *, int *, ...);
+typedef void (MPI_Session_errhandler_function)(MPI_Session *, int *, ...);
 /* names that were added in MPI-2.0 and deprecated in MPI-2.2 */
 typedef MPI_Comm_errhandler_function MPI_Comm_errhandler_fn;
 typedef MPI_File_errhandler_function MPI_File_errhandler_fn;
 typedef MPI_Win_errhandler_function MPI_Win_errhandler_fn;
-
+typedef MPI_Session_errhandler_function MPI_Session_errhandler_fn;
 /* Built in (0x1 in 30-31), errhandler (0x5 in bits 26-29, allkind (0
    in 22-25), index in the low bits */
 #define MPI_ERRORS_ARE_FATAL ((MPI_Errhandler)0x54000000)
@@ -486,6 +500,7 @@ typedef MPI_Win_errhandler_function MPI_Win_errhandler_fn;
    Using the MPIR prefix preserved the MPI_ names for objects defined by
    the standard. */
 #define MPIR_ERRORS_THROW_EXCEPTIONS ((MPI_Errhandler)0x54000002)
+#define MPI_ERRORS_ABORT     ((MPI_Errhandler)0x54000003)
 typedef int MPI_Errhandler;
 
 /* Make the C names for the dup function mixed case.
@@ -584,8 +599,8 @@ typedef int (MPI_Delete_function) ( MPI_Comm, int, void *, void * );
  * digits for REV, 1 digit for EXT and 2 digits for EXT_NUMBER. So,
  * 2019.0.0b0 will have the numeric version 20190000100.
  */
-#define I_MPI_VERSION "2021.10.0"
-#define I_MPI_NUMVERSION 20211000300
+#define I_MPI_VERSION "2021.11.0"
+#define I_MPI_NUMVERSION 20211100300
 
 /* for the datatype decoders */
 enum MPIR_Combiner_enum {
@@ -639,6 +654,8 @@ typedef int MPI_Info;
 
 /* MPICH-specific types */
 #define MPIX_COMM_TYPE_NEIGHBORHOOD 2
+
+#define MPI_COMM_TYPE_HW_GUIDED    3
 
 /* Definitions that are determined by configure. */
 typedef long MPI_Aint;
@@ -792,6 +809,8 @@ typedef enum MPIR_T_pvar_class_t {
 #define MPI_Win_f2c(win)   (MPI_Win)(win)
 #define MPI_Message_c2f(msg) ((MPI_Fint)(msg))
 #define MPI_Message_f2c(msg) ((MPI_Message)(msg))
+#define MPI_Session_c2f(session) (MPI_Fint)(session)
+#define MPI_Session_f2c(session) (MPI_Session)(session)
 
 /* PMPI versions of the handle transfer functions.  See section 4.17 */
 #define PMPI_Comm_c2f(comm) (MPI_Fint)(comm)
@@ -812,6 +831,8 @@ typedef enum MPIR_T_pvar_class_t {
 #define PMPI_Win_f2c(win)   (MPI_Win)(win)
 #define PMPI_Message_c2f(msg) ((MPI_Fint)(msg))
 #define PMPI_Message_f2c(msg) ((MPI_Message)(msg))
+#define PMPI_Session_c2f(session) (MPI_Fint)(session)
+#define PMPI_Session_f2c(session) (MPI_Session)(session)
 
 #define MPI_STATUS_IGNORE (MPI_Status *)1
 #define MPI_STATUSES_IGNORE (MPI_Status *)1
@@ -964,10 +985,11 @@ typedef int (MPIX_Grequest_wait_function)(int, void **, double, MPI_Status *);
 #define MPI_T_ERR_INVALID_NAME      73  /* Name doesn't match */
 #define MPI_T_ERR_INVALID           74  /* Generic error code for MPI_T added in MPI-3.1 */
 
+#define MPI_ERR_SESSION            75  /* Invalid session handle */
 
 #define MPI_ERR_LASTCODE    0x3fffffff  /* Last valid error code for a 
 					   predefined error class */
-#define MPICH_ERR_LAST_CLASS 74     /* It is also helpful to know the
+#define MPICH_ERR_LAST_CLASS 75     /* It is also helpful to know the
 				       last valid class */
 
 #define MPICH_ERR_FIRST_MPIX 100 /* Define a gap here because sock is
@@ -1013,6 +1035,20 @@ int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int ta
 int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag,
              MPI_Comm comm, MPI_Status *status) MPICH_ATTR_POINTER_WITH_TYPE_TAG(1,3) MPICH_API_PUBLIC;
 int MPI_Get_count(const MPI_Status *status, MPI_Datatype datatype, int *count) MPICH_API_PUBLIC;
+int MPI_Comm_create_from_group(MPI_Group group, const char *stringtag, MPI_Info info,
+                               MPI_Errhandler errhandler, MPI_Comm *newcomm) MPICH_API_PUBLIC;
+int MPI_Group_from_session_pset(MPI_Session session, const char *pset_name, MPI_Group *newgroup)
+    MPICH_API_PUBLIC;
+int MPI_Session_finalize(MPI_Session *session) MPICH_API_PUBLIC;
+int MPI_Session_get_info(MPI_Session session, MPI_Info *info_used) MPICH_API_PUBLIC;
+int MPI_Session_get_nth_pset(MPI_Session session, MPI_Info info, int n, int *pset_len,
+                             char *pset_name) MPICH_API_PUBLIC;
+int MPI_Session_get_num_psets(MPI_Session session, MPI_Info info, int *npset_names)
+    MPICH_API_PUBLIC;
+int MPI_Session_get_pset_info(MPI_Session session, const char *pset_name, MPI_Info *info)
+    MPICH_API_PUBLIC;
+int MPI_Session_init(MPI_Info info, MPI_Errhandler errhandler, MPI_Session *session)
+    MPICH_API_PUBLIC;
 int MPI_Bsend(const void *buf, int count, MPI_Datatype datatype, int dest, int tag,
               MPI_Comm comm) MPICH_ATTR_POINTER_WITH_TYPE_TAG(1,3) MPICH_API_PUBLIC;
 int MPI_Ssend(const void *buf, int count, MPI_Datatype datatype, int dest, int tag,
@@ -1244,23 +1280,23 @@ int MPI_Accumulate(const void *origin_addr, int origin_count, MPI_Datatype origi
                    int target_rank, MPI_Aint target_disp, int target_count,
                    MPI_Datatype target_datatype, MPI_Op op, MPI_Win win)
                    MPICH_ATTR_POINTER_WITH_TYPE_TAG(1,3) MPICH_API_PUBLIC;
-int MPI_Get(void *origin_addr, int origin_count, MPI_Datatype origin_datatype,
+IMPI_DEVICE_EXPORT int MPI_Get(void *origin_addr, int origin_count, MPI_Datatype origin_datatype,
             int target_rank, MPI_Aint target_disp, int target_count,
             MPI_Datatype target_datatype, MPI_Win win) MPICH_ATTR_POINTER_WITH_TYPE_TAG(1,3) MPICH_API_PUBLIC;
-int MPI_Put(const void *origin_addr, int origin_count, MPI_Datatype origin_datatype,
+IMPI_DEVICE_EXPORT int MPI_Put(const void *origin_addr, int origin_count, MPI_Datatype origin_datatype,
             int target_rank, MPI_Aint target_disp, int target_count,
             MPI_Datatype target_datatype, MPI_Win win) MPICH_ATTR_POINTER_WITH_TYPE_TAG(1,3) MPICH_API_PUBLIC;
 int MPI_Win_complete(MPI_Win win) MPICH_API_PUBLIC;
 int MPI_Win_create(void *base, MPI_Aint size, int disp_unit, MPI_Info info, MPI_Comm comm,
                    MPI_Win *win) MPICH_API_PUBLIC;
-int MPI_Win_fence(int assert, MPI_Win win) MPICH_API_PUBLIC;
+IMPI_DEVICE_EXPORT int MPI_Win_fence(int assert, MPI_Win win) MPICH_API_PUBLIC;
 int MPI_Win_free(MPI_Win *win) MPICH_API_PUBLIC;
 int MPI_Win_get_group(MPI_Win win, MPI_Group *group) MPICH_API_PUBLIC;
-int MPI_Win_lock(int lock_type, int rank, int assert, MPI_Win win) MPICH_API_PUBLIC;
+IMPI_DEVICE_EXPORT int MPI_Win_lock(int lock_type, int rank, int assert, MPI_Win win) MPICH_API_PUBLIC;
 int MPI_Win_post(MPI_Group group, int assert, MPI_Win win) MPICH_API_PUBLIC;
 int MPI_Win_start(MPI_Group group, int assert, MPI_Win win) MPICH_API_PUBLIC;
 int MPI_Win_test(MPI_Win win, int *flag) MPICH_API_PUBLIC;
-int MPI_Win_unlock(int rank, MPI_Win win) MPICH_API_PUBLIC;
+IMPI_DEVICE_EXPORT int MPI_Win_unlock(int rank, MPI_Win win) MPICH_API_PUBLIC;
 int MPI_Win_wait(MPI_Win win) MPICH_API_PUBLIC;
 
 /* MPI-3 One-Sided Communication Routines */
@@ -1312,10 +1348,10 @@ int MPI_Rget_accumulate(const void *origin_addr, int origin_count,
                          MPI_Request *request)
                          MPICH_ATTR_POINTER_WITH_TYPE_TAG(1,3)
                          MPICH_ATTR_POINTER_WITH_TYPE_TAG(4,6) MPICH_API_PUBLIC;
-int MPI_Win_lock_all(int assert, MPI_Win win) MPICH_API_PUBLIC;
-int MPI_Win_unlock_all(MPI_Win win) MPICH_API_PUBLIC;
-int MPI_Win_flush(int rank, MPI_Win win) MPICH_API_PUBLIC;
-int MPI_Win_flush_all(MPI_Win win) MPICH_API_PUBLIC;
+IMPI_DEVICE_EXPORT int MPI_Win_lock_all(int assert, MPI_Win win) MPICH_API_PUBLIC;
+IMPI_DEVICE_EXPORT int MPI_Win_unlock_all(MPI_Win win) MPICH_API_PUBLIC;
+IMPI_DEVICE_EXPORT int MPI_Win_flush(int rank, MPI_Win win) MPICH_API_PUBLIC;
+IMPI_DEVICE_EXPORT int MPI_Win_flush_all(MPI_Win win) MPICH_API_PUBLIC;
 int MPI_Win_flush_local(int rank, MPI_Win win) MPICH_API_PUBLIC;
 int MPI_Win_flush_local_all(MPI_Win win) MPICH_API_PUBLIC;
 int MPI_Win_sync(MPI_Win win) MPICH_API_PUBLIC;
@@ -1380,6 +1416,11 @@ int MPI_File_create_errhandler(MPI_File_errhandler_function *file_errhandler_fn,
                                MPI_Errhandler *errhandler) MPICH_API_PUBLIC;
 int MPI_File_get_errhandler(MPI_File file, MPI_Errhandler *errhandler) MPICH_API_PUBLIC;
 int MPI_File_set_errhandler(MPI_File file, MPI_Errhandler errhandler) MPICH_API_PUBLIC;
+int MPI_Session_call_errhandler(MPI_Session session, int errorcode) MPICH_API_PUBLIC;
+int MPI_Session_create_errhandler(MPI_Session_errhandler_function *session_errhandler_fn,
+                                  MPI_Errhandler *errhandler) MPICH_API_PUBLIC;
+int MPI_Session_get_errhandler(MPI_Session session, MPI_Errhandler *errhandler) MPICH_API_PUBLIC;
+int MPI_Session_set_errhandler(MPI_Session session, MPI_Errhandler errhandler) MPICH_API_PUBLIC;
 int MPI_Finalized(int *flag) MPICH_API_PUBLIC;
 int MPI_Free_mem(void *base) MPICH_API_PUBLIC;
 int MPI_Get_address(const void *location, MPI_Aint *address) MPICH_API_PUBLIC;
@@ -1658,6 +1699,20 @@ int PMPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest, int t
 int PMPI_Recv(void *buf, int count, MPI_Datatype datatype, int source, int tag,
               MPI_Comm comm, MPI_Status *status) MPICH_ATTR_POINTER_WITH_TYPE_TAG(1,3) MPICH_API_PUBLIC;
 int PMPI_Get_count(const MPI_Status *status, MPI_Datatype datatype, int *count) MPICH_API_PUBLIC;
+int PMPI_Comm_create_from_group(MPI_Group group, const char *stringtag, MPI_Info info,
+                                MPI_Errhandler errhandler, MPI_Comm *newcomm) MPICH_API_PUBLIC;
+int PMPI_Group_from_session_pset(MPI_Session session, const char *pset_name, MPI_Group *newgroup)
+    MPICH_API_PUBLIC;
+int PMPI_Session_finalize(MPI_Session *session) MPICH_API_PUBLIC;
+int PMPI_Session_get_info(MPI_Session session, MPI_Info *info_used) MPICH_API_PUBLIC;
+int PMPI_Session_get_nth_pset(MPI_Session session, MPI_Info info, int n, int *pset_len,
+                              char *pset_name) MPICH_API_PUBLIC;
+int PMPI_Session_get_num_psets(MPI_Session session, MPI_Info info, int *npset_names)
+    MPICH_API_PUBLIC;
+int PMPI_Session_get_pset_info(MPI_Session session, const char *pset_name, MPI_Info *info)
+    MPICH_API_PUBLIC;
+int PMPI_Session_init(MPI_Info info, MPI_Errhandler errhandler, MPI_Session *session)
+    MPICH_API_PUBLIC;
 int PMPI_Bsend(const void *buf, int count, MPI_Datatype datatype, int dest, int tag,
                MPI_Comm comm) MPICH_ATTR_POINTER_WITH_TYPE_TAG(1,3) MPICH_API_PUBLIC;
 int PMPI_Ssend(const void *buf, int count, MPI_Datatype datatype, int dest, int tag,
@@ -2024,6 +2079,11 @@ int PMPI_File_create_errhandler(MPI_File_errhandler_function *file_errhandler_fn
                                 MPI_Errhandler *errhandler) MPICH_API_PUBLIC;
 int PMPI_File_get_errhandler(MPI_File file, MPI_Errhandler *errhandler) MPICH_API_PUBLIC;
 int PMPI_File_set_errhandler(MPI_File file, MPI_Errhandler errhandler) MPICH_API_PUBLIC;
+int PMPI_Session_call_errhandler(MPI_Session session, int errorcode) MPICH_API_PUBLIC;
+int PMPI_Session_create_errhandler(MPI_Session_errhandler_function *session_errhandler_fn,
+                                   MPI_Errhandler *errhandler) MPICH_API_PUBLIC;
+int PMPI_Session_get_errhandler(MPI_Session session, MPI_Errhandler *errhandler) MPICH_API_PUBLIC;
+int PMPI_Session_set_errhandler(MPI_Session session, MPI_Errhandler errhandler) MPICH_API_PUBLIC;
 int PMPI_Finalized(int *flag) MPICH_API_PUBLIC;
 int PMPI_Free_mem(void *base) MPICH_API_PUBLIC;
 int PMPI_Get_address(const void *location, MPI_Aint *address) MPICH_API_PUBLIC;
@@ -2797,7 +2857,6 @@ int PMPI_Ssend_init_c(const void *buf, MPI_Count count, MPI_Datatype datatype, i
 #include "mpicxx.h"
 #endif 
 #endif
-
 
 /* Generalized requests extensions */
 typedef int MPIX_Grequest_class;

@@ -14,7 +14,7 @@
  limitations under the License.
 */
 #include "common/global/global.hpp"
-#include "sched/entry/ze/ze_cache.hpp"
+#include "sched/entry/ze/cache/ze_cache.hpp"
 #include "sched/ze/ze_list_manager.hpp"
 
 using namespace ccl;
@@ -26,10 +26,6 @@ ze_command_list_handle_t list_info::get_native() const {
 
 ze_command_list_handle_t* list_info::get_native_ptr() {
     return &list;
-}
-
-const ze_command_list_desc_t& list_info::get_desc() const {
-    return desc;
 }
 
 bool list_info::is_valid() const {
@@ -179,10 +175,6 @@ void queue_factory::clear() {
     queues.clear();
 }
 
-bool queue_factory::is_copy() const {
-    return is_copy_queue;
-}
-
 uint32_t queue_factory::get_ordinal() const {
     return queue_ordinal;
 }
@@ -259,10 +251,6 @@ void list_factory::destroy(list_info_t& list) {
 
 const char* list_factory::get_type_str() const {
     return (is_copy_list) ? "copy" : "comp";
-}
-
-bool list_factory::is_copy() const {
-    return is_copy_list;
 }
 
 list_manager::list_manager(const ccl_sched_base* sched, const ccl_stream* stream)
@@ -494,14 +482,6 @@ void list_manager::reset_execution_state() {
         CCL_THROW_IF_NOT(list->is_closed, "detected list that has not been closed");
         list->is_executed = false;
     }
-}
-
-bool list_manager::can_use_copy_queue() const {
-    return use_copy_queue;
-}
-
-bool list_manager::can_use_main_queue() const {
-    return main_queue_available;
 }
 
 bool list_manager::is_executed() const {

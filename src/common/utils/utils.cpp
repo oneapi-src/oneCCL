@@ -76,7 +76,7 @@ uintptr_t get_aligned_offset_byte(const void* ptr,
                                   const size_t buf_size_bytes,
                                   const size_t mem_align_bytes) {
     // find the number of data items to remove to start from aligned bytes
-    unsigned long pre_align_offset_byte = (uintptr_t)ptr % mem_align_bytes;
+    unsigned long pre_align_offset_byte = reinterpret_cast<uintptr_t>(ptr) % mem_align_bytes;
     if (pre_align_offset_byte != 0) {
         pre_align_offset_byte = mem_align_bytes - pre_align_offset_byte;
     }

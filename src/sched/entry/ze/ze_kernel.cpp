@@ -67,9 +67,14 @@ ze_kernel::ze_kernel(ze_kernel &&other) noexcept
     other.kernel = nullptr;
 };
 
-ze_kernel::~ze_kernel() {
-    if (kernel) {
-        global_data::get().ze_data->cache->push(worker_idx, module, kernel_name, kernel);
+ze_kernel::~ze_kernel() noexcept {
+    try {
+        if (kernel) {
+            global_data::get().ze_data->cache->push(worker_idx, module, kernel_name, kernel);
+        }
+    }
+    catch (...) {
+        LOG_ERROR("error pushing to the kernel cache");
     }
 }
 

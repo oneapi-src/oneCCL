@@ -23,6 +23,7 @@
 #include <cstring>
 #include <functional>
 #include <iostream>
+#include <iterator>
 #include <math.h>
 #include <mpi.h>
 #include <stdexcept>
@@ -118,4 +119,41 @@ inline void mpi_finalize() {
 
     if (!is_finalized)
         MPI_Finalize();
+}
+
+inline bool is_valid_integer_option(const char* option) {
+    std::string str(option);
+    bool only_digits = (str.find_first_not_of("0123456789") == std::string::npos);
+    return (only_digits && atoi(option) >= 0);
+}
+
+inline bool is_valid_integer_option(int option) {
+    return (option >= 0);
+}
+
+inline int check_supported_options(const std::string& option_name,
+                                   const std::string& option_value,
+                                   const std::set<std::string>& supported_option_values) {
+    std::stringstream sstream;
+
+    if (supported_option_values.find(option_value) == supported_option_values.end()) {
+        PRINT("unsupported %s: %s", option_name.c_str(), option_value.c_str());
+
+        std::copy(supported_option_values.begin(),
+                  supported_option_values.end(),
+                  std::ostream_iterator<std::string>(sstream, " "));
+        PRINT("supported values: %s", sstream.str().c_str());
+        return -1;
+    }
+
+    return 0;
+}
+
+template <class Dtype, class Container>
+std::string find_str_val(Container& mp, const Dtype& key) {
+    typename std::map<Dtype, std::string>::iterator it;
+    it = mp.find(key);
+    if (it != mp.end())
+        return it->second;
+    return NULL;
 }

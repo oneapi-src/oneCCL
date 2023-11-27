@@ -67,9 +67,9 @@ sycl::event submit_barrier(sycl::queue queue) {
 
 sycl::event submit_barrier(sycl::queue queue, sycl::event event) {
 #if ICPX_VERSION >= 140000
-    return queue.ext_oneapi_submit_barrier({ event });
+    return queue.ext_oneapi_submit_barrier({ std::move(event) });
 #elif ICPX_VERSION < 140000
-    return queue.submit_barrier({ event });
+    return queue.submit_barrier({ std::move(event) });
 #endif // ICPX_VERSION
 }
 
