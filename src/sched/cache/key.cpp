@@ -181,8 +181,8 @@ size_t ccl_sched_key_hasher::operator()(const ccl_sched_key& k) const {
     if (ccl::global_data::env().cache_key_type == ccl_cache_key_full) {
         /* TODO: improve hashing for vec fields to reduce probability of collisions
            e.g. sum(a[idx]*(idx+1)) */
-        size_t vec1_sum = std::accumulate(k.vec1.begin(), k.vec1.end(), 0);
-        size_t vec2_sum = std::accumulate(k.vec2.begin(), k.vec2.end(), 0);
+        size_t vec1_sum = std::accumulate(k.vec1.begin(), k.vec1.end(), size_t(0));
+        size_t vec2_sum = std::accumulate(k.vec2.begin(), k.vec2.end(), size_t(0));
         hash_value += k.f.ctype + ccl::utils::enum_to_underlying(k.f.dtype) +
                       ccl::utils::enum_to_underlying(k.f.reduction) + k.f.count1 + k.f.count2 +
                       k.f.root + (size_t)k.f.buf1 + (size_t)k.f.buf2 + (size_t)k.f.comm +

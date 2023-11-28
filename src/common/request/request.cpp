@@ -37,11 +37,6 @@ ccl_request::~ccl_request() {
     if (counter != 0 && !ccl::global_data::get().is_ft_enabled) {
         LOG_WARN("unexpected completion_counter ", counter);
     }
-
-    // notify sched about request release to update its state.
-    // if event is empty, sched will that
-    // TODO: move to the proper place
-    // sched.release_sync_event(this);
 }
 
 bool ccl_request::complete() {

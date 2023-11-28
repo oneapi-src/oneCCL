@@ -119,9 +119,13 @@ bool topo_manager::has_oversubscription() const {
     return is_oversubscription_detected;
 }
 
+size_t topo_manager::get_unique_device_uuids_count() const {
+    return unique_device_uuids_count;
+}
+
 bool topo_manager::oversubscription_detected(const ze_rank_info_vec_t& ze_rank_infos,
                                              const host_info_vec_t& host_infos) {
-    size_t unique_device_uuids_count = topo_manager::invalid_device_uuids_count;
+    size_t unique_dev_uuids_count = topo_manager::invalid_device_uuids_count;
     for (const auto& host_info : host_infos) {
         std::vector<ze_device_uuid_t> unique_device_uuids;
         for (auto rank : host_info.ranks) {
@@ -130,11 +134,14 @@ bool topo_manager::oversubscription_detected(const ze_rank_info_vec_t& ze_rank_i
                 unique_device_uuids.push_back(rank_info.device_uuid);
             }
         }
-        unique_device_uuids_count += unique_device_uuids.size();
+        unique_dev_uuids_count += unique_device_uuids.size();
     }
 
-    CCL_THROW_IF_NOT(unique_device_uuids_count != topo_manager::invalid_device_uuids_count,
-                     "invalid unique_device_uuids_count");
+    CCL_THROW_IF_NOT(unique_dev_uuids_count != topo_manager::invalid_device_uuids_count,
+                     "invalid unique_dev_uuids_count");
+
+    unique_device_uuids_count = unique_dev_uuids_count;
+
     if (unique_device_uuids_count < rank_info_vec.size()) {
         LOG_DEBUG("unique_device_uuids_count: ",
                   unique_device_uuids_count,
@@ -824,8 +831,8 @@ fabric_ports_t topo_manager::get_fabric_ports() {
     std::vector<zes_fabric_port_handle_t> ports(port_count);
     ZE_CALL(zesDeviceEnumFabricPorts, ((zes_device_handle_t)ze_device, &port_count, ports.data()));
 
-    bool use_all_ports =
-        (ccl::ze::get_device_family(ze_device) == ccl::device_family::family2) ? true : false;
+    bool use_all_ports = (ccl::ze::get_device_family(ze_device) == ccl::device_family::family2 ||
+                          ccl::ze::get_device_family(ze_device) == ccl::device_family::family3);
     char* use_all_ports_env = getenv("CCL_TOPO_ALL_PORTS");
     if (use_all_ports_env) {
         use_all_ports = atoi(use_all_ports_env);
@@ -882,7 +889,8 @@ fabric_ports_t topo_manager::get_fabric_ports() {
 
     utils::allgather(comm, &my_port_count, all_port_counts.data(), sizeof(my_port_count));
 
-    size_t total_port_count = std::accumulate(all_port_counts.begin(), all_port_counts.end(), 0);
+    size_t total_port_count =
+        std::accumulate(all_port_counts.begin(), all_port_counts.end(), size_t(0));
 
     if (total_port_count == 0) {
         LOG_DEBUG("no ports detected");
@@ -1098,12 +1106,23 @@ void topo_manager::detect_tune_port_count(const std::vector<ze::device_info>& de
             }
         }
 
-        if (first_dev_port_count == topo_manager::tune_port_count) {
-            global_data::env().reduce_scatter_topo_read = 0;
+        if (first_dev_port_count == topo_manager::type1_tune_port_count ||
+            first_dev_port_count == topo_manager::type2_tune_port_count) {
             global_data::env().allgatherv_topo_read = 0;
-            global_data::env().alltoallv_topo_read = 0;
-            global_data::env().alltoallv_monolithic_read_kernel = 0;
-            LOG_INFO("12 ports system is detected, write mode is set");
+            if (first_dev_port_count == topo_manager::type1_tune_port_count) {
+                global_data::env().alltoallv_topo_read = 0;
+                global_data::env().alltoallv_monolithic_kernel = 0;
+            }
+            global_data::env().reduce_scatter_topo_read = 0;
+            global_data::env().ze_pt2pt_read = 0;
+
+            if (global_data::env().type2_mode != type2_tune_mode::off &&
+                first_dev_port_count == topo_manager::type2_tune_port_count) {
+                global_data::env().type2_mode = type2_tune_mode::detected;
+                LOG_DEBUG(
+                    "system with :", first_dev_port_count, " ports is detected, write mode is set");
+            }
+            LOG_INFO(first_dev_port_count, " ports system is detected, write mode is set");
         }
     }
     else {

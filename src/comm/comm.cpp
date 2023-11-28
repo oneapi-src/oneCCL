@@ -114,7 +114,7 @@ void ccl_comm::init(int comm_id,
     comm_rank = atl_comm->get_rank();
     comm_size = atl_comm->get_size();
 
-    next_sched_id_internal = ccl_comm::max_sched_count / 2;
+    next_sched_id_internal = atl_comm->tag_creator->get_max_sched_count() / 2;
     next_sched_id_external = 0;
 
     if (comm_rank >= comm_size || comm_size <= 0) {
@@ -152,7 +152,7 @@ ccl_comm::ccl_comm(int comm_id,
                    std::shared_ptr<atl_base_comm> atl_comm,
                    bool share_resources,
                    bool is_sub_communicator) {
-    init(comm_id, atl_comm, share_resources, is_sub_communicator);
+    init(comm_id, std::move(atl_comm), share_resources, is_sub_communicator);
 }
 
 ccl_comm::ccl_comm(std::shared_ptr<atl_base_comm> atl_comm,
@@ -163,14 +163,15 @@ ccl_comm::ccl_comm(std::shared_ptr<atl_base_comm> atl_comm,
 ccl_comm::ccl_comm(device_t device, context_t context, std::shared_ptr<atl_base_comm> atl_comm)
         : device_ptr(std::make_shared<ccl::device>(device)),
           context_ptr(std::make_shared<ccl::context>(context)) {
-    init(atl_comm->create_comm_id(), atl_comm);
+    int id = atl_comm->create_comm_id();
+    init(id, std::move(atl_comm));
 }
 
 ccl_comm::ccl_comm(int size, int rank, ccl::shared_ptr_class<ikvs_wrapper> kvs)
-        : ccl_comm(atl_comm_manager::create(size, { rank }, kvs)) {}
+        : ccl_comm(atl_comm_manager::create(size, { rank }, std::move(kvs))) {}
 
 ccl_comm::ccl_comm(int size, ccl::shared_ptr_class<ikvs_wrapper> kvs)
-        : ccl_comm(atl_comm_manager::create(size, { 0 }, kvs)) {}
+        : ccl_comm(atl_comm_manager::create(size, { 0 }, std::move(kvs))) {}
 
 ccl_comm::ccl_comm() : ccl_comm(atl_comm_manager::create()) {}
 
@@ -316,19 +317,43 @@ int ccl_comm::get_rank_from_global(int global_rank) const {
     return rank;
 }
 
-ccl_sched_id_t ccl_comm::get_sched_id(bool use_internal_space) {
+bool ccl_comm::try_get_rank_from_global(int global_rank) const {
+    bool ret = false;
+    if (local2global_map.empty()) {
+        // global comm and its copies do not have entries in the map
+        return ret;
+    }
+
+    for (size_t i = 0; i < local2global_map.size(); ++i) {
+        if (local2global_map[i] == global_rank) {
+            return true;
+        }
+    }
+
+    return ret;
+}
+
+ccl_sched_id_t ccl_comm::get_sched_id(bool use_internal_space, bool is_pt2pt) {
+    std::shared_ptr<atl_base_comm> atl_comm = get_atl_comm();
     ccl_sched_id_t& next_sched_id =
         (use_internal_space) ? next_sched_id_internal : next_sched_id_external;
 
-    ccl_sched_id_t first_sched_id =
-        (use_internal_space) ? static_cast<ccl_sched_id_t>(0) : ccl_comm::max_sched_count / 2;
+    ccl_sched_id_t max_sched_count = atl_comm->tag_creator->get_max_sched_count();
 
-    ccl_sched_id_t max_sched_id =
-        (use_internal_space) ? ccl_comm::max_sched_count / 2 : ccl_comm::max_sched_count;
+    ccl_sched_id_t first_sched_id =
+        (use_internal_space) ? static_cast<ccl_sched_id_t>(0) : max_sched_count / 2;
+
+    ccl_sched_id_t max_sched_id = (use_internal_space) ? max_sched_count / 2 : max_sched_count;
 
     ccl_sched_id_t id = next_sched_id;
 
-    ++next_sched_id;
+    // is_pt2pt flag is required in the case
+    // to avoid when send-recv communication between ranks
+    // less comm_size, the ++next_sched_id op is skipped if
+    // is_pt2pt = true
+    if (!is_pt2pt) {
+        ++next_sched_id;
+    }
 
     if (next_sched_id == max_sched_id) {
         /* wrap the sched numbers around to the start */

@@ -93,10 +93,10 @@
 # Set the default values of all variables.
 #
 # Directory locations: Fixed for any MPI implementation
-prefix=I_MPI_SUBSTITUTE_INSTALLDIR
+prefix=""
 # The environment variable I_MPI_ROOT may be used to override installation folder path
-if [ -n "$I_MPI_ROOT" ] ; then
-    prefix=$I_MPI_ROOT;
+if [ -n "${I_MPI_ROOT}" ] ; then
+    prefix="${I_MPI_ROOT}";
 fi
 
 exec_prefix=__EXEC_PREFIX_TO_BE_FILLED_AT_INSTALL_TIME__
@@ -104,6 +104,15 @@ sysconfdir=${prefix}/etc
 includedir=${prefix}/include
 libdir=${prefix}/lib
 
+if [ ! -f "${prefix}/lib/mpi/debug/libmpi.so" ]; then
+    release_lib_dir="/release"
+    debug_lib_dir="/debug"
+else
+    sysconfdir=${prefix}/opt/mpi/etc
+    release_lib_dir=""
+    debug_lib_dir="/mpi/debug"
+fi
+MPILIBDIR=${release_lib_dir}
 # The environment variable I_MPI_COMPILER_CONFIG_DIR may be used to override
 # folder where *.conf files are placed
 if [ -n "$I_MPI_COMPILER_CONFIG_DIR" ] ; then
@@ -114,7 +123,7 @@ fi
 CXX="g++"
 MPICH_VERSION="3.4a2"
 CXXFLAGS=""
-MPIVERSION="2021.10"
+MPIVERSION="2021.11"
 MPILIBNAME="mpi"
 MPICXXLIBNAME="mpicxx"
 
@@ -414,7 +423,7 @@ for arg in "$@" ; do
     addarg=no
     ;;
     -g)
-    MPILIBDIR="/release"
+    MPILIBDIR=${release_lib_dir}
     ;;
     -static_log)
     static_log=yes
@@ -512,37 +521,23 @@ fi
 
 if [ -n "$mpilib_override" ] ; then
     case "$mpilib_override" in
-       opt )
-           MPILIBDIR="/release"
-           ;;
-       opt_mt )
-           MPILIBDIR="/release"
-           MPILIBDIR_MT="mt"
-           ;;
-       dbg )
-           MPILIBDIR="/debug"
-           ;;
-       dbg_mt )
-           MPILIBDIR="/debug"
-           MPILIBDIR_MT="mt"
-           ;;
-       * )
-           echo "Warning: incorrect library version specified. Automatically selected library will be used."
-           ;;
+    opt ) 
+        MPILIBDIR=${release_lib_dir}
+        ;;
+    opt_mt )
+        MPILIBDIR=${release_lib_dir}
+        ;;
+    dbg )
+        MPILIBDIR=${debug_lib_dir}
+        ;;
+    dbg_mt )
+        MPILIBDIR=${debug_lib_dir}
+        ;;
+    * )
+        echo "Warning: incorrect library version specified. Automatically selected library will be used."
+        ;;
     esac
 fi
-
-# -----------------------------------------------------------------------
-case "$MPILIBDIR" in
-    release | /release | debug | /debug)
-    if [ ! -z "$MPILIBDIR_MT" ]; then
-        MPILIBDIR=${MPILIBDIR}_${MPILIBDIR_MT}
-    fi
-    ;;
-    "" )
-    MPILIBDIR=/release
-    ;;
-esac
 # -----------------------------------------------------------------------
 if [ "$static_mpi" = yes ] ; then
     if [ "x$fortran_binding" = "x" ]; then

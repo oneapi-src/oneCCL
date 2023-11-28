@@ -133,8 +133,10 @@ public:
     std::string alltoallv_algo_raw;
     std::string barrier_algo_raw;
     std::string bcast_algo_raw;
+    std::string recv_algo_raw;
     std::string reduce_algo_raw;
     std::string reduce_scatter_algo_raw;
+    std::string send_algo_raw;
     // scale-out selection part
     std::string allgatherv_scaleout_algo_raw;
     std::string allreduce_scaleout_algo_raw;
@@ -142,8 +144,10 @@ public:
     std::string alltoallv_scaleout_algo_raw;
     std::string barrier_scaleout_algo_raw;
     std::string bcast_scaleout_algo_raw;
+    std::string recv_scaleout_algo_raw;
     std::string reduce_scaleout_algo_raw;
     std::string reduce_scatter_scaleout_algo_raw;
+    std::string send_scaleout_algo_raw;
     int enable_unordered_coll;
 
     int enable_fusion;
@@ -181,6 +185,11 @@ public:
     int allgatherv_monolithic_pipeline_kernel;
     int alltoallv_monolithic_kernel;
     int alltoallv_monolithic_read_kernel;
+
+    size_t allgatherv_pipe_chunk_count;
+    size_t allreduce_pipe_chunk_count;
+    size_t reduce_scatter_pipe_chunk_count;
+    size_t reduce_pipe_chunk_count;
 #endif // CCL_ENABLE_SYCL
 
     int allreduce_nreduce_buffering;
@@ -223,9 +232,15 @@ public:
     int enable_sycl_output_event;
     int use_hmem;
 
+    int sync_barrier;
+
     int enable_ze_barrier;
     int enable_ze_bidir_algo;
     int enable_ze_cache;
+    int ze_device_cache_evict_smallest;
+    long ze_device_cache_upper_limit;
+    int ze_device_cache_num_blocks_in_chunk;
+    ccl::ze::device_cache_policy_mode ze_device_cache_policy;
     int enable_ze_cache_cmdlists;
     int enable_ze_cache_cmdqueues;
     int enable_ze_cache_event_pools;
@@ -235,7 +250,8 @@ public:
     int enable_ze_single_list;
     int disable_ze_family_check;
     int disable_ze_port_check;
-    int ze_disable_oversubscription_check;
+    int ze_enable_oversubscription_fallback;
+    int ze_enable_oversubscription_throw;
     int ze_serialize_mode;
     ccl::ze::copy_engine_mode ze_copy_engine;
     ccl::ze::h2d_copy_engine_mode ze_h2d_copy_engine;
@@ -245,7 +261,6 @@ public:
     int enable_ze_list_dump;
     int ze_queue_index_offset;
     int ze_close_ipc_wa;
-    int enable_ze_cmd_bypass;
     std::string ze_lib_path;
     int ze_enable;
     int ze_fini_wa;
@@ -253,6 +268,8 @@ public:
     int enable_ze_auto_tune_ports;
     ccl::ze::ipc_exchange_mode ze_ipc_exchange;
     int ze_drm_bdf_support;
+    int ze_pt2pt_read;
+    type2_tune_mode type2_mode;
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_PMIX

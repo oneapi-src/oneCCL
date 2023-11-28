@@ -73,6 +73,7 @@ kvs_status_t pmi_resizable::PMIR_Update(void) {
     std::list<int> dead_up_idx{};
     std::list<shift_rank_t> list{};
 
+    // this code is a part of undocumented resizable_pmi functionality
     new_ranks_count = 0;
     killed_ranks_count = 0;
     if (finalized == 1) {
@@ -115,6 +116,7 @@ kvs_status_t pmi_resizable::PMIR_Update(void) {
                     //                    while (int_list_is_contained(killed_ranks, root_rank) == 1)
                     {
                         int old_root = root_rank;
+
                         KVS_CHECK_STATUS(h->get_new_root(&root_rank), "failed to new root rank");
 
                         if (my_rank == root_rank && old_root != root_rank)
@@ -188,6 +190,7 @@ kvs_status_t pmi_resizable::PMIR_Update(void) {
                 }
                 case KVS_RA_FINALIZE: {
                     KVS_CHECK_STATUS(PMIR_Finalize(), "failed to finalize");
+                    break;
                 }
                 default: {
                     LOG_ERROR("Unknown resize action: %d\n", answer);
@@ -205,6 +208,7 @@ kvs_status_t pmi_resizable::PMIR_Update(void) {
 
     h->get_shift(list);
     count_pods = count_pods - killed_ranks_count + new_ranks_count;
+
     KVS_CHECK_STATUS(h->update(list, dead_up_idx, root_rank), "failed to update root");
 
     root_rank = 0;
@@ -249,8 +253,7 @@ kvs_status_t pmi_resizable::PMIR_Init(const char* addr) {
         printf("Can't get hostname\n");
         exit(1);
     }
-    CHECK_FGETS(fgets(pmi_hostname, MAX_KVS_VAL_LENGTH, fp), pmi_hostname);
-    pclose(fp);
+    CHECK_FGETS(fgets(pmi_hostname, MAX_KVS_VAL_LENGTH, fp), pmi_hostname, fp);
     while (pmi_hostname[strlen(pmi_hostname) - 1] == '\n' ||
            pmi_hostname[strlen(pmi_hostname) - 1] == ' ')
         pmi_hostname[strlen(pmi_hostname) - 1] = '\0';

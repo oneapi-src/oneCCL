@@ -286,7 +286,41 @@ constexpr const char* CCL_REDUCE = "CCL_REDUCE";
  * By-default: "direct"
  */
 constexpr const char* CCL_REDUCE_SCATTER = "CCL_REDUCE_SCATTER";
+
+/**
+ * @brief Set recv algorithm
+ *
+ * @details
+ * RECV algorithms
+ *  - direct        Using prepost(d2h-h2d) copies to get host buffers to invoke mpi/ofi->recv()
+ *  - topo          Topo scale-up algorithm (available if sycl and l0 are enabled)
+ *  - offload       Using device buffers directly into mpi/ofi layer
+ *                  skipping prepost copies d2h h2d. By-default used for scale-out.
+ *                  Setting extra MPI env vars for getting better performance
+ *                  (available if sycl and l0 are enabled)
+ *
+ * By-default: "topo" if sycl and l0 are enabled,
+ *      otherwise offload for ofi/mpi transport
+ */
+constexpr const char* CCL_RECV = "CCL_RECV";
+/**
+ * @brief Set send algorithm
+ *
+ * @details
+ * SEND algorithms
+ *  - direct        Using prepost(d2h-h2d) copies to get host buffers to invoke mpi/ofi->send()
+ *  - topo          Topo scale-up algorithm (available if sycl and l0 are enabled)
+ *  - offload       Using device buffers directly into mpi/ofi layer
+ *                  skipping prepost copies d2h h2d. By-default used for scale-out.
+ *                  Setting extra MPI env vars for getting better performance
+ *                  (available if sycl and l0 are enabled)
+ *
+ * By-default: "topo" if sycl and l0 are enabled,
+ *      otherwise offload for ofi/mpi transport
+ */
+constexpr const char* CCL_SEND = "CCL_SEND";
 /** @} */
+
 constexpr const char* CCL_UNORDERED_COLL = "CCL_UNORDERED_COLL";
 /*
  * SCALEOUT
@@ -451,7 +485,32 @@ constexpr const char* CCL_RS_MIN_CHUNK_SIZE = "CCL_RS_MIN_CHUNK_SIZE";
 constexpr const char* CCL_ALLGATHERV_TOPO_LARGE_SCALE = "CCL_ALLGATHERV_TOPO_LARGE_SCALE";
 constexpr const char* CCL_ALLGATHERV_TOPO_READ = "CCL_ALLGATHERV_TOPO_READ";
 constexpr const char* CCL_ALLTOALLV_TOPO_READ = "CCL_ALLTOALLV_TOPO_READ";
+/**
+ * @addtogroup OneCCLvars
+ * @{
+ */
+/**
+ * @brief Set this environment variable to select read or write based device-to-device data copy during the reduce_scatter stage of Allreduce, Reduce, and Reduce-Scatter collectives using device (GPU) buffers.
+ *
+ * @details
+ *
+ * Syntax
+ * CCL_REDUCE_SCATTER_TOPO_READ="<value>"
+ *
+ * Arguments
+ *
+ * "<value>"	Description
+ * 	- 1	Uses read based copy to transfer data across GPUs for the reduce_scatter stage of Allreduce, Reduce, and Reduce-Scatter collectives (default).
+ * 	- 0	Uses write based copy to transfer data across GPUs for the reduce_scatter stage of Allreduce, Reduce, and Reduce-Scatter collectives.
+ *
+ * Description
+ *
+ * Set this environment variable to select read or write based device-to-device data copy during the reduce_scatter stage of Allreduce, Reduce, and Reduce-Scatter collectives using device (GPU) buffers.
+ *
+ * By-default: "1"
+ */
 constexpr const char* CCL_REDUCE_SCATTER_TOPO_READ = "CCL_REDUCE_SCATTER_TOPO_READ";
+/** @} */
 /**
  * @addtogroup OneCCLvars
  * @{
@@ -529,6 +588,137 @@ constexpr const char* CCL_ALLTOALLV_MONOLITHIC_KERNEL = "CCL_ALLTOALLV_MONOLITHI
 /** @} */
 constexpr const char* CCL_ALLTOALLV_MONOLITHIC_READ_KERNEL = "CCL_ALLTOALLV_MONOLITHIC_READ_KERNEL";
 constexpr const char* CCL_REDUCE_MONOLITHIC_KERNEL = "CCL_REDUCE_MONOLITHIC_KERNEL";
+
+/**
+ * @addtogroup OneCCLvars
+ * @{
+ */
+/**
+ * @brief Set this environment variable to enable pipelining implementation for Allgatherv collectives using device (GPU) buffers
+ *
+ * @details
+ *
+ * Syntax
+ *
+ * CCL_ALLGATHERV_PIPE_CHUNK_COUNT="<value>"
+ * Arguments
+ *
+ * "<value>"	Description
+ * 	- 0:    (default) Bypasses the chunking/pipelining code and directly calls
+ *          the topology-aware code
+ * 	- 1:    Calls the pipelining code with a single chunk. Effectively, it has
+ *          identical behavior and performance as with "0", but exercises the
+ *          chunking code path with a single chunk.
+ *  - 2 or higher:  Divides the message into as many logical parts, or chunks,
+ *          as specified. Then, it executes the collective with each logical
+ *          chunk. This should allow for several phases of the algorithm to
+ *          run in parallel, as long as they don't use the same physical
+ *          resource. Effectively, this should increase performance.
+ *
+ * Description
+ *
+ * Set this environment variable to enable control how many chunks are used for
+ * Allgatherv, pipeline-based collectives using device (GPU) buffers.
+ *
+ * By-default: "0"
+ */
+constexpr const char* CCL_ALLGATHERV_PIPE_CHUNK_COUNT = "CCL_ALLGATHERV_PIPE_CHUNK_COUNT";
+
+/**
+ * @brief Set this environment variable to enable pipelining implementation for Allreduce collectives using device (GPU) buffers
+ *
+ * @details
+ *
+ * Syntax
+ *
+ * CCL_ALLREDUCE_PIPE_CHUNK_COUNT="<value>"
+ * Arguments
+ *
+ * "<value>"	Description
+ * 	- 0:    (default) Bypasses the chunking/pipelining code and directly calls
+ *          the topology-aware code
+ * 	- 1:    Calls the pipelining code with a single chunk. Effectively, it has
+ *          identical behavior and performance as with "0", but exercises the
+ *          chunking code path with a single chunk.
+ *  - 2 or higher:  Divides the message into as many logical parts, or chunks,
+ *          as specified. Then, it executes the collective with each logical
+ *          chunk. This should allow for several phases of the algorithm to
+ *          run in parallel, as long as they don't use the same physical
+ *          resource. Effectively, this should increase performance.
+ *
+ * Description
+ *
+ * Set this environment variable to enable control how many chunks are used for
+ * Allreduce pipeline-based collectives using device (GPU) buffers.
+ *
+ * By-default: "0"
+ */
+constexpr const char* CCL_ALLREDUCE_PIPE_CHUNK_COUNT = "CCL_ALLREDUCE_PIPE_CHUNK_COUNT";
+
+/**
+ * @brief Set this environment variable to enable pipelining implementation for Reduce_Scatter collectives using device (GPU) buffers
+ *
+ * @details
+ *
+ * Syntax
+ *
+ * CCL_REDUCE_SCATTER_PIPE_CHUNK_COUNT="<value>"
+ * Arguments
+ *
+ * "<value>"	Description
+ * 	- 0:    (default) Bypasses the chunking/pipelining code and directly calls
+ *          the topology-aware code
+ * 	- 1:    Calls the pipelining code with a single chunk. Effectively, it has
+ *          identical behavior and performance as with "0", but exercises the
+ *          chunking code path with a single chunk.
+ *  - 2 or higher:  Divides the message into as many logical parts, or chunks,
+ *          as specified. Then, it executes the collective with each logical
+ *          chunk. This should allow for several phases of the algorithm to
+ *          run in parallel, as long as they don't use the same physical
+ *          resource. Effectively, this should increase performance.
+ *
+ * Description
+ *
+ * Set this environment variable to enable control how many chunks are used for
+ * Reduce_Scatter pipeline-based collectives using device (GPU) buffers.
+ *
+ * By-default: "0"
+ */
+constexpr const char* CCL_REDUCE_SCATTER_PIPE_CHUNK_COUNT = "CCL_REDUCE_SCATTER_PIPE_CHUNK_COUNT";
+
+/**
+ * @brief Set this environment variable to enable pipelining implementation for Reduce collectives using device (GPU) buffers
+ *
+ * @details
+ *
+ * Syntax
+ *
+ * CCL_REDUCE_PIPE_CHUNK_COUNT="<value>"
+ * Arguments
+ *
+ * "<value>"	Description
+ * 	- 0:    (default) Bypasses the chunking/pipelining code and directly calls
+ *          the topology-aware code
+ * 	- 1:    Calls the pipelining code with a single chunk. Effectively, it has
+ *          identical behavior and performance as with "0", but exercises the
+ *          chunking code path with a single chunk.
+ *  - 2 or higher:  Divides the message into as many logical parts, or chunks,
+ *          as specified. Then, it executes the collective with each logical
+ *          chunk. This should allow for several phases of the algorithm to
+ *          run in parallel, as long as they don't use the same physical
+ *          resource. Effectively, this should increase performance.
+ *
+ * Description
+ *
+ * Set this environment variable to enable control how many chunks are used for
+ * Reduce pipeline-based collectives using device (GPU) buffers.
+ *
+ * By-default: "0"
+ */
+constexpr const char* CCL_REDUCE_PIPE_CHUNK_COUNT = "CCL_REDUCE_PIPE_CHUNK_COUNT";
+
+/** @} */
+
 #endif // CCL_ENABLE_SYCL
 
 constexpr const char* CCL_ALLREDUCE_NREDUCE_BUFFERING = "CCL_ALLREDUCE_NREDUCE_BUFFERING";
@@ -645,10 +835,41 @@ constexpr const char* CCL_USE_HMEM = "CCL_USE_HMEM";
 constexpr const char* CCL_ZE_BARRIER = "CCL_ZE_BARRIER";
 constexpr const char* CCL_ZE_BIDIR_ALGO = "CCL_ZE_BIDIR_ALGO";
 constexpr const char* CCL_ZE_CACHE = "CCL_ZE_CACHE";
+constexpr const char* CCL_ZE_DEVICE_CACHE_EVICT_SMALLEST = "CCL_ZE_DEVICE_CACHE_EVICT_SMALLEST";
+constexpr const char* CCL_ZE_DEVICE_CACHE_UPPER_LIMIT = "CCL_ZE_DEVICE_CACHE_UPPER_LIMIT";
+constexpr const char* CCL_ZE_DEVICE_CACHE_NUM_BLOCKS_IN_CHUNK = "CCL_ZE_DEVICE_CACHE_NUM_BLOCKS_IN_CHUNK";
+constexpr const char* CCL_ZE_DEVICE_CACHE_POLICY = "CCL_ZE_DEVICE_CACHE_POLICY";
 constexpr const char* CCL_ZE_CACHE_OPEN_IPC_HANDLES = "CCL_ZE_CACHE_OPEN_IPC_HANDLES";
 constexpr const char* CCL_ZE_CACHE_OPEN_IPC_HANDLES_THRESHOLD = "CCL_ZE_CACHE_OPEN_IPC_HANDLES_THRESHOLD";
 constexpr const char* CCL_ZE_CACHE_GET_IPC_HANDLES = "CCL_ZE_CACHE_GET_IPC_HANDLES";
-constexpr const char* CCL_ZE_DISABLE_OVERSUBSCRIPTION_CHECK = "CCL_ZE_DISABLE_OVERSUBSCRIPTION_CHECK";
+/**
+ * @addtogroup OneCCLvars
+ * @{
+ */
+/**
+ * @brief Set to enable oversubscription in topo fallback stage for
+ * all collectives.
+ *
+ * @details This enviroment variable enables or disables the oversubscription fallback
+ * from topo algorithm to copy in/out
+ *
+ * "<value>" :  "0", "1"
+ *
+ * By-default: "1"
+ */
+constexpr const char* CCL_ZE_ENABLE_OVERSUBSCRIPTION_FALLBACK = "CCL_ZE_ENABLE_OVERSUBSCRIPTION_FALLBACK";
+/**
+ * @brief Set to enable oversubscription throw for all collectives.
+ *
+ * @details This enviroment variable enables or disables the oversubscription throw check
+ *
+ * "<value>" :  "0", "1"
+ *
+ * By-default: "1"
+ */
+constexpr const char* CCL_ZE_ENABLE_OVERSUBSCRIPTION_THROW = "CCL_ZE_ENABLE_OVERSUBSCRIPTION_THROW";
+/** @} */
+
 constexpr const char* CCL_ZE_SERIALIZE = "CCL_ZE_SERIALIZE";
 
 constexpr const char* CCL_ZE_COPY_ENGINE = "CCL_ZE_COPY_ENGINE";

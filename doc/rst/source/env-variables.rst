@@ -2,7 +2,7 @@
 Environment Variables
 =====================
 
-Collective algorithms selection
+Collective Algorithms Selection
 ###############################
 oneCCL supports collective operations for the host (CPU) memory buffers and device (GPU) memory buffers. Below you can see how to select the collective algorithm depending on the type of buffer being utilized. 
 
@@ -476,7 +476,7 @@ CCL_WORKER_AFFINITY
        The i-th local worker is pinned to the i-th core in the list.
        For example ``<a>,<b>-<c>`` defines list of cores contaning core with number ``<a>``
        and range of cores with numbers from ``<b>`` to ``<c>``.
-       The number should not exceed the number of cores available on the system.
+       The core number should not exceed the number of cores available on the system. The length of the list should be equal to the number of workers.
 
 **Description**
 
@@ -602,7 +602,6 @@ This capability requires OFI as the transport (``CCL_ATL_TRANSPORT=ofi``).
 
 The OFI/SHM provider has support to utilize the `Intel(R) Data Streaming Accelerator* (DSA) <https://01.org/blogs/2019/introducing-intel-data-streaming-accelerator>`_. 
 To run it with DSA*, you need:
-
 * Linux* OS kernel support for the DSA* shared work queues
 * Libfabric* 1.17 or later
 
@@ -1134,3 +1133,59 @@ CCL_ZE_LIBRARY_PATH
 **Description**
 
 Set this environment variable to specify the name and full path to ``Level-Zero`` library. The path should be absolute and validated. Set this variable if ``Level-Zero`` is not located in the default path. By default |product_short| uses ``libze_loader.so`` name for dynamic loading.
+
+
+Point-To-Point Operations
+*************************
+
+CCL_RECV 
+#########
+
+**Syntax**
+
+::
+
+  CCL_RECV=<value>
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``direct``
+     - Based on the MPI*/OFI* transport layer.
+   * - ``topo``
+     - Uses XeLinks across GPUs in a multi-GPU node. Default for GPU buffers.  
+   * - ``offload``
+     - Based on the MPI*/OFI* transport layer and GPU RDMA when supported by the hardware.
+
+
+
+CCL_SEND 
+#########
+
+**Syntax**
+
+::
+
+  CCL_SEND=<value>
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``direct``
+     - Based on the MPI*/OFI* transport layer.
+   * - ``topo``
+     - Uses XeLinks across GPUs in a multi-GPU node. Default for GPU buffers.  
+   * - ``offload``
+     - Based on the MPI*/OFI* transport layer and GPU RDMA when supported by the hardware.

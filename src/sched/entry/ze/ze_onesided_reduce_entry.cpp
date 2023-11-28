@@ -14,7 +14,7 @@
  limitations under the License.
 */
 #include "common/stream/stream.hpp"
-#include "sched/entry/ze/ze_cache.hpp"
+#include "sched/entry/ze/cache/ze_cache.hpp"
 #include "sched/entry/ze/ze_onesided_reduce_entry.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
 #include "sched/queue/queue.hpp"
@@ -145,11 +145,11 @@ void ze_onesided_reduce_entry::init_ze_hook() {
     }
 
     LOG_DEBUG("ze_onesided_reduce_entry with aligned monolithic kernels");
-    // use recv_buf_ptr instead of right_recv_buf_ptr since we cannot make sure
-    // if right_recv_buf_ptr got using ipc has the same alignment as remote recv_buf_ptr.
-    // we assume local recv_buf_ptr and remote recv_buf_ptr has the same alignment
+    // use send_buf_ptr instead of right_send_buf_ptr since we cannot make sure
+    // if right_send_buf_ptr got using ipc has the same alignment as remote send_buf_ptr.
+    // we assume local send_buf_ptr and remote send_buf_ptr has the same alignment
     unsigned long pre_align_offset_byte = ccl::utils::get_aligned_offset_byte(
-        recv_buf_ptr, buf_size_bytes, ccl::global_data::env().kernel_mem_align);
+        send_buf_ptr, buf_size_bytes, ccl::global_data::env().kernel_mem_align);
 
     // first kernel starts from location 0 to pre_align_offset_byte
     // and the second kernel starts from location pre_align_offset_byte to the rest

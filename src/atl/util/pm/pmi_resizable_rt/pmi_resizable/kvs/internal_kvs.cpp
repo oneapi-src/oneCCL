@@ -192,6 +192,8 @@ kvs_status_t internal_kvs::init_main_server_by_string(const char* main_addr) {
     char* port = nullptr;
     KVS_CHECK_STATUS(local_server_address->set_sin_addr(local_host_ip), "failed to set main_ip");
 
+    CCL_ASSERT(server_listen_sock ==
+               INVALID_SOCKET); // make sure the socket is not initialized twice
     if ((server_listen_sock = socket(address_family, SOCK_STREAM, 0)) < 0) {
         LOG_ERROR("server_listen_sock init");
         return KVS_STATUS_FAILURE;
@@ -332,6 +334,8 @@ kvs_status_t internal_kvs::kvs_main_server_address_reserve(char* main_address) {
 
     KVS_CHECK_STATUS(fill_local_host_ip(), "failed to get local host IP");
 
+    CCL_ASSERT(server_listen_sock ==
+               INVALID_SOCKET); // make sure the socket is not initialized twice
     if ((server_listen_sock = socket(address_family, SOCK_STREAM, 0)) < 0) {
         LOG_ERROR("server_listen_sock init");
         return KVS_STATUS_FAILURE;
@@ -379,7 +383,8 @@ kvs_status_t internal_kvs::init_main_server_address(const char* main_addr) {
     if (server_address.empty()) {
         if (main_addr != NULL) {
             ip_getting_mode = IGT_ENV;
-            if (server_listen_sock == 0) {
+            if (server_listen_sock ==
+                INVALID_SOCKET) { // make sure the socket is not initialized twice
                 KVS_CHECK_STATUS(init_main_server_by_string(main_addr),
                                  "failed to init main server");
             }
@@ -392,6 +397,8 @@ kvs_status_t internal_kvs::init_main_server_address(const char* main_addr) {
 
     KVS_CHECK_STATUS(local_server_address->set_sin_addr(local_host_ip), "failed to set local_ip");
 
+    CCL_ASSERT(server_listen_sock ==
+               INVALID_SOCKET); // make sure the socket is not initialized twice
     if ((server_listen_sock = socket(address_family, SOCK_STREAM, 0)) < 0) {
         LOG_ERROR("server_listen_sock init");
         return KVS_STATUS_FAILURE;
@@ -502,7 +509,11 @@ kvs_status_t internal_kvs::kvs_init(const char* main_addr) {
         return KVS_STATUS_FAILURE;
     }
 
-    getsockname(server_control_sock, addr->get_sock_addr_ptr(), &len);
+    if (getsockname(server_control_sock, addr->get_sock_addr_ptr(), &len)) {
+        LOG_ERROR("server_control_sock getsockname");
+        return KVS_STATUS_FAILURE;
+    }
+
     server_args args;
     args.args = addr;
     args.sock_listener = server_listen_sock;

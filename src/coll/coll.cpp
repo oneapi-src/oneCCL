@@ -51,20 +51,47 @@
 
 #include "common/global/global.hpp"
 
-#include "coll/algorithms/algorithms.hpp"
 #include "coll/algorithms/algorithm_utils.hpp"
+#include "coll/algorithms/algorithms.hpp"
 #include "coll/selection/selection.hpp"
 #include "exec/exec.hpp"
 #include "fusion/fusion.hpp"
-#include "unordered_coll/unordered_coll.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
+#include "sched/sched_timer.hpp"
+#include "unordered_coll/unordered_coll.hpp"
+
+ccl_request* allgatherv_case(ccl_coll_param& param) {
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    std::vector<sycl::event> events{};
+    for (size_t idx = 0; idx < param.deps.size(); idx++) {
+        events.push_back(param.deps[idx].get_native());
+    }
+    sycl::event ev;
+#if ICPX_VERSION >= 140000
+    ev = param.stream->get_native_stream().ext_oneapi_submit_barrier(events);
+#elif ICPX_VERSION < 140000
+    ev = param.stream->get_native_stream().submit_barrier(events);
+#endif // ICPX_VERSION
+    if (ccl::utils::should_use_sycl_output_event(param.stream)) {
+        ccl_coll_param dummy_param{};
+        dummy_param.comm = param.comm;
+        auto dummy_sched = ccl_sched::create(dummy_param, {});
+        auto req = dummy_sched->get_request();
+        req->set_native_event(ev);
+        return req;
+    }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+    return nullptr;
+}
 
 /* param is not const because param.comm can be updated for unordered colls */
 static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& in_attr) {
     ccl_coll_attr& attr = const_cast<ccl_coll_attr&>(in_attr);
 
 #ifdef CCL_ENABLE_ITT
-    ccl::profile::itt::task_start(ccl::profile::itt::task_type::api_call);
+    __itt_event coll_create_itt_event =
+        ccl::profile::itt::event_get(ccl_coll_type_to_str(param.ctype));
+    ccl::profile::itt::event_start(coll_create_itt_event);
 #endif // CCL_ENABLE_ITT
 
 #ifdef CCL_ENABLE_SYCL
@@ -98,6 +125,10 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
 
     ccl::global_data& data = ccl::global_data::get();
 
+    if (param.ctype == ccl_coll_allgatherv && param.comm->size() == 1 && param.is_inplace()) {
+        return allgatherv_case(param);
+    }
+
     /* 1. decide whether schedule should be postponed (this includes caching and starting) */
     bool postpone_schedule = false;
     if (ccl::global_data::env().enable_unordered_coll) {
@@ -124,11 +155,6 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
 
     /* 2. create or get schedule */
     ccl_sched* sched = ccl_sched::create(param, attr);
-
-    // TODO: Bug: this should be set by restart_manager, otherwise there's a race condition.
-    //       Also, this code doesn't belong here anyway.
-    //       There has to be a copy constructor for ccl_coll_param; move this code there.
-    (sched->coll_param).peer_rank = param.peer_rank;
 
     /* 3. fuse schedule */
     if (!postpone_schedule &&
@@ -166,7 +192,11 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
     ccl_request* request = sched->start(data.executor.get());
     if (sched->coll_attr.synchronous) {
         request->synchronous = true;
-        ccl_wait_impl<ccl_sched>(data.executor.get(), request);
+        // request->synchronous is true,
+        // so ccl_wait_impl should not release the `request`
+        auto wait_result = ccl_wait_impl<ccl_sched>(data.executor.get(), request);
+        CCL_THROW_IF_NOT(wait_result != ccl_wait_result_completed_released,
+                         "internal error, valid request was released");
     }
 #ifdef CCL_ENABLE_SYCL
     else if (ccl::utils::should_use_sycl_output_event(sched->coll_param.stream)) {
@@ -194,7 +224,7 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_ITT
-    ccl::profile::itt::task_end(ccl::profile::itt::task_type::api_call);
+    ccl::profile::itt::event_end(coll_create_itt_event);
 #endif // CCL_ENABLE_ITT
 
     return request;
@@ -229,15 +259,13 @@ ccl::status ccl_coll_build_allgatherv(ccl_sched* sched,
 
     auto get_coll_param = [&]() {
         ccl_coll_param coll_param{};
-        coll_param.ctype = ccl_coll_allgatherv;
-        coll_param.send_bufs.push_back(send_buf.get_ptr());
-        coll_param.send_counts.push_back(send_count);
-        coll_param.recv_bufs.push_back(recv_buf.get_ptr());
-        coll_param.recv_counts.reserve(comm->size());
+        coll_param.ctype = ccl_coll_allgatherv, coll_param.send_bufs.push_back(send_buf.get_ptr()),
+        coll_param.send_counts.push_back(send_count),
+        coll_param.recv_bufs.push_back(recv_buf.get_ptr()),
+        coll_param.recv_counts.reserve(comm->size()),
         coll_param.recv_counts.insert(
-            coll_param.recv_counts.end(), recv_counts, recv_counts + comm->size());
-        coll_param.dtype = dtype;
-        coll_param.comm = comm;
+            coll_param.recv_counts.end(), recv_counts, recv_counts + comm->size()),
+        coll_param.dtype = dtype, coll_param.comm = comm,
         coll_param.stream = sched->coll_param.stream;
         return coll_param;
     };
@@ -586,6 +614,7 @@ ccl::status ccl_coll_build_reduce_scatter(ccl_sched* sched,
                                           const ccl_datatype& dtype,
                                           ccl::reduction reduction,
                                           ccl_comm* comm,
+                                          bool is_scaleout,
                                           bool from_allreduce) {
     ccl::status status = ccl::status::success;
 
@@ -600,6 +629,7 @@ ccl::status ccl_coll_build_reduce_scatter(ccl_sched* sched,
     param.is_sycl_buf = sched->coll_attr.is_sycl_buf;
 #endif // CCL_ENABLE_SYCL
     param.hint_algo = sched->hint_algo;
+    param.is_scaleout = is_scaleout;
 
     auto algo = ccl::global_data::get().algorithm_selector->get<ccl_coll_reduce_scatter>(param);
 
@@ -642,12 +672,37 @@ ccl::status ccl_coll_build_recv(ccl_sched* sched,
                                 ccl_comm* comm) {
     ccl::status status = ccl::status::success;
 
-    LOG_DEBUG("build recv ", comm->rank(), " count: ", count, ", peer_rank: ", peer_rank);
-    CCL_THROW_IF_NOT(peer_rank > CCL_INVALID_PEER_RANK_IDX && peer_rank < comm->size(),
-                     "invalid peer_rank: ",
-                     peer_rank);
+    ccl_selector_param param;
     sched->coll_param.ctype = ccl_coll_recv;
-    entry_factory::create<recv_entry>(sched, buf, count, dtype, peer_rank, comm);
+    param.ctype = sched->coll_param.ctype;
+    param.count = count;
+    param.dtype = dtype;
+    param.comm = comm;
+    param.stream = sched->coll_param.stream;
+    param.buf = buf.get_ptr();
+#ifdef CCL_ENABLE_SYCL
+    param.is_sycl_buf = sched->coll_attr.is_sycl_buf;
+#endif // CCL_ENABLE_SYCL
+    param.peer_rank = peer_rank;
+    param.hint_algo = sched->hint_algo;
+
+    auto algo = ccl::global_data::get().algorithm_selector->get<ccl_coll_recv>(param);
+
+    switch (algo) {
+        case ccl_coll_recv_direct:
+        case ccl_coll_recv_offload:
+            CCL_CALL(ccl_coll_build_direct_recv(sched, buf, count, dtype, peer_rank, comm));
+            break;
+
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+        case ccl_coll_recv_topo:
+            CCL_CALL(ccl_coll_build_topo_recv(sched, buf, count, dtype, peer_rank, comm));
+            break;
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+        default:
+            CCL_FATAL("unexpected recv_algo ", ccl_coll_algorithm_to_str(algo));
+            return ccl::status::invalid_arguments;
+    }
 
     return status;
 }
@@ -660,12 +715,37 @@ ccl::status ccl_coll_build_send(ccl_sched* sched,
                                 ccl_comm* comm) {
     ccl::status status = ccl::status::success;
 
-    LOG_DEBUG("build send: ", comm->rank(), ", count: ", count, ", peer_rank: ", peer_rank);
-    CCL_THROW_IF_NOT(peer_rank > CCL_INVALID_PEER_RANK_IDX && peer_rank < comm->size(),
-                     "invalid peer_rank: ",
-                     peer_rank);
+    ccl_selector_param param;
     sched->coll_param.ctype = ccl_coll_send;
-    entry_factory::create<send_entry>(sched, buf, count, dtype, peer_rank, comm);
+    param.ctype = sched->coll_param.ctype;
+    param.count = count;
+    param.dtype = dtype;
+    param.comm = comm;
+    param.stream = sched->coll_param.stream;
+    param.buf = buf.get_ptr();
+#ifdef CCL_ENABLE_SYCL
+    param.is_sycl_buf = sched->coll_attr.is_sycl_buf;
+#endif // CCL_ENABLE_SYCL
+    param.peer_rank = peer_rank;
+    param.hint_algo = sched->hint_algo;
+
+    auto algo = ccl::global_data::get().algorithm_selector->get<ccl_coll_send>(param);
+
+    switch (algo) {
+        case ccl_coll_send_direct:
+        case ccl_coll_send_offload:
+            CCL_CALL(ccl_coll_build_direct_send(sched, buf, count, dtype, peer_rank, comm));
+            break;
+
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+        case ccl_coll_send_topo:
+            CCL_CALL(ccl_coll_build_topo_send(sched, buf, count, dtype, peer_rank, comm));
+            break;
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+        default:
+            CCL_FATAL("unexpected send_algo ", ccl_coll_algorithm_to_str(algo));
+            return ccl::status::invalid_arguments;
+    }
 
     return status;
 }
@@ -744,6 +824,12 @@ ccl_request* ccl_barrier_impl(ccl_comm* comm,
 
     ccl_coll_attr attr{};
     attr.synchronous = 1;
+
+#ifdef CCL_ENABLE_SYCL
+    if (!ccl::global_data::env().sync_barrier && ccl::is_queue_in_order(stream)) {
+        attr.synchronous = 0;
+    }
+#endif // CCL_ENABLE_SYCL
 
     auto req = ccl_coll_create(param, attr);
 

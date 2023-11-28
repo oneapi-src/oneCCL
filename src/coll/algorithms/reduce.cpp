@@ -65,6 +65,9 @@ ccl::status ccl_coll_build_direct_reduce(ccl_sched* sched,
                                          ccl_comm* comm) {
     LOG_DEBUG("build direct reduce");
 
+    if (count == 0)
+        return ccl::status::success;
+
     entry_factory::create<reduce_entry>(
         sched, send_buf, recv_buf, count, dtype, reduction, root, comm);
     return ccl::status::success;
@@ -81,6 +84,9 @@ ccl::status ccl_coll_build_rabenseifner_reduce(ccl_sched* sched,
     LOG_DEBUG("build Rabenseifner's reduce");
 
     ccl::status status = ccl::status::success;
+
+    if (count == 0)
+        return ccl::status::success;
 
     int i, j, comm_size, rank, local_root, pof2;
     int rem, dst, new_rank, new_dst, mask, send_idx, recv_idx, last_idx;
@@ -366,6 +372,9 @@ ccl::status ccl_coll_build_ring_reduce(ccl_sched* sched,
     int comm_size = comm->size();
     ccl::status status = ccl::status::success;
 
+    if (count == 0)
+        return status;
+
     if (rank != local_root) {
         recv_buf = sched->alloc_buffer({ count * dtype_size, send_buf });
     }
@@ -513,6 +522,32 @@ ccl::status ccl_coll_build_binomial_reduce(ccl_sched* sched,
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
 
+void get_counts_n_offsets_bidir(size_t count,
+                                size_t pair_comm_size,
+                                size_t pair_comm_rank,
+                                size_t even_comm_size,
+                                size_t even_comm_rank,
+                                const ccl_datatype& dtype,
+                                size_t& base_count,
+                                size_t& pair_comm_offset,
+                                size_t& pair_comm_offset_bytes,
+                                size_t& main_block_count,
+                                size_t& block_count,
+                                size_t& even_comm_offset_bytes) {
+    base_count = count / pair_comm_size;
+    pair_comm_offset = base_count * pair_comm_rank;
+    pair_comm_offset_bytes = pair_comm_offset * dtype.size();
+
+    if (pair_comm_rank == pair_comm_size - 1)
+        base_count += count % pair_comm_size;
+    main_block_count = base_count / even_comm_size;
+    block_count = main_block_count;
+    if (even_comm_rank == even_comm_size - 1) {
+        block_count += base_count % even_comm_size;
+    }
+    even_comm_offset_bytes = main_block_count * even_comm_rank * dtype.size();
+}
+
 ccl::status ccl_coll_build_topo_reduce(ccl_sched* sched,
                                        ccl_buffer send_buf,
                                        ccl_buffer recv_buf,
@@ -523,13 +558,15 @@ ccl::status ccl_coll_build_topo_reduce(ccl_sched* sched,
                                        ccl_comm* comm) {
     LOG_DEBUG("build gpu topo reduce");
 
+    if (count == 0)
+        return ccl::status::success;
+
     ccl_comm* pair_comm = comm->get_pair_comm().get();
     ccl_comm* even_comm = comm->get_even_comm().get();
     ccl_comm* node_comm = comm->get_node_comm().get();
     ccl_comm* r2r_comm = comm->get_r2r_comm().get();
 
     int comm_size = comm->size();
-    int pair_comm_size = pair_comm->size();
     int even_comm_size = even_comm->size();
     int node_comm_size = node_comm->size();
 
@@ -543,12 +580,36 @@ ccl::status ccl_coll_build_topo_reduce(ccl_sched* sched,
 
     // allocate tmp buff for write
     ccl_buffer tmp_write_buf;
-    bool is_rs_write =
-        !ccl::global_data::env().reduce_scatter_topo_read && !use_read_write_pipeline &&
-        !ccl::global_data::env().reduce_scatter_monolithic_kernel && dtype != ccl::datatype::int8;
+    bool is_rs_write = !ccl::global_data::env().reduce_scatter_topo_read &&
+                       !use_read_write_pipeline &&
+                       !ccl::global_data::env().reduce_scatter_monolithic_kernel &&
+                       dtype != ccl::datatype::int8 && even_comm_size > 1;
+
+    size_t base_count = count;
+    size_t pair_comm_offset = 0;
+    size_t pair_comm_offset_bytes = 0;
+    size_t main_block_count;
+    size_t block_count;
+    size_t even_comm_offset_bytes;
+    get_counts_n_offsets_bidir(count,
+                               pair_comm->size(),
+                               pair_comm->rank(),
+                               even_comm->size(),
+                               even_comm->rank(),
+                               dtype,
+                               base_count,
+                               pair_comm_offset,
+                               pair_comm_offset_bytes,
+                               main_block_count,
+                               block_count,
+                               even_comm_offset_bytes);
+
     if (is_rs_write) {
-        size_t buf_bytes = dtype.size() * count;
-        size_t tmp_buf_bytes = buf_bytes / pair_comm_size;
+        size_t tmp_buf_bytes = 0;
+        tmp_buf_bytes = dtype.size() * ((even_comm_size - 1) * (block_count));
+        // workaround with dummy 1 byte allocation to still enable handle exchange when tmp bytes is 0
+        if (tmp_buf_bytes == 0)
+            tmp_buf_bytes = 1;
         ccl::alloc_param alloc_param(
             tmp_buf_bytes, ccl::buffer_type::ze, ccl::buffer_place::device);
         tmp_write_buf = sched->alloc_buffer(alloc_param);
@@ -615,10 +676,9 @@ ccl::status ccl_coll_build_topo_reduce(ccl_sched* sched,
                              wait_events,
                              out_event,
                              in_buffers,
-                             ccl_comm::invalid_rank,
+                             ccl_comm::invalid_rank /*skip_rank*/,
                              ipc_event_pool,
                              ipc_event_count++);
-    clear_and_push_back(wait_events, out_event);
 
     CCL_THROW_IF_NOT(comm_size % 2 == 0, "unexpected comm_size ", comm_size);
     CCL_THROW_IF_NOT(node_comm_size % 2 == 0, "unexpected node_comm_size ", node_comm_size);
@@ -635,23 +695,6 @@ ccl::status ccl_coll_build_topo_reduce(ccl_sched* sched,
         clear_and_push_back(wait_events, out_event);
     }
     else if (ccl::global_data::env().enable_ze_bidir_algo) {
-        size_t base_count = count;
-        size_t pair_comm_offset = 0;
-        size_t pair_comm_offset_bytes = 0;
-
-        base_count = count / pair_comm->size();
-        pair_comm_offset = base_count * pair_comm->rank();
-        pair_comm_offset_bytes = pair_comm_offset * dtype.size();
-
-        if (pair_comm->rank() == pair_comm->size() - 1)
-            base_count += count % pair_comm->size();
-
-        size_t main_block_count = base_count / even_comm_size;
-        size_t block_count = main_block_count;
-        if (even_comm->rank() == even_comm_size - 1) {
-            block_count += base_count % even_comm_size;
-        }
-        size_t even_comm_offset_bytes = main_block_count * even_comm->rank() * dtype.size();
         ccl_buffer pair_comm_send_buf = send_buf + pair_comm_offset_bytes;
         ccl_buffer pair_comm_recv_buf = tmp_buf;
         ccl_buffer even_comm_recv_buf = tmp_buf + even_comm_offset_bytes;
@@ -774,14 +817,15 @@ ccl::status ccl_coll_build_topo_reduce(ccl_sched* sched,
 
         if (!is_single_node) {
             bool one_tmp_buf = use_tmp_buf && !use_read_write_pipeline;
-            ccl_coll_entry_param coll_param{ .ctype = ccl_coll_reduce,
-                                             .send_buf = even_comm_recv_buf,
-                                             .recv_buf = even_comm_recv_buf,
-                                             .count = block_count,
-                                             .dtype = dtype,
-                                             .reduction = op,
-                                             .root = root_node_idx,
-                                             .comm = r2r_comm };
+            ccl_coll_param coll_param{ false };
+            coll_param.ctype = ccl_coll_reduce;
+            coll_param.send_buf = even_comm_recv_buf;
+            coll_param.recv_buf = even_comm_recv_buf;
+            coll_param.count = block_count;
+            coll_param.dtype = dtype;
+            coll_param.reduction = op;
+            coll_param.root = root_node_idx;
+            coll_param.comm = r2r_comm;
 
             out_event = nullptr;
             ccl::add_scaleout(sched,
@@ -810,8 +854,13 @@ ccl::status ccl_coll_build_topo_reduce(ccl_sched* sched,
                 node_comm->rank() == root_in_node_comm ? recv_buf : ccl_buffer(),
                 block_count,
                 dtype,
-                copy_attr(
-                    root_in_node_comm, recv_buf_idx, copy_direction::d2d, node_comm, 0, offset),
+                copy_attr(root_in_node_comm,
+                          recv_buf_idx,
+                          copy_direction::d2d,
+                          false /*pt2pt_op*/,
+                          node_comm,
+                          0,
+                          offset),
                 wait_events);
             clear_and_push_back(wait_events, entry_copy->entry_event);
             ccl::add_comm_barrier(
@@ -841,21 +890,21 @@ ccl::status ccl_coll_build_topo_reduce(ccl_sched* sched,
                                                                 wait_events);
             clear_and_push_back(wait_events, onesided_reduce_entry->entry_event);
 
-            size_t main_block_count = count / even_comm_size;
-            size_t block_count = main_block_count;
+            size_t main_block_count_1s = count / even_comm_size;
+            size_t block_count_1s = main_block_count_1s;
             if (even_comm->rank() == even_comm_size - 1) {
-                block_count += count % even_comm_size;
+                block_count_1s += count % even_comm_size;
             }
 
             ccl::add_comm_barrier(sched, even_comm, wait_events, out_event);
             clear_and_push_back(wait_events, out_event);
 
-            size_t offset_bytes = main_block_count * even_comm->rank() * dtype.size();
-            ccl_buffer partial_tmp_buf = tmp_buf + offset_bytes;
+            size_t offset_bytes_1s = main_block_count_1s * even_comm->rank() * dtype.size();
+            ccl_buffer partial_tmp_buf = tmp_buf + offset_bytes_1s;
             LOG_DEBUG("topo/scale_up/inter: use ze_a2a_reduce_scatter_entry");
 
-            std::vector<size_t> block_counts(even_comm->size(), main_block_count);
-            block_counts[even_comm->size() - 1] = block_count;
+            std::vector<size_t> block_counts(even_comm->size(), main_block_count_1s);
+            block_counts[even_comm->size() - 1] = block_count_1s;
             auto reduce_scatter_entry =
                 entry_factory::create<ze_a2a_reduce_scatter_entry>(sched,
                                                                    tmp_buf,
@@ -873,23 +922,24 @@ ccl::status ccl_coll_build_topo_reduce(ccl_sched* sched,
             CCL_THROW_IF_NOT(comm->size() % node_comm_size == 0);
             int root_node_idx = root / node_comm_size;
 
-            ccl_coll_entry_param coll_param{ .ctype = ccl_coll_reduce,
-                                             .send_buf = partial_tmp_buf,
-                                             .recv_buf = partial_tmp_buf,
-                                             .count = block_count,
-                                             .dtype = dtype,
-                                             .reduction = op,
-                                             .root = root_node_idx,
-                                             .comm = r2r_comm };
+            ccl_coll_param coll_param{ false };
+            coll_param.ctype = ccl_coll_reduce, coll_param.send_buf = partial_tmp_buf;
+            coll_param.recv_buf = partial_tmp_buf;
+            coll_param.count = block_count_1s;
+            coll_param.dtype = dtype;
+            coll_param.reduction = op;
+            coll_param.root = root_node_idx;
+            coll_param.comm = r2r_comm;
 
             copy_attr h2d_copy_attr{};
             if (root_node_idx == r2r_comm->rank()) {
                 LOG_DEBUG("topo/scale_up/intra: use ze_onesided_bcast");
                 int root_in_node_comm = node_comm->get_rank_from_global(root);
-                size_t offset_count = offset_bytes / dtype.size();
+                size_t offset_count = offset_bytes_1s / dtype.size();
                 copy_attr local_attr(root_in_node_comm,
                                      recv_buf_idx,
                                      copy_direction::h2d,
+                                     false, /*pt2pt_op*/
                                      node_comm,
                                      0,
                                      offset_count);
@@ -916,7 +966,7 @@ ccl::status ccl_coll_build_topo_reduce(ccl_sched* sched,
     CCL_ASSERT(wait_events.size() == 1 && wait_events.back() != nullptr,
                "wait_events should have a single, valid event");
 
-    entry_factory::create<execute_cmdlists_entry>(sched);
+    entry_factory::create<ze_execute_cmdlists_on_init_entry>(sched);
 
     return ccl::status::success;
 }

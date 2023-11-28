@@ -14,7 +14,7 @@
  limitations under the License.
 */
 #include "common/global/global.hpp"
-#include "sched/entry/ze/ze_cache.hpp"
+#include "sched/entry/ze/cache/ze_cache.hpp"
 
 #include <fcntl.h>
 #include <iterator>
@@ -251,69 +251,6 @@ void event_pool_cache::push(ze_context_handle_t context,
     if (!global_data::env().enable_ze_cache_event_pools ||
         !push_to_cache(cache, event_pool, context, pool_desc.flags, pool_desc.count)) {
         ZE_CALL(zeEventPoolDestroy, (event_pool));
-    }
-}
-
-// device_mem_cache
-device_mem_cache::~device_mem_cache() {
-    if (!cache.empty()) {
-        LOG_WARN("device memory cache is not empty, size: ", cache.size());
-        clear();
-    }
-}
-
-void device_mem_cache::clear() {
-    LOG_DEBUG("clear device memory cache: size: ", cache.size());
-    std::lock_guard<std::mutex> lock(mutex);
-    //for (auto& key_value : cache) {
-    // TODO: there is a segfault on this call, when ~cache is invoked w/ or w/0 api cache.
-    // But it passes, when CCL_ZE_CACHE=0 (calls of zeMemAllocDevice and ZeMemFree happen on every iteration).
-    // We don't control destroying phase and may be key_value.second (mem_ptr) is already away to free?
-    // ZE_CALL(zeMemFree, (std::get<0>(key_value.first), key_value.second))
-    //}
-    cache.clear();
-}
-
-void device_mem_cache::get(ze_context_handle_t context,
-                           ze_device_handle_t device,
-                           const ze_device_mem_alloc_desc_t& device_mem_alloc_desc,
-                           size_t bytes,
-                           size_t alignment,
-                           void** pptr) {
-    CCL_THROW_IF_NOT(context);
-    CCL_THROW_IF_NOT(device);
-    CCL_THROW_IF_NOT(pptr);
-    std::lock_guard<std::mutex> lock(mutex);
-    if (!get_from_cache(cache,
-                        *pptr,
-                        context,
-                        device,
-                        bytes,
-                        device_mem_alloc_desc.flags,
-                        device_mem_alloc_desc.ordinal)) {
-        ZE_CALL(zeMemAllocDevice,
-                (context, &device_mem_alloc_desc, bytes, alignment, device, pptr));
-    }
-}
-
-void device_mem_cache::push(ze_context_handle_t context,
-                            ze_device_handle_t device,
-                            const ze_device_mem_alloc_desc_t& device_mem_alloc_desc,
-                            size_t bytes,
-                            size_t alignment,
-                            void* ptr) {
-    CCL_THROW_IF_NOT(context);
-    CCL_THROW_IF_NOT(device);
-    CCL_THROW_IF_NOT(ptr);
-    std::lock_guard<std::mutex> lock(mutex);
-    if (!push_to_cache(cache,
-                       ptr,
-                       context,
-                       device,
-                       bytes,
-                       device_mem_alloc_desc.flags,
-                       device_mem_alloc_desc.ordinal)) {
-        ZE_CALL(zeMemFree, (context, ptr));
     }
 }
 
@@ -563,13 +500,32 @@ void ipc_handle_cache::push(ze_context_handle_t context,
 }
 
 // cache
+cache::cache(size_t instance_count)
+        : instance_count(instance_count),
+          kernels(instance_count),
+          lists(instance_count),
+          queues(instance_count),
+          event_pools(instance_count) {
+    if (global_data::env().ze_device_cache_policy == device_cache_policy_mode::chunk) {
+        for (size_t i = 0; i < instance_count; ++i) {
+            device_mems.push_back(std::make_unique<chunk_device_mem_cache>());
+        }
+    }
+    else if (global_data::env().ze_device_cache_policy == device_cache_policy_mode::plain) {
+        for (size_t i = 0; i < instance_count; ++i) {
+            device_mems.push_back(std::make_unique<plain_device_mem_cache>());
+        }
+    }
+    LOG_DEBUG("create cache with ", instance_count, " instances");
+}
+
 cache::~cache() {
     for (size_t i = 0; i < instance_count; ++i) {
         kernels[i].clear();
         lists[i].clear();
         queues[i].clear();
         event_pools[i].clear();
-        device_mems[i].clear();
+        device_mems[i]->clear();
     }
 
     modules.clear();

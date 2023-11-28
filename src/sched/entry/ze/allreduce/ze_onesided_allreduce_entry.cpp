@@ -17,7 +17,7 @@
 #include "comp/comp.hpp"
 #include "sched/entry/ze/allreduce/ze_onesided_allreduce_entry.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
-#include "sched/entry/ze/ze_cache.hpp"
+#include "sched/entry/ze/cache/ze_cache.hpp"
 #include "sched/queue/queue.hpp"
 
 #include <string>
@@ -53,14 +53,8 @@ void ze_onesided_allreduce_entry::init_ze_hook() {
 
     send_buf_ptr = send_buf.get_ptr();
     recv_buf_ptr = recv_buf.get_ptr();
-    if (send_buf_ptr == recv_buf_ptr) {
-        sched->get_memory().handle_manager.get(peer_rank, 1, right_send_buf, comm);
-        sched->get_memory().handle_manager.get(peer_rank, 1, right_recv_buf, comm);
-    }
-    else {
-        sched->get_memory().handle_manager.get(peer_rank, 0, right_send_buf, comm);
-        sched->get_memory().handle_manager.get(peer_rank, 1, right_recv_buf, comm);
-    }
+    sched->get_memory().handle_manager.get(peer_rank, 0, right_send_buf, comm);
+    sched->get_memory().handle_manager.get(peer_rank, 1, right_recv_buf, comm);
 
     right_send_buf_ptr = static_cast<char*>(right_send_buf.get_ptr()) + buf_offset_bytes;
     right_recv_buf_ptr = static_cast<char*>(right_recv_buf.get_ptr()) + buf_offset_bytes;

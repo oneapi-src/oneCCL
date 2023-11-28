@@ -18,7 +18,7 @@
 #include "sched/entry/ze/allreduce/ze_a2a_allreduce_entry.hpp"
 #include "sched/entry/ze/ze_a2a_allgatherv_entry.hpp"
 #include "sched/entry/ze/ze_a2a_reduce_scatter_entry.hpp"
-#include "sched/entry/ze/ze_cache.hpp"
+#include "sched/entry/ze/cache/ze_cache.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
 #include "sched/queue/queue.hpp"
 
@@ -218,13 +218,11 @@ void ze_a2a_allreduce_entry::init_ze_hook() {
                                      peer_buf_offset,
                                      post_copy_events,
                                      kernel_events,
+                                     ze_base_entry::entry_event,
                                      is_monolithic_allgat,
                                      false, // is_inplace
                                      false); // is_separate_block_handles
     ze_a2a_allgatherv_op::select(init_params, kernels);
-
-    // wait for post_copy_events and signal entry_event
-    ZE_APPEND_CALL(ze_cmd_barrier, get_copy_list(), ze_base_entry::entry_event, post_copy_events);
 }
 
 void ze_a2a_allreduce_entry::start() {

@@ -14,6 +14,7 @@
 #
 
 default_compiler_name="g++"
+user_set_compiler=0
 
 #------------------------------------------------------------------------------ 
 # Print mini-help if started without parameters
@@ -35,6 +36,7 @@ for arg in "$@" ; do
     case $arg in 
         -cxx=*)
         compiler_name=`echo A$arg | sed -e 's/A-cxx=//g'`
+        user_set_compiler=1
         ;;
     esac
 done
@@ -47,24 +49,34 @@ if [ $# -eq 1 -a "$1" = "-v" ] ; then
     opt_args="-nolinkage"
 fi
 
-if [ x"$opt_args" == x"" ]; then
-    case "${compiler_short_name}" in
-    icc|icpc|icpx|dpcpp)   "$dir"/mpiicpc -cxx=$compiler_name "$@" ;;
-    *g++*)        "$dir"/mpigxx -cxx=$compiler_name "$@" ;;
-    mpicxx)     "$dir"/mpigxx "$@" ;;
-    *)  
-            echo "Error: unsupported compiler name '$compiler_name'."
-            echo "Check -cxx=<compiler_name> command line option and I_MPI_CXX='$I_MPI_CXX' and MPICH_CXX='$MPICH_CXX' variables."; 
-            exit 1 ;;
-    esac
+if [ $user_set_compiler -eq 0 ]; then
+    # default compiler
+    if [ x"$opt_args" == x"" ]; then
+        "$dir"/mpigxx -cxx=$compiler_name "$@"
+    else
+        "$dir"/mpigxx -cxx=$compiler_name "$@" $opt_args
+    fi
 else
-    case "${compiler_short_name}" in
-    icc|icpc|icpx|dpcpp)   "$dir"/mpiicpc -cxx=$compiler_name "$@" $opt_args ;;
-    *g++*)        "$dir"/mpigxx -cxx=$compiler_name "$@" $opt_args ;;
-    mpicxx)     "$dir"/mpigxx "$@" $opt_args ;;
-    *)  
-            echo "Error: unsupported compiler name '$compiler_name'."
-            echo "Check -cxx=<compiler_name> command line option and I_MPI_CXX='$I_MPI_CXX' and MPICH_CXX='$MPICH_CXX' variables."; 
-            exit 1 ;;
-    esac
+    # don't need to duplicate -cc since user already provided the option
+    if [ x"$opt_args" == x"" ]; then
+        case "${compiler_short_name}" in
+        icc|icpc|icpx|dpcpp) "$dir"/mpiicpx "$@" ;;
+        *g++*)               "$dir"/mpigxx "$@" ;;
+        mpicxx)              "$dir"/mpigxx "$@" ;;
+        *)
+                echo "Error: unsupported compiler name '$compiler_name'."
+                echo "Check -cxx=<compiler_name> command line option and I_MPI_CXX='$I_MPI_CXX' and MPICH_CXX='$MPICH_CXX' variables."; 
+                exit 1 ;;
+        esac
+    else
+        case "${compiler_short_name}" in
+        icc|icpc|icpx|dpcpp) "$dir"/mpiicpx "$@" $opt_args ;;
+        *g++*)               "$dir"/mpigxx "$@" $opt_args ;;
+        mpicxx)              "$dir"/mpigxx "$@" $opt_args ;;
+        *)
+                echo "Error: unsupported compiler name '$compiler_name'."
+                echo "Check -cxx=<compiler_name> command line option and I_MPI_CXX='$I_MPI_CXX' and MPICH_CXX='$MPICH_CXX' variables."; 
+                exit 1 ;;
+        esac
+    fi
 fi

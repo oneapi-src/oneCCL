@@ -41,7 +41,7 @@ global_data_desc::global_data_desc() {
 
     // enables driver initialization and
     // dependencies for system management
-    setenv("ZES_ENABLE_SYSMAN", "1", 0);
+    setenv("ZES_ENABLE_SYSMAN", "1", 1);
 
     ZE_CALL(zeInit, (ZE_INIT_FLAG_GPU_ONLY));
 

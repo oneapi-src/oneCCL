@@ -18,7 +18,7 @@
 #include "common/global/global.hpp"
 #include "common/log/log.hpp"
 #include "common/utils/sycl_utils.hpp"
-#include "sched/entry/ze/ze_cache.hpp"
+#include "sched/entry/ze/cache/ze_cache.hpp"
 #include "sched/ze/ze_event_manager.hpp"
 
 using namespace ccl;
@@ -174,11 +174,10 @@ dynamic_event_pool::dynamic_event_pool(const ccl_stream* stream) {
 dynamic_event_pool::~dynamic_event_pool() {
     // we expect that all events are released by the callee, at this point there
     // must be no allocated events, otherwise this indicates an error in the event handling
-    // TODO: return warnings
-    // if (!event_alloc_info.empty())
-    //     LOG_ERROR("all events are expected to be released");
-    // if (!event_pools.empty())
-    //     LOG_ERROR("all event pools are expected to be released");
+    if (!event_alloc_info.empty())
+        LOG_ERROR("all events are expected to be released");
+    if (!event_pools.empty())
+        LOG_ERROR("all event pools are expected to be released");
 }
 
 ze_event_pool_desc_t dynamic_event_pool::get_default_event_pool_desc() {
@@ -209,7 +208,8 @@ ze_event_handle_t dynamic_event_pool::get_event() {
     pool_info.num_alloc_events = 0;
 
     slot.pool = event_pools.insert(event_pools.end(), pool_info);
-    slot.pool_idx = 0;
+    slot.pool_idx = event_pool_request_idx;
+    event_pool_request_idx = ++event_pool_request_idx % event_pool_size;
 
     return create_event(slot);
 }

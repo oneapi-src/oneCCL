@@ -70,6 +70,10 @@ public:
         return *sync_event;
     }
 
+    std::shared_ptr<sycl::event>& share_sync_event() {
+        return sync_event;
+    }
+
     bool has_output_event() const {
         // by default the event is empty
         if (!native_event)

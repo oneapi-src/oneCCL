@@ -182,23 +182,41 @@ void ccl_datatype_storage::free(ccl::datatype idx) {
 
 const ccl_datatype& ccl_datatype_storage::get(ccl::datatype idx) const {
     if (is_predefined_datatype(idx)) {
-        return predefined_table.find(idx)->second.first;
+        auto it = predefined_table.find(idx);
+        if (it != predefined_table.end()) {
+            return it->second.first;
+        }
+        LOG_WARN("unexpected idx for ccl_datatype_storage::get(), returning default datatype");
+        return default_datatype;
     }
-    else {
-        std::lock_guard<ccl_datatype_lock_t> lock{ guard };
-        return custom_table.find(idx)->second.first;
+    std::lock_guard<ccl_datatype_lock_t> lock{ guard };
+    auto it = custom_table.find(idx);
+    if (it != custom_table.end()) {
+        return it->second.first;
     }
+    LOG_WARN("unexpected idx for ccl_datatype_storage::get(), returning default datatype");
+    return default_datatype;
 }
 
 const std::string& ccl_datatype_storage::name(const ccl_datatype& dtype) const {
     ccl::datatype idx = dtype.idx();
     if (is_predefined_datatype(idx)) {
-        return predefined_table.find(idx)->second.second;
+        auto it = predefined_table.find(idx);
+        if (it != predefined_table.end()) {
+            return it->second.second;
+        }
+        LOG_WARN(
+            "unexpected datatype for ccl_datatype_storage::name(), returning \"undefined\" type name");
+        return default_type_str;
     }
-    else {
-        std::lock_guard<ccl_datatype_lock_t> lock{ guard };
-        return custom_table.find(idx)->second.second;
+    std::lock_guard<ccl_datatype_lock_t> lock{ guard };
+    auto it = custom_table.find(idx);
+    if (it != custom_table.end()) {
+        return it->second.second;
     }
+    LOG_WARN(
+        "unexpected datatype for ccl_datatype_storage::name(), returning \"undefined\" type name");
+    return default_type_str;
 }
 
 const std::string& ccl_datatype_storage::name(ccl::datatype idx) const {

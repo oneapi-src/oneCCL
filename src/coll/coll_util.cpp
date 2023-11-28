@@ -19,11 +19,12 @@
 #if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
 #include "sched/entry/ze/ze_event_signal_entry.hpp"
 #include "sched/entry/ze/ze_event_wait_entry.hpp"
+#include "sched/entry/ze/ze_pt2pt_barrier_entry.hpp"
 #endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
 
 namespace ccl {
 
-void add_coll_entry(ccl_sched* sched, const ccl_coll_entry_param& param) {
+void add_coll_entry(ccl_sched* sched, const ccl_coll_param& param) {
     ccl_selector_param selector_param;
 
     if (param.ctype == ccl_coll_send || param.ctype == ccl_coll_recv) {
@@ -35,7 +36,8 @@ void add_coll_entry(ccl_sched* sched, const ccl_coll_entry_param& param) {
         if (param.ctype == ccl_coll_allgatherv) {
             selector_param.count = param.send_count;
         }
-        selector_param.recv_counts = param.recv_counts;
+        selector_param.recv_counts =
+            const_cast<size_t*>(reinterpret_cast<const size_t*>(param.recv_counts.data()));
         selector_param.dtype = param.dtype;
         selector_param.comm = param.comm;
         selector_param.stream = param.stream;
@@ -45,6 +47,7 @@ void add_coll_entry(ccl_sched* sched, const ccl_coll_entry_param& param) {
         selector_param.is_sycl_buf = sched->coll_attr.is_sycl_buf;
 #endif // CCL_ENABLE_SYCL
         selector_param.hint_algo = param.hint_algo;
+        selector_param.peer_rank = param.peer_rank;
         selector_param.is_scaleout = param.is_scaleout;
 
 #ifdef CCL_ENABLE_SYCL
@@ -114,7 +117,7 @@ void add_comm_barrier(ccl_sched* sched,
         entry_factory::create<ze_barrier_entry>(sched, comm, ipc_pool, ipc_event_idx);
     }
     else {
-        ccl_coll_entry_param barrier_param{};
+        ccl_coll_param barrier_param{};
         barrier_param.ctype = ccl_coll_barrier;
         barrier_param.comm = comm;
 
@@ -149,30 +152,43 @@ void add_handle_exchange(ccl_sched* sched,
                          const std::vector<ze_handle_exchange_entry::mem_desc_t>& in_buffers,
                          int skip_rank,
                          ze_event_pool_handle_t pool,
-                         size_t event_idx) {
+                         size_t event_idx,
+                         const ccl::utils::pt2pt_handle_exchange_info& info) {
     if (!wait_events.empty()) {
         ccl::add_wait_events(sched, wait_events);
     }
     if (sched->coll_attr.to_cache) {
         sched->set_entry_exec_mode(ccl_sched_entry_exec_once);
-        entry_factory::create<ze_handle_exchange_entry>(sched, comm, in_buffers, skip_rank);
+        entry_factory::create<ze_handle_exchange_entry>(sched, comm, in_buffers, skip_rank, info);
         sched->add_barrier();
         sched->set_entry_exec_mode(ccl_sched_entry_exec_regular);
 
-        // TODO: no need barrier for the first iteration where ze_handle_exchange_entry exists
-        add_comm_barrier(sched, comm, {}, out_event, pool, event_idx);
+        if (sched->coll_param.ctype == ccl_coll_recv || sched->coll_param.ctype == ccl_coll_send) {
+            // the entry emulates 'alignment' between send and recv op-s
+            // the 'alignment' is needed to avoid situations when send or recv
+            // can be faster executed (e.g. initialize the send buffer), not
+            // waiting the previous pair of op-s to be finished. it must be as
+            // entry because 'alignment' must be in the schedule with other
+            // entries. such 'alignment' should be exectuted before other
+            // entries that's why sched->add_barrier is used.
+            entry_factory::create<ze_pt2pt_barrier_entry>(sched, comm, info.peer_rank);
+            sched->add_barrier();
+        }
+        else {
+            // TODO: no need barrier for the first iteration where ze_handle_exchange_entry exists
+            add_comm_barrier(sched, comm, {}, out_event, pool, event_idx);
+        }
     }
     else {
-        entry_factory::create<ze_handle_exchange_entry>(sched, comm, in_buffers, skip_rank);
+        entry_factory::create<ze_handle_exchange_entry>(sched, comm, in_buffers, skip_rank, info);
         sched->add_barrier();
         out_event = ccl::add_signal_event(sched);
     }
 }
 
-void add_coll(ccl_sched* sched,
-              const ccl_coll_entry_param& param,
-              const std::vector<ze_event_handle_t>& wait_events,
-              ze_event_handle_t& out_event) {
+ze_event_handle_t add_coll(ccl_sched* sched,
+                           const ccl_coll_param& param,
+                           const std::vector<ze_event_handle_t>& wait_events) {
     if (sched->use_single_list) {
         ccl::add_wait_events(sched, wait_events);
     }
@@ -191,6 +207,17 @@ void add_coll(ccl_sched* sched,
                                                                     param.stream);
                 break;
             }
+            case ccl_coll_reduce_scatter: {
+                coll_param = ccl_coll_param::create_reduce_scatter_param(param.send_buf.get_src(),
+                                                                         param.recv_buf.get_src(),
+                                                                         param.count,
+                                                                         param.dtype.idx(),
+                                                                         param.reduction,
+                                                                         attr,
+                                                                         param.comm,
+                                                                         param.stream);
+                break;
+            }
             case ccl_coll_reduce: {
                 coll_param = ccl_coll_param::create_reduce_param(param.send_buf.get_src(),
                                                                  param.recv_buf.get_src(),
@@ -205,9 +232,9 @@ void add_coll(ccl_sched* sched,
             }
             case ccl_coll_alltoallv: {
                 coll_param = ccl_coll_param::create_alltoallv_param(param.send_buf.get_src(),
-                                                                    param.send_counts,
+                                                                    param.send_counts.data(),
                                                                     param.recv_buf.get_src(),
-                                                                    param.recv_counts,
+                                                                    param.recv_counts.data(),
                                                                     param.dtype.idx(),
                                                                     attr,
                                                                     param.comm,
@@ -218,7 +245,7 @@ void add_coll(ccl_sched* sched,
                 coll_param = ccl_coll_param::create_allgatherv_param(param.send_buf.get_src(),
                                                                      param.send_count,
                                                                      param.recv_buf.get_src(),
-                                                                     param.recv_counts,
+                                                                     param.recv_counts.data(),
                                                                      param.dtype.idx(),
                                                                      attr,
                                                                      param.comm,
@@ -240,10 +267,8 @@ void add_coll(ccl_sched* sched,
     }
     sched->add_barrier();
 
-    if (out_event) {
-        auto signal_event = ccl::add_signal_event(sched);
-        out_event = signal_event;
-    }
+    auto out_event = ccl::add_signal_event(sched);
+    return out_event;
 }
 
 ze_event_handle_t add_copy_entry(ccl_buffer src,
@@ -261,12 +286,14 @@ ze_event_handle_t add_copy_entry(ccl_buffer src,
 
 ze_event_handle_t add_copy_entry_with_offset(std::vector<ccl_buffer> bufs,
                                              ccl_buffer buf,
-                                             const size_t* counts,
-                                             const size_t counts_size,
+                                             const std::vector<size_t> counts,
+                                             ccl_comm* comm,
                                              const ccl_datatype dtype,
                                              const copy_attr& copy_attr,
                                              ccl_sched* sched,
-                                             const std::vector<ze_event_handle_t>& wait_events) {
+                                             const std::vector<ze_event_handle_t>& wait_events,
+                                             bool is_skip_own_rank = false) {
+    const size_t counts_size = comm->size();
     CCL_THROW_IF_NOT(bufs.size() == counts_size,
                      "buffers number is different from the number of counts");
     size_t offset = 0;
@@ -277,17 +304,19 @@ ze_event_handle_t add_copy_entry_with_offset(std::vector<ccl_buffer> bufs,
             continue;
         }
 
-        ccl_buffer src = bufs[idx];
-        ccl_buffer dst = buf + offset;
-        // reverse the function logic (src <=> dst)
-        if (copy_attr.direction == copy_direction::h2d) {
-            src = buf + offset;
-            dst = bufs[idx];
+        if (!is_skip_own_rank || idx != size_t(comm->rank())) {
+            ccl_buffer src = bufs[idx];
+            ccl_buffer dst = buf + offset;
+            // reverse the function logic (src <=> dst)
+            if (copy_attr.direction == copy_direction::h2d) {
+                src = buf + offset;
+                dst = bufs[idx];
+            }
+            auto out_event =
+                add_copy_entry(src, dst, counts[idx], dtype, copy_attr, sched, wait_events);
+            out_events.push_back(out_event);
         }
-        auto out_event =
-            add_copy_entry(src, dst, counts[idx], dtype, copy_attr, sched, wait_events);
         offset += counts[idx] * dtype.size();
-        out_events.push_back(out_event);
     }
     LOG_DEBUG("add_copy_entry_with_offset done");
 
@@ -295,8 +324,8 @@ ze_event_handle_t add_copy_entry_with_offset(std::vector<ccl_buffer> bufs,
     return add_signal_event(sched);
 }
 
-ze_event_handle_t fill_scaleout_coll_param(const ccl_coll_entry_param& in_coll_param,
-                                           ccl_coll_entry_param& out_coll_param,
+ze_event_handle_t fill_scaleout_coll_param(const ccl_coll_param& in_coll_param,
+                                           ccl_coll_param& out_coll_param,
                                            ccl_sched* sched,
                                            const std::vector<ze_event_handle_t>& wait_events) {
     ze_event_handle_t out_event{};
@@ -312,20 +341,25 @@ ze_event_handle_t fill_scaleout_coll_param(const ccl_coll_entry_param& in_coll_p
 
     // calculate counts
     if (ctype == ccl_coll_alltoallv) {
-        size_t a2av_send_count = std::accumulate(
-            out_coll_param.send_counts, out_coll_param.send_counts + counts_size, 0);
-        size_t a2av_recv_count = std::accumulate(
-            out_coll_param.recv_counts, out_coll_param.recv_counts + counts_size, 0);
+        size_t a2av_send_count = std::accumulate(out_coll_param.send_counts.begin(),
+                                                 out_coll_param.send_counts.end(),
+                                                 ccl::utils::initial_count_value);
+        size_t a2av_recv_count = std::accumulate(out_coll_param.recv_counts.begin(),
+                                                 out_coll_param.recv_counts.end(),
+                                                 ccl::utils::initial_count_value);
         a2av_send_bytes = a2av_send_count * dtype_size;
         a2av_recv_bytes = a2av_recv_count * dtype_size;
     }
     else if (ctype == ccl_coll_alltoall || ctype == ccl_coll_allgatherv) {
         // assume sum of send_counts and recv_counts are equal
-        host_buf_size =
-            std::accumulate(
-                out_coll_param.recv_counts, out_coll_param.recv_counts + counts_size, 0) *
-            dtype_size;
+        host_buf_size = std::accumulate(out_coll_param.recv_counts.begin(),
+                                        out_coll_param.recv_counts.end(),
+                                        ccl::utils::initial_count_value) *
+                        dtype_size;
         LOG_DEBUG("alltoall(v)/allgatherv scale_out host buf size: ", host_buf_size);
+    }
+    else if (ctype == ccl_coll_reduce_scatter) {
+        host_buf_size = out_coll_param.count * counts_size * dtype_size;
     }
     else {
         host_buf_size = out_coll_param.count * dtype_size;
@@ -349,43 +383,53 @@ ze_event_handle_t fill_scaleout_coll_param(const ccl_coll_entry_param& in_coll_p
         out_coll_param.recv_buf = out_coll_param.send_buf;
     }
 
-    // transform array of buffers in contiguos buffer with offsets
+    // transform array of buffers in contiguous buffer with offsets
     if (ctype == ccl_coll_alltoallv) {
-        auto send_out_event = add_copy_entry_with_offset(in_coll_param.send_bufs,
+        auto send_out_event = add_copy_entry_with_offset(in_coll_param.send_scale_out_bufs,
                                                          out_coll_param.send_buf,
                                                          out_coll_param.send_counts,
-                                                         counts_size,
+                                                         out_coll_param.comm,
                                                          out_coll_param.dtype,
                                                          copy_attr(copy_direction::d2h),
                                                          sched,
                                                          wait_events);
-        out_event = add_copy_entry_with_offset(in_coll_param.recv_bufs,
+        out_event = add_copy_entry_with_offset(in_coll_param.recv_scale_out_bufs,
                                                out_coll_param.recv_buf,
                                                out_coll_param.recv_counts,
-                                               counts_size,
+                                               out_coll_param.comm,
                                                out_coll_param.dtype,
                                                copy_attr(copy_direction::d2h),
                                                sched,
                                                std::vector<ze_event_handle_t>{ send_out_event });
     }
     else if (ctype == ccl_coll_alltoall) {
-        out_event = add_copy_entry_with_offset(in_coll_param.send_bufs,
+        out_event = add_copy_entry_with_offset(in_coll_param.send_scale_out_bufs,
                                                out_coll_param.send_buf,
                                                out_coll_param.send_counts,
-                                               counts_size,
+                                               out_coll_param.comm,
                                                out_coll_param.dtype,
                                                copy_attr(copy_direction::d2h),
                                                sched,
                                                wait_events);
     }
     else if (ctype == ccl_coll_allgatherv) {
-        size_t offset = std::accumulate(out_coll_param.recv_counts,
-                                        out_coll_param.recv_counts + out_coll_param.comm->rank(),
-                                        0) *
-                        dtype_size;
+        size_t offset =
+            std::accumulate(out_coll_param.recv_counts.begin(),
+                            out_coll_param.recv_counts.begin() + out_coll_param.comm->rank(),
+                            ccl::utils::initial_count_value) *
+            dtype_size;
         out_event = add_copy_entry(in_coll_param.send_buf,
                                    out_coll_param.send_buf + offset,
                                    out_coll_param.send_count,
+                                   out_coll_param.dtype,
+                                   copy_attr(copy_direction::d2h),
+                                   sched,
+                                   wait_events);
+    }
+    else if (ctype == ccl_coll_reduce_scatter) {
+        out_event = add_copy_entry(in_coll_param.send_buf,
+                                   out_coll_param.send_buf,
+                                   out_coll_param.count * counts_size,
                                    out_coll_param.dtype,
                                    copy_attr(copy_direction::d2h),
                                    sched,
@@ -404,7 +448,7 @@ ze_event_handle_t fill_scaleout_coll_param(const ccl_coll_entry_param& in_coll_p
 }
 
 void add_scaleout(ccl_sched* sched,
-                  const ccl_coll_entry_param& in_coll_param,
+                  const ccl_coll_param& in_coll_param,
                   const bool is_single_node,
                   const std::vector<ze_event_handle_t>& in_wait_events,
                   ze_event_handle_t& out_event,
@@ -413,14 +457,16 @@ void add_scaleout(ccl_sched* sched,
                   ccl_buffer global_recv_buf,
                   int global_root) {
     std::vector<ze_event_handle_t> wait_events{ in_wait_events };
-    ccl_coll_entry_param coll_param(in_coll_param);
+    ccl_coll_param coll_param(in_coll_param);
     out_event = nullptr;
 
-    bool multi_node = (!is_single_node && (coll_param.count || coll_param.recv_counts));
+    bool multi_node =
+        (!is_single_node && (coll_param.count != 0 || coll_param.recv_counts.size() != 0));
     bool enable_hmem = (ccl::global_data::env().use_hmem && atl_base_comm::attr.out.enable_hmem);
     bool do_h2d_copy =
-        ((coll_param.ctype == ccl_coll_allreduce || coll_param.ctype == ccl_coll_alltoallv ||
-          coll_param.ctype == ccl_coll_alltoall || coll_param.ctype == ccl_coll_allgatherv) &&
+        ((coll_param.ctype == ccl_coll_allreduce || coll_param.ctype == ccl_coll_reduce_scatter ||
+          coll_param.ctype == ccl_coll_alltoallv || coll_param.ctype == ccl_coll_alltoall ||
+          coll_param.ctype == ccl_coll_allgatherv) &&
          multi_node && !enable_hmem) ||
         (coll_param.ctype == ccl_coll_reduce && coll_param.comm->rank() == coll_param.root);
 
@@ -428,7 +474,7 @@ void add_scaleout(ccl_sched* sched,
         if (!enable_hmem) {
             LOG_DEBUG("topo/scale_out: use host_", ccl_coll_type_to_str(coll_param.ctype));
 
-            // mostly initialize contiguos send/recv buffers from array of input buffers
+            // mostly initialize contiguous send/recv buffers from array of input buffers
             out_event = fill_scaleout_coll_param(in_coll_param, coll_param, sched, wait_events);
             utils::clear_and_push_back(wait_events, out_event);
             sched->add_barrier();
@@ -440,7 +486,8 @@ void add_scaleout(ccl_sched* sched,
         // pass the scale-out selection param directly
         coll_param.is_scaleout = true;
         // do inplace collective
-        ccl::add_coll(sched, coll_param, wait_events, out_event);
+
+        out_event = ccl::add_coll(sched, coll_param, wait_events);
         utils::clear_and_push_back(wait_events, out_event);
     }
 
@@ -458,14 +505,15 @@ void add_scaleout(ccl_sched* sched,
 
     if (coll_param.ctype == ccl_coll_alltoallv || coll_param.ctype == ccl_coll_alltoall ||
         coll_param.ctype == ccl_coll_allgatherv) {
-        out_event = add_copy_entry_with_offset(in_coll_param.recv_bufs,
+        out_event = add_copy_entry_with_offset(in_coll_param.recv_scale_out_bufs,
                                                coll_param.recv_buf,
                                                coll_param.recv_counts,
-                                               coll_param.comm->size(),
+                                               coll_param.comm,
                                                coll_param.dtype,
                                                h2d_copy_attr,
                                                sched,
-                                               wait_events);
+                                               wait_events,
+                                               coll_param.ctype == ccl_coll_allgatherv);
     }
     else {
         out_event = add_copy_entry(src_copy_buf,

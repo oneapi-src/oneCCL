@@ -245,6 +245,10 @@ ccl::status ccl_coll_build_topo_bcast(ccl_sched* sched,
                                       ccl_comm* comm) {
     LOG_DEBUG("build topo bcast");
 
+    if (count == 0) {
+        return ccl::status::success;
+    }
+
     ccl_comm* node_comm = comm->get_node_comm().get();
 
     const std::vector<ze_handle_exchange_entry::mem_desc_t> buffers{
@@ -254,6 +258,8 @@ ccl::status ccl_coll_build_topo_bcast(ccl_sched* sched,
 
     std::vector<ze_event_handle_t> wait_events;
     ze_event_handle_t out_event;
+
+    sched->try_enable_ze_single_list();
 
     ccl::add_handle_exchange(sched, node_comm, wait_events, out_event, buffers);
     clear_and_push_back(wait_events, out_event);
@@ -271,7 +277,7 @@ ccl::status ccl_coll_build_topo_bcast(ccl_sched* sched,
 
     ccl::add_comm_barrier(sched, node_comm, wait_events, out_event);
 
-    entry_factory::create<execute_cmdlists_entry>(sched);
+    entry_factory::create<ze_execute_cmdlists_on_init_entry>(sched);
 
     return ccl::status::success;
 }

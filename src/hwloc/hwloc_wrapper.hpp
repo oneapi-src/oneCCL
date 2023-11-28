@@ -20,7 +20,6 @@
 #define CCL_HWLOC_INVALID_NUMA_NODE (-1)
 
 struct ccl_numa_node {
-    int idx;
     int os_idx;
     size_t mem_in_mb;
     int core_count;
@@ -28,8 +27,7 @@ struct ccl_numa_node {
     int membind_support;
 
     ccl_numa_node();
-    ccl_numa_node(int idx,
-                  int os_idx,
+    ccl_numa_node(int os_idx,
                   size_t mem_in_mb,
                   int core_count,
                   const std::vector<int>& cpus,

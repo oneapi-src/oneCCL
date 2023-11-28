@@ -40,6 +40,13 @@ check_file_exists() {
   fi
 }
 
+check_program_exists() {
+  if ! which "$1";  then
+    echo "Error: $1 not found." >&2
+    exit 1
+  fi
+}
+
 # Define a function to print help message
 print_help() {
   echo "Description: This script extracts information from two XML files, converts it to Markdown format, and combines it into"
@@ -77,6 +84,10 @@ done
 extract_xml_info() {
   $SCRIPT_DIR/doxy_to_md.py $1 > $2
 }
+
+# generate docs
+check_program_exists doxygen
+doxygen "$SCRIPT_DIR/doxconfig"
 
 # Combine two man files into one
 check_file_exists "$MANMainOneCCLvars"

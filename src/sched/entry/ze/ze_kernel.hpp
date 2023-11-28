@@ -39,7 +39,7 @@ public:
 
     ze_kernel(const ze_kernel &) = delete;
     ze_kernel(ze_kernel &&other) noexcept;
-    ~ze_kernel();
+    ~ze_kernel() noexcept;
 
 private:
     void actually_call_ze(ze_command_list_handle_t list,

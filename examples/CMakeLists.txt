@@ -23,10 +23,6 @@ message(STATUS "PROJECT_SOURCE_DIR: ${PROJECT_SOURCE_DIR}")
 
 if (NOT DEFINED ENV{COMPUTE_BACKEND})
     message(STATUS "COMPUTE_BACKEND is not defined")
-    if (${CMAKE_CXX_COMPILER} MATCHES ".*icpx")
-        set(COMPUTE_BACKEND "dpcpp" CACHE STRING "compute backend value")
-        message(STATUS "COMPUTE_BACKEND: ${COMPUTE_BACKEND} (set by default)")
-    endif()
 else()
     message(STATUS "COMPUTE_BACKEND: ${COMPUTE_BACKEND} (set by user)")
 endif()
@@ -48,7 +44,12 @@ if (DEFINED ENV{I_MPI_ROOT})
     set(I_MPI_ROOT "$ENV{I_MPI_ROOT}")
 endif()
 
+if (DEFINED ENV{ONEAPI_ROOT})
+    set(ONEAPI_ROOT "$ENV{ONEAPI_ROOT}")
+endif()
+
 message(STATUS "CCL_ROOT: ${CCL_ROOT}")
+message(STATUS "ONEAPI_ROOT: ${ONEAPI_ROOT}")
 message(STATUS "CCL_CONFIGURATION: ${CCL_CONFIGURATION}")
 
 if (NOT DEFINED ${CCL_INSTALL_BENCHMARKS})
@@ -81,6 +82,12 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${CXX_COMP
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+#add path with sycl headers explicitly
+if (DEFINED ONEAPI_ROOT)
+   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -isystem ${ONEAPI_ROOT}/include")
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -isystem ${ONEAPI_ROOT}/include")
+endif()
+
 if ("${COMPUTE_BACKEND}" STREQUAL "dpcpp")
     set(CMAKE_CLANG_FLAGS "-fsycl")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -lsycl")
@@ -95,7 +102,7 @@ endif()
 
 set(GCC_BF16_MIN_SUPPORTED "4.9.0")
 
-if (${CMAKE_C_COMPILER_ID} STREQUAL "Intel" OR ${CMAKE_C_COMPILER_ID} STREQUAL "Clang" OR (${CMAKE_C_COMPILER_ID} STREQUAL "GNU" AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${GCC_BF16_MIN_SUPPORTED}))
+if (${CMAKE_C_COMPILER_ID} STREQUAL "Intel" OR ${CMAKE_C_COMPILER_ID} STREQUAL "IntelLLVM" OR  ${CMAKE_C_COMPILER_ID} STREQUAL "Clang" OR (${CMAKE_C_COMPILER_ID} STREQUAL "GNU" AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${GCC_BF16_MIN_SUPPORTED}))
     add_definitions(-DCCL_BF16_COMPILER)
     set(CCL_BF16_COMPILER ON)
 else()
@@ -104,7 +111,8 @@ endif()
 message(STATUS "BF16 AVX512F compiler: ${CCL_BF16_COMPILER}")
 
 if (CCL_BF16_COMPILER)
-    if ((${CMAKE_C_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_C_COMPILER_ID} STREQUAL "GNU"))
+    if ((${CMAKE_C_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_C_COMPILER_ID} STREQUAL "IntelLLVM"
+        OR ${CMAKE_C_COMPILER_ID} STREQUAL "GNU"))
         add_definitions(-DCCL_BF16_TARGET_ATTRIBUTES)
         message(STATUS "BF16 target attributes: yes")
     else()
@@ -118,6 +126,8 @@ add_subdirectory(cpu)
 
 if ("${COMPUTE_BACKEND}" STREQUAL "dpcpp")
     add_subdirectory(sycl)
+    #TODO: add cpu support
+    add_subdirectory(pt2pt)
 endif()
 add_subdirectory(common)
 add_subdirectory(benchmark)

@@ -91,6 +91,7 @@ ccl::status ccl_coll_build_reduce_scatter(ccl_sched* sched,
                                           const ccl_datatype& dtype,
                                           ccl::reduction reduction,
                                           ccl_comm* comm,
+                                          bool is_scaleout,
                                           bool from_allreduce = false);
 
 ccl::status ccl_coll_build_recv(ccl_sched* sched,

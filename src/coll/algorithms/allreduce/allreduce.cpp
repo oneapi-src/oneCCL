@@ -39,6 +39,13 @@ ccl::status ccl_coll_build_direct_allreduce(ccl_sched* sched,
                                             ccl_comm* comm) {
     LOG_DEBUG("build direct allreduce");
 
+    // count is the same for all ranks
+    // if one rank skips mpi collectives, all ranks skip
+    // this means we can safely skip all operations with zero count
+    if (count == 0) {
+        return ccl::status::success;
+    }
+
     entry_factory::create<allreduce_entry>(sched, send_buf, recv_buf, count, dtype, op, comm);
     return ccl::status::success;
 }
@@ -60,6 +67,14 @@ ccl::status ccl_coll_build_rabenseifner_allreduce(ccl_sched* sched,
     size_t dtype_size = dtype.size();
 
     comm_size = comm->size();
+
+    // count is the same for all ranks
+    // if one rank skips mpi collectives, all ranks skip
+    // this means we can safely skip all operations with zero count
+    if (count == 0) {
+        return ccl::status::success;
+    }
+
     rank = comm->rank();
     ccl_buffer tmp_buf = sched->alloc_buffer({ count * dtype_size, send_buf });
 
@@ -281,6 +296,14 @@ ccl::status ccl_coll_build_nreduce_allreduce(ccl_sched* sched,
     LOG_DEBUG("build nreduce allreduce");
 
     ccl::status status = ccl::status::success;
+
+    // count is the same for all ranks
+    // if one rank skips mpi collectives, all ranks skip
+    // this means we can safely skip all operations with zero count
+    if (count == 0) {
+        return status;
+    }
+
     int comm_size = comm->size();
     int comm_rank = comm->rank();
     std::vector<size_t> elem_counts(comm_size);
@@ -422,6 +445,13 @@ ccl::status ccl_coll_build_ring_allreduce(ccl_sched* sched,
     int inplace = (send_buf == recv_buf) ? 1 : 0;
     LOG_DEBUG("build ring allreduce ", inplace ? "in-place" : "out-of-place");
 
+    // count is the same for all ranks
+    // if one rank skips mpi collectives, all ranks skip
+    // this means we can safely skip all operations with zero count
+    if (count == 0) {
+        return ccl::status::success;
+    }
+
     CCL_THROW_IF_NOT(sched && send_buf && recv_buf,
                      "incorrect values, sched ",
                      sched,
@@ -431,7 +461,6 @@ ccl::status ccl_coll_build_ring_allreduce(ccl_sched* sched,
                      recv_buf);
 
     ccl::status status = ccl::status::success;
-
     ccl_coll_build_ring_reduce_scatter(sched, send_buf, recv_buf, count, dtype, op, comm);
 
     sched->add_barrier();
@@ -469,6 +498,13 @@ ccl::status ccl_coll_build_recursive_doubling_allreduce(ccl_sched* sched,
     LOG_DEBUG("build recursive_doubling allreduce");
 
     ccl::status status = ccl::status::success;
+
+    // count is the same for all ranks
+    // if one rank skips mpi collectives, all ranks skip
+    // this means we can safely skip all operations with zero count
+    if (count == 0) {
+        return status;
+    }
 
     int pof2, rem, comm_size, rank;
     int newrank, mask, newdst, dst;
@@ -627,7 +663,7 @@ static void ccl_allreduce_2d_add_reduce_scatter_allreduce_allgather(ccl_sched* s
     ccl_buffer sbuf = send_buf + chunk_idx * main_chunk_size * dtype_size;
     ccl_buffer rbuf = recv_buf + chunk_idx * main_chunk_size * dtype_size;
 
-    ccl_coll_build_reduce_scatter(sched, sbuf, rbuf, cnt, dtype, op, first_dim_comm, true);
+    ccl_coll_build_reduce_scatter(sched, sbuf, rbuf, cnt, dtype, op, first_dim_comm, false, true);
     sched->add_barrier();
 
     if (chunk_idx == (chunk_count - 1) || (chunk_count == 1)) {
@@ -709,6 +745,13 @@ ccl::status ccl_coll_build_2d_allreduce(ccl_sched* sched,
                                         ccl_comm* comm) {
     ccl::status status = ccl::status::success;
 
+    // count is the same for all ranks
+    // if one rank skips mpi collectives, all ranks skip
+    // this means we can safely skip all operations with zero count
+    if (count == 0) {
+        return status;
+    }
+
     size_t chunk_count = ccl::global_data::env().allreduce_2d_chunk_count;
 
     bool switch_dims = ccl::global_data::env().allreduce_2d_switch_dims;
@@ -744,6 +787,7 @@ ccl::status ccl_coll_build_2d_allreduce(ccl_sched* sched,
 }
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+
 ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
                                                ccl_buffer send_buf,
                                                ccl_buffer recv_buf,
@@ -752,6 +796,13 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
                                                ccl::reduction op,
                                                ccl_comm* comm) {
     LOG_DEBUG("build topo allreduce");
+
+    // count is the same for all ranks
+    // if one rank skips mpi collectives, all ranks skip
+    // this means we can safely skip all operations with zero count
+    if (count == 0) {
+        return ccl::status::success;
+    }
 
     ccl_comm* pair_comm = comm->get_pair_comm().get();
     ccl_comm* even_comm = comm->get_even_comm().get();
@@ -771,8 +822,34 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
     bool use_reduce_scatter_pipeline =
         ccl::global_data::env().reduce_scatter_monolithic_pipeline_kernel &&
         even_comm->size() > 1 && pair_comm->size() > 1 && count >= (size_t)comm_size &&
-        is_multi_card &&
-        ccl::global_data::env().allgatherv_topo_read; // TODO: remove after refactoring allgatherv
+        is_multi_card && dtype != ccl::datatype::int8;
+
+    // allgatherv pipeline uses xelink read and mdfi write
+    const bool use_allgatherv_pipeline =
+        ccl::global_data::env().allgatherv_monolithic_pipeline_kernel && count >= (size_t)comm_size;
+
+    size_t base_count = count;
+    size_t pair_comm_offset = 0;
+    size_t pair_comm_offset_bytes = 0;
+
+    bool barrier_1s_handle_exchange = false;
+    if (ccl::global_data::env().enable_ze_bidir_algo && (base_count / pair_comm->size()) > 0) {
+        base_count = count / pair_comm->size();
+        pair_comm_offset = base_count * pair_comm->rank();
+        pair_comm_offset_bytes = pair_comm_offset * dtype.size();
+
+        if (pair_comm->rank() == pair_comm->size() - 1)
+            base_count += count % pair_comm->size();
+    }
+    else if (pair_comm->rank() != ccl::global_data::env().kernel_1s_lead) {
+        barrier_1s_handle_exchange = true;
+    }
+
+    size_t main_block_count = base_count / even_comm_size;
+    size_t block_count = main_block_count;
+    if (even_comm->rank() == even_comm_size - 1) {
+        block_count += base_count % even_comm_size;
+    }
 
     // tmp buff for write mode reduce scatter
     // TODO: fix - write based reduce_scatter fails intermittently for int8. However, such
@@ -786,12 +863,18 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
     // this entry combines reduce_scatter and allgather across even_comm
     // If write based copy is being used reduce_scatter, we should skip a2a_allreduce_entry
     // because that path uses read based copy instead
-    bool use_a2a_allreduce_entry =
-        is_single_node && !ccl::global_data::env().allgatherv_topo_read && !is_rs_write;
+    bool use_a2a_allreduce_entry = is_single_node &&
+                                   !ccl::global_data::env().allgatherv_topo_read && !is_rs_write &&
+                                   !use_reduce_scatter_pipeline && !use_allgatherv_pipeline;
 
     if (is_rs_write) {
-        int n_even_comm_sets = comm->size() / even_comm->size();
-        size_t tmp_buf_bytes = dtype.size() * count / n_even_comm_sets + count % n_even_comm_sets;
+        // local rank does not store its data in the tmp buffer, so skip 1 block
+        // under uneven division, the last block can have extra data, reflected in block_count
+        size_t tmp_buf_bytes = dtype.size() * ((even_comm->size() - 1) * block_count);
+        // workaround with dummy 1 byte allocation to still enable handle exchange when tmp bytes is 0
+        if (tmp_buf_bytes == 0)
+            tmp_buf_bytes = 1;
+
         ccl::alloc_param alloc_param(
             tmp_buf_bytes, ccl::buffer_type::ze, ccl::buffer_place::device);
         tmp_write_buf = sched->alloc_buffer(alloc_param);
@@ -848,10 +931,7 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
     std::vector<ze_event_handle_t> wait_events{};
     ze_event_handle_t out_event{};
 
-    // TODO: remove this if() condition. We want to always use a single list
-    if (!use_reduce_scatter_pipeline) {
-        sched->try_enable_ze_single_list();
-    }
+    sched->try_enable_ze_single_list();
 
     ccl::add_handle_exchange(sched,
                              node_comm,
@@ -866,19 +946,7 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
     CCL_THROW_IF_NOT(comm_size % 2 == 0, "unexpected comm_size ", comm_size);
     CCL_THROW_IF_NOT(node_comm_size % 2 == 0, "unexpected node_comm_size ", node_comm_size);
 
-    size_t base_count = count;
-    size_t pair_comm_offset = 0;
-    size_t pair_comm_offset_bytes = 0;
-
-    if (ccl::global_data::env().enable_ze_bidir_algo && (base_count / pair_comm->size()) > 0) {
-        base_count = count / pair_comm->size();
-        pair_comm_offset = base_count * pair_comm->rank();
-        pair_comm_offset_bytes = pair_comm_offset * dtype.size();
-
-        if (pair_comm->rank() == pair_comm->size() - 1)
-            base_count += count % pair_comm->size();
-    }
-    else if (pair_comm->rank() != ccl::global_data::env().kernel_1s_lead) {
+    if (barrier_1s_handle_exchange) {
         ccl::add_comm_barrier(
             sched, pair_comm, wait_events, out_event, ipc_event_pool, ipc_event_count++);
         CCL_THROW_IF_NOT(ipc_event_count <= max_ipc_event_count,
@@ -887,12 +955,6 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
                          ", expected max ",
                          max_ipc_event_count);
         return ccl::status::success;
-    }
-
-    size_t main_block_count = base_count / even_comm_size;
-    size_t block_count = main_block_count;
-    if (even_comm->rank() == even_comm_size - 1) {
-        block_count += base_count % even_comm_size;
     }
 
     const size_t even_comm_offset = main_block_count * even_comm->rank();
@@ -975,6 +1037,7 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
                                                          copy_attr(peer_rank,
                                                                    recv_buf_idx,
                                                                    copy_direction::t2t,
+                                                                   false, /*pt2pt_op*/
                                                                    pair_comm,
                                                                    pair_comm_offset,
                                                                    pair_comm_offset),
@@ -1102,13 +1165,14 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
         }
     }
 
-    ccl_coll_entry_param coll_param{ .ctype = ccl_coll_allreduce,
-                                     .send_buf = even_comm_recv_buf,
-                                     .recv_buf = even_comm_recv_buf,
-                                     .count = block_count,
-                                     .dtype = dtype,
-                                     .reduction = op,
-                                     .comm = r2r_comm };
+    ccl_coll_param coll_param{ false };
+    coll_param.ctype = ccl_coll_allreduce;
+    coll_param.send_buf = even_comm_recv_buf;
+    coll_param.recv_buf = even_comm_recv_buf;
+    coll_param.count = block_count;
+    coll_param.dtype = dtype;
+    coll_param.reduction = op;
+    coll_param.comm = r2r_comm;
 
     out_event = nullptr;
     ccl::add_scaleout(sched, coll_param, is_single_node, wait_events, out_event);
@@ -1116,16 +1180,11 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
         clear_and_push_back(wait_events, out_event);
     }
 
-    // allgatherv pipeline uses xelink read which is is_read_allgatherv=1
-    const bool use_allgatherv_pipeline =
-        ccl::global_data::env().allgatherv_monolithic_pipeline_kernel &&
-        count >= (size_t)comm_size && is_read_allgatherv;
-
     if (is_multi_card && !use_a2a_allreduce_entry) {
         LOG_DEBUG("topo/scale_up/inter: use ze_a2a_allgatherv");
-        // for multinode with allgatherv_read, use a comm_barrier to make sure all
+        // for multinode with xelink read, use a comm_barrier to make sure all
         // r2r scaleout within even_comm has finished so that remote reads are valid
-        if (!is_single_node && is_read_allgatherv) {
+        if (!is_single_node && (is_read_allgatherv || use_allgatherv_pipeline)) {
             ccl::add_comm_barrier(
                 sched, even_comm, wait_events, out_event, ipc_event_pool, ipc_event_count++);
             clear_and_push_back(wait_events, out_event);
@@ -1164,6 +1223,7 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
             attr.peer_rank = peer_pair_rank;
             attr.peer_buf_idx = recv_buf_idx;
             attr.direction = copy_direction::t2t;
+            attr.pt2pt_op = false;
             attr.map_comm = pair_comm;
             attr.in_buf_offset = pair_comm_offset + even_comm_offset;
             attr.out_buf_offset = pair_comm_offset + even_comm_offset;
@@ -1192,6 +1252,7 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
                                                           copy_attr(peer_rank,
                                                                     recv_buf_idx,
                                                                     copy_direction::t2t,
+                                                                    false, /*pt2pt_op*/
                                                                     pair_comm,
                                                                     pair_comm_offset,
                                                                     pair_comm_offset),
@@ -1219,9 +1280,152 @@ ccl::status ccl_coll_build_topo_allreduce(ccl_sched* sched,
                                           const ccl_datatype& dtype,
                                           ccl::reduction op,
                                           ccl_comm* comm) {
-    ccl_coll_build_topo_allreduce_fill(sched, send_buf, recv_buf, count, dtype, op, comm);
+    // Note about cache lines and pipelining: The same cache line must contain
+    // a single chunk only.
+    //
+    // If the same cache line contains two chunks (or more), and we parallelize
+    // the instructions required for both chunks, a conflict (race condition)
+    // may appear between the copy-out for the scaleout portion and the
+    // reduce_scatter phase.
+    //
+    // The easiest way to avoid that race condition is to require that each
+    // cache line contains a single entry. If that is not the case, we must not
+    // parallelize the instructions for different chunks.
 
-    entry_factory::create<execute_cmdlists_entry>(sched);
+    size_t chunk_count = ccl::global_data::env().allreduce_pipe_chunk_count;
+    bool is_pipe = chunk_count > 0 && ccl::global_data::env().enable_ze_single_list;
+
+    // TODO: why does oneCCL have CACHELINE_SIZE *and* CCL_KERNEL_MEM_ALIGN?
+    size_t memalign = ccl::global_data::env().kernel_mem_align;
+    size_t buf_size_bytes = count * dtype.size();
+
+    // First, determine if we need to fallback to non-pipelined algorightm.
+    // Such a fallback may happen in cases such as (1) the user requests it,
+    // (2) message fits into a cache line, or (3) the cache line size is not
+    // divisible by the data type size.
+
+    size_t number_of_cache_lines_per_chunk =
+        !is_pipe ? 1 : std::max(memalign, buf_size_bytes / chunk_count) / memalign;
+    size_t main_chunk_size_bytes = memalign * number_of_cache_lines_per_chunk;
+
+    bool is_dtype_non_divisible = main_chunk_size_bytes % dtype.size();
+    bool is_msg_smaller_than_cache_line = buf_size_bytes <= main_chunk_size_bytes;
+
+    bool is_multiworker =
+        ccl::global_data::env().ze_multi_workers && ccl::global_data::env().worker_count > 1;
+
+    if (!is_pipe || is_dtype_non_divisible || is_msg_smaller_than_cache_line || is_multiworker) {
+        // Fall back to topo algorithm without pipelining
+
+        if (!is_pipe) {
+            LOG_DEBUG("Pipelining code disabled");
+        }
+        else if (is_dtype_non_divisible) {
+            LOG_INFO("Running without pipelining because datatype size (",
+                     dtype.size(),
+                     ") is not divisible by cache line size (",
+                     memalign,
+                     ")");
+        }
+        else if (is_msg_smaller_than_cache_line) {
+            LOG_INFO("Running without pipelining because message size (",
+                     buf_size_bytes,
+                     ") is smaller than a cache line (",
+                     memalign,
+                     ") and main_chunk_size_bytes (",
+                     main_chunk_size_bytes,
+                     ")");
+        }
+        else if (is_multiworker) {
+            LOG_INFO(
+                "Running without pipelining because ze_multi_workers was requested with more than one worker");
+        }
+        else {
+            CCL_THROW("Unexpected fallback to non-pipe code");
+        }
+
+        ccl_coll_build_topo_allreduce_fill(sched, send_buf, recv_buf, count, dtype, op, comm);
+
+        entry_factory::create<ze_execute_cmdlists_on_init_entry>(sched);
+
+        return ccl::status::success;
+    }
+
+    LOG_DEBUG("build pipe allreduce");
+
+    size_t main_chunk_count = main_chunk_size_bytes / dtype.size();
+
+    // Need to re-calculate chunk_count after main_chunk_size_bytes calculation
+    // with cache alignment in mind.
+    chunk_count = count / main_chunk_count;
+    size_t last_chunk_count = main_chunk_count + (count % main_chunk_count);
+
+    sched->try_enable_ze_single_list();
+    auto sync_obj = std::make_shared<sync_object>(chunk_count);
+    bool is_parallelizable_chunks = true;
+
+    for (size_t chunk_idx = 0; chunk_idx < chunk_count; ++chunk_idx) {
+        size_t chunk_offset = chunk_idx * main_chunk_count * dtype.size();
+        ccl_buffer sbuf = send_buf + chunk_offset;
+        ccl_buffer rbuf = recv_buf + chunk_offset;
+        size_t this_chunk_count =
+            (chunk_idx == (chunk_count - 1)) ? last_chunk_count : main_chunk_count;
+
+        if (this_chunk_count || (count == 0 && chunk_idx == 0)) {
+            entry_factory::create<subsched_entry>(
+                sched,
+                chunk_idx,
+                [sched, sbuf, rbuf, this_chunk_count, dtype, op, comm, sync_obj](ccl_sched* s) {
+                    s->inherit_ze_managers_from(sched);
+                    s->set_init_ze_hook_sync_obj(sync_obj);
+                    s->set_ze_commands_bypass_flag(false);
+
+                    ccl_coll_build_topo_allreduce_fill(
+                        s, sbuf, rbuf, this_chunk_count, dtype, op, comm);
+                },
+                ("ALLREDUCE_PIPE" + std::to_string(chunk_idx)).c_str());
+        }
+        if (chunk_idx > 0) {
+            auto ptr = reinterpret_cast<uintptr_t>(rbuf.get_ptr());
+            auto prev_chunk_last_cache_line = (ptr - 1) / memalign;
+            auto this_chunk_first_cache_line = ptr / memalign;
+
+            if (prev_chunk_last_cache_line == this_chunk_first_cache_line) {
+                // WARNING: previous chunk has part of this chunk's first cache
+                // line. Cannot use pipelining. However, since this is a
+                // "local" decision (i.e., other ranks may decide differently),
+                // we still need to apply chunking. However, we will run one
+                // chunk at a time, without parallelizing them.
+                // Another way to have implemented this would be to link the
+                // last task of the prev chunk with the first of this chunk
+                // with an event.
+                is_parallelizable_chunks = false;
+            }
+        }
+    }
+
+    static bool is_chunk_memalign_warning_printed{};
+    if (!is_parallelizable_chunks && !is_chunk_memalign_warning_printed) {
+        is_chunk_memalign_warning_printed = true;
+        LOG_WARN(
+            "[allreduce pipelining]: For best performance, (i) chunk size should be a multiple of a cache line (",
+            memalign,
+            " bytes), and (ii) buffers in all ranks should be aligned to ",
+            memalign);
+    }
+
+    if (!is_parallelizable_chunks) {
+        ccl::global_data::get()
+            .metrics_profiler->allreduce_pipe_nonparallel_calls_per_count[count]++;
+    }
+    else {
+        ccl::global_data::get().metrics_profiler->allreduce_pipe_parallel_calls_per_count[count]++;
+    }
+
+    entry_factory::create<ze_execute_cmdlists_on_start_entry>(
+        sched,
+        sync_obj,
+        is_parallelizable_chunks ? submit_ze_commands_in_subsched_entries : nullptr);
 
     return ccl::status::success;
 }

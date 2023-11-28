@@ -55,7 +55,7 @@ public:
 
         uint16_t sched_id = sched->sched_id;
         if (sched->coll_param.ctype == ccl_coll_recv) {
-            sched_id = ccl_comm::pt2pt_sched_id;
+            sched_id = comm->get_atl_comm()->tag_creator->get_pt2pt_sched_id();
         }
 
         atl_tag = comm->get_atl_comm()->tag_creator->create(

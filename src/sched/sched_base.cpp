@@ -15,6 +15,7 @@
 */
 #include <numeric>
 
+#include "atl/mpi/atl_mpi_ctx.hpp"
 #include "coll/algorithms/algorithm_utils.hpp"
 #include "coll/coll_param.hpp"
 #include "coll/selection/selection.hpp"
@@ -36,8 +37,10 @@ ccl_sched_base::ccl_sched_base(const ccl_sched_create_param& param)
     if (coll_param.stream &&
         coll_param.stream->get_backend() == ccl::utils::get_level_zero_backend()) {
         memory.event_manager.reset(new ccl::ze::event_manager(coll_param.stream));
+
         auto node_comm = coll_param.comm->get_node_comm().get();
         memory.handle_manager.init(node_comm, coll_param.stream);
+
         memory.ipc_event_pool_manager.init(coll_param.stream);
         memory.list_manager.reset(new ccl::ze::list_manager(this, coll_param.stream));
     }
@@ -45,12 +48,13 @@ ccl_sched_base::ccl_sched_base(const ccl_sched_create_param& param)
 }
 
 std::string to_string(ccl_sched_add_mode mode) {
+    auto mode_str = "UNDEFINED";
     switch (mode) {
         case ccl_sched_add_front: return "FRONT";
         case ccl_sched_add_back: return "BACK";
-        default: return "DEFAULT";
+        default: mode_str = "DEFAULT";
     }
-    return "DEFAULT";
+    return mode_str;
 }
 
 ccl_sched_base::~ccl_sched_base() {
@@ -69,16 +73,15 @@ void ccl_sched_base::update_coll_param_and_attr(const ccl_coll_param& param,
 #endif // CCL_ENABLE_SYCL
 
     bool has_pre_post_copies =
-        (!coll_param.device_send_bufs.empty() || !coll_param.device_recv_bufs.empty()) ? true
-                                                                                       : false;
+        (!coll_param.send_dev_bufs.empty() || !coll_param.recv_dev_bufs.empty()) ? true : false;
 
     if (has_pre_post_copies) {
-        CCL_THROW_IF_NOT(coll_param.device_send_bufs.size() == param.send_bufs.size(),
+        CCL_THROW_IF_NOT(coll_param.send_dev_bufs.size() == param.send_bufs.size(),
                          "send_bufs sizes mismatch");
-        CCL_THROW_IF_NOT(coll_param.device_recv_bufs.size() == param.recv_bufs.size(),
+        CCL_THROW_IF_NOT(coll_param.recv_dev_bufs.size() == param.recv_bufs.size(),
                          "recv_bufs sizes mismatch");
-        coll_param.device_send_bufs = param.send_bufs;
-        coll_param.device_recv_bufs = param.recv_bufs;
+        coll_param.send_dev_bufs = param.send_bufs;
+        coll_param.recv_dev_bufs = param.recv_bufs;
     }
     else {
         CCL_THROW_IF_NOT(coll_param.send_bufs.size() == param.send_bufs.size(),
@@ -170,13 +173,12 @@ void ccl_sched_base::dealloc_buffer(const ccl::dealloc_param& user_param) {
 }
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-bool ccl_sched_base::try_enable_ze_single_list() {
+void ccl_sched_base::try_enable_ze_single_list() {
     CCL_THROW_IF_NOT(ze_entries.empty(),
                      "trying to modify the list mode after ze_entries has already been formed");
     use_single_list = ccl::global_data::env().enable_ze_single_list &&
                       ccl::global_data::env().kernel_debug == 0 &&
                       !ccl::global_data::env().enable_fusion;
-    return use_single_list;
 }
 
 void ccl_sched_base::append_to_ze_entries_list(sched_entry* entry) {
@@ -184,6 +186,26 @@ void ccl_sched_base::append_to_ze_entries_list(sched_entry* entry) {
         CCL_THROW("modifying ze_entries during list execution");
     }
     ze_entries.push_back(entry);
+}
+
+bool ccl_sched_base::check_pt2pt_pre_post_copy_support(const ccl_coll_param& param,
+                                                       bool enable_pt2pt_offload) {
+    if ((param.ctype == ccl_coll_send || param.ctype == ccl_coll_recv) &&
+        (param.stream && param.stream->is_sycl_device_stream())) {
+        bool enable_hmem =
+            (ccl::global_data::env().use_hmem && atl_base_comm::attr.out.enable_hmem);
+        LOG_DEBUG("value of hmem is: ", enable_hmem);
+
+        if (enable_hmem) {
+            LOG_DEBUG("hmem is enabled, no need for pre/post copy");
+            return false;
+        }
+        else if (enable_pt2pt_offload) {
+            LOG_DEBUG("offload algo is selected for send-recv, no need for pre/post copy");
+            return false;
+        }
+    }
+    return true;
 }
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
@@ -243,7 +265,13 @@ void ccl_sched_base::clear_memory() {
         }
         memory.handle_manager.clear();
         memory.ipc_event_pool_manager.clear();
-        if (memory.list_manager) {
+
+        // Since list_manager is a shared_ptr, call clear only for the last
+        //  reference (when use_count() is 1).
+        // In all other cases, it is correct to simply skip calling clear since
+        //  other schedules may have inherited the same list_manager entry, and,
+        //  therefore, the same lists may still be in use.
+        if (memory.list_manager.use_count() == 1) {
             memory.list_manager->clear();
         }
     }
@@ -317,8 +345,9 @@ void ccl_sched_base::get_pre_post_copy_counts(std::vector<size_t>& d2h_counts,
                     h2d_counts.end(), param.recv_counts.begin(), param.recv_counts.end());
             }
             else {
-                h2d_counts.push_back(
-                    std::accumulate(param.recv_counts.begin(), param.recv_counts.end(), 0));
+                h2d_counts.push_back(std::accumulate(param.recv_counts.begin(),
+                                                     param.recv_counts.end(),
+                                                     ccl::utils::initial_count_value));
             }
             break;
         case ccl_coll_allreduce:
@@ -340,10 +369,12 @@ void ccl_sched_base::get_pre_post_copy_counts(std::vector<size_t>& d2h_counts,
                     h2d_counts.end(), param.recv_counts.begin(), param.recv_counts.end());
             }
             else {
-                d2h_counts.push_back(
-                    std::accumulate(param.send_counts.begin(), param.send_counts.end(), 0));
-                h2d_counts.push_back(
-                    std::accumulate(param.recv_counts.begin(), param.recv_counts.end(), 0));
+                d2h_counts.push_back(std::accumulate(param.send_counts.begin(),
+                                                     param.send_counts.end(),
+                                                     ccl::utils::initial_count_value));
+                h2d_counts.push_back(std::accumulate(param.recv_counts.begin(),
+                                                     param.recv_counts.end(),
+                                                     ccl::utils::initial_count_value));
             }
             break;
         case ccl_coll_bcast:
@@ -372,11 +403,14 @@ void ccl_sched_base::get_pre_post_copy_counts(std::vector<size_t>& d2h_counts,
 
 void ccl_sched_base::alloc_buffers_for_pre_post_copy() {
 #ifdef CCL_ENABLE_SYCL
+    if (coll_param.ctype == ccl_coll_last_value) {
+        return;
+    }
 
     ccl_coll_param& param = coll_param;
 
-    param.device_send_bufs.clear();
-    param.device_recv_bufs.clear();
+    param.send_dev_bufs.clear();
+    param.recv_dev_bufs.clear();
 
     ccl_selector_param selector_param;
     selector_param.ctype = param.ctype;
@@ -385,22 +419,17 @@ void ccl_sched_base::alloc_buffers_for_pre_post_copy() {
     selector_param.comm = param.comm;
     selector_param.stream = param.stream;
     selector_param.is_sycl_buf = coll_attr.is_sycl_buf;
+    selector_param.peer_rank = param.peer_rank;
     selector_param.recv_counts = param.recv_counts.data();
-
-    bool enable_hmem = (ccl::global_data::env().use_hmem && atl_base_comm::attr.out.enable_hmem);
-    LOG_DEBUG("value of hmem is = ", enable_hmem);
 
     if (!param.stream || !param.stream->is_sycl_device_stream() ||
         ccl_is_device_side_algo(selector_param)) {
         return;
     }
 
-    if ((param.ctype == ccl_coll_send || param.ctype == ccl_coll_recv) &&
-        (param.stream || param.stream->is_sycl_device_stream())) {
-        if (enable_hmem) {
-            LOG_DEBUG("hmem is enabled, no need for pre/post copy");
-            return;
-        }
+    if (!check_pt2pt_pre_post_copy_support(
+            param, (ccl_is_offload_pt2pt_algo(selector_param) && use_pt2pt_offload_algo()))) {
+        return;
     }
 
     bool should_alloc_buffers = true;
@@ -428,8 +457,8 @@ void ccl_sched_base::alloc_buffers_for_pre_post_copy() {
         move user-supplied pointers into device_* fields
         they will be used further for pre-post copies
     */
-    param.device_send_bufs = param.send_bufs;
-    param.device_recv_bufs = param.recv_bufs;
+    param.send_dev_bufs = param.send_bufs;
+    param.recv_dev_bufs = param.recv_bufs;
 
     std::vector<size_t> d2h_counts;
     std::vector<size_t> h2d_counts;
@@ -484,23 +513,23 @@ void ccl_sched_base::alloc_buffers_for_pre_post_copy() {
         param.recv_bufs = param.send_bufs;
     }
 
-    CCL_THROW_IF_NOT(param.send_bufs.size() == param.device_send_bufs.size(),
+    CCL_THROW_IF_NOT(param.send_bufs.size() == param.send_dev_bufs.size(),
                      "send_bufs.size() mismatch: ",
                      param.send_bufs.size(),
                      " vs ",
-                     param.device_send_bufs.size());
+                     param.send_dev_bufs.size());
 
-    CCL_THROW_IF_NOT(param.recv_bufs.size() == param.device_recv_bufs.size(),
+    CCL_THROW_IF_NOT(param.recv_bufs.size() == param.recv_dev_bufs.size(),
                      "recv_bufs.size() mismatch: ",
                      param.recv_bufs.size(),
                      " vs ",
-                     param.device_recv_bufs.size());
+                     param.recv_dev_bufs.size());
 
 #endif // CCL_ENABLE_SYCL
 }
 
 void ccl_sched_base::update_id() {
-    sched_id = coll_param.comm->get_sched_id(sched_type != ccl_sched_regular);
+    sched_id = coll_param.comm->get_sched_id(sched_type != ccl_sched_regular, coll_param.is_pt2pt);
 }
 
 void ccl_sched_base::dump(std::ostream& out, const char* name) const {

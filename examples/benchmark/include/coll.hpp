@@ -199,7 +199,7 @@ struct base_coll {
                 max_error = expected_float * g;
             }
         }
-        if (fabs(max_error) < fabs(expected_float - value_float)) {
+        if (std::fabs(max_error) < std::fabs(expected_float - value_float)) {
             return 1;
         }
         return 0;

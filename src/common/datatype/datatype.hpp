@@ -107,6 +107,9 @@ private:
 
     ccl_datatype_table_t predefined_table;
     ccl_datatype_table_t custom_table;
+
+    ccl_datatype default_datatype{};
+    std::string default_type_str = "undefined";
 };
 
 namespace ccl {

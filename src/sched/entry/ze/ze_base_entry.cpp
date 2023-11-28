@@ -19,7 +19,7 @@
 #include "common/global/global.hpp"
 #include "common/api_wrapper/ze_api_wrapper.hpp"
 #include "sched/entry/ze/ze_base_entry.hpp"
-#include "sched/entry/ze/ze_cache.hpp"
+#include "sched/entry/ze/cache/ze_cache.hpp"
 #include "sched/entry/ze/ze_call.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
 #include "sched/sched.hpp"
@@ -119,8 +119,13 @@ void ze_base_entry::init_entries() {
     auto &entries = sched->ze_entries;
     if (entries.front() == this) {
         LOG_DEBUG("init ", entries.size(), " entries");
+
         for (auto &entry : entries) {
             entry->init();
+        }
+        auto sync_obj = sched->get_init_ze_hook_sync_obj();
+        if (sync_obj) {
+            sync_obj->visit();
         }
     }
 }
@@ -136,11 +141,6 @@ void ze_base_entry::finalize_entries() {
 }
 
 void ze_base_entry::start() {
-#ifdef CCL_ENABLE_ITT
-    ccl::profile::itt::task_end(ccl::profile::itt::task_type::preparation);
-    ccl::profile::itt::task_start(ccl::profile::itt::task_type::device_work);
-#endif // CCL_ENABLE_ITT
-
     if (use_single_list) {
         init_entries();
     }
@@ -153,7 +153,7 @@ void ze_base_entry::start() {
     // in single_list mode globally we have only one list per queue, so execute it elsewhere
     // in non single_list mode each entry execute only own lists
     if ((use_single_list && sched->ze_entries.front() == this &&
-         ze_command::bypass_command_flag()) ||
+         sched->get_ze_commands_bypass_flag()) ||
         !use_single_list) {
         sched_entry::ze_commands_submit();
         sched->get_memory().list_manager->execute(this);
@@ -197,11 +197,6 @@ void ze_base_entry::update() {
     if (complete) {
         LOG_DEBUG(name(), " ", this, " entry complete");
         status = ccl_sched_entry_status_complete;
-
-#ifdef CCL_ENABLE_ITT
-        ccl::profile::itt::task_end(ccl::profile::itt::task_type::device_work);
-        ccl::profile::itt::task_start(ccl::profile::itt::task_type::completion);
-#endif // CCL_ENABLE_ITT
 
         if (use_single_list) {
             reset_events();

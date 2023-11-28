@@ -17,6 +17,8 @@
 
 #include "oneapi/ccl/config.h"
 
+#include <dirent.h>
+
 #include <map>
 #include <string>
 #include <vector>
@@ -32,6 +34,49 @@ static std::map<ipc_exchange_mode, std::string> ipc_exchange_names = {
 #endif // CCL_ENABLE_DRM
     std::make_pair(ipc_exchange_mode::pidfd, "pidfd"),
     std::make_pair(ipc_exchange_mode::none, "none")
+};
+
+// RAII
+class dir_raii {
+public:
+    dir_raii(DIR* dir) : dir_(dir) {}
+
+    // copy constructor
+    dir_raii(const dir_raii& other) : dir_(other.dir_) {}
+
+    // move constructor
+    dir_raii(dir_raii&& other) : dir_(other.dir_) {
+        other.dir_ = nullptr;
+    }
+
+    // copy assignment operator
+    dir_raii& operator=(const dir_raii& other) {
+        if (this != &other) {
+            dir_ = other.dir_;
+        }
+        return *this;
+    }
+
+    // move assignment operator
+    dir_raii& operator=(dir_raii&& other) {
+        if (this != &other) {
+            if (dir_) {
+                closedir(dir_);
+            }
+            dir_ = other.dir_;
+            other.dir_ = nullptr;
+        }
+        return *this;
+    }
+
+    ~dir_raii() {
+        if (dir_) {
+            closedir(dir_);
+        }
+    }
+
+private:
+    DIR* dir_;
 };
 
 struct bdf_info {
@@ -53,6 +98,10 @@ public:
     static constexpr int invalid_physical_idx = -1;
     static constexpr int hexadecimal_base = 16;
     static constexpr int bdf_start_pos = 12;
+    // it temporarily sets the default permissions to
+    // read, write, and execute for the owner, and no
+    // permissions for group and others
+    static constexpr mode_t rwe_umask = 077;
 
     fd_manager();
     fd_manager(const fd_manager&) = delete;

@@ -81,13 +81,14 @@ public:
     std::unique_ptr<ccl_fusion_manager> fusion_manager;
     std::unique_ptr<ccl_algorithm_selector_wrapper<CCL_COLL_LIST>> algorithm_selector;
     std::unique_ptr<ccl_hwloc_wrapper> hwloc_wrapper;
+    std::unique_ptr<profile::metrics_manager> metrics_profiler;
 
 #if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
     std::unique_ptr<ze::global_data_desc> ze_data;
 #endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
 
     static thread_local bool is_worker_thread;
-    bool is_ft_enabled;
+    bool is_ft_enabled{ false };
 
     int get_local_proc_idx() const {
         return local_proc_idx;
@@ -109,14 +110,14 @@ private:
     void init_resize_independent_objects();
     void reset_resize_independent_objects();
 
-    int local_proc_idx;
-    int local_proc_count;
+    int local_proc_idx{ ccl_comm::invalid_rank };
+    int local_proc_count{ ccl::utils::invalid_err_code };
     void getenv_local_coord(const char* local_proc_idx_env_name,
                             const char* local_proc_count_env_name);
     void set_local_coord();
 
-    env_data env_object;
-    os_information os_info;
+    env_data env_object{};
+    os_information os_info{};
 };
 
 } // namespace ccl

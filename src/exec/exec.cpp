@@ -251,13 +251,19 @@ void ccl_executor::start(ccl_sched* sched, bool extra_sched) {
         workers[0]->add(sched);
         return;
     }
-    size_t worker_idx;
     auto& partial_scheds = sched->get_subscheds();
+    CCL_ASSERT(!partial_scheds.empty(), "at least one sub-sched should exist");
+    /* Assign each partial scheduler to the worker in a round-robin manner.
+       Use worker_idx only as a starting point for assignment.
+       This approach covers the case when the sched_id maximum value overflows,
+       therefore partial schedulers ids are not sequential, which means that several schedulers
+       can be assigned to the same worker. This situation can lead to hangs on algos such as barrier. */
+    size_t worker_idx = get_worker_idx_by_sched_id(partial_scheds.front().get());
     for (size_t idx = 0; idx < partial_scheds.size(); idx++) {
-        worker_idx = get_worker_idx_by_sched_id(partial_scheds[idx].get());
         LOG_DEBUG(
             "worker idx: ", worker_idx, ", coll: ", ccl_coll_type_to_str(sched->coll_param.ctype));
         workers[worker_idx]->add(partial_scheds[idx].get());
+        worker_idx = (worker_idx + 1) % workers.size();
     }
 }
 

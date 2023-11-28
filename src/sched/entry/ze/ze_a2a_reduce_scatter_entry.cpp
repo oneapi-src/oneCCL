@@ -15,7 +15,7 @@
 */
 #include "comp/comp.hpp"
 #include "sched/entry/ze/ze_a2a_reduce_scatter_entry.hpp"
-#include "sched/entry/ze/ze_cache.hpp"
+#include "sched/entry/ze/cache/ze_cache.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
 
@@ -126,6 +126,7 @@ void ze_a2a_reduce_scatter_entry::kernel_init(size_t rank_buf_offset,
         std::string kernel_name = "reduce_single_local_inplace_kernel_" + to_string(dtype.idx()) +
                                   "_" + ccl_reduction_to_str(op);
 
+        LOG_DEBUG("get kernel_name: ", kernel_name);
         // reduce peer values in tmp_buf and own values in send_buf into tmp_buf
         kernels.reserve(1);
         void* input_buf = static_cast<char*>(send_buf) + rank_buf_offset * dtype.size();
@@ -136,7 +137,7 @@ void ze_a2a_reduce_scatter_entry::kernel_init(size_t rank_buf_offset,
     else {
         std::string kernel_name = "reduce_local_inplace_kernel_" + to_string(dtype.idx()) + "_" +
                                   ccl_reduction_to_str(op);
-
+        LOG_DEBUG("get kernel_name: ", kernel_name);
         // reduce peer values in tmp_buf only
         kernels.reserve(peer_count);
         for (int i = 1; i < peer_count; ++i) {
@@ -200,7 +201,7 @@ void ze_a2a_reduce_scatter_entry::fill_list(const ze_base_entry* entry,
     CCL_ASSERT(kernels.size(),
                "expecting to launch monolithic kernel(s), but no kernels were passed");
     if (is_monolithic && peer_count <= (int)ccl::ze::max_peer_count) {
-        // reduce stage
+        LOG_DEBUG("reduce stage with kernels");
         for (size_t i = 0; i < kernels.size(); ++i) {
             ZE_APPEND_CALL_TO_ENTRY(entry,
                                     ze_cmd_launch_kernel,
@@ -223,6 +224,7 @@ void ze_a2a_reduce_scatter_entry::fill_list(const ze_base_entry* entry,
         }
     }
     else {
+        LOG_DEBUG("copy peer segments to temp buffer");
         size_t copy_bytes = block_count * dtype.size();
         /* copy peer segments to temp buffer */
         for (int i = 0; i < peer_count; i++) {
@@ -322,8 +324,8 @@ void ze_a2a_reduce_scatter_entry::init_ze_hook() {
         event = ze_base_entry::create_event();
     }
 
-    size_t rank_buf_offset =
-        std::accumulate(recv_counts.begin(), recv_counts.begin() + comm_rank, 0);
+    size_t rank_buf_offset = std::accumulate(
+        recv_counts.begin(), recv_counts.begin() + comm_rank, ccl::utils::initial_count_value);
 
     barrier_event = ze_base_entry::create_event();
 
@@ -379,7 +381,9 @@ void ze_a2a_reduce_scatter_entry::update() {
 std::string ze_a2a_reduce_scatter_entry::name_ext() const {
     std::stringstream out;
     out << name() << ":"
-        << std::accumulate(recv_counts.begin(), recv_counts.end(), 0) * dtype.size();
+        << std::accumulate(
+               recv_counts.begin(), recv_counts.end(), ccl::utils::initial_count_value) *
+               dtype.size();
     return out.str();
 }
 
@@ -390,7 +394,7 @@ ze_a2a_reduce_scatter_write_copy_entry::ze_a2a_reduce_scatter_write_copy_entry(
     const std::vector<ze_event_handle_t>& wait_events)
         : ze_base_entry(sched, wait_events, rs_args.comm, rs_args.comm->size() * event_group_count),
           rs_args(rs_args),
-          rs_bufs(rs_bufs),
+          rs_bufs(std::move(rs_bufs)),
           peer_count(comm->size() - 1) {}
 
 void ze_a2a_reduce_scatter_write_copy_entry::fill_list_copy(
@@ -408,11 +412,14 @@ void ze_a2a_reduce_scatter_write_copy_entry::fill_list_copy(
     ze_context_handle_t context,
     size_t worker_idx,
     const std::vector<ze_event_handle_t>& wait_events) {
+    LOG_DEBUG("use fill_list_copy");
+
     for (int i = 0; i < peer_count; i++) {
         const int peer_rank = (comm_rank + i + 1) % comm_size;
         size_t copy_bytes_peer = rs_args.recv_counts[peer_rank] * rs_args.dtype.size();
-        size_t peer_rank_buf_offset = std::accumulate(
-            rs_args.recv_counts.begin(), rs_args.recv_counts.begin() + peer_rank, 0);
+        size_t peer_rank_buf_offset = std::accumulate(rs_args.recv_counts.begin(),
+                                                      rs_args.recv_counts.begin() + peer_rank,
+                                                      ccl::utils::initial_count_value);
         void* src_write = static_cast<char*>(rs_bufs.send_buf.get_ptr()) +
                           (peer_rank_buf_offset + rs_bufs.send_buf_offset) * rs_args.dtype.size();
         // write to tmp_buffer without creating any gap in the buffer:
@@ -424,7 +431,13 @@ void ze_a2a_reduce_scatter_write_copy_entry::fill_list_copy(
         void* dst_write =
             static_cast<char*>(peer_recv_bufs[i].get_ptr()) + peer_block_offset * copy_bytes_peer;
         // request copy engine at even index, it can be helpful in certain situations
-        auto list = entry->get_copy_list(copy_direction::c2c, (i + 1) * 2);
+
+        auto copy_engine_idx = (i + 1) * 2;
+        if (ccl::global_data::env().type2_mode == type2_tune_mode::detected ||
+            ccl::global_data::env().type2_mode == type2_tune_mode::on) {
+            copy_engine_idx = i * 2;
+        }
+        auto list = entry->get_copy_list(copy_direction::c2c, copy_engine_idx);
 
         ZE_APPEND_CALL_TO_ENTRY(entry,
                                 ze_cmd_memory_copy,
@@ -488,7 +501,9 @@ void ze_a2a_reduce_scatter_write_copy_entry::update() {
 std::string ze_a2a_reduce_scatter_write_copy_entry::name_ext() const {
     std::stringstream out;
     out << name() << ":"
-        << std::accumulate(rs_args.recv_counts.begin(), rs_args.recv_counts.end(), 0) *
+        << std::accumulate(rs_args.recv_counts.begin(),
+                           rs_args.recv_counts.end(),
+                           ccl::utils::initial_count_value) *
                rs_args.dtype.size();
     return out.str();
 }
@@ -500,7 +515,7 @@ ze_a2a_reduce_scatter_write_kernel_entry::ze_a2a_reduce_scatter_write_kernel_ent
     const std::vector<ze_event_handle_t>& wait_events)
         : ze_base_entry(sched, wait_events, rs_args.comm, rs_args.comm->size() * event_group_count),
           rs_args(rs_args),
-          rs_bufs(rs_bufs),
+          rs_bufs(std::move(rs_bufs)),
           peer_count(rs_args.comm->size() - 1) {}
 
 void ze_a2a_reduce_scatter_write_kernel_entry::kernel_init(size_t rank_buf_offset,
@@ -523,6 +538,7 @@ void ze_a2a_reduce_scatter_write_kernel_entry::kernel_init(size_t rank_buf_offse
                                   to_string(rs_args.dtype.idx()) + "_" +
                                   ccl_reduction_to_str(rs_args.op);
 
+        LOG_DEBUG("get kernel name: ", kernel_name);
         // reduce peer values in tmp_buf and own values in send_buf into tmp_buf
         kernels.reserve(1);
         void* input_buf = static_cast<char*>(rs_bufs.send_buf.get_ptr()) +
@@ -535,6 +551,8 @@ void ze_a2a_reduce_scatter_write_kernel_entry::kernel_init(size_t rank_buf_offse
     else {
         std::string kernel_name = "reduce_local_inplace_kernel_" + to_string(rs_args.dtype.idx()) +
                                   "_" + ccl_reduction_to_str(rs_args.op);
+        LOG_DEBUG("get kernel name: ", kernel_name);
+
         kernels.reserve(peer_count);
         for (int i = 1; i < peer_count; ++i) {
             void* input_buf = static_cast<char*>(rs_bufs.send_buf.get_ptr()) +
@@ -595,6 +613,14 @@ void ze_a2a_reduce_scatter_write_kernel_entry::fill_list_kernel(
 void ze_a2a_reduce_scatter_write_kernel_entry::init_ze_hook() {
     size_t buf_bytes = rs_args.dtype.size() * rs_args.recv_counts[comm_rank];
 
+    if (!buf_bytes) {
+        ZE_APPEND_CALL(ze_cmd_barrier,
+                       ze_base_entry::get_copy_list(),
+                       ze_base_entry::entry_event,
+                       wait_events);
+        return;
+    }
+
     if (ccl::global_data::env().enable_kernel_single_reduce_peers) {
         kernel_events.resize(1);
     }
@@ -605,8 +631,9 @@ void ze_a2a_reduce_scatter_write_kernel_entry::init_ze_hook() {
         event = ze_base_entry::create_event();
     }
 
-    size_t rank_buf_offset =
-        std::accumulate(rs_args.recv_counts.begin(), rs_args.recv_counts.begin() + comm_rank, 0);
+    size_t rank_buf_offset = std::accumulate(rs_args.recv_counts.begin(),
+                                             rs_args.recv_counts.begin() + comm_rank,
+                                             ccl::utils::initial_count_value);
 
     barrier_event = ze_base_entry::create_event();
 
@@ -633,9 +660,6 @@ void ze_a2a_reduce_scatter_write_kernel_entry::init_ze_hook() {
                    buf_bytes,
                    ze_base_entry::entry_event,
                    kernel_events);
-
-    ZE_APPEND_CALL(
-        ze_cmd_barrier, ze_base_entry::get_copy_list(), ze_base_entry::entry_event, kernel_events);
 }
 
 void ze_a2a_reduce_scatter_write_kernel_entry::update() {
@@ -645,7 +669,9 @@ void ze_a2a_reduce_scatter_write_kernel_entry::update() {
 std::string ze_a2a_reduce_scatter_write_kernel_entry::name_ext() const {
     std::stringstream out;
     out << name() << ":"
-        << std::accumulate(rs_args.recv_counts.begin(), rs_args.recv_counts.end(), 0) *
+        << std::accumulate(rs_args.recv_counts.begin(),
+                           rs_args.recv_counts.end(),
+                           ccl::utils::initial_count_value) *
                rs_args.dtype.size();
     return out.str();
 }

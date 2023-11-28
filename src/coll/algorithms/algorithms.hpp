@@ -178,6 +178,23 @@ ccl::status ccl_coll_build_topo_bcast(ccl_sched* sched,
                                       ccl_comm* comm);
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
+// recv
+ccl::status ccl_coll_build_direct_recv(ccl_sched* sched,
+                                       ccl_buffer buf,
+                                       size_t count,
+                                       const ccl_datatype& dtype,
+                                       int peer_rank,
+                                       ccl_comm* comm);
+
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+ccl::status ccl_coll_build_topo_recv(ccl_sched* sched,
+                                     ccl_buffer buf,
+                                     size_t count,
+                                     const ccl_datatype& dtype,
+                                     int peer_rank,
+                                     ccl_comm* comm);
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+
 // reduce
 ccl::status ccl_coll_build_direct_reduce(ccl_sched* sched,
                                          ccl_buffer send_buf,
@@ -252,6 +269,23 @@ ccl::status ccl_coll_build_topo_reduce_scatter(ccl_sched* sched,
                                                const ccl_datatype& dtype,
                                                ccl::reduction reduction,
                                                ccl_comm* comm);
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+
+// send
+ccl::status ccl_coll_build_direct_send(ccl_sched* sched,
+                                       ccl_buffer buf,
+                                       size_t count,
+                                       const ccl_datatype& dtype,
+                                       int peer_rank,
+                                       ccl_comm* comm);
+
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+ccl::status ccl_coll_build_topo_send(ccl_sched* sched,
+                                     ccl_buffer buf,
+                                     size_t count,
+                                     const ccl_datatype& dtype,
+                                     int peer_rank,
+                                     ccl_comm* comm);
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
 class ccl_double_tree;

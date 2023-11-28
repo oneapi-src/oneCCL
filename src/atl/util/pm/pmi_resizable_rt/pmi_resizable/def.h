@@ -51,11 +51,19 @@ typedef enum { KVS_STATUS_SUCCESS, KVS_STATUS_FAILURE, KVS_STATUS_UNSUPPORTED } 
         } \
     } while (0)
 
-#define CHECK_FGETS(expr, str) \
+#define CHECK_FGETS(expr, str, fd) \
     do { \
         char* res = expr; \
-        if (!res || res != str) { \
-            LOG_ERROR("fgets error: ", strerror(errno)); \
+        int fgets_errno = errno; \
+        int pclose_ret = pclose(fd); \
+        int pclose_errno = errno; \
+        if (!res || res != str || pclose_ret) { \
+            if (!res || res != str) { \
+                LOG_ERROR("fgets error: ", strerror(fgets_errno)); \
+            } \
+            if (pclose_ret) { \
+                LOG_ERROR("pclose error: ", strerror(pclose_errno)); \
+            } \
             return KVS_STATUS_FAILURE; \
         } \
     } while (0)

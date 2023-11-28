@@ -59,10 +59,12 @@ typedef struct ze_lib_ops {
     decltype(zeCommandListAppendWaitOnEvents) *zeCommandListAppendWaitOnEvents;
     decltype(zeCommandListAppendSignalEvent) *zeCommandListAppendSignalEvent;
     decltype(zeCommandListAppendBarrier) *zeCommandListAppendBarrier;
+    decltype(zeCommandListAppendMemoryRangesBarrier) *zeCommandListAppendMemoryRangesBarrier;
     decltype(zeCommandListClose) *zeCommandListClose;
     decltype(zeCommandListReset) *zeCommandListReset;
     decltype(zeCommandListDestroy) *zeCommandListDestroy;
     decltype(zeContextCreate) *zeContextCreate;
+    decltype(zeContextSystemBarrier) *zeContextSystemBarrier;
     decltype(zeContextDestroy) *zeContextDestroy;
     decltype(zeEventPoolCreate) *zeEventPoolCreate;
     decltype(zeEventCreate) *zeEventCreate;
@@ -133,10 +135,12 @@ static std::vector<std::string> ze_fn_names = {
     "zeCommandListAppendWaitOnEvents",
     "zeCommandListAppendSignalEvent",
     "zeCommandListAppendBarrier",
+    "zeCommandListAppendMemoryRangesBarrier",
     "zeCommandListClose",
     "zeCommandListReset",
     "zeCommandListDestroy",
     "zeContextCreate",
+    "zeContextSystemBarrier",
     "zeContextDestroy",
     "zeEventPoolCreate",
     "zeEventCreate",
@@ -209,10 +213,13 @@ extern ccl::ze_lib_ops_t ze_lib_ops;
 #define zeCommandListAppendWaitOnEvents   ccl::ze_lib_ops.zeCommandListAppendWaitOnEvents
 #define zeCommandListAppendSignalEvent    ccl::ze_lib_ops.zeCommandListAppendSignalEvent
 #define zeCommandListAppendBarrier        ccl::ze_lib_ops.zeCommandListAppendBarrier
+#define zeCommandListAppendMemoryRangesBarrier \
+    ccl::ze_lib_ops.zeCommandListAppendMemoryRangesBarrier
 #define zeCommandListClose                ccl::ze_lib_ops.zeCommandListClose
 #define zeCommandListReset                ccl::ze_lib_ops.zeCommandListReset
 #define zeCommandListDestroy              ccl::ze_lib_ops.zeCommandListDestroy
 #define zeContextCreate                   ccl::ze_lib_ops.zeContextCreate
+#define zeContextSystemBarrier            ccl::ze_lib_ops.zeContextSystemBarrier
 #define zeContextDestroy                  ccl::ze_lib_ops.zeContextDestroy
 #define zeEventPoolCreate                 ccl::ze_lib_ops.zeEventPoolCreate
 #define zeEventCreate                     ccl::ze_lib_ops.zeEventCreate

@@ -13,6 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#include "atl/mpi/atl_mpi_ctx.hpp"
 #include "coll/selection/selection.hpp"
 #include "comm/comm.hpp"
 #include "common/global/global.hpp"
@@ -30,7 +31,11 @@ std::string to_string(const ccl_selector_param& param) {
        << ", dt: " << ccl::global_data::get().dtypes->name(param.dtype);
 
     if (param.comm) {
-        ss << ", comm: { rank: " << param.comm->rank() << ", size: " << param.comm->size() << " }";
+        ss << ", comm: { rank: " << param.comm->rank() << ", size: " << param.comm->size();
+        if (param.ctype == ccl_coll_recv || param.ctype == ccl_coll_send) {
+            ss << ", peer_rank: " << param.peer_rank;
+        }
+        ss << " }";
     }
 
     if (param.stream) {
@@ -83,11 +88,32 @@ bool ccl_is_direct_algo(const ccl_selector_param& param) {
     else if (param.ctype == ccl_coll_bcast) {
         res = (selector->get<ccl_coll_bcast>(param) == ccl_coll_bcast_direct);
     }
+    else if (param.ctype == ccl_coll_recv) {
+        res = (selector->get<ccl_coll_recv>(param) == ccl_coll_recv_direct);
+    }
     else if (param.ctype == ccl_coll_reduce) {
         res = (selector->get<ccl_coll_reduce>(param) == ccl_coll_reduce_direct);
     }
     else if (param.ctype == ccl_coll_reduce_scatter) {
         res = (selector->get<ccl_coll_reduce_scatter>(param) == ccl_coll_reduce_scatter_direct);
+    }
+    else if (param.ctype == ccl_coll_send) {
+        res = (selector->get<ccl_coll_send>(param) == ccl_coll_send_direct);
+    }
+
+    return res;
+}
+
+bool ccl_is_offload_pt2pt_algo(const ccl_selector_param& param) {
+    bool res = false;
+
+    auto& selector = ccl::global_data::get().algorithm_selector;
+
+    if (param.ctype == ccl_coll_recv) {
+        res = (selector->get<ccl_coll_recv>(param) == ccl_coll_recv_offload);
+    }
+    else if (param.ctype == ccl_coll_send) {
+        res = (selector->get<ccl_coll_send>(param) == ccl_coll_send_offload);
     }
 
     return res;
@@ -183,6 +209,9 @@ static bool ccl_is_device_side_algo(ccl_coll_algo algo, const ccl_selector_param
     else if (param.ctype == ccl_coll_bcast) {
         return algo.bcast == ccl_coll_bcast_topo;
     }
+    else if (param.ctype == ccl_coll_recv) {
+        return algo.recv == ccl_coll_recv_topo;
+    }
     else if (param.ctype == ccl_coll_reduce) {
         return algo.reduce == ccl_coll_reduce_topo;
     }
@@ -191,9 +220,12 @@ static bool ccl_is_device_side_algo(ccl_coll_algo algo, const ccl_selector_param
 #ifdef CCL_ENABLE_SYCL
         return algo.reduce_scatter == ccl_coll_reduce_scatter_topo &&
                ccl::global_data::env().enable_ze_bidir_algo;
-#else
+#else // CCL_ENABLE_SYCL
         return algo.reduce_scatter == ccl_coll_reduce_scatter_topo;
 #endif // CCL_ENABLE_SYCL
+    }
+    else if (param.ctype == ccl_coll_send) {
+        return algo.send == ccl_coll_send_topo;
     }
 
     return false;
@@ -204,9 +236,9 @@ bool ccl_is_device_side_algo(const ccl_selector_param& param) {
     return false;
 #endif // CCL_ENABLE_SYCL
 
-    auto supported_colls = { ccl_coll_allgatherv,    ccl_coll_allreduce, ccl_coll_alltoall,
-                             ccl_coll_alltoallv,     ccl_coll_bcast,     ccl_coll_reduce,
-                             ccl_coll_reduce_scatter };
+    auto supported_colls = { ccl_coll_allgatherv, ccl_coll_allreduce,      ccl_coll_alltoall,
+                             ccl_coll_alltoallv,  ccl_coll_bcast,          ccl_coll_recv,
+                             ccl_coll_reduce,     ccl_coll_reduce_scatter, ccl_coll_send };
     RETURN_FALSE_IF(!checkers::is_coll_supported(supported_colls, param.ctype),
                     "coll ",
                     ccl_coll_type_to_str(param.ctype),
@@ -230,11 +262,17 @@ bool ccl_is_device_side_algo(const ccl_selector_param& param) {
     else if (param.ctype == ccl_coll_bcast) {
         algo.bcast = selector->get<ccl_coll_bcast>(param);
     }
+    else if (param.ctype == ccl_coll_recv) {
+        algo.recv = selector->get<ccl_coll_recv>(param);
+    }
     else if (param.ctype == ccl_coll_reduce) {
         algo.reduce = selector->get<ccl_coll_reduce>(param);
     }
     else if (param.ctype == ccl_coll_reduce_scatter) {
         algo.reduce_scatter = selector->get<ccl_coll_reduce_scatter>(param);
+    }
+    else if (param.ctype == ccl_coll_send) {
+        algo.send = selector->get<ccl_coll_send>(param);
     }
 
     return ccl_is_device_side_algo(algo, param);
@@ -247,9 +285,9 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
     return false;
 #endif // CCL_ENABLE_SYCL
 
-    auto supported_colls = { ccl_coll_allgatherv,    ccl_coll_allreduce, ccl_coll_alltoall,
-                             ccl_coll_alltoallv,     ccl_coll_bcast,     ccl_coll_reduce,
-                             ccl_coll_reduce_scatter };
+    auto supported_colls = { ccl_coll_allgatherv, ccl_coll_allreduce,      ccl_coll_alltoall,
+                             ccl_coll_alltoallv,  ccl_coll_bcast,          ccl_coll_recv,
+                             ccl_coll_reduce,     ccl_coll_reduce_scatter, ccl_coll_send };
     RETURN_FALSE_IF(!checkers::is_coll_supported(supported_colls, param.ctype),
                     "coll is not supported");
 
@@ -293,9 +331,24 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
     RETURN_FALSE_IF(!param.comm->get_topo_manager().has_same_domains(),
                     "processes are not properly distributed among domains");
 
-    if (!ccl::global_data::env().ze_disable_oversubscription_check) {
-        RETURN_FALSE_IF(param.comm->get_topo_manager().has_oversubscription(),
-                        "oversubscription case: one rank per device is only supported");
+    if (comm_size > 2 && !(param.ctype == ccl_coll_recv || param.ctype == ccl_coll_send)) {
+        if (ccl::global_data::env().ze_enable_oversubscription_throw) {
+            CCL_THROW_IF_NOT(
+                !param.comm->get_topo_manager().has_oversubscription(),
+                "oversubscription case is detected: \n OneCCL expects max one rank per device, "
+                " but count of unique devices: ",
+                param.comm->get_topo_manager().get_unique_device_uuids_count(),
+                ", comm_size: ",
+                comm_size,
+                "\n specify comm_size to: ",
+                param.comm->get_topo_manager().get_unique_device_uuids_count());
+        }
+        else {
+            if (ccl::global_data::env().ze_enable_oversubscription_fallback) {
+                RETURN_FALSE_IF(param.comm->get_topo_manager().has_oversubscription(),
+                                "oversubscription case: one rank per device is only supported");
+            }
+        }
     }
 
     RETURN_FALSE_IF(!ccl::global_data::env().enable_ze_bidir_algo &&
@@ -358,8 +411,62 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
     RETURN_FALSE_IF(!checkers::is_single_card(param) && !checkers::is_single_node(param) &&
                         (local_proc_count % 2 != 0),
                     "odd proc count per node is not supported");
+
     RETURN_FALSE_IF((param.ctype == ccl_coll_reduce) && (param.count < size_t(param.comm->size())),
                     "reduce with count < comm_size not supported");
+
+    if (param.ctype == ccl_coll_recv || param.ctype == ccl_coll_send) {
+        auto node_comm = param.comm->get_node_comm().get();
+        bool peer_rank_in_node_comm = node_comm->try_get_rank_from_global(param.peer_rank);
+        bool rank_in_node_comm = node_comm->try_get_rank_from_global(param.comm->rank());
+
+        RETURN_FALSE_IF(!(rank_in_node_comm && peer_rank_in_node_comm),
+                        "peer_rank must be on the same node as own rank is: comm_rank: ",
+                        param.comm->rank(),
+                        ", peer_rank: ",
+                        param.peer_rank,
+                        ", rank_in_node_comm: ",
+                        rank_in_node_comm,
+                        ", peer_rank_in_node_comm: ",
+                        peer_rank_in_node_comm,
+                        ", node_comm_size: ",
+                        node_comm->size());
+
+        if (ccl::global_data::env().recv_algo_raw.length() != 0 &&
+            ccl::global_data::env().send_algo_raw.length() != 0) {
+            auto recv_algo = ccl_algorithm_selector_helper<ccl_coll_recv_algo>::algo_from_str(
+                ccl::global_data::env().recv_algo_raw);
+            auto send_algo = ccl_algorithm_selector_helper<ccl_coll_send_algo>::algo_from_str(
+                ccl::global_data::env().send_algo_raw);
+            RETURN_FALSE_IF(
+                (recv_algo == ccl_coll_recv_direct) || (send_algo == ccl_coll_send_direct),
+                " pt2pt operations algo must be the same: CCL_SEND=",
+                ccl::global_data::env().send_algo_raw,
+                ", CCL_RECV=",
+                ccl::global_data::env().recv_algo_raw);
+        }
+
+#ifdef CCL_ENABLE_SYCL
+        auto rank_color = param.comm->get_topo_manager().get_intra_card_color(param.comm->rank());
+        auto peer_rank_color = param.comm->get_topo_manager().get_intra_card_color(param.peer_rank);
+
+        if (rank_color == peer_rank_color && !ccl::global_data::env().ze_pt2pt_read) {
+            ccl::global_data::env().ze_pt2pt_read = 1;
+            LOG_DEBUG("pt2pt: force read algo for within card execution case:"
+                      " { color: ",
+                      rank_color,
+                      ", rank: ",
+                      node_comm->rank(),
+                      " },"
+                      " { peer_color: ",
+                      peer_rank_color,
+                      ", peer_rank: ",
+                      param.peer_rank,
+                      " }");
+        }
+#endif // CCL_ENABLE_SYCL
+    }
+
     return true;
 }
 
@@ -396,4 +503,33 @@ bool ccl_can_use_datatype(ccl_coll_algo algo, const ccl_selector_param& param) {
     }
 
     return can_use;
+}
+
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+void set_offload_pt2pt_mpi_env() {
+    auto lib_attr = atl_mpi_ctx::get_lib_attr();
+    if (lib_attr.type == atl_mpi_ctx::ATL_MPI_LIB_IMPI && lib_attr.hmem == 1) {
+        setenv("I_MPI_OFFLOAD", "2", 0);
+        LOG_DEBUG("IMPI case: I_MPI_OFFLOAD is set");
+    }
+    else if (lib_attr.type == atl_mpi_ctx::ATL_MPI_LIB_MPICH && lib_attr.hmem == 1) {
+        setenv("MPIR_CVAR_CH4_OFI_ENABLE_GPU_PIPELINE", "1", 0);
+        setenv("MPIR_CVAR_CH4_OFI_GPU_PIPELINE_MAX_NUM_BUFFERS", "8", 0);
+        setenv("MPIR_CVAR_CH4_OFI_GPU_PIPELINE_NUM_BUFFERS_PER_CHUNK", "4", 0);
+        setenv("MPIR_CVAR_CH4_OFI_GPU_PIPELINE_BUFFER_SZ", "524288", 0);
+        setenv("MPIR_CVAR_CH4_OFI_GPU_PIPELINE_H2D_ENGINE_TYPE", "1", 0);
+        setenv("MPIR_CVAR_CH4_OFI_GPU_PIPELINE_D2H_ENGINE_TYPE", "1", 0);
+        LOG_DEBUG("MPIR case: MPIR_CVAR_ENABLE_GPU is set in MPICH internally");
+    }
+}
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+
+bool use_pt2pt_offload_algo() {
+    bool res = true;
+    const char* env_value = std::getenv("PSM3_GPUDIRECT");
+    if ((env_value == nullptr || std::strcmp(env_value, "0") == 0) &&
+        ccl::global_data::env().atl_transport == ccl_atl_ofi) {
+        res = false;
+    }
+    return res;
 }

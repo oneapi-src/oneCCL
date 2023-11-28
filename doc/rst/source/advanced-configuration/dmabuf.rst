@@ -54,20 +54,7 @@ OFI
 Run instructions
 ################
 
-1. Set the environment.
-
-   If |base_tk| is used:
-
-   ::
-
-       source <toolkit_install_dir>/setvars.sh
-
-   If software components are built from sources:
-
-   ::
-
-       source <ccl_install_dir>/env/setvars.sh
-       export LD_LIBRARY_PATH=<ofi_install_path>/lib:${LD_LIBRARY_PATH}
+1. Set the environment. See `Get Started Guide <https://www.intel.com/content/www/us/en/docs/oneccl/get-started-guide/2021-10/overview.html>`_.
 
 2. Run allreduce test with ring algorithm and SYCL USM device buffers:
 

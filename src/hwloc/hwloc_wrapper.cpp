@@ -17,20 +17,17 @@
 #include "hwloc/hwloc_wrapper.hpp"
 
 ccl_numa_node::ccl_numa_node()
-        : idx(CCL_UNDEFINED_NUMA_NODE),
-          os_idx(CCL_UNDEFINED_NUMA_NODE),
+        : os_idx(CCL_UNDEFINED_NUMA_NODE),
           mem_in_mb(0),
           core_count(0),
           membind_support(0) {}
 
-ccl_numa_node::ccl_numa_node(int idx,
-                             int os_idx,
+ccl_numa_node::ccl_numa_node(int os_idx,
                              size_t mem_in_mb,
                              int core_count,
                              const std::vector<int>& cpus,
                              int membind_support)
-        : idx(idx),
-          os_idx(os_idx),
+        : os_idx(os_idx),
           mem_in_mb(mem_in_mb),
           core_count(core_count),
           cpus(cpus),
@@ -40,7 +37,7 @@ std::string ccl_numa_node::to_string() {
     std::stringstream ss;
 
     ss << "{"
-       << "idx: " << idx << ", memory: " << mem_in_mb << " MB"
+       << "os_idx: " << os_idx << ", memory: " << mem_in_mb << " MB"
        << ", cores: " << core_count << ", cpus: " << cpus.size() << ", membind: " << membind_support
        << "}";
 
@@ -84,7 +81,6 @@ ccl_hwloc_wrapper::ccl_hwloc_wrapper()
         LOG_WARN("no support for memory binding of current thread");
     }
 
-    int idx = 0;
     hwloc_obj_t numa_node = nullptr;
     while ((numa_node = hwloc_get_next_obj_by_type(topology, HWLOC_OBJ_NUMANODE, numa_node)) !=
            nullptr) {
@@ -106,8 +102,7 @@ ccl_hwloc_wrapper::ccl_hwloc_wrapper()
             }
         }
         numa_nodes.push_back(
-            ccl_numa_node(idx, os_idx, mem_in_mb, core_count, cpus, check_membind(os_idx)));
-        ++idx;
+            ccl_numa_node(os_idx, mem_in_mb, core_count, cpus, check_membind(os_idx)));
     }
 }
 
@@ -128,11 +123,7 @@ std::string ccl_hwloc_wrapper::to_string() {
         ss << "{\n";
         ss << "  membind_thread_supported: " << membind_thread_supported << "\n";
         for (auto& node : numa_nodes) {
-            ss << "  numa: { "
-               << "idx: " << node.idx << ", os idx: " << node.os_idx
-               << ", memory: " << node.mem_in_mb << " MB"
-               << ", cores: " << node.core_count << ", cpus: " << node.cpus.size()
-               << ", membind: " << node.membind_support << " }\n";
+            ss << "  numa: " << node.to_string() << "\n";
         }
         ss << "}";
     }
@@ -227,7 +218,7 @@ int ccl_hwloc_wrapper::get_numa_node_by_cpu(int cpu) {
     for (auto& node : numa_nodes) {
         for (auto cpu_idx : node.cpus) {
             if (cpu_idx == cpu) {
-                return node.idx;
+                return node.os_idx;
             }
         }
     }
@@ -241,20 +232,38 @@ ccl_numa_node ccl_hwloc_wrapper::get_numa_node(int numa_node) {
         return {};
     }
 
+    for (auto node : numa_nodes) {
+        if (node.os_idx == numa_node) {
+            return node;
+        }
+    }
+
+    // is_valid_numa_node() iterates through the numa_nodes vector. To avoid
+    // iterating through the vector twice, we first check whether we find it
+    // (see loop above) before calling is_valid_numa_node().
     if (!is_valid_numa_node(numa_node)) {
         LOG_WARN("invalid NUMA node ", numa_node, ", NUMA node count ", get_numa_node_count());
         return {};
     }
 
-    return numa_nodes[numa_node];
+    // We should never reach this point.
+    CCL_THROW("invalid NUMA node ",
+              numa_node,
+              ". (But this should've been caught by is_valid_numa_node)");
 }
 
 bool ccl_hwloc_wrapper::is_valid_numa_node(int numa_node) {
-    if ((numa_node == CCL_UNDEFINED_NUMA_NODE) || (numa_node < 0) ||
-        (numa_node >= static_cast<int>(get_numa_node_count()))) {
+    if ((numa_node == CCL_UNDEFINED_NUMA_NODE) || (numa_node < 0)) {
         return false;
     }
-    return true;
+
+    for (auto node : numa_nodes) {
+        if (node.os_idx == numa_node) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 bool ccl_hwloc_wrapper::check_membind(int numa_node) {

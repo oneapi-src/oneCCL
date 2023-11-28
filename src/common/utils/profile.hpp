@@ -15,24 +15,21 @@
 */
 #pragma once
 
-#include "coll/coll.hpp"
+#include <map>
 
-struct ccl_coll_entry_param {
-    ccl_coll_type ctype{ ccl_coll_last_value };
-    ccl_buffer send_buf{};
-    ccl_buffer recv_buf{};
-    size_t count{};
-    size_t send_count{};
-    std::vector<ccl_buffer> send_bufs;
-    std::vector<ccl_buffer> recv_bufs;
-    const size_t* send_counts{};
-    const size_t* recv_counts{};
-    ccl_datatype dtype{};
-    ccl::reduction reduction{ ccl::reduction::sum };
-    int root{};
-    int peer_rank = CCL_INVALID_PEER_RANK_IDX;
-    ccl_comm* comm{};
-    ccl_stream* stream{};
-    ccl_coll_algo hint_algo{};
-    bool is_scaleout{ false };
+namespace ccl {
+namespace profile {
+
+class metrics_manager {
+    void finalize();
+
+public:
+    std::map<size_t, size_t> allreduce_pipe_nonparallel_calls_per_count,
+        allreduce_pipe_parallel_calls_per_count;
+
+    void init();
+    ~metrics_manager();
 };
+
+} // namespace profile
+} // namespace ccl

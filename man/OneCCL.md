@@ -256,6 +256,44 @@ Note: REDUCE_SCATTER algorithm does not support yet the CCL_REDUCE_SCATTER_SCALE
 By-default: &quot;direct&quot; 
         
 
+## CCL_RECV
+
+
+Set recv algorithm. 
+        
+
+
+RECV algorithms
+ - direct Using prepost(d2h-h2d) copies to get host buffers to invoke mpi/ofi-&gt;recv()
+
+ - topo Topo scale-up algorithm (available if sycl and l0 are enabled)
+
+ - offload Using device buffers directly into mpi/ofi layer skipping prepost copies d2h h2d. By-default used for scale-out. Setting extra MPI env vars for getting better performance (available if sycl and l0 are enabled)
+
+
+
+By-default: &quot;topo&quot; if sycl and l0 are enabled, otherwise offload for ofi/mpi transport 
+        
+
+## CCL_SEND
+
+
+Set send algorithm. 
+        
+
+
+SEND algorithms
+ - direct Using prepost(d2h-h2d) copies to get host buffers to invoke mpi/ofi-&gt;send()
+
+ - topo Topo scale-up algorithm (available if sycl and l0 are enabled)
+
+ - offload Using device buffers directly into mpi/ofi layer skipping prepost copies d2h h2d. By-default used for scale-out. Setting extra MPI env vars for getting better performance (available if sycl and l0 are enabled)
+
+
+
+By-default: &quot;topo&quot; if sycl and l0 are enabled, otherwise offload for ofi/mpi transport 
+        
+
 ## CCL_ALLGATHERV_SCALEOUT
 
 
@@ -389,6 +427,27 @@ Set to specify minimum number of bytes in chunk for reduce_scatter phase in ring
 By-default: &quot;65536&quot; 
         
 
+## CCL_REDUCE_SCATTER_TOPO_READ
+
+
+Set this environment variable to select read or write based device-to-device data copy during the reduce_scatter stage of Allreduce, Reduce, and Reduce-Scatter collectives using device (GPU) buffers. 
+        
+
+
+Syntax CCL_REDUCE_SCATTER_TOPO_READ=&quot;&lt;value&gt;&quot;
+Arguments
+&quot;&lt;value&gt;&quot; Description
+ - 1 Uses read based copy to transfer data across GPUs for the reduce_scatter stage of Allreduce, Reduce, and Reduce-Scatter collectives (default).
+
+ - 0 Uses write based copy to transfer data across GPUs for the reduce_scatter stage of Allreduce, Reduce, and Reduce-Scatter collectives.
+
+
+
+Description
+Set this environment variable to select read or write based device-to-device data copy during the reduce_scatter stage of Allreduce, Reduce, and Reduce-Scatter collectives using device (GPU) buffers.
+By-default: &quot;1&quot; 
+        
+
 ## CCL_REDUCE_SCATTER_MONOLITHIC_KERNEL
 
 
@@ -451,6 +510,94 @@ Arguments
 Description
 Set this environment variable to enable compute kernels for Alltoall and Alltoallv collectives using device (GPU) buffers
 By-default: &quot;1&quot; 
+        
+
+## CCL_ALLGATHERV_PIPE_CHUNK_COUNT
+
+
+Set this environment variable to enable pipelining implementation for Allgatherv collectives using device (GPU) buffers. 
+        
+
+
+Syntax
+CCL_ALLGATHERV_PIPE_CHUNK_COUNT=&quot;&lt;value&gt;&quot; Arguments
+&quot;&lt;value&gt;&quot; Description
+ - 0: (default) Bypasses the chunking/pipelining code and directly calls the topology-aware code
+
+ - 1: Calls the pipelining code with a single chunk. Effectively, it has identical behavior and performance as with &quot;0&quot;, but exercises the chunking code path with a single chunk.
+
+
+
+2 or higher: Divides the message into as many logical parts, or chunks, as specified. Then, it executes the collective with each logical chunk. This should allow for several phases of the algorithm to run in parallel, as long as they don't use the same physical resource. Effectively, this should increase performance.
+Description
+Set this environment variable to enable control how many chunks are used for Allgatherv, pipeline-based collectives using device (GPU) buffers.
+By-default: &quot;0&quot; 
+        
+
+## CCL_ALLREDUCE_PIPE_CHUNK_COUNT
+
+
+Set this environment variable to enable pipelining implementation for Allreduce collectives using device (GPU) buffers. 
+        
+
+
+Syntax
+CCL_ALLREDUCE_PIPE_CHUNK_COUNT=&quot;&lt;value&gt;&quot; Arguments
+&quot;&lt;value&gt;&quot; Description
+ - 0: (default) Bypasses the chunking/pipelining code and directly calls the topology-aware code
+
+ - 1: Calls the pipelining code with a single chunk. Effectively, it has identical behavior and performance as with &quot;0&quot;, but exercises the chunking code path with a single chunk.
+
+
+
+2 or higher: Divides the message into as many logical parts, or chunks, as specified. Then, it executes the collective with each logical chunk. This should allow for several phases of the algorithm to run in parallel, as long as they don't use the same physical resource. Effectively, this should increase performance.
+Description
+Set this environment variable to enable control how many chunks are used for Allreduce pipeline-based collectives using device (GPU) buffers.
+By-default: &quot;0&quot; 
+        
+
+## CCL_REDUCE_SCATTER_PIPE_CHUNK_COUNT
+
+
+Set this environment variable to enable pipelining implementation for Reduce_Scatter collectives using device (GPU) buffers. 
+        
+
+
+Syntax
+CCL_REDUCE_SCATTER_PIPE_CHUNK_COUNT=&quot;&lt;value&gt;&quot; Arguments
+&quot;&lt;value&gt;&quot; Description
+ - 0: (default) Bypasses the chunking/pipelining code and directly calls the topology-aware code
+
+ - 1: Calls the pipelining code with a single chunk. Effectively, it has identical behavior and performance as with &quot;0&quot;, but exercises the chunking code path with a single chunk.
+
+
+
+2 or higher: Divides the message into as many logical parts, or chunks, as specified. Then, it executes the collective with each logical chunk. This should allow for several phases of the algorithm to run in parallel, as long as they don't use the same physical resource. Effectively, this should increase performance.
+Description
+Set this environment variable to enable control how many chunks are used for Reduce_Scatter pipeline-based collectives using device (GPU) buffers.
+By-default: &quot;0&quot; 
+        
+
+## CCL_REDUCE_PIPE_CHUNK_COUNT
+
+
+Set this environment variable to enable pipelining implementation for Reduce collectives using device (GPU) buffers. 
+        
+
+
+Syntax
+CCL_REDUCE_PIPE_CHUNK_COUNT=&quot;&lt;value&gt;&quot; Arguments
+&quot;&lt;value&gt;&quot; Description
+ - 0: (default) Bypasses the chunking/pipelining code and directly calls the topology-aware code
+
+ - 1: Calls the pipelining code with a single chunk. Effectively, it has identical behavior and performance as with &quot;0&quot;, but exercises the chunking code path with a single chunk.
+
+
+
+2 or higher: Divides the message into as many logical parts, or chunks, as specified. Then, it executes the collective with each logical chunk. This should allow for several phases of the algorithm to run in parallel, as long as they don't use the same physical resource. Effectively, this should increase performance.
+Description
+Set this environment variable to enable control how many chunks are used for Reduce pipeline-based collectives using device (GPU) buffers.
+By-default: &quot;0&quot; 
         
 
 ## CCL_LOCAL_RANK
@@ -517,6 +664,30 @@ Arguments
 Description
 Set this environment variable to specify the job launcher to use.
 By-default: &quot;hydra&quot; 
+        
+
+## CCL_ZE_ENABLE_OVERSUBSCRIPTION_FALLBACK
+
+
+Set to enable oversubscription in topo fallback stage for all collectives. 
+        
+
+
+This enviroment variable enables or disables the oversubscription fallback from topo algorithm to copy in/out
+&quot;&lt;value&gt;&quot; : &quot;0&quot;, &quot;1&quot;
+By-default: &quot;1&quot; 
+        
+
+## CCL_ZE_ENABLE_OVERSUBSCRIPTION_THROW
+
+
+Set to enable oversubscription throw for all collectives. 
+        
+
+
+This enviroment variable enables or disables the oversubscription throw check
+&quot;&lt;value&gt;&quot; : &quot;0&quot;, &quot;1&quot;
+By-default: &quot;1&quot; 
         
 
 
@@ -587,6 +758,44 @@ Automatically tune algorithm protocols based on port count.
 Use number of ports to detect the 12 ports system and use write protocols on such systems for collectives. Users can disable this automatic detection and select the protocols manually.
 &quot;&lt;value&gt;&quot; : &quot;0&quot;, &quot;1&quot;
 By-default: &quot;1&quot; 
+        
+
+## CCL_ZE_PT2PT_READ
+
+
+Enable switching of read and write protocols for pt2pt topo algorithm. 
+        
+
+
+Control pt2pt read/write protocols.<br />
+ Read Protocol:<br />
+ It means SEND side is exchanging the handle with RECV side. Then execute the copy operation on the RECV operation side, where the dst buf is the local buffer and the source buffer is the remote buffer.<br />
+ Write Protocol:<br />
+ it means RECV side is exchanging the handle with SEND side. Execute the copy operation on the SEND operation side, where the dst buf is the remote buffer and the source buffer is the local buffer. <br />
+ &quot;&lt;value&gt;&quot; : &quot;0&quot;, &quot;1&quot; <br />
+ By-default: &quot;1&quot; 
+        
+
+## CCL_ZE_TYPE2_TUNE_PORTS
+
+
+Tunable value for collectives to adjust copy engine indexes. 
+        
+
+
+use 2,4,6 copy engine indexes for host with 6 ports for allreduce, reduce and allgatherv &quot;&lt;value&gt;&quot;: &quot;on&quot; - always use write mode with calculated indexes &quot;off&quot; - always disabled &quot;detected&quot; - determined by the logic in detection &quot;undetected&quot; - the default value, used before the logic in detection
+By-default: &quot;undetected&quot; 
+        
+
+## CCL_BARRIER_SYNC
+
+
+Switch ccl::barrier() host-sync / host-async options. 
+        
+
+
+Historically ccl::barrier() was always synchronous. That does not match with oneCCL asynchronous concept. Same as other collectives, ccl::barrier() should be host-asynchronous if possible. As it would be too much to change in one moment, we start through experimental variable which introduces the option to make barrier host-asynchronous. Use CCL_BARRIER_SYNC=0 to achieve that.
+By-default: &quot;1 (SYNC)&quot; 
         
 
 

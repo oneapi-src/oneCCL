@@ -142,16 +142,6 @@ class alignas(CACHELINE_SIZE) ccl_comm : public ccl::comm_interface {
 public:
     static constexpr int invalid_rank = -1;
 
-    // maximum value of schedule id in scope of the current communicator
-    static constexpr ccl_sched_id_t max_sched_count =
-        std::numeric_limits<ccl_sched_id_t>::max() - 1;
-    // We have declared the tag using the data type ccl_sched_id_t,
-    // which is equivalent to a 16-bit unsigned integer. For pt2pt,
-    // we use the maximum value that can be represented with these 16
-    // bits as the tag. This approach works effectively because the
-    // schedule_id in the tag also uses 16 bits
-    static constexpr ccl_sched_id_t pt2pt_sched_id = std::numeric_limits<ccl_sched_id_t>::max();
-
     void init(int comm_id,
               std::shared_ptr<atl_base_comm> atl_comm,
               bool share_resources = false,
@@ -223,7 +213,8 @@ public:
     int get_global_rank(int rank) const;
 
     int get_rank_from_global(int global_rank) const;
-    ccl_sched_id_t get_sched_id(bool use_internal_space);
+    bool try_get_rank_from_global(int global_rank) const;
+    ccl_sched_id_t get_sched_id(bool use_internal_space, bool is_pt2pt);
 
     device_ptr_t get_device() const override {
         return device_ptr;

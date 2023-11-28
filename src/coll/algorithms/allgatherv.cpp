@@ -45,6 +45,11 @@ ccl::status ccl_coll_build_naive_allgatherv(ccl_sched* sched,
                                             const ccl_datatype& dtype,
                                             ccl_comm* comm) {
     LOG_DEBUG("build naive allgatherv");
+    CCL_THROW_IF_NOT(recv_counts[comm->rank()] == send_count,
+                     "unexpected send count: ",
+                     send_count,
+                     " vs ",
+                     recv_counts[comm->rank()]);
 
     ccl::status status = ccl::status::success;
 
@@ -58,7 +63,7 @@ ccl::status ccl_coll_build_naive_allgatherv(ccl_sched* sched,
         offsets[rank] = offsets[rank - 1] + recv_counts[rank - 1] * dtype_size;
     }
 
-    if (send_buf != recv_buf) {
+    if ((send_buf != recv_buf) && (send_count > 0)) {
         // out-of-place case
         entry_factory::create<copy_entry>(
             sched, send_buf, recv_buf + offsets[comm_rank], send_count, dtype);
@@ -68,13 +73,17 @@ ccl::status ccl_coll_build_naive_allgatherv(ccl_sched* sched,
         int dst = (comm_rank + idx) % comm_size;
         int src = (comm_rank - idx + comm_size) % comm_size;
 
-        // send own buffer to other ranks
-        entry_factory::create<send_entry>(
-            sched, recv_buf + offsets[comm_rank], send_count, dtype, dst, comm);
+        if (send_count > 0) {
+            // send own buffer to other ranks
+            entry_factory::create<send_entry>(
+                sched, recv_buf + offsets[comm_rank], send_count, dtype, dst, comm);
+        }
 
-        // recv other's rank buffer
-        entry_factory::create<recv_entry>(
-            sched, recv_buf + offsets[src], recv_counts[src], dtype, src, comm);
+        if (recv_counts[src] > 0) {
+            // recv other's rank buffer
+            entry_factory::create<recv_entry>(
+                sched, recv_buf + offsets[src], recv_counts[src], dtype, src, comm);
+        }
     }
 
     return status;
@@ -91,6 +100,11 @@ ccl::status ccl_coll_build_ring_allgatherv(ccl_sched* main_sched,
     LOG_DEBUG("build ring allgatherv, send_count ", send_count);
     CCL_THROW_IF_NOT(main_sched || (!main_sched && scheds.size() == 1),
                      "unexpected scheduler/sub-schedulers combination");
+    CCL_THROW_IF_NOT(recv_counts[comm->rank()] == send_count,
+                     "unexpected send count: ",
+                     send_count,
+                     " vs ",
+                     recv_counts[comm->rank()]);
 
     int rank = comm->rank();
     int comm_size = comm->size();
@@ -103,7 +117,7 @@ ccl::status ccl_coll_build_ring_allgatherv(ccl_sched* main_sched,
         offsets[rank_idx] = offsets[rank_idx - 1] + recv_counts[rank_idx - 1] * dtype_size;
     }
 
-    if (send_buf != recv_buf) {
+    if ((send_buf != recv_buf) && (send_count > 0)) {
         // initialize recv_buffer with initial send_buf value
         // scheds.front contains either main scheduler or first sub-scheduler
         entry_factory::create<copy_entry>(
@@ -151,18 +165,22 @@ ccl::status ccl_coll_build_ring_allgatherv(ccl_sched* main_sched,
         }
 
         for (size_t s_idx = 0; s_idx < sched_count; s_idx++) {
-            entry_factory::create<send_entry>(scheds[s_idx],
-                                              sbuf + send_sched_offset[s_idx],
-                                              send_block_thread_counts[s_idx],
-                                              dtype,
-                                              dst,
-                                              comm);
-            entry_factory::create<recv_entry>(scheds[s_idx],
-                                              rbuf + recv_sched_offset[s_idx],
-                                              recv_block_thread_counts[s_idx],
-                                              dtype,
-                                              src,
-                                              comm);
+            if (send_block_thread_counts[s_idx]) {
+                entry_factory::create<send_entry>(scheds[s_idx],
+                                                  sbuf + send_sched_offset[s_idx],
+                                                  send_block_thread_counts[s_idx],
+                                                  dtype,
+                                                  dst,
+                                                  comm);
+            }
+            if (recv_block_thread_counts[s_idx]) {
+                entry_factory::create<recv_entry>(scheds[s_idx],
+                                                  rbuf + recv_sched_offset[s_idx],
+                                                  recv_block_thread_counts[s_idx],
+                                                  dtype,
+                                                  src,
+                                                  comm);
+            }
             // recv_entry has to be completed before the send_entry operation
             // in the next loop iteration, we are sending the received data-block forward
             // following the ring algorithm. Therefore, barrier is needed.
@@ -179,14 +197,12 @@ ccl::status ccl_coll_build_ring_allgatherv(ccl_sched* main_sched,
     return ccl::status::success;
 }
 
-ccl::status ccl_coll_get_allgatherv_bufs_and_offsets(const ccl_coll_param& coll_param,
-                                                     std::vector<ccl_buffer>& recv_bufs,
-                                                     std::vector<size_t>& recv_offsets) {
+ccl::status ccl_coll_get_allgatherv_bufs(const ccl_coll_param& coll_param,
+                                         std::vector<ccl_buffer>& recv_bufs) {
     int comm_size = coll_param.comm->size();
     size_t dtype_size = coll_param.dtype.size();
 
     recv_bufs.resize(comm_size);
-    recv_offsets.resize(comm_size);
 
     if (coll_param.recv_bufs.size() > 1) {
         CCL_THROW_IF_NOT((int)coll_param.recv_bufs.size() == comm_size,
@@ -198,7 +214,6 @@ ccl::status ccl_coll_get_allgatherv_bufs_and_offsets(const ccl_coll_param& coll_
         for (int idx = 0; idx < comm_size; idx++) {
             recv_bufs[idx].set(coll_param.get_recv_buf(idx),
                                coll_param.get_recv_count(idx) * dtype_size);
-            recv_offsets[idx] = 0;
         }
     }
     else {
@@ -206,7 +221,6 @@ ccl::status ccl_coll_get_allgatherv_bufs_and_offsets(const ccl_coll_param& coll_
         for (int idx = 0; idx < comm_size; idx++) {
             size_t bytes = coll_param.get_recv_count(idx) * dtype_size;
             recv_bufs[idx].set(coll_param.get_recv_buf(), offset + bytes, offset);
-            recv_offsets[idx] = offset;
             offset += bytes;
         }
     }
@@ -231,24 +245,27 @@ ccl::status ccl_coll_build_flat_allgatherv(ccl_sched* main_sched,
     bool inplace = coll_param.is_inplace();
 
     std::vector<ccl_buffer> recv_bufs;
-    std::vector<size_t> recv_offsets;
-    ccl_coll_get_allgatherv_bufs_and_offsets(coll_param, recv_bufs, recv_offsets);
+    ccl_coll_get_allgatherv_bufs(coll_param, recv_bufs);
 
     auto send_seg = ccl_buffer(coll_param.get_send_buf(), coll_param.get_send_count() * dtype_size);
 
     if (!inplace) {
-        entry_factory::create<copy_entry>(
-            scheds[2 * comm_rank % sched_count],
-            ccl_buffer(coll_param.get_send_buf(), coll_param.get_send_count() * dtype_size),
-            recv_bufs[comm_rank],
-            coll_param.get_recv_count(comm_rank),
-            dtype);
+        if (coll_param.get_recv_count(comm_rank)) {
+            entry_factory::create<copy_entry>(
+                scheds[2 * comm_rank % sched_count],
+                ccl_buffer(coll_param.get_send_buf(), coll_param.get_send_count() * dtype_size),
+                recv_bufs[comm_rank],
+                coll_param.get_recv_count(comm_rank),
+                dtype);
+        }
     }
     else {
-        size_t total_recv_bytes =
-            std::accumulate(coll_param.recv_counts.begin(), coll_param.recv_counts.end(), 0) *
-            dtype_size;
-        send_seg = ccl_buffer(coll_param.get_send_buf(), total_recv_bytes, recv_offsets[comm_rank]);
+        size_t total_recv_bytes = std::accumulate(coll_param.recv_counts.begin(),
+                                                  coll_param.recv_counts.end(),
+                                                  ccl::utils::initial_count_value) *
+                                  dtype_size;
+        send_seg = ccl_buffer(
+            coll_param.get_send_buf(), total_recv_bytes, recv_bufs[comm_rank].get_offset());
     }
 
     CCL_THROW_IF_NOT(static_cast<int>(sched_count) == comm_size || !main_sched,
@@ -262,19 +279,23 @@ ccl::status ccl_coll_build_flat_allgatherv(ccl_sched* main_sched,
         if (static_cast<int>(idx) == comm_rank)
             continue;
 
-        entry_factory::create<recv_entry>(scheds[(comm_rank + idx) % sched_count],
-                                          recv_bufs[idx],
-                                          coll_param.get_recv_count(idx),
-                                          dtype,
-                                          idx,
-                                          comm);
+        if (coll_param.get_recv_count(idx)) {
+            entry_factory::create<recv_entry>(scheds[(comm_rank + idx) % sched_count],
+                                              recv_bufs[idx],
+                                              coll_param.get_recv_count(idx),
+                                              dtype,
+                                              idx,
+                                              comm);
+        }
 
-        entry_factory::create<send_entry>(scheds[(comm_rank + idx) % sched_count],
-                                          send_seg,
-                                          coll_param.get_recv_count(comm_rank),
-                                          dtype,
-                                          idx,
-                                          comm);
+        if (coll_param.get_recv_count(comm_rank)) {
+            entry_factory::create<send_entry>(scheds[(comm_rank + idx) % sched_count],
+                                              send_seg,
+                                              coll_param.get_recv_count(comm_rank),
+                                              dtype,
+                                              idx,
+                                              comm);
+        }
     }
     if (main_sched) {
         main_sched->sync_subscheds();
@@ -303,8 +324,7 @@ ccl::status ccl_coll_build_multi_bcast_allgatherv(ccl_sched* main_sched,
     bool inplace = coll_param.is_inplace();
 
     std::vector<ccl_buffer> recv_bufs;
-    std::vector<size_t> recv_offsets;
-    ccl_coll_get_allgatherv_bufs_and_offsets(coll_param, recv_bufs, recv_offsets);
+    ccl_coll_get_allgatherv_bufs(coll_param, recv_bufs);
 
     if (!inplace) {
         std::vector<size_t> copy_counts(data_partition_count);
@@ -319,14 +339,17 @@ ccl::status ccl_coll_build_multi_bcast_allgatherv(ccl_sched* main_sched,
         CCL_ASSERT(scheds.size() >= data_partition_count);
 
         for (size_t idx = 0; idx < data_partition_count; idx++) {
-            entry_factory::create<copy_entry>(scheds[idx],
-                                              ccl_buffer(coll_param.get_send_buf_ptr(),
-                                                         coll_param.get_send_count() * dtype_size,
-                                                         copy_offsets[idx],
-                                                         ccl_buffer_type::INDIRECT),
-                                              recv_bufs[comm_rank] + copy_offsets[idx],
-                                              copy_counts[idx],
-                                              dtype);
+            if (copy_counts[idx]) {
+                ccl_buffer cbuf(coll_param.get_send_buf_ptr(),
+                                coll_param.get_send_count() * dtype_size,
+                                copy_offsets[idx],
+                                ccl_buffer_type::INDIRECT);
+                entry_factory::create<copy_entry>(scheds[idx],
+                                                  cbuf,
+                                                  recv_bufs[comm_rank] + copy_offsets[idx],
+                                                  copy_counts[idx],
+                                                  dtype);
+            }
         }
         if (main_sched) {
             main_sched->sync_subscheds();
@@ -334,15 +357,17 @@ ccl::status ccl_coll_build_multi_bcast_allgatherv(ccl_sched* main_sched,
     }
 
     for (int idx = 0; idx < comm_size; idx++) {
-        ccl_coll_entry_param param{};
-        param.ctype = ccl_coll_bcast;
-        param.recv_buf = recv_bufs[idx];
-        param.count = coll_param.get_recv_count(idx);
-        param.dtype = dtype;
-        param.root = idx;
-        param.comm = comm;
-        param.stream = coll_param.stream;
-        ccl::add_coll_entry(scheds[idx % sched_count], param);
+        if (coll_param.get_recv_count(idx)) {
+            ccl_coll_param param{ false };
+            param.ctype = ccl_coll_bcast;
+            param.recv_buf = recv_bufs[idx];
+            param.count = coll_param.get_recv_count(idx);
+            param.dtype = dtype;
+            param.root = idx;
+            param.comm = comm;
+            param.stream = coll_param.stream;
+            ccl::add_coll_entry(scheds[idx % sched_count], param);
+        }
     }
 
     return ccl::status::success;
@@ -350,31 +375,14 @@ ccl::status ccl_coll_build_multi_bcast_allgatherv(ccl_sched* main_sched,
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
 
-ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
-                                           std::vector<ccl_sched*>& scheds,
-                                           const ccl_coll_param& coll_param) {
-    LOG_DEBUG("build topo allgatherv");
-    CCL_THROW_IF_NOT(scheds.size() == 1);
-
-    ccl_comm* comm = coll_param.comm;
-    ccl_sched* sched = scheds.front();
-    const ccl_datatype& dtype = coll_param.dtype;
-    const bool is_inplace = coll_param.is_inplace();
-
-    std::vector<ccl_buffer> recv_bufs;
-    std::vector<size_t> recv_offsets;
-    const std::vector<size_t>& recv_counts = coll_param.recv_counts;
-    ccl_coll_get_allgatherv_bufs_and_offsets(coll_param, recv_bufs, recv_offsets);
-
-    const size_t send_count = recv_counts[comm->rank()];
-    ccl_buffer send_buf;
-    if (is_inplace) {
-        send_buf = recv_bufs[comm->rank()];
-    }
-    else {
-        send_buf = ccl_buffer(coll_param.get_send_buf(), send_count * dtype.size());
-    }
-
+ccl::status ccl_coll_build_topo_allgatherv_fill(ccl_sched* sched,
+                                                const ccl_buffer send_buf,
+                                                const size_t send_count,
+                                                const std::vector<ccl_buffer>& recv_bufs,
+                                                const std::vector<size_t>& recv_counts,
+                                                const ccl_datatype& dtype,
+                                                ccl_comm* comm,
+                                                bool is_inplace) {
     ccl_comm* pair_comm = comm->get_pair_comm().get();
     ccl_comm* even_comm = comm->get_even_comm().get();
     ccl_comm* node_comm = comm->get_node_comm().get();
@@ -419,8 +427,35 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
         sched->add_barrier();
     };
 
-    if (!is_single_node) {
-        if (!is_inplace) {
+    const bool is_pipeline_kernel =
+        ccl::global_data::env().allgatherv_monolithic_pipeline_kernel && even_comm->size() > 1;
+    if (!is_single_node || is_pipeline_kernel) {
+        if (!is_single_node) {
+            // pack data to be used for scaleout
+            std::vector<ccl_buffer> recv_bufs_r2r;
+            std::vector<size_t> recv_counts_r2r;
+            for (int i = 0; i < r2r_comm->size(); i++) {
+                const int global_rank = r2r_comm->get_global_rank(i);
+                recv_bufs_r2r.push_back(recv_bufs[global_rank]);
+                recv_counts_r2r.push_back(recv_counts[global_rank]);
+            }
+
+            ccl_coll_param coll_param_scaleout{ false };
+            coll_param_scaleout.ctype = ccl_coll_allgatherv;
+            coll_param_scaleout.send_buf = send_buf;
+            coll_param_scaleout.recv_scale_out_bufs = recv_bufs_r2r;
+            coll_param_scaleout.send_count = send_count;
+            coll_param_scaleout.recv_counts = recv_counts_r2r;
+            coll_param_scaleout.dtype = dtype;
+            coll_param_scaleout.comm = r2r_comm;
+
+            ccl::add_scaleout(sched, coll_param_scaleout, is_single_node, wait_events, out_event);
+            CCL_THROW_IF_NOT(out_event,
+                             "scaleout must be added to schedule, but it has not been added");
+        }
+
+        // local copy runs in parallel with scaleout
+        if (recv_counts[comm->rank()] && !is_inplace) {
             // copy data from my send_buf to my recv_buf
             copy_attr attr{};
             attr.direction = copy_direction::d2d;
@@ -435,50 +470,38 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
             parallel_copy_events.push_back(entry->entry_event);
         }
 
-        // pack data to be used for scaleout
-        std::vector<ccl_buffer> recv_bufs_r2r;
-        std::vector<size_t> recv_counts_r2r;
-        for (int i = 0; i < r2r_comm->size(); i++) {
-            const int global_rank = r2r_comm->get_global_rank(i);
-            recv_bufs_r2r.push_back(recv_bufs[global_rank]);
-            recv_counts_r2r.push_back(recv_counts[global_rank]);
+        // make sure scaleout of even comm ranks is finished
+        // so that we can start to read from them
+        if (!is_single_node) {
+            clear_and_push_back(wait_events, out_event);
+            ccl::add_comm_barrier(sched, even_comm, wait_events, out_event);
+            clear_and_push_back(wait_events, out_event);
         }
 
-        ccl_coll_entry_param coll_param_scaleout{};
-        coll_param_scaleout.ctype = ccl_coll_allgatherv;
-        coll_param_scaleout.send_buf = send_buf;
-        coll_param_scaleout.recv_bufs = recv_bufs_r2r;
-        coll_param_scaleout.send_count = send_count;
-        coll_param_scaleout.recv_counts = recv_counts_r2r.data();
-        coll_param_scaleout.dtype = dtype;
-        coll_param_scaleout.comm = r2r_comm;
-
-        ccl::add_scaleout(sched, coll_param_scaleout, is_single_node, wait_events, out_event);
-        CCL_THROW_IF_NOT(out_event,
-                         "scaleout must be added to schedule, but it has not been added");
-        clear_and_push_back(wait_events, out_event);
-
-        ccl::add_comm_barrier(sched, even_comm, wait_events, out_event);
-        clear_and_push_back(wait_events, out_event);
+        size_t hint_index = 0;
         auto recv_send_peers = [&](ccl_comm* recv_comm,
                                    ccl_comm* send_comm,
-                                   size_t scaleout_offset = 0,
-                                   bool is_inplace = false) {
+                                   bool is_scaleout = false,
+                                   size_t scaleout_offset = 0) {
             for (int peer_idx = 1; peer_idx < recv_comm->size(); peer_idx++) {
                 // copy data from all peers in even_comm
                 const int peer_rank = (recv_comm->rank() + peer_idx) % recv_comm->size();
                 CCL_THROW_IF_NOT(recv_comm->rank() != peer_rank, "Do not copy from own rank");
                 const int global_rank =
                     (recv_comm->get_global_rank(peer_rank) + scaleout_offset) % comm->size();
+                if (recv_counts[global_rank] == 0) {
+                    continue;
+                }
+
                 copy_attr attr{};
                 attr.peer_rank = peer_rank;
-                if (is_inplace)
+                if (is_scaleout)
                     attr.peer_buf_idx = recv_buf_idx_start + global_rank;
                 else
                     attr.peer_buf_idx = send_buf_idx;
                 attr.direction = copy_direction::c2c;
                 attr.map_comm = recv_comm;
-                attr.hint_queue_index = parallel_copy_events.size();
+                attr.hint_queue_index = hint_index++;
                 auto entry = entry_factory::create<ze_copy_entry>(sched,
                                                                   ccl_buffer(),
                                                                   recv_bufs[global_rank],
@@ -486,10 +509,10 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
                                                                   dtype,
                                                                   attr,
                                                                   wait_events);
-                parallel_copy_events.push_back(entry->entry_event);
 
                 // do not do mdfi copy if only one tile is used
                 if (send_comm->size() == 1) {
+                    parallel_copy_events.push_back(entry->entry_event);
                     continue;
                 }
 
@@ -513,31 +536,59 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
         };
 
         size_t node_offset = 0;
-        // in case of scaleout, data is already copied to recv_buf and we can use in_place
-        bool is_use_inplace = true;
-        // TODO: if we ever allow this branch of the algo to run in is_single_node mode, this is the condition required here: "is_inplace || !is_single_node"
 
-        for (int r2r_rank = 0; r2r_rank < r2r_comm->size(); r2r_rank++) {
+        for (int r2r_idx = 0; r2r_idx < r2r_comm->size(); r2r_idx++) {
+            const int r2r_rank = (r2r_comm->rank() + r2r_idx) % r2r_comm->size();
+
+            // in case of scaleout data from other ranks, it is
+            // already available in recv_buf and we can use in_place
+            // but own copy from send_buf to recv_buf is going on
+            const bool is_scaleout = r2r_rank != r2r_comm->rank();
+
             // copy data from even_comm peers (xelink) that they recieved during scaleout
             // and write the copied data to pair_comm peer (mdfi)
-            recv_send_peers(even_comm, pair_comm, node_offset, is_use_inplace);
+            if (is_pipeline_kernel) {
+                // pipelined kernel that copies from even_comm peers using xelink and to pair_comm peer using MDFI
+                auto entry = entry_factory::create<ze_a2a_allgatherv_entry>(
+                    sched,
+                    send_buf,
+                    send_count,
+                    recv_bufs,
+                    recv_counts,
+                    dtype,
+                    even_comm,
+                    wait_events,
+                    send_buf_idx,
+                    0 /* pair_comm_offset */,
+                    is_pipeline_kernel,
+                    pair_comm,
+                    true /* is_separate_block_handles */,
+                    is_scaleout,
+                    node_offset);
+                parallel_copy_events.push_back(entry->entry_event);
+            }
+            else {
+                recv_send_peers(even_comm, pair_comm, is_scaleout, node_offset);
+            }
             node_offset += node_comm->size();
 
-            // do not do mdfi copy if only one tile is used
-            if (pair_comm->size() == 1) {
-                continue;
-            }
-
-            // write the data recieved during scaleout to pair_comm peer (mdfi)
-            int send_rank = (pair_comm->rank() + 1) % pair_comm->size();
+            // write the data recieved during scaleout or own data to pair_comm peer (mdfi)
+            const int send_rank = (pair_comm->rank() + 1) % pair_comm->size();
             copy_attr attr_send{};
             attr_send.peer_rank = send_rank;
             const int global_rank = r2r_comm->get_global_rank(r2r_rank);
+
+            // no mdfi copy if data count is zero or only one tile is used
+            if (recv_counts[global_rank] == 0 || pair_comm->size() == 1) {
+                continue;
+            }
+
             attr_send.peer_buf_idx = recv_buf_idx_start + global_rank;
             attr_send.direction = copy_direction::t2t;
             attr_send.map_comm = pair_comm;
+            ccl_buffer in_buf = is_scaleout ? recv_bufs[global_rank] : send_buf;
             auto entry_send = entry_factory::create<ze_copy_entry>(sched,
-                                                                   recv_bufs[global_rank],
+                                                                   in_buf,
                                                                    ccl_buffer(),
                                                                    recv_counts[global_rank],
                                                                    dtype,
@@ -545,62 +596,15 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
                                                                    wait_events);
 
             parallel_copy_events.push_back(entry_send->entry_event);
+
+            // performance is going lower when we add a lot of copies in parallel
+            // and making the copies into stages seem to improve performance
+            if (!is_pipeline_kernel && pair_comm->size() > 1) {
+                add_sched_barrier_for_parallel_copies();
+            }
         }
         add_sched_barrier_for_parallel_copies();
         ccl::add_comm_barrier(sched, pair_comm, wait_events, out_event);
-
-        entry_factory::create<execute_cmdlists_entry>(sched);
-
-        return ccl::status::success;
-    }
-    else if (ccl::global_data::env().allgatherv_monolithic_pipeline_kernel &&
-             even_comm->size() > 1) {
-        // pipeline is not possible when there is no xelink neighbor in even_comm
-
-        // copy local data to pair_comm neighbor
-        if (pair_comm->size() > 1) {
-            // A pair_comm barrier avoids writing data to the peer before the peer starts the collective
-            ccl::add_comm_barrier(sched, pair_comm, wait_events, out_event);
-            clear_and_push_back(wait_events, out_event);
-
-            size_t peer_pair_rank = (pair_comm->rank() + 1) % pair_comm->size();
-            copy_attr attr{};
-            attr.peer_rank = peer_pair_rank;
-            attr.peer_buf_idx = recv_buf_idx_start + comm->rank();
-            attr.direction = copy_direction::t2t;
-            attr.map_comm = pair_comm;
-            // copy send buffer to the pair_comm tile recv buffer
-            auto entry_pair = entry_factory::create<ze_copy_entry>(
-                sched, send_buf, ccl_buffer(), recv_counts[comm->rank()], dtype, attr, wait_events);
-            clear_and_push_back(wait_events, entry_pair->entry_event);
-        }
-
-        // Need to set an even_comm barrier to avoid accessing peer's buffers before they start the collective
-        // TODO: understand a2a_allgatherv_entry so we can maybe reduce even_comm to a smaller comm?
-        ccl::add_comm_barrier(sched, even_comm, wait_events, out_event);
-        clear_and_push_back(wait_events, out_event);
-
-        // pipelined kernel that copies from even_comm peers using xelink and to pair_comm peer using MDFI
-        auto entry =
-            entry_factory::create<ze_a2a_allgatherv_entry>(sched,
-                                                           send_buf,
-                                                           send_count,
-                                                           recv_bufs,
-                                                           recv_counts,
-                                                           dtype,
-                                                           even_comm,
-                                                           wait_events,
-                                                           send_buf_idx,
-                                                           0 /* pair_comm_offset */,
-                                                           true /* is_monolithic_pipeline */,
-                                                           pair_comm);
-
-        clear_and_push_back(wait_events, entry->entry_event);
-        sched->add_barrier();
-        // TODO: understand barrier logic and see whether a smaller communicator can be used
-        ccl::add_comm_barrier(sched, node_comm, wait_events, out_event);
-
-        entry_factory::create<execute_cmdlists_entry>(sched);
 
         return ccl::status::success;
     }
@@ -618,6 +622,10 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
     //ccl::global_data::env().ze_max_copy_queues /* here must be real queue count */ >= even_comm_size-1) or unspecified;
 
     auto send_to_peers = [&](ccl_comm* comm, ccl_buffer in_buf, size_t count, size_t peer_buf_idx) {
+        if (count == 0) {
+            return;
+        }
+
         for (int peer_idx = 0; peer_idx < comm->size() - 1; peer_idx++) {
             const int peer_rank = (comm->rank() + peer_idx + 1) % comm->size();
             CCL_THROW_IF_NOT(comm->rank() != peer_rank);
@@ -628,7 +636,14 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
             const bool use_c2c_direction = (comm == even_comm) || can_use_small_msg_optimization;
             attr.direction = (use_c2c_direction) ? copy_direction::c2c : copy_direction::d2d;
             attr.map_comm = comm;
-            attr.hint_queue_index = (peer_idx + 1) * 2;
+
+            auto copy_engine_idx = (peer_idx + 1) * 2;
+            if (ccl::global_data::env().type2_mode == ccl::type2_tune_mode::detected ||
+                ccl::global_data::env().type2_mode == ccl::type2_tune_mode::on) {
+                copy_engine_idx = peer_idx * 2;
+            }
+
+            attr.hint_queue_index = copy_engine_idx;
             auto entry = entry_factory::create<ze_copy_entry>(
                 sched, in_buf, ccl_buffer(), count, dtype, attr, wait_events);
             parallel_copy_events.push_back(entry->entry_event);
@@ -640,12 +655,17 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
             const int peer_rank = (comm->rank() + peer_idx + 1) % comm->size();
             CCL_THROW_IF_NOT(comm->rank() != peer_rank);
             const int global_rank = comm->get_global_rank(peer_rank);
+            if (recv_counts[global_rank] == 0) {
+                continue;
+            }
+
             copy_attr attr{};
             attr.peer_rank = peer_rank;
             attr.peer_buf_idx = send_buf_idx;
             const bool use_c2c_direction = (comm == even_comm) || can_use_small_msg_optimization;
             attr.direction = (use_c2c_direction) ? copy_direction::c2c : copy_direction::d2d;
             attr.map_comm = comm;
+            // the perf is worse with peer_idx * 2 on smc
             attr.hint_queue_index = (peer_idx + 1) * 2;
             auto entry = entry_factory::create<ze_copy_entry>(sched,
                                                               ccl_buffer(),
@@ -658,7 +678,7 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
         }
     };
 
-    const bool do_self_copy = !is_inplace;
+    const bool do_self_copy = !is_inplace && (recv_counts[comm->rank()] > 0);
     if (do_self_copy) {
         /* copy data from my send_buf to my recv_buf */
         copy_attr attr{};
@@ -730,10 +750,6 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
         /* Large scale algorithm: step 1 & 2. intra-card copy */
         LOG_DEBUG("topo/scale_up/intra: copy to self from peers");
 
-        // Need to make sure other peers in pair_comm have entered the collective
-        ccl::add_comm_barrier(sched, pair_comm, wait_events, out_event);
-        clear_and_push_back(wait_events, out_event);
-
         if (!is_lead_rank && !ccl::global_data::env().enable_ze_bidir_algo) {
             ccl::add_comm_barrier(sched, pair_comm, wait_events, out_event);
             clear_and_push_back(wait_events, out_event);
@@ -763,7 +779,112 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
     ccl_comm* barrier_comm = (is_large_scale_algorithm) ? even_comm : pair_comm;
     ccl::add_comm_barrier(sched, barrier_comm, wait_events, out_event);
 
-    entry_factory::create<execute_cmdlists_entry>(sched);
+    return ccl::status::success;
+}
+
+ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
+                                           std::vector<ccl_sched*>& scheds,
+                                           const ccl_coll_param& coll_param) {
+    size_t chunk_count = ccl::global_data::env().allgatherv_pipe_chunk_count;
+    bool is_pipe = chunk_count > 0 && ccl::global_data::env().enable_ze_single_list;
+
+    CCL_THROW_IF_NOT(
+        scheds.size() == 1, "size of schedule list must be one, but is ", scheds.size());
+    ccl_sched* sched = scheds.front();
+
+    ccl_comm* comm = coll_param.comm;
+    const bool is_inplace = coll_param.is_inplace();
+    const ccl_datatype& dtype = coll_param.dtype;
+
+    std::vector<ccl_buffer> recv_bufs{};
+    const std::vector<size_t>& recv_counts = coll_param.recv_counts;
+    ccl_coll_get_allgatherv_bufs(coll_param, recv_bufs);
+
+    const size_t send_count = recv_counts[comm->rank()];
+    ccl_buffer send_buf;
+    if (is_inplace) {
+        send_buf = recv_bufs[comm->rank()];
+    }
+    else {
+        send_buf = ccl_buffer(coll_param.get_send_buf(), send_count * dtype.size());
+    }
+
+    if (!is_pipe) {
+        // Fall back to topo algorithm without pipelining
+        LOG_DEBUG("build topo allgatherv - pipe allgatherv disabled");
+
+        ccl_coll_build_topo_allgatherv_fill(
+            sched, send_buf, send_count, recv_bufs, recv_counts, dtype, comm, is_inplace);
+
+        entry_factory::create<ze_execute_cmdlists_on_init_entry>(sched);
+
+        return ccl::status::success;
+    }
+
+    LOG_DEBUG("build pipe allgatherv");
+
+    for (size_t chunk_idx = 0; chunk_idx < chunk_count; ++chunk_idx) {
+        entry_factory::create<subsched_entry>(
+            sched,
+            chunk_idx,
+            [comm,
+             is_inplace,
+             dtype,
+             send_buf,
+             send_count,
+             recv_bufs,
+             recv_counts,
+             chunk_idx,
+             chunk_count](ccl_sched* s) {
+                bool is_empty_total_size = true;
+                std::vector<ccl_buffer> chunked_recv_bufs(comm->size());
+                std::vector<size_t> chunked_recv_counts(comm->size(), 0);
+
+                for (int idx = 0; idx < comm->size(); idx++) {
+                    size_t main_chunk_count = recv_counts[idx] / chunk_count;
+                    size_t last_chunk_count = main_chunk_count + recv_counts[idx] % chunk_count;
+                    chunked_recv_counts[idx] =
+                        (chunk_idx == (chunk_count - 1)) ? last_chunk_count : main_chunk_count;
+                    chunked_recv_bufs[idx] =
+                        recv_bufs[idx] + chunk_idx * main_chunk_count * dtype.size();
+                    if (chunked_recv_counts[idx] > 0) {
+                        is_empty_total_size = false;
+                    }
+                }
+
+                const size_t main_chunked_send_count = send_count / chunk_count;
+                const size_t chunked_send_count = chunked_recv_counts[comm->rank()];
+                ccl_buffer chunked_send_buf{};
+                if (!is_inplace) {
+                    chunked_send_buf =
+                        send_buf + chunk_idx * main_chunked_send_count * dtype.size();
+                }
+                else {
+                    chunked_send_buf = chunked_recv_bufs[comm->rank()];
+                }
+
+                if (is_empty_total_size) {
+                    // TODO: ccl_coll_build_topo_allgatherv_fill should be able to handle 0-sized inputs!
+                    // TODO: Similarly for other collectives
+                    LOG_DEBUG("chunk_idx ",
+                              chunk_idx,
+                              " total size is empty. Not calling allgatherv for this chunk.");
+                    return ccl::status::success;
+                }
+                return ccl_coll_build_topo_allgatherv_fill(s,
+                                                           chunked_send_buf,
+                                                           chunked_send_count,
+                                                           chunked_recv_bufs,
+                                                           chunked_recv_counts,
+                                                           dtype,
+                                                           comm,
+                                                           is_inplace);
+            },
+            ("ALLGATHERV_PIPE" + std::to_string(chunk_idx)).c_str());
+        sched->add_barrier();
+    }
+
+    entry_factory::create<ze_execute_cmdlists_on_init_entry>(sched);
 
     return ccl::status::success;
 }

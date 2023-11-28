@@ -42,7 +42,6 @@ public:
     void init_ze_hook() override;
 
 private:
-    ccl_sched* const sched;
     ccl_buffer in_buf{};
     ccl_buffer out_buf{};
     const ccl_datatype dtype;

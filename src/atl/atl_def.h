@@ -68,6 +68,14 @@
         } \
     } while (0)
 
+#define ATL_CHECK_PTR(ptr, str) \
+    do { \
+        if (!ptr) { \
+            LOG_ERROR("%s, errno: %s", str, strerror(errno)); \
+            return ATL_STATUS_FAILURE; \
+        } \
+    } while (0)
+
 #define ATL_SET_STR(dst, size, ...) \
     do { \
         if (snprintf(dst, size, __VA_ARGS__) > size) { \

@@ -14,11 +14,17 @@
  limitations under the License.
 */
 #include "sched/entry/coll/coll_entry.hpp"
+#include "sched/sched_timer.hpp"
 
-ccl::status coll_entry::build_sched(ccl_sched* sched, const ccl_coll_entry_param& param) {
+ccl::status coll_entry::build_sched(ccl_sched* sched, const ccl_coll_param& param) {
     ccl::status res = ccl::status::success;
 
     sched->hint_algo = param.hint_algo;
+
+#ifdef CCL_ENABLE_ITT
+    __itt_event build_sched_event = ccl::profile::itt::event_get("BUILD_SCHED");
+    ccl::profile::itt::event_start(build_sched_event);
+#endif // CCL_ENABLE_ITT
 
     switch (param.ctype) {
         case ccl_coll_allgatherv: {
@@ -26,7 +32,7 @@ ccl::status coll_entry::build_sched(ccl_sched* sched, const ccl_coll_entry_param
                                             param.send_buf,
                                             param.send_count,
                                             param.recv_buf,
-                                            param.recv_counts,
+                                            param.recv_counts.data(),
                                             param.dtype,
                                             param.comm,
                                             param.is_scaleout);
@@ -56,9 +62,9 @@ ccl::status coll_entry::build_sched(ccl_sched* sched, const ccl_coll_entry_param
         case ccl_coll_alltoallv: {
             res = ccl_coll_build_alltoallv(sched,
                                            param.send_buf,
-                                           param.send_counts,
+                                           param.send_counts.data(),
                                            param.recv_buf,
-                                           param.recv_counts,
+                                           param.recv_counts.data(),
                                            param.dtype,
                                            param.comm,
                                            param.is_scaleout);
@@ -92,7 +98,8 @@ ccl::status coll_entry::build_sched(ccl_sched* sched, const ccl_coll_entry_param
                                                 param.count,
                                                 param.dtype,
                                                 param.reduction,
-                                                param.comm);
+                                                param.comm,
+                                                param.is_scaleout);
             break;
         }
         case ccl_coll_recv: {
@@ -107,6 +114,11 @@ ccl::status coll_entry::build_sched(ccl_sched* sched, const ccl_coll_entry_param
         }
         default: CCL_FATAL("not supported coll_type ", param.ctype); break;
     }
+
+#ifdef CCL_ENABLE_ITT
+    ccl::profile::itt::event_end(build_sched_event);
+#endif // CCL_ENABLE_ITT
+
     return res;
 }
 
@@ -121,6 +133,7 @@ void coll_entry::start() {
         coll_param.ctype = sched->coll_param.ctype;
         coll_param.comm = sched->coll_param.comm;
         coll_param.stream = sched->coll_param.stream;
+        coll_param.is_pt2pt = sched->coll_param.is_pt2pt;
 
         LOG_DEBUG("building COLL entry: ",
                   this,

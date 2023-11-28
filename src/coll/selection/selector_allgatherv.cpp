@@ -89,7 +89,7 @@ CCL_SELECTION_DEFINE_HELPER_METHODS(ccl_coll_allgatherv_algo,
                                         size_t count =
                                             std::accumulate(param.recv_counts,
                                                             param.recv_counts + param.comm->size(),
-                                                            0);
+                                                            ccl::utils::initial_count_value);
                                         count /= param.comm->size();
                                         count;
                                     }),

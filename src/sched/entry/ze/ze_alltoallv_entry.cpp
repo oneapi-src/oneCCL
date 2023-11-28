@@ -17,7 +17,7 @@
 #include "comp/comp.hpp"
 #include "sched/entry/ze/ze_alltoallv_entry.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
-#include "sched/entry/ze/ze_cache.hpp"
+#include "sched/entry/ze/cache/ze_cache.hpp"
 #include "sched/queue/queue.hpp"
 
 #include <string>
@@ -35,9 +35,9 @@ ze_alltoallv_entry::ze_alltoallv_entry(ccl_sched* sched,
                                        ccl_comm* comm,
                                        const std::vector<ze_event_handle_t>& wait_events)
         : ze_base_entry(sched, wait_events, comm, 1 /* request additional events */),
-          send_bufs(send_bufs),
-          recv_bufs(recv_bufs),
-          counts(counts),
+          send_bufs(std::move(send_bufs)),
+          recv_bufs(std::move(recv_bufs)),
+          counts(std::move(counts)),
           buf_idx_start(buf_idx_start),
           dtype(dtype) {}
 

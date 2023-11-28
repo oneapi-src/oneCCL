@@ -173,18 +173,32 @@ void ipc_handle_manager::clear() {
     cached_handles.clear();
 }
 
-void ipc_handle_manager::set(const mem_handle_map_t& handles_arg) {
+void ipc_handle_manager::set(const mem_handle_map_t& handles_arg, bool pt2pt_op) {
     CCL_THROW_IF_NOT(!handles_arg.empty(), "handles_arg argument is empty");
-    CCL_THROW_IF_NOT(handles_arg.size() == static_cast<size_t>(comm->size()),
-                     "handles_arg and comm sizes should be equal");
+    if (pt2pt_op) {
+        CCL_THROW_IF_NOT(handles_arg.size() == pt2pt_handles_size,
+                         "handles_arg (",
+                         handles_arg.size(),
+                         ") and handle_pt2pt_size (",
+                         pt2pt_handles_size,
+                         "), but it must be equal");
+    }
+    else {
+        CCL_THROW_IF_NOT(handles_arg.size() == static_cast<size_t>(comm->size()),
+                         "handles_arg and comm sizes should be equal");
+    }
+
     CCL_THROW_IF_NOT(handles.empty(), "handles should be empty before set");
 
     handles = handles_arg;
     LOG_DEBUG("handles are set successfully, size of handles: ", handles.size());
 }
 
-void* ipc_handle_manager::get_ptr(int rank, size_t buf_idx, const ccl_comm* map_comm) {
-    check_rank(rank, (map_comm) ? map_comm : comm);
+void* ipc_handle_manager::get_ptr(int rank,
+                                  size_t buf_idx,
+                                  const ccl_comm* map_comm,
+                                  bool pt2pt_op) {
+    check_rank(rank, (map_comm) ? map_comm : comm, pt2pt_op);
     if (map_comm && (map_comm->id() != comm->id())) {
         int old_rank = rank;
         rank = map_comm->get_global_rank(rank);
@@ -205,7 +219,7 @@ void* ipc_handle_manager::get_ptr(int rank, size_t buf_idx, const ccl_comm* map_
                   comm->id(),
                   ", size: ",
                   comm->size());
-        check_rank(rank, comm);
+        check_rank(rank, comm, pt2pt_op);
     }
     CCL_THROW_IF_NOT(buf_idx < handles[rank].size(), "buf_idx is not valid value: ", buf_idx);
 
@@ -248,15 +262,20 @@ void* ipc_handle_manager::get_ptr(int rank, size_t buf_idx, const ccl_comm* map_
     return static_cast<void*>(static_cast<char*>(mem_ptr) + handle_info.mem_offset);
 }
 
-void ipc_handle_manager::get(int rank, size_t buf_idx, ccl_buffer& buf, const ccl_comm* map_comm) {
-    buf.set(get_ptr(rank, buf_idx, map_comm));
+void ipc_handle_manager::get(int rank,
+                             size_t buf_idx,
+                             ccl_buffer& buf,
+                             const ccl_comm* map_comm,
+                             bool pt2pt_op) {
+    buf.set(get_ptr(rank, buf_idx, map_comm, pt2pt_op));
 }
 
 void ipc_handle_manager::get(int rank,
                              size_t buf_idx,
                              ze_event_pool_handle_t& buf,
-                             const ccl_comm* map_comm) {
-    buf = (ze_event_pool_handle_t)get_ptr(rank, buf_idx, map_comm);
+                             const ccl_comm* map_comm,
+                             bool pt2pt_op) {
+    buf = (ze_event_pool_handle_t)get_ptr(rank, buf_idx, map_comm, pt2pt_op);
 }
 
 void ipc_handle_manager::get_handle(void* ptr, ze_ipc_mem_handle_t* ipc_handle) {
@@ -311,17 +330,24 @@ void ipc_handle_manager::get_address_range(const void* ptr, void** base_ptr, siz
               *size);
 }
 
-void ipc_handle_manager::check_rank(int rank, const ccl_comm* check_comm) {
-    CCL_THROW_IF_NOT(
-        (rank >= 0) && (rank < static_cast<int>(handles.size())) && (rank < check_comm->size()),
-        "invalid rank: ",
-        rank,
-        ", handles.size: ",
-        handles.size(),
-        ", comm.size: ",
-        check_comm->size());
-    CCL_THROW_IF_NOT(
-        rank != check_comm->rank(), "do not expect to open ipc_handle for own rank: ", rank);
+void ipc_handle_manager::check_rank(int rank, const ccl_comm* check_comm, bool pt2pt_op) {
+    if (pt2pt_op) {
+        CCL_THROW_IF_NOT((rank == 0) && (rank < static_cast<int>(handles.size())),
+                         "expect 0 handle idx (rank) to get ptr for pt2pt_op: rank: ",
+                         rank);
+    }
+    else {
+        CCL_THROW_IF_NOT(
+            (rank >= 0) && (rank < static_cast<int>(handles.size())) && (rank < check_comm->size()),
+            "invalid rank: ",
+            rank,
+            ", handles.size: ",
+            handles.size(),
+            ", comm.size: ",
+            check_comm->size());
+        CCL_THROW_IF_NOT(
+            rank != check_comm->rank(), "do not expect to open ipc_handle for own rank: ", rank);
+    }
 }
 
 } // namespace ze

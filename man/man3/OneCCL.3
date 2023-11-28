@@ -1,4 +1,4 @@
-.TH "OneCCLvars" 3 "Tue Jun 6 2023" "Version 2021.10" "Intel® oneAPI Collective Communications Library" \" -*- nroff -*-
+.TH "OneCCLvars" 3 "Wed Aug 30 2023" "Version 2021.11" "Intel® oneAPI Collective Communications Library" \" -*- nroff -*-
 .ad l
 .nh
 .SH NAME
@@ -66,6 +66,14 @@ OneCCLvars \- OneCCL Environment Variables
 .br
 .RI "Set reduce-scatter algorithm\&. "
 .ti -1c
+.RI "\fBCCL_RECV\fP"
+.br
+.RI "Set recv algorithm\&. "
+.ti -1c
+.RI "\fBCCL_SEND\fP"
+.br
+.RI "Set send algorithm\&. "
+.ti -1c
 .RI "\fBCCL_ALLGATHERV_SCALEOUT\fP"
 .br
 .RI "Set scaleout allgatherv algorithm\&. "
@@ -94,6 +102,10 @@ OneCCLvars \- OneCCL Environment Variables
 .br
 .RI "Set to specify minimum number of bytes in chunk for reduce_scatter phase in ring allreduce\&. "
 .ti -1c
+.RI "\fBCCL_REDUCE_SCATTER_TOPO_READ\fP"
+.br
+.RI "Set this environment variable to select read or write based device-to-device data copy during the reduce_scatter stage of Allreduce, Reduce, and Reduce-Scatter collectives using device (GPU) buffers\&. "
+.ti -1c
 .RI "\fBCCL_REDUCE_SCATTER_MONOLITHIC_KERNEL\fP"
 .br
 .RI "Set this environment variable to enable compute kernels for Allreduce, Reduce, and Reduce-Scatter collectives using device (GPU) buffers\&. "
@@ -106,6 +118,22 @@ OneCCLvars \- OneCCL Environment Variables
 .br
 .RI "Set this environment variable to enable compute kernels for Alltoall and Alltoallv collectives using device (GPU) buffers\&. "
 .ti -1c
+.RI "\fBCCL_ALLGATHERV_PIPE_CHUNK_COUNT\fP"
+.br
+.RI "Set this environment variable to enable pipelining implementation for Allgatherv collectives using device (GPU) buffers\&. "
+.ti -1c
+.RI "\fBCCL_ALLREDUCE_PIPE_CHUNK_COUNT\fP"
+.br
+.RI "Set this environment variable to enable pipelining implementation for Allreduce collectives using device (GPU) buffers\&. "
+.ti -1c
+.RI "\fBCCL_REDUCE_SCATTER_PIPE_CHUNK_COUNT\fP"
+.br
+.RI "Set this environment variable to enable pipelining implementation for Reduce_Scatter collectives using device (GPU) buffers\&. "
+.ti -1c
+.RI "\fBCCL_REDUCE_PIPE_CHUNK_COUNT\fP"
+.br
+.RI "Set this environment variable to enable pipelining implementation for Reduce collectives using device (GPU) buffers\&. "
+.ti -1c
 .RI "\fBCCL_LOCAL_RANK\fP"
 .br
 .RI "Set this environment variable to specify the rank number of the current process in the local host\&. "
@@ -117,6 +145,14 @@ OneCCLvars \- OneCCL Environment Variables
 .RI "\fBCCL_PROCESS_LAUNCHER\fP"
 .br
 .RI "Set this environment variable to specify the job launcher to use\&. "
+.ti -1c
+.RI "\fBCCL_ZE_ENABLE_OVERSUBSCRIPTION_FALLBACK\fP"
+.br
+.RI "Set to enable oversubscription in topo fallback stage for all collectives\&. "
+.ti -1c
+.RI "\fBCCL_ZE_ENABLE_OVERSUBSCRIPTION_THROW\fP"
+.br
+.RI "Set to enable oversubscription throw for all collectives\&. "
 .in -1c
 .SH "Detailed Description"
 .PP 
@@ -161,6 +197,27 @@ Description
 Set this environment variable to enable compute kernels for Allgather collectives using device (GPU) buffers
 .PP
 By-default: '0' 
+.SS "CCL_ALLGATHERV_PIPE_CHUNK_COUNT"
+
+.PP
+Set this environment variable to enable pipelining implementation for Allgatherv collectives using device (GPU) buffers\&. Syntax
+.PP
+CCL_ALLGATHERV_PIPE_CHUNK_COUNT='<value>' Arguments
+.PP
+'<value>' Description
+.IP "\(bu" 2
+0: (default) Bypasses the chunking/pipelining code and directly calls the topology-aware code
+.IP "\(bu" 2
+1: Calls the pipelining code with a single chunk\&. Effectively, it has identical behavior and performance as with '0', but exercises the chunking code path with a single chunk\&.
+.PP
+.PP
+2 or higher: Divides the message into as many logical parts, or chunks, as specified\&. Then, it executes the collective with each logical chunk\&. This should allow for several phases of the algorithm to run in parallel, as long as they don't use the same physical resource\&. Effectively, this should increase performance\&.
+.PP
+Description
+.PP
+Set this environment variable to enable control how many chunks are used for Allgatherv, pipeline-based collectives using device (GPU) buffers\&.
+.PP
+By-default: '0' 
 .SS "CCL_ALLGATHERV_SCALEOUT"
 
 .PP
@@ -201,6 +258,27 @@ topo Topo scaleup algorithm (available if sycl and l0 are enabled)
 .PP
 .PP
 By-default: 'topo', if sycl and l0 are enable, otherwise 'ring' 
+.SS "CCL_ALLREDUCE_PIPE_CHUNK_COUNT"
+
+.PP
+Set this environment variable to enable pipelining implementation for Allreduce collectives using device (GPU) buffers\&. Syntax
+.PP
+CCL_ALLREDUCE_PIPE_CHUNK_COUNT='<value>' Arguments
+.PP
+'<value>' Description
+.IP "\(bu" 2
+0: (default) Bypasses the chunking/pipelining code and directly calls the topology-aware code
+.IP "\(bu" 2
+1: Calls the pipelining code with a single chunk\&. Effectively, it has identical behavior and performance as with '0', but exercises the chunking code path with a single chunk\&.
+.PP
+.PP
+2 or higher: Divides the message into as many logical parts, or chunks, as specified\&. Then, it executes the collective with each logical chunk\&. This should allow for several phases of the algorithm to run in parallel, as long as they don't use the same physical resource\&. Effectively, this should increase performance\&.
+.PP
+Description
+.PP
+Set this environment variable to enable control how many chunks are used for Allreduce pipeline-based collectives using device (GPU) buffers\&.
+.PP
+By-default: '0' 
 .SS "CCL_ALLREDUCE_SCALEOUT"
 
 .PP
@@ -428,6 +506,19 @@ Description
 Set this environment variable to specify the job launcher to use\&.
 .PP
 By-default: 'hydra' 
+.SS "CCL_RECV"
+
+.PP
+Set recv algorithm\&. RECV algorithms
+.IP "\(bu" 2
+direct Using prepost(d2h-h2d) copies to get host buffers to invoke mpi/ofi->recv()
+.IP "\(bu" 2
+topo Topo scale-up algorithm (available if sycl and l0 are enabled)
+.IP "\(bu" 2
+offload Using device buffers directly into mpi/ofi layer skipping prepost copies d2h h2d\&. By-default used for scale-out\&. Setting extra MPI env vars for getting better performance (available if sycl and l0 are enabled)
+.PP
+.PP
+By-default: 'topo' if sycl and l0 are enabled, otherwise offload for ofi/mpi transport 
 .SS "CCL_REDUCE"
 
 .PP
@@ -447,6 +538,27 @@ topo Topo scaleup algorithm (available if sycl and l0 are enabled)
 .PP
 .PP
 By-default: 'topo' if sycl and l0 are enabled, otherwise tree for ofi transport or direct for mpi 
+.SS "CCL_REDUCE_PIPE_CHUNK_COUNT"
+
+.PP
+Set this environment variable to enable pipelining implementation for Reduce collectives using device (GPU) buffers\&. Syntax
+.PP
+CCL_REDUCE_PIPE_CHUNK_COUNT='<value>' Arguments
+.PP
+'<value>' Description
+.IP "\(bu" 2
+0: (default) Bypasses the chunking/pipelining code and directly calls the topology-aware code
+.IP "\(bu" 2
+1: Calls the pipelining code with a single chunk\&. Effectively, it has identical behavior and performance as with '0', but exercises the chunking code path with a single chunk\&.
+.PP
+.PP
+2 or higher: Divides the message into as many logical parts, or chunks, as specified\&. Then, it executes the collective with each logical chunk\&. This should allow for several phases of the algorithm to run in parallel, as long as they don't use the same physical resource\&. Effectively, this should increase performance\&.
+.PP
+Description
+.PP
+Set this environment variable to enable control how many chunks are used for Reduce pipeline-based collectives using device (GPU) buffers\&.
+.PP
+By-default: '0' 
 .SS "CCL_REDUCE_SCALEOUT"
 
 .PP
@@ -498,6 +610,46 @@ Description
 Set this environment variable to enable compute kernels for Allreduce, Reduce, and Reduce-Scatter collectives using device (GPU) buffers
 .PP
 By-default: '0' 
+.SS "CCL_REDUCE_SCATTER_PIPE_CHUNK_COUNT"
+
+.PP
+Set this environment variable to enable pipelining implementation for Reduce_Scatter collectives using device (GPU) buffers\&. Syntax
+.PP
+CCL_REDUCE_SCATTER_PIPE_CHUNK_COUNT='<value>' Arguments
+.PP
+'<value>' Description
+.IP "\(bu" 2
+0: (default) Bypasses the chunking/pipelining code and directly calls the topology-aware code
+.IP "\(bu" 2
+1: Calls the pipelining code with a single chunk\&. Effectively, it has identical behavior and performance as with '0', but exercises the chunking code path with a single chunk\&.
+.PP
+.PP
+2 or higher: Divides the message into as many logical parts, or chunks, as specified\&. Then, it executes the collective with each logical chunk\&. This should allow for several phases of the algorithm to run in parallel, as long as they don't use the same physical resource\&. Effectively, this should increase performance\&.
+.PP
+Description
+.PP
+Set this environment variable to enable control how many chunks are used for Reduce_Scatter pipeline-based collectives using device (GPU) buffers\&.
+.PP
+By-default: '0' 
+.SS "CCL_REDUCE_SCATTER_TOPO_READ"
+
+.PP
+Set this environment variable to select read or write based device-to-device data copy during the reduce_scatter stage of Allreduce, Reduce, and Reduce-Scatter collectives using device (GPU) buffers\&. Syntax CCL_REDUCE_SCATTER_TOPO_READ='<value>'
+.PP
+Arguments
+.PP
+'<value>' Description
+.IP "\(bu" 2
+1 Uses read based copy to transfer data across GPUs for the reduce_scatter stage of Allreduce, Reduce, and Reduce-Scatter collectives (default)\&.
+.IP "\(bu" 2
+0 Uses write based copy to transfer data across GPUs for the reduce_scatter stage of Allreduce, Reduce, and Reduce-Scatter collectives\&.
+.PP
+.PP
+Description
+.PP
+Set this environment variable to select read or write based device-to-device data copy during the reduce_scatter stage of Allreduce, Reduce, and Reduce-Scatter collectives using device (GPU) buffers\&.
+.PP
+By-default: '1' 
 .SS "CCL_RS_CHUNK_COUNT"
 
 .PP
@@ -510,6 +662,19 @@ By-default: '1'
 Set to specify minimum number of bytes in chunk for reduce_scatter phase in ring allreduce\&. '<size>' - Minimum number of bytes in chunk for reduce_scatter phase in ring allreduce\&. Affects actual value of CCL_RS_CHUNK_COUNT\&.
 .PP
 By-default: '65536' 
+.SS "CCL_SEND"
+
+.PP
+Set send algorithm\&. SEND algorithms
+.IP "\(bu" 2
+direct Using prepost(d2h-h2d) copies to get host buffers to invoke mpi/ofi->send()
+.IP "\(bu" 2
+topo Topo scale-up algorithm (available if sycl and l0 are enabled)
+.IP "\(bu" 2
+offload Using device buffers directly into mpi/ofi layer skipping prepost copies d2h h2d\&. By-default used for scale-out\&. Setting extra MPI env vars for getting better performance (available if sycl and l0 are enabled)
+.PP
+.PP
+By-default: 'topo' if sycl and l0 are enabled, otherwise offload for ofi/mpi transport 
 .SS "CCL_WORKER_AFFINITY"
 
 .PP
@@ -538,10 +703,26 @@ Set to specify memory affinity for oneCCL worker threads\&.
  A comma-separated list of NUMA node numbers for all local workers, one number per worker\&. The i-th local worker is pinned to the i-th NUMA node in the list\&. The number should not exceed the number of NUMA nodes available on the system\&.
 .PP
 By-default: 'not-specified' 
+.SS "CCL_ZE_ENABLE_OVERSUBSCRIPTION_FALLBACK"
+
+.PP
+Set to enable oversubscription in topo fallback stage for all collectives\&. This enviroment variable enables or disables the oversubscription fallback from topo algorithm to copy in/out
+.PP
+'<value>' : '0', '1'
+.PP
+By-default: '1' 
+.SS "CCL_ZE_ENABLE_OVERSUBSCRIPTION_THROW"
+
+.PP
+Set to enable oversubscription throw for all collectives\&. This enviroment variable enables or disables the oversubscription throw check
+.PP
+'<value>' : '0', '1'
+.PP
+By-default: '1' 
 .SH "Author"
 .PP 
 Generated automatically by Doxygen for Intel® oneAPI Collective Communications Library from the source code\&.
-.TH "ExpOneCCLvars" 3 "Tue Jun 6 2023" "Version 2021.10" "Intel® oneAPI Collective Communications Library" \" -*- nroff -*-
+.TH "ExpOneCCLvars" 3 "Wed Aug 30 2023" "Version 2021.11" "Intel® oneAPI Collective Communications Library" \" -*- nroff -*-
 .ad l
 .nh
 .SH NAME
@@ -575,6 +756,18 @@ ExpOneCCLvars \- Experimental OneCCL Environment Variables
 .RI "\fBCCL_ZE_AUTO_TUNE_PORTS\fP"
 .br
 .RI "Automatically tune algorithm protocols based on port count\&. "
+.ti -1c
+.RI "constexpr const char * \fBCCL_ZE_PT2PT_READ\fP = 'CCL_ZE_PT2PT_READ'"
+.br
+.RI "Enable switching of read and write protocols for pt2pt topo algorithm\&. "
+.ti -1c
+.RI "constexpr const char * \fBCCL_ZE_TYPE2_TUNE_PORTS\fP = 'CCL_ZE_TYPE2_TUNE_PORTS'"
+.br
+.RI "Tunable value for collectives to adjust copy engine indexes\&. "
+.ti -1c
+.RI "\fBCCL_BARRIER_SYNC\fP"
+.br
+.RI "Switch ccl::barrier() host-sync / host-async options\&. "
 .in -1c
 .SH "Detailed Description"
 .PP 
@@ -583,6 +776,12 @@ Experimental OneCCL Environment Variables Functionality of these variables has n
 
 .SH "Variable Documentation"
 .PP 
+.SS "CCL_BARRIER_SYNC"
+
+.PP
+Switch ccl::barrier() host-sync / host-async options\&. Historically ccl::barrier() was always synchronous\&. That does not match with oneCCL asynchronous concept\&. Same as other collectives, ccl::barrier() should be host-asynchronous if possible\&. As it would be too much to change in one moment, we start through experimental variable which introduces the option to make barrier host-asynchronous\&. Use CCL_BARRIER_SYNC=0 to achieve that\&.
+.PP
+By-default: '1 (SYNC)' 
 .SS "CCL_REDUCE_SCATTER_FALLBACK_ALGO"
 
 .PP
@@ -629,6 +828,28 @@ Set to specify the mechanism to use for Level Zero IPC exchange\&.
 '<value>': 'drmfd', 'pidfd', 'sockets'
 .PP
 By-default: 'drmfd' 
+.SS "constexpr const char* CCL_ZE_PT2PT_READ = 'CCL_ZE_PT2PT_READ'\fC [constexpr]\fP"
+
+.PP
+Enable switching of read and write protocols for pt2pt topo algorithm\&. Control pt2pt read/write protocols\&.
+.br
+ Read Protocol:
+.br
+ It means SEND side is exchanging the handle with RECV side\&. Then execute the copy operation on the RECV operation side, where the dst buf is the local buffer and the source buffer is the remote buffer\&.
+.br
+ Write Protocol:
+.br
+ it means RECV side is exchanging the handle with SEND side\&. Execute the copy operation on the SEND operation side, where the dst buf is the remote buffer and the source buffer is the local buffer\&. 
+.br
+ '<value>' : '0', '1' 
+.br
+ By-default: '1' 
+.SS "constexpr const char* CCL_ZE_TYPE2_TUNE_PORTS = 'CCL_ZE_TYPE2_TUNE_PORTS'\fC [constexpr]\fP"
+
+.PP
+Tunable value for collectives to adjust copy engine indexes\&. use 2,4,6 copy engine indexes for host with 6 ports for allreduce, reduce and allgatherv '<value>': 'on' - always use write mode with calculated indexes 'off' - always disabled 'detected' - determined by the logic in detection 'undetected' - the default value, used before the logic in detection
+.PP
+By-default: 'undetected' 
 .SH "Author"
 .PP 
 Generated automatically by Doxygen for Intel® oneAPI Collective Communications Library from the source code\&.
