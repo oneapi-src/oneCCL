@@ -194,9 +194,10 @@ ze_event_handle_t dynamic_event_pool::get_event() {
 
     event_info slot = {};
 
-    if (find_free_slot(slot)) {
-        return create_event(slot);
-    }
+    //TODO: figure out the issue in GSD-5806 and return this optimization
+    // if (find_free_slot(slot)) {
+    //     return create_event(slot);
+    // }
 
     event_pool_info pool_info = {};
 
