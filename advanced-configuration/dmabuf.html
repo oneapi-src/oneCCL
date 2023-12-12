@@ -184,7 +184,7 @@
 <li class="toctree-l3"><a class="reference internal" href="../api/concepts/stream.html">Stream</a></li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../api/operations.html">Communication operations</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../api/operations.html">Communication Operations</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../api/operations/datatypes.html">Datatypes</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../api/operations/collective-operations.html">Collective Operations</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-7"><i class="fa-solid fa-chevron-down"></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/allgatherv.html">Allgatherv</a></li>
@@ -197,6 +197,7 @@
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/reduce-scatter.html">ReduceScatter</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="../api/operations/point-to-point.html">Point-To-Point Operations</a></li>
 </ul>
 </li>
 </ul>
@@ -260,7 +261,7 @@
       
       
       
-      <li><a href="https://github.com/oneapi-src/oneCCL/edit/master/doc/source/advanced-configuration/dmabuf.rst" target="_blank"
+      <li><a href="https://github.com/oneapi-src/oneCCL/edit/master/doc/rst/source/advanced-configuration/dmabuf.rst" target="_blank"
    class="btn btn-sm btn-source-edit-button dropdown-item"
    title="Suggest edit"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -462,17 +463,7 @@ No need to run autogen.sh if using the release package.</p>
 <section id="run-instructions">
 <h2>Run instructions<a class="headerlink" href="#run-instructions" title="Permalink to this headline">#</a></h2>
 <ol class="arabic">
-<li><p>Set the environment.</p>
-<p>If Intel® oneAPI Base Toolkit is used:</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">source</span><span class="w"> </span><span class="o">&lt;</span><span class="n">toolkit_install_dir</span><span class="o">&gt;/</span><span class="n">setvars</span><span class="p">.</span><span class="n">sh</span>
-</pre></div>
-</div>
-<p>If software components are built from sources:</p>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">source</span><span class="w"> </span><span class="o">&lt;</span><span class="n">ccl_install_dir</span><span class="o">&gt;/</span><span class="n">env</span><span class="o">/</span><span class="n">setvars</span><span class="p">.</span><span class="n">sh</span>
-<span class="k">export</span><span class="w"> </span><span class="n">LD_LIBRARY_PATH</span><span class="o">=&lt;</span><span class="n">ofi_install_path</span><span class="o">&gt;/</span><span class="n">lib</span><span class="o">:</span><span class="n">$</span><span class="p">{</span><span class="n">LD_LIBRARY_PATH</span><span class="p">}</span>
-</pre></div>
-</div>
-</li>
+<li><p>Set the environment. See <a class="reference external" href="https://www.intel.com/content/www/us/en/docs/oneccl/get-started-guide/2021-10/overview.html">Get Started Guide</a>.</p></li>
 <li><p>Run allreduce test with ring algorithm and SYCL USM device buffers:</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">export</span><span class="w"> </span><span class="n">CCL_ATL_TRANSPORT</span><span class="o">=</span><span class="n">ofi</span>
 <span class="k">export</span><span class="w"> </span><span class="n">CCL_ATL_HMEM</span><span class="o">=</span><span class="mi">1</span>
@@ -565,7 +556,7 @@ By Intel
     
   <p class="copyright">
     
-      © Copyright 2019–2022.
+      © Copyright 2023.
       <br/>
     
   </p>

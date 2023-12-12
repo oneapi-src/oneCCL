@@ -183,7 +183,7 @@
 <li class="toctree-l3"><a class="reference internal" href="api/concepts/stream.html">Stream</a></li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="api/operations.html">Communication operations</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="api/operations.html">Communication Operations</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="api/operations/datatypes.html">Datatypes</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="api/operations/collective-operations.html">Collective Operations</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-7"><i class="fa-solid fa-chevron-down"></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="api/operations/collective-operations/allgatherv.html">Allgatherv</a></li>
@@ -196,6 +196,7 @@
 <li class="toctree-l4"><a class="reference internal" href="api/operations/collective-operations/reduce-scatter.html">ReduceScatter</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="api/operations/point-to-point.html">Point-To-Point Operations</a></li>
 </ul>
 </li>
 </ul>
@@ -259,7 +260,7 @@
       
       
       
-      <li><a href="https://github.com/oneapi-src/oneCCL/edit/master/doc/source/index.rst" target="_blank"
+      <li><a href="https://github.com/oneapi-src/oneCCL/edit/master/doc/rst/source/index.rst" target="_blank"
    class="btn btn-sm btn-source-edit-button dropdown-item"
    title="Suggest edit"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -418,7 +419,6 @@ document.write(`
 <li class="toctree-l1"><a class="reference internal" href="introduction/installation.html">Installation Guide</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="introduction/installation.html#system-requirements">System Requirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="introduction/installation.html#installation-using-command-line-interface">Installation using Command Line Interface</a></li>
-<li class="toctree-l2"><a class="reference internal" href="introduction/installation.html#environment-setup">Environment Setup</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="introduction/sample.html">Sample Application</a><ul>
@@ -463,13 +463,13 @@ document.write(`
 <li class="toctree-l1"><a class="reference internal" href="api.html">oneCCL API</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="api/initialization.html">Initialization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/concepts.html">oneCCL Concepts</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api/operations.html">Communication operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/operations.html">Communication Operations</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#id1">Generic workflow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#id2">Error Handling</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="env-variables.html">Environment Variables</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="env-variables.html#collective-algorithms-selection">Collective algorithms selection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env-variables.html#collective-algorithms-selection">Collective Algorithms Selection</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env-variables.html#workers">Workers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env-variables.html#atl">ATL</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env-variables.html#multi-nic">Multi-NIC</a></li>
@@ -481,6 +481,8 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="env-variables.html#ccl-max-short-size">CCL_MAX_SHORT_SIZE</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env-variables.html#ccl-sycl-output-event">CCL_SYCL_OUTPUT_EVENT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="env-variables.html#ccl-ze-library-path">CCL_ZE_LIBRARY_PATH</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env-variables.html#ccl-recv">CCL_RECV</a></li>
+<li class="toctree-l2"><a class="reference internal" href="env-variables.html#ccl-send">CCL_SEND</a></li>
 </ul>
 </li>
 </ul>
@@ -538,7 +540,7 @@ By Intel
     
   <p class="copyright">
     
-      © Copyright 2019–2022.
+      © Copyright 2023.
       <br/>
     
   </p>
