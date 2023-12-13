@@ -46,7 +46,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Notices and Disclaimers" href="legal.html" />
-    <link rel="prev" title="ReduceScatter" href="api/operations/collective-operations/reduce-scatter.html" />
+    <link rel="prev" title="Point-To-Point Operations" href="api/operations/point-to-point.html" />
     <script defer type="text/javascript" src="https://www.intel.com/content/dam/www/global/wap/performance-config.js" ></script>
     <script type="text/javascript">
         // Configure TMS settings
@@ -184,7 +184,7 @@
 <li class="toctree-l3"><a class="reference internal" href="api/concepts/stream.html">Stream</a></li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="api/operations.html">Communication operations</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="api/operations.html">Communication Operations</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="api/operations/datatypes.html">Datatypes</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="api/operations/collective-operations.html">Collective Operations</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-7"><i class="fa-solid fa-chevron-down"></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="api/operations/collective-operations/allgatherv.html">Allgatherv</a></li>
@@ -197,6 +197,7 @@
 <li class="toctree-l4"><a class="reference internal" href="api/operations/collective-operations/reduce-scatter.html">ReduceScatter</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="api/operations/point-to-point.html">Point-To-Point Operations</a></li>
 </ul>
 </li>
 </ul>
@@ -260,7 +261,7 @@
       
       
       
-      <li><a href="https://github.com/oneapi-src/oneCCL/edit/master/doc/source/env-variables.rst" target="_blank"
+      <li><a href="https://github.com/oneapi-src/oneCCL/edit/master/doc/rst/source/env-variables.rst" target="_blank"
    class="btn btn-sm btn-source-edit-button dropdown-item"
    title="Suggest edit"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -399,7 +400,7 @@ document.write(`
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#collective-algorithms-selection">Collective algorithms selection</a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#collective-algorithms-selection">Collective Algorithms Selection</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#device-gpu-memory-buffers">Device (GPU) Memory Buffers</a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#scaleup">SCALEUP</a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-allgatherv-monolithic-pipeline-kernel">CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL</a></li>
@@ -466,7 +467,12 @@ document.write(`
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-priority">CCL_PRIORITY</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-max-short-size">CCL_MAX_SHORT_SIZE</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-sycl-output-event">CCL_SYCL_OUTPUT_EVENT</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-ze-library-path">CCL_ZE_LIBRARY_PATH</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-ze-library-path">CCL_ZE_LIBRARY_PATH</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#point-to-point-operations">Point-To-Point Operations</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-recv">CCL_RECV</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-send">CCL_SEND</a></li>
 </ul>
             </nav>
         </div>
@@ -481,7 +487,7 @@ document.write(`
   <section id="environment-variables">
 <h1>Environment Variables<a class="headerlink" href="#environment-variables" title="Permalink to this headline">#</a></h1>
 <section id="collective-algorithms-selection">
-<h2>Collective algorithms selection<a class="headerlink" href="#collective-algorithms-selection" title="Permalink to this headline">#</a></h2>
+<h2>Collective Algorithms Selection<a class="headerlink" href="#collective-algorithms-selection" title="Permalink to this headline">#</a></h2>
 <p>oneCCL supports collective operations for the host (CPU) memory buffers and device (GPU) memory buffers. Below you can see how to select the collective algorithm depending on the type of buffer being utilized.</p>
 <section id="device-gpu-memory-buffers">
 <h3>Device (GPU) Memory Buffers<a class="headerlink" href="#device-gpu-memory-buffers" title="Permalink to this headline">#</a></h3>
@@ -987,7 +993,7 @@ Otherwise, pin domain is all cores on the node.</p></td>
 The i-th local worker is pinned to the i-th core in the list.
 For example <code class="docutils literal notranslate"><span class="pre">&lt;a&gt;,&lt;b&gt;-&lt;c&gt;</span></code> defines list of cores contaning core with number <code class="docutils literal notranslate"><span class="pre">&lt;a&gt;</span></code>
 and range of cores with numbers from <code class="docutils literal notranslate"><span class="pre">&lt;b&gt;</span></code> to <code class="docutils literal notranslate"><span class="pre">&lt;c&gt;</span></code>.
-The number should not exceed the number of cores available on the system.</p></td>
+The core number should not exceed the number of cores available on the system. The length of the list should be equal to the number of workers.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1118,11 +1124,9 @@ The actual HMEM support depends on the limitations on the transport level and sy
 <p>Set this environment variable to enable the OFI shared memory provider to communicate between ranks in the same node of the host (CPU) buffers.
 This capability requires OFI as the transport (<code class="docutils literal notranslate"><span class="pre">CCL_ATL_TRANSPORT=ofi</span></code>).</p>
 <p>The OFI/SHM provider has support to utilize the <a class="reference external" href="https://01.org/blogs/2019/introducing-intel-data-streaming-accelerator">Intel(R) Data Streaming Accelerator* (DSA)</a>.
-To run it with DSA*, you need:</p>
-<ul class="simple">
-<li><p>Linux* OS kernel support for the DSA* shared work queues</p></li>
-<li><p>Libfabric* 1.17 or later</p></li>
-</ul>
+To run it with DSA*, you need:
+* Linux* OS kernel support for the DSA* shared work queues
+* Libfabric* 1.17 or later</p>
 <p>To enable DSA, set the following environment variables:</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">FI_SHM_DISABLE_CMA</span><span class="o">=</span><span class="mi">1</span>
 <span class="n">FI_SHM_USE_DSA_SAR</span><span class="o">=</span><span class="mi">1</span>
@@ -1675,6 +1679,69 @@ oneCCL event must be associated with oneCCL communication operation.</p>
 </table>
 <p><strong>Description</strong></p>
 <p>Set this environment variable to specify the name and full path to <code class="docutils literal notranslate"><span class="pre">Level-Zero</span></code> library. The path should be absolute and validated. Set this variable if <code class="docutils literal notranslate"><span class="pre">Level-Zero</span></code> is not located in the default path. By default oneCCL uses <code class="docutils literal notranslate"><span class="pre">libze_loader.so</span></code> name for dynamic loading.</p>
+<section id="point-to-point-operations">
+<h3>Point-To-Point Operations<a class="headerlink" href="#point-to-point-operations" title="Permalink to this headline">#</a></h3>
+</section>
+</section>
+<section id="ccl-recv">
+<h2>CCL_RECV<a class="headerlink" href="#ccl-recv" title="Permalink to this headline">#</a></h2>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_RECV</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given table table-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">direct</span></code></p></td>
+<td><p>Based on the MPI*/OFI* transport layer.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">topo</span></code></p></td>
+<td><p>Uses XeLinks across GPUs in a multi-GPU node. Default for GPU buffers.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">offload</span></code></p></td>
+<td><p>Based on the MPI*/OFI* transport layer and GPU RDMA when supported by the hardware.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="ccl-send">
+<h2>CCL_SEND<a class="headerlink" href="#ccl-send" title="Permalink to this headline">#</a></h2>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_SEND</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given table table-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">direct</span></code></p></td>
+<td><p>Based on the MPI*/OFI* transport layer.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">topo</span></code></p></td>
+<td><p>Uses XeLinks across GPUs in a multi-GPU node. Default for GPU buffers.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">offload</span></code></p></td>
+<td><p>Based on the MPI*/OFI* transport layer and GPU RDMA when supported by the hardware.</p></td>
+</tr>
+</tbody>
+</table>
 </section>
 </section>
 
@@ -1691,12 +1758,12 @@ oneCCL event must be associated with oneCCL communication operation.</p>
     <div class="footer-article-item"><!-- Previous / next buttons -->
 <div class="prev-next-area">
     <a class="left-prev"
-       href="api/operations/collective-operations/reduce-scatter.html"
+       href="api/operations/point-to-point.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">ReduceScatter</p>
+        <p class="prev-next-title">Point-To-Point Operations</p>
       </div>
     </a>
     <a class="right-next"
@@ -1726,7 +1793,7 @@ oneCCL event must be associated with oneCCL communication operation.</p>
   </div>
   <nav class="bd-toc-nav page-toc">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#collective-algorithms-selection">Collective algorithms selection</a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#collective-algorithms-selection">Collective Algorithms Selection</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#device-gpu-memory-buffers">Device (GPU) Memory Buffers</a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#scaleup">SCALEUP</a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-allgatherv-monolithic-pipeline-kernel">CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL</a></li>
@@ -1793,7 +1860,12 @@ oneCCL event must be associated with oneCCL communication operation.</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-priority">CCL_PRIORITY</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-max-short-size">CCL_MAX_SHORT_SIZE</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-sycl-output-event">CCL_SYCL_OUTPUT_EVENT</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-ze-library-path">CCL_ZE_LIBRARY_PATH</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-ze-library-path">CCL_ZE_LIBRARY_PATH</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#point-to-point-operations">Point-To-Point Operations</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-recv">CCL_RECV</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-send">CCL_SEND</a></li>
 </ul>
   </nav></div>
 
@@ -1817,7 +1889,7 @@ By Intel
     
   <p class="copyright">
     
-      © Copyright 2019–2022.
+      © Copyright 2023.
       <br/>
     
   </p>
