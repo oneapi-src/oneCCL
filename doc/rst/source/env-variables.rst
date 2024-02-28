@@ -156,7 +156,7 @@ CCL_SKIP_SCHEDULER
    * - ``1``
      - Enable SYCL kernels.
    * - ``0``
-     - Disable SYCL kernels. Default value.
+     - Disable SYCL kernels. The default value.
   
 **Description**
 
