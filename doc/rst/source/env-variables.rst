@@ -104,7 +104,7 @@ CCL_REDUCE_SCATTER_MONOLITHIC_PIPELINE_KERNEL
   
 **Description**
 
-Set this environment variable to enable compute kernels that pipeline data transfers across tiles in the same GPU with data transfers across different GPUs, for the ALLREDUCE, REDUCE, and REDUCE_SCATTER collectives using the device (GPU) buffers. 
+Set this environment variable to enable compute kernels that pipeline data transfers across tiles in the same GPU with data transfers across different GPUs for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER`` collectives using the device (GPU) buffers. 
  
 
 CCL_ALLTOALLV_MONOLITHIC_KERNEL 
