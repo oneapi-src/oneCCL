@@ -161,7 +161,7 @@ CCL_SKIP_SCHEDULER
 **Description**
 
 Setting this environment variable to 1 enables SYCL kernel-based implementation for allgatherv, allreduce, and reduce_scatter.
-This is a new optimization that optimizes all message sizes and supports some data types (int32, fp32, fp16, and bf16), sum operation, and single node. 
+This new optimization enhances all message sizes. It supports the ``int32``, ``fp32``, ``fp16``, and ``bf16`` data types, sum operations, and single nodes. 
 If the support is unavailable with SYCL kernels, oneCCL falls back to other implementations. Therefore, you can safely set up this environment variable. 
 
 SCALEOUT
