@@ -68,13 +68,13 @@ CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL
    * - <value>
      - Description
    * - ``1``
-     - Uses compute kernels to transfer data across GPUs for the ``ALLGATHERV`` collective. 
+     - Uses compute kernels to transfer data across GPUs for the ``ALLGATHERV`` collective. The default value.
    * - ``0``
-     - Uses copy engines to transfer data across GPUs for the ``ALLGATHERV`` collective. The default value.
+     - Uses copy engines to transfer data across GPUs for the ``ALLGATHERV`` collective. 
   
 **Description**
 
-Set this environment variable to enable compute kernels for the ``ALLGATHERV`` collective using device (GPU) buffers. 
+Set this environment variable to enable compute kernels that pipeline data transfers across tiles in the same GPU with data transfers across different GPUs,  for the ALLGATHERV collective using device (GPU) buffers. 
 
 
 
@@ -98,13 +98,13 @@ CCL_REDUCE_SCATTER_MONOLITHIC_PIPELINE_KERNEL
    * - <value>
      - Description
    * - ``1``
-     - Uses compute kernels for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER`` collectives. 
+     - Uses compute kernels for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER`` collectives. The default value. 
    * - ``0``
-     - Uses copy engines to transfer data across GPUs for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER collectives``. The default value. 
+     - Uses copy engines to transfer data across GPUs for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER collectives``. 
   
 **Description**
 
-Set this environment variable to enable compute kernels, that pipeline data transfers across tiles in the same GPU and across different GPUs, for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER`` collectives using the device (GPU) buffers. 
+Set this environment variable to enable compute kernels that pipeline data transfers across tiles in the same GPU with data transfers across different GPUs, for the ALLREDUCE, REDUCE, and REDUCE_SCATTER collectives using the device (GPU) buffers. 
  
 
 CCL_ALLTOALLV_MONOLITHIC_KERNEL 
@@ -134,6 +134,35 @@ CCL_ALLTOALLV_MONOLITHIC_KERNEL
 
 Set this environment variable to enable compute kernels for the ``ALLTOALL`` and ``ALLTOALLV`` collectives using device (GPU) buffers
 ``CCL_<coll_name>_SCALEOUT``. 
+
+CCL_SKIP_SCHEDULER  
+++++++++++++++++++
+
+**Syntax**
+
+::
+
+  CCL_SKIP_SCHEDULER=<value> 
+
+**Arguments**
+
+.. list-table:: 
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``1``
+     - Enable SYCL kernels.
+   * - ``0``
+     - Disable SYCL kernels. Default value.
+  
+**Description**
+
+Setting this environment variable to 1 enables SYCL kernel-based implementation for allgatherv, allreduce, and reduce_scatter.
+This is a new optimization that optimizes all message sizes and supports some data types (int32, fp32, fp16, and bf16), sum operation, and single node. 
+oneCCL falls back to other implementations when the support is not available with SYCL kernels, so the user can safely setup this environment variable
 
 SCALEOUT
 ++++++++
