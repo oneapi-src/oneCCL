@@ -61,7 +61,7 @@ void ze_copy_entry::init_ze_hook() {
     void* src = static_cast<char*>(in_buf.get_ptr()) + attr.in_buf_offset * dtype.size();
 
     ze_command_list_handle_t list =
-        ze_base_entry::get_copy_list(attr.direction, attr.hint_queue_index);
+        ze_base_entry::get_copy_list(attr.direction, attr.hint_queue_index, attr.force_queue_type);
 
     ZE_APPEND_CALL(ze_cmd_memory_copy,
                    list,

@@ -149,6 +149,8 @@ void event_end(__itt_event event) {
 
     auto event_ref_count = inflight_event_ref_counts.find(event);
 
+    CCL_THROW_IF_NOT(event_ref_count != inflight_event_ref_counts.end(), "itt event not found");
+
     event_ref_count->second--;
     if (event_ref_count->second == 0) {
         // No more references to the event are currently used

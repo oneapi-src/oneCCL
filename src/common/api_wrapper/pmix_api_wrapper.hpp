@@ -33,13 +33,14 @@ typedef struct pmix_lib_ops {
     decltype(::PMIx_Get) *PMIx_Get;
     decltype(::PMIx_Finalize) *PMIx_Finalize;
     decltype(::PMIx_Value_destruct) *PMIx_Value_destruct;
+    decltype(::PMIx_Proc_construct) *PMIx_Proc_construct;
+    decltype(::PMIx_Proc_destruct) *PMIx_Proc_destruct;
 } pmix_lib_ops_t;
 
-static std::vector<std::string> pmix_fn_names = { "PMIx_Init",
-                                                  "PMIx_Error_string",
-                                                  "PMIx_Get",
-                                                  "PMIx_Finalize",
-                                                  "PMIx_Value_destruct" };
+static std::vector<std::string> pmix_fn_names = {
+    "PMIx_Init",           "PMIx_Error_string",   "PMIx_Get",          "PMIx_Finalize",
+    "PMIx_Value_destruct", "PMIx_Proc_construct", "PMIx_Proc_destruct"
+};
 
 extern ccl::pmix_lib_ops_t pmix_lib_ops;
 
@@ -48,6 +49,8 @@ extern ccl::pmix_lib_ops_t pmix_lib_ops;
 #define PMIx_Get            ccl::pmix_lib_ops.PMIx_Get
 #define PMIx_Finalize       ccl::pmix_lib_ops.PMIx_Finalize
 #define PMIx_Value_destruct ccl::pmix_lib_ops.PMIx_Value_destruct
+#define PMIx_Proc_construct ccl::pmix_lib_ops.PMIx_Proc_construct
+#define PMIx_Proc_destruct  ccl::pmix_lib_ops.PMIx_Proc_destruct
 
 bool get_pmix_local_coord(int *local_proc_idx, int *local_proc_count);
 #endif // CCL_ENABLE_PMIX

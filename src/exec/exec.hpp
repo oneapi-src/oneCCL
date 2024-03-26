@@ -60,6 +60,12 @@ public:
             parent = src.parent;
             src.parent = nullptr;
         }
+        worker_guard& operator=(worker_guard&) = delete;
+        worker_guard& operator=(worker_guard&& src) {
+            parent = src.parent;
+            src.parent = nullptr;
+            return *this;
+        }
         ~worker_guard() {
             if (parent)
                 parent->unlock_workers();
@@ -143,7 +149,7 @@ inline ccl_wait_result ccl_wait_impl(ccl_executor* exec, ccl_request* request) {
             request,
             " completed, sched ",
             ccl_coll_type_to_str(static_cast<sched_type*>(request->get_sched())->coll_param.ctype));
-        if (!request->synchronous) {
+        if (!request->get_sched()->coll_attr.synchronous) {
             ccl_release_request(request);
             ret = ccl_wait_result_completed_released;
         }

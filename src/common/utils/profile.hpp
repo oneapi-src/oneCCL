@@ -16,19 +16,31 @@
 #pragma once
 
 #include <map>
+#include <cstddef>
 
 namespace ccl {
 namespace profile {
 
-class metrics_manager {
-    void finalize();
+class metrics_counter {
+    const char *collective_name;
 
 public:
-    std::map<size_t, size_t> allreduce_pipe_nonparallel_calls_per_count,
-        allreduce_pipe_parallel_calls_per_count;
+    std::map<size_t, size_t> nonparallel_calls_per_count, parallel_calls_per_count;
+    metrics_counter(const char *collective_name) : collective_name(collective_name){};
+    void init();
+    ~metrics_counter();
+    metrics_counter(const metrics_counter &) = delete;
+    metrics_counter &operator=(const metrics_counter &) = delete;
+};
+
+class metrics_manager {
+public:
+    metrics_counter allreduce_pipe{ "allreduce" };
+    metrics_counter reduce_pipe{ "reduce" };
+    metrics_counter reduce_scatter_pipe{ "reduce_scatter" };
+    metrics_counter allgatherv_pipe{ "allgatherv" };
 
     void init();
-    ~metrics_manager();
 };
 
 } // namespace profile

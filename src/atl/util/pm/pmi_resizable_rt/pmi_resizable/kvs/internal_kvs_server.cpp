@@ -98,7 +98,7 @@ kvs_status_t server::try_to_connect_new() {
         if ((new_socket = accept(poll_fds[FDI_LISTENER].fd,
                                  addr->get_sock_addr_ptr(),
                                  (socklen_t*)&peer_addr_size)) < 0) {
-            LOG_ERROR("server_listen_sock accept, %s", strerror(errno));
+            LOG_ERROR("server_listen_sock accept:", strerror(errno));
             return KVS_STATUS_FAILURE;
         }
         for (size_t i = FDI_LAST; i < poll_fds.size(); i++) {
@@ -117,7 +117,7 @@ kvs_status_t server::try_to_connect_new() {
             if (close(new_socket)) {
                 // we are already returning failure, there is not much we can do
                 // except for logging the exact error that occurred
-                LOG_ERROR("error closing a socket, %s", strerror(errno));
+                LOG_ERROR("error closing a socket: ", strerror(errno));
             }
             return KVS_STATUS_FAILURE;
         }
@@ -329,7 +329,7 @@ kvs_status_t server::make_client_request(int& socket) {
         default: {
             if (request.name[0] == '\0')
                 return KVS_STATUS_SUCCESS;
-            LOG_ERROR("unknown request mode - %d.\n", request.mode);
+            LOG_ERROR("unknown request mode: ", request.mode);
             return KVS_STATUS_FAILURE;
         }
     }

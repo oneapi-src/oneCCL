@@ -160,9 +160,10 @@ void global_data::getenv_local_coord(const char* local_proc_idx_env_name,
         LOG_WARN("could not get local_idx/count from environment variables, "
                  "trying to get them from ATL");
 #if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
-        CCL_THROW_IF_NOT(
-            global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::sockets,
-            "to get local_idx/count from ATL, set CCL_ZE_IPC_EXCHANGE=sockets explicitly");
+        LOG_WARN("fallback to 'sockets' mode of ze exchange mechanism, to use "
+                 "CCL_ZE_IPC_EXHANGE=drmfd, set CCL_LOCAL_RANK/SIZE explicitly "
+                 " or use process launcher");
+        global_data::env().ze_ipc_exchange = ccl::ze::ipc_exchange_mode::sockets;
 #endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
         local_proc_idx = CCL_ENV_INT_NOT_SPECIFIED;
         local_proc_count = CCL_ENV_INT_NOT_SPECIFIED;
@@ -195,9 +196,10 @@ void global_data::set_local_coord() {
                 LOG_WARN("could not get local_idx/count from environment variables, "
                          "trying to get them from ATL");
 #if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
-                CCL_THROW_IF_NOT(
-                    global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::sockets,
-                    "to get local_idx/count from ATL, set CCL_ZE_IPC_EXCHANGE=sockets explicitly");
+                LOG_WARN("fallback to 'sockets' mode of ze exchange mechanism, to use "
+                         "CCL_ZE_IPC_EXHANGE=drmfd, set CCL_LOCAL_RANK/SIZE explicitly "
+                         " or use process launcher");
+                env.ze_ipc_exchange = ccl::ze::ipc_exchange_mode::sockets;
 #endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
             }
             else {

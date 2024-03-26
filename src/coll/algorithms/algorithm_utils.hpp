@@ -18,7 +18,9 @@
 #include <vector>
 
 #include "common/utils/enums.hpp"
+#include "common/utils/buffer.hpp"
 #include "oneapi/ccl/types.hpp"
+#include "internal_types.hpp"
 
 #define CCL_COLL_LIST \
     ccl_coll_allgatherv, ccl_coll_allreduce, ccl_coll_alltoall, ccl_coll_alltoallv, \
@@ -168,5 +170,23 @@ void ccl_get_segment_sizes(size_t dtype_size,
 class ccl_sched;
 
 #if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
-uint32_t submit_ze_commands_in_subsched_entries(ccl_sched* sched);
+bool ccl_is_pipe_enabled(const size_t count,
+                         const size_t dtype_size,
+                         const size_t chunk_count,
+                         size_t& main_chunk_count,
+                         size_t& mem_align);
+bool ccl_is_ptr_aligned(uintptr_t start_ptr, size_t mem_align);
+ccl::status ccl_build_topo_uniform_buff_size_op(
+    ccl_sched* sched,
+    ccl_buffer send_buf,
+    ccl_buffer recv_buf,
+    size_t count,
+    size_t dtype_size,
+    size_t pipe_nof_chunks,
+    const std::string& op_name,
+    ccl::profile::metrics_counter& metrics,
+    std::function<
+        ccl::status(ccl_sched* sched, ccl_buffer send_buf, ccl_buffer recv_buf, size_t count)>
+        fill_op_lambda);
+uint32_t ccl_submit_ze_commands_in_subsched_entries(ccl_sched* sched);
 #endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL

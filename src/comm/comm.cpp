@@ -136,6 +136,11 @@ void ccl_comm::init(int comm_id,
             LOG_INFO("topo_manager:", topo_manager.to_string());
         }
         create_topo_subcomms();
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+        // init of fd manager is based on node comm,
+        // it initializes for every creation of comm in multi comms case
+        init_ipc_exchange_mode(node_comm);
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
     }
     else {
         local2global_map = atl_comm->get_rank2rank_map();
@@ -258,6 +263,32 @@ ccl::comm_interface_ptr ccl_comm::split(const ccl::comm_split_attr& attr) {
 
     return std::shared_ptr<ccl_comm>(new_comm);
 }
+
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+void ccl_comm::init_ipc_exchange_mode(std::shared_ptr<ccl_comm> comm) {
+    if (device_ptr && context_ptr) {
+        LOG_DEBUG("initialize ipc_exchange_mode");
+        if (ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::pidfd &&
+            ccl::ze::fd_manager::is_pidfd_supported()) {
+            LOG_DEBUG("pidfd exchange mode is verified successfully");
+        }
+#ifdef CCL_ENABLE_DRM
+        else if (ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::drmfd) {
+            fd_manager = std::make_shared<ccl::ze::fd_manager>(comm->get_atl_comm());
+            // update physical_idx for each logical device, by default it is invalid
+#ifdef ZE_PCI_PROPERTIES_EXT_NAME
+            auto& devices = ccl::global_data::get().ze_data->devices;
+            for (size_t idx = 0; idx < devices.size(); idx++) {
+                devices[idx].physical_idx = ccl::ze::fd_manager::get_physical_device_idx(
+                    fd_manager->get_physical_devices(), devices[idx].pci);
+            }
+#endif // ZE_PCI_PROPERTIES_EXT_NAME
+            LOG_DEBUG("drmfd exchange mode is verified successfully");
+        }
+#endif // CCL_ENABLE_DRM
+    }
+}
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
 std::string ccl_comm::to_string() const {
     std::stringstream ss;

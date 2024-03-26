@@ -89,7 +89,7 @@ void ccl_bf16_reduce(const void* in_buf,
                      void* inout_buf,
                      size_t* out_count,
                      ccl::reduction op) {
-    LOG_DEBUG("BF16 reduction for %zu elements", in_count);
+    LOG_DEBUG("BF16 reduction for", in_count, " elements");
 
     if (out_count != nullptr) {
         *out_count = in_count;

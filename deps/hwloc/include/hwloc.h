@@ -1,6 +1,6 @@
 /*
  * Copyright © 2009 CNRS
- * Copyright © 2009-2022 Inria.  All rights reserved.
+ * Copyright © 2009-2023 Inria.  All rights reserved.
  * Copyright © 2009-2012 Université Bordeaux
  * Copyright © 2009-2020 Cisco Systems, Inc.  All rights reserved.
  * See COPYING in top-level directory.
@@ -263,6 +263,11 @@ typedef enum {
 			  * This is the smallest object representing Memory resources,
 			  * it cannot have any child except Misc objects.
 			  * However it may have Memory-side cache parents.
+                          *
+                          * NUMA nodes may correspond to different kinds of memory
+                          * (DRAM, HBM, CXL-DRAM, etc.). When hwloc is able to guess
+                          * that kind, it is specified in the subtype field of the object.
+                          * See also \ref attributes_normal in the main documentation.
 			  *
 			  * There is always at least one such object in the topology
 			  * even if the machine is not NUMA.
@@ -338,6 +343,12 @@ typedef enum {
 
   HWLOC_OBJ_DIE,	/**< \brief Die within a physical package.
 			 * A subpart of the physical package, that contains multiple cores.
+			 *
+			 * Some operating systems (e.g. Linux) may expose a single die per package
+			 * even if the hardware does not support dies at all. To avoid showing
+			 * such non-existing dies, the corresponding hwloc backend may filter them out.
+			 * This is functionally equivalent to ::HWLOC_TYPE_FILTER_KEEP_STRUCTURE
+			 * being enforced.
 			 */
 
   HWLOC_OBJ_TYPE_MAX    /**< \private Sentinel value */
@@ -656,33 +667,48 @@ union hwloc_obj_attr_u {
   /** \brief PCI Device specific Object Attributes */
   struct hwloc_pcidev_attr_s {
 #ifndef HWLOC_HAVE_32BITS_PCI_DOMAIN
-    unsigned short domain; /* Only 16bits PCI domains are supported by default */
+    unsigned short domain; /**< \brief Domain number (xxxx in the PCI BDF notation xxxx:yy:zz.t).
+                            *   Only 16bits PCI domains are supported by default. */
 #else
-    unsigned int domain; /* 32bits PCI domain support break the library ABI, hence it's disabled by default */
+    unsigned int domain; /**< \brief Domain number   (xxxx in the PCI BDF notation xxxx:yy:zz.t).
+                          *   32bits PCI domain support break the library ABI, hence it's disabled by default. */
 #endif
-    unsigned char bus, dev, func;
-    unsigned short class_id;
-    unsigned short vendor_id, device_id, subvendor_id, subdevice_id;
-    unsigned char revision;
-    float linkspeed; /* in GB/s */
+    unsigned char bus;   /**< \brief Bus number      (yy   in the PCI BDF notation xxxx:yy:zz.t). */
+    unsigned char dev;   /**< \brief Device number   (zz   in the PCI BDF notation xxxx:yy:zz.t). */
+    unsigned char func;  /**< \brief Function number (t    in the PCI BDF notation xxxx:yy:zz.t). */
+    unsigned short class_id;  /**< \brief The class number (first two bytes, without the prog_if). */
+    unsigned short vendor_id;    /**< \brief Vendor ID (xxxx in [xxxx:yyyy]). */
+    unsigned short device_id;    /**< \brief Device ID (yyyy in [xxxx:yyyy]). */
+    unsigned short subvendor_id; /**< \brief Sub-Vendor ID. */
+    unsigned short subdevice_id; /**< \brief Sub-Device ID. */
+    unsigned char revision;   /**< \brief Revision number. */
+    float linkspeed; /**< \brief Link speed in GB/s.
+                      *   This datarate is the currently configured speed of the entire PCI link
+                      *   (sum of the bandwidth of all PCI lanes in that link).
+                      *   It may change during execution since some devices are able to
+                      *   slow their PCI links down when idle.
+                      */
   } pcidev;
   /** \brief Bridge specific Object Attributes */
   struct hwloc_bridge_attr_s {
     union {
-      struct hwloc_pcidev_attr_s pci;
+      struct hwloc_pcidev_attr_s pci; /**< \brief PCI attribute of the upstream part as a PCI device. */
     } upstream;
-    hwloc_obj_bridge_type_t upstream_type;
+    hwloc_obj_bridge_type_t upstream_type; /**< \brief Upstream Bridge type. */
     union {
       struct {
 #ifndef HWLOC_HAVE_32BITS_PCI_DOMAIN
-	unsigned short domain; /* Only 16bits PCI domains are supported by default */
+        unsigned short domain; /**< \brief Domain number the downstream PCI buses.
+                                *   Only 16bits PCI domains are supported by default. */
 #else
-	unsigned int domain; /* 32bits PCI domain support break the library ABI, hence it's disabled by default */
+        unsigned int domain;   /**< \brief Domain number the downstream PCI buses.
+	                        *   32bits PCI domain support break the library ABI, hence it's disabled by default */
 #endif
-	unsigned char secondary_bus, subordinate_bus;
+        unsigned char secondary_bus;   /**< \brief First PCI bus number below the bridge. */
+        unsigned char subordinate_bus; /**< \brief Highest PCI bus number below the bridge. */
       } pci;
     } downstream;
-    hwloc_obj_bridge_type_t downstream_type;
+    hwloc_obj_bridge_type_t downstream_type; /**< \brief Downstream Bridge type. */
     unsigned depth;
   } bridge;
   /** \brief OS Device specific Object Attributes */
@@ -1872,6 +1898,10 @@ HWLOC_DECLSPEC int hwloc_free(hwloc_topology_t topology, void *addr, size_t len)
  * \note -1 is returned and errno is set to \c ENOSYS on platforms that do not
  * support this feature.
  *
+ * \note The PID will not actually be used until hwloc_topology_load().
+ * If the corresponding process exits in the meantime, hwloc will ignore the PID.
+ * If another process reuses the PID, the view of that process will be used.
+ *
  * \return 0 on success, -1 on error.
  */
 HWLOC_DECLSPEC int hwloc_topology_set_pid(hwloc_topology_t __hwloc_restrict topology, hwloc_pid_t pid);
@@ -1935,15 +1965,20 @@ HWLOC_DECLSPEC int hwloc_topology_set_synthetic(hwloc_topology_t __hwloc_restric
  * \note On success, the XML component replaces the previously enabled
  * component (if any), but the topology is not actually modified until
  * hwloc_topology_load().
+ *
+ * \note If an invalid XML input file is given, the error may be reported
+ * either here or later by hwloc_topology_load() depending on the XML library
+ * used by hwloc.
  */
 HWLOC_DECLSPEC int hwloc_topology_set_xml(hwloc_topology_t __hwloc_restrict topology, const char * __hwloc_restrict xmlpath);
 
 /** \brief Enable XML based topology using a memory buffer (instead of
  * a file, as with hwloc_topology_set_xml()).
  *
- * Gather topology information from the XML memory buffer given at \p
- * buffer and of length \p size.  This buffer may have been filled
- * earlier with hwloc_topology_export_xmlbuffer() in hwloc/export.h.
+ * Gather topology information from the XML memory buffer given at
+ * \p buffer and of length \p size (including an ending \0).
+ * This buffer may have been filled earlier with
+ * hwloc_topology_export_xmlbuffer() in hwloc/export.h.
  *
  * Note that this function does not actually load topology
  * information; it just tells hwloc where to load it from.  You'll
@@ -1964,6 +1999,10 @@ HWLOC_DECLSPEC int hwloc_topology_set_xml(hwloc_topology_t __hwloc_restrict topo
  * \note On success, the XML component replaces the previously enabled
  * component (if any), but the topology is not actually modified until
  * hwloc_topology_load().
+ *
+ * \note If an invalid XML input file is given, the error may be reported
+ * either here or later by hwloc_topology_load() depending on the XML library
+ * used by hwloc.
  */
 HWLOC_DECLSPEC int hwloc_topology_set_xmlbuffer(hwloc_topology_t __hwloc_restrict topology, const char * __hwloc_restrict buffer, int size);
 
@@ -2171,9 +2210,10 @@ enum hwloc_topology_flags_e {
    */
   HWLOC_TOPOLOGY_FLAG_NO_DISTANCES = (1UL<<7),
 
-  /** \brief Ignore memory attributes.
+  /** \brief Ignore memory attributes and tiers.
    *
-   * Ignore memory attribues from the operating systems (and from XML).
+   * Ignore memory attribues from the operating systems (and from XML)
+   * Hence also do not try to build memory tiers.
    */
   HWLOC_TOPOLOGY_FLAG_NO_MEMATTRS = (1UL<<8),
 
@@ -2362,8 +2402,8 @@ HWLOC_DECLSPEC const struct hwloc_topology_support *hwloc_topology_get_support(h
 /** \brief Type filtering flags.
  *
  * By default, most objects are kept (::HWLOC_TYPE_FILTER_KEEP_ALL).
- * Instruction caches, I/O and Misc objects are ignored by default (::HWLOC_TYPE_FILTER_KEEP_NONE).
- * Die and Group levels are ignored unless they bring structure (::HWLOC_TYPE_FILTER_KEEP_STRUCTURE).
+ * Instruction caches, memory-side caches, I/O and Misc objects are ignored by default (::HWLOC_TYPE_FILTER_KEEP_NONE).
+ * Group levels are ignored unless they bring structure (::HWLOC_TYPE_FILTER_KEEP_STRUCTURE).
  *
  * Note that group objects are also ignored individually (without the entire level)
  * when they do not bring structure.
@@ -2627,12 +2667,32 @@ HWLOC_DECLSPEC hwloc_obj_t hwloc_topology_insert_misc_object(hwloc_topology_t to
  * This function returns a new Group object.
  *
  * The caller should (at least) initialize its sets before inserting
- * the object in the topology. See hwloc_topology_insert_group_object().
+ * the object in the topology, see hwloc_topology_insert_group_object().
+ * Or it may decide not to insert and just free the group object
+ * by calling hwloc_topology_free_group_object().
  *
  * \return The allocated object on success.
  * \return \c NULL on error.
- */
+ *
+ * \note If successfully inserted by hwloc_topology_insert_group_object(),
+ * the object will be freed when the entire topology is freed.
+ * If insertion failed (e.g. \c NULL or empty CPU and node-sets),
+ * it is freed before returning the error.
+  */
 HWLOC_DECLSPEC hwloc_obj_t hwloc_topology_alloc_group_object(hwloc_topology_t topology);
+
+/** \brief Free a group object allocated with hwloc_topology_alloc_group_object().
+ *
+ * This function is only useful if the group object was not given
+ * to hwloc_topology_insert_group_object() as planned.
+ *
+ * \note \p topology must be the same as the one previously passed
+ * to hwloc_topology_alloc_group_object().
+ *
+ * \return \c 0 on success.
+ * \return \c -1 on error, for instance if an invalid topology is given.
+ */
+HWLOC_DECLSPEC int hwloc_topology_free_group_object(hwloc_topology_t topology, hwloc_obj_t group);
 
 /** \brief Add more structure to the topology by adding an intermediate Group
  *
@@ -2670,6 +2730,14 @@ HWLOC_DECLSPEC hwloc_obj_t hwloc_topology_alloc_group_object(hwloc_topology_t to
  * \note Inserting a group adds some locality information to the topology,
  * hence the existing objects may get reordered (including PUs and NUMA nodes),
  * and their logical indexes may change.
+ *
+ * \note If the insertion fails, the input group object is freed.
+ *
+ * \note If the group object should be discarded instead of inserted,
+ * it may be passed to hwloc_topology_free_group_object() instead.
+ *
+ * \note \p topology must be the same as the one previously passed
+ * to hwloc_topology_alloc_group_object().
  *
  * \return The inserted object if it was properly inserted.
  *

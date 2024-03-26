@@ -37,7 +37,7 @@ bool get_pmix_local_coord(int *local_proc_idx, int *local_proc_count) {
         return false;
     }
 
-    PMIX_PROC_CONSTRUCT(&proc);
+    PMIx_Proc_construct(&proc);
     memset(proc.nspace, '\0', PMIX_MAX_NSLEN);
     memcpy(proc.nspace, global_proc.nspace, strnlen(global_proc.nspace, PMIX_MAX_NSLEN - 1));
     proc.rank = PMIX_RANK_WILDCARD;
@@ -45,18 +45,23 @@ bool get_pmix_local_coord(int *local_proc_idx, int *local_proc_count) {
     // number of local ranks on node
     if (PMIX_SUCCESS != (rc = PMIx_Get(&proc, PMIX_LOCAL_SIZE, NULL, 0, &val))) {
         LOG_WARN("PMIx_Get(PMIX_LOCAL_SIZE) failed: ", PMIx_Error_string(rc));
+        PMIx_Proc_destruct(&proc);
         return false;
     }
     *local_proc_count = val->data.uint32;
-    PMIX_VALUE_RELEASE(val);
+    PMIx_Value_destruct(val);
+    pmix_free(val);
 
     // my local rank on node
     if (PMIX_SUCCESS != (rc = PMIx_Get(&global_proc, PMIX_LOCAL_RANK, NULL, 0, &val))) {
         LOG_WARN("PMIx_Get(PMIX_LOCAL_RANK) failed: ", PMIx_Error_string(rc));
+        PMIx_Proc_destruct(&proc);
         return false;
     }
     *local_proc_idx = val->data.uint16;
-    PMIX_VALUE_RELEASE(val);
+    PMIx_Value_destruct(val);
+    pmix_free(val);
+    PMIx_Proc_destruct(&proc);
 
     LOG_DEBUG("get pmix_local_rank/size - local_proc_idx: ",
               *local_proc_idx,

@@ -33,9 +33,11 @@ enum class device_id : uint32_t { unknown = 0x0, id1 = 0x200, id2 = 0xbd0, id3 =
 
 enum class copy_engine_mode { none, main, link, auto_mode };
 enum class h2d_copy_engine_mode { none, main, auto_mode };
+enum class d2d_copy_engine_mode { none, main };
 
 extern std::map<copy_engine_mode, std::string> copy_engine_names;
 extern std::map<h2d_copy_engine_mode, std::string> h2d_copy_engine_names;
+extern std::map<d2d_copy_engine_mode, std::string> d2d_copy_engine_names;
 
 constexpr ze_context_desc_t default_context_desc = { .stype = ZE_STRUCTURE_TYPE_CONTEXT_DESC,
                                                      .pNext = nullptr,
@@ -81,6 +83,14 @@ constexpr ze_memory_allocation_properties_t default_alloc_props = {
     .id = 0,
     .pageSize = 0
 };
+
+constexpr ze_module_desc_t default_module_desc = { .stype = ZE_STRUCTURE_TYPE_MODULE_DESC,
+                                                   .pNext = nullptr,
+                                                   .format = ZE_MODULE_FORMAT_IL_SPIRV,
+                                                   .inputSize = 0,
+                                                   .pInputModule = nullptr,
+                                                   .pBuildFlags = nullptr,
+                                                   .pConstants = nullptr };
 
 constexpr ze_device_properties_t default_device_props = { .stype =
                                                               ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES,

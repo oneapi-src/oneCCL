@@ -24,6 +24,15 @@
 namespace ccl {
 namespace ze {
 
+void device_allocate(ze_context_handle_t context,
+                     const ze_device_mem_alloc_desc_t& device_mem_alloc_desc,
+                     size_t bytes,
+                     size_t alignment,
+                     ze_device_handle_t device,
+                     void** pptr);
+
+void device_free(ze_context_handle_t context, void* ptr);
+
 enum class device_cache_policy_mode : int { plain, chunk, none };
 static std::map<device_cache_policy_mode, std::string> device_cache_policy_names = {
     std::make_pair(device_cache_policy_mode::plain, "plain"),
@@ -56,6 +65,8 @@ public:
 class plain_device_mem_cache : public device_mem_cache {
 public:
     plain_device_mem_cache() = default;
+    plain_device_mem_cache(const plain_device_mem_cache&) = delete;
+    plain_device_mem_cache& operator=(const plain_device_mem_cache&) = delete;
     ~plain_device_mem_cache();
 
     void clear();
@@ -89,6 +100,8 @@ private:
 class chunk_device_mem_cache : public device_mem_cache {
 public:
     chunk_device_mem_cache() = default;
+    chunk_device_mem_cache(const chunk_device_mem_cache&) = delete;
+    chunk_device_mem_cache& operator=(const chunk_device_mem_cache&) = delete;
     ~chunk_device_mem_cache();
     void clear();
 
@@ -136,6 +149,35 @@ private:
     int get_total_cache_size() const;
     bool is_chunk_used(const memory_chunk& chunk) const;
     std::vector<memory_chunk> memory_chunks;
+    std::mutex mutex;
+};
+
+class device_memory_manager {
+public:
+    device_memory_manager() = default;
+    device_memory_manager(const device_memory_manager&) = delete;
+    device_memory_manager& operator=(const device_memory_manager&) = delete;
+    ~device_memory_manager() {
+        cache.clear();
+    }
+
+    void get_global_ptr(ze_context_handle_t context,
+                        ze_device_handle_t device,
+                        const ze_device_mem_alloc_desc_t& device_mem_alloc_desc,
+                        size_t size_need,
+                        size_t alignment,
+                        void** pptr);
+
+    void clear();
+
+private:
+    using key_t = std::tuple<ze_context_handle_t,
+                             ze_device_handle_t,
+                             size_t,
+                             ze_device_mem_alloc_flags_t,
+                             uint32_t>;
+    using value_t = void*;
+    std::unordered_map<key_t, value_t, utils::tuple_hash> cache;
     std::mutex mutex;
 };
 

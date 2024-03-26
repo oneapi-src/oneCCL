@@ -64,9 +64,28 @@ __kernel void empty_kernel(int my_rank,
         out_buf##b[idx] = in_buf##b[idx]; \
     }
 
-#define BUFFER_COPY(dst, src, b) \
-    for (size_t idx = thread_id; idx < count##b; idx += work_group_size) { \
-        dst##b[idx] = src##b[idx]; \
+#define CONVERT_half_USHORT(val)   as_ushort((half)val)
+#define CONVERT_ushort_USHORT(val) val
+#define CONVERT_short_USHORT(val)  val
+#define CONVERT_uchar_USHORT(val)  val
+#define CONVERT_char_USHORT(val)   val
+#define CONVERT_uint_USHORT(val)   val
+#define CONVERT_int_USHORT(val)    val
+#define CONVERT_ulong_USHORT(val)  val
+#define CONVERT_long_USHORT(val)   val
+#define CONVERT_float_USHORT(val)  val
+#define CONVERT_double_USHORT(val) val
+
+#define BUFFER_COPY(Dtype, dst, src, b) \
+    { \
+        const long rem_elem_count = count##b - subgroup_idx; \
+        if (rem_elem_count > 0 && rem_elem_count >= subgroup_size && sizeof(Dtype) == 2) { \
+            intel_sub_group_block_write_us((__global ushort*)(&dst##b[idx]), \
+                                           CONVERT_##Dtype##_USHORT(src##b[idx])); \
+        } \
+        else if (idx < count##b) { \
+            dst##b[idx] = src##b[idx]; \
+        } \
     }
 
 // ALLTOALLV_COPY#: 2-16 args number, max case is 16 ranks
@@ -80,13 +99,13 @@ __kernel void empty_kernel(int my_rank,
 #define ALLTOALLV_COPY16 ALLTOALLV_COPY14 ALLTOALLV_COPY(14) ALLTOALLV_COPY(15)
 
 // BUFFER_COPY#: 1-7 args number, max case is 16 ranks
-#define BUFFER_COPY1(dst, src) BUFFER_COPY(dst, src, 1)
-#define BUFFER_COPY2(dst, src) BUFFER_COPY1(dst, src) BUFFER_COPY(dst, src, 2)
-#define BUFFER_COPY3(dst, src) BUFFER_COPY2(dst, src) BUFFER_COPY(dst, src, 3)
-#define BUFFER_COPY4(dst, src) BUFFER_COPY3(dst, src) BUFFER_COPY(dst, src, 4)
-#define BUFFER_COPY5(dst, src) BUFFER_COPY4(dst, src) BUFFER_COPY(dst, src, 5)
-#define BUFFER_COPY6(dst, src) BUFFER_COPY5(dst, src) BUFFER_COPY(dst, src, 6)
-#define BUFFER_COPY7(dst, src) BUFFER_COPY6(dst, src) BUFFER_COPY(dst, src, 7)
+#define BUFFER_COPY1(Dtype, dst, src) BUFFER_COPY(Dtype, dst, src, 1)
+#define BUFFER_COPY2(Dtype, dst, src) BUFFER_COPY1(Dtype, dst, src) BUFFER_COPY(Dtype, dst, src, 2)
+#define BUFFER_COPY3(Dtype, dst, src) BUFFER_COPY2(Dtype, dst, src) BUFFER_COPY(Dtype, dst, src, 3)
+#define BUFFER_COPY4(Dtype, dst, src) BUFFER_COPY3(Dtype, dst, src) BUFFER_COPY(Dtype, dst, src, 4)
+#define BUFFER_COPY5(Dtype, dst, src) BUFFER_COPY4(Dtype, dst, src) BUFFER_COPY(Dtype, dst, src, 5)
+#define BUFFER_COPY6(Dtype, dst, src) BUFFER_COPY5(Dtype, dst, src) BUFFER_COPY(Dtype, dst, src, 6)
+#define BUFFER_COPY7(Dtype, dst, src) BUFFER_COPY6(Dtype, dst, src) BUFFER_COPY(Dtype, dst, src, 7)
 
 #define DEFINE_ALLTOALLV_KERNEL(DtypeName, Dtype, OpName, OpFunc, N) \
     __kernel void alltoallv_kernel_##N##_##DtypeName##_##OpName( \
@@ -97,17 +116,27 @@ __kernel void empty_kernel(int my_rank,
     }
 
 // reduction for local_reduce
-#define REDUCTION(OpFunc, b) \
-    xelink_tmp_buf##b[idx] = OpFunc(local_send_buf##b[idx], mdfi_buf##b[idx]);
+#define REDUCTION(Dtype, OpFunc, b) \
+    { \
+        Dtype reduction = OpFunc(mdfi_buf##b[idx], local_send_buf##b[idx]); \
+        if (can_use_block == 1 && rem_elem_count > 0 && rem_elem_count >= subgroup_size && \
+            sizeof(Dtype) == 2) { \
+            intel_sub_group_block_write_us((__global ushort*)(&xelink_tmp_buf##b[idx]), \
+                                           CONVERT_##Dtype##_USHORT(reduction)); \
+        } \
+        else { \
+            xelink_tmp_buf##b[idx] = reduction; \
+        } \
+    }
 
 // REDUCTION#: 1-7 args number, max case is 16 ranks
-#define REDUCTION1(OpFunc) REDUCTION(OpFunc, 0)
-#define REDUCTION2(OpFunc) REDUCTION1(OpFunc) REDUCTION(OpFunc, 1)
-#define REDUCTION3(OpFunc) REDUCTION2(OpFunc) REDUCTION(OpFunc, 2)
-#define REDUCTION4(OpFunc) REDUCTION3(OpFunc) REDUCTION(OpFunc, 3)
-#define REDUCTION5(OpFunc) REDUCTION4(OpFunc) REDUCTION(OpFunc, 4)
-#define REDUCTION6(OpFunc) REDUCTION5(OpFunc) REDUCTION(OpFunc, 5)
-#define REDUCTION7(OpFunc) REDUCTION6(OpFunc) REDUCTION(OpFunc, 6)
+#define REDUCTION1(Dtype, OpFunc) REDUCTION(Dtype, OpFunc, 0)
+#define REDUCTION2(Dtype, OpFunc) REDUCTION1(Dtype, OpFunc) REDUCTION(Dtype, OpFunc, 1)
+#define REDUCTION3(Dtype, OpFunc) REDUCTION2(Dtype, OpFunc) REDUCTION(Dtype, OpFunc, 2)
+#define REDUCTION4(Dtype, OpFunc) REDUCTION3(Dtype, OpFunc) REDUCTION(Dtype, OpFunc, 3)
+#define REDUCTION5(Dtype, OpFunc) REDUCTION4(Dtype, OpFunc) REDUCTION(Dtype, OpFunc, 4)
+#define REDUCTION6(Dtype, OpFunc) REDUCTION5(Dtype, OpFunc) REDUCTION(Dtype, OpFunc, 5)
+#define REDUCTION7(Dtype, OpFunc) REDUCTION6(Dtype, OpFunc) REDUCTION(Dtype, OpFunc, 6)
 
 // reduction for local_reduce
 #define FIRST_REDUCE(OpFunc, b0, b1) \
@@ -130,15 +159,20 @@ __kernel void empty_kernel(int my_rank,
         ALL_PTR_ARGS(Dtype, mdfi_buf, N), \
         ALL_PTR_ARGS(Dtype, xelink_tmp_buf, N), \
         ulong count, \
-        ulong last_count) { \
+        ulong last_count, \
+        int can_use_block) { \
         DEBUG_BLOCK(printf("in reduce_read_write_kernel count %ld\n", count)); \
         size_t work_group_size = get_global_size(0); \
         size_t thread_id = get_global_id(0); \
+        const size_t subgroup_size = get_sub_group_size(); \
+        const size_t subgroup_idx = thread_id / subgroup_size * subgroup_size; \
         for (size_t idx = thread_id; idx < count; idx += work_group_size) { \
-            REDUCTION##N(OpFunc) \
+            const long rem_elem_count = count - subgroup_idx; \
+            REDUCTION##N(Dtype, OpFunc) \
         } \
         for (size_t idx = thread_id; idx < last_count; idx += work_group_size) { \
-            REDUCTION(OpFunc, N) \
+            const long rem_elem_count = last_count - subgroup_idx; \
+            REDUCTION(Dtype, OpFunc, N) \
         } \
     }
 
@@ -157,16 +191,26 @@ __kernel void empty_kernel(int my_rank,
     __kernel void allreduce_kernel_##DtypeName##_##OpName(int my_rank, \
                                                           int comm_size, \
                                                           ulong count, \
+                                                          int can_use_block, \
                                                           const __global Dtype* input_buffer, \
                                                           __global Dtype* output_buffer, \
                                                           const __global Dtype* peer_input_buffer, \
                                                           __global Dtype* peer_output_buffer) { \
         DEBUG_BLOCK(printf("rank: %d, comm size: %d, count: %zu\n", my_rank, comm_size, count)); \
         size_t work_group_size = get_global_size(0); \
-        size_t thread_id = get_global_id(0); \
-        for (size_t i = 0; thread_id + i < count; i += work_group_size) { \
-            const size_t idx = thread_id + i; \
-            Dtype ret = OpFunc(input_buffer[idx], peer_input_buffer[idx]); \
+        size_t idx = get_global_id(0); \
+        const size_t subgroup_size = get_sub_group_size(); \
+        const size_t subgroup_idx = idx / subgroup_size * subgroup_size; \
+        const long rem_elem_count = count - subgroup_idx; \
+        Dtype ret = OpFunc(input_buffer[idx], peer_input_buffer[idx]); \
+        if (can_use_block == 1 && rem_elem_count > 0 && rem_elem_count >= subgroup_size && \
+            sizeof(Dtype) == 2) { \
+            intel_sub_group_block_write_us((__global ushort*)&output_buffer[subgroup_idx], \
+                                           CONVERT_##Dtype##_USHORT(ret)); \
+            intel_sub_group_block_write_us((__global ushort*)&peer_output_buffer[subgroup_idx], \
+                                           CONVERT_##Dtype##_USHORT(ret)); \
+        } \
+        else if (idx < count) { \
             output_buffer[idx] = ret; \
             peer_output_buffer[idx] = ret; \
         } \
@@ -205,18 +249,19 @@ __kernel void empty_kernel(int my_rank,
     __kernel void reduce_single_local_inplace_kernel_##DtypeName##_##OpName( \
         ulong count, \
         int peer_count, \
-        const __global Dtype* input_buffer, \
-        __global Dtype* inoutput_buffer) { \
+        const __global Dtype* input_buffer1, \
+        const __global Dtype* input_buffer2, \
+        __global Dtype* output_buffer) { \
         DEBUG_BLOCK(printf("in reduce_single_local_inplace_kernel\n")); \
         size_t work_group_size = get_global_size(0); \
         size_t thread_id = get_global_id(0); \
         for (size_t i = 0; thread_id + i < count; i += work_group_size) { \
             const size_t idx = thread_id + i; \
-            Dtype ret = OpFunc(input_buffer[idx], inoutput_buffer[idx]); \
+            Dtype ret = OpFunc(input_buffer1[idx], input_buffer2[idx]); \
             for (int j = 1; j < peer_count; j++) { \
-                ret = OpFunc(inoutput_buffer[j * count + idx], ret); \
+                ret = OpFunc(input_buffer2[j * count + idx], ret); \
             } \
-            inoutput_buffer[idx] = ret; \
+            output_buffer[idx] = ret; \
         } \
     }
 
@@ -523,10 +568,12 @@ __kernel void empty_kernel(int my_rank,
         PTR_ARGS##N(Dtype, peer_output_buffer), \
         CONST_ARGS##N(ulong, count)) { \
         DEBUG_BLOCK(printf("in read_write_monolithic_kernel_%d\n", N)); \
-        size_t work_group_size = get_global_size(0); \
-        size_t thread_id = get_global_id(0); \
-        BUFFER_COPY##N(output_buffer, peer_buffer) if (pipeline_count > 1) { \
-            BUFFER_COPY##N(peer_output_buffer, output_buffer) \
+        const size_t work_group_size = get_global_size(0); \
+        const size_t idx = get_global_id(0); \
+        const size_t subgroup_size = get_sub_group_size(); \
+        const size_t subgroup_idx = idx / subgroup_size * subgroup_size; \
+        BUFFER_COPY##N(Dtype, output_buffer, peer_buffer) if (pipeline_count > 1) { \
+            BUFFER_COPY##N(Dtype, peer_output_buffer, output_buffer) \
         } \
     }
 

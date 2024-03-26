@@ -354,13 +354,13 @@ ccl::status ccl_coll_build_ring_reduce_scatter(ccl_sched* sched,
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
 
-ccl::status ccl_coll_build_topo_reduce_scatter(ccl_sched* sched,
-                                               ccl_buffer send_buf,
-                                               ccl_buffer recv_buf,
-                                               size_t recv_count,
-                                               const ccl_datatype& dtype,
-                                               ccl::reduction op,
-                                               ccl_comm* comm) {
+ccl::status ccl_coll_build_topo_reduce_scatter_fill(ccl_sched* sched,
+                                                    ccl_buffer send_buf,
+                                                    ccl_buffer recv_buf,
+                                                    size_t recv_count,
+                                                    const ccl_datatype& dtype,
+                                                    ccl::reduction op,
+                                                    ccl_comm* comm) {
     LOG_DEBUG("build topo reduce_scatter, recv_count ", recv_count);
     if (recv_count == 0) {
         return ccl::status::success;
@@ -392,10 +392,9 @@ ccl::status ccl_coll_build_topo_reduce_scatter(ccl_sched* sched,
     };
 
     // TODO: fix - reduce_scatter pipeline uses xelink write which seems to fail with int8
-    // TODO: enable pipeline for scaleout
     const bool use_reduce_scatter_pipeline =
         ccl::global_data::env().reduce_scatter_monolithic_pipeline_kernel && pair_comm_size > 1 &&
-        dtype != ccl::datatype::int8 && is_single_node;
+        dtype != ccl::datatype::int8 && ccl::global_data::env().enable_ze_bidir_algo;
     LOG_DEBUG("topo/reduce_scatter pipeline ", use_reduce_scatter_pipeline);
 
     // optimized non-fallback algorithm is currently supported for bidirectional case
@@ -467,6 +466,16 @@ ccl::status ccl_coll_build_topo_reduce_scatter(ccl_sched* sched,
     if (use_non_fallback_algo && use_reduce_scatter_pipeline) {
         ze_utils::alloc_tmp_bufs(
             sched, comm, tmp_bufs, in_buffers, tmp_buf_idx_start, count, dtype);
+        if (!is_single_node) {
+            // TODO: add device memory manager support or any mechanism that
+            // allows to control the memory consumption once the pipleine chunking is implemented
+            size_t tmp_buf_bytes = count * dtype.size();
+            ccl::alloc_param alloc_param(
+                tmp_buf_bytes, ccl::buffer_type::ze, ccl::buffer_place::device);
+            tmp_buf = sched->alloc_buffer(alloc_param);
+            // scaleout rearranges send_buf into tmp_buf and uses this rearranged buf as input
+            in_buffers[0] = { tmp_buf.get_ptr(), ccl::ze::ipc_mem_type::memory }; // 0
+        }
     }
     else if (use_tmp_buf) {
         size_t tmp_buf_bytes = count * dtype.size();
@@ -627,9 +636,10 @@ ccl::status ccl_coll_build_topo_reduce_scatter(ccl_sched* sched,
         ccl_buffer out_tmp_buf = *tmp_bufs.begin();
         if (even_comm_size > 1 && use_reduce_scatter_pipeline) {
             LOG_DEBUG("topo/scale_up/intra: use ze_a2a_pipeline_reduce_entry");
-            // readuce from local buffer
+            // reduce from remote even_comm peer buffers or from local buffer
+            ccl_buffer dst_recv_buf = is_single_node ? recv_buf : out_tmp_buf;
             auto entry = entry_factory::create<ze_a2a_pipeline_reduce_entry>(
-                sched, comm, recv_buf, tmp_bufs, count, dtype, op, wait_events);
+                sched, comm, dst_recv_buf, tmp_bufs, count, dtype, op, wait_events);
             clear_and_push_back(wait_events, entry->entry_event);
         }
         else if (even_comm_size > 1) {
@@ -730,7 +740,6 @@ ccl::status ccl_coll_build_topo_reduce_scatter(ccl_sched* sched,
             }
         }
 
-        entry_factory::create<ze_execute_cmdlists_on_init_entry>(sched);
         return ccl::status::success;
     }
 
@@ -748,7 +757,6 @@ ccl::status ccl_coll_build_topo_reduce_scatter(ccl_sched* sched,
                          ipc_event_count,
                          ", expected max ",
                          max_ipc_event_count);
-        entry_factory::create<ze_execute_cmdlists_on_init_entry>(sched);
         return ccl::status::success;
     }
     const ccl_buffer tmp_recv_buf = tmp_bufs.front();
@@ -935,8 +943,30 @@ ccl::status ccl_coll_build_topo_reduce_scatter(ccl_sched* sched,
     sched->add_barrier();
     ccl::add_comm_barrier(sched, node_comm, wait_events, out_event);
 
-    entry_factory::create<ze_execute_cmdlists_on_init_entry>(sched);
     return ccl::status::success;
+}
+
+ccl::status ccl_coll_build_topo_reduce_scatter(ccl_sched* sched,
+                                               ccl_buffer send_buf,
+                                               ccl_buffer recv_buf,
+                                               size_t count,
+                                               const ccl_datatype& dtype,
+                                               ccl::reduction op,
+                                               ccl_comm* comm) {
+    return ccl_build_topo_uniform_buff_size_op(
+        sched,
+        send_buf,
+        recv_buf,
+        count,
+        dtype.size(),
+        ccl::global_data::env().reduce_scatter_pipe_chunk_count,
+        "REDUCE_SCATTER",
+        ccl::global_data::get().metrics_profiler->reduce_scatter_pipe,
+        [dtype, op, comm](ccl_sched* sched, ccl_buffer send_buf, ccl_buffer recv_buf, size_t count)
+            -> ccl::status {
+            return ccl_coll_build_topo_reduce_scatter_fill(
+                sched, send_buf, recv_buf, count, dtype, op, comm);
+        });
 }
 
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE

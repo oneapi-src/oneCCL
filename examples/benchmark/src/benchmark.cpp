@@ -138,12 +138,14 @@ void run(ccl::communicator& service_comm,
 
                             double coll_start_time = when();
                             for (size_t buf_idx = 0; buf_idx < options.buf_count; buf_idx++) {
-                                match_id_stream << "coll_" << coll->name() << "_" << coll_idx
-                                                << "_count_" << count << "_buf_" << buf_idx
-                                                << "_dt_" << dtype_name << "_rt_" << reduction;
-                                bench_attr.set<ccl::operation_attr_id::match_id>(
-                                    ccl::string_class(match_id_stream.str()));
-                                match_id_stream.str("");
+                                if (options.cache_ops) {
+                                    match_id_stream << "coll_" << coll->name() << "_" << coll_idx
+                                                    << "_count_" << count << "_buf_" << buf_idx
+                                                    << "_dt_" << dtype_name << "_rt_" << reduction;
+                                    bench_attr.set<ccl::operation_attr_id::match_id>(
+                                        ccl::string_class(match_id_stream.str()));
+                                    match_id_stream.str("");
+                                }
                                 coll->start(count, buf_idx, bench_attr, reqs);
                             }
                             double coll_end_time = when();
@@ -172,12 +174,14 @@ void run(ccl::communicator& service_comm,
                             prepare_coll(options, service_comm, coll, count);
 
                             for (size_t buf_idx = 0; buf_idx < options.buf_count; buf_idx++) {
-                                match_id_stream << "coll_" << coll->name() << "_" << coll_idx
-                                                << "_count_" << count << "_buf_" << buf_idx
-                                                << "_dt_" << dtype_name << "_rt_" << reduction;
-                                bench_attr.set<ccl::operation_attr_id::match_id>(
-                                    ccl::string_class(match_id_stream.str()));
-                                match_id_stream.str("");
+                                if (options.cache_ops) {
+                                    match_id_stream << "coll_" << coll->name() << "_" << coll_idx
+                                                    << "_count_" << count << "_buf_" << buf_idx
+                                                    << "_dt_" << dtype_name << "_rt_" << reduction;
+                                    bench_attr.set<ccl::operation_attr_id::match_id>(
+                                        ccl::string_class(match_id_stream.str()));
+                                    match_id_stream.str("");
+                                }
                                 coll->start(count, buf_idx, bench_attr, reqs);
                             }
 

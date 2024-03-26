@@ -14,6 +14,7 @@
  limitations under the License.
 */
 #include "coll/coll_check.hpp"
+#include "coll/coll_util.hpp"
 #include "coll/selection/selection.hpp"
 #include "common/global/global.hpp"
 #include "common/log/log.hpp"
@@ -59,7 +60,8 @@ ccl_sched::ccl_sched(const ccl_sched_create_param& param, bool top_level_sched)
           req(new ccl_request(*this)),
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
           use_output_event(top_level_sched &&
-                           ccl::utils::should_use_sycl_output_event(coll_param.stream)),
+                           (ccl::utils::should_use_sycl_output_event(coll_param.stream) ||
+                            ccl::is_queue_in_order(coll_param.stream))),
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
           top_level_sched(top_level_sched),
           subsched_entry_parent_sched(nullptr),
@@ -568,7 +570,7 @@ size_t ccl_sched::entries_count() const {
 }
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-void ccl_sched::set_output_event(ccl_request* request) {
+void ccl_sched::create_sync_event(ccl_request* request) {
     if (!use_output_event) {
         return;
     }
@@ -594,10 +596,7 @@ void ccl_sched::set_output_event(ccl_request* request) {
     LOG_DEBUG("convert L0 event: ", ev, " into a SYCL event and submit a barrier");
 
     auto sync_event = ccl::utils::make_event(context, ev);
-    request->set_sync_event(sync_event);
-    if (coll_attr.synchronous) {
-        request->set_native_event(ccl::utils::submit_barrier(q));
-    }
+    request->set_sync_event(std::move(sync_event));
 
 #else // CCL_ENABLE_SYCL_INTEROP_EVENT
     CCL_THROW("interop event functionality is not available with current configuration, "

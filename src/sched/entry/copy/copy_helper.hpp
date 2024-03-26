@@ -22,6 +22,7 @@
 
 #ifdef CCL_ENABLE_SYCL
 #include "common/utils/sycl_utils.hpp"
+#include "sched/entry/ze/ze_primitives.hpp"
 #endif // CCL_ENABLE_SYCL
 
 enum class copy_direction { undefined, h2h, d2h, h2d, d2d, t2t, c2c };
@@ -41,6 +42,7 @@ struct copy_attr {
 
 #ifdef CCL_ENABLE_ZE
     int hint_queue_index = 0;
+    ccl::ze::queue_group_type force_queue_type = ccl::ze::queue_group_type::unknown;
 #endif // CCL_ENABLE_ZE
 
     copy_attr();
@@ -54,10 +56,15 @@ struct copy_attr {
               bool use_nontemporal = false
 #ifdef CCL_ENABLE_ZE
               ,
-              int hint_queue_index = 0
+              int hint_queue_index = 0,
+              ccl::ze::queue_group_type force_queue_type = ccl::ze::queue_group_type::unknown
 #endif // CCL_ENABLE_ZE
     );
     copy_attr(copy_direction direction, size_t in_buf_offset = 0, size_t out_buf_offset = 0);
+
+#ifdef CCL_ENABLE_ZE
+    copy_attr(copy_direction direction, ccl::ze::queue_group_type force_queue_type);
+#endif // CCL_ENABLE_ZE
 };
 
 #ifdef CCL_ENABLE_SYCL

@@ -120,16 +120,18 @@ int main(int argc, char* argv[]) {
 
     /* print out the result of the test on the host side */
     {
-        host_accessor check_buf_acc(check_buf, read_only);
-        size_t i;
-        for (i = 0; i < count; i++) {
-            if (check_buf_acc[i] == -1) {
-                cout << "FAILED\n";
-                break;
+        if (rank == root_rank) {
+            host_accessor check_buf_acc(check_buf, read_only);
+            size_t i;
+            for (i = 0; i < count; i++) {
+                if (check_buf_acc[i] == -1) {
+                    cout << "FAILED\n";
+                    break;
+                }
             }
-        }
-        if (i == count) {
-            cout << "PASSED\n";
+            if (i == count) {
+                cout << "PASSED\n";
+            }
         }
     }
 

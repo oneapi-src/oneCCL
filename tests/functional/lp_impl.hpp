@@ -18,11 +18,11 @@
 template <typename T>
 void convert_fp32_to_lp_arrays(T* buf, short* lp_buf, size_t count, ccl_data_type dtype) {
     size_t floats_in_reg = (dtype == DATATYPE_BFLOAT16) ? FLOATS_IN_M512 : FLOATS_IN_M256;
-    short tail[floats_in_reg];
+    std::vector<short> tail(floats_in_reg);
 
     for (size_t i = 0; i < count; i += floats_in_reg) {
         if (i / floats_in_reg == count / floats_in_reg) {
-            convert_fp32_to_lp(buf + i, tail, dtype);
+            convert_fp32_to_lp(buf + i, tail.data(), dtype);
             for (size_t j = 0; j < (count - i); j++) {
                 lp_buf[i + j] = tail[j];
             }
@@ -36,11 +36,11 @@ void convert_fp32_to_lp_arrays(T* buf, short* lp_buf, size_t count, ccl_data_typ
 template <typename T>
 void convert_lp_to_fp32_arrays(short* lp_buf, T* buf, size_t count, ccl_data_type dtype) {
     size_t floats_in_reg = (dtype == DATATYPE_BFLOAT16) ? FLOATS_IN_M512 : FLOATS_IN_M256;
-    T tail[floats_in_reg];
+    std::vector<T> tail(floats_in_reg);
 
     for (size_t i = 0; i < count; i += floats_in_reg) {
         if (i / floats_in_reg == count / floats_in_reg) {
-            convert_lp_to_fp32(lp_buf + i, tail, dtype);
+            convert_lp_to_fp32(lp_buf + i, tail.data(), dtype);
             for (size_t j = 0; j < (count - i); j++) {
                 buf[i + j] = tail[j];
             }

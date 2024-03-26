@@ -114,6 +114,8 @@ public:
     int enable_atl_cache;
     int enable_sync_coll;
     int enable_extra_ep;
+    int enable_run_id_detection;
+    int enable_run_id_with_ppid;
 
     atl_mnic_t mnic_type;
     std::string mnic_name_raw;
@@ -190,6 +192,23 @@ public:
     size_t allreduce_pipe_chunk_count;
     size_t reduce_scatter_pipe_chunk_count;
     size_t reduce_pipe_chunk_count;
+
+    int allreduce_use_tmp_buf;
+    size_t allreduce_small_size_threshold;
+    size_t allreduce_medium_size_threshold;
+
+    int reduce_scatter_use_tmp_buf;
+    size_t reduce_scatter_small_size_threshold;
+    size_t reduce_scatter_medium_size_threshold;
+
+    size_t allgatherv_use_tmp_buf;
+    size_t allgatherv_chunk_size;
+    size_t allgatherv_small_size_threshold;
+    size_t allgatherv_medium_size_threshold;
+
+    int skip_scheduler;
+    int use_ccl_barrier;
+    int use_sycl_barrier;
 #endif // CCL_ENABLE_SYCL
 
     int allreduce_nreduce_buffering;
@@ -210,6 +229,7 @@ public:
     int enable_topo_algo;
     topo_color_mode topo_color;
     int enable_p2p_access;
+    int enable_fabric_vertex_connection_check;
 
 #ifdef CCL_ENABLE_MPI
     std::string mpi_lib_path;
@@ -219,6 +239,7 @@ public:
 #ifdef CCL_ENABLE_SYCL
     std::string kernel_path;
     int kernel_debug;
+    int kernel_module_cache;
     ssize_t kernel_group_size;
     ssize_t kernel_group_count;
     ssize_t kernel_mem_align;
@@ -241,6 +262,9 @@ public:
     long ze_device_cache_upper_limit;
     int ze_device_cache_num_blocks_in_chunk;
     ccl::ze::device_cache_policy_mode ze_device_cache_policy;
+    int ze_device_mem_disable_clear;
+    long ze_device_mem_alloc_size;
+    size_t ze_device_mem_enable;
     int enable_ze_cache_cmdlists;
     int enable_ze_cache_cmdqueues;
     int enable_ze_cache_event_pools;
@@ -255,6 +279,7 @@ public:
     int ze_serialize_mode;
     ccl::ze::copy_engine_mode ze_copy_engine;
     ccl::ze::h2d_copy_engine_mode ze_h2d_copy_engine;
+    ccl::ze::d2d_copy_engine_mode ze_d2d_copy_engine;
     ssize_t ze_max_compute_queues;
     ssize_t ze_max_copy_queues;
     int ze_enable_ccs_fallback_for_copy;
@@ -270,6 +295,7 @@ public:
     int ze_drm_bdf_support;
     int ze_pt2pt_read;
     type2_tune_mode type2_mode;
+    int ze_enable_drmfd_multi_instance;
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_PMIX

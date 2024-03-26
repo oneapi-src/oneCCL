@@ -94,7 +94,8 @@ fi
 
 WORK_DIR=$(get_script_path "${vars_script_name:-}")
 CCL_ROOT="$(cd "${WORK_DIR}"/../; pwd -P)"; export CCL_ROOT
-export I_MPI_ROOT="${CCL_ROOT}"
+export I_MPI_ROOT="${CCL_ROOT}/opt/mpi"
+export SETVARS_CALL=1
 
 source ${CCL_ROOT}/env/vars.sh ${1:-}
 
@@ -104,5 +105,12 @@ then
 else
     PATH="${CCL_ROOT}/bin:${PATH}"; export PATH
 fi
-LD_LIBRARY_PATH=$(prepend_path "${I_MPI_ROOT}/opt/mpi/libfabric/lib" "${LD_LIBRARY_PATH:-}") ; export LD_LIBRARY_PATH
-FI_PROVIDER_PATH="${I_MPI_ROOT}/opt/mpi/libfabric/lib/prov:/usr/lib64/libfabric"; export FI_PROVIDER_PATH
+LD_LIBRARY_PATH=$(prepend_path "${I_MPI_ROOT}/libfabric/lib" "${LD_LIBRARY_PATH:-}") ; export LD_LIBRARY_PATH
+FI_PROVIDER_PATH="${I_MPI_ROOT}/libfabric/lib/prov:/usr/lib64/libfabric"; export FI_PROVIDER_PATH
+
+CPATH=$(prepend_path "${I_MPI_ROOT}/include" "${CPATH:-}"); export CPATH
+LD_LIBRARY_PATH=$(prepend_path "${I_MPI_ROOT}/lib" "${LD_LIBRARY_PATH:-}") ; export LD_LIBRARY_PATH
+LIBRARY_PATH=$(prepend_path "${I_MPI_ROOT}/lib" "${LIBRARY_PATH:-}"); export LIBRARY_PATH
+PATH="${I_MPI_ROOT}/bin:${PATH}"; export PATH
+
+unset -v SETVARS_CALL

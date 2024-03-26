@@ -142,6 +142,7 @@ void ze_a2a_allreduce_entry::init_ze_hook() {
     ze_a2a_reduce_scatter_entry::fill_list(this,
                                            send_buf.get_ptr(),
                                            tmp_buf.get_ptr(),
+                                           tmp_buf.get_ptr(),
                                            peer_send_bufs,
                                            peer_count,
                                            comm_rank,

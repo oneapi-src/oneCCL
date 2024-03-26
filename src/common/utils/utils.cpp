@@ -98,5 +98,10 @@ std::string join_strings(const std::vector<std::string>& tokens, const std::stri
     return ss.str();
 }
 
+void close_fd(int fd) {
+    LOG_DEBUG("closing fd: ", fd);
+    close(fd);
+}
+
 } // namespace utils
 } // namespace ccl

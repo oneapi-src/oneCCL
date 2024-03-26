@@ -104,6 +104,10 @@ public:
         local_proc_count = local_count;
     }
 
+    std::string get_local_run_id() const {
+        return local_run_id;
+    }
+
 private:
     global_data();
 
@@ -112,6 +116,7 @@ private:
 
     int local_proc_idx{ ccl_comm::invalid_rank };
     int local_proc_count{ ccl::utils::invalid_err_code };
+    std::string local_run_id{ "" };
     void getenv_local_coord(const char* local_proc_idx_env_name,
                             const char* local_proc_count_env_name);
     void set_local_coord();

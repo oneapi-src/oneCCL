@@ -22,7 +22,8 @@ install_path=`pwd`/_install
 
 git clone $REPO
 pushd ./openpmix
-target_version="v4.2.2"
+#version sould be clarified and aligned with Borealis maintainer
+target_version="v4.2.6-1"
 git checkout ${target_version}
 
 git submodule update --init --recursive

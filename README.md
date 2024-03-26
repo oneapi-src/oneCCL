@@ -16,6 +16,7 @@ oneCCL is part of [oneAPI](https://oneapi.io).
 - [Installation](#installation)
 - [Usage](#usage)
   - [Launching Example Application](#launching-example-application)
+    - [Using external MPI](#using-external-mpi)
   - [Setting workers affinity](#setting-workers-affinity)
     - [Automatic setup](#automatic-setup)
     - [Explicit setup](#explicit-setup)
@@ -73,6 +74,19 @@ Use the command:
 $ source <install_dir>/env/setvars.sh
 $ mpirun -n 2 <install_dir>/examples/benchmark/benchmark
 ```
+
+#### Using external mpi
+
+The ccl-bundled-mpi flag in vars.sh can take values "yes" or "no" to control if bundled Intel MPI should be used or not. Current default is "yes", which means that oneCCL temporarily overrides the mpi implementation in use.
+
+In order to suppress the behavior and use user-supplied or system-default mpi use the following command *instead* of sourcing `setvars.sh`:
+
+```bash
+$ source <install_dir>/env/vars.sh --ccl-bundled-mpi=no
+```
+
+The mpi implementation will not be overridden. Please note that, in this case, user needs to assure the system finds all required mpi-related binaries.
+
 ### Setting workers affinity
 
 There are two ways to set worker threads (workers) affinity: [automatically](#setting-affinity-automatically) and [explicitly](#setting-affinity-explicitly).

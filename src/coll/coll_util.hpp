@@ -64,8 +64,6 @@ void add_scaleout(ccl_sched* sched,
                   int global_root = 0);
 
 bool is_queue_in_order(const ccl_stream* s);
-
-void enable_sycl_output_barrier_in_order_queue(const ccl_stream* s);
 #endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
 
 } // namespace ccl

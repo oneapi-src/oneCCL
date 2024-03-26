@@ -335,7 +335,7 @@ namespace preview {
  * @param devices user-supplied device objects for local ranks
  * @param context context containing the devices
  * @param kvs key-value store for ranks wire-up
-  * @param attr optional communicator attributes
+ * @param attr optional communicator attributes
  * @return vector of communicators / communicator
  */
 template <class DeviceType, class ContextType>
@@ -407,15 +407,17 @@ coll_attribute_type CCL_API create_operation_attr(attr_val_type&&... avs) {
  * \brief Allgatherv is a collective communication operation that collects data
  *        from all the ranks within a communicator into a single buffer.
  *        Different ranks may contribute segments of different sizes.
- *        The resulting data in the output buffer must be the same for each rank.
+ *        The resulting data in the output buffer is the same for each rank.
+ *.
  * @param send_buf the buffer with @c send_count elements of @c dtype that stores local data to be gathered
  * @param send_count the number of elements of type @c dtype in @c send_buf
- * @param recv_buf [out] the buffer to store gathered result, should be large enough to hold values from all ranks
- * @param recv_bufs [out] array of buffers to store gathered result, one buffer per each rank
+ * @param recv_buf [out] the buffer to store gathered result of @c dtype, must be large enough
+ *                      to hold values from all ranks, i.e. size should be equal
+ *                      to @c dtype size in bytes * sum of all values in @c recv_counts
  * @param recv_counts array with the number of elements of type @c dtype to be received from each rank
  * @param dtype the datatype of elements in @c send_buf and @c recv_buf
  * @param comm the communicator for which the operation will be performed
- * @param stream a stream associated with the operation
+ * @param stream abstraction over a device queue constructed via ccl::create_stream
  * @param attr optional attributes to customize operation
  * @param deps an optional vector of the events that the operation should depend on
  * @return @ref ccl::event an object to track the progress of the operation
@@ -444,6 +446,11 @@ event CCL_API allgatherv(const void* send_buf,
 
 /*!
  * \overload
+ *
+ * This overloaded function takes separate receive buffer per rank.
+ *
+ * @param recv_bufs [out] array of buffers to store gathered result, one buffer per rank;
+ * each buffer must be large enough to keep the corresponding @c recv_counts elements of @c dtype size
  */
 event CCL_API allgatherv(const void* send_buf,
                          size_t send_count,
@@ -457,6 +464,11 @@ event CCL_API allgatherv(const void* send_buf,
 
 /*!
  * \overload
+ *
+ * This overloaded function takes separate receive buffer per rank.
+ *
+ * @param recv_bufs [out] array of buffers to store gathered result, one buffer per rank;
+ * each buffer must be large enough to keep the corresponding @c recv_counts elements of @c dtype size
  */
 event CCL_API allgatherv(const void* send_buf,
                          size_t send_count,
@@ -469,8 +481,14 @@ event CCL_API allgatherv(const void* send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
+ *
+ * @param send_buf the buffer with @c send_count elements of @c BufferType that stores local data to be gathered
+ * @param recv_buf [out] the buffer to store gathered result of @c BufferType, must be large enough
+ *                      to hold values from all ranks, i.e. size should be equal
+ *                      to @c BufferType size in bytes * sum of all values in @c recv_counts
  */
-/* Type safety version */
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API allgatherv(const BufferType* send_buf,
@@ -484,8 +502,14 @@ event CCL_API allgatherv(const BufferType* send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
+ *
+ * @param send_buf the buffer with @c send_count elements of @c BufferType that stores local data to be gathered
+ * @param recv_buf [out] the buffer to store gathered result of @c BufferType, must be large enough
+ *                      to hold values from all ranks, i.e. size should be equal
+ *                      to @c BufferType size in bytes * sum of all values in @c recv_counts
  */
-/* Type safety version */
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API allgatherv(const BufferType* send_buf,
@@ -498,8 +522,13 @@ event CCL_API allgatherv(const BufferType* send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
+ *
+ * @param send_buf the buffer with @c send_count elements of @c BufferType that stores local data to be gathered
+ * @param recv_bufs [out] array of buffers to store gathered result, one buffer per rank;
+ * each buffer must be large enough to keep the corresponding @c recv_counts elements of @c BufferType size
  */
-/* Type safety version */
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API allgatherv(const BufferType* send_buf,
@@ -513,8 +542,13 @@ event CCL_API allgatherv(const BufferType* send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
+ *
+ * @param send_buf the buffer with @c send_count elements of @c BufferType that stores local data to be gathered
+ * @param recv_bufs [out] array of buffers to store gathered result, one buffer per rank;
+ * each buffer must be large enough to keep the corresponding @c recv_counts elements of @c BufferType size
  */
-/* Type safety version */
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API allgatherv(const BufferType* send_buf,
@@ -527,8 +561,14 @@ event CCL_API allgatherv(const BufferType* send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
+ *
+ * @param send_buf the buffer of @c BufferObjectType with @c send_count elements that stores local data to be gathered
+ * @param recv_buf [out] the buffer of @c BufferObjectType to store gathered result, must be large enough
+ *                      to hold values from all ranks, i.e. size should be equal
+ *                      to @c BufferType size in bytes * sum of all values in @c recv_counts
  */
-/* Type safety version */
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API allgatherv(const BufferObjectType& send_buf,
@@ -542,8 +582,14 @@ event CCL_API allgatherv(const BufferObjectType& send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
+ *
+ * @param send_buf the buffer of @c BufferObjectType with @c send_count elements that stores local data to be gathered
+ * @param recv_buf [out] the buffer of @c BufferObjectType to store gathered result, must be large enough
+ *                      to hold values from all ranks, i.e. size should be equal
+ *                      to @c BufferType size in bytes * sum of all values in @c recv_counts
  */
-/* Type safety version */
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API allgatherv(const BufferObjectType& send_buf,
@@ -556,8 +602,13 @@ event CCL_API allgatherv(const BufferObjectType& send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
+ *
+ * @param send_buf the buffer of @c BufferObjectType with @c send_count elements that stores local data to be gathered
+ * @param recv_bufs [out] array of buffers to store gathered result, one buffer per rank;
+ * each buffer must be large enough to keep the corresponding @c recv_counts elements of @c BufferObjectType size
  */
-/* Type safety version */
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API allgatherv(const BufferObjectType& send_buf,
@@ -571,8 +622,13 @@ event CCL_API allgatherv(const BufferObjectType& send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
+ *
+ * @param send_buf the buffer of @c BufferObjectType with @c send_count elements that stores local data to be gathered
+ * @param recv_bufs [out] array of buffers to store gathered result, one buffer per rank;
+ * each buffer must be large enough to keep the corresponding @c recv_counts elements of @c BufferObjectType size
  */
-/* Type safety version */
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API allgatherv(const BufferObjectType& send_buf,
@@ -595,10 +651,10 @@ event CCL_API allgatherv(const BufferObjectType& send_buf,
  * @param send_buf the buffer with @c count elements of @c dtype that stores local data to be reduced
  * @param recv_buf [out] the buffer to store reduced result, must have the same dimension as @c send_buf
  * @param count the number of elements of type @c dtype in @c send_buf and @c recv_buf
- * @param dtype the datatype of elements in @c send_buf and @c recv_buf
+ * @param dtype the datatype of elements in @c send_buf and @c recv_buf`
  * @param rtype the type of the reduction operation to be applied
  * @param comm the communicator for which the operation will be performed
- * @param stream a stream associated with the operation
+ * @param stream abstraction over a device queue constructed via ccl::create_stream
  * @param attr optional attributes to customize operation
  * @param deps an optional vector of the events that the operation should depend on
  * @return @ref ccl::event an object to track the progress of the operation
@@ -627,8 +683,10 @@ event CCL_API allreduce(const void* send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API allreduce(const BufferType* send_buf,
@@ -642,8 +700,10 @@ event CCL_API allreduce(const BufferType* send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API allreduce(const BufferType* send_buf,
@@ -656,8 +716,10 @@ event CCL_API allreduce(const BufferType* send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API allreduce(const BufferObjectType& send_buf,
@@ -671,8 +733,10 @@ event CCL_API allreduce(const BufferObjectType& send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API allreduce(const BufferObjectType& send_buf,
@@ -694,15 +758,14 @@ event CCL_API allreduce(const BufferObjectType& send_buf,
  *        sends distinct equal-sized blocks of data to each rank.
  *        The j-th block of @c send_buf sent from the i-th rank is received by the j-th rank
  *        and is placed in the i-th block of @c recvbuf.
+ *
  * @param send_buf the buffer with @c count elements of @c dtype that stores local data to be sent
- * @param recv_buf [out] the buffer to store received result, should be large enough
+ * @param recv_buf [out] the buffer to store received result, must be large enough
  *        to hold values from all ranks, i.e. at least @c comm_size * @c count
- * @param send_bufs array of buffers with local data to be sent, one buffer per each rank
- * @param recv_bufs [out] array of buffers to store received result, one buffer per each rank
  * @param count the number of elements of type @c dtype to be send to or to received from each rank
  * @param dtype the datatype of elements in @c send_buf and @c recv_buf
  * @param comm the communicator for which the operation will be performed
- * @param stream a stream associated with the operation
+ * @param stream abstraction over a device queue constructed via ccl::create_stream
  * @param attr optional attributes to customize operation
  * @param deps an optional vector of the events that the operation should depend on
  * @return @ref ccl::event an object to track the progress of the operation
@@ -729,6 +792,9 @@ event CCL_API alltoall(const void* send_buf,
 
 /*!
  * \overload
+ *
+ * @param send_bufs array of buffers with local data to be sent, one buffer per rank
+ * @param recv_bufs [out] array of buffers to store received result, one buffer per rank
  */
 event CCL_API alltoall(const vector_class<void*>& send_buf,
                        const vector_class<void*>& recv_buf,
@@ -741,6 +807,9 @@ event CCL_API alltoall(const vector_class<void*>& send_buf,
 
 /*!
  * \overload
+ *
+ * @param send_bufs array of buffers with local data to be sent, one buffer per rank
+ * @param recv_bufs [out] array of buffers to store received result, one buffer per rank
  */
 event CCL_API alltoall(const vector_class<void*>& send_buf,
                        const vector_class<void*>& recv_buf,
@@ -752,8 +821,9 @@ event CCL_API alltoall(const vector_class<void*>& send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API alltoall(const BufferType* send_buf,
@@ -766,8 +836,9 @@ event CCL_API alltoall(const BufferType* send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API alltoall(const BufferType* send_buf,
@@ -779,8 +850,12 @@ event CCL_API alltoall(const BufferType* send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
+ *
+ * @param send_bufs array of buffers with local data to be sent, one buffer per rank
+ * @param recv_bufs [out] array of buffers to store received result, one buffer per rank
  */
-/* Type safety version */
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API alltoall(const vector_class<BufferType*>& send_buf,
@@ -793,8 +868,13 @@ event CCL_API alltoall(const vector_class<BufferType*>& send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
+ *
+ *
+ * @param send_bufs array of buffers with local data to be sent, one buffer per rank
+ * @param recv_bufs [out] array of buffers to store received result, one buffer per rank
  */
-/* Type safety version */
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API alltoall(const vector_class<BufferType*>& send_buf,
@@ -806,8 +886,9 @@ event CCL_API alltoall(const vector_class<BufferType*>& send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API alltoall(const BufferObjectType& send_buf,
@@ -820,8 +901,12 @@ event CCL_API alltoall(const BufferObjectType& send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
+ *
+ * @param send_bufs array of buffers with local data to be sent, one buffer per rank
+ * @param recv_bufs [out] array of buffers to store received result, one buffer per rank
  */
-/* Type safety version */
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API alltoall(const BufferObjectType& send_buf,
@@ -833,8 +918,12 @@ event CCL_API alltoall(const BufferObjectType& send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
+ *
+ * @param send_bufs array of buffers with local data to be sent, one buffer per rank
+ * @param recv_bufs [out] array of buffers to store received result, one buffer per rank
  */
-/* Type safety version */
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API alltoall(const vector_class<reference_wrapper_class<BufferObjectType>>& send_buf,
@@ -847,8 +936,12 @@ event CCL_API alltoall(const vector_class<reference_wrapper_class<BufferObjectTy
 
 /*!
  * \overload
+ *
+ * Type-safe version.
+ *
+ * @param send_bufs array of buffers with local data to be sent, one buffer per rank
+ * @param recv_bufs [out] array of buffers to store received result, one buffer per rank
  */
-/* Type safety version */
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API alltoall(const vector_class<reference_wrapper_class<BufferObjectType>>& send_buf,
@@ -870,14 +963,14 @@ event CCL_API alltoall(const vector_class<reference_wrapper_class<BufferObjectTy
  *        The j-th block of @c send_buf sent from the i-th rank is received by the j-th rank
  *        and is placed in the i-th block of @c recvbuf.
  * @param send_buf the buffer with elements of @c dtype that stores local blocks to be sent to each rank
- * @param send_bufs array of buffers to store send blocks, one buffer per each rank
- * @param recv_buf [out] the buffer to store received result, should be large enough to hold blocks from all ranks
- * @param recv_bufs [out] array of buffers to store receive blocks, one buffer per each rank
+ * @param send_bufs array of buffers to store send blocks, one buffer per rank
+ * @param recv_buf [out] the buffer to store received result, must be large enough to hold blocks from all ranks
+ * @param recv_bufs [out] array of buffers to store receive blocks, one buffer per rank
  * @param send_counts array with the number of elements of type @c dtype in send blocks for each rank
  * @param recv_counts array with the number of elements of type @c dtype in receive blocks from each rank
  * @param dtype the datatype of elements in @c send_buf and @c recv_buf
  * @param comm the communicator for which the operation will be performed
- * @param stream a stream associated with the operation
+ * @param stream abstraction over a device queue constructed via ccl::create_stream
  * @param attr optional attributes to customize operation
  * @param deps an optional vector of the events that the operation should depend on
  * @return @ref ccl::event an object to track the progress of the operation
@@ -906,8 +999,10 @@ event CCL_API alltoallv(const void* send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 event CCL_API alltoallv(const vector_class<void*>& send_bufs,
                         const vector_class<size_t>& send_counts,
                         const vector_class<void*>& recv_bufs,
@@ -920,8 +1015,10 @@ event CCL_API alltoallv(const vector_class<void*>& send_bufs,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 event CCL_API alltoallv(const vector_class<void*>& send_bufs,
                         const vector_class<size_t>& send_counts,
                         const vector_class<void*>& recv_bufs,
@@ -933,8 +1030,10 @@ event CCL_API alltoallv(const vector_class<void*>& send_bufs,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API alltoallv(const BufferType* send_buf,
@@ -948,8 +1047,10 @@ event CCL_API alltoallv(const BufferType* send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API alltoallv(const BufferType* send_buf,
@@ -962,8 +1063,10 @@ event CCL_API alltoallv(const BufferType* send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API alltoallv(const vector_class<BufferType*>& send_bufs,
@@ -977,8 +1080,10 @@ event CCL_API alltoallv(const vector_class<BufferType*>& send_bufs,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API alltoallv(const vector_class<BufferType*>& send_bufs,
@@ -991,8 +1096,10 @@ event CCL_API alltoallv(const vector_class<BufferType*>& send_bufs,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API alltoallv(const BufferObjectType& send_buf,
@@ -1006,8 +1113,10 @@ event CCL_API alltoallv(const BufferObjectType& send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API alltoallv(const BufferObjectType& send_buf,
@@ -1020,8 +1129,10 @@ event CCL_API alltoallv(const BufferObjectType& send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API alltoallv(const vector_class<reference_wrapper_class<BufferObjectType>>& send_bufs,
@@ -1035,8 +1146,10 @@ event CCL_API alltoallv(const vector_class<reference_wrapper_class<BufferObjectT
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API alltoallv(const vector_class<reference_wrapper_class<BufferObjectType>>& send_bufs,
@@ -1058,7 +1171,7 @@ event CCL_API alltoallv(const vector_class<reference_wrapper_class<BufferObjectT
  * \brief Barrier synchronization is performed across all ranks of the communicator
  *        and it is completed only after all the ranks in the communicator have called it.
  * @param comm the communicator for which the operation will be performed
- * @param stream a stream associated with the operation
+ * @param stream abstraction over a device queue constructed via ccl::create_stream
  * @param attr optional attributes to customize operation
  * @param deps an optional vector of the events that the operation should depend on
  * @return @ref ccl::event an object to track the progress of the operation
@@ -1092,7 +1205,7 @@ event CCL_API barrier(const communicator& comm,
  * @param dtype the datatype of elements in @c buf
  * @param root the rank that broadcasts @c buf
  * @param comm the communicator for which the operation will be performed
- * @param stream a stream associated with the operation
+ * @param stream abstraction over a device queue constructed via ccl::create_stream
  * @param attr optional attributes to customize operation
  * @param deps an optional vector of the events that the operation should depend on
  * @return @ref ccl::event an object to track the progress of the operation
@@ -1119,8 +1232,10 @@ event CCL_API broadcast(void* buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API broadcast(BufferType* buf,
@@ -1133,8 +1248,10 @@ event CCL_API broadcast(BufferType* buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API broadcast(BufferType* buf,
@@ -1146,8 +1263,10 @@ event CCL_API broadcast(BufferType* buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API broadcast(BufferObjectType& buf,
@@ -1160,8 +1279,10 @@ event CCL_API broadcast(BufferObjectType& buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API broadcast(BufferObjectType& buf,
@@ -1187,7 +1308,7 @@ event CCL_API broadcast(BufferObjectType& buf,
  * @param dtype the datatype of elements in @c buf
  * @param peer the rank that sends @c buf
  * @param comm the communicator for which the operation will be performed
- * @param stream a stream associated with the operation
+ * @param stream abstraction over a device queue constructed via ccl::create_stream
  * @param attr optional attributes to customize operation
  * @param deps an optional vector of the events that the operation should depend on
  * @return @ref ccl::event an object to track the progress of the operation
@@ -1214,8 +1335,10 @@ event CCL_API recv(void* buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API recv(BufferType* buf,
@@ -1228,8 +1351,10 @@ event CCL_API recv(BufferType* buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API recv(BufferType* buf,
@@ -1241,8 +1366,10 @@ event CCL_API recv(BufferType* buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API recv(BufferObjectType& buf,
@@ -1255,8 +1382,9 @@ event CCL_API recv(BufferObjectType& buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API recv(BufferObjectType& buf,
@@ -1282,7 +1410,7 @@ event CCL_API recv(BufferObjectType& buf,
  * @param dtype the datatype of elements in @c buf
  * @param peer the rank that receives @c buf
  * @param comm the communicator for which the operation will be performed
- * @param stream a stream associated with the operation
+ * @param stream abstraction over a device queue constructed via ccl::create_stream
  * @param attr optional attributes to customize operation
  * @param deps an optional vector of the events that the operation should depend on
  * @return @ref ccl::event an object to track the progress of the operation
@@ -1309,8 +1437,10 @@ event CCL_API send(void* buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API send(BufferType* buf,
@@ -1323,8 +1453,10 @@ event CCL_API send(BufferType* buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API send(BufferType* buf,
@@ -1336,8 +1468,10 @@ event CCL_API send(BufferType* buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API send(BufferObjectType& buf,
@@ -1350,8 +1484,10 @@ event CCL_API send(BufferObjectType& buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API send(BufferObjectType& buf,
@@ -1379,7 +1515,7 @@ event CCL_API send(BufferObjectType& buf,
  * @param rtype the type of the reduction operation to be applied
  * @param root the rank that gets the result of reduction
  * @param comm the communicator for which the operation will be performed
- * @param stream a stream associated with the operation
+ * @param stream abstraction over a device queue constructed via ccl::create_stream
  * @param attr optional attributes to customize operation
  * @param deps an optional vector of the events that the operation should depend on
  * @return @ref ccl::event an object to track the progress of the operation
@@ -1410,8 +1546,10 @@ event CCL_API reduce(const void* send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API reduce(const BufferType* send_buf,
@@ -1426,8 +1564,10 @@ event CCL_API reduce(const BufferType* send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API reduce(const BufferType* send_buf,
@@ -1441,8 +1581,10 @@ event CCL_API reduce(const BufferType* send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API reduce(const BufferObjectType& send_buf,
@@ -1457,8 +1599,10 @@ event CCL_API reduce(const BufferObjectType& send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API reduce(const BufferObjectType& send_buf,
@@ -1486,7 +1630,7 @@ event CCL_API reduce(const BufferObjectType& send_buf,
  * @param dtype the datatype of elements in @c send_buf and @c recv_buf
  * @param rtype the type of the reduction operation to be applied
  * @param comm the communicator for which the operation will be performed
- * @param stream a stream associated with the operation
+ * @param stream abstraction over a device queue constructed via ccl::create_stream
  * @param attr optional attributes to customize operation
  * @param deps an optional vector of the events that the operation should depend on
  * @return @ref ccl::event an object to track the progress of the operation
@@ -1515,8 +1659,10 @@ event CCL_API reduce_scatter(const void* send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API reduce_scatter(const BufferType* send_buf,
@@ -1530,8 +1676,10 @@ event CCL_API reduce_scatter(const BufferType* send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API reduce_scatter(const BufferType* send_buf,
@@ -1544,8 +1692,11 @@ event CCL_API reduce_scatter(const BufferType* send_buf,
 
 /*!
  * \overload
+ *
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API reduce_scatter(const BufferObjectType& send_buf,
@@ -1559,8 +1710,10 @@ event CCL_API reduce_scatter(const BufferObjectType& send_buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-/* Type safety version */
+
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API reduce_scatter(const BufferObjectType& send_buf,

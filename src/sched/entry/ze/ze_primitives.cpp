@@ -15,10 +15,12 @@
 */
 #include <algorithm>
 #include <fstream>
+#include <unordered_map>
 
 #include "common/global/global.hpp"
 #include "common/log/log.hpp"
 #include "common/utils/utils.hpp"
+#include "common/utils/version.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
 
 namespace ccl {
@@ -38,6 +40,11 @@ std::map<h2d_copy_engine_mode, std::string> h2d_copy_engine_names = {
     std::make_pair(h2d_copy_engine_mode::auto_mode, "auto")
 };
 
+std::map<d2d_copy_engine_mode, std::string> d2d_copy_engine_names = {
+    std::make_pair(d2d_copy_engine_mode::none, "none"),
+    std::make_pair(d2d_copy_engine_mode::main, "main"),
+};
+
 std::string get_build_log_string(ze_module_build_log_handle_t build_log) {
     size_t log_size{};
     ZE_CALL(zeModuleBuildLogGetString, (build_log, &log_size, nullptr));
@@ -52,38 +59,91 @@ std::string get_build_log_string(ze_module_build_log_handle_t build_log) {
     return log;
 }
 
+static void load_file(std::ifstream& file, std::vector<uint8_t>& bytes) {
+    file.seekg(0, file.end);
+    size_t file_size = file.tellg();
+    file.seekg(0, file.beg);
+
+    bytes.resize(file_size);
+    file.read(reinterpret_cast<char*>(bytes.data()), file_size);
+}
+
 void load_module(const std::string& file_path,
                  ze_device_handle_t device,
                  ze_context_handle_t context,
                  ze_module_handle_t* module) {
-    LOG_DEBUG("module loading started: file: ", file_path);
-    CCL_THROW_IF_NOT(!file_path.empty(), "no file");
-
-    std::ifstream file(file_path, std::ios_base::in | std::ios_base::binary);
-    CCL_THROW_IF_NOT(file.good(), "failed to load module: file: ", file_path);
-
-    file.seekg(0, file.end);
-    size_t filesize = file.tellg();
-    file.seekg(0, file.beg);
-
-    std::vector<uint8_t> module_data(filesize);
-    file.read(reinterpret_cast<char*>(module_data.data()), filesize);
-    file.close();
+    bool compiling_spirv_module = false;
 
     ze_module_build_log_handle_t build_log{};
-    ze_module_desc_t desc{};
-    ze_module_format_t format = ZE_MODULE_FORMAT_IL_SPIRV;
-    desc.format = format;
-    desc.pInputModule = reinterpret_cast<const uint8_t*>(module_data.data());
-    desc.inputSize = module_data.size();
+    ze_module_format_t format{};
+    std::vector<uint8_t> module_data{};
 
-    if (ZE_CALL(zeModuleCreate, (context, device, &desc, module, &build_log)) !=
-        ZE_RESULT_SUCCESS) {
-        CCL_THROW(
-            "failed to create module: ", file_path, ", log: ", get_build_log_string(build_log));
+    // Prepare name for cached module in format:
+    // /tmp/ccl-module-cache-{UID}-{CCL version hash}
+    size_t version_hash = std::hash<std::string>{}(utils::get_library_version().full);
+
+    std::stringstream ss;
+    ss << "/tmp/ccl-module-cache-" << getuid() << "-" << std::hex << version_hash;
+    const std::string cached_module_path = ss.str();
+
+    std::ifstream cached_module_file(cached_module_path, std::ios_base::in | std::ios_base::binary);
+
+    if (cached_module_file.good() && ccl::global_data::env().kernel_module_cache) {
+        LOG_DEBUG("|MODULE CACHE| Using cached module at: ", cached_module_path);
+
+        load_file(cached_module_file, module_data);
+        cached_module_file.close();
+
+        format = ZE_MODULE_FORMAT_NATIVE;
+        compiling_spirv_module = false;
     }
     else {
-        LOG_DEBUG("module loading completed: directory: file: ", file_path);
+        LOG_DEBUG("|MODULE CACHE| SPIR-V module loading started, file: ", file_path);
+        CCL_THROW_IF_NOT(!file_path.empty(), "incorrect path to SPIR-V module.");
+
+        std::ifstream spirv_module_file(file_path, std::ios_base::in | std::ios_base::binary);
+        CCL_THROW_IF_NOT(spirv_module_file.good(),
+                         "failed to load file containing oneCCL SPIR-V kernels, file: ",
+                         file_path);
+
+        load_file(spirv_module_file, module_data);
+        spirv_module_file.close();
+
+        format = ZE_MODULE_FORMAT_IL_SPIRV;
+        compiling_spirv_module = true;
+    }
+
+    ze_module_desc_t desc{ default_module_desc };
+    desc.format = format;
+    desc.inputSize = module_data.size();
+    desc.pInputModule = reinterpret_cast<const uint8_t*>(module_data.data());
+
+    try {
+        ZE_CALL(zeModuleCreate, (context, device, &desc, module, &build_log));
+    }
+    catch (std::string& error_message) {
+        CCL_THROW("failed to create module: ",
+                  file_path,
+                  "error message: ",
+                  error_message,
+                  ", log: ",
+                  get_build_log_string(build_log));
+    }
+
+    if (compiling_spirv_module && ccl::global_data::env().kernel_module_cache) {
+        // We had to compile SPIR-V binary to gpu specific ISA, so now we can cache the module
+        LOG_DEBUG("|MODULE CACHE| Caching compiled module to: ", cached_module_path);
+        std::ofstream cached_module_file_new(cached_module_path,
+                                             std::ios_base::out | std::ios_base::binary);
+
+        size_t binary_size = 0;
+        ZE_CALL(zeModuleGetNativeBinary, (*module, &binary_size, nullptr));
+
+        std::vector<uint8_t> compiled_module_data(binary_size);
+        ZE_CALL(zeModuleGetNativeBinary, (*module, &binary_size, compiled_module_data.data()));
+
+        cached_module_file_new.write(reinterpret_cast<char*>(compiled_module_data.data()),
+                                     binary_size);
     }
 
     ZE_CALL(zeModuleBuildLogDestroy, (build_log));
@@ -273,7 +333,7 @@ int get_fd_from_handle(const ze_ipc_mem_handle_t& handle) {
 
 void close_handle_fd(const ze_ipc_mem_handle_t& handle) {
     int fd = get_fd_from_handle(handle);
-    close(fd);
+    ccl::utils::close_fd(fd);
 }
 
 ze_ipc_mem_handle_t get_handle_from_fd(int fd) {
@@ -374,11 +434,11 @@ bool is_same_fabric_port(const zes_fabric_port_id_t& port1, const zes_fabric_por
     if (!(port1.fabricId == port2.fabricId && port1.attachId == port2.attachId &&
           port1.portNumber == port2.portNumber)) {
         result = false;
-        LOG_DEBUG("fabric ports are not the same:"
-                  " port1: ",
-                  ccl::ze::to_string(port1),
-                  " port2: ",
-                  ccl::ze::to_string(port2));
+        // LOG_DEBUG("fabric ports are not the same:"
+        //           " port1: ",
+        //           ccl::ze::to_string(port1),
+        //           " port2: ",
+        //           ccl::ze::to_string(port2));
     }
     return result;
 }

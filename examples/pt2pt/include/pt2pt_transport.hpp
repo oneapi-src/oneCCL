@@ -19,11 +19,15 @@
 #include <vector>
 
 #include "oneapi/ccl.hpp"
+#ifdef CCL_ENABLE_SYCL
 #include "sycl_base.hpp"
+#endif // CCL_ENABLE_SYCL
 #include "pt2pt_base.hpp"
 
 class transport_data {
 public:
+    transport_data(const transport_data& other) = delete;
+    transport_data& operator=(const transport_data& other) = delete;
     static transport_data& instance();
     static size_t get_comm_size();
 
@@ -36,10 +40,12 @@ public:
     std::vector<ccl::communicator>& get_comms();
     void reset_comms();
 
+#ifdef CCL_ENABLE_SYCL
     std::vector<ccl::stream>& get_streams();
 
     void create_sycl_queue(user_options_t& options);
     sycl::queue get_sycl_queue();
+#endif // CCL_ENABLE_SYCL
 
 private:
     transport_data();
@@ -53,8 +59,10 @@ private:
     ccl::shared_ptr_class<ccl::kvs> kvs;
     std::vector<ccl::communicator> comms;
 
+#ifdef CCL_ENABLE_SYCL
     std::vector<ccl::stream> streams;
     sycl::queue queue;
+#endif // CCL_ENABLE_SYCL
 
     void init_by_mpi();
     void deinit_by_mpi();
@@ -114,28 +122,40 @@ void transport_data::deinit_by_mpi() {
     MPI_Finalize();
 }
 
+#ifdef CCL_ENABLE_SYCL
 std::vector<ccl::stream>& transport_data::get_streams() {
     return streams;
 }
+#endif // CCL_ENABLE_SYCL
 
 void transport_data::init_comms(user_options_t& options) {
-    create_sycl_queue(options);
+#ifdef CCL_ENABLE_SYCL
+    if (options.backend == BACKEND_GPU) {
+        create_sycl_queue(options);
 
-    auto q = get_sycl_queue();
+        auto q = get_sycl_queue();
 
-    // create communicator
-    auto dev = ccl::create_device(q.get_device());
-    auto ctx = ccl::create_context(q.get_context());
-    comms.push_back(ccl::create_communicator(size, rank, dev, ctx, kvs));
+        // create communicator
+        auto dev = ccl::create_device(q.get_device());
+        auto ctx = ccl::create_context(q.get_context());
+        comms.push_back(ccl::create_communicator(size, rank, dev, ctx, kvs));
 
-    // create stream
-    streams.push_back(ccl::create_stream(q));
+        // create stream
+        streams.push_back(ccl::create_stream(q));
+    }
+    else {
+#endif // CCL_ENABLE_SYCL
+        comms.push_back(ccl::create_communicator(size, rank, kvs));
+#ifdef CCL_ENABLE_SYCL
+    }
+#endif // CCL_ENABLE_SYCL
 }
 
 std::vector<ccl::communicator>& transport_data::get_comms() {
     return comms;
 }
 
+#ifdef CCL_ENABLE_SYCL
 void transport_data::create_sycl_queue(user_options_t& options) {
     sycl::property_list props{};
     if (options.queue) {
@@ -150,8 +170,11 @@ void transport_data::create_sycl_queue(user_options_t& options) {
 sycl::queue transport_data::get_sycl_queue() {
     return queue;
 }
+#endif // CCL_ENABLE_SYCL
 
 void transport_data::reset_comms() {
     comms.clear();
+#ifdef CCL_ENABLE_SYCL
     streams.clear();
+#endif // CCL_ENABLE_SYCL
 }

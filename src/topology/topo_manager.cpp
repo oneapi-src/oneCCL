@@ -241,6 +241,10 @@ bool topo_manager::has_p2p_access() const {
     return is_p2p_access_enabled;
 }
 
+bool topo_manager::has_all_vertices_connected() const {
+    return are_all_vertices_connected;
+}
+
 std::vector<ze_device_uuid_t> topo_manager::copy_dev_uuids(const rank_info_vec_t& info_vec) const {
     CCL_THROW_IF_NOT(!ze_rank_info_vec.empty());
     CCL_THROW_IF_NOT(!info_vec.empty());
@@ -342,6 +346,117 @@ p2p_matrix_t topo_manager::build_p2p_matrix(const std::vector<ze_device_handle_t
         }
     }
     return matrix;
+}
+
+bool topo_manager::build_fabric_connectivity_matrix(std::shared_ptr<atl_base_comm> comm) {
+    if (!ccl::global_data::env().enable_fabric_vertex_connection_check) {
+        return true;
+    }
+
+    auto driver = global_data::get().ze_data->drivers[0];
+    bool is_include_devices = true;
+    bool is_include_sub_devices_enabled = false;
+    bool is_matrix_connected = true;
+
+    uint32_t total_vertex_count = 0;
+    std::vector<std::pair<ze_fabric_vertex_handle_t, char>> all_vertices;
+    // get the total number of fabric vertices
+    ZE_CALL(zeFabricVertexGetExp, (driver, &total_vertex_count, nullptr));
+    std::vector<ze_fabric_vertex_handle_t> vertices(total_vertex_count);
+    // retrieve all fabric vertices
+    ZE_CALL(zeFabricVertexGetExp, (driver, &total_vertex_count, vertices.data()));
+
+    // iterate through each vertex
+    for (auto& vertex : vertices) {
+        if (is_include_devices) {
+            all_vertices.push_back(std::make_pair(vertex, 'R'));
+        }
+        // check if including sub-devices, false by default since our model is FLAT
+        // meaning that all the devices that do not have sub-devices
+        if (is_include_sub_devices_enabled) {
+            uint32_t subdev_vertex_count = 0;
+            // get the number of sub-vertices
+            ZE_CALL(zeFabricVertexGetSubVerticesExp, (vertex, &subdev_vertex_count, nullptr));
+            // retrieve sub-vertices
+            std::vector<ze_fabric_vertex_handle_t> subVertices(subdev_vertex_count);
+            ZE_CALL(zeFabricVertexGetSubVerticesExp,
+                    (vertex, &subdev_vertex_count, subVertices.data()));
+            // add sub-vertices to the list
+            for (auto& subVertex : subVertices) {
+                all_vertices.push_back(std::make_pair(subVertex, 'S'));
+            }
+        }
+    }
+
+    // check if there are no fabric vertices
+    if (all_vertices.size() == 0) {
+        is_matrix_connected = false;
+        LOG_INFO("No fabric vertices: ",
+                 all_vertices.size(),
+                 ", is_matrix_connected: ",
+                 is_matrix_connected);
+        return is_matrix_connected;
+    }
+
+    // create the fabric connectivity matrix
+    fabric_conn_matrix_t matrix(all_vertices.size(), std::vector<bool>(all_vertices.size(), false));
+
+    // populate the fabric connectivity matrix based on edges between vertices
+    for (uint32_t vertex_a_idx = 0; vertex_a_idx < all_vertices.size(); vertex_a_idx++) {
+        for (uint32_t vertex_b_idx = 0; vertex_b_idx < all_vertices.size(); vertex_b_idx++) {
+            // diagonal elements are set to true (self-connections)
+            if (vertex_a_idx == vertex_b_idx) {
+                matrix[vertex_a_idx][vertex_b_idx] = true;
+                continue;
+            }
+            // Get the number of edges between two vertices
+            uint32_t edge_count = 0;
+            ZE_CALL(zeFabricEdgeGetExp,
+                    (all_vertices[vertex_a_idx].first,
+                     all_vertices[vertex_b_idx].first,
+                     &edge_count,
+                     nullptr));
+            // set matrix element based on whether there are edges between vertices
+            matrix[vertex_a_idx][vertex_b_idx] = (edge_count > 0);
+            if (!matrix[vertex_a_idx][vertex_b_idx]) {
+                is_matrix_connected = false;
+                LOG_WARN(
+                    "topology recognition shows PCIe connection between devices."
+                    " If this is not correct, you can disable topology recognition,"
+                    " with CCL_TOPO_FABRIC_VERTEX_CONNECTION_CHECK=0. This will assume XeLinks across devices");
+            }
+        }
+    }
+
+    // print the final matrix
+    if (comm->get_rank() == 0) {
+        const uint32_t elementWidth = 15;
+        std::stringstream ss;
+        for (uint32_t i = 0; i < matrix.size(); i++) {
+            ss << std::setw(elementWidth) << "[" << all_vertices[i].second << "]"
+               << all_vertices[i].first;
+        }
+        ss << "\n";
+
+        for (uint32_t vertex_a_idx = 0; vertex_a_idx < matrix.size(); vertex_a_idx++) {
+            ss << "[" << all_vertices[vertex_a_idx].second << "]"
+               << all_vertices[vertex_a_idx].first;
+            for (uint32_t vertex_b_idx = 0; vertex_b_idx < matrix.size(); vertex_b_idx++) {
+                if (vertex_a_idx == vertex_b_idx) {
+                    ss << std::setw(elementWidth) << "X";
+                    continue;
+                }
+                ss << std::setw(elementWidth) << matrix[vertex_a_idx][vertex_b_idx];
+            }
+            ss << "\n";
+        }
+        LOG_INFO("all vertices connected: is_matrix_connected: ",
+                 is_matrix_connected,
+                 "\n fabric connectivity matrix: \n",
+                 ss.str());
+    }
+
+    return is_matrix_connected;
 }
 
 bool topo_manager::is_sub_vector(const std::vector<ze_device_uuid_t>& vec,
@@ -831,11 +946,18 @@ fabric_ports_t topo_manager::get_fabric_ports() {
     std::vector<zes_fabric_port_handle_t> ports(port_count);
     ZE_CALL(zesDeviceEnumFabricPorts, ((zes_device_handle_t)ze_device, &port_count, ports.data()));
 
-    bool use_all_ports = (ccl::ze::get_device_family(ze_device) == ccl::device_family::family2 ||
-                          ccl::ze::get_device_family(ze_device) == ccl::device_family::family3);
+    bool use_all_ports = true;
+    if (ccl::ze::get_device_family(ze_device) == ccl::device_family::unknown) {
+        LOG_WARN("device_family is unknown, topology discovery could be incorrect,"
+                 " it might result in suboptimal performance");
+    }
+
     char* use_all_ports_env = getenv("CCL_TOPO_ALL_PORTS");
     if (use_all_ports_env) {
         use_all_ports = atoi(use_all_ports_env);
+    }
+    if (ccl::global_data::env().atl_transport == ccl_atl_ofi) {
+        use_all_ports = true;
     }
     LOG_DEBUG("use all fabric ports: ", use_all_ports);
 
@@ -893,7 +1015,7 @@ fabric_ports_t topo_manager::get_fabric_ports() {
         std::accumulate(all_port_counts.begin(), all_port_counts.end(), size_t(0));
 
     if (total_port_count == 0) {
-        LOG_DEBUG("no ports detected");
+        LOG_INFO("no ports detected");
         return {};
     }
     else {
@@ -1401,6 +1523,8 @@ void topo_manager::ze_base_init(std::shared_ptr<ccl::device> device,
     // build p2p connectivity info
     const auto& node_devices = global_data::get().ze_data->devices;
     p2p_matrix = build_p2p_matrix(get_filtered_devices(node_devices));
+    are_all_vertices_connected = build_fabric_connectivity_matrix(comm);
+
     is_p2p_access_enabled = check_p2p_access();
     LOG_DEBUG("p2p matrix: \n",
               ccl::to_string(p2p_matrix),

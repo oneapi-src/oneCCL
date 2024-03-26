@@ -24,7 +24,16 @@ std::map<validate_values_t, std::string> validate_values_names = {
     std::make_pair(VALIDATE_ALL_ITERS, "all")
 };
 
+typedef enum { BACKEND_CPU, BACKEND_GPU } backend_type_t;
+std::map<backend_type_t, std::string> backend_names = { std::make_pair(BACKEND_CPU, "cpu"),
+                                                        std::make_pair(BACKEND_GPU, "gpu") };
+
 // defines
+#ifdef CCL_ENABLE_SYCL
+#define DEFAULT_BACKEND BACKEND_GPU
+#else // CCL_ENABLE_SYCL
+#define DEFAULT_BACKEND BACKEND_CPU
+#endif // CCL_ENABLE_SYCL
 #define COL_WIDTH     (18)
 #define COL_PRECISION (2)
 
@@ -65,4 +74,30 @@ int set_validate_values(const std::string& option_value, validate_values_t& vali
     }
 
     return 0;
+}
+
+template <typename T>
+std::list<T> tokenize(const std::string& input, char delimeter) {
+    std::istringstream ss(input);
+    std::list<T> ret;
+    std::string str;
+    while (std::getline(ss, str, delimeter)) {
+        std::stringstream converter;
+        converter << str;
+        T value;
+        converter >> value;
+        ret.push_back(value);
+    }
+    return ret;
+}
+
+void fill_elem_counts(std::list<size_t>& counts, const size_t min_count, const size_t max_count) {
+    counts.clear();
+    size_t count = 0;
+    for (count = min_count; count <= max_count; count *= 2) {
+        counts.push_back(count);
+    }
+    if (*counts.rbegin() != max_count) {
+        counts.push_back(max_count);
+    }
 }

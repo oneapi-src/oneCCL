@@ -209,8 +209,8 @@ ze_event_handle_t dynamic_event_pool::get_event() {
     pool_info.num_alloc_events = 0;
 
     slot.pool = event_pools.insert(event_pools.end(), pool_info);
-    slot.pool_idx = event_pool_request_idx;
-    event_pool_request_idx = ++event_pool_request_idx % event_pool_size;
+    slot.pool_idx = event_pool_request_idx++;
+    event_pool_request_idx %= event_pool_size;
 
     return create_event(slot);
 }

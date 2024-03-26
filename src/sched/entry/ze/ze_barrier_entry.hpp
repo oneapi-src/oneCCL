@@ -27,6 +27,8 @@ public:
         return class_name();
     }
 
+    ze_barrier_entry(const ze_barrier_entry&) = delete;
+    ze_barrier_entry& operator=(const ze_barrier_entry&) = delete;
     ze_barrier_entry() = delete;
     explicit ze_barrier_entry(ccl_sched* sched,
                               ccl_comm* comm,

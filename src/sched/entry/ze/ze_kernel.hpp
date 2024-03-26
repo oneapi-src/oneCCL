@@ -39,6 +39,8 @@ public:
 
     ze_kernel(const ze_kernel &) = delete;
     ze_kernel(ze_kernel &&other) noexcept;
+    ze_kernel &operator=(const ze_kernel &) = delete;
+    ze_kernel &operator=(ze_kernel &&other) = delete;
     ~ze_kernel() noexcept;
 
 private:

@@ -68,13 +68,10 @@ ze_handle_exchange_entry::~ze_handle_exchange_entry() {
     if (ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::sockets) {
         close_sockets();
         unlink_sockets();
-    }
-
-    if (ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::pidfd) {
-        for (auto& fd : opened_pidfds) {
-            close(fd);
+        for (int fd : opened_sockets_fds) {
+            ccl::utils::close_fd(fd);
         }
-        opened_pidfds.clear();
+        opened_sockets_fds.clear();
     }
 }
 
@@ -138,8 +135,7 @@ void ze_handle_exchange_entry::create_local_ipc_handles(const std::vector<mem_de
                 sched->get_memory().handle_manager.get_handle(mem_info.first, &ipc_handle);
 
                 if (ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::drmfd) {
-                    physical_devices =
-                        ccl::global_data::get().ze_data->fd_manager->get_physical_devices();
+                    physical_devices = comm->get_fd_manager()->get_physical_devices();
                     mem_handle = ipc_to_mem_handle(
                         ipc_handle,
                         ccl::ze::get_device_id(sched->coll_param.stream->get_ze_device()));
@@ -250,7 +246,6 @@ void ze_handle_exchange_entry::fill_remote_handle(const payload_t& payload,
     handles[idx][buf_idx].remote_context_id = payload.remote_context_id;
     handles[idx][buf_idx].remote_pid = payload.remote_pid;
     handles[idx][buf_idx].remote_device_id = payload.remote_device_id;
-    handles[idx][buf_idx].pidfd_fd = payload.pidfd_fd;
     handles[idx][buf_idx].device_fd = payload.device_fd;
     LOG_DEBUG("get IPC handle: { peer: ",
               idx,
@@ -286,36 +281,37 @@ int ze_handle_exchange_entry::get_remote_physical_device_fd(const ssize_t remote
 }
 
 void ze_handle_exchange_entry::common_fd_mode_exchange(const std::vector<mem_desc_t>& bufs) {
+    std::vector<payload_t> all_payloads(comm_size * bufs.size());
+    std::vector<payload_t> local_payloads(bufs.size());
+
     for (size_t buf_idx = 0; buf_idx < bufs.size(); buf_idx++) {
-        std::vector<payload_t> payloads(comm_size);
         payload_t payload{};
         fill_payload(payload, bufs, buf_idx);
+        local_payloads[buf_idx] = payload;
+    }
 
-        if (!(ccl::utils::allgather(
-                comm->get_atl_comm(), &payload, payloads.data(), sizeof(payload_t)))) {
-            CCL_THROW("allgather exchange is failed");
+    if (!(ccl::utils::allgather(comm->get_atl_comm(),
+                                local_payloads.data(),
+                                all_payloads.data(),
+                                sizeof(payload_t) * bufs.size()))) {
+        CCL_THROW("allgather exchange is failed");
+    }
+
+    for (int rank_idx = 0; rank_idx < comm_size; rank_idx++) {
+        if (comm->rank() == rank_idx) {
+            continue;
         }
-
-        for (size_t idx = 0; idx < payloads.size(); idx++) {
-            if (comm->rank() == (int)idx) {
-                continue;
-            }
-
+        for (size_t buf_idx = 0; buf_idx < bufs.size(); buf_idx++) {
+            int payload_idx = rank_idx * bufs.size() + buf_idx;
             if (ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::drmfd) {
-                payloads[idx].device_fd =
-                    get_remote_physical_device_fd(payloads[idx].remote_device_id);
+                all_payloads[payload_idx].device_fd =
+                    get_remote_physical_device_fd(all_payloads[payload_idx].remote_device_id);
             }
-            else if (ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::pidfd) {
-                opened_pidfds.push_back(ccl::ze::fd_manager::pidfd_open(payloads[idx].remote_pid));
-                payloads[idx].pidfd_fd = opened_pidfds.back();
-            }
-            else {
-                CCL_THROW("unexpected ipc_exchange_mode");
-            }
+
             fill_remote_handle(
-                payloads[idx],
-                {}, // ipc_handle is empty, it's initialized immeadiately before calling zeMemOpenIpcHandle
-                idx,
+                all_payloads[payload_idx],
+                {}, // ipc_handle is empty, it's initialized immediately before calling zeMemOpenIpcHandle
+                rank_idx,
                 buf_idx);
         }
     }
@@ -375,15 +371,7 @@ void ze_handle_exchange_entry::pt2pt_fd_mode_exchange(const std::vector<mem_desc
                     payloads[idx].device_fd =
                         get_remote_physical_device_fd(payloads[idx].remote_device_id);
                 }
-                else if (ccl::global_data::env().ze_ipc_exchange ==
-                         ccl::ze::ipc_exchange_mode::pidfd) {
-                    opened_pidfds.push_back(
-                        ccl::ze::fd_manager::pidfd_open(payloads[idx].remote_pid));
-                    payloads[idx].pidfd_fd = opened_pidfds.back();
-                }
-                else {
-                    CCL_THROW("unexpected ipc_exchange_mode for pt2pt");
-                }
+
                 fill_remote_handle(
                     payloads[idx],
                     {}, // ipc_handle is empty, it's initialized immeadiately before calling zeMemOpenIpcHandle
@@ -490,6 +478,8 @@ int ze_handle_exchange_entry::sockets_mode_exchange(const std::vector<mem_desc_t
                     ccl::utils::sendmsg_call(
                         right_peer_socket, recv_fd, &payload, sizeof(payload), rank);
                 }
+                opened_sockets_fds.push_back(recv_fd);
+
                 start_peer_idx++;
             }
             else if (poll_fds[0].revents & POLLERR) {
@@ -683,9 +673,9 @@ void ze_handle_exchange_entry::close_sockets() {
     // the socket during entry's destruction, to make sure we don't have any
     // open sockets left.
     if (!sockets_closed) {
-        close(left_peer_connect_socket);
-        close(left_peer_socket);
-        close(right_peer_socket);
+        ccl::utils::close_fd(left_peer_connect_socket);
+        ccl::utils::close_fd(left_peer_socket);
+        ccl::utils::close_fd(right_peer_socket);
         sockets_closed = true;
     }
 }

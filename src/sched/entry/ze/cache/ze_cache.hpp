@@ -29,6 +29,8 @@ namespace ze {
 class kernel_cache {
 public:
     kernel_cache() = default;
+    kernel_cache(const kernel_cache&) = delete;
+    kernel_cache& operator=(const kernel_cache&) = delete;
     ~kernel_cache();
 
     void clear();
@@ -47,6 +49,8 @@ private:
 class list_cache {
 public:
     list_cache() = default;
+    list_cache(const list_cache&) = delete;
+    list_cache& operator=(const list_cache&) = delete;
     ~list_cache();
 
     void clear();
@@ -71,6 +75,8 @@ private:
 class queue_cache {
 public:
     queue_cache() = default;
+    queue_cache(const queue_cache&) = delete;
+    queue_cache& operator=(const queue_cache&) = delete;
     ~queue_cache();
 
     void clear();
@@ -100,6 +106,8 @@ private:
 class event_pool_cache {
 public:
     event_pool_cache() = default;
+    event_pool_cache(const event_pool_cache&) = delete;
+    event_pool_cache& operator=(const event_pool_cache&) = delete;
     ~event_pool_cache();
 
     void clear();
@@ -124,6 +132,8 @@ struct ipc_handle_desc;
 class module_cache {
 public:
     module_cache() = default;
+    module_cache(const module_cache&) = delete;
+    module_cache& operator=(const module_cache&) = delete;
     ~module_cache();
 
     void clear();
@@ -171,6 +181,8 @@ public:
     using value_t = typename std::shared_ptr<const handle_desc>;
 
     mem_handle_cache();
+    mem_handle_cache(const mem_handle_cache& other) = delete;
+    mem_handle_cache& operator=(const mem_handle_cache& other) = delete;
     ~mem_handle_cache();
 
     void clear();
@@ -214,6 +226,8 @@ public:
     using value_t = ze_ipc_mem_handle_t;
 
     ipc_handle_cache() = default;
+    ipc_handle_cache(const ipc_handle_cache&) = delete;
+    ipc_handle_cache& operator=(const ipc_handle_cache&) = delete;
     ~ipc_handle_cache();
 
     void clear();

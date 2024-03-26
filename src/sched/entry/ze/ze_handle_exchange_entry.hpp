@@ -98,7 +98,6 @@ private:
         uint64_t remote_mem_alloc_id{};
         ssize_t remote_context_id{ ccl::utils::invalid_context_id };
         ssize_t remote_device_id{ ccl::utils::invalid_device_id };
-        int pidfd_fd{ ccl::utils::invalid_fd };
         int device_fd{ ccl::utils::invalid_fd };
     };
 
@@ -142,7 +141,7 @@ private:
     mem_info_t get_mem_info(const void* ptr);
 
     bool sockets_closed = false;
-    std::vector<int> opened_pidfds;
+    std::vector<int> opened_sockets_fds;
 
     void unlink_sockets();
     void close_sockets();

@@ -70,6 +70,7 @@ typedef struct mpi_lib_ops {
     decltype(MPI_Op_free) *MPI_Op_free_ptr;
     decltype(MPI_Query_thread) *MPI_Query_thread_ptr;
     decltype(MPI_Reduce) *MPI_Reduce_ptr;
+    decltype(MPI_Reduce_scatter) *MPI_Reduce_scatter_ptr;
     decltype(MPI_Reduce_scatter_block) *MPI_Reduce_scatter_block_ptr;
     decltype(MPI_Test) *MPI_Test_ptr;
     decltype(MPI_Type_commit) *MPI_Type_commit_ptr;
@@ -125,6 +126,7 @@ static std::vector<std::string> mpi_fn_names = {
     "MPI_Op_free",
     "MPI_Query_thread",
     "MPI_Reduce",
+    "MPI_Reduce_scatter",
     "MPI_Reduce_scatter_block",
     "MPI_Test",
     "MPI_Type_commit",
@@ -181,6 +183,7 @@ extern ccl::mpi_lib_ops_t mpi_lib_ops;
 #define MPI_Op_free               ccl::mpi_lib_ops.MPI_Op_free_ptr
 #define MPI_Query_thread          ccl::mpi_lib_ops.MPI_Query_thread_ptr
 #define MPI_Reduce                ccl::mpi_lib_ops.MPI_Reduce_ptr
+#define MPI_Reduce_scatter        ccl::mpi_lib_ops.MPI_Reduce_scatter_ptr
 #define MPI_Reduce_scatter_block  ccl::mpi_lib_ops.MPI_Reduce_scatter_block_ptr
 #define MPI_Test                  ccl::mpi_lib_ops.MPI_Test_ptr
 #define MPI_Type_commit           ccl::mpi_lib_ops.MPI_Type_commit_ptr

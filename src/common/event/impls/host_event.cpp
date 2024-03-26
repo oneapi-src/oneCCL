@@ -39,7 +39,7 @@ host_event_impl::host_event_impl(ccl_request* r) : req(r) {
     }
 #endif // CCL_ENABLE_ZE
 #endif // CCL_ENABLE_SYCL
-    if (req->synchronous) {
+    if (req->get_sched()->coll_attr.synchronous) {
         if (!ccl::global_data::get().executor.get()->is_locked) {
             ccl_release_request(req);
         }
@@ -56,8 +56,7 @@ host_event_impl::~host_event_impl() {
     // event which always complete, this way LOG_ERROR is never called
     if (!completed
 #ifdef CCL_ENABLE_SYCL
-        && (ccl::global_data::env().enable_sycl_output_event &&
-            !utils::is_sycl_event_completed(get_native()))) {
+        && (native_event && !utils::is_sycl_event_completed(*native_event))) {
         LOG_WARN("not completed event is destroyed");
     }
 #else // CCL_ENABLE_SYCL
@@ -101,8 +100,9 @@ void host_event_impl::wait() {
         }
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
         //TODO call native_event->wait() both for out-of-order and in-order queues (MLSL-2374)
-        if (native_event && ccl::is_queue_in_order(stream))
+        if (native_event && ccl::is_queue_in_order(stream)) {
             native_event->wait();
+        }
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
         completed = true;
     }

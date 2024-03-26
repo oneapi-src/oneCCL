@@ -95,6 +95,7 @@ ccl::status ccl_coll_build_ring_allgatherv(ccl_sched* main_sched,
                                            size_t send_count,
                                            ccl_buffer recv_buf,
                                            const size_t* recv_counts,
+                                           const std::vector<ccl_buffer>& recv_device_bufs,
                                            const ccl_datatype& dtype,
                                            ccl_comm* comm) {
     LOG_DEBUG("build ring allgatherv, send_count ", send_count);
@@ -110,6 +111,10 @@ ccl::status ccl_coll_build_ring_allgatherv(ccl_sched* main_sched,
     int comm_size = comm->size();
     const size_t sched_count = scheds.size();
     const size_t dtype_size = dtype.size();
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    // Note: HMEM case does not require copy to device stage
+    bool enable_hmem = (ccl::global_data::env().use_hmem && atl_base_comm::attr.out.enable_hmem);
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
     size_t* offsets = static_cast<size_t*>(CCL_MALLOC(comm_size * sizeof(size_t), "offsets"));
     offsets[0] = 0;
@@ -185,6 +190,30 @@ ccl::status ccl_coll_build_ring_allgatherv(ccl_sched* main_sched,
             // in the next loop iteration, we are sending the received data-block forward
             // following the ring algorithm. Therefore, barrier is needed.
             scheds[s_idx]->add_barrier();
+
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+            // in scale-out case it is possible to start copying the data to device
+            // right after the receive operation, overalpping with the next send operation.
+            if (recv_block_thread_counts[s_idx] && !enable_hmem && !recv_device_bufs.empty()) {
+                // express dependency between the recv_entry and ze_copy_entry
+                auto signaled_event = ccl::add_signal_event(scheds[s_idx]);
+
+                // prepare buffers
+                ccl_buffer copy_src = rbuf + recv_sched_offset[s_idx];
+                ccl_buffer copy_dst = recv_device_bufs[recv_block_idx] + recv_sched_offset[s_idx];
+                size_t copy_counts = recv_block_thread_counts[s_idx];
+
+                // Submit parallel H2D copy with the next send operation
+                entry_factory::create<ze_copy_entry>(
+                    scheds[s_idx],
+                    copy_src,
+                    copy_dst,
+                    copy_counts,
+                    dtype,
+                    copy_attr(copy_direction::h2d),
+                    std::vector<ze_event_handle_t>{ signaled_event });
+            }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
         }
 
         block_idx = (comm_size + block_idx - 1) % comm_size; // move left
@@ -786,7 +815,9 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
                                            std::vector<ccl_sched*>& scheds,
                                            const ccl_coll_param& coll_param) {
     size_t chunk_count = ccl::global_data::env().allgatherv_pipe_chunk_count;
-    bool is_pipe = chunk_count > 0 && ccl::global_data::env().enable_ze_single_list;
+    bool is_pipe = chunk_count > 1 && ccl::global_data::env().enable_ze_single_list;
+    bool is_multiworker =
+        ccl::global_data::env().ze_multi_workers && ccl::global_data::env().worker_count > 1;
 
     CCL_THROW_IF_NOT(
         scheds.size() == 1, "size of schedule list must be one, but is ", scheds.size());
@@ -798,20 +829,27 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
 
     std::vector<ccl_buffer> recv_bufs{};
     const std::vector<size_t>& recv_counts = coll_param.recv_counts;
+    const std::vector<size_t> main_chunk_counts(recv_counts.size());
     ccl_coll_get_allgatherv_bufs(coll_param, recv_bufs);
 
     const size_t send_count = recv_counts[comm->rank()];
     ccl_buffer send_buf;
+
     if (is_inplace) {
         send_buf = recv_bufs[comm->rank()];
     }
     else {
         send_buf = ccl_buffer(coll_param.get_send_buf(), send_count * dtype.size());
     }
-
-    if (!is_pipe) {
+    if (!is_pipe || is_multiworker) {
         // Fall back to topo algorithm without pipelining
-        LOG_DEBUG("build topo allgatherv - pipe allgatherv disabled");
+        if (!is_pipe) {
+            LOG_DEBUG("build topo allgatherv - pipe allgatherv disabled");
+        }
+        if (is_multiworker) {
+            LOG_INFO(
+                "Running without pipelining because ze_multi_workers was requested with more than one worker");
+        }
 
         ccl_coll_build_topo_allgatherv_fill(
             sched, send_buf, send_count, recv_bufs, recv_counts, dtype, comm, is_inplace);
@@ -823,45 +861,85 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
 
     LOG_DEBUG("build pipe allgatherv");
 
+    sched->try_enable_ze_single_list();
+
+    // recalculate size of chunks based on cache alignment
+    // e.g. we might need to have bigger chunks than actually calculated due to cache alignment
+    // chunk_count stays the same, but some chunks might be bigger and others might be zero-sized
+    auto sync_obj = std::make_shared<sync_object>(chunk_count);
+    // count that caused pipelining should be printed => use array of bools
+    std::vector<bool> is_parallelizable_chunks_idx(comm->size(), true);
+    bool is_parallelizable_chunks = true; // convenience variable
+    size_t mem_align = 0;
+    std::vector<size_t> chunked_recv_counts(comm->size(), 0);
+    std::vector<ccl_buffer> chunked_recv_bufs(comm->size());
     for (size_t chunk_idx = 0; chunk_idx < chunk_count; ++chunk_idx) {
+        size_t send_buffer_offset = 0;
+        bool is_empty_total_size = true;
+        for (int rank_idx = 0; rank_idx < comm->size(); rank_idx++) {
+            size_t main_chunk_count = 0;
+            bool pipe_possible =
+                ccl_is_pipe_enabled(recv_counts[rank_idx],
+                                    dtype.size(),
+                                    ccl::global_data::env().allgatherv_pipe_chunk_count,
+                                    main_chunk_count,
+                                    mem_align);
+            if (!pipe_possible) {
+                // only a single buffer might have issues with alignemnt, but we need to pipeline
+                // either all or none; we split the chunks, but we don't parallelize them
+                is_parallelizable_chunks = false;
+                is_parallelizable_chunks_idx[rank_idx] = false;
+            }
+            // more than two last chunks might have different size
+            size_t already_processed_buffer_size = main_chunk_count * chunk_idx;
+            if (rank_idx == comm->rank()) {
+                // send_buffer is current recv_buffer
+                send_buffer_offset = already_processed_buffer_size;
+                // send_buffer_offset might be > recv_counts, but then - chunked_recv_counts == 0
+            }
+            size_t remaining_to_process =
+                (recv_counts[rank_idx] > already_processed_buffer_size)
+                    ? recv_counts[rank_idx] - already_processed_buffer_size
+                    : 0;
+            bool is_last_chunk = (chunk_idx == (chunk_count - 1));
+            chunked_recv_counts[rank_idx] = remaining_to_process < main_chunk_count || is_last_chunk
+                                                ? remaining_to_process
+                                                : main_chunk_count;
+            // chunked_recv_bufs[rank_idx] might be invalid if chunked_recv_counts[rank_idx] are 0
+            // zero sized buffer should be handled correctly without dereferencing the memory
+            chunked_recv_bufs[rank_idx] =
+                recv_bufs[rank_idx] + chunk_idx * main_chunk_count * dtype.size();
+            if (chunked_recv_counts[rank_idx] > 0) {
+                is_empty_total_size = false;
+            }
+        }
+
+        const size_t chunked_send_count = chunked_recv_counts[comm->rank()];
+        ccl_buffer chunked_send_buf{};
+        if (!is_inplace) {
+            // offset and pointer might be invalid only when sending zero-sized chunk
+            chunked_send_buf = send_buf + send_buffer_offset * dtype.size();
+        }
+        else {
+            chunked_send_buf = chunked_recv_bufs[comm->rank()];
+        }
         entry_factory::create<subsched_entry>(
             sched,
             chunk_idx,
-            [comm,
+            [sched,
+             comm,
              is_inplace,
              dtype,
-             send_buf,
-             send_count,
-             recv_bufs,
-             recv_counts,
+             chunked_send_buf,
+             chunked_send_count,
+             chunked_recv_bufs,
+             chunked_recv_counts,
+             is_empty_total_size,
              chunk_idx,
-             chunk_count](ccl_sched* s) {
-                bool is_empty_total_size = true;
-                std::vector<ccl_buffer> chunked_recv_bufs(comm->size());
-                std::vector<size_t> chunked_recv_counts(comm->size(), 0);
-
-                for (int idx = 0; idx < comm->size(); idx++) {
-                    size_t main_chunk_count = recv_counts[idx] / chunk_count;
-                    size_t last_chunk_count = main_chunk_count + recv_counts[idx] % chunk_count;
-                    chunked_recv_counts[idx] =
-                        (chunk_idx == (chunk_count - 1)) ? last_chunk_count : main_chunk_count;
-                    chunked_recv_bufs[idx] =
-                        recv_bufs[idx] + chunk_idx * main_chunk_count * dtype.size();
-                    if (chunked_recv_counts[idx] > 0) {
-                        is_empty_total_size = false;
-                    }
-                }
-
-                const size_t main_chunked_send_count = send_count / chunk_count;
-                const size_t chunked_send_count = chunked_recv_counts[comm->rank()];
-                ccl_buffer chunked_send_buf{};
-                if (!is_inplace) {
-                    chunked_send_buf =
-                        send_buf + chunk_idx * main_chunked_send_count * dtype.size();
-                }
-                else {
-                    chunked_send_buf = chunked_recv_bufs[comm->rank()];
-                }
+             sync_obj](ccl_sched* s) {
+                s->inherit_ze_managers_from(sched);
+                s->set_init_ze_hook_sync_obj(sync_obj);
+                s->set_ze_commands_bypass_flag(false);
 
                 if (is_empty_total_size) {
                     // TODO: ccl_coll_build_topo_allgatherv_fill should be able to handle 0-sized inputs!
@@ -881,10 +959,43 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
                                                            is_inplace);
             },
             ("ALLGATHERV_PIPE" + std::to_string(chunk_idx)).c_str());
-        sched->add_barrier();
+        for (auto& rbuf : chunked_recv_bufs) {
+            // WARNING: previous chunk has part of this chunk's first cache
+            // line. Cannot use pipelining. However, since this is a
+            // "local" decision (i.e., other ranks may decide differently),
+            // we still need to apply chunking. However, we will run one
+            // chunk at a time, without parallelizing them.
+            // Another way to have implemented this would be to link the
+            // last task of the prev chunk with the first of this chunk
+            // with an event.
+            is_parallelizable_chunks &=
+                ccl_is_ptr_aligned(reinterpret_cast<uintptr_t>(rbuf.get_ptr()), mem_align);
+        }
     }
 
-    entry_factory::create<ze_execute_cmdlists_on_init_entry>(sched);
+    static bool is_chunk_mem_align_warning_printed{};
+    if (!is_parallelizable_chunks && !is_chunk_mem_align_warning_printed) {
+        is_chunk_mem_align_warning_printed = true;
+        LOG_WARN(
+            "[allgatherv pipelining]: For best performance, (i) chunk size should be a multiple of a cache line (",
+            mem_align,
+            " bytes), and (ii) buffers in all ranks should be aligned to ",
+            mem_align);
+    }
+    for (int idx = 0; idx < comm->size(); idx++) {
+        if (!is_parallelizable_chunks_idx[idx]) {
+            ccl::global_data::get()
+                .metrics_profiler->allgatherv_pipe.nonparallel_calls_per_count[recv_counts[idx]]++;
+        }
+        else {
+            ccl::global_data::get()
+                .metrics_profiler->allgatherv_pipe.parallel_calls_per_count[recv_counts[idx]]++;
+        }
+    }
+    entry_factory::create<ze_execute_cmdlists_on_start_entry>(
+        sched,
+        sync_obj,
+        is_parallelizable_chunks ? ccl_submit_ze_commands_in_subsched_entries : nullptr);
 
     return ccl::status::success;
 }

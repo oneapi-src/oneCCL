@@ -18,4 +18,4 @@ For BF16 <-> FP32 conversion |product_short| provides ``AVX512F`` and ``AVX512_B
 For FP16 <-> FP32 conversion |product_short| provides ``F16C`` and ``AVX512F``-based implementations.
 Both implementations require GCC 4.9 or higher.
 
-Refer to :ref:`Low-precision datatypes` for details about relevant environment variables.
+Refer to :ref:`Low-precision datatypes <low-precision-datatypes>` for details about relevant environment variables.

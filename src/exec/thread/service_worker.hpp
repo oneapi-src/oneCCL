@@ -26,6 +26,9 @@ public:
                        ccl_fusion_manager& fusion_manager);
     ~ccl_service_worker();
 
+    ccl_service_worker(const ccl_service_worker& other) = delete;
+    ccl_service_worker& operator=(const ccl_service_worker& other) = delete;
+
     ccl::status do_work(size_t& processed_count) override;
 
     bool can_reset() override;

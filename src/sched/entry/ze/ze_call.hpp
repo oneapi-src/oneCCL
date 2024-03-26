@@ -31,6 +31,8 @@ public:
     };
 
     ze_call();
+    ze_call(const ze_call&) = delete;
+    ze_call& operator=(const ze_call&) = delete;
     ~ze_call();
     ze_result_t do_call(ze_result_t ze_result, const char* ze_name) const;
 

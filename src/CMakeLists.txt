@@ -54,6 +54,33 @@ if (CCL_ENABLE_SYCL AND CCL_ENABLE_ZE)
         sched/ze/ze_handle_manager.cpp
         sched/ze/ze_ipc_event_pool_manager.cpp
         sched/ze/ze_list_manager.cpp
+
+        coll/algorithms/allgatherv/sycl/allgatherv_sycl.cpp
+        coll/algorithms/allgatherv/sycl/allgatherv_small_sycl.cpp
+        coll/algorithms/allgatherv/sycl/allgatherv_medium_sycl.cpp
+        coll/algorithms/allgatherv/sycl/allgatherv_large_sycl.cpp
+
+        coll/algorithms/allreduce/sycl/allreduce_small_sycl.cpp
+        coll/algorithms/allreduce/sycl/allreduce_medium_sycl.cpp
+        coll/algorithms/allreduce/sycl/allreduce_medium_sycl_fp16.cpp
+        coll/algorithms/allreduce/sycl/allreduce_medium_sycl_bf16.cpp
+        coll/algorithms/allreduce/sycl/allreduce_medium_sycl_fp32.cpp
+        coll/algorithms/allreduce/sycl/allreduce_medium_sycl_int32.cpp
+        coll/algorithms/allreduce/sycl/allreduce_large_sycl.cpp
+        coll/algorithms/allreduce/sycl/allreduce_large_sycl_fp16.cpp
+        coll/algorithms/allreduce/sycl/allreduce_large_sycl_bf16.cpp
+        coll/algorithms/allreduce/sycl/allreduce_large_sycl_fp32.cpp
+        coll/algorithms/allreduce/sycl/allreduce_large_sycl_int32.cpp
+        coll/algorithms/allreduce/sycl/allreduce_sycl.cpp
+
+        coll/algorithms/reduce_scatter/sycl/reduce_scatter_sycl.cpp
+        coll/algorithms/reduce_scatter/sycl/reduce_scatter_small_sycl.cpp
+        coll/algorithms/reduce_scatter/sycl/reduce_scatter_medium_sycl.cpp
+        coll/algorithms/reduce_scatter/sycl/reduce_scatter_large_sycl.cpp
+        coll/algorithms/reduce_scatter/sycl/reduce_scatter_large_sycl_int32.cpp
+        coll/algorithms/reduce_scatter/sycl/reduce_scatter_large_sycl_fp32.cpp
+        coll/algorithms/reduce_scatter/sycl/reduce_scatter_large_sycl_fp16.cpp
+        coll/algorithms/reduce_scatter/sycl/reduce_scatter_large_sycl_bf16.cpp
         )
 endif(CCL_ENABLE_SYCL AND CCL_ENABLE_ZE)
 
@@ -94,18 +121,18 @@ set(CCL_SRC
     coll/attr/ccl_reduce_scatter_op_attr.cpp
     coll/coll_param.cpp
     coll/coll_util.cpp
-    coll/algorithms/allgatherv.cpp
+    coll/algorithms/allgatherv/allgatherv.cpp
     coll/algorithms/allreduce/allreduce.cpp
     coll/algorithms/allreduce/allreduce_rma.cpp
     coll/algorithms/algorithm_utils.cpp
     coll/algorithms/alltoall.cpp
     coll/algorithms/alltoallv.cpp
-    coll/algorithms/barrier.cpp
+    coll/algorithms/barrier/barrier.cpp
     coll/algorithms/bcast.cpp
     coll/algorithms/double_tree_ops.cpp
     coll/algorithms/recv.cpp
     coll/algorithms/reduce.cpp
-    coll/algorithms/reduce_scatter.cpp
+    coll/algorithms/reduce_scatter/reduce_scatter.cpp
     coll/algorithms/send.cpp
     coll/coll.cpp
     coll/coll_check.cpp
@@ -259,8 +286,7 @@ if (${CMAKE_C_COMPILER_ID} STREQUAL "Intel" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL
     set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -diag-disable=654")
 endif()
 
-
-if (${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
+if ((${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang") OR (${CMAKE_C_COMPILER_ID} STREQUAL "IntelLLVM" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "IntelLLVM"))
     if (USE_CODECOV_FLAGS)
         set(SRC_C_FLAGS "${SRC_C_FLAGS} -fprofile-instr-generate -fcoverage-mapping -Wno-error=unused-command-line-argument -fno-sycl-use-footer")
         set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -fprofile-instr-generate -fcoverage-mapping -Wno-error=unused-command-line-argument -fno-sycl-use-footer")
@@ -364,11 +390,12 @@ endif()
 
 if (ENABLE_MPI)
     file(GLOB mpi_bins "${DEPS_DIR}/mpi/bin/*")
-    install(PROGRAMS ${mpi_bins} DESTINATION ${CCL_INSTALL_BIN})
+    install(PROGRAMS ${mpi_bins}
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/opt/mpi/bin)
     install(DIRECTORY ${DEPS_DIR}/mpi/include/
-            DESTINATION ${CCL_INSTALL_INCLUDE})
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/opt/mpi/include)
     install(DIRECTORY ${DEPS_DIR}/mpi/lib/
-           DESTINATION ${CCL_INSTALL_LIB})
+           DESTINATION ${CMAKE_INSTALL_PREFIX}/opt/mpi/lib)
     install(DIRECTORY ${DEPS_DIR}/mpi/opt/mpi/etc/
             DESTINATION ${CMAKE_INSTALL_PREFIX}/opt/mpi/etc/)
     install(DIRECTORY ${DEPS_DIR}/mpi/licensing/

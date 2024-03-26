@@ -71,7 +71,7 @@
 #define ATL_CHECK_PTR(ptr, str) \
     do { \
         if (!ptr) { \
-            LOG_ERROR("%s, errno: %s", str, strerror(errno)); \
+            LOG_ERROR(str, ", errno: ", strerror(errno)); \
             return ATL_STATUS_FAILURE; \
         } \
     } while (0)

@@ -548,14 +548,14 @@ void get_counts_n_offsets_bidir(size_t count,
     even_comm_offset_bytes = main_block_count * even_comm_rank * dtype.size();
 }
 
-ccl::status ccl_coll_build_topo_reduce(ccl_sched* sched,
-                                       ccl_buffer send_buf,
-                                       ccl_buffer recv_buf,
-                                       size_t count,
-                                       const ccl_datatype& dtype,
-                                       ccl::reduction op,
-                                       int root,
-                                       ccl_comm* comm) {
+ccl::status ccl_coll_build_topo_reduce_fill(ccl_sched* sched,
+                                            ccl_buffer send_buf,
+                                            ccl_buffer recv_buf,
+                                            size_t count,
+                                            const ccl_datatype& dtype,
+                                            ccl::reduction op,
+                                            int root,
+                                            ccl_comm* comm) {
     LOG_DEBUG("build gpu topo reduce");
 
     if (count == 0)
@@ -576,7 +576,8 @@ ccl::status ccl_coll_build_topo_reduce(ccl_sched* sched,
     bool use_tmp_buf = !is_single_card;
     bool use_read_write_pipeline =
         ccl::global_data::env().reduce_scatter_monolithic_pipeline_kernel &&
-        even_comm->size() > 1 && pair_comm->size() > 1 && (int)count >= comm_size;
+        even_comm->size() > 1 && pair_comm->size() > 1 && (int)count >= comm_size &&
+        ccl::global_data::env().enable_ze_bidir_algo;
 
     // allocate tmp buff for write
     ccl_buffer tmp_write_buf;
@@ -666,10 +667,7 @@ ccl::status ccl_coll_build_topo_reduce(ccl_sched* sched,
         in_buffers.push_back({ static_cast<void*>(ipc_event_pool), ccl::ze::ipc_mem_type::pool });
     }
 
-    // TODO: remove this if() condition. We want to always use a single list
-    if (is_rs_write) {
-        sched->try_enable_ze_single_list();
-    }
+    sched->try_enable_ze_single_list();
 
     ccl::add_handle_exchange(sched,
                              node_comm,
@@ -966,9 +964,33 @@ ccl::status ccl_coll_build_topo_reduce(ccl_sched* sched,
     CCL_ASSERT(wait_events.size() == 1 && wait_events.back() != nullptr,
                "wait_events should have a single, valid event");
 
-    entry_factory::create<ze_execute_cmdlists_on_init_entry>(sched);
-
     return ccl::status::success;
+}
+
+ccl::status ccl_coll_build_topo_reduce(ccl_sched* sched,
+                                       ccl_buffer send_buf,
+                                       ccl_buffer recv_buf,
+                                       size_t count,
+                                       const ccl_datatype& dtype,
+                                       ccl::reduction op,
+                                       int root,
+                                       ccl_comm* comm) {
+    return ccl_build_topo_uniform_buff_size_op(
+        sched,
+        send_buf,
+        recv_buf,
+        count,
+        dtype.size(),
+        ccl::global_data::env().reduce_pipe_chunk_count,
+        "REDUCE",
+        ccl::global_data::get().metrics_profiler->reduce_pipe,
+        [dtype, op, root, comm](ccl_sched* sched,
+                                ccl_buffer send_buf,
+                                ccl_buffer recv_buf,
+                                size_t count) -> ccl::status {
+            return ccl_coll_build_topo_reduce_fill(
+                sched, send_buf, recv_buf, count, dtype, op, root, comm);
+        });
 }
 
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE

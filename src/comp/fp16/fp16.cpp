@@ -41,7 +41,7 @@ void ccl_fp16_reduce(const void* in_buf,
                      void* inout_buf,
                      size_t* out_cnt,
                      ccl::reduction op) {
-    LOG_DEBUG("FP16 reduction for %zu elements\n", in_cnt);
+    LOG_DEBUG("FP16 reduction for", in_cnt, " elements");
 
     if (out_cnt != nullptr) {
         *out_cnt = in_cnt;

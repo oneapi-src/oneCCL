@@ -28,6 +28,8 @@ public:
         return "RECV";
     }
 
+    recv_entry(const recv_entry& other) = delete;
+    recv_entry& operator=(const recv_entry& other) = delete;
     recv_entry() = delete;
     recv_entry(ccl_sched* sched,
                ccl_buffer buf,

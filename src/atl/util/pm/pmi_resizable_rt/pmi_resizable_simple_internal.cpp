@@ -214,13 +214,14 @@ atl_status_t pmi_resizable_simple_internal::pmrt_kvs_put(char* kvs_key,
                                                          const void* kvs_val,
                                                          size_t kvs_val_len) {
     int ret;
-    char key_storage[max_keylen];
+    std::vector<char> key_storage(max_keylen);
     if (kvs_val_len > max_vallen) {
         LOG_ERROR("asked len > max len");
         return ATL_STATUS_FAILURE;
     }
 
-    ret = snprintf(key_storage, max_keylen - 1, RESIZABLE_PMI_RT_KEY_FORMAT, kvs_key, proc_idx);
+    ret = snprintf(
+        key_storage.data(), max_keylen - 1, RESIZABLE_PMI_RT_KEY_FORMAT, kvs_key, proc_idx);
     if (ret < 0) {
         LOG_ERROR("snprintf failed");
         return ATL_STATUS_FAILURE;
@@ -232,7 +233,7 @@ atl_status_t pmi_resizable_simple_internal::pmrt_kvs_put(char* kvs_key,
         return ATL_STATUS_FAILURE;
     }
 
-    ATL_CHECK_STATUS(kvs_set_value(KVS_NAME, key_storage, val_storage), "failed to set val");
+    ATL_CHECK_STATUS(kvs_set_value(KVS_NAME, key_storage.data(), val_storage), "failed to set val");
 
     return ATL_STATUS_SUCCESS;
 }
@@ -242,16 +243,22 @@ atl_status_t pmi_resizable_simple_internal::pmrt_kvs_get(char* kvs_key,
                                                          void* kvs_val,
                                                          size_t kvs_val_len) {
     int ret;
-    char key_storage[max_keylen];
+    std::vector<char> key_storage(max_keylen);
     std::string val_storage_str;
+    if (kvs_val_len > max_vallen) {
+        LOG_ERROR("asked len > max len");
+        return ATL_STATUS_FAILURE;
+    }
 
-    ret = snprintf(key_storage, max_keylen - 1, RESIZABLE_PMI_RT_KEY_FORMAT, kvs_key, proc_idx);
+    ret = snprintf(
+        key_storage.data(), max_keylen - 1, RESIZABLE_PMI_RT_KEY_FORMAT, kvs_key, proc_idx);
     if (ret < 0) {
         LOG_ERROR("snprintf failed");
         return ATL_STATUS_FAILURE;
     }
 
-    ATL_CHECK_STATUS(kvs_get_value(KVS_NAME, key_storage, val_storage_str), "failed to get val");
+    ATL_CHECK_STATUS(kvs_get_value(KVS_NAME, key_storage.data(), val_storage_str),
+                     "failed to get val");
 
     ret = decode(val_storage_str.c_str(), kvs_val, kvs_val_len);
     if (ret) {
@@ -306,10 +313,13 @@ atl_status_t pmi_resizable_simple_internal::kvs_get_value(const std::string& kvs
     } while (value.empty() && kvs_get_time < kvs_get_timeout);
 
     if (kvs_get_time >= kvs_get_timeout) {
-        LOG_ERROR("KVS get error: timeout limit (%zu > %zu), prefix: %s, key %s\n",
+        LOG_ERROR("KVS get error: timeout limit: ",
                   kvs_get_time,
+                  " > ",
                   kvs_get_timeout,
+                  ", prefix: ",
                   result_kvs_name.c_str(),
+                  ", key: ",
                   key);
         return ATL_STATUS_FAILURE;
     }

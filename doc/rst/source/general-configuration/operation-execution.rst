@@ -4,9 +4,9 @@
 Execution of Communication Operations
 =====================================
 
-Communication operations are executed by CCL worker threads (workers). The number of workers is controlled by the :ref:`CCL_WORKER_COUNT` environment variable.
+Communication operations are executed by CCL worker threads (workers). The number of workers is controlled by the :ref:`CCL_WORKER_COUNT <CCL_WORKER_COUNT>` environment variable.
 
-Workers affinity is controlled by :ref:`CCL_WORKER_AFFINITY`.
+Workers affinity is controlled by :ref:`CCL_WORKER_AFFINITY <CCL_WORKER_AFFINITY>`.
 
 By setting workers affinity you can specify which CPU cores are used by CCL workers. The general rule of thumb is to use different CPU cores for compute (e.g. by specifying ``KMP_AFFINITY``) and for CCL communication.
 
@@ -28,7 +28,7 @@ In the example below, |product_short| creates four workers per process and pins 
 Explicit setup
 ##############
 
-To set affinity explicitly for all local workers, pass ID of the cores to the ``CCL_WORKER_AFFINITY`` environment variable. 
+To set affinity explicitly for all local workers, pass ID of the cores to the ``CCL_WORKER_AFFINITY`` environment variable.
 
 .. rubric:: Example
 

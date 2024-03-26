@@ -38,6 +38,7 @@
 #include "oneapi/ccl/coll_attr_ids_traits.hpp"
 #include "oneapi/ccl/coll_attr.hpp"
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+#include "common/global/ze/ze_fd_manager.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 #include "types_generator_defines.hpp"
@@ -261,6 +262,17 @@ public:
         }
     }
 
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    std::shared_ptr<ccl::ze::fd_manager> get_fd_manager() const {
+        if (parent_comm) {
+            return parent_comm->get_fd_manager();
+        }
+        else {
+            return fd_manager;
+        }
+    }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+
     std::shared_ptr<ccl_comm_env> get_env() const {
         return env;
     }
@@ -332,8 +344,11 @@ private:
 
     ccl_rank2rank_map local2global_map{};
     ccl::topo_manager topo_manager;
-
     std::shared_ptr<ccl_comm_env> env;
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    std::shared_ptr<ccl::ze::fd_manager> fd_manager;
+    void init_ipc_exchange_mode(std::shared_ptr<ccl_comm> comm);
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
     ccl_sched_id_t next_sched_id_internal;
     ccl_sched_id_t next_sched_id_external;
