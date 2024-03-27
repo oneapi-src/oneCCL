@@ -29,6 +29,7 @@ class ze_base_entry : public sched_entry {
 public:
     ze_base_entry() = delete;
     ze_base_entry(const ze_base_entry &) = delete;
+    ze_base_entry &operator=(const ze_base_entry &) = delete;
     virtual ~ze_base_entry();
 
     static ze_event_handle_t create_event(ze_event_pool_handle_t event_pool,
@@ -39,8 +40,10 @@ public:
     virtual void update() override;
 
     ze_command_list_handle_t get_comp_list(uint32_t index = 0) const;
-    ze_command_list_handle_t get_copy_list(copy_direction direction = copy_direction::d2d,
-                                           uint32_t index = 0) const;
+    ze_command_list_handle_t get_copy_list(
+        copy_direction direction = copy_direction::d2d,
+        uint32_t index = 0,
+        queue_group_type force_queue_type = queue_group_type::unknown) const;
 
     ze_event_handle_t entry_event{};
 

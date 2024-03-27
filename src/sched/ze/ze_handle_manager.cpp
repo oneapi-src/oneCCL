@@ -64,9 +64,13 @@ ze_ipc_mem_handle_t ipc_handle_desc::mem_to_ipc_handle() const {
         LOG_DEBUG("device_fd: ", device_fd, " gotten fd from mem_handle_to_fd: ", fd);
     }
     else if (ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::pidfd) {
-        CCL_THROW_IF_NOT(pidfd_fd != ccl::utils::invalid_fd, "pidfd_fd is invalid value");
-        fd = ccl::ze::fd_manager::mem_handle_to_fd(pidfd_fd, mem_handle);
-        LOG_DEBUG("pidfd_fd: ", pidfd_fd, ", gotten fd from mem_handle_to_fd: ", fd);
+        CCL_THROW_IF_NOT(remote_pid != ccl::utils::invalid_pid, "remote_pid is invalid value");
+        int opened_fd = ccl::ze::fd_manager::pidfd_open(remote_pid);
+        fd = ccl::ze::fd_manager::mem_handle_to_fd(opened_fd, mem_handle);
+        if (!global_data::env().enable_ze_cache) {
+            ccl::utils::close_fd(opened_fd);
+        }
+        LOG_DEBUG("remote_pid: ", remote_pid, ", gotten fd from mem_handle_to_fd: ", fd);
     }
     else {
         CCL_THROW("unexpected ipc_exchange_mode");
@@ -197,7 +201,8 @@ void ipc_handle_manager::set(const mem_handle_map_t& handles_arg, bool pt2pt_op)
 void* ipc_handle_manager::get_ptr(int rank,
                                   size_t buf_idx,
                                   const ccl_comm* map_comm,
-                                  bool pt2pt_op) {
+                                  bool pt2pt_op,
+                                  bool to_cache) {
     check_rank(rank, (map_comm) ? map_comm : comm, pt2pt_op);
     if (map_comm && (map_comm->id() != comm->id())) {
         int old_rank = rank;
@@ -233,7 +238,7 @@ void* ipc_handle_manager::get_ptr(int rank,
 
     if (mem_ptr == nullptr) {
         if (mem_type == ipc_mem_type::memory) {
-            open_handle(handle_info, &mem_ptr);
+            open_handle(handle_info, &mem_ptr, to_cache);
         }
         else if (mem_type == ipc_mem_type::pool) {
             ze_ipc_event_pool_handle_t pool_handle;
@@ -266,8 +271,9 @@ void ipc_handle_manager::get(int rank,
                              size_t buf_idx,
                              ccl_buffer& buf,
                              const ccl_comm* map_comm,
-                             bool pt2pt_op) {
-    buf.set(get_ptr(rank, buf_idx, map_comm, pt2pt_op));
+                             bool pt2pt_op,
+                             bool to_cache) {
+    buf.set(get_ptr(rank, buf_idx, map_comm, pt2pt_op, to_cache));
 }
 
 void ipc_handle_manager::get(int rank,
@@ -298,8 +304,13 @@ void ipc_handle_manager::get_handle(ze_event_pool_handle_t pool,
     ZE_CALL(zeEventPoolGetIpcHandle, (pool, ipc_handle));
 }
 
-void ipc_handle_manager::open_handle(ipc_handle_desc& info, void** ptr) {
-    if (global_data::env().enable_ze_cache && global_data::env().enable_ze_cache_open_ipc_handles) {
+void ipc_handle_manager::open_handle(ipc_handle_desc& info, void** ptr, bool to_cache) {
+    // 1. If enable_ze_cache == false, code not executed
+    // 2. If enable_ze_cache_open_ipc_handles == false, code not executed
+    // 3. If (all conditions) == false, code not executed
+    // 4. If all conditions true, code executed
+    if (global_data::env().enable_ze_cache && global_data::env().enable_ze_cache_open_ipc_handles &&
+        to_cache) {
         mem_handle_cache::value_t value{};
         global_data::get().ze_data->cache->get(context, device, info, &value);
         CCL_THROW_IF_NOT(value != nullptr, "unable to open ipc_handle");
@@ -308,8 +319,15 @@ void ipc_handle_manager::open_handle(ipc_handle_desc& info, void** ptr) {
         info.is_cached = true;
     }
     else {
-        ZE_CALL(zeMemOpenIpcHandle,
-                (context, device, info.mem_to_ipc_handle(), 0 /* cache allocation */, ptr));
+        auto handle = info.mem_to_ipc_handle();
+        ZE_CALL(zeMemOpenIpcHandle, (context, device, handle, 0 /* cache allocation */, ptr));
+        if (ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::pidfd) {
+            close_handle_fd(handle);
+        }
+        if (!to_cache) {
+            // used by Sycl kernels, IPC handle needs to be kept open
+            info.is_cached = true;
+        }
     }
 }
 

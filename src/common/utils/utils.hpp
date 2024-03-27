@@ -255,5 +255,7 @@ std::string to_hex(T integer) {
     return ss.str();
 }
 
+void close_fd(int fd);
+
 } // namespace utils
 } // namespace ccl

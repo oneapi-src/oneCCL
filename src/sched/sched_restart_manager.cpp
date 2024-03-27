@@ -111,7 +111,7 @@ ccl_request* sched_restart_manager::preprocess(bool restart) {
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
         // we need to set output event and submit barrier immediately, otherwise q.wait()
         // called by a user can return earlier than we process all the delayed requests
-        sched->set_output_event(new_req);
+        sched->create_sync_event(new_req);
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
         return new_req;
@@ -119,7 +119,7 @@ ccl_request* sched_restart_manager::preprocess(bool restart) {
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
     if (!sched->get_request()->has_output_event()) {
-        sched->set_output_event(sched->get_request());
+        sched->create_sync_event(sched->get_request());
     }
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 

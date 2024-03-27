@@ -27,7 +27,8 @@ copy_attr::copy_attr()
           use_nontemporal(false)
 #ifdef CCL_ENABLE_ZE
           ,
-          hint_queue_index(0)
+          hint_queue_index(0),
+          force_queue_type(ccl::ze::queue_group_type::unknown)
 #endif // CCL_ENABLE_ZE
 {
 }
@@ -42,7 +43,8 @@ copy_attr::copy_attr(int peer_rank,
                      bool use_nontemporal
 #ifdef CCL_ENABLE_ZE
                      ,
-                     int hint_queue_index
+                     int hint_queue_index,
+                     ccl::ze::queue_group_type force_queue_type
 #endif // CCL_ENABLE_ZE
                      )
         : peer_rank(peer_rank),
@@ -55,7 +57,8 @@ copy_attr::copy_attr(int peer_rank,
           use_nontemporal(use_nontemporal)
 #ifdef CCL_ENABLE_ZE
           ,
-          hint_queue_index(hint_queue_index)
+          hint_queue_index(hint_queue_index),
+          force_queue_type(force_queue_type)
 #endif // CCL_ENABLE_ZE
 {
 }
@@ -64,6 +67,12 @@ copy_attr::copy_attr(copy_direction direction, size_t in_buf_offset, size_t out_
         : direction(direction),
           in_buf_offset(in_buf_offset),
           out_buf_offset(out_buf_offset) {}
+
+#ifdef CCL_ENABLE_ZE
+copy_attr::copy_attr(copy_direction direction, ccl::ze::queue_group_type force_queue_type)
+        : direction(direction),
+          force_queue_type(force_queue_type) {}
+#endif // CCL_ENABLE_ZE
 
 using copy_direction_str_enum =
     ccl::utils::enum_to_str<ccl::utils::enum_to_underlying(copy_direction::c2c) + 1>;

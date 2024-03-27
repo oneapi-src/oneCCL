@@ -40,6 +40,7 @@ typedef enum { EXT_OFF, EXT_AUTO, EXT_ON } ext_values_t;
 typedef enum { SYCL_DEV_HOST, SYCL_DEV_CPU, SYCL_DEV_GPU } sycl_dev_type_t;
 typedef enum { SYCL_MEM_USM, SYCL_MEM_BUF } sycl_mem_type_t;
 typedef enum { SYCL_USM_SHARED, SYCL_USM_DEVICE } sycl_usm_type_t;
+typedef enum { SYCL_QUEUE_OUT_ORDER, SYCL_QUEUE_IN_ORDER } sycl_queue_type_t;
 
 std::map<backend_type_t, std::string> backend_names = { std::make_pair(BACKEND_HOST, "host"),
                                                         std::make_pair(BACKEND_SYCL, "sycl") };
@@ -69,7 +70,12 @@ std::map<sycl_mem_type_t, std::string> sycl_mem_names = { std::make_pair(SYCL_ME
 std::map<sycl_usm_type_t, std::string> sycl_usm_names = { std::make_pair(SYCL_USM_SHARED, "shared"),
                                                           std::make_pair(SYCL_USM_DEVICE,
                                                                          "device") };
-#endif
+
+std::map<sycl_queue_type_t, std::string> sycl_queue_names = {
+    std::make_pair(SYCL_QUEUE_OUT_ORDER, "out_order"),
+    std::make_pair(SYCL_QUEUE_IN_ORDER, "in_order")
+};
+#endif // CCL_ENABLE_SYCL
 
 std::map<ccl::datatype, std::string> dtype_names = {
     std::make_pair(ccl::datatype::int8, "int8"),
@@ -133,6 +139,7 @@ typedef struct user_options_t {
     int sycl_root_dev;
     sycl_mem_type_t sycl_mem_type;
     sycl_usm_type_t sycl_usm_type;
+    sycl_queue_type_t sycl_queue_type;
 #endif // CCL_ENABLE_SYCL
     std::list<std::string> coll_names;
     std::list<std::string> dtypes;
@@ -163,6 +170,7 @@ typedef struct user_options_t {
         sycl_root_dev = DEFAULT_SYCL_ROOT_DEV;
         sycl_mem_type = DEFAULT_SYCL_MEM_TYPE;
         sycl_usm_type = DEFAULT_SYCL_USM_TYPE;
+        sycl_queue_type = DEFAULT_SYCL_QUEUE_TYPE;
 #endif // CCL_ENABLE_SYCL
         coll_names = tokenize<std::string>(DEFAULT_COLL_LIST, ',');
         dtypes = tokenize<std::string>(DEFAULT_DTYPES_LIST, ',');

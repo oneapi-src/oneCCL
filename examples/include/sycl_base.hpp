@@ -221,9 +221,11 @@ inline std::vector<sycl::device> create_sycl_gpu_devices(bool select_root_device
                           part_props.end(),
                           info::partition_property::partition_by_affinity_domain) ==
                 part_props.end()) {
-                ss_warn << prefix << "device [" << device_name
-                        << "] does not support partition by affinity domain"
-                        << ", use root device\n";
+                // ZE_FLAT_DEVICE_HIERARCHY=FLAT is by default now, meaning that
+                // tile is a root device, the warning is extra in this case
+                // ss_warn << prefix << "device [" << device_name
+                //         << "] does not support partition by affinity domain"
+                //         << ", use root device\n";
                 result.push_back(device);
                 continue;
             }
@@ -436,8 +438,12 @@ inline bool create_sycl_queue(const std::string& type,
     }
 }
 
-inline bool create_sycl_queue(int argc, char* argv[], int rank, queue& q) {
-    return create_sycl_queue(((argc >= 2) ? argv[1] : "unknown"), rank, q, {});
+inline bool create_sycl_queue(int argc,
+                              char* argv[],
+                              int rank,
+                              queue& q,
+                              const sycl::property_list& queue_props = {}) {
+    return create_sycl_queue(((argc >= 2) ? argv[1] : "unknown"), rank, q, queue_props);
 }
 
 inline bool handle_exception(queue& q) {
@@ -488,6 +494,7 @@ struct buf_allocator {
 
     buf_allocator(queue& q) : q(q) {}
 
+    buf_allocator& operator=(const buf_allocator&) = delete;
     buf_allocator(const buf_allocator&) = delete;
     buf_allocator(buf_allocator&&) = default;
 

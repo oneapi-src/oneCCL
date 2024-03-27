@@ -325,6 +325,9 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
     RETURN_FALSE_IF(!param.comm->get_topo_manager().has_p2p_access(),
                     "no p2p access between devices");
 
+    RETURN_FALSE_IF(!param.comm->get_topo_manager().has_all_vertices_connected(),
+                    "no connection between vertices");
+
     RETURN_FALSE_IF(!param.comm->get_topo_manager().has_same_ppn(),
                     "ppn is not the same among the nodes");
 
@@ -374,45 +377,37 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
             " is not supported for family1");
     }
 
-    RETURN_FALSE_IF(checkers::is_unknown_device_family(param),
-                    "topo algo is not supported for unknown device family");
+    if (checkers::is_unknown_device_family(param)) {
+        LOG_WARN("Applying topo algorithm, but device family is not recognized");
 #ifndef CCL_BF16_GPU_TRUNCATE
-    RETURN_FALSE_IF(checkers::is_unknown_device_family(param) &&
-                        (param.dtype.idx() == ccl::datatype::bfloat16) &&
-                        (param.ctype == ccl_coll_allreduce || param.ctype == ccl_coll_reduce ||
-                         param.ctype == ccl_coll_reduce_scatter),
-                    "bfloat16 reduction is not supported for unknown device family");
+        if (param.dtype.idx() == ccl::datatype::bfloat16 &&
+            (param.ctype == ccl_coll_allreduce || param.ctype == ccl_coll_reduce ||
+             param.ctype == ccl_coll_reduce_scatter)) {
+            LOG_WARN("Applying topo algorithm, but bfloat16 reduction may not be"
+                     "supported for unknown device family");
+        }
 #endif // !CCL_BF16_GPU_TRUNCATE
+    }
 #endif // CCL_ENABLE_SYCL
-
-    RETURN_FALSE_IF((((param.ctype == ccl_coll_allreduce) || (param.ctype == ccl_coll_bcast) ||
-                      (param.ctype == ccl_coll_reduce)) &&
-                     ((comm_size < 2) || (local_proc_count == 1))),
-                    "unsupported comm size for ",
-                    ccl_coll_type_to_str(param.ctype));
 
     RETURN_FALSE_IF(param.ctype == ccl_coll_bcast && !checkers::is_single_node(param),
                     "multi-node for ",
                     ccl_coll_type_to_str(param.ctype),
                     " is not supported");
 
-    RETURN_FALSE_IF(((param.ctype == ccl_coll_reduce) && (comm_size % local_proc_count != 0)),
-                    "ppn must be equal");
-
-    RETURN_FALSE_IF(param.ctype == ccl_coll_allgatherv && !checkers::is_single_card(param) &&
-                        comm_size % local_proc_count != 0,
-                    "ppn must be equal");
-
-    RETURN_FALSE_IF((comm_size % 2 != 0), "odd comm_size is not supported");
+    RETURN_FALSE_IF((comm_size % 2 != 0 && comm_size != 1), "odd comm_size is not supported");
 
     const int node_comm_size = param.comm->get_node_comm().get()->size();
-    RETURN_FALSE_IF((node_comm_size % 2 != 0), "odd node_comm_size is not supported");
+
+    RETURN_FALSE_IF((node_comm_size % 2 != 0 && comm_size != 1),
+                    "odd node_comm_size is not supported");
 
     RETURN_FALSE_IF(!checkers::is_single_card(param) && !checkers::is_single_node(param) &&
                         (local_proc_count % 2 != 0),
                     "odd proc count per node is not supported");
 
-    RETURN_FALSE_IF((param.ctype == ccl_coll_reduce) && (param.count < size_t(param.comm->size())),
+    RETURN_FALSE_IF((param.ctype == ccl_coll_reduce) &&
+                        (param.count < size_t(param.comm->size())) && (comm_size != 1),
                     "reduce with count < comm_size not supported");
 
     if (param.ctype == ccl_coll_recv || param.ctype == ccl_coll_send) {

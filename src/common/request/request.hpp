@@ -31,6 +31,8 @@ public:
     using dump_func = std::function<void(std::ostream&)>;
 
     ccl_request(ccl_sched& sched);
+    ccl_request(const ccl_request& other) = delete;
+    ccl_request& operator=(const ccl_request& other) = delete;
 
     virtual ~ccl_request();
 
@@ -46,8 +48,6 @@ public:
     void increase_counter(int increment);
 
     mutable bool urgent = false;
-
-    bool synchronous = false;
 
 #ifdef CCL_ENABLE_SYCL
     void set_native_event(sycl::event new_event) {

@@ -1352,9 +1352,9 @@ atl_status_t atl_ofi_open_nw_provs(atl_ofi_ctx_t& ctx,
         prov = &ctx.provs[prov_idx];
         prov->idx = prov_idx;
         prov->is_shm = 0;
-        ATL_CALL(atl_ofi_prov_init(
-                     ctx, coord, final_provs[idx], prov, attr, std::move(pmi), ep_names[prov->idx]),
-                 goto err);
+        ATL_CALL(
+            atl_ofi_prov_init(ctx, coord, final_provs[idx], prov, attr, pmi, ep_names[prov->idx]),
+            goto err);
     }
 
 exit:

@@ -193,7 +193,7 @@ kvs_status_t pmi_resizable::PMIR_Update(void) {
                     break;
                 }
                 default: {
-                    LOG_ERROR("Unknown resize action: %d\n", answer);
+                    LOG_ERROR("Unknown resize action: ", answer);
                     KVS_CHECK_STATUS(PMIR_Finalize(), "failed to finalize");
                     return KVS_STATUS_FAILURE;
                 }

@@ -45,7 +45,8 @@
 namespace ccl {
 namespace ze {
 
-fd_manager::fd_manager() {
+fd_manager::fd_manager(std::shared_ptr<atl_base_comm> comm) : comm(comm) {
+    CCL_THROW_IF_NOT(comm, "no comm in fd_manager init");
     device_fds = init_device_fds();
     exchange_device_fds();
     LOG_DEBUG("init completed");
@@ -55,7 +56,7 @@ fd_manager::~fd_manager() {
     all_socks.clear();
     all_pids.clear();
     for (auto fd : device_fds) {
-        close(fd);
+        ccl::utils::close_fd(fd);
     }
     device_fds.clear();
     device_bdfs.clear();
@@ -88,66 +89,10 @@ bool fd_manager::is_pidfd_supported() {
     check_fd(dupfd);
 
     for (auto &fd : fds) {
-        close(fd);
+        ccl::utils::close_fd(fd);
     }
     unlink(filename);
     return result;
-}
-
-void fd_manager::barrier(void *mem) {
-    static int call_count = 1;
-
-    int local_count = ccl::global_data::get().get_local_proc_count();
-    std::atomic<int> *barrier_counter = static_cast<std::atomic<int> *>(mem);
-    CCL_THROW_IF_NOT(barrier_counter == mem,
-                     "barrier_counter: ",
-                     barrier_counter,
-                     " and mem:",
-                     mem,
-                     " must be the same");
-
-    ++(*barrier_counter);
-    LOG_DEBUG("barrier_counter: ", *barrier_counter);
-
-    while ((*barrier_counter) < (call_count * local_count)) {
-        ccl_yield(ccl::global_data::env().yield_type);
-    }
-    call_count++;
-}
-
-std::string fd_manager::get_shm_filename() {
-    std::string filename = "/dev/shm/ccl-shm-file";
-    uid_t uid = getuid();
-    std::stringstream ss;
-    ss << filename << "-" << std::to_string(uid);
-    return ss.str();
-}
-
-void *fd_manager::create_shared_memory() {
-    int local_count = ccl::global_data::get().get_local_proc_count();
-    auto length = size_per_proc * local_count + counter_offset;
-    int prot = PROT_READ | PROT_WRITE;
-    int flags = MAP_SHARED;
-
-    auto shm_filename = get_shm_filename();
-    int fd = open(shm_filename.c_str(), O_CREAT | O_RDWR, 0666);
-    CCL_THROW_IF_NOT(fd > 0, "open failed: fd: ", fd, ", errno: ", strerror(errno));
-    int ret = ftruncate(fd, length);
-    CCL_THROW_IF_NOT(ret != ccl::utils::invalid_err_code,
-                     "ioctl failed: ret: ",
-                     ret,
-                     ", errno: ",
-                     strerror(errno));
-
-    void *mem = mmap(nullptr, length, prot, flags, fd, 0);
-    CCL_THROW_IF_NOT(mem != MAP_FAILED, "mmap failed: mem: ", mem, ", errno: ", strerror(errno));
-
-    LOG_DEBUG("shm_filename: ", shm_filename, ", mem: ", mem, ", fd: ", fd);
-    barrier(mem);
-
-    close(fd);
-    unlink(shm_filename.c_str());
-    return mem;
 }
 
 // get functions impl
@@ -469,31 +414,31 @@ int fd_manager::mem_handle_to_fd(int convert_from_fd, int handle) {
     return fd;
 }
 
-std::vector<int> fd_manager::setup_device_fds(int local_count,
-                                              int proc_idx,
+std::vector<int> fd_manager::setup_device_fds(int comm_size,
+                                              int rank_idx,
                                               std::vector<bdf_info> &return_bdf) {
     std::vector<int> fds;
     std::vector<bdf_info> bdf_data;
     // bdf_info info;
-    if (proc_idx == 0) {
+    if (rank_idx == 0) {
         fds = device_fds;
         return_bdf = device_bdfs;
         // send the fds to all other local processes
-        for (int p_idx = 1; p_idx < local_count; p_idx++) {
+        for (int p_idx = 1; p_idx < comm_size; p_idx++) {
             for (auto &fd : fds) {
                 ccl::utils::sendmsg_call(
                     all_socks[p_idx],
                     fd,
                     device_bdfs.empty() ? nullptr : device_bdfs.data(),
                     device_bdfs.empty() ? 0 : device_bdfs.size() * sizeof(bdf_info),
-                    proc_idx);
+                    rank_idx);
             }
         }
     }
     else {
         // receive the fds from local process 0
         for (auto fd : device_fds) {
-            close(fd);
+            ccl::utils::close_fd(fd);
         }
         fds.resize(device_fds.size());
         for (auto &fd : fds) {
@@ -502,7 +447,7 @@ std::vector<int> fd_manager::setup_device_fds(int local_count,
                                      &fd,
                                      bdf_data.empty() ? nullptr : bdf_data.data(),
                                      bdf_data.empty() ? 0 : bdf_data.size() * sizeof(bdf_info),
-                                     proc_idx);
+                                     rank_idx);
             return_bdf = bdf_data;
         }
     }
@@ -516,43 +461,37 @@ void fd_manager::exchange_device_fds() {
     memset(&sockaddr, 0, sizeof(sockaddr));
     unsigned int sockaddr_len = sizeof(sockaddr);
     int enable = 1;
+    int ack = 1;
 
-    int local_count = ccl::global_data::get().get_local_proc_count();
-    int local_idx = ccl::global_data::get().get_local_proc_idx();
+    int comm_size = comm->get_size();
+    int rank_idx = comm->get_rank();
 
-    auto length = size_per_proc * local_count + counter_offset;
-
-    all_pids.resize(local_count, ccl::utils::invalid_pid);
-    all_socks.resize(local_count, ccl::utils::invalid_fd);
+    std::vector<int> all_ints(comm_size, ccl::utils::invalid_fd);
+    all_socks.resize(comm_size, ccl::utils::invalid_fd);
+    all_pids.resize(comm_size, ccl::utils::invalid_pid);
 
     pid_t pid = getpid();
+    ccl::utils::allgather(comm, &pid, all_pids.data(), sizeof(pid_t));
 
-    // send own pid to all processes via shm
-    void *mem = create_shared_memory();
-    void *shmem = (char *)mem + counter_offset;
-
-    ((pid_t *)shmem)[local_idx] = pid;
-
-    barrier(mem);
-
-    for (int i = 0; i < local_count; i++) {
-        all_pids[i] = ((pid_t *)shmem)[i];
-    }
     CCL_THROW_IF_NOT(!all_pids.empty(), "all_pids shouldn't be empty");
     LOG_DEBUG("pid exchange is done: ", all_pids.size());
 
-    // create a named socket between local_idx
+    // create a named socket between rank_idx
     // 0 and all other local processes
-    if (local_idx == 0) {
-        barrier(mem);
-        for (int i = 1; i < local_count; ++i) {
+    if (rank_idx == 0) {
+        // TODO: barrier from ofi transport is hanging, remove allgather
+        // after fix, here and everywhere
+        ccl::utils::allgather(comm, &ack, all_ints.data(), sizeof(int));
+        for (int i = 1; i < comm_size; ++i) {
             std::string remote_sock_name;
             struct sockaddr_un remote_sockaddr;
 
             remote_sock_name = "/tmp/ccl-ipc-fd-sock-" + std::to_string(all_pids[i]) + ":" +
-                               std::to_string(i) + "-" + std::to_string(local_idx);
+                               std::to_string(i) + "-" + std::to_string(rank_idx) + "-" +
+                               std::to_string(comm_size);
             sock_name = "/tmp/ccl-ipc-fd-sock-" + std::to_string(pid) + ":" +
-                        std::to_string(local_idx) + "-" + std::to_string(i);
+                        std::to_string(rank_idx) + "-" + std::to_string(i) + "-" +
+                        std::to_string(comm_size);
 
             // create a socket for local proc j
             all_socks[i] = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -600,8 +539,8 @@ void fd_manager::exchange_device_fds() {
     else {
         int sock;
         // create the local socket name
-        sock_name = "/tmp/ccl-ipc-fd-sock-" + std::to_string(pid) + ":" +
-                    std::to_string(local_idx) + "-" + std::to_string(0);
+        sock_name = "/tmp/ccl-ipc-fd-sock-" + std::to_string(pid) + ":" + std::to_string(rank_idx) +
+                    "-" + std::to_string(0) + "-" + std::to_string(comm_size);
         // create a socket for local proc i
         sock = socket(AF_UNIX, SOCK_STREAM, 0);
         CCL_THROW_IF_NOT(sock != ccl::utils::invalid_fd,
@@ -625,7 +564,7 @@ void fd_manager::exchange_device_fds() {
                          strerror(errno));
 
         // listen to the socket to accept a connection to the other process
-        sock_err = listen(sock, local_count);
+        sock_err = listen(sock, comm_size);
         CCL_THROW_IF_NOT(sock_err != ccl::utils::invalid_err_code,
                          "listen failed: sock_err: ",
                          sock_err,
@@ -633,7 +572,7 @@ void fd_manager::exchange_device_fds() {
                          strerror(errno));
 
         // notify the other process that the socket is created and being listened to
-        barrier(mem);
+        ccl::utils::allgather(comm, &ack, all_ints.data(), sizeof(int));
 
         all_socks[0] = accept(sock, (struct sockaddr *)&sockaddr, &sockaddr_len);
         CCL_THROW_IF_NOT(all_socks[0] != ccl::utils::invalid_err_code,
@@ -646,31 +585,28 @@ void fd_manager::exchange_device_fds() {
             ccl::utils::invalid_err_code) {
             CCL_THROW("setsockopt failed: sock: ", all_socks[0], ", errno: ", strerror(errno));
         }
-        close(sock);
+        ccl::utils::close_fd(sock);
     }
 
     LOG_DEBUG("connection is set up");
-    device_fds = setup_device_fds(local_count, local_idx, device_bdfs);
+    device_fds = setup_device_fds(comm_size, rank_idx, device_bdfs);
     physical_devices = fill_physical_devices();
 
     // close sockets
-    if (local_idx == 0) {
-        close_sockets(local_count, local_idx);
-        barrier(mem);
+    if (rank_idx == 0) {
+        close_sockets(comm_size, rank_idx);
+        ccl::utils::allgather(comm, &ack, all_ints.data(), sizeof(int));
     }
     else {
-        barrier(mem);
-        close_sockets(local_count, local_idx);
+        ccl::utils::allgather(comm, &ack, all_ints.data(), sizeof(int));
+        close_sockets(comm_size, rank_idx);
     }
-
-    int ret = munmap(mem, length);
-    CCL_THROW_IF_NOT(ret == 0, "munmap failed: ret: ", ret, ", errno: ", strerror(errno));
 }
 
-void fd_manager::close_sockets(int local_count, int proc_idx) {
+void fd_manager::close_sockets(int comm_size, int rank_idx) {
     int sock_err;
     std::string sock_name;
-    for (int i = 0; i < local_count; ++i) {
+    for (int i = 0; i < comm_size; ++i) {
         if (all_socks[i] != ccl::utils::invalid_fd) {
             sock_err = close(all_socks[i]);
             CCL_THROW_IF_NOT(sock_err != ccl::utils::invalid_err_code,
@@ -680,10 +616,11 @@ void fd_manager::close_sockets(int local_count, int proc_idx) {
                              strerror(errno));
         }
 
-        if (all_pids[proc_idx] != ccl::utils::invalid_pid && proc_idx != i) {
-            sock_name = "/tmp/ccl-ipc-fd-sock-" + std::to_string(all_pids[proc_idx]) + ":" +
-                        std::to_string(proc_idx) + "-" + std::to_string(i);
-            sock_err = unlink(sock_name.c_str());
+        if (all_pids[rank_idx] != ccl::utils::invalid_pid && rank_idx != i) {
+            sock_name = "/tmp/ccl-ipc-fd-sock-" + std::to_string(all_pids[rank_idx]) + ":" +
+                        std::to_string(rank_idx) + "-" + std::to_string(i) + "-" +
+                        std::to_string(comm_size);
+            unlink(sock_name.c_str());
         }
     }
 }

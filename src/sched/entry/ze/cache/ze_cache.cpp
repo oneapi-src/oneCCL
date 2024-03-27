@@ -441,7 +441,7 @@ void mem_handle_cache::handle_desc::close_handle() const {
     auto fd = get_fd_from_handle(handle);
     auto res = zeMemCloseIpcHandle(remote_context, ptr);
     if (res == ZE_RESULT_ERROR_INVALID_ARGUMENT) {
-        close(fd);
+        ccl::utils::close_fd(fd);
     }
     else if (res != ZE_RESULT_SUCCESS) {
         CCL_THROW("error at zeMemCloseIpcHandle, code: ", to_string(res));

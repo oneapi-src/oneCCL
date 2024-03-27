@@ -89,6 +89,7 @@ typedef struct ze_lib_ops {
     decltype(zeModuleDestroy) *zeModuleDestroy;
     decltype(zeModuleBuildLogGetString) *zeModuleBuildLogGetString;
     decltype(zeModuleBuildLogDestroy) *zeModuleBuildLogDestroy;
+    decltype(zeModuleGetNativeBinary) *zeModuleGetNativeBinary;
     decltype(zeDeviceGetComputeProperties) *zeDeviceGetComputeProperties;
     decltype(zeDeviceGetMemoryAccessProperties) *zeDeviceGetMemoryAccessProperties;
     decltype(zeDeviceGetMemoryProperties) *zeDeviceGetMemoryProperties;
@@ -101,6 +102,11 @@ typedef struct ze_lib_ops {
 #ifdef ZE_PCI_PROPERTIES_EXT_NAME
     decltype(zeDevicePciGetPropertiesExt) *zeDevicePciGetPropertiesExt;
 #endif // ZE_PCI_PROPERTIES_EXT_NAME
+    decltype(zeDriverGetExtensionFunctionAddress) *zeDriverGetExtensionFunctionAddress;
+    decltype(zeFabricVertexGetExp) *zeFabricVertexGetExp;
+    decltype(zeFabricVertexGetSubVerticesExp) *zeFabricVertexGetSubVerticesExp;
+    decltype(zeFabricEdgeGetExp) *zeFabricEdgeGetExp;
+    decltype(zeFabricEdgeGetPropertiesExp) *zeFabricEdgeGetPropertiesExp;
 } ze_lib_ops_t;
 
 static std::vector<std::string> ze_fn_names = {
@@ -165,6 +171,7 @@ static std::vector<std::string> ze_fn_names = {
     "zeModuleDestroy",
     "zeModuleBuildLogGetString",
     "zeModuleBuildLogDestroy",
+    "zeModuleGetNativeBinary",
     "zeDeviceGetComputeProperties",
     "zeDeviceGetMemoryAccessProperties",
     "zeDeviceGetMemoryProperties",
@@ -177,6 +184,11 @@ static std::vector<std::string> ze_fn_names = {
 #ifdef ZE_PCI_PROPERTIES_EXT_NAME
     "zeDevicePciGetPropertiesExt",
 #endif // ZE_PCI_PROPERTIES_EXT_NAME
+    "zeDriverGetExtensionFunctionAddress",
+    "zeFabricVertexGetExp",
+    "zeFabricVertexGetSubVerticesExp",
+    "zeFabricEdgeGetExp",
+    "zeFabricEdgeGetPropertiesExp",
 };
 
 extern ccl::ze_lib_ops_t ze_lib_ops;
@@ -244,6 +256,7 @@ extern ccl::ze_lib_ops_t ze_lib_ops;
 #define zeModuleDestroy                   ccl::ze_lib_ops.zeModuleDestroy
 #define zeModuleBuildLogGetString         ccl::ze_lib_ops.zeModuleBuildLogGetString
 #define zeModuleBuildLogDestroy           ccl::ze_lib_ops.zeModuleBuildLogDestroy
+#define zeModuleGetNativeBinary           ccl::ze_lib_ops.zeModuleGetNativeBinary
 #define zeDeviceGetComputeProperties      ccl::ze_lib_ops.zeDeviceGetComputeProperties
 #define zeDeviceGetMemoryAccessProperties ccl::ze_lib_ops.zeDeviceGetMemoryAccessProperties
 #define zeDeviceGetMemoryProperties       ccl::ze_lib_ops.zeDeviceGetMemoryProperties
@@ -256,6 +269,12 @@ extern ccl::ze_lib_ops_t ze_lib_ops;
 #ifdef ZE_PCI_PROPERTIES_EXT_NAME
 #define zeDevicePciGetPropertiesExt ccl::ze_lib_ops.zeDevicePciGetPropertiesExt
 #endif // ZE_PCI_PROPERTIES_EXT_NAME
+#define zeDriverGetExtensionFunctionAddress ccl::ze_lib_ops.zeDriverGetExtensionFunctionAddress
+#define zeFabricVertexGetExp                ccl::ze_lib_ops.zeFabricVertexGetExp
+#define zeFabricVertexGetSubVerticesExp     ccl::ze_lib_ops.zeFabricVertexGetSubVerticesExp
+#define zeFabricEdgeGetExp                  ccl::ze_lib_ops.zeFabricEdgeGetExp
+#define zeFabricEdgeGetPropertiesExp        ccl::ze_lib_ops.zeFabricEdgeGetPropertiesExp
+
 bool ze_api_init();
 void ze_api_fini();
 

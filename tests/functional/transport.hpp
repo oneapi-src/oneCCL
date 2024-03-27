@@ -46,6 +46,8 @@ public:
 
 private:
     transport_data();
+    transport_data(const transport_data& other) = delete;
+    transport_data& operator=(const transport_data& other) = delete;
     ~transport_data();
 
     void init_by_mpi();

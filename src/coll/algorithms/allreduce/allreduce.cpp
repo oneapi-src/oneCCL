@@ -439,6 +439,7 @@ ccl::status ccl_coll_build_ring_allreduce(ccl_sched* sched,
                                           ccl_buffer send_buf,
                                           ccl_buffer recv_buf,
                                           size_t count,
+                                          const std::vector<ccl_buffer>& recv_device_bufs,
                                           const ccl_datatype& dtype,
                                           ccl::reduction op,
                                           ccl_comm* comm) {
@@ -465,6 +466,7 @@ ccl::status ccl_coll_build_ring_allreduce(ccl_sched* sched,
 
     sched->add_barrier();
 
+    // Prepare recv_counts for allgatherv phase
     int comm_size = comm->size();
     size_t main_block_count = count / comm_size;
     size_t last_block_count = main_block_count + count % comm_size;
@@ -473,6 +475,48 @@ ccl::status ccl_coll_build_ring_allreduce(ccl_sched* sched,
         recv_counts[comm_size - 1] = last_block_count;
     }
 
+    // Due to the allreduce and allgatherv API differences, we have to
+    // prepare device buffers for copy overlapping.
+    // Transform single buffer to the array of buffers with offsets.
+    std::vector<ccl_buffer> recv_device_allgatherv_bufs;
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    // Note: HMEM case does not require copy to device stage
+    bool enable_hmem = (ccl::global_data::env().use_hmem && atl_base_comm::attr.out.enable_hmem);
+    if (!enable_hmem && !recv_device_bufs.empty()) {
+        std::vector<size_t> recv_offset(comm_size, 0);
+        for (int rank_idx = 1; rank_idx < comm_size; rank_idx++) {
+            recv_offset[rank_idx] =
+                recv_offset[rank_idx - 1] + recv_counts[rank_idx - 1] * dtype.size();
+        }
+        // recv_device_bufs array acts only as a storage for the allreduce receive device buffer
+        ccl_buffer recv_device_buf = recv_device_bufs.front();
+        for (int b_idx = 0; b_idx < comm_size; b_idx++) {
+            recv_device_allgatherv_bufs.emplace_back(recv_device_buf + recv_offset[b_idx]);
+        }
+
+        // Express dependency between the reduce_scatter and ze_copy_entry
+        auto signaled_event = ccl::add_signal_event(sched);
+
+        size_t rank = comm->rank();
+        size_t copy_counts = recv_counts[rank];
+
+        // This case can happend if previously "count < comm_size"
+        if (copy_counts) {
+            ccl_buffer copy_src = recv_buf + recv_offset[rank];
+            ccl_buffer copy_dst = recv_device_allgatherv_bufs[rank];
+
+            // Submit in-place parallel H2D copy with the next allgatherv operation (in-place init)
+            entry_factory::create<ze_copy_entry>(sched,
+                                                 copy_src,
+                                                 copy_dst,
+                                                 copy_counts,
+                                                 dtype,
+                                                 copy_attr(copy_direction::h2d),
+                                                 std::vector<ze_event_handle_t>{ signaled_event });
+        }
+    }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+
     std::vector<ccl_sched*> part_scheds = { sched };
     ccl_coll_build_ring_allgatherv(nullptr,
                                    part_scheds,
@@ -480,6 +524,7 @@ ccl::status ccl_coll_build_ring_allreduce(ccl_sched* sched,
                                    recv_counts[comm->rank()],
                                    recv_buf,
                                    recv_counts.data(),
+                                   recv_device_allgatherv_bufs,
                                    dtype,
                                    comm);
 
@@ -640,8 +685,15 @@ static void ccl_allreduce_2d_add_allreduce_allgather(ccl_sched* sched,
     // TODO: skip direct algo since it may be started
     // with different order on different ranks
     sched->hint_algo.allgatherv = ccl_coll_allgatherv_ring;
-    ccl_coll_build_allgatherv(
-        sched, rbuf, ar_count, rbuf, ag_recv_counts.data(), dtype, first_dim_comm, false);
+    ccl_coll_build_allgatherv(sched,
+                              rbuf,
+                              ar_count,
+                              rbuf,
+                              ag_recv_counts.data(),
+                              std::vector<ccl_buffer>{},
+                              dtype,
+                              first_dim_comm,
+                              false);
     sched->hint_algo.allgatherv = ccl_coll_allgatherv_undefined;
 }
 
@@ -822,11 +874,13 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
     bool use_reduce_scatter_pipeline =
         ccl::global_data::env().reduce_scatter_monolithic_pipeline_kernel &&
         even_comm->size() > 1 && pair_comm->size() > 1 && count >= (size_t)comm_size &&
-        is_multi_card && dtype != ccl::datatype::int8;
+        is_multi_card && dtype != ccl::datatype::int8 &&
+        ccl::global_data::env().enable_ze_bidir_algo;
 
     // allgatherv pipeline uses xelink read and mdfi write
     const bool use_allgatherv_pipeline =
-        ccl::global_data::env().allgatherv_monolithic_pipeline_kernel && count >= (size_t)comm_size;
+        ccl::global_data::env().allgatherv_monolithic_pipeline_kernel &&
+        count >= (size_t)comm_size && even_comm->size() > 1;
 
     size_t base_count = count;
     size_t pair_comm_offset = 0;
@@ -1011,10 +1065,9 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
                   pair_comm_offset);
         if (is_single_card) {
             // workaround for hardware issue that MDFI write from kernel
-            // with 8 bit and 16 bit data types are slow. Instead perform
+            // with 8 bit data type is slow. Instead perform
             // MDFI read + reduce in kernel and MDFI write using memcpy
-            if (dtype == ccl::datatype::int8 || dtype == ccl::datatype::float16 ||
-                dtype == ccl::datatype::bfloat16) {
+            if (dtype == ccl::datatype::int8) {
                 auto entry = entry_factory::create<ze_onesided_reduce_entry>(sched,
                                                                              pair_comm_send_buf,
                                                                              pair_comm_recv_buf,
@@ -1169,6 +1222,7 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
     coll_param.ctype = ccl_coll_allreduce;
     coll_param.send_buf = even_comm_recv_buf;
     coll_param.recv_buf = even_comm_recv_buf;
+    coll_param.recv_scale_out_bufs = std::vector<ccl_buffer>{ even_comm_recv_buf };
     coll_param.count = block_count;
     coll_param.dtype = dtype;
     coll_param.reduction = op;
@@ -1244,19 +1298,21 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
     if (!is_single_card && pair_comm->size() > 1 && !use_allgatherv_pipeline) {
         LOG_DEBUG("topo/scale_up/intra: use ze_onesided_bcast");
         int peer_rank = (pair_comm->rank() + 1) % pair_comm->size();
-        auto entry = entry_factory::create<ze_copy_entry>(sched,
-                                                          recv_buf,
-                                                          ccl_buffer(),
-                                                          base_count,
-                                                          dtype,
-                                                          copy_attr(peer_rank,
-                                                                    recv_buf_idx,
-                                                                    copy_direction::t2t,
-                                                                    false, /*pt2pt_op*/
-                                                                    pair_comm,
-                                                                    pair_comm_offset,
-                                                                    pair_comm_offset),
-                                                          wait_events);
+
+        auto attrs = copy_attr(peer_rank,
+                               recv_buf_idx,
+                               copy_direction::t2t,
+                               false, /*pt2pt_op*/
+                               pair_comm,
+                               pair_comm_offset,
+                               pair_comm_offset);
+
+        if (ccl::global_data::env().allreduce_pipe_chunk_count > 1) {
+            attrs.force_queue_type = ccl::ze::queue_group_type::main;
+        }
+
+        auto entry = entry_factory::create<ze_copy_entry>(
+            sched, recv_buf, ccl_buffer(), base_count, dtype, attrs, wait_events);
         clear_and_push_back(wait_events, entry->entry_event);
         sched->add_barrier();
     }
@@ -1280,154 +1336,20 @@ ccl::status ccl_coll_build_topo_allreduce(ccl_sched* sched,
                                           const ccl_datatype& dtype,
                                           ccl::reduction op,
                                           ccl_comm* comm) {
-    // Note about cache lines and pipelining: The same cache line must contain
-    // a single chunk only.
-    //
-    // If the same cache line contains two chunks (or more), and we parallelize
-    // the instructions required for both chunks, a conflict (race condition)
-    // may appear between the copy-out for the scaleout portion and the
-    // reduce_scatter phase.
-    //
-    // The easiest way to avoid that race condition is to require that each
-    // cache line contains a single entry. If that is not the case, we must not
-    // parallelize the instructions for different chunks.
-
-    size_t chunk_count = ccl::global_data::env().allreduce_pipe_chunk_count;
-    bool is_pipe = chunk_count > 0 && ccl::global_data::env().enable_ze_single_list;
-
-    // TODO: why does oneCCL have CACHELINE_SIZE *and* CCL_KERNEL_MEM_ALIGN?
-    size_t memalign = ccl::global_data::env().kernel_mem_align;
-    size_t buf_size_bytes = count * dtype.size();
-
-    // First, determine if we need to fallback to non-pipelined algorightm.
-    // Such a fallback may happen in cases such as (1) the user requests it,
-    // (2) message fits into a cache line, or (3) the cache line size is not
-    // divisible by the data type size.
-
-    size_t number_of_cache_lines_per_chunk =
-        !is_pipe ? 1 : std::max(memalign, buf_size_bytes / chunk_count) / memalign;
-    size_t main_chunk_size_bytes = memalign * number_of_cache_lines_per_chunk;
-
-    bool is_dtype_non_divisible = main_chunk_size_bytes % dtype.size();
-    bool is_msg_smaller_than_cache_line = buf_size_bytes <= main_chunk_size_bytes;
-
-    bool is_multiworker =
-        ccl::global_data::env().ze_multi_workers && ccl::global_data::env().worker_count > 1;
-
-    if (!is_pipe || is_dtype_non_divisible || is_msg_smaller_than_cache_line || is_multiworker) {
-        // Fall back to topo algorithm without pipelining
-
-        if (!is_pipe) {
-            LOG_DEBUG("Pipelining code disabled");
-        }
-        else if (is_dtype_non_divisible) {
-            LOG_INFO("Running without pipelining because datatype size (",
-                     dtype.size(),
-                     ") is not divisible by cache line size (",
-                     memalign,
-                     ")");
-        }
-        else if (is_msg_smaller_than_cache_line) {
-            LOG_INFO("Running without pipelining because message size (",
-                     buf_size_bytes,
-                     ") is smaller than a cache line (",
-                     memalign,
-                     ") and main_chunk_size_bytes (",
-                     main_chunk_size_bytes,
-                     ")");
-        }
-        else if (is_multiworker) {
-            LOG_INFO(
-                "Running without pipelining because ze_multi_workers was requested with more than one worker");
-        }
-        else {
-            CCL_THROW("Unexpected fallback to non-pipe code");
-        }
-
-        ccl_coll_build_topo_allreduce_fill(sched, send_buf, recv_buf, count, dtype, op, comm);
-
-        entry_factory::create<ze_execute_cmdlists_on_init_entry>(sched);
-
-        return ccl::status::success;
-    }
-
-    LOG_DEBUG("build pipe allreduce");
-
-    size_t main_chunk_count = main_chunk_size_bytes / dtype.size();
-
-    // Need to re-calculate chunk_count after main_chunk_size_bytes calculation
-    // with cache alignment in mind.
-    chunk_count = count / main_chunk_count;
-    size_t last_chunk_count = main_chunk_count + (count % main_chunk_count);
-
-    sched->try_enable_ze_single_list();
-    auto sync_obj = std::make_shared<sync_object>(chunk_count);
-    bool is_parallelizable_chunks = true;
-
-    for (size_t chunk_idx = 0; chunk_idx < chunk_count; ++chunk_idx) {
-        size_t chunk_offset = chunk_idx * main_chunk_count * dtype.size();
-        ccl_buffer sbuf = send_buf + chunk_offset;
-        ccl_buffer rbuf = recv_buf + chunk_offset;
-        size_t this_chunk_count =
-            (chunk_idx == (chunk_count - 1)) ? last_chunk_count : main_chunk_count;
-
-        if (this_chunk_count || (count == 0 && chunk_idx == 0)) {
-            entry_factory::create<subsched_entry>(
-                sched,
-                chunk_idx,
-                [sched, sbuf, rbuf, this_chunk_count, dtype, op, comm, sync_obj](ccl_sched* s) {
-                    s->inherit_ze_managers_from(sched);
-                    s->set_init_ze_hook_sync_obj(sync_obj);
-                    s->set_ze_commands_bypass_flag(false);
-
-                    ccl_coll_build_topo_allreduce_fill(
-                        s, sbuf, rbuf, this_chunk_count, dtype, op, comm);
-                },
-                ("ALLREDUCE_PIPE" + std::to_string(chunk_idx)).c_str());
-        }
-        if (chunk_idx > 0) {
-            auto ptr = reinterpret_cast<uintptr_t>(rbuf.get_ptr());
-            auto prev_chunk_last_cache_line = (ptr - 1) / memalign;
-            auto this_chunk_first_cache_line = ptr / memalign;
-
-            if (prev_chunk_last_cache_line == this_chunk_first_cache_line) {
-                // WARNING: previous chunk has part of this chunk's first cache
-                // line. Cannot use pipelining. However, since this is a
-                // "local" decision (i.e., other ranks may decide differently),
-                // we still need to apply chunking. However, we will run one
-                // chunk at a time, without parallelizing them.
-                // Another way to have implemented this would be to link the
-                // last task of the prev chunk with the first of this chunk
-                // with an event.
-                is_parallelizable_chunks = false;
-            }
-        }
-    }
-
-    static bool is_chunk_memalign_warning_printed{};
-    if (!is_parallelizable_chunks && !is_chunk_memalign_warning_printed) {
-        is_chunk_memalign_warning_printed = true;
-        LOG_WARN(
-            "[allreduce pipelining]: For best performance, (i) chunk size should be a multiple of a cache line (",
-            memalign,
-            " bytes), and (ii) buffers in all ranks should be aligned to ",
-            memalign);
-    }
-
-    if (!is_parallelizable_chunks) {
-        ccl::global_data::get()
-            .metrics_profiler->allreduce_pipe_nonparallel_calls_per_count[count]++;
-    }
-    else {
-        ccl::global_data::get().metrics_profiler->allreduce_pipe_parallel_calls_per_count[count]++;
-    }
-
-    entry_factory::create<ze_execute_cmdlists_on_start_entry>(
+    return ccl_build_topo_uniform_buff_size_op(
         sched,
-        sync_obj,
-        is_parallelizable_chunks ? submit_ze_commands_in_subsched_entries : nullptr);
-
-    return ccl::status::success;
+        send_buf,
+        recv_buf,
+        count,
+        dtype.size(),
+        ccl::global_data::env().allreduce_pipe_chunk_count,
+        "ALLREDUCE",
+        ccl::global_data::get().metrics_profiler->allreduce_pipe,
+        [dtype, op, comm](ccl_sched* sched, ccl_buffer send_buf, ccl_buffer recv_buf, size_t count)
+            -> ccl::status {
+            return ccl_coll_build_topo_allreduce_fill(
+                sched, send_buf, recv_buf, count, dtype, op, comm);
+        });
 }
 
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE

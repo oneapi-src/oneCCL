@@ -287,7 +287,7 @@ class Datatype  {
     static Datatype Create_struct( int v1, int v2[], Aint v3[],  const Datatype v4[] ) 
     {
         Datatype v5;
-        MPI_Datatype *l4 = new MPI_Datatype[v1];
+        MPI_Datatype *l4 = new MPI_Datatype[(unsigned long)v1];
         { 
             int i4; 
             for (i4=0;i4<v1;i4++) {
@@ -376,7 +376,7 @@ class Datatype  {
     }
     virtual void Get_contents( int v2, int v3, int v4, int v5[], Aint v6[], Datatype v7[] ) const
     {
-        MPI_Datatype *l7 = new MPI_Datatype[v4];
+        MPI_Datatype *l7 = new MPI_Datatype[(unsigned long)v4];
         MPIX_CALLWORLD( MPI_Type_get_contents( (MPI_Datatype) the_real_datatype, v2, v3, v4, v5, v6, l7 ));
         { 
             int i7; 
@@ -417,7 +417,7 @@ class Datatype  {
     static Datatype Create_struct( int v1, const int v2[], const Aint v3[],  const Datatype v4[] ) 
     {
         Datatype v5;
-        MPI_Datatype *l4 = new MPI_Datatype[v1];
+        MPI_Datatype *l4 = new MPI_Datatype[(unsigned long)v1];
         { 
             int i4; 
             for (i4=0;i4<v1;i4++) {
@@ -849,7 +849,7 @@ class Request  {
     static bool Testany( int v1, Request v2[], int &v3, Status & v5 ) 
     {
         int v4;
-        MPI_Request *l2 = new MPI_Request[v1];
+        MPI_Request *l2 = new MPI_Request[(unsigned long)v1];
         { 
             int i2; 
             for (i2=0;i2<v1;i2++) {
@@ -869,7 +869,7 @@ class Request  {
     static bool Testany( int v1, Request v2[], int &v3 ) 
     {
         int v4;
-        MPI_Request *l2 = new MPI_Request[v1];
+        MPI_Request *l2 = new MPI_Request[(unsigned long)v1];
         { 
             int i2; 
             for (i2=0;i2<v1;i2++) {
@@ -889,8 +889,8 @@ class Request  {
     static int Waitsome( int v1, Request v2[], int v4[], Status v5[] ) 
     {
         int v3;
-        MPI_Request *l2 = new MPI_Request[v1];
-        MPI_Status *l5 = new MPI_Status[v1];
+        MPI_Request *l2 = new MPI_Request[(unsigned long)v1];
+        MPI_Status *l5 = new MPI_Status[(unsigned long)v1];
         { 
             int i2; 
             for (i2=0;i2<v1;i2++) {
@@ -917,7 +917,7 @@ class Request  {
     static int Waitsome( int v1, Request v2[], int v4[] ) 
     {
         int v3;
-        MPI_Request *l2 = new MPI_Request[v1];
+        MPI_Request *l2 = new MPI_Request[(unsigned long)v1];
         { 
             int i2; 
             for (i2=0;i2<v1;i2++) {
@@ -941,8 +941,8 @@ class Request  {
     static bool Testall( int v1, Request v2[], Status v4[] ) 
     {
         int v3;
-        MPI_Request *l2 = new MPI_Request[v1];
-        MPI_Status *l4 = new MPI_Status[v1];
+        MPI_Request *l2 = new MPI_Request[(unsigned long)v1];
+        MPI_Status *l4 = new MPI_Status[(unsigned long)v1];
         { 
             int i2; 
             for (i2=0;i2<v1;i2++) {
@@ -969,7 +969,7 @@ class Request  {
     static bool Testall( int v1, Request v2[] ) 
     {
         int v3;
-        MPI_Request *l2 = new MPI_Request[v1];
+        MPI_Request *l2 = new MPI_Request[(unsigned long)v1];
         { 
             int i2; 
             for (i2=0;i2<v1;i2++) {
@@ -997,8 +997,8 @@ class Request  {
     static int Testsome( int v1, Request v2[], int v4[], Status v5[] ) 
     {
         int v3;
-        MPI_Request *l2 = new MPI_Request[v1];
-        MPI_Status *l5 = new MPI_Status[v1];
+        MPI_Request *l2 = new MPI_Request[(unsigned long)v1];
+        MPI_Status *l5 = new MPI_Status[(unsigned long)v1];
         { 
             int i2; 
             for (i2=0;i2<v1;i2++) {
@@ -1025,7 +1025,7 @@ class Request  {
     static int Testsome( int v1, Request v2[], int v4[] ) 
     {
         int v3;
-        MPI_Request *l2 = new MPI_Request[v1];
+        MPI_Request *l2 = new MPI_Request[(unsigned long)v1];
         { 
             int i2; 
             for (i2=0;i2<v1;i2++) {
@@ -1044,8 +1044,8 @@ class Request  {
     }
     static void Waitall( int v1, Request v2[], Status v3[] ) 
     {
-        MPI_Request *l2 = new MPI_Request[v1];
-        MPI_Status *l3 = new MPI_Status[v1];
+        MPI_Request *l2 = new MPI_Request[(unsigned long)v1];
+        MPI_Status *l3 = new MPI_Status[(unsigned long)v1];
         { 
             int i2; 
             for (i2=0;i2<v1;i2++) {
@@ -1070,7 +1070,7 @@ class Request  {
     }
     static void Waitall( int v1, Request v2[] ) 
     {
-        MPI_Request *l2 = new MPI_Request[v1];
+        MPI_Request *l2 = new MPI_Request[(unsigned long)v1];
         { 
             int i2; 
             for (i2=0;i2<v1;i2++) {
@@ -1089,7 +1089,7 @@ class Request  {
     static int Waitany( int v1, Request v2[], Status & v4 ) 
     {
         int v3;
-        MPI_Request *l2 = new MPI_Request[v1];
+        MPI_Request *l2 = new MPI_Request[(unsigned long)v1];
         { 
             int i2; 
             for (i2=0;i2<v1;i2++) {
@@ -1109,7 +1109,7 @@ class Request  {
     static int Waitany( int v1, Request v2[] ) 
     {
         int v3;
-        MPI_Request *l2 = new MPI_Request[v1];
+        MPI_Request *l2 = new MPI_Request[(unsigned long)v1];
         { 
             int i2; 
             for (i2=0;i2<v1;i2++) {
@@ -1183,7 +1183,7 @@ class Prequest : public Request {
     }
     static void Startall( int v1, Prequest v2[] ) 
     {
-        MPI_Request *l2 = new MPI_Request[v1];
+        MPI_Request *l2 = new MPI_Request[(unsigned long)v1];
         { 
             int i2; 
             for (i2=0;i2<v1;i2++) {
@@ -1412,9 +1412,9 @@ class Comm  {
     {
         MPIX_CALLREF( this, MPI_Rsend( (const void *)v1, v2, (MPI_Datatype)(v3.the_real_datatype), v4, v5, (MPI_Comm) the_real_comm ));
     }
-    virtual void Gatherv( const void * v1, int v2, const Datatype &v3, void * v4, const int * v5, const int * v6, const Datatype &v7, int v8 ) const
+    virtual void Gatherv( const void * v1, int v2, const Datatype &v3, void * v4, const int v5[], const int v6[], const Datatype &v7, int v8 ) const
     {
-        MPIX_CALLREF( this, MPI_Gatherv( (const void *)v1, v2, (MPI_Datatype)(v3.the_real_datatype), v4, (const int *)v5, (const int *)v6, (MPI_Datatype)(v7.the_real_datatype), v8, (MPI_Comm) the_real_comm ));
+        MPIX_CALLREF( this, MPI_Gatherv( (const void *)v1, v2, (MPI_Datatype)(v3.the_real_datatype), v4, (const int  *)v5, (const int  *)v6, (MPI_Datatype)(v7.the_real_datatype), v8, (MPI_Comm) the_real_comm ));
     }
     virtual void Disconnect( void ) 
     {
@@ -1426,8 +1426,8 @@ class Comm  {
     }
     virtual void Alltoallw( const void * v1, const int v2[], const int v3[],  const Datatype v4[], void * v5, const int v6[], const int v7[],  const Datatype v8[] ) const
     {
-        MPI_Datatype *l4 = new MPI_Datatype[Get_size()];
-        MPI_Datatype *l8 = new MPI_Datatype[Get_size()];
+        MPI_Datatype *l4 = new MPI_Datatype[(unsigned long)Get_size()];
+        MPI_Datatype *l8 = new MPI_Datatype[(unsigned long)Get_size()];
         { 
             int i4; 
             for (i4=0;i4<Get_size();i4++) {
@@ -1472,9 +1472,9 @@ class Comm  {
         MPIX_CALLREF( this, MPI_Comm_set_name( (MPI_Comm) the_real_comm, (const char *)v2 ));
     }
     static Intercomm Get_parent( void ) ;
-    virtual void Alltoallv( const void * v1, const int * v2, const int * v3, const Datatype &v4, void * v5, const int * v6, const int * v7, const Datatype &v8 ) const
+    virtual void Alltoallv( const void * v1, const int v2[], const int v3[], const Datatype &v4, void * v5, const int v6[], const int v7[], const Datatype &v8 ) const
     {
-        MPIX_CALLREF( this, MPI_Alltoallv( (const void *)v1, (const int *)v2, (const int *)v3, (MPI_Datatype)(v4.the_real_datatype), v5, (const int *)v6, (const int *)v7, (MPI_Datatype)(v8.the_real_datatype), (MPI_Comm) the_real_comm ));
+        MPIX_CALLREF( this, MPI_Alltoallv( (const void *)v1, (const int  *)v2, (const int  *)v3, (MPI_Datatype)(v4.the_real_datatype), v5, (const int  *)v6, (const int  *)v7, (MPI_Datatype)(v8.the_real_datatype), (MPI_Comm) the_real_comm ));
     }
     virtual void Reduce_scatter( const void * v1, void * v2, const int v3[], const Datatype &v4, const Op &v5 ) const
     {
@@ -1504,17 +1504,17 @@ class Comm  {
     {
         MPIX_CALLREF( this, MPI_Comm_delete_attr( (MPI_Comm) the_real_comm, v2 ));
     }
-    virtual void Scatterv( const void * v1, const int * v2, const int * v3, const Datatype &v4, void * v5, int v6, const Datatype &v7, int v8 ) const
+    virtual void Scatterv( const void * v1, const int v2[], const int v3[], const Datatype &v4, void * v5, int v6, const Datatype &v7, int v8 ) const
     {
-        MPIX_CALLREF( this, MPI_Scatterv( (const void *)v1, (const int *)v2, (const int *)v3, (MPI_Datatype)(v4.the_real_datatype), v5, v6, (MPI_Datatype)(v7.the_real_datatype), v8, (MPI_Comm) the_real_comm ));
+        MPIX_CALLREF( this, MPI_Scatterv( (const void *)v1, (const int  *)v2, (const int  *)v3, (MPI_Datatype)(v4.the_real_datatype), v5, v6, (MPI_Datatype)(v7.the_real_datatype), v8, (MPI_Comm) the_real_comm ));
     }
     virtual void Get_name( char * v2, int &v3 ) const
     {
         MPIX_CALLREF( this, MPI_Comm_get_name( (MPI_Comm) the_real_comm, v2, &v3 ));
     }
-    virtual void Allgatherv( const void * v1, int v2, const Datatype &v3, void * v4, const int * v5, const int * v6, const Datatype &v7 ) const
+    virtual void Allgatherv( const void * v1, int v2, const Datatype &v3, void * v4, const int v5[], const int v6[], const Datatype &v7 ) const
     {
-        MPIX_CALLREF( this, MPI_Allgatherv( (const void *)v1, v2, (MPI_Datatype)(v3.the_real_datatype), v4, (const int *)v5, (const int *)v6, (MPI_Datatype)(v7.the_real_datatype), (MPI_Comm) the_real_comm ));
+        MPIX_CALLREF( this, MPI_Allgatherv( (const void *)v1, v2, (MPI_Datatype)(v3.the_real_datatype), v4, (const int  *)v5, (const int  *)v6, (MPI_Datatype)(v7.the_real_datatype), (MPI_Comm) the_real_comm ));
     }
     virtual Comm &Clone(void) const = 0;
     typedef int Copy_attr_function(const Comm& oldcomm, int comm_keyval, void* extra_state, void* attribute_val_in, void* attribute_val_out, bool& flag); 
@@ -1759,7 +1759,7 @@ Intercomm Spawn(const char* command, const char* argv[], int maxprocs, const MPI
 }
 Intercomm Spawn_multiple(int count, const char* array_of_commands[], const char** array_of_argv[], const int array_of_maxprocs[], const MPI::Info array_of_info[], int root) {
     Intercomm ic;
-    MPI_Info  *li = new MPI_Info [count];
+    MPI_Info  *li = new MPI_Info [(unsigned long)count];
     int i;
     for (i=0; i<count; i++) {
         li[i] = array_of_info[i].the_real_info;
@@ -1774,7 +1774,7 @@ Intercomm Spawn_multiple(int count, const char* array_of_commands[], const char*
 }
 Intercomm Spawn_multiple(int count, const char* array_of_commands[], const char** array_of_argv[], const int array_of_maxprocs[], const MPI::Info array_of_info[], int root, int array_of_errcodes[]) {
     Intercomm ic;
-    MPI_Info  *li = new MPI_Info [count];
+    MPI_Info  *li = new MPI_Info [(unsigned long)count];
     int i;
     for (i=0; i<count; i++) {
         li[i] = array_of_info[i].the_real_info;
@@ -2465,7 +2465,7 @@ class Cartcomm : public Intracomm {
     }
     virtual void Get_topo( int v2, int v3[], bool v4[], int v5[] ) const
     {
-        int *l4 = new int[v2];
+        int *l4 = new int[(unsigned long)v2];
         MPIX_CALLREF( this, MPI_Cart_get( (MPI_Comm) the_real_comm, v2, v3, l4, v5 ));
         { 
             int i4; 
@@ -2483,7 +2483,7 @@ class Cartcomm : public Intracomm {
     virtual int Map( int v2, const int v3[], const bool v4[] ) const
     {
         int v5;
-        int *l4 = new int[v2];
+        int *l4 = new int[(unsigned long)v2];
         { 
             int i4; 
             for (i4=0;i4<v2;i4++) {
@@ -2498,7 +2498,7 @@ class Cartcomm : public Intracomm {
     virtual Cartcomm Sub( const bool v2[] ) const
     {
         Cartcomm v3;
-        int *l2 = new int[10];
+        int *l2 = new int[(unsigned long)10];
         { 
             int i2; 
             for (i2=0;i2<10;i2++) {

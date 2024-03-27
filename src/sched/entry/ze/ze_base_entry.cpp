@@ -224,8 +224,10 @@ ze_command_list_handle_t ze_base_entry::get_comp_list(uint32_t index) const {
 }
 
 ze_command_list_handle_t ze_base_entry::get_copy_list(copy_direction direction,
-                                                      uint32_t index) const {
-    return sched->get_memory().list_manager->get_copy_list(this, wait_events, direction, index);
+                                                      uint32_t index,
+                                                      queue_group_type force_queue_type) const {
+    return sched->get_memory().list_manager->get_copy_list(
+        this, wait_events, direction, index, force_queue_type);
 }
 
 ze_event_handle_t ze_base_entry::create_event(ze_event_pool_handle_t event_pool,

@@ -105,6 +105,8 @@ void ccl_coll_param::copy(const ccl_coll_param& other) {
     recv_bufs = other.recv_bufs;
     send_dev_bufs = other.send_dev_bufs;
     recv_dev_bufs = other.recv_dev_bufs;
+    send_scale_out_bufs = other.send_scale_out_bufs;
+    recv_scale_out_bufs = other.recv_scale_out_bufs;
     send_counts = other.send_counts;
     recv_counts = other.recv_counts;
     send_count = other.send_count;
@@ -451,22 +453,12 @@ void ccl_coll_param::validate() const {
     }
 }
 
-// Optional extra event(from submit_barrier call) to add to our deps list
-void ccl_coll_param::copy_deps(const std::vector<ccl::event>& d, ccl::event* extra) {
+void ccl_coll_param::copy_deps(const std::vector<ccl::event>& d) {
 #ifdef CCL_ENABLE_SYCL
     deps.clear();
     for (size_t idx = 0; idx < d.size(); idx++) {
         try {
             auto sycl_event = d[idx].get_native();
-            deps.push_back(ccl::create_event(sycl_event));
-        }
-        catch (ccl::exception&) {
-        }
-    }
-
-    if (extra) {
-        try {
-            auto sycl_event = extra->get_native();
             deps.push_back(ccl::create_event(sycl_event));
         }
         catch (ccl::exception&) {
@@ -484,31 +476,6 @@ void ccl_coll_param::set_common_fields(ccl::datatype d,
     dtype = ccl::global_data::get().dtypes->get(d);
     comm = c;
     stream = (ccl_stream*)s;
-
-    sync_deps(s, ds);
-}
-
-// Submit a barrier if necessary to sync queue. The event from the barrier is added
-// to other deps
-void ccl_coll_param::sync_deps(const ccl_stream* s, const std::vector<ccl::event>& ds) {
-#ifdef CCL_ENABLE_SYCL
-    // The main purpose of the barrier is to sync user's in-order queue with our out-of-order
-    // queue, so we don't execute anything before the user's tasks are completed.
-    // We don't really need anything like this for the case when user has out-of-order queue as
-    // there is no ordering requirement unless dependencies are explicitly provided and which we
-    // handle as well.
-    if (ccl::is_queue_in_order(s)) {
-        // TODO: it would be nice to pass here all the dependencies as parameters to submit_barrier
-        // and get a single event to use later. Note: submit_barrier with empty event vector doesn't
-        // do anything and just return an empty event as opposed to submit_barrier without paramers
-        // which submits a full queue barrier. And there is a bug which leads to a crash if
-        // empty sycl event is passed to the function.
-        auto sycl_ev = ccl::utils::submit_barrier(s->get_native_stream());
-        auto e = ccl::create_event(sycl_ev);
-        copy_deps(ds, &e);
-        return;
-    }
-#endif // CCL_ENABLE_SYCL
     copy_deps(ds);
 }
 

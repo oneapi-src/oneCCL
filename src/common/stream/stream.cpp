@@ -29,6 +29,7 @@ std::string to_string(device_family family) {
     switch (family) {
         case device_family::family1: return "family1";
         case device_family::family2: return "family2";
+        case device_family::family3: return "family3";
         default: return "unknown";
     }
 }

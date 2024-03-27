@@ -80,6 +80,7 @@ class queue_factory {
 public:
     queue_factory(ze_device_handle_t device, ze_context_handle_t context, queue_group_type type);
     queue_factory& operator=(const queue_factory&) = delete;
+    queue_factory(const queue_factory&) = delete;
     queue_factory& operator=(queue_factory&&) = delete;
     ~queue_factory();
     queue_info_t get(uint32_t index);
@@ -87,6 +88,7 @@ public:
 
     uint32_t get_ordinal() const;
 
+    static bool queue_group_usable(ze_device_handle_t device, queue_group_type type);
     static bool can_use_queue_group(ze_device_handle_t device,
                                     queue_group_type type,
                                     copy_engine_mode mode);
@@ -132,6 +134,7 @@ public:
     list_manager() = delete;
     explicit list_manager(const ccl_sched_base* sched, const ccl_stream* stream);
     list_manager(const list_manager&) = delete;
+    list_manager& operator=(const list_manager&) = delete;
     explicit list_manager(list_manager&&) = default;
     ~list_manager();
 
@@ -140,10 +143,12 @@ public:
     ze_command_list_handle_t get_comp_list(const sched_entry* entry = nullptr,
                                            const std::vector<ze_event_handle_t>& wait_events = {},
                                            uint32_t index = 0);
-    ze_command_list_handle_t get_copy_list(const sched_entry* entry = nullptr,
-                                           const std::vector<ze_event_handle_t>& wait_events = {},
-                                           copy_direction direction = copy_direction::d2d,
-                                           uint32_t index = 0);
+    ze_command_list_handle_t get_copy_list(
+        const sched_entry* entry = nullptr,
+        const std::vector<ze_event_handle_t>& wait_events = {},
+        copy_direction direction = copy_direction::d2d,
+        uint32_t index = 0,
+        queue_group_type force_queue_type = queue_group_type::unknown);
 
     void clear();
     void reset_execution_state();
@@ -184,17 +189,20 @@ private:
 
     std::list<std::pair<queue_info_t, list_info_t>> access_list;
     bool executed = false;
-    bool use_copy_queue = false;
     bool main_queue_available = false;
     bool link_queue_available = false;
+    bool main_queue_usable = false;
 
-    std::pair<queue_factory*, queue_map_t*> get_factory_and_map(bool is_copy,
-                                                                copy_direction direction) const;
+    std::pair<queue_factory*, queue_map_t*> get_factory_and_map(
+        bool is_copy,
+        copy_direction direction,
+        queue_group_type force_type = queue_group_type::unknown) const;
     list_info_t get_list(const sched_entry* entry,
                          uint32_t index,
                          bool is_copy,
                          const std::vector<ze_event_handle_t>& wait_events,
-                         copy_direction direction);
+                         copy_direction direction,
+                         queue_group_type force_type = queue_group_type::unknown);
 
     void execute_list(queue_info_t& queue, list_info_t& list);
 

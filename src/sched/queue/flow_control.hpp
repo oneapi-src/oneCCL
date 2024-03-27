@@ -14,6 +14,7 @@
  limitations under the License.
 */
 #pragma once
+#include <cstddef>
 
 namespace ccl {
 
@@ -22,6 +23,8 @@ namespace ccl {
 class flow_control {
 public:
     flow_control();
+    flow_control(const flow_control &other) = delete;
+    flow_control &operator=(const flow_control &other) = delete;
     ~flow_control();
 
     void set_max_credits(size_t value);

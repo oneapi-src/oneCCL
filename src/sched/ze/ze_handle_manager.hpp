@@ -50,7 +50,6 @@ struct ipc_handle_desc {
     ssize_t remote_context_id{ ccl::utils::invalid_context_id };
     uint64_t remote_mem_alloc_id{};
     ssize_t remote_device_id{ ccl::utils::invalid_device_id };
-    int pidfd_fd{ ccl::utils::invalid_fd };
     int device_fd{ ccl::utils::invalid_fd };
 
     bool is_cached = false;
@@ -86,12 +85,17 @@ public:
 
     void set(const mem_handle_map_t& handles_arg, bool pt2pt_op = false);
 
-    void* get_ptr(int rank, size_t buf_idx, const ccl_comm* map_comm, bool pt2pt_op = false);
+    void* get_ptr(int rank,
+                  size_t buf_idx,
+                  const ccl_comm* map_comm,
+                  bool pt2pt_op = false,
+                  bool to_cache = true);
     void get(int rank,
              size_t buf_idx,
              ccl_buffer& buf,
              const ccl_comm* map_comm = nullptr,
-             bool pt2pt_op = false);
+             bool pt2pt_op = false,
+             bool to_cache = true /*can control unique buf to cache*/);
     void get(int rank,
              size_t buf_idx,
              ze_event_pool_handle_t& buf,
@@ -100,7 +104,7 @@ public:
 
     void get_handle(void* ptr, ze_ipc_mem_handle_t* ipc_handle);
     void get_handle(ze_event_pool_handle_t pool, ze_ipc_event_pool_handle_t* ipc_handle);
-    void open_handle(ipc_handle_desc& info, void** ptr);
+    void open_handle(ipc_handle_desc& info, void** ptr, bool to_cache);
     void open_handle(const ze_ipc_event_pool_handle_t& ipc_handle, ze_event_pool_handle_t* pool);
 
     void get_address_range(const void* ptr, void** base_ptr, size_t* size);

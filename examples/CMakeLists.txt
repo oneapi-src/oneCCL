@@ -126,9 +126,8 @@ add_subdirectory(cpu)
 
 if ("${COMPUTE_BACKEND}" STREQUAL "dpcpp")
     add_subdirectory(sycl)
-    #TODO: add cpu support
-    add_subdirectory(pt2pt)
 endif()
 add_subdirectory(common)
 add_subdirectory(benchmark)
 add_subdirectory(external_launcher)
+add_subdirectory(pt2pt)

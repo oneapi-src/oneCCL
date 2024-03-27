@@ -1,9 +1,9 @@
-Intel(R) oneAPI Collective Communications Library (oneCCL)
-2021.11.2 Third Party Programs File
+Intel(R) oneAPI Collective Communications Library (oneCCL) 
+2021.12.0 Third Party Programs File
 
-This file is the "third-party-programs.txt" file specified in the associated
+This file is the "third-party-programs.txt" file specified in the associated 
 Intel end user license agreement for the Intel software you are licensing.
-Third party programs and their corresponding required notices and/or license
+Third party programs and their corresponding required notices and/or license 
 terms are listed below.
 
 -------------------------------------------------------------------------------
@@ -22,8 +22,8 @@ the following conditions are met:
 * Redistributions must reproduce the above copyright notice and these terms
   of use in the Software and in the documentation and/or other materials
   provided with the distribution.
-* Neither the name of Intel nor the names of its suppliers may be used to
-  endorse or promote products derived from this Software without specific
+* Neither the name of Intel nor the names of its suppliers may be used to 
+  endorse or promote products derived from this Software without specific  
   prior written permission.
 * No reverse engineering, decompilation, or disassembly of the Software is
   permitted, nor any modification or alteration of the Software or its
@@ -128,7 +128,7 @@ SOFTWARE.
 
 3. Libfabric and OpenFabrics Interfaces (OFI)
 
-   Copyright (c) 2015-2019 Intel Corporation.  All rights reserved.
+   Copyright (c) 2015-2019 Intel Corporation.  All rights reserved. 
    Copyright (c) 2015-2019 Cisco Systems, Inc.  All rights reserved.
 
 
@@ -159,15 +159,15 @@ SOFTWARE.
 
 -------------------------------------------------------------------------------
 
-4. OpenSHMEM
+4. OpenSHMEM 
 
  Copyright 2011 Sandia Corporation. Under the terms of Contract
  DE-AC04-94AL85000 with Sandia Corporation, the U.S.  Government
  retains certain rights in this software.
-
+ 
  Copyright (c) 2017 Intel Corporation. All rights reserved.
  This software is available to you under the BSD license.
-
+ 
  COPYRIGHT
 
   Redistribution and use in source and binary forms, with or without
@@ -394,7 +394,7 @@ privately owned rights.
 
 ======================================================================
 
-The backtracing options used at src/backtrace.h are followed from GASNet and
+The backtracing options used at src/backtrace.h are followed from GASNet and 
 has the following license:
 
 "Copyright (c) 2000-2018 The Regents of the University of California.
@@ -513,12 +513,12 @@ Redistribution and use in source and binary forms, with or without modification,
 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
-IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
-CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
-OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR 
+IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY 
+AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL 
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; 
+OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, 
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 -------------------------------------------------------------------------------
@@ -649,9 +649,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 -------------------------------------------------------------------------------
 
-  The following third party programs have their own third party programs. These
+  The following third party programs have their own third party programs. These 
   additional third party program files are as follows:
-  1. Intel(R) Intel(R) MPI Library
+  1. Intel(R) Intel(R) MPI Library 
   <install_dir>/mpi/latest/share/doc/mpi/third-party-programs.txt
 
 -------------------------------------------------------------------------------

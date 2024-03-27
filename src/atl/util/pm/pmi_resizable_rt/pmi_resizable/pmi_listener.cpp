@@ -98,7 +98,7 @@ kvs_status_t pmi_listener::collect_sock_addr(std::shared_ptr<helper> h) {
     for (i = 0, j = 0; i < num_listeners; i++, j++) {
         char* point_to_port = strstr(const_cast<char*>(sock_addr_str[j].c_str()), "_");
         if (point_to_port == NULL) {
-            LOG_ERROR("Wrong address_port record: %s", sock_addr_str[j]);
+            LOG_ERROR("Wrong address_port record: ", sock_addr_str[j]);
             status = KVS_STATUS_FAILURE;
             goto exit;
         }
@@ -117,7 +117,7 @@ kvs_status_t pmi_listener::collect_sock_addr(std::shared_ptr<helper> h) {
         server_addresses[i].sin_family = AF_INET;
 
         if (inet_pton(AF_INET, sock_addr_str[j].c_str(), &(server_addresses[i].sin_addr)) <= 0) {
-            LOG_ERROR("Invalid address/ Address not supported: %s", sock_addr_str[j].c_str());
+            LOG_ERROR("Invalid address/ Address not supported: ", sock_addr_str[j].c_str());
             status = KVS_STATUS_FAILURE;
             goto exit;
         }
@@ -231,7 +231,7 @@ kvs_status_t pmi_listener::run_listener(std::shared_ptr<helper> h) {
                 return KVS_STATUS_SUCCESS;
             }
             if (errno != EINTR) {
-                LOG_ERROR("listner: accept error: %s\n", strerror(errno));
+                LOG_ERROR("listener: accept error: ", strerror(errno));
                 return KVS_STATUS_FAILURE;
             }
         }

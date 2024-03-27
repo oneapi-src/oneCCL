@@ -151,6 +151,8 @@ constexpr const char* CCL_ATL_SEND_PROXY = "CCL_ATL_SEND_PROXY";
 constexpr const char* CCL_ATL_SYNC_COLL = "CCL_ATL_SYNC_COLL";
 constexpr const char* CCL_ATL_EXTRA_EP = "CCL_ATL_EXTRA_EP";
 constexpr const char* CCL_ATL_CACHE = "CCL_ATL_CACHE";
+constexpr const char* CCL_ENABLE_RUN_ID_DETECTION = "CCL_ENABLE_RUN_ID_DETECTION";
+constexpr const char* CCL_ENABLE_RUN_ID_WITH_PPID = "CCL_ENABLE_RUN_ID_WITH_PPID";
 
 constexpr const char* CCL_MNIC = "CCL_MNIC";
 constexpr const char* CCL_MNIC_NAME = "CCL_MNIC_NAME";
@@ -733,6 +735,7 @@ constexpr const char* CCL_ALLTOALL_SCATTER_MAX_OPS = "CCL_ALLTOALL_SCATTER_MAX_O
 constexpr const char* CCL_BACKEND = "CCL_BACKEND";
 
 constexpr const char* CCL_KERNEL_PATH = "CCL_KERNEL_PATH";
+constexpr const char* CCL_KERNEL_MODULE_CACHE = "CCL_KERNEL_MODULE_CACHE";
 constexpr const char* CCL_KERNEL_DEBUG = "CCL_KERNEL_DEBUG";
 constexpr const char* CCL_KERNEL_GROUP_SIZE = "CCL_KERNEL_GROUP_SIZE";
 constexpr const char* CCL_KERNEL_GROUP_COUNT = "CCL_KERNEL_GROUP_COUNT";
@@ -822,6 +825,7 @@ constexpr const char* CCL_PROCESS_LAUNCHER = "CCL_PROCESS_LAUNCHER";
 constexpr const char* CCL_TOPO_ALGO = "CCL_TOPO_ALGO";
 constexpr const char* CCL_TOPO_COLOR = "CCL_TOPO_COLOR";
 constexpr const char* CCL_TOPO_P2P_ACCESS = "CCL_TOPO_P2P_ACCESS";
+constexpr const char* CCL_TOPO_FABRIC_VERTEX_CONNECTION_CHECK = "CCL_TOPO_FABRIC_VERTEX_CONNECTION_CHECK";
 
 #ifdef CCL_ENABLE_MPI
 constexpr const char* CCL_MPI_LIBRARY_PATH = "CCL_MPI_LIBRARY_PATH";
@@ -839,6 +843,9 @@ constexpr const char* CCL_ZE_DEVICE_CACHE_EVICT_SMALLEST = "CCL_ZE_DEVICE_CACHE_
 constexpr const char* CCL_ZE_DEVICE_CACHE_UPPER_LIMIT = "CCL_ZE_DEVICE_CACHE_UPPER_LIMIT";
 constexpr const char* CCL_ZE_DEVICE_CACHE_NUM_BLOCKS_IN_CHUNK = "CCL_ZE_DEVICE_CACHE_NUM_BLOCKS_IN_CHUNK";
 constexpr const char* CCL_ZE_DEVICE_CACHE_POLICY = "CCL_ZE_DEVICE_CACHE_POLICY";
+constexpr const char* CCL_ZE_DEVICE_MEM_DISABLE_CLEAR = "CCL_ZE_DEVICE_MEM_DISABLE_CLEAR";
+constexpr const char* CCL_ZE_DEVICE_MEM_ALLOC_SIZE = "CCL_ZE_DEVICE_MEM_ALLOC_SIZE";
+constexpr const char* CCL_ZE_DEVICE_MEM_ENABLE = "CCL_ZE_DEVICE_MEM_ENABLE";
 constexpr const char* CCL_ZE_CACHE_OPEN_IPC_HANDLES = "CCL_ZE_CACHE_OPEN_IPC_HANDLES";
 constexpr const char* CCL_ZE_CACHE_OPEN_IPC_HANDLES_THRESHOLD = "CCL_ZE_CACHE_OPEN_IPC_HANDLES_THRESHOLD";
 constexpr const char* CCL_ZE_CACHE_GET_IPC_HANDLES = "CCL_ZE_CACHE_GET_IPC_HANDLES";
@@ -874,6 +881,7 @@ constexpr const char* CCL_ZE_SERIALIZE = "CCL_ZE_SERIALIZE";
 
 constexpr const char* CCL_ZE_COPY_ENGINE = "CCL_ZE_COPY_ENGINE";
 constexpr const char* CCL_ZE_H2D_COPY_ENGINE = "CCL_ZE_H2D_COPY_ENGINE";
+constexpr const char* CCL_ZE_D2D_COPY_ENGINE = "CCL_ZE_D2D_COPY_ENGINE";
 constexpr const char* CCL_ZE_MAX_COMPUTE_QUEUES = "CCL_ZE_MAX_COMPUTE_QUEUES";
 constexpr const char* CCL_ZE_MAX_COPY_QUEUES = "CCL_ZE_MAX_COPY_QUEUES";
 // use CCS for intra-card copy if main CE is not available
@@ -889,6 +897,7 @@ constexpr const char* CCL_ZE_LIBRARY_PATH = "CCL_ZE_LIBRARY_PATH";
 constexpr const char* CCL_ZE_ENABLE = "CCL_ZE_ENABLE";
 constexpr const char* CCL_ZE_FINI_WA = "CCL_ZE_FINI_WA";
 constexpr const char* CCL_ZE_MULTI_WORKERS = "CCL_ZE_MULTI_WORKERS";
+constexpr const char* CCL_ZE_ENABLE_DRMFD_MULTI_INSTANCE = "CCL_ZE_ENABLE_DRMFD_MULTI_INSTANCE";
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_PMIX

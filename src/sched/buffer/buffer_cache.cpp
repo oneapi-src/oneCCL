@@ -18,6 +18,53 @@
 
 namespace ccl {
 
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+typedef ze_result_t (*pFnzexDriverImportExternalPointer)(ze_driver_handle_t, void*, size_t);
+typedef ze_result_t (*pFnzexDriverReleaseImportedPointer)(ze_driver_handle_t, void*);
+pFnzexDriverImportExternalPointer zexDriverImportExternalPointer = nullptr;
+pFnzexDriverReleaseImportedPointer zexDriverReleaseImportedPointer = nullptr;
+ze_driver_handle_t ze_driver_handle;
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+
+buffer_cache::buffer_cache(size_t instance_count)
+        : reg_buffers(instance_count)
+#ifdef CCL_ENABLE_SYCL
+          ,
+          sycl_buffers(instance_count)
+#endif // CCL_ENABLE_SYCL
+{
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    // Instruct the UMD to create the internal graphics allocation for each system memory allocation
+    // against a driver handle, instead of a command list handle.
+    // By doing this, the UMD is able to reuse the internal graphics allocation for any new or reset list,
+    // until the application decides to release the imported pointer. Any GPU driver handle fits.
+    // This API is a part of exported extensions, therefore have to check for availability first.
+    // Note: ze_data may be not initialized in some cases like stub backend mode or CCL_ZE_ENABLE=0
+    if (global_data::env().enable_buffer_cache && global_data::get().ze_data &&
+        !global_data::get().ze_data->drivers.empty()) {
+        ze_driver_handle = global_data::get().ze_data->drivers.front();
+        ze_result_t res_import = zeDriverGetExtensionFunctionAddress(
+            ze_driver_handle,
+            "zexDriverImportExternalPointer",
+            reinterpret_cast<void**>(&zexDriverImportExternalPointer));
+        ze_result_t res_release = zeDriverGetExtensionFunctionAddress(
+            ze_driver_handle,
+            "zexDriverReleaseImportedPointer",
+            reinterpret_cast<void**>(&zexDriverReleaseImportedPointer));
+        if ((res_import != ZE_RESULT_SUCCESS) || (res_release != ZE_RESULT_SUCCESS)) {
+            // Reset function pointers for safety
+            zexDriverImportExternalPointer = nullptr;
+            zexDriverReleaseImportedPointer = nullptr;
+            LOG_INFO("Can not initialize Import Extension API ",
+                     "(zexDriverReleaseImportedPointer/zexDriverImportExternalPointer: ",
+                     std::to_string(res_import),
+                     " ",
+                     std::to_string(res_release));
+        }
+    }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+}
+
 buffer_cache::~buffer_cache() {
     for (auto& instance : reg_buffers) {
         instance.clear();
@@ -77,6 +124,15 @@ void regular_buffer_cache::get(size_t bytes, void** pptr) {
         }
     }
     *pptr = CCL_MALLOC(bytes, "buffer");
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    if (zexDriverImportExternalPointer) {
+        ze_result_t res = zexDriverImportExternalPointer(ze_driver_handle, *pptr, bytes);
+        if (res != ZE_RESULT_SUCCESS) {
+            LOG_INFO("zexDriverImportExternalPointer can not register the pointer with error: ",
+                     std::to_string(res));
+        }
+    }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 }
 
 void regular_buffer_cache::push(size_t bytes, void* ptr) {
@@ -87,6 +143,15 @@ void regular_buffer_cache::push(size_t bytes, void* ptr) {
         LOG_DEBUG("inserted to buffer cache: bytes: ", bytes, ", ptr: ", ptr);
         return;
     }
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    if (zexDriverReleaseImportedPointer) {
+        ze_result_t res = zexDriverReleaseImportedPointer(ze_driver_handle, ptr);
+        if (res != ZE_RESULT_SUCCESS) {
+            LOG_INFO("zexDriverReleaseImportPointer can not release the pointer with error: ",
+                     std::to_string(res));
+        }
+    }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
     CCL_FREE(ptr);
 }
 

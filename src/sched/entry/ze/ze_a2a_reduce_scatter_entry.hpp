@@ -21,7 +21,7 @@
 typedef struct {
     ccl_comm* comm;
     const std::vector<size_t> recv_counts;
-    const ccl_datatype& dtype;
+    const ccl_datatype dtype;
     ccl::reduction op;
 } reduce_scatter_args;
 
@@ -64,6 +64,7 @@ public:
     static void fill_list(const ze_base_entry* entry,
                           void* send_buf,
                           void* recv_buf,
+                          void* tmp_buf,
                           const std::vector<ccl_buffer>& peer_send_bufs,
                           int peer_count,
                           int comm_rank,
@@ -105,6 +106,7 @@ private:
     static void kernel_init(size_t rank_buf_offset,
                             size_t block_count,
                             void* send_buf,
+                            void* recv_buf,
                             void* base_ptr,
                             const std::vector<ccl_buffer>& peer_send_bufs,
                             int peer_count,

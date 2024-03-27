@@ -44,7 +44,7 @@ using namespace cl::sycl::access;
 #include "bf16.hpp"
 #include "coll.hpp"
 
-/* free letters: k e v z */
+/* free letters: k v z */
 void print_help_usage(const char* app) {
     PRINT("\nUSAGE:\n"
           "\t%s [OPTIONS]\n\n"
@@ -68,6 +68,7 @@ void print_help_usage(const char* app) {
           "\t[-g,--sycl_root_dev <select root devices only]: %d\n"
           "\t[-m,--sycl_mem_type <sycl memory type>]: %s\n"
           "\t[-u,--sycl_usm_type <sycl usm type>]: %s\n"
+          "\t[-e,--sycl_queue_type <sycl queue type>]: %s\n"
 #endif // CCL_ENABLE_SYCL
           "\t[-l,--coll <collectives list/all>]: %s\n"
           "\t[-d,--dtype <datatypes list/all>]: %s\n"
@@ -97,6 +98,7 @@ void print_help_usage(const char* app) {
           DEFAULT_SYCL_ROOT_DEV,
           sycl_mem_names[DEFAULT_SYCL_MEM_TYPE].c_str(),
           sycl_usm_names[DEFAULT_SYCL_USM_TYPE].c_str(),
+          sycl_queue_names[DEFAULT_SYCL_QUEUE_TYPE].c_str(),
 #endif // CCL_ENABLE_SYCL
           DEFAULT_COLL_LIST,
           DEFAULT_DTYPES_LIST,
@@ -241,6 +243,20 @@ int set_sycl_usm_type(const std::string& option_value, sycl_usm_type_t& usm) {
         return -1;
 
     usm = (option_value == sycl_usm_names[SYCL_USM_SHARED]) ? SYCL_USM_SHARED : SYCL_USM_DEVICE;
+
+    return 0;
+}
+
+int set_sycl_queue_type(const std::string& option_value, sycl_queue_type_t& queue) {
+    std::string option_name = "sycl_queue_type";
+    std::set<std::string> supported_option_values{ sycl_queue_names[SYCL_QUEUE_OUT_ORDER],
+                                                   sycl_queue_names[SYCL_QUEUE_IN_ORDER] };
+
+    if (check_supported_options(option_name, option_value, supported_option_values))
+        return -1;
+
+    queue = (option_value == sycl_queue_names[SYCL_QUEUE_OUT_ORDER]) ? SYCL_QUEUE_OUT_ORDER
+                                                                     : SYCL_QUEUE_IN_ORDER;
 
     return 0;
 }
@@ -552,7 +568,7 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
 #endif // CCL_ENABLE_NUMA
 
 #ifdef CCL_ENABLE_SYCL
-    const char* sycl_options = "a:g:m:u:";
+    const char* sycl_options = "a:g:m:u:e:";
     memcpy(short_options + strlen(short_options), sycl_options, strlen(sycl_options));
 #endif // CCL_ENABLE_SYCL
 
@@ -576,6 +592,7 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
         { "sycl_root_dev", required_argument, nullptr, 'g' },
         { "sycl_mem_type", required_argument, nullptr, 'm' },
         { "sycl_usm_type", required_argument, nullptr, 'u' },
+        { "sycl_queue_type", required_argument, nullptr, 'e' },
 #endif // CCL_ENABLE_SYCL
         { "coll", required_argument, nullptr, 'l' },
         { "dtype", required_argument, nullptr, 'd' },
@@ -683,6 +700,12 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
                     errors++;
                 }
                 break;
+            case 'e':
+                if (set_sycl_queue_type(optarg, options.sycl_queue_type)) {
+                    PRINT("failed to parse 'sycl_queue_type' option");
+                    errors++;
+                }
+                break;
 #endif // CCL_ENABLE_SYCL
             case 'l':
                 if (strcmp("all", optarg) == 0) {
@@ -734,10 +757,11 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
     }
 
     if (options.inplace) {
-        //TODO: "allgatherv"
-        std::initializer_list<std::string> supported_colls = { "allreduce",
-                                                               "alltoall",
-                                                               "alltoallv" };
+        //TODO: "allgatherv", "reduce_scatter" it'd pass with sycl kernels
+        // they must be checked with schedule architicture
+        std::initializer_list<std::string> supported_colls = {
+            "allgatherv", "allreduce", "alltoall", "alltoallv", "reduce_scatter"
+        };
         for (auto name : options.coll_names) {
             if (!is_inplace_supported(name, supported_colls)) {
                 PRINT("inplace is not supported for %s yet", name.c_str());
@@ -810,36 +834,38 @@ void print_user_options(const user_options_t& options, const ccl::communicator& 
     std::string sycl_dev_type_str = find_str_val(sycl_dev_names, options.sycl_dev_type);
     std::string sycl_mem_type_str = find_str_val(sycl_mem_names, options.sycl_mem_type);
     std::string sycl_usm_type_str = find_str_val(sycl_usm_names, options.sycl_usm_type);
-#endif
+    std::string sycl_queue_type_str = find_str_val(sycl_queue_names, options.sycl_queue_type);
+#endif // CCL_ENABLE_SYCL
 
     PRINT_BY_ROOT(comm,
                   "\noptions:"
-                  "\n  processes:      %d"
-                  "\n  backend:        %s"
-                  "\n  iters:          %zu"
-                  "\n  warmup_iters:   %zu"
-                  "\n  iter_policy:    %s"
-                  "\n  buf_count:      %zu"
-                  "\n  min_elem_count: %zu"
-                  "\n  max_elem_count: %zu"
-                  "\n  elem_counts:    %s"
-                  "\n  check:          %s"
-                  "\n  cache:          %d"
-                  "\n  inplace:        %d"
+                  "\n  processes:       %d"
+                  "\n  backend:         %s"
+                  "\n  iters:           %zu"
+                  "\n  warmup_iters:    %zu"
+                  "\n  iter_policy:     %s"
+                  "\n  buf_count:       %zu"
+                  "\n  min_elem_count:  %zu"
+                  "\n  max_elem_count:  %zu"
+                  "\n  elem_counts:     %s"
+                  "\n  check:           %s"
+                  "\n  cache:           %d"
+                  "\n  inplace:         %d"
 #ifdef CCL_ENABLE_NUMA
-                  "\n  numa_node:      %s"
+                  "\n  numa_node:       %s"
 #endif // CCL_ENABLE_NUMA
 #ifdef CCL_ENABLE_SYCL
-                  "\n  sycl_dev_type:  %s"
-                  "\n  sycl_root_dev:  %d"
-                  "\n  sycl_mem_type:  %s"
-                  "\n  sycl_usm_type:  %s"
+                  "\n  sycl_dev_type:   %s"
+                  "\n  sycl_root_dev:   %d"
+                  "\n  sycl_mem_type:   %s"
+                  "\n  sycl_usm_type:   %s"
+                  "\n  sycl_queue_type: %s"
 #endif // CCL_ENABLE_SYCL
-                  "\n  collectives:    %s"
-                  "\n  datatypes:      %s"
-                  "\n  reductions:     %s"
-                  "\n  extended info:  %s"
-                  "\n  csv_filepath:   %s",
+                  "\n  collectives:     %s"
+                  "\n  datatypes:       %s"
+                  "\n  reductions:      %s"
+                  "\n  extended info:   %s"
+                  "\n  csv_filepath:    %s",
                   comm.size(),
                   backend_str.c_str(),
                   options.iters,
@@ -862,6 +888,7 @@ void print_user_options(const user_options_t& options, const ccl::communicator& 
                   options.sycl_root_dev,
                   sycl_mem_type_str.c_str(),
                   sycl_usm_type_str.c_str(),
+                  sycl_queue_type_str.c_str(),
 #endif // CCL_ENABLE_SYCL
                   collectives_str.c_str(),
                   datatypes_str.c_str(),

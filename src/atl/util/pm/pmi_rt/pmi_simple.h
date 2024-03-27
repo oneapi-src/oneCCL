@@ -19,6 +19,8 @@
 class pmi_simple final : public ipmi {
 public:
     pmi_simple();
+    pmi_simple(const pmi_simple &other) = delete;
+    pmi_simple &operator=(const pmi_simple &other) = delete;
     ~pmi_simple() override;
 
     int is_pm_resize_enabled() override;

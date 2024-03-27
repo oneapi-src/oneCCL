@@ -30,7 +30,8 @@ public:
         return "RECV_REDUCE";
     }
 
-    recv_reduce_entry() = delete;
+    recv_reduce_entry(const recv_reduce_entry& other) = delete;
+    recv_reduce_entry& operator=(const recv_reduce_entry& other) = delete;
     recv_reduce_entry(ccl_sched* sched,
                       ccl_buffer inout_buf,
                       size_t cnt,

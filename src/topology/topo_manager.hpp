@@ -100,6 +100,7 @@ std::string to_string(const ze_rank_info_vec_t& ze_rank_info_vec,
                       const host_info_vec_t& host_info_vec);
 
 using p2p_matrix_t = typename std::vector<std::vector<bool>>;
+using fabric_conn_matrix_t = typename std::vector<std::vector<bool>>;
 using fabric_ports_t = typename std::vector<std::vector<topo_ze_port_info>>;
 using plane_t = typename std::set<int>;
 
@@ -154,10 +155,13 @@ public:
     enum class port_health_status { unknown, ok, fail };
     bool has_failed_ports() const;
     bool has_p2p_access() const;
+    bool has_all_vertices_connected() const;
     std::vector<ze_device_uuid_t> copy_dev_uuids(const rank_info_vec_t& info_vec) const;
     std::vector<ze_device_handle_t> get_filtered_devices(
         const std::vector<ze::device_info>& node_devices) const;
     static p2p_matrix_t build_p2p_matrix(const std::vector<ze_device_handle_t>& devices);
+    static bool build_fabric_connectivity_matrix(std::shared_ptr<atl_base_comm> comm);
+
     static bool is_sub_vector(const std::vector<ze_device_uuid_t>& vec,
                               const std::vector<ze_device_uuid_t>& sub_vec);
     static void detect_tune_port_count(const std::vector<ze::device_info>& devices);
@@ -242,6 +246,7 @@ private:
     ze_rank_info_vec_t ze_rank_info_vec;
 
     bool is_p2p_access_enabled = false;
+    bool are_all_vertices_connected = false;
     port_health_status port_status = port_health_status::unknown;
     size_t unique_device_uuids_count = topo_manager::invalid_device_uuids_count;
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE

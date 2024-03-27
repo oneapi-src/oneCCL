@@ -45,11 +45,10 @@ public:
     std::vector<ze_context_handle_t> contexts;
     std::vector<device_info> devices;
     std::unique_ptr<ze::cache> cache;
+    std::unique_ptr<ze::device_memory_manager> dev_memory_manager;
     std::unordered_map<ze_context_handle_t, ccl::ze::dynamic_event_pool> dynamic_event_pools;
 
     std::atomic<size_t> kernel_counter{};
-
-    std::unique_ptr<ze::fd_manager> fd_manager;
 
     global_data_desc();
     global_data_desc(const global_data_desc&) = delete;
@@ -57,9 +56,6 @@ public:
     global_data_desc& operator=(const global_data_desc&) = delete;
     global_data_desc& operator=(global_data_desc&&) = delete;
     ~global_data_desc();
-
-private:
-    void init_ipc_exchange_mode();
 };
 
 } // namespace ze

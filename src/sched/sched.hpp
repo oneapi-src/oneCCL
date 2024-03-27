@@ -270,7 +270,7 @@ public:
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
 private:
-    void set_output_event(ccl_request* request);
+    void create_sync_event(ccl_request* request);
     void update_active_request(bool use_delayed);
     static void complete_itt(const ccl_stream* stream);
 

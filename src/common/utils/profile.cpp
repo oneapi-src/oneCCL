@@ -16,31 +16,32 @@
 #include "common/utils/utils.hpp"
 #include "common/log/log.hpp"
 
-ccl::profile::metrics_manager::~metrics_manager() {
-    finalize();
+void ccl::profile::metrics_counter::init() {
+    this->nonparallel_calls_per_count.clear();
+    this->parallel_calls_per_count.clear();
+}
+
+ccl::profile::metrics_counter::~metrics_counter() {
+    std::string pipe_metrics;
+
+    for (auto calls_per_count : this->nonparallel_calls_per_count) {
+        pipe_metrics += "nonparallel_calls_per_count[" + std::to_string(calls_per_count.first) +
+                        "]=" + std::to_string(calls_per_count.second) + ",\n";
+    }
+
+    for (auto calls_per_count : this->parallel_calls_per_count) {
+        pipe_metrics += "   parallel_calls_per_count[" + std::to_string(calls_per_count.first) +
+                        "]=" + std::to_string(calls_per_count.second) + ",\n";
+    }
+
+    if (!pipe_metrics.empty()) {
+        LOG_INFO(this->collective_name, "_pipe_metrics: [\n", pipe_metrics, "]");
+    }
 }
 
 void ccl::profile::metrics_manager::init() {
-    allreduce_pipe_nonparallel_calls_per_count.clear();
-    allreduce_pipe_parallel_calls_per_count.clear();
-}
-
-void ccl::profile::metrics_manager::finalize() {
-    std::string allreduce_pipe_metrics;
-
-    for (auto calls_per_count : allreduce_pipe_nonparallel_calls_per_count) {
-        allreduce_pipe_metrics += "nonparallel_calls_per_count[" +
-                                  std::to_string(calls_per_count.first) +
-                                  "]=" + std::to_string(calls_per_count.second) + ",\n";
-    }
-
-    for (auto calls_per_count : allreduce_pipe_parallel_calls_per_count) {
-        allreduce_pipe_metrics += "   parallel_calls_per_count[" +
-                                  std::to_string(calls_per_count.first) +
-                                  "]=" + std::to_string(calls_per_count.second) + ",\n";
-    }
-
-    if (!allreduce_pipe_metrics.empty()) {
-        LOG_INFO("allreduce_pipe_metrics: [\n", allreduce_pipe_metrics, "]");
-    }
+    this->allreduce_pipe.init();
+    this->reduce_pipe.init();
+    this->reduce_scatter_pipe.init();
+    this->allgatherv_pipe.init();
 }

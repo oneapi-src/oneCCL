@@ -32,8 +32,7 @@ static std::map<ipc_exchange_mode, std::string> ipc_exchange_names = {
 #ifdef CCL_ENABLE_DRM
     std::make_pair(ipc_exchange_mode::drmfd, "drmfd"),
 #endif // CCL_ENABLE_DRM
-    std::make_pair(ipc_exchange_mode::pidfd, "pidfd"),
-    std::make_pair(ipc_exchange_mode::none, "none")
+    std::make_pair(ipc_exchange_mode::pidfd, "pidfd")
 };
 
 // RAII
@@ -103,7 +102,7 @@ public:
     // permissions for group and others
     static constexpr mode_t rwe_umask = 077;
 
-    fd_manager();
+    fd_manager(std::shared_ptr<atl_base_comm> comm);
     fd_manager(const fd_manager&) = delete;
     fd_manager(fd_manager&&) = delete;
     fd_manager& operator=(const fd_manager&) = delete;
@@ -125,21 +124,14 @@ public:
 
 private:
     void exchange_device_fds();
-    std::vector<int> setup_device_fds(int local_count,
-                                      int proc_idx,
+    std::vector<int> setup_device_fds(int comm_size,
+                                      int rank_idx,
                                       std::vector<bdf_info>& return_bdf);
 
-    void close_sockets(int local_count, int proc_idx);
-
-    std::string get_shm_filename();
-    void* create_shared_memory();
-    void barrier(void* mem);
+    void close_sockets(int comm_size, int rank_idx);
 
     static int convert_fd_pidfd(int convert_from_fd, int handle);
     static int convert_fd_drmfd(int convert_from_fd, int handle);
-
-    const int counter_offset = sizeof(int);
-    const int size_per_proc = sizeof(pid_t);
 
     // init
     std::vector<int> init_device_fds();
@@ -160,6 +152,7 @@ private:
 
     std::vector<int> device_fds;
     std::vector<device_bdf_info> physical_devices;
+    std::shared_ptr<atl_base_comm> comm;
 };
 
 } // namespace ze

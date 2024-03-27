@@ -179,6 +179,7 @@ void ccl_sched_base::try_enable_ze_single_list() {
     use_single_list = ccl::global_data::env().enable_ze_single_list &&
                       ccl::global_data::env().kernel_debug == 0 &&
                       !ccl::global_data::env().enable_fusion;
+    LOG_DEBUG("ze_single_list set to: ", use_single_list);
 }
 
 void ccl_sched_base::append_to_ze_entries_list(sched_entry* entry) {
@@ -265,6 +266,8 @@ void ccl_sched_base::clear_memory() {
         }
         memory.handle_manager.clear();
         memory.ipc_event_pool_manager.clear();
+
+        ccl::global_data::get().ze_data->dev_memory_manager->clear();
 
         // Since list_manager is a shared_ptr, call clear only for the last
         //  reference (when use_count() is 1).

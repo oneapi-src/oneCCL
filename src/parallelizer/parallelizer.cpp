@@ -158,7 +158,8 @@ ccl::status ccl_parallelizer::process_pre_post_copies(ccl_sched* sched) {
 }
 
 ccl::status ccl_parallelizer::process_output_event(ccl_sched* sched) {
-    if (!ccl::utils::should_use_sycl_output_event(sched->coll_param.stream)) {
+    if (!ccl::utils::should_use_sycl_output_event(sched->coll_param.stream) &&
+        !ccl::is_queue_in_order(sched->coll_param.stream)) {
         return ccl::status::success;
     }
 
@@ -558,6 +559,7 @@ ccl::status ccl_parallelizer::process_base(ccl_sched* sched, bool update_sched_i
                                                    coll_param.get_send_count(),
                                                    recv_buf,
                                                    coll_param.recv_counts.data(),
+                                                   std::vector<ccl_buffer>{},
                                                    dtype,
                                                    comm);
                 }

@@ -177,6 +177,13 @@ void ze_onesided_allreduce_entry::init_ze_hook() {
         // otherwise run two kernels, one for unaligned and one for aligned data
         CCL_ASSERT(kernel_count == 2);
         for (size_t i = start_kernel_idx; i < end_kernel_idx; i++) {
+            // the block stores can not be used for unaligned data that's why
+            // it's skipped taking into account that the first kernel, if they
+            // are two ones, is always unaligned
+            int can_use_block = 1;
+            if (i == 0 && end_kernel_idx == 2) {
+                can_use_block = 0;
+            }
             void* send_buf_ptr_tmp = static_cast<char*>(send_buf_ptr) + offsets[i];
             void* recv_buf_ptr_tmp = static_cast<char*>(recv_buf_ptr) + offsets[i];
             void* right_send_buf_ptr_tmp = static_cast<char*>(right_send_buf_ptr) + offsets[i];
@@ -184,6 +191,7 @@ void ze_onesided_allreduce_entry::init_ze_hook() {
             ze_kernel_args_t main_kernel_args{ &comm_rank,
                                                &comm_size,
                                                &counts[i],
+                                               &can_use_block,
                                                &send_buf_ptr_tmp,
                                                &recv_buf_ptr_tmp,
                                                &right_send_buf_ptr_tmp,

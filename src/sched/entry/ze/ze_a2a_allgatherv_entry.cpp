@@ -58,6 +58,11 @@ void ze_a2a_allgatherv_entry::init_ze_hook() {
     std::vector<ccl_buffer> peer_recv_bufs(comm->size());
     std::vector<ccl_buffer> pair_peer_recv_bufs(comm->size());
 
+    if (is_monolithic_pipeline &&
+        (dtype == ccl::datatype::bfloat16 || dtype == ccl::datatype::float16)) {
+        ccl::global_data::env().kernel_mem_align = 64;
+    }
+
     for (int i = 0; i < peer_count; ++i) {
         const int peer_rank = (comm_rank + i + 1) % comm->size();
         int peer_global_rank = comm->get_global_rank(peer_rank);
@@ -280,7 +285,9 @@ void ze_a2a_allgatherv_op::select(ze_a2a_allgatherv_op& args, std::vector<ze_ker
         // copy send_buf to my buffer
         void* dst = args.recv_bufs.at(args.comm->rank()).get_ptr();
         if (args.is_monolithic_pipeline) {
-            // TODO: how is this going to work in all cases? what if comm is !world_comm? Then my_global_rank will point to an incorrect rank. Which, at the very least, can get us referencing "recv_bufs[much_larger_than_size]".
+            // TODO: how is this going to work in all cases? what if comm is !world_comm?
+            // Then my_global_rank will point to an incorrect rank.
+            // Which, at the very least, can get us referencing "recv_bufs[much_larger_than_size]".
             const int my_global_rank = args.comm->get_global_rank(args.comm->rank());
             dst = args.recv_bufs.at(my_global_rank).get_ptr();
         }

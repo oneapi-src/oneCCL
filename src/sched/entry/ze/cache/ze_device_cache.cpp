@@ -14,11 +14,61 @@
  limitations under the License.
 */
 #include "common/global/global.hpp"
-#include "sched/entry/ze/cache/ze_device_cache.hpp"
 #include "sched/entry/ze/cache/ze_cache.hpp"
+#include "sched/entry/ze/cache/ze_device_cache.hpp"
 
 namespace ccl {
 namespace ze {
+
+static size_t current_allocated_memory = 0;
+static std::unordered_map<void*, size_t> recorded_allocations;
+
+void device_allocate(ze_context_handle_t context,
+                     const ze_device_mem_alloc_desc_t& device_mem_alloc_desc,
+                     size_t bytes,
+                     size_t alignment,
+                     ze_device_handle_t device,
+                     void** pptr) {
+    current_allocated_memory += bytes;
+    LOG_DEBUG("|MEMLOG| Allocating: ",
+              bytes / 1024,
+              "KB. Current memory footprint: ",
+              current_allocated_memory / 1024,
+              "KB");
+
+    ZE_CALL(zeMemAllocDevice, (context, &device_mem_alloc_desc, bytes, alignment, device, pptr));
+    auto [_, inserted] = recorded_allocations.try_emplace(*pptr, bytes);
+
+    if (!inserted) {
+        LOG_WARN(
+            "Could not record device allocation. Memory footprint might not be representing real consumption!");
+    }
+}
+
+void device_free(ze_context_handle_t context, void* ptr) {
+    auto recorded_allocation = recorded_allocations.find(ptr);
+
+    // bytes = ccl::utils::invalid_bytes_value indicate an error in our recorded_allocations map
+    // this could be caused by improper usage of the device memory wrapper
+    size_t bytes = ccl::utils::invalid_bytes_value;
+
+    if (recorded_allocation != recorded_allocations.end()) {
+        bytes = recorded_allocation->second;
+        current_allocated_memory -= bytes;
+        recorded_allocations.erase(recorded_allocation);
+    }
+    else {
+        LOG_WARN(
+            "Could not record device allocation. Memory footprint might not be representing real consumption!");
+    }
+
+    LOG_DEBUG("|MEMLOG| Freeing: ",
+              bytes / 1024,
+              "KB. Current memory footprint: ",
+              current_allocated_memory / 1024,
+              "KB");
+    ZE_CALL(zeMemFree, (context, ptr));
+}
 
 template <class map_t, class... keys_t>
 bool get_from_cache(map_t& cache, typename map_t::mapped_type& object, keys_t... keys) {
@@ -97,8 +147,7 @@ void plain_device_mem_cache::get(ze_context_handle_t context,
                         bytes,
                         device_mem_alloc_desc.flags,
                         device_mem_alloc_desc.ordinal)) {
-        ZE_CALL(zeMemAllocDevice,
-                (context, &device_mem_alloc_desc, bytes, alignment, device, pptr));
+        device_allocate(context, device_mem_alloc_desc, bytes, alignment, device, pptr);
     }
 }
 
@@ -119,7 +168,7 @@ void plain_device_mem_cache::push(ze_context_handle_t context,
                        bytes,
                        device_mem_alloc_desc.flags,
                        device_mem_alloc_desc.ordinal)) {
-        ZE_CALL(zeMemFree, (context, ptr));
+        device_free(context, ptr);
     }
 }
 
@@ -196,8 +245,7 @@ void chunk_device_mem_cache::get(ze_context_handle_t context,
         }
     }
     else {
-        ZE_CALL(zeMemAllocDevice,
-                (context, &device_mem_alloc_desc, bytes, alignment, device, pptr));
+        device_allocate(context, device_mem_alloc_desc, bytes, alignment, device, pptr);
         LOG_DEBUG("allocated directly: object: ", *pptr);
     }
 }
@@ -218,8 +266,7 @@ void chunk_device_mem_cache::push(ze_context_handle_t context,
     if (global_data::env().enable_ze_cache) {
         // find the corresponding memory chunk and mark the block as free.
         for (auto& chunk : memory_chunks) {
-            if (reinterpret_cast<uintptr_t>(ptr) - reinterpret_cast<uintptr_t>(chunk.base_ptr) <=
-                chunk.size) {
+            if (ptr >= chunk.base_ptr && ptr < (static_cast<char*>(chunk.base_ptr) + chunk.size)) {
                 size_t offset =
                     reinterpret_cast<uintptr_t>(ptr) - reinterpret_cast<uintptr_t>(chunk.base_ptr);
                 size_t block_index = offset / chunk.block_size;
@@ -240,7 +287,7 @@ void chunk_device_mem_cache::push(ze_context_handle_t context,
     }
 
     // if the pointer does not belong to any existing chunk, free it directly.
-    ZE_CALL(zeMemFree, (context, ptr));
+    device_free(context, ptr);
     LOG_DEBUG("freed directly: object: ", ptr);
 }
 
@@ -266,7 +313,7 @@ void chunk_device_mem_cache::evict_chunk(ze_context_handle_t context, Comparison
                          });
 
     if (chunk_it != memory_chunks.end() && !is_chunk_used(*chunk_it)) {
-        ZE_CALL(zeMemFree, (context, chunk_it->base_ptr));
+        device_free(context, chunk_it->base_ptr);
         memory_chunks.erase(chunk_it);
     }
 }
@@ -305,11 +352,106 @@ void chunk_device_mem_cache::allocate_new_chunk(
 
     // allocate the memory chunk and create the memory_chunk structure.
     void* base_ptr;
-    ZE_CALL(zeMemAllocDevice,
-            (context, &device_mem_alloc_desc, chunk_size, alignment, device, &base_ptr));
+    device_allocate(context, device_mem_alloc_desc, chunk_size, alignment, device, &base_ptr);
     memory_chunks.emplace_back(chunk_size, block_size);
     memory_chunks.back().base_ptr = base_ptr;
     memory_chunks.back().used_blocks[0] = true; // mark the first block as used
+}
+
+template <class map_t, class... keys_t>
+bool get_from_mem_dev_cache(size_t requested_size,
+                            map_t& cache,
+                            typename map_t::mapped_type& object,
+                            keys_t... keys) {
+    bool success{};
+
+    for (auto it : cache) {
+        if (std::get<2>(it.first) >= requested_size) {
+            object = it.second;
+            success = true;
+            break;
+        }
+    }
+
+    return success;
+}
+
+template <class map_t, class... keys_t>
+bool push_to_dev_mem_cache(map_t& cache,
+                           const typename map_t::mapped_type& object,
+                           keys_t... keys) {
+    bool success{};
+
+    typename map_t::key_type key(keys...);
+    auto it = cache.find(key);
+    if (it != cache.end()) {
+        LOG_DEBUG("cache already contains object with the same key");
+        CCL_THROW_IF_NOT(it->second != object, "trying to push an object that already exists");
+    }
+    cache[key] = object;
+    success = true;
+    return success;
+}
+
+void device_memory_manager::get_global_ptr(ze_context_handle_t context,
+                                           ze_device_handle_t device,
+                                           const ze_device_mem_alloc_desc_t& device_mem_alloc_desc,
+                                           size_t size_need,
+                                           size_t alignment,
+                                           void** pptr) {
+    CCL_THROW_IF_NOT(context);
+    CCL_THROW_IF_NOT(device);
+
+    if (!get_from_mem_dev_cache(size_need,
+                                cache,
+                                *pptr,
+                                context,
+                                device,
+                                size_need,
+                                device_mem_alloc_desc.flags,
+                                device_mem_alloc_desc.ordinal)) {
+        std::lock_guard<std::mutex> lock(mutex);
+        device_allocate(context, device_mem_alloc_desc, size_need, alignment, device, pptr);
+
+        push_to_dev_mem_cache(cache,
+                              *pptr,
+                              context,
+                              device,
+                              size_need,
+                              device_mem_alloc_desc.flags,
+                              device_mem_alloc_desc.ordinal);
+    }
+}
+
+void device_memory_manager::clear() {
+    // TODO: hangs if memfree is enabled MLSL-2641
+    if (!global_data::env().ze_device_mem_disable_clear) {
+        std::lock_guard<std::mutex> lock(mutex);
+
+        auto compare_size = [](const key_t& a, const key_t& b) {
+            return std::get<2>(a) < std::get<2>(b);
+        };
+
+        // Find the largest element in the cache
+        auto largest_it =
+            std::max_element(cache.begin(), cache.end(), [&](const auto& a, const auto& b) {
+                return compare_size(a.first, b.first);
+            });
+
+        if (largest_it != cache.end()) {
+            // Iterate through the cache, removing all elements except the largest one
+            size_t largest_size = std::get<2>(largest_it->first);
+            for (auto it = cache.begin(); it != cache.end();) {
+                if (std::get<2>(it->first) < largest_size) {
+                    device_free(std::get<0>(it->first), it->second);
+                    it = cache.erase(it);
+                }
+                else {
+                    ++it;
+                }
+            }
+        }
+    }
 }
 
 // cache

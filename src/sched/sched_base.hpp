@@ -160,9 +160,10 @@ struct ccl_sched_base {
 protected:
     ~ccl_sched_base();
 
-    ccl_sched_base() {
-        CCL_THROW("unsupported");
-    }
+    ccl_sched_base() = delete;
+
+    ccl_sched_base(const ccl_sched_base& other) = delete;
+    ccl_sched_base& operator=(const ccl_sched_base& other) = delete;
 
     ccl_sched_base(const ccl_sched_create_param& param);
 

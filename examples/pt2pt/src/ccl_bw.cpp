@@ -14,34 +14,31 @@
  limitations under the License.
 */
 #include "base.hpp"
+#ifdef CCL_ENABLE_SYCL
 #include "sycl_base.hpp"
+#endif // CCL_ENABLE_SYCL
 #include "pt2pt_transport.hpp"
 
 #include "oneapi/ccl.hpp"
 
-int main(int argc, char* argv[]) {
-    user_options_t options;
-
-    if (parse_user_options(argc, argv, options)) {
-        print_help_usage(argv[0]);
-        exit(INVALID_RETURN);
-    }
-
+void run_gpu_backend(user_options_t& options) {
+#ifdef CCL_ENABLE_SYCL
     auto& transport = transport_data::instance();
     transport.init_comms(options);
 
-    auto q = transport.get_sycl_queue();
     auto rank = transport.get_rank();
     auto& comms = transport.get_comms();
-    auto streams = transport.get_streams();
 
     print_user_options("Bandwidth", options, comms[0]);
 
     double start_t = 0.0, end_t = 0.0, diff_t = 0.0;
     size_t dtype_size = sizeof(ccl::datatype::int32);
 
-    for (int count = options.min_elem_count; count <= options.max_elem_count;
-         count = (count ? count * 2 : 1)) {
+    auto q = transport.get_sycl_queue();
+    auto streams = transport.get_streams();
+    std::vector<ccl::event> ccl_events{};
+
+    for (auto& count : options.elem_counts) {
         auto buf_send = sycl::malloc_device<int>(count, q);
         auto buf_recv = sycl::malloc_device<int>(count, q);
 
@@ -82,6 +79,7 @@ int main(int argc, char* argv[]) {
                     if (options.wait) {
                         send_event.wait();
                     }
+                    ccl_events.emplace_back(std::move(send_event));
                 }
 
                 auto recv_event = ccl::recv(buf_recv,
@@ -94,6 +92,7 @@ int main(int argc, char* argv[]) {
                 if (options.wait) {
                     recv_event.wait();
                 }
+                ccl_events.emplace_back(std::move(recv_event));
 
                 end_t = MPI_Wtime();
                 diff_t = end_t - start_t;
@@ -128,6 +127,7 @@ int main(int argc, char* argv[]) {
                     if (options.wait) {
                         recv_event.wait();
                     }
+                    ccl_events.emplace_back(std::move(recv_event));
                 }
 
                 // we can send 1 count here, this pair is for aligning
@@ -142,10 +142,12 @@ int main(int argc, char* argv[]) {
                 if (options.wait) {
                     send_event.wait();
                 }
+                ccl_events.emplace_back(std::move(send_event));
+
                 if (options.validate == VALIDATE_ALL_ITERS ||
                     (options.validate == VALIDATE_LAST_ITER &&
                      iter_idx == (options.warmup_iters + options.iters) - 1)) {
-                    check_buffers(q, options, count, iter_idx, buf_recv);
+                    check_gpu_buffers(q, options, count, iter_idx, buf_recv, ccl_events);
                 }
             }
         }
@@ -163,6 +165,116 @@ int main(int argc, char* argv[]) {
     PRINT_BY_ROOT(comms[0], "\n# All done\n");
 
     transport.reset_comms();
+#endif // CCL_ENABLE_SYCL
+}
+
+void run_cpu_backend(user_options_t& options) {
+    auto& transport = transport_data::instance();
+    transport.init_comms(options);
+
+    auto rank = transport.get_rank();
+    auto& comms = transport.get_comms();
+
+    print_user_options("Bandwidth", options, comms[0]);
+
+    double start_t = 0.0, end_t = 0.0, diff_t = 0.0;
+    size_t dtype_size = sizeof(ccl::datatype::int32);
+
+    std::vector<int> buf_send;
+    std::vector<int> buf_recv;
+
+    for (auto& count : options.elem_counts) {
+        buf_send.reserve(count);
+        buf_recv.reserve(count);
+
+        if (rank == options.peers[0]) {
+            for (size_t iter_idx = 0; iter_idx < (options.warmup_iters + options.iters);
+                 iter_idx++) {
+                // init the buffer
+                for (size_t id = 0; id < count; id++) {
+                    buf_send[id] = id + iter_idx;
+                    buf_recv[id] = INVALID_VALUE;
+                }
+
+                if (iter_idx == options.warmup_iters) {
+                    ccl::barrier(comms[0]);
+                    start_t = MPI_Wtime();
+                }
+
+                for (int j = 0; j < options.window_size; j++) {
+                    ccl::send(
+                        buf_send.data(), count, ccl::datatype::int32, options.peers[1], comms[0])
+                        .wait();
+                }
+
+                ccl::recv(buf_recv.data(), 1, ccl::datatype::int32, options.peers[1], comms[0])
+                    .wait();
+
+                end_t = MPI_Wtime();
+                diff_t = end_t - start_t;
+            }
+        }
+        else if (rank == options.peers[1]) {
+            for (size_t iter_idx = 0; iter_idx < (options.warmup_iters + options.iters);
+                 iter_idx++) {
+                // init the buffer
+                for (size_t id = 0; id < count; id++) {
+                    buf_send[id] = id + iter_idx;
+                    buf_recv[id] = INVALID_VALUE;
+                }
+
+                if (iter_idx == options.warmup_iters) {
+                    ccl::barrier(comms[0]);
+                }
+
+                for (int j = 0; j < options.window_size; j++) {
+                    ccl::recv(
+                        buf_recv.data(), count, ccl::datatype::int32, options.peers[0], comms[0])
+                        .wait();
+                }
+
+                // we can send 1 count here, this pair is for aligning
+                // no need a big count
+                ccl::send(buf_send.data(), 1, ccl::datatype::int32, options.peers[0], comms[0])
+                    .wait();
+
+                if (options.validate == VALIDATE_ALL_ITERS ||
+                    (options.validate == VALIDATE_LAST_ITER &&
+                     iter_idx == (options.warmup_iters + options.iters) - 1)) {
+                    check_cpu_buffers(count, iter_idx, buf_recv);
+                }
+            }
+        }
+
+        if (rank == options.peers[0]) {
+            double bandwidth_t =
+                (count * dtype_size / 1e6 * options.iters * options.window_size) / diff_t;
+            print_timings(comms[0], options, bandwidth_t, count * dtype_size, "Mbytes/sec");
+        }
+
+        buf_send.clear();
+        buf_recv.clear();
+    }
+
+    PRINT_BY_ROOT(comms[0], "\n# All done\n");
+
+    transport.reset_comms();
+}
+
+int main(int argc, char* argv[]) {
+    user_options_t options;
+
+    if (parse_user_options(argc, argv, options)) {
+        print_help_usage(argv[0]);
+        exit(INVALID_RETURN);
+    }
+
+    if (options.backend == BACKEND_GPU) {
+        run_gpu_backend(options);
+    }
+    else {
+        run_cpu_backend(options);
+    }
 
     return 0;
 }

@@ -50,24 +50,6 @@ void add_coll_entry(ccl_sched* sched, const ccl_coll_param& param) {
         selector_param.peer_rank = param.peer_rank;
         selector_param.is_scaleout = param.is_scaleout;
 
-#ifdef CCL_ENABLE_SYCL
-        if (ccl_is_device_side_algo(selector_param) &&
-            (global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::none)) {
-            std::string available_ipc_modes{};
-            for (auto& ipc_exchange_name : ipc_exchange_names) {
-                if (ipc_exchange_name.second == "none") {
-                    continue;
-                }
-                available_ipc_modes += ipc_exchange_name.second + " ";
-            }
-
-            CCL_THROW("ERROR: CCL_ZE_IPC_EXCHANGE is set to none, ",
-                      "CCL_ZE_IPC_EXCHANGE must be set explicitly: ",
-                      available_ipc_modes,
-                      ". Hint: OneCCL build may not have support of drmfd");
-        }
-#endif // CCL_ENABLE_SYCL
-
         if (ccl_is_device_side_algo(selector_param)) {
             sched->strict_order = true;
         }
@@ -436,15 +418,62 @@ ze_event_handle_t fill_scaleout_coll_param(const ccl_coll_param& in_coll_param,
                                    wait_events);
     }
     else {
-        out_event = add_copy_entry(in_coll_param.send_buf,
-                                   out_coll_param.send_buf,
-                                   out_coll_param.count,
-                                   out_coll_param.dtype,
-                                   copy_attr(copy_direction::d2h),
-                                   sched,
-                                   wait_events);
+        out_event =
+            add_copy_entry(in_coll_param.send_buf,
+                           out_coll_param.send_buf,
+                           out_coll_param.count,
+                           out_coll_param.dtype,
+                           copy_attr(copy_direction::d2h
+#if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
+                                     ,
+                                     ccl::global_data::env().allreduce_pipe_chunk_count > 1
+                                         ? ccl::ze::queue_group_type::main
+                                         : ccl::ze::queue_group_type::unknown // force_queue_type
+#endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
+                                     ),
+                           sched,
+                           wait_events);
     }
     return out_event;
+}
+
+// Some algorithms for particular collectives may support H2D copy and internal operations overlapping
+bool is_copy_overlap_enabled(ccl_sched* sched, const ccl_coll_param& coll_param, bool multi_node) {
+    ccl_selector_param selector_param;
+    selector_param.ctype = coll_param.ctype;
+    selector_param.count = coll_param.count;
+    if (coll_param.ctype == ccl_coll_allgatherv) {
+        selector_param.count = coll_param.send_count;
+    }
+    selector_param.recv_counts =
+        const_cast<size_t*>(reinterpret_cast<const size_t*>(coll_param.recv_counts.data()));
+    selector_param.dtype = coll_param.dtype;
+    selector_param.comm = coll_param.comm;
+    selector_param.stream = coll_param.stream;
+    selector_param.buf =
+        (coll_param.send_buf) ? coll_param.send_buf.get_ptr() : coll_param.recv_buf.get_ptr();
+    selector_param.is_vector_buf = sched->coll_attr.is_vector_buf;
+#ifdef CCL_ENABLE_SYCL
+    selector_param.is_sycl_buf = sched->coll_attr.is_sycl_buf;
+#endif // CCL_ENABLE_SYCL
+    selector_param.hint_algo = coll_param.hint_algo;
+    selector_param.peer_rank = coll_param.peer_rank;
+    selector_param.is_scaleout = coll_param.is_scaleout;
+
+    if (coll_param.ctype == ccl_coll_allgatherv) {
+        auto algo =
+            ccl::global_data::get().algorithm_selector->get<ccl_coll_allgatherv>(selector_param);
+        return (algo == ccl_coll_allgatherv_ring) && multi_node &&
+               !ccl::global_data::env().ze_multi_workers;
+    }
+    else if (coll_param.ctype == ccl_coll_allreduce) {
+        auto algo =
+            ccl::global_data::get().algorithm_selector->get<ccl_coll_allreduce>(selector_param);
+        // ring allreduce calls ring allgatherv underneath
+        return (algo == ccl_coll_allreduce_ring) && multi_node &&
+               !ccl::global_data::env().ze_multi_workers;
+    }
+    return false;
 }
 
 void add_scaleout(ccl_sched* sched,
@@ -491,7 +520,7 @@ void add_scaleout(ccl_sched* sched,
         utils::clear_and_push_back(wait_events, out_event);
     }
 
-    if (!do_h2d_copy)
+    if ((is_copy_overlap_enabled(sched, coll_param, multi_node) && !enable_hmem) || !do_h2d_copy)
         return;
 
     ccl_buffer src_copy_buf = coll_param.recv_buf;
@@ -533,14 +562,6 @@ void add_scaleout(ccl_sched* sched,
 
 bool is_queue_in_order(const ccl_stream* s) {
     return s != nullptr && s->is_sycl_device_stream() && s->get_native_stream().is_in_order();
-}
-
-void enable_sycl_output_barrier_in_order_queue(const ccl_stream* s) {
-    LOG_DEBUG("CCL_SYCL_OUTPUT_EVENT: ", ccl::global_data::env().enable_sycl_output_event);
-    if (is_queue_in_order(s)) {
-        ccl::global_data::env().enable_sycl_output_event = 1;
-    }
-    LOG_DEBUG("CCL_SYCL_OUTPUT_EVENT is set to 1");
 }
 
 #endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL

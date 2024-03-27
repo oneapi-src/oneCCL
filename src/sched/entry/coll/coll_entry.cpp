@@ -33,6 +33,7 @@ ccl::status coll_entry::build_sched(ccl_sched* sched, const ccl_coll_param& para
                                             param.send_count,
                                             param.recv_buf,
                                             param.recv_counts.data(),
+                                            param.recv_scale_out_bufs,
                                             param.dtype,
                                             param.comm,
                                             param.is_scaleout);
@@ -43,6 +44,7 @@ ccl::status coll_entry::build_sched(ccl_sched* sched, const ccl_coll_param& para
                                            param.send_buf,
                                            param.recv_buf,
                                            param.count,
+                                           param.recv_scale_out_bufs,
                                            param.dtype,
                                            param.reduction,
                                            param.comm,
