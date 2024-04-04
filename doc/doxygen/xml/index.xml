@@ -1,0 +1,279 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygenindex xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="index.xsd" version="1.9.1" xml:lang="en-US">
+  <compound refid="namespaceccl" kind="namespace"><name>ccl</name>
+  </compound>
+  <compound refid="namespaceccl_1_1preview" kind="namespace"><name>ccl::preview</name>
+    <member refid="group__communicator_1ga7f9c88fae58968c29fd017ea975c9af6" kind="function"><name>create_comm_split_attr</name></member>
+    <member refid="group__communicator_1gaf04216411dea55aa4034f4890bc5bc90" kind="function"><name>create_communicators</name></member>
+    <member refid="group__communicator_1gaf14f4664b534505563ae04f335afa3e4" kind="function"><name>create_communicator</name></member>
+    <member refid="group__communicator_1ga394569a119a564409e1031fd164d0523" kind="function"><name>create_communicator</name></member>
+    <member refid="group__communicator_1ga71cd79719777d16213350faba0565cdc" kind="function"><name>split_communicators</name></member>
+  </compound>
+  <compound refid="namespaceccl_1_1v1" kind="namespace"><name>ccl::v1</name>
+    <member refid="group__init_1ga65f74f344efb9fa2ee3d2c640a60cecc" kind="function"><name>create_init_attr</name></member>
+    <member refid="group__init_1ga20c74d17bf3eb875364fc51724bf2c1e" kind="function"><name>init</name></member>
+    <member refid="group__init_1ga546f0ab65c4a49793a05f7ece8e9ec66" kind="function"><name>get_library_version</name></member>
+    <member refid="group__datatype_1ga6784240ba89cee510308bc9005839ef7" kind="function"><name>create_datatype_attr</name></member>
+    <member refid="group__datatype_1ga45485e2a2c64be2b69165ffc88ba5f9c" kind="function"><name>register_datatype</name></member>
+    <member refid="group__datatype_1gae6c1e8c538688900d059ca0bb4acec2c" kind="function"><name>deregister_datatype</name></member>
+    <member refid="group__datatype_1ga03444e139279793fcf6c41fe0f57faf2" kind="function"><name>get_datatype_size</name></member>
+    <member refid="group__kvs_1ga4de814041fac95137c0747500cdc96d7" kind="function"><name>create_kvs_attr</name></member>
+    <member refid="group__kvs_1ga544ea9aa17bed25ff1ae8dc5d000d97c" kind="function"><name>create_main_kvs</name></member>
+    <member refid="group__kvs_1ga3576460665ad4155bb27a565ed77cc4b" kind="function"><name>create_kvs</name></member>
+    <member refid="group__device_1ga75b09ccea645fb56d99344e3acca3977" kind="function"><name>create_device</name></member>
+    <member refid="group__device_1gade5f440ce61b5449d0e90c37c43aa671" kind="function"><name>create_device</name></member>
+    <member refid="group__context_1gad6daf5ee10bf8c16617188ca4c960ebe" kind="function"><name>create_context</name></member>
+    <member refid="group__context_1ga632ba2b0ff7402f2555d4485bc33add1" kind="function"><name>create_context</name></member>
+    <member refid="group__event_1ga8630b9a1e9f3a7e6d053090d2ff0be41" kind="function"><name>create_event</name></member>
+    <member refid="group__stream_1ga97f803e6a4980c5d704d32ba106ab0c0" kind="function"><name>create_stream</name></member>
+    <member refid="group__stream_1ga8338a8cea91a0ad49efa6e445804daf3" kind="function"><name>create_stream</name></member>
+    <member refid="group__communicator_1ga7a82fb41f5a88621d5e5774a3aa0f891" kind="function"><name>create_comm_attr</name></member>
+    <member refid="group__communicator_1ga7b539d7c673c484421bd2c8a6b09e24d" kind="function"><name>create_communicators</name></member>
+    <member refid="group__communicator_1gadf690d23b1efac6e1d754ba584e75b16" kind="function"><name>create_communicators</name></member>
+    <member refid="group__communicator_1ga16500e747517c4f9320026eebf18a210" kind="function"><name>create_communicator</name></member>
+    <member refid="group__communicator_1gaebeff0c5e7fc7e0dd27fe6d27b466db9" kind="function"><name>create_communicator</name></member>
+    <member refid="group___group_1ga793148ac2e6e7eb85d8b457238147c34" kind="function"><name>group_start</name></member>
+    <member refid="group___group_1gaa08d35d8b24f79fd84b5ce825e5475cd" kind="function"><name>group_end</name></member>
+    <member refid="group__operation_1ga0ad16acdce5d78b648801f91d7316907" kind="function"><name>create_operation_attr</name></member>
+    <member refid="group__allgatherv_1gadc867b06e814abffb0b7f724106b5c3e" kind="function"><name>allgatherv</name></member>
+    <member refid="group__allgatherv_1gab62b8e5c2ca4c20b7ae1b5a1cc526186" kind="function"><name>allgatherv</name></member>
+    <member refid="group__allgatherv_1ga49c8770a2f8057895a3bcdf9be9c15b4" kind="function"><name>allgatherv</name></member>
+    <member refid="group__allgatherv_1gad3da0ea3b7a6d9dde3b71318e09f4041" kind="function"><name>allgatherv</name></member>
+    <member refid="group__allgatherv_1ga161e5ea2906c9377c74bc46d38c91546" kind="function"><name>allgatherv</name></member>
+    <member refid="group__allgatherv_1gabab76bb2e8d6e0223dfad7be25fb1f03" kind="function"><name>allgatherv</name></member>
+    <member refid="group__allgatherv_1ga9c48e02cf5155fcb8eba48973ab8e0e8" kind="function"><name>allgatherv</name></member>
+    <member refid="group__allgatherv_1gaec28ac8b12dee4bedc4e1c06b6addc58" kind="function"><name>allgatherv</name></member>
+    <member refid="group__allgatherv_1gab64b8d34a738b402de32c0712551d1de" kind="function"><name>allgatherv</name></member>
+    <member refid="group__allgatherv_1ga20b9ece4ceccb4d05debcbcdf589536f" kind="function"><name>allgatherv</name></member>
+    <member refid="group__allgatherv_1ga4a872d1d394952a6d64eb70cbf3b48fe" kind="function"><name>allgatherv</name></member>
+    <member refid="group__allgatherv_1ga4ca37a5e3180060bd9421aef1bb9e57b" kind="function"><name>allgatherv</name></member>
+    <member refid="group__allreduce_1ga576852f17997a2554d1730c4e468c121" kind="function"><name>allreduce</name></member>
+    <member refid="group__allreduce_1gad451e84105255b658854a943a70356f1" kind="function"><name>allreduce</name></member>
+    <member refid="group__allreduce_1ga2a6bf4a6873e40a4b686e92d840eed77" kind="function"><name>allreduce</name></member>
+    <member refid="group__allreduce_1ga4cd77897206c78fca1db280ed48cd030" kind="function"><name>allreduce</name></member>
+    <member refid="group__allreduce_1ga27bf17e6ce3bda78d5d047c34e0725a8" kind="function"><name>allreduce</name></member>
+    <member refid="group__allreduce_1ga8a2953b3cb14bb4733b0c51ea655ef7b" kind="function"><name>allreduce</name></member>
+    <member refid="group__alltoall_1gacfb8820ddd761813a147f4d120674700" kind="function"><name>alltoall</name></member>
+    <member refid="group__alltoall_1ga762c02cd990abd73909fc06b779ee9e2" kind="function"><name>alltoall</name></member>
+    <member refid="group__alltoall_1gab507d3b7975af2eaafebf37124785828" kind="function"><name>alltoall</name></member>
+    <member refid="group__alltoall_1ga14c706e631208a28105e8a792f42c8a8" kind="function"><name>alltoall</name></member>
+    <member refid="group__alltoall_1ga84a9694d58198e8cb8e8278bd9b02c8b" kind="function"><name>alltoall</name></member>
+    <member refid="group__alltoall_1gad7e8c3ca2cf271501723c69f37f963ff" kind="function"><name>alltoall</name></member>
+    <member refid="group__alltoall_1ga7239809e4da0082479162bbc52117348" kind="function"><name>alltoall</name></member>
+    <member refid="group__alltoall_1ga2d44421d3d9c7f472c88148e4f367ee4" kind="function"><name>alltoall</name></member>
+    <member refid="group__alltoall_1gae95987275b79b4c5c39519b27bf0fd9a" kind="function"><name>alltoall</name></member>
+    <member refid="group__alltoall_1ga9d8255a51627ed9e53641d88b8b82506" kind="function"><name>alltoall</name></member>
+    <member refid="group__alltoall_1gafc4eba5b6deb74f0f62c81d4699cbea6" kind="function"><name>alltoall</name></member>
+    <member refid="group__alltoall_1gabe8a8baf2ea7d4fdb57056e6967eb8fa" kind="function"><name>alltoall</name></member>
+    <member refid="group__alltoallv_1gacdf0659bd7652b0170904797c25d89e9" kind="function"><name>alltoallv</name></member>
+    <member refid="group__alltoallv_1ga1a922ee6a7a89e71fbfc5c93c8dd0caa" kind="function"><name>alltoallv</name></member>
+    <member refid="group__alltoallv_1gad62ab2a10cba6392dfdde535b878ae02" kind="function"><name>alltoallv</name></member>
+    <member refid="group__alltoallv_1gab3f32cce6f7fd2a706da4fb2f70f118e" kind="function"><name>alltoallv</name></member>
+    <member refid="group__alltoallv_1ga3496e8dd2680abd824e82e963ab460e9" kind="function"><name>alltoallv</name></member>
+    <member refid="group__alltoallv_1ga9ea1109da99e680dc2f6094a790b860a" kind="function"><name>alltoallv</name></member>
+    <member refid="group__alltoallv_1gab5e1391c6e274c21c4192c05cd2039a7" kind="function"><name>alltoallv</name></member>
+    <member refid="group__alltoallv_1gaaef203af470a15005c5b57284d30c410" kind="function"><name>alltoallv</name></member>
+    <member refid="group__alltoallv_1ga5984a0ce6a9fb093e18bc4b2849b800a" kind="function"><name>alltoallv</name></member>
+    <member refid="group__alltoallv_1gacb0dbe760a24960c6b9a39ebe4cceebb" kind="function"><name>alltoallv</name></member>
+    <member refid="group__alltoallv_1ga04ddd6d73cbf4173a2837973ccc2e85f" kind="function"><name>alltoallv</name></member>
+    <member refid="group__alltoallv_1ga40d54154f163611ee16fda490ccf9118" kind="function"><name>alltoallv</name></member>
+    <member refid="group__barrier_1ga82b3ed2e0f5f81747a5192ca9f0ee056" kind="function"><name>barrier</name></member>
+    <member refid="group__barrier_1gaeccb4eeb980d31958649df5eb316c78b" kind="function"><name>barrier</name></member>
+    <member refid="group__broadcast_1gaf0ff0ab5ccbf9e60ee16608152a120a1" kind="function"><name>broadcast</name></member>
+    <member refid="group__broadcast_1gae1797a842e44d0695f8ee71a8258e7f6" kind="function"><name>broadcast</name></member>
+    <member refid="group__broadcast_1gabe5f9e089a859f4fbb521af22334c6a0" kind="function"><name>broadcast</name></member>
+    <member refid="group__broadcast_1gad03e6a60065489ab91a2474dad5ca51d" kind="function"><name>broadcast</name></member>
+    <member refid="group__broadcast_1gaf1b3a9e7440d50f245aa094f218cd6af" kind="function"><name>broadcast</name></member>
+    <member refid="group__broadcast_1ga0743dbdbe807817b1d213f28c8ae0b76" kind="function"><name>broadcast</name></member>
+    <member refid="group__broadcast_ext_1ga486ce8182f29db9c1a568c42be13460a" kind="function"><name>broadcastExt</name></member>
+    <member refid="group__broadcast_ext_1ga7d1942483562b4f203628b912ec93400" kind="function"><name>broadcastExt</name></member>
+    <member refid="group__broadcast_ext_1ga8f0d4e347dd045a8672f7687c0a97c24" kind="function"><name>broadcastExt</name></member>
+    <member refid="group__broadcast_ext_1ga4d4de1a8c29424ade9170b10d0da3717" kind="function"><name>broadcastExt</name></member>
+    <member refid="group__broadcast_ext_1ga506beb600336a559928fc15b038717ac" kind="function"><name>broadcastExt</name></member>
+    <member refid="group__broadcast_ext_1gafb9c0fdf60485166e7f88f4116a8b7d1" kind="function"><name>broadcastExt</name></member>
+    <member refid="group__recv_1ga0eaead47def2b0413c463bc26da2de76" kind="function"><name>recv</name></member>
+    <member refid="group__recv_1gacfb0164d3935e9296091b6735ea6b46d" kind="function"><name>recv</name></member>
+    <member refid="group__recv_1ga5f58037e54c56ad955a176565ae83a6b" kind="function"><name>recv</name></member>
+    <member refid="group__recv_1gac5c9d4921862541fc04b1953cd51f97e" kind="function"><name>recv</name></member>
+    <member refid="group__recv_1ga47aacac32fbfde053c18d5fb81dadd41" kind="function"><name>recv</name></member>
+    <member refid="group__recv_1ga55fd087c18b846e37c6739562fde2901" kind="function"><name>recv</name></member>
+    <member refid="group__send_1ga844a7f2552b6eeb12d0801441659ba67" kind="function"><name>send</name></member>
+    <member refid="group__send_1gad1c8fc9b32b65d1b174944c85f59960a" kind="function"><name>send</name></member>
+    <member refid="group__send_1gadbbb63d71a4411b8515a39ea4d57a145" kind="function"><name>send</name></member>
+    <member refid="group__send_1ga5b4b408e853abd75e1e0e68b42f3ec44" kind="function"><name>send</name></member>
+    <member refid="group__send_1ga9dc152cf8fa4ea60fa6e07d497d4093b" kind="function"><name>send</name></member>
+    <member refid="group__send_1ga1b30ee9a66a1797227312ee2c448e7c3" kind="function"><name>send</name></member>
+    <member refid="group__reduce_1gad45363abcf76aa241dbc2113ff21809a" kind="function"><name>reduce</name></member>
+    <member refid="group__reduce_1ga9935feeb0258a2fee02d193091fb6608" kind="function"><name>reduce</name></member>
+    <member refid="group__reduce_1ga08b0eaf46e45fe8bf10c2198eaa4c761" kind="function"><name>reduce</name></member>
+    <member refid="group__reduce_1ga2d01a7c9e1bd65e0fca004f6f33652ef" kind="function"><name>reduce</name></member>
+    <member refid="group__reduce_1ga676e38ec1eeeeb3b516cc8158975f07d" kind="function"><name>reduce</name></member>
+    <member refid="group__reduce_1gac899ad8b9c0a5882a13d7888366c0141" kind="function"><name>reduce</name></member>
+    <member refid="group__reducescatter_1ga4e5f79a1b424aba43b213cd2e7eb975e" kind="function"><name>reduce_scatter</name></member>
+    <member refid="group__reducescatter_1ga76628f5b059f2b545847a6dcbd092e04" kind="function"><name>reduce_scatter</name></member>
+    <member refid="group__reducescatter_1gaa74f31a03a95bc7d5c27348262368528" kind="function"><name>reduce_scatter</name></member>
+    <member refid="group__reducescatter_1ga62e85fc75bab9db82bad47b5fc183428" kind="function"><name>reduce_scatter</name></member>
+    <member refid="group__reducescatter_1gab5911198a87b7b73e6265557fb1edb0a" kind="function"><name>reduce_scatter</name></member>
+    <member refid="group__reducescatter_1ga7c074109f79ed5a458ee62ba7fa4ad60" kind="function"><name>reduce_scatter</name></member>
+  </compound>
+  <compound refid="api__functions_8hpp" kind="file"><name>api_functions.hpp</name>
+  </compound>
+  <compound refid="group__init" kind="group"><name>init</name>
+    <member refid="group__init_1ga65f74f344efb9fa2ee3d2c640a60cecc" kind="function"><name>create_init_attr</name></member>
+    <member refid="group__init_1ga20c74d17bf3eb875364fc51724bf2c1e" kind="function"><name>init</name></member>
+    <member refid="group__init_1ga546f0ab65c4a49793a05f7ece8e9ec66" kind="function"><name>get_library_version</name></member>
+  </compound>
+  <compound refid="group__datatype" kind="group"><name>datatype</name>
+    <member refid="group__datatype_1ga6784240ba89cee510308bc9005839ef7" kind="function"><name>create_datatype_attr</name></member>
+    <member refid="group__datatype_1ga45485e2a2c64be2b69165ffc88ba5f9c" kind="function"><name>register_datatype</name></member>
+    <member refid="group__datatype_1gae6c1e8c538688900d059ca0bb4acec2c" kind="function"><name>deregister_datatype</name></member>
+    <member refid="group__datatype_1ga03444e139279793fcf6c41fe0f57faf2" kind="function"><name>get_datatype_size</name></member>
+  </compound>
+  <compound refid="group__kvs" kind="group"><name>kvs</name>
+    <member refid="group__kvs_1ga4de814041fac95137c0747500cdc96d7" kind="function"><name>create_kvs_attr</name></member>
+    <member refid="group__kvs_1ga544ea9aa17bed25ff1ae8dc5d000d97c" kind="function"><name>create_main_kvs</name></member>
+    <member refid="group__kvs_1ga3576460665ad4155bb27a565ed77cc4b" kind="function"><name>create_kvs</name></member>
+  </compound>
+  <compound refid="group__device" kind="group"><name>device</name>
+    <member refid="group__device_1ga75b09ccea645fb56d99344e3acca3977" kind="function"><name>create_device</name></member>
+    <member refid="group__device_1gade5f440ce61b5449d0e90c37c43aa671" kind="function"><name>create_device</name></member>
+  </compound>
+  <compound refid="group__context" kind="group"><name>context</name>
+    <member refid="group__context_1gad6daf5ee10bf8c16617188ca4c960ebe" kind="function"><name>create_context</name></member>
+    <member refid="group__context_1ga632ba2b0ff7402f2555d4485bc33add1" kind="function"><name>create_context</name></member>
+  </compound>
+  <compound refid="group__event" kind="group"><name>event</name>
+    <member refid="group__event_1ga8630b9a1e9f3a7e6d053090d2ff0be41" kind="function"><name>create_event</name></member>
+  </compound>
+  <compound refid="group__stream" kind="group"><name>stream</name>
+    <member refid="group__stream_1ga97f803e6a4980c5d704d32ba106ab0c0" kind="function"><name>create_stream</name></member>
+    <member refid="group__stream_1ga8338a8cea91a0ad49efa6e445804daf3" kind="function"><name>create_stream</name></member>
+  </compound>
+  <compound refid="group__communicator" kind="group"><name>communicator</name>
+    <member refid="group__communicator_1ga7a82fb41f5a88621d5e5774a3aa0f891" kind="function"><name>create_comm_attr</name></member>
+    <member refid="group__communicator_1ga7f9c88fae58968c29fd017ea975c9af6" kind="function"><name>create_comm_split_attr</name></member>
+    <member refid="group__communicator_1ga7b539d7c673c484421bd2c8a6b09e24d" kind="function"><name>create_communicators</name></member>
+    <member refid="group__communicator_1gadf690d23b1efac6e1d754ba584e75b16" kind="function"><name>create_communicators</name></member>
+    <member refid="group__communicator_1ga16500e747517c4f9320026eebf18a210" kind="function"><name>create_communicator</name></member>
+    <member refid="group__communicator_1gaebeff0c5e7fc7e0dd27fe6d27b466db9" kind="function"><name>create_communicator</name></member>
+    <member refid="group__communicator_1gaf04216411dea55aa4034f4890bc5bc90" kind="function"><name>create_communicators</name></member>
+    <member refid="group__communicator_1gaf14f4664b534505563ae04f335afa3e4" kind="function"><name>create_communicator</name></member>
+    <member refid="group__communicator_1ga394569a119a564409e1031fd164d0523" kind="function"><name>create_communicator</name></member>
+    <member refid="group__communicator_1ga71cd79719777d16213350faba0565cdc" kind="function"><name>split_communicators</name></member>
+  </compound>
+  <compound refid="group___group" kind="group"><name>Group</name>
+    <member refid="group___group_1ga793148ac2e6e7eb85d8b457238147c34" kind="function"><name>group_start</name></member>
+    <member refid="group___group_1gaa08d35d8b24f79fd84b5ce825e5475cd" kind="function"><name>group_end</name></member>
+  </compound>
+  <compound refid="group__operation" kind="group"><name>operation</name>
+    <member refid="group__operation_1ga0ad16acdce5d78b648801f91d7316907" kind="function"><name>create_operation_attr</name></member>
+  </compound>
+  <compound refid="group__allgatherv" kind="group"><name>allgatherv</name>
+    <member refid="group__allgatherv_1gadc867b06e814abffb0b7f724106b5c3e" kind="function"><name>allgatherv</name></member>
+    <member refid="group__allgatherv_1gab62b8e5c2ca4c20b7ae1b5a1cc526186" kind="function"><name>allgatherv</name></member>
+    <member refid="group__allgatherv_1ga49c8770a2f8057895a3bcdf9be9c15b4" kind="function"><name>allgatherv</name></member>
+    <member refid="group__allgatherv_1gad3da0ea3b7a6d9dde3b71318e09f4041" kind="function"><name>allgatherv</name></member>
+    <member refid="group__allgatherv_1ga161e5ea2906c9377c74bc46d38c91546" kind="function"><name>allgatherv</name></member>
+    <member refid="group__allgatherv_1gabab76bb2e8d6e0223dfad7be25fb1f03" kind="function"><name>allgatherv</name></member>
+    <member refid="group__allgatherv_1ga9c48e02cf5155fcb8eba48973ab8e0e8" kind="function"><name>allgatherv</name></member>
+    <member refid="group__allgatherv_1gaec28ac8b12dee4bedc4e1c06b6addc58" kind="function"><name>allgatherv</name></member>
+    <member refid="group__allgatherv_1gab64b8d34a738b402de32c0712551d1de" kind="function"><name>allgatherv</name></member>
+    <member refid="group__allgatherv_1ga20b9ece4ceccb4d05debcbcdf589536f" kind="function"><name>allgatherv</name></member>
+    <member refid="group__allgatherv_1ga4a872d1d394952a6d64eb70cbf3b48fe" kind="function"><name>allgatherv</name></member>
+    <member refid="group__allgatherv_1ga4ca37a5e3180060bd9421aef1bb9e57b" kind="function"><name>allgatherv</name></member>
+  </compound>
+  <compound refid="group__allreduce" kind="group"><name>allreduce</name>
+    <member refid="group__allreduce_1ga576852f17997a2554d1730c4e468c121" kind="function"><name>allreduce</name></member>
+    <member refid="group__allreduce_1gad451e84105255b658854a943a70356f1" kind="function"><name>allreduce</name></member>
+    <member refid="group__allreduce_1ga2a6bf4a6873e40a4b686e92d840eed77" kind="function"><name>allreduce</name></member>
+    <member refid="group__allreduce_1ga4cd77897206c78fca1db280ed48cd030" kind="function"><name>allreduce</name></member>
+    <member refid="group__allreduce_1ga27bf17e6ce3bda78d5d047c34e0725a8" kind="function"><name>allreduce</name></member>
+    <member refid="group__allreduce_1ga8a2953b3cb14bb4733b0c51ea655ef7b" kind="function"><name>allreduce</name></member>
+  </compound>
+  <compound refid="group__alltoall" kind="group"><name>alltoall</name>
+    <member refid="group__alltoall_1gacfb8820ddd761813a147f4d120674700" kind="function"><name>alltoall</name></member>
+    <member refid="group__alltoall_1ga762c02cd990abd73909fc06b779ee9e2" kind="function"><name>alltoall</name></member>
+    <member refid="group__alltoall_1gab507d3b7975af2eaafebf37124785828" kind="function"><name>alltoall</name></member>
+    <member refid="group__alltoall_1ga14c706e631208a28105e8a792f42c8a8" kind="function"><name>alltoall</name></member>
+    <member refid="group__alltoall_1ga84a9694d58198e8cb8e8278bd9b02c8b" kind="function"><name>alltoall</name></member>
+    <member refid="group__alltoall_1gad7e8c3ca2cf271501723c69f37f963ff" kind="function"><name>alltoall</name></member>
+    <member refid="group__alltoall_1ga7239809e4da0082479162bbc52117348" kind="function"><name>alltoall</name></member>
+    <member refid="group__alltoall_1ga2d44421d3d9c7f472c88148e4f367ee4" kind="function"><name>alltoall</name></member>
+    <member refid="group__alltoall_1gae95987275b79b4c5c39519b27bf0fd9a" kind="function"><name>alltoall</name></member>
+    <member refid="group__alltoall_1ga9d8255a51627ed9e53641d88b8b82506" kind="function"><name>alltoall</name></member>
+    <member refid="group__alltoall_1gafc4eba5b6deb74f0f62c81d4699cbea6" kind="function"><name>alltoall</name></member>
+    <member refid="group__alltoall_1gabe8a8baf2ea7d4fdb57056e6967eb8fa" kind="function"><name>alltoall</name></member>
+  </compound>
+  <compound refid="group__alltoallv" kind="group"><name>alltoallv</name>
+    <member refid="group__alltoallv_1gacdf0659bd7652b0170904797c25d89e9" kind="function"><name>alltoallv</name></member>
+    <member refid="group__alltoallv_1ga1a922ee6a7a89e71fbfc5c93c8dd0caa" kind="function"><name>alltoallv</name></member>
+    <member refid="group__alltoallv_1gad62ab2a10cba6392dfdde535b878ae02" kind="function"><name>alltoallv</name></member>
+    <member refid="group__alltoallv_1gab3f32cce6f7fd2a706da4fb2f70f118e" kind="function"><name>alltoallv</name></member>
+    <member refid="group__alltoallv_1ga3496e8dd2680abd824e82e963ab460e9" kind="function"><name>alltoallv</name></member>
+    <member refid="group__alltoallv_1ga9ea1109da99e680dc2f6094a790b860a" kind="function"><name>alltoallv</name></member>
+    <member refid="group__alltoallv_1gab5e1391c6e274c21c4192c05cd2039a7" kind="function"><name>alltoallv</name></member>
+    <member refid="group__alltoallv_1gaaef203af470a15005c5b57284d30c410" kind="function"><name>alltoallv</name></member>
+    <member refid="group__alltoallv_1ga5984a0ce6a9fb093e18bc4b2849b800a" kind="function"><name>alltoallv</name></member>
+    <member refid="group__alltoallv_1gacb0dbe760a24960c6b9a39ebe4cceebb" kind="function"><name>alltoallv</name></member>
+    <member refid="group__alltoallv_1ga04ddd6d73cbf4173a2837973ccc2e85f" kind="function"><name>alltoallv</name></member>
+    <member refid="group__alltoallv_1ga40d54154f163611ee16fda490ccf9118" kind="function"><name>alltoallv</name></member>
+  </compound>
+  <compound refid="group__barrier" kind="group"><name>barrier</name>
+    <member refid="group__barrier_1ga82b3ed2e0f5f81747a5192ca9f0ee056" kind="function"><name>barrier</name></member>
+    <member refid="group__barrier_1gaeccb4eeb980d31958649df5eb316c78b" kind="function"><name>barrier</name></member>
+  </compound>
+  <compound refid="group__broadcast" kind="group"><name>broadcast</name>
+    <member refid="group__broadcast_1gaf0ff0ab5ccbf9e60ee16608152a120a1" kind="function"><name>broadcast</name></member>
+    <member refid="group__broadcast_1gae1797a842e44d0695f8ee71a8258e7f6" kind="function"><name>broadcast</name></member>
+    <member refid="group__broadcast_1gabe5f9e089a859f4fbb521af22334c6a0" kind="function"><name>broadcast</name></member>
+    <member refid="group__broadcast_1gad03e6a60065489ab91a2474dad5ca51d" kind="function"><name>broadcast</name></member>
+    <member refid="group__broadcast_1gaf1b3a9e7440d50f245aa094f218cd6af" kind="function"><name>broadcast</name></member>
+    <member refid="group__broadcast_1ga0743dbdbe807817b1d213f28c8ae0b76" kind="function"><name>broadcast</name></member>
+  </compound>
+  <compound refid="group__broadcast_ext" kind="group"><name>broadcastExt</name>
+    <member refid="group__broadcast_ext_1ga486ce8182f29db9c1a568c42be13460a" kind="function"><name>broadcastExt</name></member>
+    <member refid="group__broadcast_ext_1ga7d1942483562b4f203628b912ec93400" kind="function"><name>broadcastExt</name></member>
+    <member refid="group__broadcast_ext_1ga8f0d4e347dd045a8672f7687c0a97c24" kind="function"><name>broadcastExt</name></member>
+    <member refid="group__broadcast_ext_1ga4d4de1a8c29424ade9170b10d0da3717" kind="function"><name>broadcastExt</name></member>
+    <member refid="group__broadcast_ext_1ga506beb600336a559928fc15b038717ac" kind="function"><name>broadcastExt</name></member>
+    <member refid="group__broadcast_ext_1gafb9c0fdf60485166e7f88f4116a8b7d1" kind="function"><name>broadcastExt</name></member>
+  </compound>
+  <compound refid="group__recv" kind="group"><name>recv</name>
+    <member refid="group__recv_1ga0eaead47def2b0413c463bc26da2de76" kind="function"><name>recv</name></member>
+    <member refid="group__recv_1gacfb0164d3935e9296091b6735ea6b46d" kind="function"><name>recv</name></member>
+    <member refid="group__recv_1ga5f58037e54c56ad955a176565ae83a6b" kind="function"><name>recv</name></member>
+    <member refid="group__recv_1gac5c9d4921862541fc04b1953cd51f97e" kind="function"><name>recv</name></member>
+    <member refid="group__recv_1ga47aacac32fbfde053c18d5fb81dadd41" kind="function"><name>recv</name></member>
+    <member refid="group__recv_1ga55fd087c18b846e37c6739562fde2901" kind="function"><name>recv</name></member>
+  </compound>
+  <compound refid="group__send" kind="group"><name>send</name>
+    <member refid="group__send_1ga844a7f2552b6eeb12d0801441659ba67" kind="function"><name>send</name></member>
+    <member refid="group__send_1gad1c8fc9b32b65d1b174944c85f59960a" kind="function"><name>send</name></member>
+    <member refid="group__send_1gadbbb63d71a4411b8515a39ea4d57a145" kind="function"><name>send</name></member>
+    <member refid="group__send_1ga5b4b408e853abd75e1e0e68b42f3ec44" kind="function"><name>send</name></member>
+    <member refid="group__send_1ga9dc152cf8fa4ea60fa6e07d497d4093b" kind="function"><name>send</name></member>
+    <member refid="group__send_1ga1b30ee9a66a1797227312ee2c448e7c3" kind="function"><name>send</name></member>
+  </compound>
+  <compound refid="group__reduce" kind="group"><name>reduce</name>
+    <member refid="group__reduce_1gad45363abcf76aa241dbc2113ff21809a" kind="function"><name>reduce</name></member>
+    <member refid="group__reduce_1ga9935feeb0258a2fee02d193091fb6608" kind="function"><name>reduce</name></member>
+    <member refid="group__reduce_1ga08b0eaf46e45fe8bf10c2198eaa4c761" kind="function"><name>reduce</name></member>
+    <member refid="group__reduce_1ga2d01a7c9e1bd65e0fca004f6f33652ef" kind="function"><name>reduce</name></member>
+    <member refid="group__reduce_1ga676e38ec1eeeeb3b516cc8158975f07d" kind="function"><name>reduce</name></member>
+    <member refid="group__reduce_1gac899ad8b9c0a5882a13d7888366c0141" kind="function"><name>reduce</name></member>
+  </compound>
+  <compound refid="group__reducescatter" kind="group"><name>reducescatter</name>
+    <member refid="group__reducescatter_1ga4e5f79a1b424aba43b213cd2e7eb975e" kind="function"><name>reduce_scatter</name></member>
+    <member refid="group__reducescatter_1ga76628f5b059f2b545847a6dcbd092e04" kind="function"><name>reduce_scatter</name></member>
+    <member refid="group__reducescatter_1gaa74f31a03a95bc7d5c27348262368528" kind="function"><name>reduce_scatter</name></member>
+    <member refid="group__reducescatter_1ga62e85fc75bab9db82bad47b5fc183428" kind="function"><name>reduce_scatter</name></member>
+    <member refid="group__reducescatter_1gab5911198a87b7b73e6265557fb1edb0a" kind="function"><name>reduce_scatter</name></member>
+    <member refid="group__reducescatter_1ga7c074109f79ed5a458ee62ba7fa4ad60" kind="function"><name>reduce_scatter</name></member>
+  </compound>
+  <compound refid="dir_d7634afa60854118cf914ac039fcb05e" kind="dir"><name>include/oneapi/ccl</name>
+  </compound>
+  <compound refid="dir_d44c64559bbebec7f509842c48db8b23" kind="dir"><name>include</name>
+  </compound>
+  <compound refid="dir_7f527ff8120a8d3724d7c3775f8803a1" kind="dir"><name>include/oneapi</name>
+  </compound>
+</doxygenindex>

@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.1" xml:lang="en-US">
+  <compounddef id="group___group" kind="group">
+    <compoundname>Group</compoundname>
+    <title>Calls</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group___group_1ga793148ac2e6e7eb85d8b457238147c34" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void CCL_API</type>
+        <definition>void CCL_API ccl::v1::group_start</definition>
+        <argsstring>()</argsstring>
+        <name>group_start</name>
+        <briefdescription>
+<para><ref refid="group___group_1ga793148ac2e6e7eb85d8b457238147c34" kindref="member">group_start()</ref> initiates a group call of all ccl collective operations </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="380" column="14" declfile="include/oneapi/ccl/api_functions.hpp" declline="380" declcolumn="14"/>
+      </memberdef>
+      <memberdef kind="function" id="group___group_1gaa08d35d8b24f79fd84b5ce825e5475cd" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void CCL_API</type>
+        <definition>void CCL_API ccl::v1::group_end</definition>
+        <argsstring>()</argsstring>
+        <name>group_end</name>
+        <briefdescription>
+<para><ref refid="group___group_1gaa08d35d8b24f79fd84b5ce825e5475cd" kindref="member">group_end()</ref> finalize a group call of all submitted ccl collective operations </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="386" column="14" declfile="include/oneapi/ccl/api_functions.hpp" declline="386" declcolumn="14"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

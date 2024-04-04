@@ -1,0 +1,129 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.1" xml:lang="en-US">
+  <compounddef id="group__datatype" kind="group">
+    <compoundname>datatype</compoundname>
+    <title>Datatype</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__datatype_1ga6784240ba89cee510308bc9005839ef7" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class...</type>
+            <declname>attr_val_type</declname>
+            <defname>attr_val_type</defname>
+          </param>
+        </templateparamlist>
+        <type>datatype_attr CCL_API</type>
+        <definition>datatype_attr CCL_API ccl::v1::create_datatype_attr</definition>
+        <argsstring>(attr_val_type &amp;&amp;... avs)</argsstring>
+        <name>create_datatype_attr</name>
+        <param>
+          <type>attr_val_type &amp;&amp;...</type>
+          <declname>avs</declname>
+        </param>
+        <briefdescription>
+<para>Creates an attribute object that may be used to register custom datatype. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>an attribute object </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="54" column="23" bodyfile="include/oneapi/ccl/api_functions.hpp" bodystart="54" bodyend="56"/>
+      </memberdef>
+      <memberdef kind="function" id="group__datatype_1ga45485e2a2c64be2b69165ffc88ba5f9c" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>datatype CCL_API</type>
+        <definition>datatype CCL_API ccl::v1::register_datatype</definition>
+        <argsstring>(const datatype_attr &amp;attr)</argsstring>
+        <name>register_datatype</name>
+        <param>
+          <type>const datatype_attr &amp;</type>
+          <declname>attr</declname>
+        </param>
+        <briefdescription>
+<para>Registers custom datatype to be used in communication operations. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>attr</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>datatype attributes </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>datatype handle </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="64" column="18" declfile="include/oneapi/ccl/api_functions.hpp" declline="64" declcolumn="18"/>
+      </memberdef>
+      <memberdef kind="function" id="group__datatype_1gae6c1e8c538688900d059ca0bb4acec2c" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void CCL_API</type>
+        <definition>void CCL_API ccl::v1::deregister_datatype</definition>
+        <argsstring>(datatype dtype)</argsstring>
+        <name>deregister_datatype</name>
+        <param>
+          <type>datatype</type>
+          <declname>dtype</declname>
+        </param>
+        <briefdescription>
+<para>Deregisters custom datatype. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>dtype</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>custom datatype handle </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="71" column="14" declfile="include/oneapi/ccl/api_functions.hpp" declline="71" declcolumn="14"/>
+      </memberdef>
+      <memberdef kind="function" id="group__datatype_1ga03444e139279793fcf6c41fe0f57faf2" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>size_t CCL_API</type>
+        <definition>size_t CCL_API ccl::v1::get_datatype_size</definition>
+        <argsstring>(datatype dtype)</argsstring>
+        <name>get_datatype_size</name>
+        <param>
+          <type>datatype</type>
+          <declname>dtype</declname>
+        </param>
+        <briefdescription>
+<para>Retrieves a datatype size in bytes. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>dtype</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>datatype handle </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>datatype size </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="79" column="16" declfile="include/oneapi/ccl/api_functions.hpp" declline="79" declcolumn="16"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

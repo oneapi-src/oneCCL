@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.1" xml:lang="en-US">
+  <compounddef id="group__stream" kind="group">
+    <compoundname>stream</compoundname>
+    <title>Stream</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__stream_1ga97f803e6a4980c5d704d32ba106ab0c0" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class native_stream_type</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_stream_supported&lt;native_stream_type&gt;()&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>stream CCL_API</type>
+        <definition>stream CCL_API ccl::v1::create_stream</definition>
+        <argsstring>(native_stream_type &amp;native_stream)</argsstring>
+        <name>create_stream</name>
+        <param>
+          <type>native_stream_type &amp;</type>
+          <declname>native_stream</declname>
+        </param>
+        <briefdescription>
+<para>Creates a new stream from @native_stream_type. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>native_stream</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the existing handle of stream </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>stream object </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="199" column="16" bodyfile="include/oneapi/ccl/api_functions.hpp" bodystart="199" bodyend="201"/>
+      </memberdef>
+      <memberdef kind="function" id="group__stream_1ga8338a8cea91a0ad49efa6e445804daf3" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>stream CCL_API</type>
+        <definition>stream CCL_API ccl::v1::create_stream</definition>
+        <argsstring>()</argsstring>
+        <name>create_stream</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="206" column="16" declfile="include/oneapi/ccl/api_functions.hpp" declline="206" declcolumn="16"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

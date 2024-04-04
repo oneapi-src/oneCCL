@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.1" xml:lang="en-US">
+  <compounddef id="group__event" kind="group">
+    <compoundname>event</compoundname>
+    <title>Event</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__event_1ga8630b9a1e9f3a7e6d053090d2ff0be41" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class event_type</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_event_supported&lt;event_type&gt;()&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::create_event</definition>
+        <argsstring>(event_type &amp;native_event)</argsstring>
+        <name>create_event</name>
+        <param>
+          <type>event_type &amp;</type>
+          <declname>native_event</declname>
+        </param>
+        <briefdescription>
+<para>Creates a new event from @native_event_type. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>native_event</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the existing event </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>event object </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="180" column="15" bodyfile="include/oneapi/ccl/api_functions.hpp" bodystart="180" bodyend="182"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

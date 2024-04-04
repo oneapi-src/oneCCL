@@ -1,0 +1,55 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.1" xml:lang="en-US">
+  <compounddef id="group__operation" kind="group">
+    <compoundname>operation</compoundname>
+    <title>Operation</title>
+    <innergroup refid="group__allgatherv">Allgatherv</innergroup>
+    <innergroup refid="group__allreduce">Allreduce</innergroup>
+    <innergroup refid="group__alltoall">Alltoall</innergroup>
+    <innergroup refid="group__alltoallv">Alltoallv</innergroup>
+    <innergroup refid="group__barrier">Barrier</innergroup>
+    <innergroup refid="group__broadcast">Broadcast</innergroup>
+    <innergroup refid="group__broadcast_ext">BroadcastExt</innergroup>
+    <innergroup refid="group__recv">Recv</innergroup>
+    <innergroup refid="group__send">Send</innergroup>
+    <innergroup refid="group__reduce">Reduce</innergroup>
+    <innergroup refid="group__reducescatter">Reducescatter</innergroup>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__operation_1ga0ad16acdce5d78b648801f91d7316907" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class coll_attribute_type</type>
+          </param>
+          <param>
+            <type>class...</type>
+            <declname>attr_val_type</declname>
+            <defname>attr_val_type</defname>
+          </param>
+        </templateparamlist>
+        <type>coll_attribute_type CCL_API</type>
+        <definition>coll_attribute_type CCL_API ccl::v1::create_operation_attr</definition>
+        <argsstring>(attr_val_type &amp;&amp;... avs)</argsstring>
+        <name>create_operation_attr</name>
+        <param>
+          <type>attr_val_type &amp;&amp;...</type>
+          <declname>avs</declname>
+        </param>
+        <briefdescription>
+<para>Creates an attribute object that may be used to customize communication operation. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>an attribute object </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="401" column="29" bodyfile="include/oneapi/ccl/api_functions.hpp" bodystart="401" bodyend="404"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

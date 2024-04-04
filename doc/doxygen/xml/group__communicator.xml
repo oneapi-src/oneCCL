@@ -1,0 +1,469 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.1" xml:lang="en-US">
+  <compounddef id="group__communicator" kind="group">
+    <compoundname>communicator</compoundname>
+    <title>Communicator</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__communicator_1ga7a82fb41f5a88621d5e5774a3aa0f891" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class...</type>
+            <declname>attr_val_type</declname>
+            <defname>attr_val_type</defname>
+          </param>
+        </templateparamlist>
+        <type>comm_attr CCL_API</type>
+        <definition>comm_attr CCL_API ccl::v1::create_comm_attr</definition>
+        <argsstring>(attr_val_type &amp;&amp;... avs)</argsstring>
+        <name>create_comm_attr</name>
+        <param>
+          <type>attr_val_type &amp;&amp;...</type>
+          <declname>avs</declname>
+        </param>
+        <briefdescription>
+<para>Creates an attribute object that may be used to control the create_communicator operation. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>an attribute object </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="221" column="19" bodyfile="include/oneapi/ccl/api_functions.hpp" bodystart="221" bodyend="223"/>
+      </memberdef>
+      <memberdef kind="function" id="group__communicator_1ga7f9c88fae58968c29fd017ea975c9af6" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class...</type>
+            <declname>attr_val_type</declname>
+            <defname>attr_val_type</defname>
+          </param>
+        </templateparamlist>
+        <type>comm_split_attr CCL_API</type>
+        <definition>comm_split_attr CCL_API ccl::preview::create_comm_split_attr</definition>
+        <argsstring>(attr_val_type &amp;&amp;... avs)</argsstring>
+        <name>create_comm_split_attr</name>
+        <param>
+          <type>attr_val_type &amp;&amp;...</type>
+          <declname>avs</declname>
+        </param>
+        <briefdescription>
+<para>Creates an attribute object that may be used to control the split_communicator operation. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>an attribute object </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="235" column="25" bodyfile="include/oneapi/ccl/api_functions.hpp" bodystart="235" bodyend="237"/>
+      </memberdef>
+      <memberdef kind="function" id="group__communicator_1ga7b539d7c673c484421bd2c8a6b09e24d" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class DeviceType</type>
+          </param>
+          <param>
+            <type>class ContextType</type>
+          </param>
+        </templateparamlist>
+        <type>vector_class&lt; communicator &gt; CCL_API</type>
+        <definition>vector_class&lt;communicator&gt; CCL_API ccl::v1::create_communicators</definition>
+        <argsstring>(int size, const vector_class&lt; pair_class&lt; int, DeviceType &gt;&gt; &amp;devices, const ContextType &amp;context, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</argsstring>
+        <name>create_communicators</name>
+        <param>
+          <type>int</type>
+          <declname>size</declname>
+        </param>
+        <param>
+          <type>const vector_class&lt; pair_class&lt; int, DeviceType &gt;&gt; &amp;</type>
+          <declname>devices</declname>
+        </param>
+        <param>
+          <type>const ContextType &amp;</type>
+          <declname>context</declname>
+        </param>
+        <param>
+          <type>shared_ptr_class&lt; kvs_interface &gt;</type>
+          <declname>kvs</declname>
+        </param>
+        <param>
+          <type>const comm_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_comm_attr</defval>
+        </param>
+        <briefdescription>
+<para>Creates new communicators with user supplied size, ranks, local device-rank mapping and kvs. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>size</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>user-supplied total number of ranks </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>rank</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>user-supplied rank </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>device</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>local device </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>devices</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>user-supplied mapping of local ranks on devices </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>context</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>context containing the devices </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>kvs</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>key-value store for ranks wire-up </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>attr</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>optional communicator attributes </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>vector of communicators / communicator </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="257" column="1" bodyfile="include/oneapi/ccl/api_functions.hpp" bodystart="257" bodyend="263"/>
+      </memberdef>
+      <memberdef kind="function" id="group__communicator_1gadf690d23b1efac6e1d754ba584e75b16" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class DeviceType</type>
+          </param>
+          <param>
+            <type>class ContextType</type>
+          </param>
+        </templateparamlist>
+        <type>vector_class&lt; communicator &gt; CCL_API</type>
+        <definition>vector_class&lt;communicator&gt; CCL_API ccl::v1::create_communicators</definition>
+        <argsstring>(int size, const map_class&lt; int, DeviceType &gt; &amp;devices, const ContextType &amp;context, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</argsstring>
+        <name>create_communicators</name>
+        <param>
+          <type>int</type>
+          <declname>size</declname>
+        </param>
+        <param>
+          <type>const map_class&lt; int, DeviceType &gt; &amp;</type>
+          <declname>devices</declname>
+        </param>
+        <param>
+          <type>const ContextType &amp;</type>
+          <declname>context</declname>
+        </param>
+        <param>
+          <type>shared_ptr_class&lt; kvs_interface &gt;</type>
+          <declname>kvs</declname>
+        </param>
+        <param>
+          <type>const comm_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_comm_attr</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="270" column="22" bodyfile="include/oneapi/ccl/api_functions.hpp" bodystart="270" bodyend="276"/>
+      </memberdef>
+      <memberdef kind="function" id="group__communicator_1ga16500e747517c4f9320026eebf18a210" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class DeviceType</type>
+          </param>
+          <param>
+            <type>class ContextType</type>
+          </param>
+        </templateparamlist>
+        <type>communicator CCL_API</type>
+        <definition>communicator CCL_API ccl::v1::create_communicator</definition>
+        <argsstring>(int size, int rank, DeviceType &amp;device, const ContextType &amp;context, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</argsstring>
+        <name>create_communicator</name>
+        <param>
+          <type>int</type>
+          <declname>size</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>rank</declname>
+        </param>
+        <param>
+          <type>DeviceType &amp;</type>
+          <declname>device</declname>
+        </param>
+        <param>
+          <type>const ContextType &amp;</type>
+          <declname>context</declname>
+        </param>
+        <param>
+          <type>shared_ptr_class&lt; kvs_interface &gt;</type>
+          <declname>kvs</declname>
+        </param>
+        <param>
+          <type>const comm_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_comm_attr</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="283" column="22" bodyfile="include/oneapi/ccl/api_functions.hpp" bodystart="283" bodyend="300"/>
+      </memberdef>
+      <memberdef kind="function" id="group__communicator_1gaebeff0c5e7fc7e0dd27fe6d27b466db9" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>communicator CCL_API</type>
+        <definition>communicator CCL_API ccl::v1::create_communicator</definition>
+        <argsstring>(int size, int rank, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</argsstring>
+        <name>create_communicator</name>
+        <param>
+          <type>int</type>
+          <declname>size</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>rank</declname>
+        </param>
+        <param>
+          <type>shared_ptr_class&lt; kvs_interface &gt;</type>
+          <declname>kvs</declname>
+        </param>
+        <param>
+          <type>const comm_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_comm_attr</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="306" column="22" declfile="include/oneapi/ccl/api_functions.hpp" declline="306" declcolumn="22"/>
+      </memberdef>
+      <memberdef kind="function" id="group__communicator_1gaf04216411dea55aa4034f4890bc5bc90" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class DeviceType</type>
+          </param>
+          <param>
+            <type>class ContextType</type>
+          </param>
+        </templateparamlist>
+        <type>vector_class&lt; communicator &gt; CCL_API</type>
+        <definition>vector_class&lt;communicator&gt; CCL_API ccl::preview::create_communicators</definition>
+        <argsstring>(int size, const vector_class&lt; DeviceType &gt; &amp;devices, const ContextType &amp;context, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</argsstring>
+        <name>create_communicators</name>
+        <param>
+          <type>int</type>
+          <declname>size</declname>
+        </param>
+        <param>
+          <type>const vector_class&lt; DeviceType &gt; &amp;</type>
+          <declname>devices</declname>
+        </param>
+        <param>
+          <type>const ContextType &amp;</type>
+          <declname>context</declname>
+        </param>
+        <param>
+          <type>shared_ptr_class&lt; kvs_interface &gt;</type>
+          <declname>kvs</declname>
+        </param>
+        <param>
+          <type>const comm_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_comm_attr</defval>
+        </param>
+        <briefdescription>
+<para>Creates a new communicators with user supplied size, local devices and kvs. Ranks will be assigned automatically. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>size</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>user-supplied total number of ranks </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>devices</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>user-supplied device objects for local ranks </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>context</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>context containing the devices </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>kvs</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>key-value store for ranks wire-up </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>attr</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>optional communicator attributes </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>vector of communicators / communicator </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="327" column="22" bodyfile="include/oneapi/ccl/api_functions.hpp" bodystart="327" bodyend="333"/>
+      </memberdef>
+      <memberdef kind="function" id="group__communicator_1gaf14f4664b534505563ae04f335afa3e4" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>communicator CCL_API</type>
+        <definition>communicator CCL_API ccl::preview::create_communicator</definition>
+        <argsstring>(int size, shared_ptr_class&lt; kvs_interface &gt; kvs, const comm_attr &amp;attr=default_comm_attr)</argsstring>
+        <name>create_communicator</name>
+        <param>
+          <type>int</type>
+          <declname>size</declname>
+        </param>
+        <param>
+          <type>shared_ptr_class&lt; kvs_interface &gt;</type>
+          <declname>kvs</declname>
+        </param>
+        <param>
+          <type>const comm_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_comm_attr</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="339" column="22" declfile="include/oneapi/ccl/api_functions.hpp" declline="339" declcolumn="22"/>
+      </memberdef>
+      <memberdef kind="function" id="group__communicator_1ga394569a119a564409e1031fd164d0523" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>communicator CCL_API</type>
+        <definition>communicator CCL_API ccl::preview::create_communicator</definition>
+        <argsstring>(const comm_attr &amp;attr=default_comm_attr)</argsstring>
+        <name>create_communicator</name>
+        <param>
+          <type>const comm_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_comm_attr</defval>
+        </param>
+        <briefdescription>
+<para>Creates a new communicator with externally provided size, rank and kvs. Implementation is platform specific and non portable. </para>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>attr</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>optional communicator attributes </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>communicator </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="353" column="22" declfile="include/oneapi/ccl/api_functions.hpp" declline="353" declcolumn="22"/>
+      </memberdef>
+      <memberdef kind="function" id="group__communicator_1ga71cd79719777d16213350faba0565cdc" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>vector_class&lt; communicator &gt; CCL_API</type>
+        <definition>vector_class&lt;communicator&gt; CCL_API ccl::preview::split_communicators</definition>
+        <argsstring>(const vector_class&lt; pair_class&lt; communicator, comm_split_attr &gt;&gt; &amp;attrs)</argsstring>
+        <name>split_communicators</name>
+        <param>
+          <type>const vector_class&lt; pair_class&lt; communicator, comm_split_attr &gt;&gt; &amp;</type>
+          <declname>attrs</declname>
+        </param>
+        <briefdescription>
+<para>Splits communicators according to attributes. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>attrs</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>split attributes for local communicators </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>vector of communicators </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="362" column="1" declfile="include/oneapi/ccl/api_functions.hpp" declline="362" declcolumn="1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

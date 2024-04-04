@@ -1,0 +1,413 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.1" xml:lang="en-US">
+  <compounddef id="group__allreduce" kind="group">
+    <compoundname>allreduce</compoundname>
+    <title>Allreduce</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__allreduce_1ga576852f17997a2554d1730c4e468c121" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::allreduce</definition>
+        <argsstring>(const void *send_buf, void *recv_buf, size_t count, datatype dtype, reduction rtype, const communicator &amp;comm, const stream &amp;stream, const allreduce_attr &amp;attr=default_allreduce_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>allreduce</name>
+        <param>
+          <type>const void *</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>void *</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>datatype</type>
+          <declname>dtype</declname>
+        </param>
+        <param>
+          <type>reduction</type>
+          <declname>rtype</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const stream &amp;</type>
+          <declname>stream</declname>
+        </param>
+        <param>
+          <type>const allreduce_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_allreduce_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+<para>Allreduce is a collective communication operation that performs the global reduction operation on values from all ranks of communicator and distributes the result back to all ranks. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>send_buf</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the buffer with <computeroutput>count</computeroutput> elements of <computeroutput>dtype</computeroutput> that stores local data to be reduced </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>recv_buf</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>[out] the buffer to store reduced result, must have the same dimension as <computeroutput>send_buf</computeroutput> </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the number of elements of type <computeroutput>dtype</computeroutput> in <computeroutput>send_buf</computeroutput> and <computeroutput>recv_buf</computeroutput> </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>dtype</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the datatype of elements in <computeroutput>send_buf</computeroutput> and <computeroutput>recv_buf`</computeroutput> </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>rtype</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the type of the reduction operation to be applied </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>comm</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the communicator for which the operation will be performed </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>stream</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>abstraction over a device queue constructed via ccl::create_stream </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>attr</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>optional attributes to customize operation </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>deps</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>an optional vector of the events that the operation should depend on </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>ccl::event an object to track the progress of the operation </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="667" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="667" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__allreduce_1gad451e84105255b658854a943a70356f1" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::allreduce</definition>
+        <argsstring>(const void *send_buf, void *recv_buf, size_t count, datatype dtype, reduction rtype, const communicator &amp;comm, const allreduce_attr &amp;attr=default_allreduce_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>allreduce</name>
+        <param>
+          <type>const void *</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>void *</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>datatype</type>
+          <declname>dtype</declname>
+        </param>
+        <param>
+          <type>reduction</type>
+          <declname>rtype</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const allreduce_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_allreduce_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="680" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="680" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__allreduce_1ga2a6bf4a6873e40a4b686e92d840eed77" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::allreduce</definition>
+        <argsstring>(const BufferType *send_buf, BufferType *recv_buf, size_t count, reduction rtype, const communicator &amp;comm, const stream &amp;stream, const allreduce_attr &amp;attr=default_allreduce_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>allreduce</name>
+        <param>
+          <type>const BufferType *</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>BufferType *</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>reduction</type>
+          <declname>rtype</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const stream &amp;</type>
+          <declname>stream</declname>
+        </param>
+        <param>
+          <type>const allreduce_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_allreduce_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="697" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="697" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__allreduce_1ga4cd77897206c78fca1db280ed48cd030" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::allreduce</definition>
+        <argsstring>(const BufferType *send_buf, BufferType *recv_buf, size_t count, reduction rtype, const communicator &amp;comm, const allreduce_attr &amp;attr=default_allreduce_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>allreduce</name>
+        <param>
+          <type>const BufferType *</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>BufferType *</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>reduction</type>
+          <declname>rtype</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const allreduce_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_allreduce_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="714" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="714" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__allreduce_1ga27bf17e6ce3bda78d5d047c34e0725a8" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferObjectType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::allreduce</definition>
+        <argsstring>(const BufferObjectType &amp;send_buf, BufferObjectType &amp;recv_buf, size_t count, reduction rtype, const communicator &amp;comm, const stream &amp;stream, const allreduce_attr &amp;attr=default_allreduce_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>allreduce</name>
+        <param>
+          <type>const BufferObjectType &amp;</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>BufferObjectType &amp;</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>reduction</type>
+          <declname>rtype</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const stream &amp;</type>
+          <declname>stream</declname>
+        </param>
+        <param>
+          <type>const allreduce_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_allreduce_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="730" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="730" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__allreduce_1ga8a2953b3cb14bb4733b0c51ea655ef7b" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferObjectType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::allreduce</definition>
+        <argsstring>(const BufferObjectType &amp;send_buf, BufferObjectType &amp;recv_buf, size_t count, reduction rtype, const communicator &amp;comm, const allreduce_attr &amp;attr=default_allreduce_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>allreduce</name>
+        <param>
+          <type>const BufferObjectType &amp;</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>BufferObjectType &amp;</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>reduction</type>
+          <declname>rtype</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const allreduce_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_allreduce_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="747" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="747" declcolumn="15"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

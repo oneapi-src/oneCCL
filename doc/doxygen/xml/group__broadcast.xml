@@ -1,0 +1,389 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.1" xml:lang="en-US">
+  <compounddef id="group__broadcast" kind="group">
+    <compoundname>broadcast</compoundname>
+    <title>Broadcast</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__broadcast_1gaf0ff0ab5ccbf9e60ee16608152a120a1" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::broadcast</definition>
+        <argsstring>(void *buf, size_t count, datatype dtype, int root, const communicator &amp;comm, const stream &amp;stream, const broadcast_attr &amp;attr=default_broadcast_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>broadcast</name>
+        <param>
+          <type>void *</type>
+          <declname>buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>datatype</type>
+          <declname>dtype</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>root</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const stream &amp;</type>
+          <declname>stream</declname>
+        </param>
+        <param>
+          <type>const broadcast_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_broadcast_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+<para>Broadcast is a collective communication operation that broadcasts data from one rank of communicator (denoted as root) to all other ranks. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>send_buf</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>[in] the buffer with <computeroutput>count</computeroutput> elements of <computeroutput>dtype</computeroutput> serves as send buffer for root </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>recv_buf</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>[out] the buffer with <computeroutput>count</computeroutput> elements of <computeroutput>dtype</computeroutput> serves as receive buffer for all ranks </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the number of elements of type <computeroutput>dtype</computeroutput> in <computeroutput>buf</computeroutput> </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>dtype</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the datatype of elements in <computeroutput>buf</computeroutput> </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>root</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the rank that broadcasts <computeroutput>buf</computeroutput> </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>comm</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the communicator for which the operation will be performed </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>stream</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>abstraction over a device queue constructed via ccl::create_stream </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>attr</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>optional attributes to customize operation </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>deps</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>an optional vector of the events that the operation should depend on </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>ccl::event an object to track the progress of the operation </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="1220" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="1220" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__broadcast_1gae1797a842e44d0695f8ee71a8258e7f6" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::broadcast</definition>
+        <argsstring>(void *buf, size_t count, datatype dtype, int root, const communicator &amp;comm, const broadcast_attr &amp;attr=default_broadcast_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>broadcast</name>
+        <param>
+          <type>void *</type>
+          <declname>buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>datatype</type>
+          <declname>dtype</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>root</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const broadcast_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_broadcast_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="1232" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="1232" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__broadcast_1gabe5f9e089a859f4fbb521af22334c6a0" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::broadcast</definition>
+        <argsstring>(BufferType *buf, size_t count, int root, const communicator &amp;comm, const stream &amp;stream, const broadcast_attr &amp;attr=default_broadcast_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>broadcast</name>
+        <param>
+          <type>BufferType *</type>
+          <declname>buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>root</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const stream &amp;</type>
+          <declname>stream</declname>
+        </param>
+        <param>
+          <type>const broadcast_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_broadcast_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="1248" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="1248" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__broadcast_1gad03e6a60065489ab91a2474dad5ca51d" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::broadcast</definition>
+        <argsstring>(BufferType *buf, size_t count, int root, const communicator &amp;comm, const broadcast_attr &amp;attr=default_broadcast_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>broadcast</name>
+        <param>
+          <type>BufferType *</type>
+          <declname>buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>root</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const broadcast_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_broadcast_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="1264" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="1264" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__broadcast_1gaf1b3a9e7440d50f245aa094f218cd6af" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferObjectType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::broadcast</definition>
+        <argsstring>(BufferObjectType &amp;buf, size_t count, int root, const communicator &amp;comm, const stream &amp;stream, const broadcast_attr &amp;attr=default_broadcast_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>broadcast</name>
+        <param>
+          <type>BufferObjectType &amp;</type>
+          <declname>buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>root</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const stream &amp;</type>
+          <declname>stream</declname>
+        </param>
+        <param>
+          <type>const broadcast_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_broadcast_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="1279" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="1279" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__broadcast_1ga0743dbdbe807817b1d213f28c8ae0b76" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferObjectType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::broadcast</definition>
+        <argsstring>(BufferObjectType &amp;buf, size_t count, int root, const communicator &amp;comm, const broadcast_attr &amp;attr=default_broadcast_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>broadcast</name>
+        <param>
+          <type>BufferObjectType &amp;</type>
+          <declname>buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>root</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const broadcast_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_broadcast_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="1295" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="1295" declcolumn="15"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

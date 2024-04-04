@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.1" xml:lang="en-US">
+  <compounddef id="group__device" kind="group">
+    <compoundname>device</compoundname>
+    <title>Device</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__device_1ga75b09ccea645fb56d99344e3acca3977" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class native_device_type</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_device_supported&lt;native_device_type&gt;()&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>device CCL_API</type>
+        <definition>device CCL_API ccl::v1::create_device</definition>
+        <argsstring>(native_device_type &amp;&amp;native_device)</argsstring>
+        <name>create_device</name>
+        <param>
+          <type>native_device_type &amp;&amp;</type>
+          <declname>native_device</declname>
+        </param>
+        <briefdescription>
+<para>Creates a new device from @native_device_type. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>native_device</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the existing handle of device </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>device object </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="131" column="16" bodyfile="include/oneapi/ccl/api_functions.hpp" bodystart="131" bodyend="134"/>
+      </memberdef>
+      <memberdef kind="function" id="group__device_1gade5f440ce61b5449d0e90c37c43aa671" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>device CCL_API</type>
+        <definition>device CCL_API ccl::v1::create_device</definition>
+        <argsstring>()</argsstring>
+        <name>create_device</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="139" column="16" declfile="include/oneapi/ccl/api_functions.hpp" declline="139" declcolumn="16"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

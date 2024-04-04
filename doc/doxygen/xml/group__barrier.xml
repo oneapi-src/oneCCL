@@ -1,0 +1,109 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.1" xml:lang="en-US">
+  <compounddef id="group__barrier" kind="group">
+    <compoundname>barrier</compoundname>
+    <title>Barrier</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__barrier_1ga82b3ed2e0f5f81747a5192ca9f0ee056" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::barrier</definition>
+        <argsstring>(const communicator &amp;comm, const stream &amp;stream, const barrier_attr &amp;attr=default_barrier_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>barrier</name>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const stream &amp;</type>
+          <declname>stream</declname>
+        </param>
+        <param>
+          <type>const barrier_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_barrier_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+<para>Barrier synchronization is performed across all ranks of the communicator and it is completed only after all the ranks in the communicator have called it. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>comm</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the communicator for which the operation will be performed </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>stream</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>abstraction over a device queue constructed via ccl::create_stream </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>attr</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>optional attributes to customize operation </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>deps</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>an optional vector of the events that the operation should depend on </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>ccl::event an object to track the progress of the operation </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="1185" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="1185" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__barrier_1gaeccb4eeb980d31958649df5eb316c78b" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::barrier</definition>
+        <argsstring>(const communicator &amp;comm, const barrier_attr &amp;attr=default_barrier_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>barrier</name>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const barrier_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_barrier_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="1193" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="1193" declcolumn="15"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,111 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.1" xml:lang="en-US">
+  <compounddef id="group__kvs" kind="group">
+    <compoundname>kvs</compoundname>
+    <title>Kvs</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__kvs_1ga4de814041fac95137c0747500cdc96d7" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class...</type>
+            <declname>attr_val_type</declname>
+            <defname>attr_val_type</defname>
+          </param>
+        </templateparamlist>
+        <type>kvs_attr CCL_API</type>
+        <definition>kvs_attr CCL_API ccl::v1::create_kvs_attr</definition>
+        <argsstring>(attr_val_type &amp;&amp;... avs)</argsstring>
+        <name>create_kvs_attr</name>
+        <param>
+          <type>attr_val_type &amp;&amp;...</type>
+          <declname>avs</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="92" column="18" bodyfile="include/oneapi/ccl/api_functions.hpp" bodystart="92" bodyend="94"/>
+      </memberdef>
+      <memberdef kind="function" id="group__kvs_1ga544ea9aa17bed25ff1ae8dc5d000d97c" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>shared_ptr_class&lt; kvs &gt; CCL_API</type>
+        <definition>shared_ptr_class&lt;kvs&gt; CCL_API ccl::v1::create_main_kvs</definition>
+        <argsstring>(const kvs_attr &amp;attr=default_kvs_attr)</argsstring>
+        <name>create_main_kvs</name>
+        <param>
+          <type>const kvs_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_kvs_attr</defval>
+        </param>
+        <briefdescription>
+<para>Creates a main key-value store. Its address should be distributed using out of band communication mechanism and be used to create key-value stores on other processes. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>attr</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>optional kvs attributes </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>kvs object </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="104" column="26" declfile="include/oneapi/ccl/api_functions.hpp" declline="104" declcolumn="26"/>
+      </memberdef>
+      <memberdef kind="function" id="group__kvs_1ga3576460665ad4155bb27a565ed77cc4b" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>shared_ptr_class&lt; kvs &gt; CCL_API</type>
+        <definition>shared_ptr_class&lt;kvs&gt; CCL_API ccl::v1::create_kvs</definition>
+        <argsstring>(const kvs::address_type &amp;addr, const kvs_attr &amp;attr=default_kvs_attr)</argsstring>
+        <name>create_kvs</name>
+        <param>
+          <type>const kvs::address_type &amp;</type>
+          <declname>addr</declname>
+        </param>
+        <param>
+          <type>const kvs_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_kvs_attr</defval>
+        </param>
+        <briefdescription>
+<para>Creates a new key-value store from main kvs address. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>addr</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>address of main kvs </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>attr</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>optional kvs attributes </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>kvs object </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="113" column="26" declfile="include/oneapi/ccl/api_functions.hpp" declline="113" declcolumn="26"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

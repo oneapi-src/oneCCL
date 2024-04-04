@@ -1,0 +1,381 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.1" xml:lang="en-US">
+  <compounddef id="group__send" kind="group">
+    <compoundname>send</compoundname>
+    <title>Send</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__send_1ga844a7f2552b6eeb12d0801441659ba67" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::send</definition>
+        <argsstring>(void *buf, size_t count, datatype dtype, int peer, const communicator &amp;comm, const stream &amp;stream, const pt2pt_attr &amp;attr=default_pt2pt_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>send</name>
+        <param>
+          <type>void *</type>
+          <declname>buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>datatype</type>
+          <declname>dtype</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>peer</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const stream &amp;</type>
+          <declname>stream</declname>
+        </param>
+        <param>
+          <type>const pt2pt_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_pt2pt_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+<para>Send is a pt2pt communication operation that sends data from one rank of communicator. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>buf</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>[in,out] the buffer with <computeroutput>count</computeroutput> elements of <computeroutput>dtype</computeroutput> serves as send buffer for root and as receive buffer for other ranks </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the number of elements of type <computeroutput>dtype</computeroutput> in <computeroutput>buf</computeroutput> </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>dtype</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the datatype of elements in <computeroutput>buf</computeroutput> </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>peer</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the rank that receives <computeroutput>buf</computeroutput> </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>comm</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the communicator for which the operation will be performed </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>stream</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>abstraction over a device queue constructed via ccl::create_stream </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>attr</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>optional attributes to customize operation </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>deps</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>an optional vector of the events that the operation should depend on </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>ccl::event an object to track the progress of the operation </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="1536" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="1536" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__send_1gad1c8fc9b32b65d1b174944c85f59960a" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::send</definition>
+        <argsstring>(void *buf, size_t count, datatype dtype, int peer, const communicator &amp;comm, const pt2pt_attr &amp;attr=default_pt2pt_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>send</name>
+        <param>
+          <type>void *</type>
+          <declname>buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>datatype</type>
+          <declname>dtype</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>peer</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const pt2pt_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_pt2pt_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="1548" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="1548" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__send_1gadbbb63d71a4411b8515a39ea4d57a145" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::send</definition>
+        <argsstring>(BufferType *buf, size_t count, int peer, const communicator &amp;comm, const stream &amp;stream, const pt2pt_attr &amp;attr=default_pt2pt_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>send</name>
+        <param>
+          <type>BufferType *</type>
+          <declname>buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>peer</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const stream &amp;</type>
+          <declname>stream</declname>
+        </param>
+        <param>
+          <type>const pt2pt_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_pt2pt_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="1564" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="1564" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__send_1ga5b4b408e853abd75e1e0e68b42f3ec44" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::send</definition>
+        <argsstring>(BufferType *buf, size_t count, int peer, const communicator &amp;comm, const pt2pt_attr &amp;attr=default_pt2pt_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>send</name>
+        <param>
+          <type>BufferType *</type>
+          <declname>buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>peer</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const pt2pt_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_pt2pt_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="1580" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="1580" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__send_1ga9dc152cf8fa4ea60fa6e07d497d4093b" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferObjectType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::send</definition>
+        <argsstring>(BufferObjectType &amp;buf, size_t count, int peer, const communicator &amp;comm, const stream &amp;stream, const pt2pt_attr &amp;attr=default_pt2pt_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>send</name>
+        <param>
+          <type>BufferObjectType &amp;</type>
+          <declname>buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>peer</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const stream &amp;</type>
+          <declname>stream</declname>
+        </param>
+        <param>
+          <type>const pt2pt_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_pt2pt_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="1595" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="1595" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__send_1ga1b30ee9a66a1797227312ee2c448e7c3" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferObjectType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::send</definition>
+        <argsstring>(BufferObjectType &amp;buf, size_t count, int peer, const communicator &amp;comm, const pt2pt_attr &amp;attr=default_pt2pt_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>send</name>
+        <param>
+          <type>BufferObjectType &amp;</type>
+          <declname>buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>peer</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const pt2pt_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_pt2pt_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="1611" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="1611" declcolumn="15"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,84 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.1" xml:lang="en-US">
+  <compounddef id="group__init" kind="group">
+    <compoundname>init</compoundname>
+    <title>Init</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__init_1ga65f74f344efb9fa2ee3d2c640a60cecc" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class...</type>
+            <declname>attr_val_type</declname>
+            <defname>attr_val_type</defname>
+          </param>
+        </templateparamlist>
+        <type>init_attr CCL_API</type>
+        <definition>init_attr CCL_API ccl::v1::create_init_attr</definition>
+        <argsstring>(attr_val_type &amp;&amp;... avs)</argsstring>
+        <name>create_init_attr</name>
+        <param>
+          <type>attr_val_type &amp;&amp;...</type>
+          <declname>avs</declname>
+        </param>
+        <briefdescription>
+<para>Creates an attribute object that may be used to control the init operation. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>an attribute object </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="24" column="19" bodyfile="include/oneapi/ccl/api_functions.hpp" bodystart="24" bodyend="26"/>
+      </memberdef>
+      <memberdef kind="function" id="group__init_1ga20c74d17bf3eb875364fc51724bf2c1e" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void CCL_API</type>
+        <definition>void CCL_API ccl::v1::init</definition>
+        <argsstring>(const init_attr &amp;attr=default_init_attr)</argsstring>
+        <name>init</name>
+        <param>
+          <type>const init_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_init_attr</defval>
+        </param>
+        <briefdescription>
+<para>Initializes the library. Optional for invocation. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>attr</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>optional init attributes </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="33" column="14" declfile="include/oneapi/ccl/api_functions.hpp" declline="33" declcolumn="14"/>
+      </memberdef>
+      <memberdef kind="function" id="group__init_1ga546f0ab65c4a49793a05f7ece8e9ec66" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>library_version CCL_API</type>
+        <definition>library_version CCL_API ccl::v1::get_library_version</definition>
+        <argsstring>()</argsstring>
+        <name>get_library_version</name>
+        <briefdescription>
+<para>Retrieves the library version. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="39" column="25" declfile="include/oneapi/ccl/api_functions.hpp" declline="39" declcolumn="25"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

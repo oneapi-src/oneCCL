@@ -1,0 +1,413 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.1" xml:lang="en-US">
+  <compounddef id="group__reducescatter" kind="group">
+    <compoundname>reducescatter</compoundname>
+    <title>Reducescatter</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__reducescatter_1ga4e5f79a1b424aba43b213cd2e7eb975e" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::reduce_scatter</definition>
+        <argsstring>(const void *send_buf, void *recv_buf, size_t recv_count, datatype dtype, reduction rtype, const communicator &amp;comm, const stream &amp;stream, const reduce_scatter_attr &amp;attr=default_reduce_scatter_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>reduce_scatter</name>
+        <param>
+          <type>const void *</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>void *</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>recv_count</declname>
+        </param>
+        <param>
+          <type>datatype</type>
+          <declname>dtype</declname>
+        </param>
+        <param>
+          <type>reduction</type>
+          <declname>rtype</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const stream &amp;</type>
+          <declname>stream</declname>
+        </param>
+        <param>
+          <type>const reduce_scatter_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_reduce_scatter_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+<para>Reduce-scatter is a collective communication operation that performs the global reduction operation on values from all ranks of the communicator and scatters the result in blocks back to all ranks. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>send_buf</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the buffer with <computeroutput>comm_size</computeroutput> * <computeroutput>count</computeroutput> elements of <computeroutput>dtype</computeroutput> that stores local data to be reduced </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>recv_buf</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>[out] the buffer to store result block containing <computeroutput>recv_count</computeroutput> elements of type <computeroutput>dtype</computeroutput> </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>recv_count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the number of elements of type <computeroutput>dtype</computeroutput> in receive block </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>dtype</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the datatype of elements in <computeroutput>send_buf</computeroutput> and <computeroutput>recv_buf</computeroutput> </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>rtype</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the type of the reduction operation to be applied </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>comm</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the communicator for which the operation will be performed </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>stream</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>abstraction over a device queue constructed via ccl::create_stream </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>attr</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>optional attributes to customize operation </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>deps</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>an optional vector of the events that the operation should depend on </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>ccl::event an object to track the progress of the operation </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="1756" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="1756" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__reducescatter_1ga76628f5b059f2b545847a6dcbd092e04" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::reduce_scatter</definition>
+        <argsstring>(const void *send_buf, void *recv_buf, size_t recv_count, datatype dtype, reduction rtype, const communicator &amp;comm, const reduce_scatter_attr &amp;attr=default_reduce_scatter_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>reduce_scatter</name>
+        <param>
+          <type>const void *</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>void *</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>recv_count</declname>
+        </param>
+        <param>
+          <type>datatype</type>
+          <declname>dtype</declname>
+        </param>
+        <param>
+          <type>reduction</type>
+          <declname>rtype</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const reduce_scatter_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_reduce_scatter_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="1769" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="1769" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__reducescatter_1gaa74f31a03a95bc7d5c27348262368528" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::reduce_scatter</definition>
+        <argsstring>(const BufferType *send_buf, BufferType *recv_buf, size_t recv_count, reduction rtype, const communicator &amp;comm, const stream &amp;stream, const reduce_scatter_attr &amp;attr=default_reduce_scatter_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>reduce_scatter</name>
+        <param>
+          <type>const BufferType *</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>BufferType *</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>recv_count</declname>
+        </param>
+        <param>
+          <type>reduction</type>
+          <declname>rtype</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const stream &amp;</type>
+          <declname>stream</declname>
+        </param>
+        <param>
+          <type>const reduce_scatter_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_reduce_scatter_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="1786" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="1786" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__reducescatter_1ga62e85fc75bab9db82bad47b5fc183428" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::reduce_scatter</definition>
+        <argsstring>(const BufferType *send_buf, BufferType *recv_buf, size_t recv_count, reduction rtype, const communicator &amp;comm, const reduce_scatter_attr &amp;attr=default_reduce_scatter_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>reduce_scatter</name>
+        <param>
+          <type>const BufferType *</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>BufferType *</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>recv_count</declname>
+        </param>
+        <param>
+          <type>reduction</type>
+          <declname>rtype</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const reduce_scatter_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_reduce_scatter_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="1803" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="1803" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__reducescatter_1gab5911198a87b7b73e6265557fb1edb0a" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferObjectType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::reduce_scatter</definition>
+        <argsstring>(const BufferObjectType &amp;send_buf, BufferObjectType &amp;recv_buf, size_t recv_count, reduction rtype, const communicator &amp;comm, const stream &amp;stream, const reduce_scatter_attr &amp;attr=default_reduce_scatter_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>reduce_scatter</name>
+        <param>
+          <type>const BufferObjectType &amp;</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>BufferObjectType &amp;</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>recv_count</declname>
+        </param>
+        <param>
+          <type>reduction</type>
+          <declname>rtype</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const stream &amp;</type>
+          <declname>stream</declname>
+        </param>
+        <param>
+          <type>const reduce_scatter_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_reduce_scatter_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="1820" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="1820" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__reducescatter_1ga7c074109f79ed5a458ee62ba7fa4ad60" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferObjectType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::reduce_scatter</definition>
+        <argsstring>(const BufferObjectType &amp;send_buf, BufferObjectType &amp;recv_buf, size_t recv_count, reduction rtype, const communicator &amp;comm, const reduce_scatter_attr &amp;attr=default_reduce_scatter_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>reduce_scatter</name>
+        <param>
+          <type>const BufferObjectType &amp;</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>BufferObjectType &amp;</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>recv_count</declname>
+        </param>
+        <param>
+          <type>reduction</type>
+          <declname>rtype</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const reduce_scatter_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_reduce_scatter_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="1837" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="1837" declcolumn="15"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,807 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.1" xml:lang="en-US">
+  <compounddef id="group__alltoall" kind="group">
+    <compoundname>alltoall</compoundname>
+    <title>Alltoall</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__alltoall_1gacfb8820ddd761813a147f4d120674700" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::alltoall</definition>
+        <argsstring>(const void *send_buf, void *recv_buf, size_t count, datatype dtype, const communicator &amp;comm, const stream &amp;stream, const alltoall_attr &amp;attr=default_alltoall_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>alltoall</name>
+        <param>
+          <type>const void *</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>void *</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>datatype</type>
+          <declname>dtype</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const stream &amp;</type>
+          <declname>stream</declname>
+        </param>
+        <param>
+          <type>const alltoall_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_alltoall_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+<para>Alltoall is a collective communication operation in which each rank sends distinct equal-sized blocks of data to each rank. The j-th block of <computeroutput>send_buf</computeroutput> sent from the i-th rank is received by the j-th rank and is placed in the i-th block of <computeroutput>recvbuf</computeroutput>. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>send_buf</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the buffer with <computeroutput>count</computeroutput> elements of <computeroutput>dtype</computeroutput> that stores local data to be sent </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>recv_buf</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>[out] the buffer to store received result, must be large enough to hold values from all ranks, i.e. at least <computeroutput>comm_size</computeroutput> * <computeroutput>count</computeroutput> </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>count</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the number of elements of type <computeroutput>dtype</computeroutput> to be send to or to received from each rank </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>dtype</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the datatype of elements in <computeroutput>send_buf</computeroutput> and <computeroutput>recv_buf</computeroutput> </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>comm</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the communicator for which the operation will be performed </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>stream</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>abstraction over a device queue constructed via ccl::create_stream </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>attr</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>optional attributes to customize operation </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>deps</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>an optional vector of the events that the operation should depend on </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>ccl::event an object to track the progress of the operation </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="778" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="778" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__alltoall_1ga762c02cd990abd73909fc06b779ee9e2" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::alltoall</definition>
+        <argsstring>(const void *send_buf, void *recv_buf, size_t count, datatype dtype, const communicator &amp;comm, const alltoall_attr &amp;attr=default_alltoall_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>alltoall</name>
+        <param>
+          <type>const void *</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>void *</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>datatype</type>
+          <declname>dtype</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const alltoall_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_alltoall_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="790" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="790" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__alltoall_1gab507d3b7975af2eaafebf37124785828" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::alltoall</definition>
+        <argsstring>(const vector_class&lt; void * &gt; &amp;send_buf, const vector_class&lt; void * &gt; &amp;recv_buf, size_t count, datatype dtype, const communicator &amp;comm, const stream &amp;stream, const alltoall_attr &amp;attr=default_alltoall_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>alltoall</name>
+        <param>
+          <type>const vector_class&lt; void * &gt; &amp;</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>const vector_class&lt; void * &gt; &amp;</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>datatype</type>
+          <declname>dtype</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const stream &amp;</type>
+          <declname>stream</declname>
+        </param>
+        <param>
+          <type>const alltoall_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_alltoall_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>send_bufs</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>array of buffers with local data to be sent, one buffer per rank </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>recv_bufs</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>[out] array of buffers to store received result, one buffer per rank </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="804" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="804" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__alltoall_1ga14c706e631208a28105e8a792f42c8a8" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::alltoall</definition>
+        <argsstring>(const vector_class&lt; void * &gt; &amp;send_buf, const vector_class&lt; void * &gt; &amp;recv_buf, size_t count, datatype dtype, const communicator &amp;comm, const alltoall_attr &amp;attr=default_alltoall_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>alltoall</name>
+        <param>
+          <type>const vector_class&lt; void * &gt; &amp;</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>const vector_class&lt; void * &gt; &amp;</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>datatype</type>
+          <declname>dtype</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const alltoall_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_alltoall_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>send_bufs</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>array of buffers with local data to be sent, one buffer per rank </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>recv_bufs</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>[out] array of buffers to store received result, one buffer per rank </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="819" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="819" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__alltoall_1ga84a9694d58198e8cb8e8278bd9b02c8b" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::alltoall</definition>
+        <argsstring>(const BufferType *send_buf, BufferType *recv_buf, size_t count, const communicator &amp;comm, const stream &amp;stream, const alltoall_attr &amp;attr=default_alltoall_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>alltoall</name>
+        <param>
+          <type>const BufferType *</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>BufferType *</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const stream &amp;</type>
+          <declname>stream</declname>
+        </param>
+        <param>
+          <type>const alltoall_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_alltoall_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="834" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="834" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__alltoall_1gad7e8c3ca2cf271501723c69f37f963ff" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::alltoall</definition>
+        <argsstring>(const BufferType *send_buf, BufferType *recv_buf, size_t count, const communicator &amp;comm, const alltoall_attr &amp;attr=default_alltoall_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>alltoall</name>
+        <param>
+          <type>const BufferType *</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>BufferType *</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const alltoall_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_alltoall_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="849" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="849" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__alltoall_1ga7239809e4da0082479162bbc52117348" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::alltoall</definition>
+        <argsstring>(const vector_class&lt; BufferType * &gt; &amp;send_buf, const vector_class&lt; BufferType * &gt; &amp;recv_buf, size_t count, const communicator &amp;comm, const stream &amp;stream, const alltoall_attr &amp;attr=default_alltoall_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>alltoall</name>
+        <param>
+          <type>const vector_class&lt; BufferType * &gt; &amp;</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>const vector_class&lt; BufferType * &gt; &amp;</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const stream &amp;</type>
+          <declname>stream</declname>
+        </param>
+        <param>
+          <type>const alltoall_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_alltoall_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version.</para>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>send_bufs</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>array of buffers with local data to be sent, one buffer per rank </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>recv_bufs</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>[out] array of buffers to store received result, one buffer per rank </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="866" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="866" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__alltoall_1ga2d44421d3d9c7f472c88148e4f367ee4" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::alltoall</definition>
+        <argsstring>(const vector_class&lt; BufferType * &gt; &amp;send_buf, const vector_class&lt; BufferType * &gt; &amp;recv_buf, size_t count, const communicator &amp;comm, const alltoall_attr &amp;attr=default_alltoall_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>alltoall</name>
+        <param>
+          <type>const vector_class&lt; BufferType * &gt; &amp;</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>const vector_class&lt; BufferType * &gt; &amp;</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const alltoall_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_alltoall_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version.</para>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>send_bufs</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>array of buffers with local data to be sent, one buffer per rank </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>recv_bufs</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>[out] array of buffers to store received result, one buffer per rank </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="885" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="885" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__alltoall_1gae95987275b79b4c5c39519b27bf0fd9a" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferObjectType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::alltoall</definition>
+        <argsstring>(const BufferObjectType &amp;send_buf, BufferObjectType &amp;recv_buf, size_t count, const communicator &amp;comm, const stream &amp;stream, const alltoall_attr &amp;attr=default_alltoall_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>alltoall</name>
+        <param>
+          <type>const BufferObjectType &amp;</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>BufferObjectType &amp;</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const stream &amp;</type>
+          <declname>stream</declname>
+        </param>
+        <param>
+          <type>const alltoall_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_alltoall_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="899" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="899" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__alltoall_1ga9d8255a51627ed9e53641d88b8b82506" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferObjectType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::alltoall</definition>
+        <argsstring>(const BufferObjectType &amp;send_buf, BufferObjectType &amp;recv_buf, size_t count, const communicator &amp;comm, const alltoall_attr &amp;attr=default_alltoall_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>alltoall</name>
+        <param>
+          <type>const BufferObjectType &amp;</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>BufferObjectType &amp;</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const alltoall_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_alltoall_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version.</para>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>send_bufs</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>array of buffers with local data to be sent, one buffer per rank </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>recv_bufs</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>[out] array of buffers to store received result, one buffer per rank </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="917" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="917" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__alltoall_1gafc4eba5b6deb74f0f62c81d4699cbea6" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferObjectType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::alltoall</definition>
+        <argsstring>(const vector_class&lt; reference_wrapper_class&lt; BufferObjectType &gt;&gt; &amp;send_buf, const vector_class&lt; reference_wrapper_class&lt; BufferObjectType &gt;&gt; &amp;recv_buf, size_t count, const communicator &amp;comm, const stream &amp;stream, const alltoall_attr &amp;attr=default_alltoall_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>alltoall</name>
+        <param>
+          <type>const vector_class&lt; reference_wrapper_class&lt; BufferObjectType &gt;&gt; &amp;</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>const vector_class&lt; reference_wrapper_class&lt; BufferObjectType &gt;&gt; &amp;</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const stream &amp;</type>
+          <declname>stream</declname>
+        </param>
+        <param>
+          <type>const alltoall_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_alltoall_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version.</para>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>send_bufs</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>array of buffers with local data to be sent, one buffer per rank </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>recv_bufs</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>[out] array of buffers to store received result, one buffer per rank </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="934" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="934" declcolumn="15"/>
+      </memberdef>
+      <memberdef kind="function" id="group__alltoall_1gabe8a8baf2ea7d4fdb57056e6967eb8fa" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class BufferObjectType</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(), event&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>event CCL_API</type>
+        <definition>event CCL_API ccl::v1::alltoall</definition>
+        <argsstring>(const vector_class&lt; reference_wrapper_class&lt; BufferObjectType &gt;&gt; &amp;send_buf, const vector_class&lt; reference_wrapper_class&lt; BufferObjectType &gt;&gt; &amp;recv_buf, size_t count, const communicator &amp;comm, const alltoall_attr &amp;attr=default_alltoall_attr, const vector_class&lt; event &gt; &amp;deps={})</argsstring>
+        <name>alltoall</name>
+        <param>
+          <type>const vector_class&lt; reference_wrapper_class&lt; BufferObjectType &gt;&gt; &amp;</type>
+          <declname>send_buf</declname>
+        </param>
+        <param>
+          <type>const vector_class&lt; reference_wrapper_class&lt; BufferObjectType &gt;&gt; &amp;</type>
+          <declname>recv_buf</declname>
+        </param>
+        <param>
+          <type>size_t</type>
+          <declname>count</declname>
+        </param>
+        <param>
+          <type>const communicator &amp;</type>
+          <declname>comm</declname>
+        </param>
+        <param>
+          <type>const alltoall_attr &amp;</type>
+          <declname>attr</declname>
+          <defval>default_alltoall_attr</defval>
+        </param>
+        <param>
+          <type>const vector_class&lt; event &gt; &amp;</type>
+          <declname>deps</declname>
+          <defval>{}</defval>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</para>
+<para>Type-safe version.</para>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>send_bufs</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>array of buffers with local data to be sent, one buffer per rank </para>
+</parameterdescription>
+</parameteritem>
+<parameteritem>
+<parameternamelist>
+<parametername>recv_bufs</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>[out] array of buffers to store received result, one buffer per rank </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="952" column="15" declfile="include/oneapi/ccl/api_functions.hpp" declline="952" declcolumn="15"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>

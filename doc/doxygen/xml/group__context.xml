@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.1" xml:lang="en-US">
+  <compounddef id="group__context" kind="group">
+    <compoundname>context</compoundname>
+    <title>Context</title>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="group__context_1gad6daf5ee10bf8c16617188ca4c960ebe" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <templateparamlist>
+          <param>
+            <type>class native_context_type</type>
+          </param>
+          <param>
+            <type>class</type>
+            <defval>typename std::enable_if&lt;is_context_supported&lt;native_context_type&gt;()&gt;::type</defval>
+          </param>
+        </templateparamlist>
+        <type>context CCL_API</type>
+        <definition>context CCL_API ccl::v1::create_context</definition>
+        <argsstring>(native_context_type &amp;&amp;native_context)</argsstring>
+        <name>create_context</name>
+        <param>
+          <type>native_context_type &amp;&amp;</type>
+          <declname>native_context</declname>
+        </param>
+        <briefdescription>
+<para>Creates a new context from @native_contex_type. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><parameterlist kind="param"><parameteritem>
+<parameternamelist>
+<parametername>native_context</parametername>
+</parameternamelist>
+<parameterdescription>
+<para>the existing handle of context </para>
+</parameterdescription>
+</parameteritem>
+</parameterlist>
+<simplesect kind="return"><para>context object </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="156" column="17" bodyfile="include/oneapi/ccl/api_functions.hpp" bodystart="156" bodyend="159"/>
+      </memberdef>
+      <memberdef kind="function" id="group__context_1ga632ba2b0ff7402f2555d4485bc33add1" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>context CCL_API</type>
+        <definition>context CCL_API ccl::v1::create_context</definition>
+        <argsstring>()</argsstring>
+        <name>create_context</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="include/oneapi/ccl/api_functions.hpp" line="164" column="17" declfile="include/oneapi/ccl/api_functions.hpp" declline="164" declcolumn="17"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+  </compounddef>
+</doxygen>
