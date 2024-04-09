@@ -204,6 +204,10 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../../env-variables.html">Environment Variables</a></li>
 </ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Benchmark User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../benchmark.html">oneCCL Benchmark User Guide</a></li>
+</ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Notices and Disclaimers</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../../legal.html">Notices and Disclaimers</a></li>
@@ -412,7 +416,7 @@ document.write(`
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>comm</strong> – the communicator for which the operation will be performed </p></li>
-<li><p><strong>stream</strong> – a stream associated with the operation </p></li>
+<li><p><strong>stream</strong> – abstraction over a device queue constructed via ccl::create_stream </p></li>
 <li><p><strong>attr</strong> – optional attributes to customize operation </p></li>
 <li><p><strong>deps</strong> – an optional vector of the events that the operation should depend on </p></li>
 </ul>
