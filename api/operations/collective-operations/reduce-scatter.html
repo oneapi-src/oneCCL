@@ -204,6 +204,10 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../../env-variables.html">Environment Variables</a></li>
 </ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Benchmark User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../benchmark.html">oneCCL Benchmark User Guide</a></li>
+</ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Notices and Disclaimers</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../../legal.html">Notices and Disclaimers</a></li>
@@ -417,7 +421,7 @@ document.write(`
 <li><p><strong>dtype</strong> – the datatype of elements in <code class="docutils literal notranslate"><span class="pre">send_buf</span></code> and <code class="docutils literal notranslate"><span class="pre">recv_buf</span></code></p></li>
 <li><p><strong>rtype</strong> – the type of the reduction operation to be applied </p></li>
 <li><p><strong>comm</strong> – the communicator for which the operation will be performed </p></li>
-<li><p><strong>stream</strong> – a stream associated with the operation </p></li>
+<li><p><strong>stream</strong> – abstraction over a device queue constructed via ccl::create_stream </p></li>
 <li><p><strong>attr</strong> – optional attributes to customize operation </p></li>
 <li><p><strong>deps</strong> – an optional vector of the events that the operation should depend on </p></li>
 </ul>
@@ -437,25 +441,29 @@ document.write(`
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
 <span class="sig-name descname"><span class="pre">template&lt;class</span> <span class="pre">BufferType,</span> <span class="pre">class</span> <span class="pre">=</span> <span class="pre">typename</span> <span class="pre">std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(),</span> <span class="pre">event&gt;::type&gt;</span> <span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">reduce_scatter</span> <span class="pre">(const</span> <span class="pre">BufferType</span> <span class="pre">*send_buf,</span> <span class="pre">BufferType</span> <span class="pre">*recv_buf,</span> <span class="pre">size_t</span> <span class="pre">recv_count,</span> <span class="pre">reduction</span> <span class="pre">rtype,</span> <span class="pre">const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">stream</span> <span class="pre">&amp;stream,</span> <span class="pre">const</span> <span class="pre">reduce_scatter_attr</span> <span class="pre">&amp;attr=default_reduce_scatter_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
-<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p>Type-safe version. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
 <span class="sig-name descname"><span class="pre">template&lt;class</span> <span class="pre">BufferType,</span> <span class="pre">class</span> <span class="pre">=</span> <span class="pre">typename</span> <span class="pre">std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(),</span> <span class="pre">event&gt;::type&gt;</span> <span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">reduce_scatter</span> <span class="pre">(const</span> <span class="pre">BufferType</span> <span class="pre">*send_buf,</span> <span class="pre">BufferType</span> <span class="pre">*recv_buf,</span> <span class="pre">size_t</span> <span class="pre">recv_count,</span> <span class="pre">reduction</span> <span class="pre">rtype,</span> <span class="pre">const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">reduce_scatter_attr</span> <span class="pre">&amp;attr=default_reduce_scatter_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
-<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p>Type-safe version. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
 <span class="sig-name descname"><span class="pre">template&lt;class</span> <span class="pre">BufferObjectType,</span> <span class="pre">class</span> <span class="pre">=</span> <span class="pre">typename</span> <span class="pre">std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(),</span> <span class="pre">event&gt;::type&gt;</span> <span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">reduce_scatter</span> <span class="pre">(const</span> <span class="pre">BufferObjectType</span> <span class="pre">&amp;send_buf,</span> <span class="pre">BufferObjectType</span> <span class="pre">&amp;recv_buf,</span> <span class="pre">size_t</span> <span class="pre">recv_count,</span> <span class="pre">reduction</span> <span class="pre">rtype,</span> <span class="pre">const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">stream</span> <span class="pre">&amp;stream,</span> <span class="pre">const</span> <span class="pre">reduce_scatter_attr</span> <span class="pre">&amp;attr=default_reduce_scatter_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
-<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p>Type-safe version. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
 <span class="sig-name descname"><span class="pre">template&lt;class</span> <span class="pre">BufferObjectType,</span> <span class="pre">class</span> <span class="pre">=</span> <span class="pre">typename</span> <span class="pre">std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(),</span> <span class="pre">event&gt;::type&gt;</span> <span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">reduce_scatter</span> <span class="pre">(const</span> <span class="pre">BufferObjectType</span> <span class="pre">&amp;send_buf,</span> <span class="pre">BufferObjectType</span> <span class="pre">&amp;recv_buf,</span> <span class="pre">size_t</span> <span class="pre">recv_count,</span> <span class="pre">reduction</span> <span class="pre">rtype,</span> <span class="pre">const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">reduce_scatter_attr</span> <span class="pre">&amp;attr=default_reduce_scatter_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
-<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p>Type-safe version. </p>
 </dd></dl>
 
 </section>

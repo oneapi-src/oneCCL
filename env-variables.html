@@ -45,7 +45,7 @@
     <link rel="shortcut icon" href="_static/favicons.png"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Notices and Disclaimers" href="legal.html" />
+    <link rel="next" title="oneCCL Benchmark User Guide" href="benchmark.html" />
     <link rel="prev" title="Point-To-Point Operations" href="api/operations/point-to-point.html" />
     <script defer type="text/javascript" src="https://www.intel.com/content/dam/www/global/wap/performance-config.js" ></script>
     <script type="text/javascript">
@@ -203,6 +203,10 @@
 </ul>
 </li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Environment Variables</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Benchmark User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="benchmark.html">oneCCL Benchmark User Guide</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Notices and Disclaimers</span></p>
 <ul class="nav bd-sidenav">
@@ -406,6 +410,7 @@ document.write(`
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-allgatherv-monolithic-pipeline-kernel">CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL</a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-reduce-scatter-monolithic-pipeline-kernel">CCL_REDUCE_SCATTER_MONOLITHIC_PIPELINE_KERNEL</a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-alltoallv-monolithic-kernel">CCL_ALLTOALLV_MONOLITHIC_KERNEL</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-skip-scheduler">CCL_SKIP_SCHEDULER</a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#scaleout">SCALEOUT</a></li>
 </ul>
 </li>
@@ -487,7 +492,7 @@ document.write(`
   <section id="environment-variables">
 <h1>Environment Variables<a class="headerlink" href="#environment-variables" title="Permalink to this headline">#</a></h1>
 <section id="collective-algorithms-selection">
-<h2>Collective Algorithms Selection<a class="headerlink" href="#collective-algorithms-selection" title="Permalink to this headline">#</a></h2>
+<span id="id1"></span><h2>Collective Algorithms Selection<a class="headerlink" href="#collective-algorithms-selection" title="Permalink to this headline">#</a></h2>
 <p>oneCCL supports collective operations for the host (CPU) memory buffers and device (GPU) memory buffers. Below you can see how to select the collective algorithm depending on the type of buffer being utilized.</p>
 <section id="device-gpu-memory-buffers">
 <h3>Device (GPU) Memory Buffers<a class="headerlink" href="#device-gpu-memory-buffers" title="Permalink to this headline">#</a></h3>
@@ -548,15 +553,15 @@ document.write(`
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
-<td><p>Uses compute kernels to transfer data across GPUs for the <code class="docutils literal notranslate"><span class="pre">ALLGATHERV</span></code> collective.</p></td>
+<td><p>Uses compute kernels to transfer data across GPUs for the <code class="docutils literal notranslate"><span class="pre">ALLGATHERV</span></code> collective. The default value.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
-<td><p>Uses copy engines to transfer data across GPUs for the <code class="docutils literal notranslate"><span class="pre">ALLGATHERV</span></code> collective. The default value.</p></td>
+<td><p>Uses copy engines to transfer data across GPUs for the <code class="docutils literal notranslate"><span class="pre">ALLGATHERV</span></code> collective.</p></td>
 </tr>
 </tbody>
 </table>
 <p><strong>Description</strong></p>
-<p>Set this environment variable to enable compute kernels for the <code class="docutils literal notranslate"><span class="pre">ALLGATHERV</span></code> collective using device (GPU) buffers.</p>
+<p>Set this environment variable to enable compute kernels that pipeline data transfers across tiles in the same GPU with data transfers across different GPUs,  for the <a href="#id2"><span class="problematic" id="id3">``</span></a>ALLGATHERV <a href="#id4"><span class="problematic" id="id5">``</span></a>collective using device (GPU) buffers.</p>
 </section>
 <section id="ccl-reduce-scatter-monolithic-pipeline-kernel">
 <h4>CCL_REDUCE_SCATTER_MONOLITHIC_PIPELINE_KERNEL<a class="headerlink" href="#ccl-reduce-scatter-monolithic-pipeline-kernel" title="Permalink to this headline">#</a></h4>
@@ -577,15 +582,15 @@ document.write(`
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
-<td><p>Uses compute kernels for the <code class="docutils literal notranslate"><span class="pre">ALLREDUCE</span></code>, <code class="docutils literal notranslate"><span class="pre">REDUCE</span></code>, and <code class="docutils literal notranslate"><span class="pre">REDUCE_SCATTER</span></code> collectives.</p></td>
+<td><p>Uses compute kernels for the <code class="docutils literal notranslate"><span class="pre">ALLREDUCE</span></code>, <code class="docutils literal notranslate"><span class="pre">REDUCE</span></code>, and <code class="docutils literal notranslate"><span class="pre">REDUCE_SCATTER</span></code> collectives. The default value.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
-<td><p>Uses copy engines to transfer data across GPUs for the <code class="docutils literal notranslate"><span class="pre">ALLREDUCE</span></code>, <code class="docutils literal notranslate"><span class="pre">REDUCE</span></code>, and <code class="docutils literal notranslate"><span class="pre">REDUCE_SCATTER</span> <span class="pre">collectives</span></code>. The default value.</p></td>
+<td><p>Uses copy engines to transfer data across GPUs for the <code class="docutils literal notranslate"><span class="pre">ALLREDUCE</span></code>, <code class="docutils literal notranslate"><span class="pre">REDUCE</span></code>, and <code class="docutils literal notranslate"><span class="pre">REDUCE_SCATTER</span> <span class="pre">collectives</span></code>.</p></td>
 </tr>
 </tbody>
 </table>
 <p><strong>Description</strong></p>
-<p>Set this environment variable to enable compute kernels, that pipeline data transfers across tiles in the same GPU and across different GPUs, for the <code class="docutils literal notranslate"><span class="pre">ALLREDUCE</span></code>, <code class="docutils literal notranslate"><span class="pre">REDUCE</span></code>, and <code class="docutils literal notranslate"><span class="pre">REDUCE_SCATTER</span></code> collectives using the device (GPU) buffers.</p>
+<p>Set this environment variable to enable compute kernels that pipeline data transfers across tiles in the same GPU with data transfers across different GPUs for the <code class="docutils literal notranslate"><span class="pre">ALLREDUCE</span></code>, <code class="docutils literal notranslate"><span class="pre">REDUCE</span></code>, and <code class="docutils literal notranslate"><span class="pre">REDUCE_SCATTER</span></code> collectives using the device (GPU) buffers.</p>
 </section>
 <section id="ccl-alltoallv-monolithic-kernel">
 <h4>CCL_ALLTOALLV_MONOLITHIC_KERNEL<a class="headerlink" href="#ccl-alltoallv-monolithic-kernel" title="Permalink to this headline">#</a></h4>
@@ -616,6 +621,37 @@ document.write(`
 <p><strong>Description</strong></p>
 <p>Set this environment variable to enable compute kernels for the <code class="docutils literal notranslate"><span class="pre">ALLTOALL</span></code> and <code class="docutils literal notranslate"><span class="pre">ALLTOALLV</span></code> collectives using device (GPU) buffers
 <code class="docutils literal notranslate"><span class="pre">CCL_&lt;coll_name&gt;_SCALEOUT</span></code>.</p>
+</section>
+<section id="ccl-skip-scheduler">
+<h4>CCL_SKIP_SCHEDULER<a class="headerlink" href="#ccl-skip-scheduler" title="Permalink to this headline">#</a></h4>
+<p><strong>Syntax</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_SKIP_SCHEDULER</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p><strong>Arguments</strong></p>
+<table class="colwidths-given table table-left">
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 67%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>&lt;value&gt;</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+<td><p>Enable SYCL kernels</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Disable SYCL kernels. The default value.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Description</strong></p>
+<p>Set this environment variable to <code class="docutils literal notranslate"><span class="pre">1</span></code> to enable the SYCL kernel-based implementation for <code class="docutils literal notranslate"><span class="pre">ALLGATHERV</span></code>, <code class="docutils literal notranslate"><span class="pre">ALLREDUCE</span></code>, and <code class="docutils literal notranslate"><span class="pre">REDUCE_SCATTER</span></code>.
+This new optimization enhances all message sizes and supports the <code class="docutils literal notranslate"><span class="pre">int32</span></code>, <code class="docutils literal notranslate"><span class="pre">fp32</span></code>, <code class="docutils literal notranslate"><span class="pre">fp16</span></code>, and <code class="docutils literal notranslate"><span class="pre">bf16</span></code> data types, sum operations, and single nodes.
+oneCCL falls back to other implementations when the support is unavailable with SYCL kernels. Therefore, you can safely set this environment variable.</p>
 </section>
 <section id="scaleout">
 <h4>SCALEOUT<a class="headerlink" href="#scaleout" title="Permalink to this headline">#</a></h4>
@@ -939,7 +975,7 @@ To see the actual table values set <code class="docutils literal notranslate"><s
 <h2>Workers<a class="headerlink" href="#workers" title="Permalink to this headline">#</a></h2>
 <p>The group of environment variables to control worker threads.</p>
 <section id="ccl-worker-count">
-<h3>CCL_WORKER_COUNT<a class="headerlink" href="#ccl-worker-count" title="Permalink to this headline">#</a></h3>
+<span id="id6"></span><h3>CCL_WORKER_COUNT<a class="headerlink" href="#ccl-worker-count" title="Permalink to this headline">#</a></h3>
 <p><strong>Syntax</strong></p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_WORKER_COUNT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
 </pre></div>
@@ -965,7 +1001,7 @@ To see the actual table values set <code class="docutils literal notranslate"><s
 <p>Set this environment variable to specify the number of oneCCL worker threads.</p>
 </section>
 <section id="ccl-worker-affinity">
-<h3>CCL_WORKER_AFFINITY<a class="headerlink" href="#ccl-worker-affinity" title="Permalink to this headline">#</a></h3>
+<span id="id7"></span><h3>CCL_WORKER_AFFINITY<a class="headerlink" href="#ccl-worker-affinity" title="Permalink to this headline">#</a></h3>
 <p><strong>Syntax</strong></p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_WORKER_AFFINITY</span><span class="o">=&lt;</span><span class="n">cpulist</span><span class="o">&gt;</span>
 </pre></div>
@@ -1036,7 +1072,7 @@ The number should not exceed the number of NUMA nodes available on the system.</
 <h2>ATL<a class="headerlink" href="#atl" title="Permalink to this headline">#</a></h2>
 <p>The group of environment variables to control ATL (abstract transport layer).</p>
 <section id="ccl-atl-transport">
-<h3>CCL_ATL_TRANSPORT<a class="headerlink" href="#ccl-atl-transport" title="Permalink to this headline">#</a></h3>
+<span id="id8"></span><h3>CCL_ATL_TRANSPORT<a class="headerlink" href="#ccl-atl-transport" title="Permalink to this headline">#</a></h3>
 <p><strong>Syntax</strong></p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_ATL_TRANSPORT</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
 </pre></div>
@@ -1321,7 +1357,7 @@ The actual number of NICs selected may be smaller due to limitations on transpor
 </section>
 </section>
 <section id="low-precision-datatypes">
-<h2>Low-precision datatypes<a class="headerlink" href="#low-precision-datatypes" title="Permalink to this headline">#</a></h2>
+<span id="id9"></span><h2>Low-precision datatypes<a class="headerlink" href="#low-precision-datatypes" title="Permalink to this headline">#</a></h2>
 <p>The group of environment variables to control processing of low-precision datatypes.</p>
 <section id="ccl-bf16">
 <h3>CCL_BF16<a class="headerlink" href="#ccl-bf16" title="Permalink to this headline">#</a></h3>
@@ -1480,7 +1516,7 @@ data for oneCCL using tools such as Intel® VTune™ Profiler.</p>
 The real fusion depends on additional settings described below.</p>
 </section>
 <section id="ccl-fusion-bytes-threshold">
-<h3>CCL_FUSION_BYTES_THRESHOLD<a class="headerlink" href="#ccl-fusion-bytes-threshold" title="Permalink to this headline">#</a></h3>
+<span id="id10"></span><h3>CCL_FUSION_BYTES_THRESHOLD<a class="headerlink" href="#ccl-fusion-bytes-threshold" title="Permalink to this headline">#</a></h3>
 <p><strong>Syntax</strong></p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_FUSION_BYTES_THRESHOLD</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
 </pre></div>
@@ -1507,7 +1543,7 @@ to <code class="docutils literal notranslate"><span class="pre">SIZE</span></cod
 <p>Set this environment variable to specify the threshold of the number of bytes for a collective operation to be fused.</p>
 </section>
 <section id="ccl-fusion-count-threshold">
-<h3>CCL_FUSION_COUNT_THRESHOLD<a class="headerlink" href="#ccl-fusion-count-threshold" title="Permalink to this headline">#</a></h3>
+<span id="id11"></span><h3>CCL_FUSION_COUNT_THRESHOLD<a class="headerlink" href="#ccl-fusion-count-threshold" title="Permalink to this headline">#</a></h3>
 <p><strong>Syntax</strong></p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_FUSION_COUNT_THRESHOLD</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
 </pre></div>
@@ -1534,7 +1570,7 @@ oneCCL can fuse together no more than <code class="docutils literal notranslate"
 <p>Set this environment variable to specify count threshold for a collective operation to be fused.</p>
 </section>
 <section id="ccl-fusion-cycle-ms">
-<h3>CCL_FUSION_CYCLE_MS<a class="headerlink" href="#ccl-fusion-cycle-ms" title="Permalink to this headline">#</a></h3>
+<span id="id12"></span><h3>CCL_FUSION_CYCLE_MS<a class="headerlink" href="#ccl-fusion-cycle-ms" title="Permalink to this headline">#</a></h3>
 <p><strong>Syntax</strong></p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_FUSION_CYCLE_MS</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
 </pre></div>
@@ -1566,7 +1602,7 @@ oneCCL can fuse together no more than <code class="docutils literal notranslate"
 </section>
 </section>
 <section id="ccl-priority">
-<h2>CCL_PRIORITY<a class="headerlink" href="#ccl-priority" title="Permalink to this headline">#</a></h2>
+<span id="id13"></span><h2>CCL_PRIORITY<a class="headerlink" href="#ccl-priority" title="Permalink to this headline">#</a></h2>
 <p><strong>Syntax</strong></p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CCL_PRIORITY</span><span class="o">=&lt;</span><span class="n">value</span><span class="o">&gt;</span>
 </pre></div>
@@ -1767,11 +1803,11 @@ oneCCL event must be associated with oneCCL communication operation.</p>
       </div>
     </a>
     <a class="right-next"
-       href="legal.html"
+       href="benchmark.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Notices and Disclaimers</p>
+        <p class="prev-next-title">oneCCL Benchmark User Guide</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -1799,6 +1835,7 @@ oneCCL event must be associated with oneCCL communication operation.</p>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-allgatherv-monolithic-pipeline-kernel">CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL</a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-reduce-scatter-monolithic-pipeline-kernel">CCL_REDUCE_SCATTER_MONOLITHIC_PIPELINE_KERNEL</a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-alltoallv-monolithic-kernel">CCL_ALLTOALLV_MONOLITHIC_KERNEL</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#ccl-skip-scheduler">CCL_SKIP_SCHEDULER</a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#scaleout">SCALEOUT</a></li>
 </ul>
 </li>
