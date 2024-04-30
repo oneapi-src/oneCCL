@@ -96,6 +96,15 @@ struct ccl_api_type_attr_traits<allreduce_attr_id, allreduce_attr_id::reduction_
  */
 
 /**
+ * Traits specialization for pt2pt op attributes
+ */
+template <>
+struct ccl_api_type_attr_traits<pt2pt_attr_id, pt2pt_attr_id::group_id> {
+    using type = int;
+    using return_type = type;
+};
+
+/**
  * Traits specialization for reduce op attributes
  */
 template <>

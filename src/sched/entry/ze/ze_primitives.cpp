@@ -15,10 +15,12 @@
 */
 #include <algorithm>
 #include <fstream>
+#include <unordered_map>
 
 #include "common/global/global.hpp"
 #include "common/log/log.hpp"
 #include "common/utils/utils.hpp"
+#include "common/utils/version.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
 
 namespace ccl {
@@ -38,6 +40,11 @@ std::map<h2d_copy_engine_mode, std::string> h2d_copy_engine_names = {
     std::make_pair(h2d_copy_engine_mode::auto_mode, "auto")
 };
 
+std::map<d2d_copy_engine_mode, std::string> d2d_copy_engine_names = {
+    std::make_pair(d2d_copy_engine_mode::none, "none"),
+    std::make_pair(d2d_copy_engine_mode::main, "main"),
+};
+
 std::string get_build_log_string(ze_module_build_log_handle_t build_log) {
     size_t log_size{};
     ZE_CALL(zeModuleBuildLogGetString, (build_log, &log_size, nullptr));
@@ -52,40 +59,94 @@ std::string get_build_log_string(ze_module_build_log_handle_t build_log) {
     return log;
 }
 
+static void load_file(std::ifstream& file, std::vector<uint8_t>& bytes) {
+    file.seekg(0, file.end);
+    size_t file_size = file.tellg();
+    file.seekg(0, file.beg);
+
+    bytes.resize(file_size);
+    file.read(reinterpret_cast<char*>(bytes.data()), file_size);
+}
+
 void load_module(const std::string& file_path,
                  ze_device_handle_t device,
                  ze_context_handle_t context,
                  ze_module_handle_t* module) {
-    LOG_DEBUG("module loading started: file: ", file_path);
-    CCL_THROW_IF_NOT(!file_path.empty(), "no file");
-
-    std::ifstream file(file_path, std::ios_base::in | std::ios_base::binary);
-    CCL_THROW_IF_NOT(file.good(), "failed to load module: file: ", file_path);
-
-    file.seekg(0, file.end);
-    size_t filesize = file.tellg();
-    file.seekg(0, file.beg);
-
-    std::vector<uint8_t> module_data(filesize);
-    file.read(reinterpret_cast<char*>(module_data.data()), filesize);
-    file.close();
+    bool compiling_spirv_module = false;
 
     ze_module_build_log_handle_t build_log{};
-    ze_module_desc_t desc{};
-    ze_module_format_t format = ZE_MODULE_FORMAT_IL_SPIRV;
-    desc.format = format;
-    desc.pInputModule = reinterpret_cast<const uint8_t*>(module_data.data());
-    desc.inputSize = module_data.size();
+    ze_module_format_t format{};
+    std::vector<uint8_t> module_data{};
 
-    if (zeModuleCreate(context, device, &desc, module, &build_log) != ZE_RESULT_SUCCESS) {
-        CCL_THROW(
-            "failed to create module: ", file_path, ", log: ", get_build_log_string(build_log));
+    // Prepare name for cached module in format:
+    // /tmp/ccl-module-cache-{UID}-{CCL version hash}
+    size_t version_hash = std::hash<std::string>{}(utils::get_library_version().full);
+
+    std::stringstream ss;
+    ss << "/tmp/ccl-module-cache-" << getuid() << "-" << std::hex << version_hash;
+    const std::string cached_module_path = ss.str();
+
+    std::ifstream cached_module_file(cached_module_path, std::ios_base::in | std::ios_base::binary);
+
+    if (cached_module_file.good() && ccl::global_data::env().kernel_module_cache) {
+        LOG_DEBUG("|MODULE CACHE| Using cached module at: ", cached_module_path);
+
+        load_file(cached_module_file, module_data);
+        cached_module_file.close();
+
+        format = ZE_MODULE_FORMAT_NATIVE;
+        compiling_spirv_module = false;
     }
     else {
-        LOG_DEBUG("module loading completed: directory: file: ", file_path);
+        LOG_DEBUG("|MODULE CACHE| SPIR-V module loading started, file: ", file_path);
+        CCL_THROW_IF_NOT(!file_path.empty(), "incorrect path to SPIR-V module.");
+
+        std::ifstream spirv_module_file(file_path, std::ios_base::in | std::ios_base::binary);
+        CCL_THROW_IF_NOT(spirv_module_file.good(),
+                         "failed to load file containing oneCCL SPIR-V kernels, file: ",
+                         file_path);
+
+        load_file(spirv_module_file, module_data);
+        spirv_module_file.close();
+
+        format = ZE_MODULE_FORMAT_IL_SPIRV;
+        compiling_spirv_module = true;
     }
 
-    zeModuleBuildLogDestroy(build_log);
+    ze_module_desc_t desc{ default_module_desc };
+    desc.format = format;
+    desc.inputSize = module_data.size();
+    desc.pInputModule = reinterpret_cast<const uint8_t*>(module_data.data());
+
+    try {
+        ZE_CALL(zeModuleCreate, (context, device, &desc, module, &build_log));
+    }
+    catch (std::string& error_message) {
+        CCL_THROW("failed to create module: ",
+                  file_path,
+                  "error message: ",
+                  error_message,
+                  ", log: ",
+                  get_build_log_string(build_log));
+    }
+
+    if (compiling_spirv_module && ccl::global_data::env().kernel_module_cache) {
+        // We had to compile SPIR-V binary to gpu specific ISA, so now we can cache the module
+        LOG_DEBUG("|MODULE CACHE| Caching compiled module to: ", cached_module_path);
+        std::ofstream cached_module_file_new(cached_module_path,
+                                             std::ios_base::out | std::ios_base::binary);
+
+        size_t binary_size = 0;
+        ZE_CALL(zeModuleGetNativeBinary, (*module, &binary_size, nullptr));
+
+        std::vector<uint8_t> compiled_module_data(binary_size);
+        ZE_CALL(zeModuleGetNativeBinary, (*module, &binary_size, compiled_module_data.data()));
+
+        cached_module_file_new.write(reinterpret_cast<char*>(compiled_module_data.data()),
+                                     binary_size);
+    }
+
+    ZE_CALL(zeModuleBuildLogDestroy, (build_log));
 }
 
 void create_kernel(ze_module_handle_t module, std::string kernel_name, ze_kernel_handle_t* kernel) {
@@ -93,7 +154,7 @@ void create_kernel(ze_module_handle_t module, std::string kernel_name, ze_kernel
     // convert to lowercase
     std::transform(kernel_name.begin(), kernel_name.end(), kernel_name.begin(), ::tolower);
     desc.pKernelName = kernel_name.c_str();
-    ze_result_t res = zeKernelCreate(module, &desc, kernel);
+    ze_result_t res = ZE_CALL(zeKernelCreate, (module, &desc, kernel));
     if (res != ZE_RESULT_SUCCESS) {
         CCL_THROW("error at zeKernelCreate: kernel name: ", kernel_name, " ret: ", to_string(res));
     }
@@ -154,13 +215,17 @@ void get_suggested_group_count(const ze_group_size_t& group_size,
                      rem);
 }
 
-void set_kernel_args(ze_kernel_handle_t kernel, const ze_kernel_args_t& kernel_args) {
+void set_kernel_args(ze_kernel_handle_t kernel, const std::vector<ze_kernel_arg_t>& kernel_args) {
     uint32_t idx = 0;
     for (const auto& arg : kernel_args) {
-        // each arg can be an array with arg.count elements
-        for (size_t i = 0; i < arg.count; i++) {
-            auto ptr = &((char*)arg.ptr)[i * arg.size];
-            auto res = zeKernelSetArgumentValue(kernel, idx, arg.size, ptr);
+        if (arg.is_skip_arg()) {
+            // skip argument - don't call zeKernelSetArgumentValue
+            ++idx;
+            continue;
+        }
+        for (const auto& elem : arg.elems) {
+            auto ptr = elem.get();
+            auto res = ZE_CALL(zeKernelSetArgumentValue, (kernel, idx, arg.size, ptr));
             if (res != ZE_RESULT_SUCCESS) {
                 CCL_THROW("zeKernelSetArgumentValue failed with error ",
                           to_string(res),
@@ -233,7 +298,7 @@ bool get_buffer_context_and_device(const void* buf,
     auto mem_alloc_props = default_alloc_props;
     for (auto ctx : contexts) {
         ze_device_handle_t dev{};
-        ze_result_t res = zeMemGetAllocProperties(ctx, buf, &mem_alloc_props, &dev);
+        ze_result_t res = ZE_CALL(zeMemGetAllocProperties, (ctx, buf, &mem_alloc_props, &dev));
         if (res == ZE_RESULT_SUCCESS) {
             *context = ctx;
             if (device) {
@@ -268,7 +333,7 @@ int get_fd_from_handle(const ze_ipc_mem_handle_t& handle) {
 
 void close_handle_fd(const ze_ipc_mem_handle_t& handle) {
     int fd = get_fd_from_handle(handle);
-    close(fd);
+    ccl::utils::close_fd(fd);
 }
 
 ze_ipc_mem_handle_t get_handle_from_fd(int fd) {
@@ -298,8 +363,28 @@ uint32_t get_parent_device_id(ze_device_handle_t device) {
     ccl::ze::get_device_global_id(device, &dev_id);
     CCL_THROW_IF_NOT(dev_id != ccl::utils::invalid_device_id, "unexpected dev_id");
     LOG_DEBUG("device_id: ", dev_id);
-
     return ccl::global_data::get().ze_data->devices[dev_id].parent_idx;
+}
+
+uint32_t get_physical_device_id(ze_device_handle_t device) {
+    ssize_t dev_id = ccl::utils::invalid_device_id;
+    ccl::ze::get_device_global_id(device, &dev_id);
+    auto parent_idx = get_parent_device_id(device);
+    auto idx = ccl::global_data::get().ze_data->devices[parent_idx].physical_idx;
+    LOG_DEBUG("physical_idx ", idx, ", dev_id: ", dev_id, ", parent_idx: ", parent_idx);
+    return idx;
+}
+
+uint32_t get_device_id(ze_device_handle_t device) {
+    // here we can control which device idx we can take
+    // parent_idx which is based on logical idx
+    // or physical idx, which is based on BDF
+    auto dev_id = get_physical_device_id(device);
+    if (!ccl::global_data::env().ze_drm_bdf_support ||
+        (int)dev_id == fd_manager::invalid_physical_idx) {
+        dev_id = get_parent_device_id(device);
+    }
+    return dev_id;
 }
 
 device_family get_device_family(ze_device_handle_t device) {
@@ -311,6 +396,7 @@ device_family get_device_family(ze_device_handle_t device) {
     switch (id) {
         case static_cast<enum_t>(device_id::id1): return device_family::family1;
         case static_cast<enum_t>(device_id::id2): return device_family::family2;
+        case static_cast<enum_t>(device_id::id3): return device_family::family3;
         default: return device_family::unknown;
     }
 }
@@ -320,11 +406,11 @@ bool is_same_pci_addr(const zes_pci_address_t& addr1, const zes_pci_address_t& a
     if (!(addr1.domain == addr2.domain && addr1.bus == addr2.bus && addr1.device == addr2.device &&
           addr1.function == addr2.function)) {
         result = false;
-        LOG_DEBUG("pci addresses are not the same:"
-                  " addr1: ",
-                  ccl::ze::to_string(addr1),
-                  " addr2: ",
-                  ccl::ze::to_string(addr2));
+        //LOG_DEBUG("pci addresses are not the same:"
+        //          " addr1: ",
+        //          ccl::ze::to_string(addr1),
+        //          " addr2: ",
+        //          ccl::ze::to_string(addr2));
     }
     return result;
 }
@@ -348,11 +434,11 @@ bool is_same_fabric_port(const zes_fabric_port_id_t& port1, const zes_fabric_por
     if (!(port1.fabricId == port2.fabricId && port1.attachId == port2.attachId &&
           port1.portNumber == port2.portNumber)) {
         result = false;
-        LOG_DEBUG("fabric ports are not the same:"
-                  " port1: ",
-                  ccl::ze::to_string(port1),
-                  " port2: ",
-                  ccl::ze::to_string(port2));
+        // LOG_DEBUG("fabric ports are not the same:"
+        //           " port1: ",
+        //           ccl::ze::to_string(port1),
+        //           " port2: ",
+        //           ccl::ze::to_string(port2));
     }
     return result;
 }
@@ -400,6 +486,43 @@ bool fabric_port_comparator::operator()(const zes_fabric_port_id_t& a,
     else {
         return (a.fabricId < b.fabricId);
     }
+}
+
+std::string to_string(ze_event_scope_flag_t scope_flag) {
+    switch (scope_flag) {
+        case ZE_EVENT_SCOPE_FLAG_SUBDEVICE: return "ZE_EVENT_SCOPE_FLAG_SUBDEVICE";
+        case ZE_EVENT_SCOPE_FLAG_DEVICE: return "ZE_EVENT_SCOPE_FLAG_DEVICE";
+        case ZE_EVENT_SCOPE_FLAG_HOST: return "ZE_EVENT_SCOPE_FLAG_HOST";
+        default:
+            return "unknown ze_event_scope_flag_t value: " +
+                   std::to_string(static_cast<uint32_t>(scope_flag));
+    }
+}
+
+std::string to_string(ze_event_scope_flags_t _scope_flags) {
+    auto scope_flags = _scope_flags;
+    std::string out;
+    while (scope_flags) {
+        if (out.size())
+            out += "|";
+        if (scope_flags & ZE_EVENT_SCOPE_FLAG_SUBDEVICE) {
+            out += to_string(ZE_EVENT_SCOPE_FLAG_SUBDEVICE);
+            scope_flags &= ~ZE_EVENT_SCOPE_FLAG_SUBDEVICE;
+        }
+        else if (scope_flags & ZE_EVENT_SCOPE_FLAG_DEVICE) {
+            out += to_string(ZE_EVENT_SCOPE_FLAG_DEVICE);
+            scope_flags &= ~ZE_EVENT_SCOPE_FLAG_DEVICE;
+        }
+        else if (scope_flags & ZE_EVENT_SCOPE_FLAG_HOST) {
+            out += to_string(ZE_EVENT_SCOPE_FLAG_HOST);
+            scope_flags &= ~ZE_EVENT_SCOPE_FLAG_HOST;
+        }
+        else {
+            return "unknown ze_event_scope_flag_t value: " +
+                   std::to_string(static_cast<uint32_t>(_scope_flags));
+        }
+    }
+    return out;
 }
 
 std::string to_string(ze_result_t result) {
@@ -479,8 +602,10 @@ std::string to_string(const ze_kernel_args_t& kernel_args) {
     for (const auto& arg : kernel_args) {
         // TODO: can we distinguish argument types in order to properly print them instead of printing
         // as a void* ptr?
-        ss << "  idx: " << idx << ", { " << arg.size << ", " << *(void**)arg.ptr << " }\n";
-        ++idx;
+        for (const auto& elem : arg.elems) {
+            ss << "  idx: " << idx << ", ptr: " << elem.get() << "\n";
+            ++idx;
+        }
     }
     ss << "}";
     return ss.str();
@@ -598,17 +723,6 @@ std::string to_string(const zes_fabric_port_state_t& state) {
 
     ss << " }";
 
-    return ss.str();
-}
-
-std::string join_strings(const std::vector<std::string>& tokens, const std::string& delimeter) {
-    std::stringstream ss;
-    for (size_t i = 0; i < tokens.size(); ++i) {
-        ss << tokens[i];
-        if (i < tokens.size() - 1) {
-            ss << delimeter;
-        }
-    }
     return ss.str();
 }
 

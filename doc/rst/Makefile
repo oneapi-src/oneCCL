@@ -11,6 +11,12 @@ BUILDDIR      = build
 help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
+ditaxml:
+	$ pip3 install --upgrade --force-reinstall git+https://github.com/intel-sandbox/tools.docs.sphinx2dita@main#egg=sphinx2dita
+	$ sphinx-build -D extensions=sphinx2dita,sphinx.ext.todo,breathe -b ditaxml source build/ditaxml -d build/doctrees
+	@echo
+	@echo "Build finished. The ditaxml files are in $(BUILDDIR)/ditaxml."
+
 .PHONY: help Makefile
 
 # Catch-all target: route all unknown targets to Sphinx using the new

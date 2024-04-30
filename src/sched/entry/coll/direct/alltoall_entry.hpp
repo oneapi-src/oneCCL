@@ -89,11 +89,11 @@ protected:
     }
 
 private:
-    ccl_buffer send_buf;
-    ccl_buffer recv_buf;
-    size_t cnt;
-    int bytes;
-    ccl_datatype dtype;
-    ccl_comm* comm;
+    ccl_buffer send_buf{};
+    ccl_buffer recv_buf{};
+    size_t cnt{ ccl::utils::initial_count_value };
+    int bytes{ ccl::utils::invalid_bytes_value };
+    ccl_datatype dtype{};
+    ccl_comm* comm{};
     atl_req_t req{};
 };

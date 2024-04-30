@@ -82,7 +82,13 @@ public:
 
     kvs_status_t kvs_get_replica_size(size_t& replica_size) override;
 
+    internal_kvs() = default;
+
     ~internal_kvs() override;
+
+    internal_kvs& operator=(const internal_kvs&) = delete;
+
+    internal_kvs(const internal_kvs&) = delete;
 
     void set_server_address(const std::string& server_addr) {
         server_address = server_addr;
@@ -106,18 +112,23 @@ private:
     std::list<std::string> local_host_ipv6s;
     char local_host_ip[CCL_IP_LEN];
 
-    size_t main_port;
-    size_t local_port;
+    size_t main_port = 0;
+    size_t local_port = 0;
     size_t is_master = 0;
     std::mutex client_memory_mutex;
 
     std::shared_ptr<isockaddr> main_server_address;
     std::shared_ptr<isockaddr> local_server_address;
+    static constexpr int INVALID_SOCKET = -1;
 
-    int client_op_sock; /* used on client side to send commands and to recv result to/from server */
+    int client_op_sock{
+        INVALID_SOCKET
+    }; /* used on client side to send commands and to recv result to/from server */
 
-    int client_control_sock; /* used on client side to control local kvs server */
-    int server_control_sock; /* used on server side to be controlled by local client */
+    int client_control_sock{ INVALID_SOCKET }; /* used on client side to control local kvs server */
+    int server_control_sock{
+        INVALID_SOCKET
+    }; /* used on server side to be controlled by local client */
 
     typedef enum ip_getting_type {
         IGT_ENV = 0,
@@ -134,7 +145,9 @@ private:
 
     const int CONNECTION_TIMEOUT = 120;
 
-    int server_listen_sock; /* used on server side to handle new incoming connect requests from clients */
+    int server_listen_sock{
+        INVALID_SOCKET
+    }; /* used on server side to handle new incoming connect requests from clients */
     std::string server_address{};
 
     sa_family_t address_family{ AF_UNSPEC };

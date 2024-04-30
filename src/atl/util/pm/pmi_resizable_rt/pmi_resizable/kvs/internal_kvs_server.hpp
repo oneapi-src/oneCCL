@@ -14,10 +14,17 @@
  limitations under the License.
 */
 #pragma once
+
+#include <cstdint>
+
 #include "util/pm/pmi_resizable_rt/pmi_resizable/def.h"
 #include "internal_kvs.h"
 
-enum kvs_access_mode_t : int {
+/// kvs_access_mode_t is serialized to 4-byte-long buffer, as little endian
+/// uint32_t is chosen:
+/// 1. There is a bijective relation uint32_t -> uint8_t[4]
+/// 2. No corner case handling for negative values is required
+enum kvs_access_mode_t : uint32_t {
     AM_CLOSE = 1,
     AM_PUT = 2,
     AM_REMOVE = 3,
@@ -42,8 +49,20 @@ public:
                      const std::string& kvs_val = {}) {
         std::vector<char> put_buf(put_buf_size, 0);
         size_t step = 0;
-        std::string put_mode_str = std::to_string(put_mode);
-        std::copy(put_mode_str.begin(), put_mode_str.end(), put_buf.begin());
+        // convert local endianness to little endian
+        uint8_t put_mode_buff[4]{
+            (static_cast<uint8_t>((static_cast<uint32_t>(put_mode) >> 0) & 0xFF)),
+            (static_cast<uint8_t>((static_cast<uint32_t>(put_mode) >> 8) & 0xFF)),
+            (static_cast<uint8_t>((static_cast<uint32_t>(put_mode) >> 16) & 0xFF)),
+            (static_cast<uint8_t>((static_cast<uint32_t>(put_mode) >> 24) & 0xFF)),
+        };
+        static_assert(sizeof(put_mode_buff) == sizeof(mode),
+                      "`mode` size is no longer compatible with `put_mode_buff`");
+        static_assert(sizeof(put_mode_buff) == sizeof(put_mode),
+                      "`put_mode` size is no longer compatible with `put_mode_buff`");
+        static_assert(sizeof(put_mode_buff) == sizeof(kvs_access_mode_t),
+                      "`kvs_access_mode_t` size is no longer compatible with `put_mode_buff`");
+        std::copy(std::begin(put_mode_buff), std::end(put_mode_buff), put_buf.begin());
 
         if (!kvs_name.empty()) {
             KVS_ERROR_IF_NOT(kvs_name.length() <= MAX_KVS_NAME_LENGTH);
@@ -151,10 +170,15 @@ public:
             mode = AM_CLOSE;
             return KVS_STATUS_SUCCESS;
         }
-        int tmp_mode;
-        safe_strtol(get_buf.data(), tmp_mode);
-        mode = static_cast<kvs_access_mode_t>(tmp_mode);
-        auto it_get_buf = get_buf.begin() + sizeof(mode);
+        auto it_get_buf = get_buf.begin();
+        uint8_t temp_mode[4]{ 0 };
+        static_assert(sizeof(temp_mode) == sizeof(kvs_access_mode_t),
+                      "`kvs_access_mode_t` size is no longer compatible with `temp_mode`");
+        std::copy(it_get_buf, it_get_buf + sizeof(mode), temp_mode);
+        // convert little-endian from serialized buffer to host endianness
+        mode = static_cast<kvs_access_mode_t>((temp_mode[0] << 0) | (temp_mode[1] << 8) |
+                                              (temp_mode[2] << 16) | (temp_mode[3] << 24));
+        it_get_buf += sizeof(mode);
         std::copy(it_get_buf, it_get_buf + sizeof(name), name);
         it_get_buf += sizeof(name);
         std::copy(it_get_buf, it_get_buf + sizeof(key), key);
@@ -166,7 +190,7 @@ public:
 
 private:
     friend class server;
-    kvs_access_mode_t mode{ AM_PUT };
+    kvs_access_mode_t mode{ AM_PUT }; // serialized to little-endian byte order for buffer transfers
     char name[MAX_KVS_NAME_LENGTH]{};
     char key[MAX_KVS_KEY_LENGTH]{};
     char val[MAX_KVS_VAL_LENGTH]{};

@@ -20,6 +20,7 @@
 #include <iterator>
 #include <new>
 #include <sstream>
+#include <iostream>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -178,4 +179,14 @@ std::string vec_to_string(Container& elems) {
     }
     return ss.str();
 }
+
+template <typename T>
+void dump_vec(const std::vector<T>& vec, const std::string& name) {
+    std::cout << name << ": [";
+    for (const auto& item : vec) {
+        std::cout << item << ", ";
+    }
+    std::cout << "]\n";
+}
+
 } // namespace utils

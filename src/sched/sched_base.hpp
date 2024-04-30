@@ -58,7 +58,7 @@ struct ccl_sched_memory {
     std::unique_ptr<ccl::ze::event_manager> event_manager;
     ccl::ze::ipc_handle_manager handle_manager;
     ccl::ze::ipc_event_pool_manager ipc_event_pool_manager;
-    std::unique_ptr<ccl::ze::list_manager> list_manager;
+    std::shared_ptr<ccl::ze::list_manager> list_manager;
 #endif // CCL_ENABLE_ZE
 
     std::list<atl_mr_t*> mr_list;
@@ -69,22 +69,22 @@ struct ccl_sched_create_param {
     ccl_sched_id_t id;
     ccl_coll_param coll_param;
 
-    ccl_sched_create_param(ccl_sched_type type, ccl_sched_id_t id, ccl_coll_param coll_param)
+    ccl_sched_create_param(ccl_sched_type type, ccl_sched_id_t id, const ccl_coll_param& coll_param)
             : type(type),
               id(id),
               coll_param(coll_param) {}
 
-    ccl_sched_create_param(ccl_sched_type type, ccl_coll_param coll_param)
+    ccl_sched_create_param(ccl_sched_type type, const ccl_coll_param& coll_param)
             : ccl_sched_create_param(type, 0, coll_param) {}
 
-    ccl_sched_create_param(ccl_sched_id_t id, ccl_coll_param coll_param)
+    ccl_sched_create_param(ccl_sched_id_t id, const ccl_coll_param& coll_param)
             : ccl_sched_create_param(ccl_sched_regular, id, coll_param) {}
 };
 
 static size_t lifo_priority = 0;
 
 struct ccl_sched_base {
-    template <ccl_sched_add_mode mode = ccl_sched_add_mode_last_value>
+    template <ccl_sched_add_mode mode>
     using add_entry_mode_t = std::integral_constant<ccl_sched_add_mode, mode>;
 
     using add_entry_front_t = add_entry_mode_t<ccl_sched_add_front>;
@@ -137,8 +137,9 @@ struct ccl_sched_base {
     std::vector<sched_entry*> ze_entries;
     bool use_single_list{};
 
-    bool try_enable_ze_single_list();
+    void try_enable_ze_single_list();
     void append_to_ze_entries_list(sched_entry* entry);
+    bool check_pt2pt_pre_post_copy_support(const ccl_coll_param& param, bool enable_pt2pt_offload);
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
     ccl_sched_type sched_type = ccl_sched_regular;
@@ -159,9 +160,10 @@ struct ccl_sched_base {
 protected:
     ~ccl_sched_base();
 
-    ccl_sched_base() {
-        CCL_THROW("unsupported");
-    }
+    ccl_sched_base() = delete;
+
+    ccl_sched_base(const ccl_sched_base& other) = delete;
+    ccl_sched_base& operator=(const ccl_sched_base& other) = delete;
 
     ccl_sched_base(const ccl_sched_create_param& param);
 

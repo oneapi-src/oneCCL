@@ -43,8 +43,7 @@ void ze_event_signal_entry::start() {
 }
 
 void ze_event_signal_entry::handle_sycl_event_status() {
-    if (ccl::utils::is_sycl_event_completed(master_sched->get_request()->get_native_event()) &&
-        ccl::utils::is_sycl_event_completed(master_sched->get_request()->get_sync_event())) {
+    if (ccl::utils::is_sycl_event_completed(master_sched->get_request()->get_sync_event())) {
         LOG_DEBUG("native and sync events are completed");
         status = ccl_sched_entry_status_complete;
     }

@@ -54,8 +54,7 @@ kvs_status_t pmi_listener::collect_sock_addr(std::shared_ptr<helper> h) {
         LOG_ERROR("Can't get host IP");
         return KVS_STATUS_FAILURE;
     }
-    CHECK_FGETS(fgets(my_ip, MAX_KVS_VAL_LENGTH, fp), my_ip);
-    pclose(fp);
+    CHECK_FGETS(fgets(my_ip, MAX_KVS_VAL_LENGTH, fp), my_ip, fp);
     while (my_ip[strlen(my_ip) - 1] == '\n' || my_ip[strlen(my_ip) - 1] == ' ')
         my_ip[strlen(my_ip) - 1] = '\0';
     if ((point_to_space = strstr(my_ip, " ")) != NULL)
@@ -99,7 +98,7 @@ kvs_status_t pmi_listener::collect_sock_addr(std::shared_ptr<helper> h) {
     for (i = 0, j = 0; i < num_listeners; i++, j++) {
         char* point_to_port = strstr(const_cast<char*>(sock_addr_str[j].c_str()), "_");
         if (point_to_port == NULL) {
-            LOG_ERROR("Wrong address_port record: %s", sock_addr_str[j]);
+            LOG_ERROR("Wrong address_port record: ", sock_addr_str[j]);
             status = KVS_STATUS_FAILURE;
             goto exit;
         }
@@ -118,7 +117,7 @@ kvs_status_t pmi_listener::collect_sock_addr(std::shared_ptr<helper> h) {
         server_addresses[i].sin_family = AF_INET;
 
         if (inet_pton(AF_INET, sock_addr_str[j].c_str(), &(server_addresses[i].sin_addr)) <= 0) {
-            LOG_ERROR("Invalid address/ Address not supported: %s", sock_addr_str[j].c_str());
+            LOG_ERROR("Invalid address/ Address not supported: ", sock_addr_str[j].c_str());
             status = KVS_STATUS_FAILURE;
             goto exit;
         }
@@ -135,18 +134,32 @@ kvs_status_t pmi_listener::clean_listener(std::shared_ptr<helper> h) {
 
 kvs_status_t pmi_listener::send_notification(int sig, std::shared_ptr<helper> h) {
     size_t i;
+    ssize_t sendto_ret = 0;
     char message[INT_STR_SIZE];
 
     KVS_CHECK_STATUS(collect_sock_addr(h), "failed to collect sock info");
 
     SET_STR(message, INT_STR_SIZE, "%s", "Update!");
     for (i = 0; i < num_listeners; ++i) {
-        sendto(sock_sender,
-               message,
-               INT_STR_SIZE,
-               MSG_DONTWAIT,
-               (const struct sockaddr*)&(server_addresses[i]),
-               sizeof(server_addresses[i]));
+        sendto_ret = sendto(sock_sender,
+                            message,
+                            INT_STR_SIZE,
+                            MSG_DONTWAIT,
+                            (const struct sockaddr*)&(server_addresses[i]),
+                            sizeof(server_addresses[i]));
+        if (sendto_ret != INT_STR_SIZE) {
+            if (sendto_ret == -1) {
+                LOG_ERROR("sendto error occurred,%s", strerror(errno));
+            }
+            else {
+                LOG_ERROR(
+                    "notification underflow error occurred, %zd/%zd", sendto_ret, INT_STR_SIZE);
+            }
+            if (sig) {
+                KVS_CHECK_STATUS(clean_listener(h), "failed to clean listener");
+            }
+            return KVS_STATUS_FAILURE;
+        }
     }
     if (sig) {
         KVS_CHECK_STATUS(clean_listener(h), "failed to clean listener");
@@ -173,8 +186,7 @@ kvs_status_t pmi_listener::run_listener(std::shared_ptr<helper> h) {
             printf("Can't get host IP\n");
             exit(1);
         }
-        CHECK_FGETS(fgets(my_ip, MAX_KVS_VAL_LENGTH, fp), my_ip);
-        pclose(fp);
+        CHECK_FGETS(fgets(my_ip, MAX_KVS_VAL_LENGTH, fp), my_ip, fp);
         while (my_ip[strlen(my_ip) - 1] == '\n' || my_ip[strlen(my_ip) - 1] == ' ')
             my_ip[strlen(my_ip) - 1] = '\0';
         if ((point_to_space = strstr(my_ip, " ")) != NULL)
@@ -219,7 +231,7 @@ kvs_status_t pmi_listener::run_listener(std::shared_ptr<helper> h) {
                 return KVS_STATUS_SUCCESS;
             }
             if (errno != EINTR) {
-                LOG_ERROR("listner: accept error: %s\n", strerror(errno));
+                LOG_ERROR("listener: accept error: ", strerror(errno));
                 return KVS_STATUS_FAILURE;
             }
         }

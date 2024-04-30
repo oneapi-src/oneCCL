@@ -1,5 +1,5 @@
 .. |sys_req| replace:: |product_full| System Requirements
-.. _sys_req: https://software.intel.com/content/www/us/en/develop/articles/oneapi-collective-communication-library-system-requirements.html
+.. _sys_req: https://www.intel.com/content/www/us/en/developer/articles/system-requirements/oneapi-collective-communication-library-system-requirements.html
 .. |tgz_file| replace:: tar.gz file
 .. _tgz_file: https://github.com/oneapi-src/oneCCL/releases
 .. highlight:: bash
@@ -92,23 +92,8 @@ You can customize CLI-based installation (for example, specify directory, compil
 
      make -j VERBOSE=1 install
 
-.. _prerequisites:
-
-Environment Setup
-*****************
-
-Before you start using |product_short|, make sure to set up the library environment. 
-There are two ways to set up the environment:
-
-- Using standalone |product_short| package installed into ``<ccl_install_dir>``:
-
-    .. prompt:: bash
-
-        source <ccl_install_dir>/env/setvars.sh
-
-
-- Using |product_short| from |base_tk| installed into ``<toolkit_install_dir>`` (``/opt/intel/inteloneapi`` by default):
-
-    .. prompt:: bash
-
-        source <toolkit_install_dir>/setvars.sh
+Find More
+*********
+- `oneCCL Get Started Guide <https://www.intel.com/content/www/us/en/docs/oneccl/get-started-guide/2021-11/overview.html>`_
+- `oneCCL GitHub Source Code Repository <https://github.com/oneapi-src/oneCCL>`_
+- `oneCCL Documentation <https://oneapi-src.github.io/oneCCL/??#>`_

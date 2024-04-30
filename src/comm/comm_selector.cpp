@@ -58,7 +58,7 @@ comm_interface_ptr comm_selector::create_comm_impl(const size_t size,
     CCL_THROW_IF_NOT(ccl::global_data::env().backend == backend_mode::native,
                      "host communicator is only supported for native backend");
 
-    return comm_interface_ptr(ccl_comm::create(size, rank, kvs));
+    return comm_interface_ptr(ccl_comm::create(size, rank, std::move(kvs)));
 }
 
 comm_interface_ptr comm_selector::create_comm_impl(const size_t size,

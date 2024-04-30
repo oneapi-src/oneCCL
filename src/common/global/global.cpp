@@ -133,6 +133,9 @@ void global_data::init_resize_independent_objects() {
     algorithm_selector->init();
 
     hwloc_wrapper.reset(new ccl_hwloc_wrapper());
+
+    metrics_profiler.reset(new profile::metrics_manager());
+    metrics_profiler->init();
 }
 
 void global_data::reset_resize_dependent_objects() {
@@ -146,6 +149,7 @@ void global_data::reset_resize_independent_objects() {
     parallelizer.reset();
     algorithm_selector.reset();
     hwloc_wrapper.reset();
+    metrics_profiler.reset();
 }
 
 void global_data::getenv_local_coord(const char* local_proc_idx_env_name,
@@ -156,9 +160,9 @@ void global_data::getenv_local_coord(const char* local_proc_idx_env_name,
         LOG_WARN("could not get local_idx/count from environment variables, "
                  "trying to get them from ATL");
 #if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
-        //TODO: set PIDFD in the comments
-        LOG_WARN("fallback to 'sockets' mode of exchange mechanism, to use DRMFD "
-                 "set CCL_LOCAL_RANK/SIZE or use process launcher");
+        LOG_WARN("fallback to 'sockets' mode of ze exchange mechanism, to use "
+                 "CCL_ZE_IPC_EXHANGE=drmfd, set CCL_LOCAL_RANK/SIZE explicitly "
+                 " or use process launcher");
         global_data::env().ze_ipc_exchange = ccl::ze::ipc_exchange_mode::sockets;
 #endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
         local_proc_idx = CCL_ENV_INT_NOT_SPECIFIED;
@@ -192,9 +196,10 @@ void global_data::set_local_coord() {
                 LOG_WARN("could not get local_idx/count from environment variables, "
                          "trying to get them from ATL");
 #if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
-                LOG_WARN("fallback to 'sockets' mode of exchange mechanism, to use DRMFD "
-                         "set CCL_LOCAL_RANK/SIZE or use process launcher");
-                global_data::env().ze_ipc_exchange = ccl::ze::ipc_exchange_mode::sockets;
+                LOG_WARN("fallback to 'sockets' mode of ze exchange mechanism, to use "
+                         "CCL_ZE_IPC_EXHANGE=drmfd, set CCL_LOCAL_RANK/SIZE explicitly "
+                         " or use process launcher");
+                env.ze_ipc_exchange = ccl::ze::ipc_exchange_mode::sockets;
 #endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
             }
             else {

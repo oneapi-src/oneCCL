@@ -19,7 +19,7 @@ using namespace std;
 using namespace sycl;
 
 int main(int argc, char *argv[]) {
-    const size_t count = 10 * 1024 * 1024;
+    size_t count = 10 * 1024 * 1024;
 
     int size = 0;
     int rank = 0;
@@ -33,7 +33,18 @@ int main(int argc, char *argv[]) {
     atexit(mpi_finalize);
 
     queue q;
-    if (!create_sycl_queue(argc, argv, rank, q)) {
+    sycl::property_list props;
+    if (argc > 3) {
+        if (strcmp("in_order", argv[3]) == 0) {
+            props = { sycl::property::queue::in_order{} };
+        }
+    }
+
+    if (argc > 4) {
+        count = (size_t)std::atoi(argv[4]);
+    }
+
+    if (!create_sycl_queue(argc, argv, rank, q, props)) {
         return -1;
     }
 
@@ -94,7 +105,15 @@ int main(int argc, char *argv[]) {
 
     /* invoke reduce_scatter */
     auto attr = ccl::create_operation_attr<ccl::reduce_scatter_attr>();
-    ccl::reduce_scatter(send_buf, recv_buf, count, ccl::reduction::sum, comm, stream, attr, deps)
+    ccl::reduce_scatter(send_buf,
+                        recv_buf,
+                        count,
+                        ccl::datatype::int32,
+                        ccl::reduction::sum,
+                        comm,
+                        stream,
+                        attr,
+                        deps)
         .wait();
 
     /* open recv_buf and check its correctness on the device side */

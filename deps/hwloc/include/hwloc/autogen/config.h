@@ -1,7 +1,7 @@
 /* include/hwloc/autogen/config.h.  Generated from config.h.in by configure.  */
 /* -*- c -*-
  * Copyright © 2009 CNRS
- * Copyright © 2009-2020 Inria.  All rights reserved.
+ * Copyright © 2009-2022 Inria.  All rights reserved.
  * Copyright © 2009-2012 Université Bordeaux
  * Copyright © 2009-2011 Cisco Systems, Inc.  All rights reserved.
  * See COPYING in top-level directory.
@@ -12,11 +12,20 @@
 #ifndef HWLOC_CONFIG_H
 #define HWLOC_CONFIG_H
 
-#define HWLOC_VERSION "2.7.0rc1-git"
+#define HWLOC_VERSION "2.10.0rc3-git"
 #define HWLOC_VERSION_MAJOR 2
-#define HWLOC_VERSION_MINOR 7
+#define HWLOC_VERSION_MINOR 10
 #define HWLOC_VERSION_RELEASE 0
-#define HWLOC_VERSION_GREEK "rc1"
+#define HWLOC_VERSION_GREEK "rc3"
+
+/* #undef HWLOC_PCI_COMPONENT_BUILTIN */
+/* #undef HWLOC_OPENCL_COMPONENT_BUILTIN */
+/* #undef HWLOC_CUDA_COMPONENT_BUILTIN */
+/* #undef HWLOC_NVML_COMPONENT_BUILTIN */
+/* #undef HWLOC_RSMI_COMPONENT_BUILTIN */
+/* #undef HWLOC_LEVELZERO_COMPONENT_BUILTIN */
+/* #undef HWLOC_GL_COMPONENT_BUILTIN */
+/* #undef HWLOC_XML_LIBXML_COMPONENT_BUILTIN */
 
 #if (__GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ >= 95))
 # define __hwloc_restrict __restrict

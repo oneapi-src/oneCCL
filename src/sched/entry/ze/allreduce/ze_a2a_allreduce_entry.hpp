@@ -38,7 +38,7 @@ public:
                                     const ccl_datatype& dtype,
                                     ccl::reduction op,
                                     ccl_comm* comm,
-                                    std::vector<ze_event_handle_t> wait_events = {},
+                                    const std::vector<ze_event_handle_t>& wait_events = {},
                                     size_t send_buf_idx = 0,
                                     size_t recv_buf_idx = 1,
                                     size_t peer_buf_offset = 0);

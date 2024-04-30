@@ -65,6 +65,8 @@ public:
         size_t count1 = 0;
         size_t count2 = 0;
         int root = 0;
+        int peer_rank = CCL_INVALID_PEER_RANK_IDX;
+        int group_id = CCL_INVALID_GROUP_IDX;
         const ccl_comm* comm = nullptr;
         ccl::reduction_fn reduction_fn = nullptr;
     };

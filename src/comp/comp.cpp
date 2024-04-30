@@ -58,6 +58,10 @@
     } while (0)
 
 ccl::status ccl_comp_copy(const void* in_buf, void* out_buf, size_t bytes, bool use_nontemporal) {
+    if (bytes == 0) {
+        return ccl::status::success;
+    }
+
     CCL_ASSERT(in_buf, "in_buf is null");
     CCL_ASSERT(out_buf, "out_buf is null");
     if (use_nontemporal) {

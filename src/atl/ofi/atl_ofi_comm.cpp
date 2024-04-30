@@ -34,7 +34,7 @@ atl_ofi_comm::atl_ofi_comm() {
             pmi = std::shared_ptr<ipmi>(new pmi_resizable(k));
         }
         else {
-            LOG_ERROR("unknown %s: %s", PM_TYPE, pm_type_str);
+            LOG_ERROR("unknown ", PM_TYPE, ": ", pm_type_str);
         }
     }
     else {
@@ -55,7 +55,7 @@ atl_ofi_comm::atl_ofi_comm(std::shared_ptr<ikvs_wrapper> k) {
             pmi = std::shared_ptr<ipmi>(new pmi_resizable(k));
         }
         else {
-            LOG_ERROR("unknown %s: %s", PM_TYPE, pm_type_str);
+            LOG_ERROR("unknown ", PM_TYPE, ": ", pm_type_str);
         }
     }
     else {

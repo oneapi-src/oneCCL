@@ -98,6 +98,8 @@ env_data::env_data()
           enable_atl_cache(1),
           enable_sync_coll(0),
           enable_extra_ep(0),
+          enable_run_id_detection(1),
+          enable_run_id_with_ppid(1),
 
           mnic_type(ATL_MNIC_NONE),
           mnic_count(CCL_ENV_SIZET_NOT_SPECIFIED),
@@ -126,12 +128,7 @@ env_data::env_data()
           enable_buffer_cache(1),
           enable_strict_order(0),
           staging_buffer(ccl_staging_regular),
-#ifdef CCL_ENABLE_SYCL
           enable_op_sync(0),
-#else // CCL_ENABLE_SYCL
-          enable_op_sync(0),
-#endif // CCL_ENABLE_SYCL
-          enable_external_queue(0),
 
           chunk_count(1),
           min_chunk_size(65536),
@@ -142,11 +139,46 @@ env_data::env_data()
           allgatherv_topo_large_scale(0),
           allgatherv_topo_read(1),
           alltoallv_topo_read(1),
+          reduce_scatter_topo_read(1),
+          // monolithic kernel for xelink transfer
           reduce_scatter_monolithic_kernel(0),
+          // reduce_scatter pipelined monolithic kernel for xelink + mdfi transfer
+          reduce_scatter_monolithic_pipeline_kernel(1),
+          // reduce_scatter fallback implementation using allreduce
+          reduce_scatter_fallback_algo(0),
           allgatherv_monolithic_kernel(0), // monolithic kernel for xelink transfer
           allgatherv_monolithic_pipeline_kernel(
-              0), // pipelined monolithic kernel for xelink + mdfi transfer
+              1), // pipelined monolithic kernel for xelink + mdfi transfer
           alltoallv_monolithic_kernel(1),
+          alltoallv_monolithic_read_kernel(1),
+
+          // TODO: not used values yet, add log_info and setting them
+          // once they are needed
+          allgatherv_pipe_chunk_count(0),
+          allreduce_pipe_chunk_count(0),
+          reduce_scatter_pipe_chunk_count(0),
+          reduce_pipe_chunk_count(0),
+
+          allreduce_use_tmp_buf(0),
+          allreduce_small_size_threshold(524288),
+          allreduce_medium_size_threshold(16777216),
+
+          reduce_scatter_use_tmp_buf(0),
+          reduce_scatter_small_size_threshold(2097152),
+          reduce_scatter_medium_size_threshold(67108864),
+
+          allgatherv_use_tmp_buf(0),
+          allgatherv_chunk_size(16777216),
+          allgatherv_small_size_threshold(131072),
+          allgatherv_medium_size_threshold(2097152),
+#ifdef ENABLE_DEBUG //TODO: MLSL-2664
+          skip_scheduler(0),
+#else // ENABLE_DEBUG
+          skip_scheduler(0),
+#endif // ENABLE_DEBUG
+
+          use_ccl_barrier(0),
+          use_sycl_barrier(0),
 #endif // CCL_ENABLE_SYCL
 
           allreduce_nreduce_buffering(0),
@@ -172,6 +204,7 @@ env_data::env_data()
           topo_color(topo_color_mode::fixed),
 #endif // CCL_ENABLE_SYCL
           enable_p2p_access(CCL_ENV_INT_NOT_SPECIFIED),
+          enable_fabric_vertex_connection_check(1),
 
 #ifdef CCL_ENABLE_MPI
           mpi_lib_path(),
@@ -181,6 +214,7 @@ env_data::env_data()
 #ifdef CCL_ENABLE_SYCL
           kernel_path(),
           kernel_debug(0),
+          kernel_module_cache(1),
 
           // 32 is more generic constant value
           // for gpus to avoid imbalance issue
@@ -195,22 +229,40 @@ env_data::env_data()
           enable_kernel_single_reduce_peers(1),
           enable_close_fd_wa(1),
 
-          enable_sycl_output_event(0),
+          enable_sycl_output_event(1),
           use_hmem(1),
+
+          sync_barrier(1),
 
           enable_ze_barrier(0),
           enable_ze_bidir_algo(1),
           enable_ze_cache(1),
+          ze_device_cache_evict_smallest(1),
+          ze_device_cache_upper_limit(800 * 1024L * 1024L),
+          ze_device_cache_num_blocks_in_chunk(1),
+          ze_device_cache_policy(ccl::ze::device_cache_policy_mode::chunk),
+          ze_device_mem_disable_clear(1),
+          ze_device_mem_alloc_size(2 * 1024L * 1024L * 1024L),
+          ze_device_mem_enable(1),
+
+          // Note: env. vars are required when
+          // functionality is completed to support bypass/cache
+          enable_ze_cache_cmdlists(1),
+          enable_ze_cache_cmdqueues(1),
+          enable_ze_cache_event_pools(1),
+
           enable_ze_cache_open_ipc_handles(1),
-          ze_cache_open_ipc_handles_threshold(100),
+          ze_cache_open_ipc_handles_threshold(1000),
           enable_ze_cache_get_ipc_handles(1),
           enable_ze_single_list(1),
           disable_ze_family_check(0),
           disable_ze_port_check(0),
-          ze_disable_oversubscription_check(0),
+          ze_enable_oversubscription_fallback(1),
+          ze_enable_oversubscription_throw(1),
           ze_serialize_mode(0),
           ze_copy_engine(ccl::ze::copy_engine_mode::link),
-          ze_h2d_copy_engine(ccl::ze::h2d_copy_engine_mode::none),
+          ze_h2d_copy_engine(ccl::ze::h2d_copy_engine_mode::main),
+          ze_d2d_copy_engine(ccl::ze::d2d_copy_engine_mode::none),
           ze_max_compute_queues(1),
           ze_max_copy_queues(CCL_ENV_SIZET_NOT_SPECIFIED),
           ze_enable_ccs_fallback_for_copy(1),
@@ -221,7 +273,20 @@ env_data::env_data()
           ze_enable(1),
           ze_fini_wa(0),
           ze_multi_workers(0),
+          enable_ze_auto_tune_ports(1),
+#ifdef CCL_ENABLE_DRM
           ze_ipc_exchange(ccl::ze::ipc_exchange_mode::drmfd),
+#else // CCL_ENABLE_DRM
+          ze_ipc_exchange(ccl::ze::ipc_exchange_mode::sockets),
+#endif // CCL_ENABLE_DRM
+#ifdef ZE_PCI_PROPERTIES_EXT_NAME
+          ze_drm_bdf_support(1),
+#else // ZE_PCI_PROPERTIES_EXT_NAME
+          ze_drm_bdf_support(0),
+#endif // ZE_PCI_PROPERTIES_EXT_NAME
+          ze_pt2pt_read(1),
+          type2_mode(type2_tune_mode::undetected),
+          ze_enable_drmfd_multi_instance(1),
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_PMIX
@@ -292,6 +357,8 @@ void env_data::parse() {
     env_2_type(CCL_ATL_CACHE, enable_atl_cache);
     env_2_type(CCL_ATL_SYNC_COLL, enable_sync_coll);
     env_2_type(CCL_ATL_EXTRA_EP, enable_extra_ep);
+    env_2_type(CCL_ENABLE_RUN_ID_DETECTION, enable_run_id_detection);
+    env_2_type(CCL_ENABLE_RUN_ID_WITH_PPID, enable_run_id_with_ppid);
 
     env_2_enum(CCL_MNIC, mnic_type_names, mnic_type);
     env_2_type(CCL_MNIC_NAME, mnic_name_raw);
@@ -302,14 +369,18 @@ void env_data::parse() {
     env_2_enum(CCL_MNIC_OFFSET, mnic_offset_names, mnic_offset);
 
     env_2_type(CCL_ALGO_FALLBACK, enable_algo_fallback);
+    // main algorithm selection
     env_2_type(CCL_ALLGATHERV, allgatherv_algo_raw);
     env_2_type(CCL_ALLREDUCE, allreduce_algo_raw);
     env_2_type(CCL_ALLTOALL, alltoall_algo_raw);
     env_2_type(CCL_ALLTOALLV, alltoallv_algo_raw);
     env_2_type(CCL_BARRIER, barrier_algo_raw);
     env_2_type(CCL_BCAST, bcast_algo_raw);
+    env_2_type(CCL_RECV, recv_algo_raw);
     env_2_type(CCL_REDUCE, reduce_algo_raw);
     env_2_type(CCL_REDUCE_SCATTER, reduce_scatter_algo_raw);
+    env_2_type(CCL_SEND, send_algo_raw);
+    // scale-out selection part
     env_2_type(CCL_ALLGATHERV_SCALEOUT, allgatherv_scaleout_algo_raw);
     env_2_type(CCL_ALLREDUCE_SCALEOUT, allreduce_scaleout_algo_raw);
     env_2_type(CCL_ALLTOALL_SCALEOUT, alltoall_scaleout_algo_raw);
@@ -360,7 +431,6 @@ void env_data::parse() {
     }
     env_2_enum(CCL_STAGING_BUFFER, staging_buffer_names, staging_buffer);
     env_2_type(CCL_OP_SYNC, enable_op_sync);
-    env_2_type(CCL_USE_EXTERNAL_QUEUE, enable_external_queue);
 
     env_2_type(CCL_CHUNK_COUNT, chunk_count);
     CCL_THROW_IF_NOT(chunk_count >= 1, "incorrect ", CCL_CHUNK_COUNT, " ", chunk_count);
@@ -377,10 +447,37 @@ void env_data::parse() {
     env_2_type(CCL_ALLGATHERV_TOPO_LARGE_SCALE, allgatherv_topo_large_scale);
     env_2_type(CCL_ALLGATHERV_TOPO_READ, allgatherv_topo_read);
     env_2_type(CCL_ALLTOALLV_TOPO_READ, alltoallv_topo_read);
+    env_2_type(CCL_REDUCE_SCATTER_TOPO_READ, reduce_scatter_topo_read);
     env_2_type(CCL_REDUCE_SCATTER_MONOLITHIC_KERNEL, reduce_scatter_monolithic_kernel);
+    env_2_type(CCL_REDUCE_SCATTER_MONOLITHIC_PIPELINE_KERNEL,
+               reduce_scatter_monolithic_pipeline_kernel);
+    env_2_type(CCL_REDUCE_SCATTER_FALLBACK_ALGO, reduce_scatter_fallback_algo);
     env_2_type(CCL_ALLGATHERV_MONOLITHIC_KERNEL, allgatherv_monolithic_kernel);
     env_2_type(CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL, allgatherv_monolithic_pipeline_kernel);
     env_2_type(CCL_ALLTOALLV_MONOLITHIC_KERNEL, alltoallv_monolithic_kernel);
+    env_2_type(CCL_ALLTOALLV_MONOLITHIC_READ_KERNEL, alltoallv_monolithic_read_kernel);
+
+    env_2_type(CCL_ALLGATHERV_PIPE_CHUNK_COUNT, allgatherv_pipe_chunk_count);
+    env_2_type(CCL_ALLREDUCE_PIPE_CHUNK_COUNT, allreduce_pipe_chunk_count);
+    env_2_type(CCL_REDUCE_SCATTER_PIPE_CHUNK_COUNT, reduce_scatter_pipe_chunk_count);
+    env_2_type(CCL_REDUCE_PIPE_CHUNK_COUNT, reduce_pipe_chunk_count);
+
+    env_2_type(CCL_ALLREDUCE_USE_TMP_BUF, allreduce_use_tmp_buf);
+    env_2_type(CCL_ALLREDUCE_SMALL_SIZE_THRESHOLD, allreduce_small_size_threshold);
+    env_2_type(CCL_ALLREDUCE_MEDIUM_SIZE_THRESHOLD, allreduce_medium_size_threshold);
+
+    env_2_type(CCL_REDUCE_SCATTER_USE_TMP_BUF, reduce_scatter_use_tmp_buf);
+    env_2_type(CCL_REDUCE_SCATTER_SMALL_SIZE_THRESHOLD, reduce_scatter_small_size_threshold);
+    env_2_type(CCL_REDUCE_SCATTER_MEDIUM_SIZE_THRESHOLD, reduce_scatter_medium_size_threshold);
+
+    env_2_type(CCL_ALLGATHERV_USE_TMP_BUF, allgatherv_use_tmp_buf);
+    env_2_type(CCL_ALLGATHERV_CHUNK_SIZE, allgatherv_chunk_size);
+    env_2_type(CCL_ALLGATHERV_SMALL_SIZE_THRESHOLD, allgatherv_small_size_threshold);
+    env_2_type(CCL_ALLGATHERV_MEDIUM_SIZE_THRESHOLD, allgatherv_medium_size_threshold);
+
+    env_2_type(CCL_SKIP_SCHEDULER, skip_scheduler);
+    env_2_type(CCL_USE_CCL_BARRIER, use_ccl_barrier);
+    env_2_type(CCL_USE_SYCL_BARRIER, use_sycl_barrier);
 #endif // CCL_ENABLE_SYCL
 
     env_2_type(CCL_ALLREDUCE_NREDUCE_BUFFERING, allreduce_nreduce_buffering);
@@ -412,6 +509,7 @@ void env_data::parse() {
     env_2_type(CCL_TOPO_ALGO, enable_topo_algo);
     env_2_topo(CCL_TOPO_COLOR, topo_color_names, topo_color);
     env_2_type(CCL_TOPO_P2P_ACCESS, enable_p2p_access);
+    env_2_type(CCL_TOPO_FABRIC_VERTEX_CONNECTION_CHECK, enable_fabric_vertex_connection_check);
 
 #ifdef CCL_ENABLE_MPI
     env_2_type(CCL_MPI_LIBRARY_PATH, mpi_lib_path);
@@ -423,14 +521,20 @@ void env_data::parse() {
     if (kernel_path.empty()) {
         std::string ccl_root;
         char* ccl_root_env_value = getenv("CCL_ROOT");
+        char* oneapi_root_env_value = getenv("ONEAPI_ROOT");
         if (ccl_root_env_value) {
             ccl_root = ccl_root_env_value;
         }
-        CCL_THROW_IF_NOT(!ccl_root.empty(), "incorrect comm kernels path, CCL_ROOT not found!");
-        kernel_path = ccl_root + "/lib/kernels/";
+        else if (oneapi_root_env_value) {
+            ccl_root = oneapi_root_env_value;
+        }
+        CCL_THROW_IF_NOT(!ccl_root.empty(),
+                         "incorrect comm kernels path, neither CCL_ROOT nor ONEAPI_ROOT found!");
+        kernel_path = ccl_root + "/lib/ccl/kernels/";
     }
 
     env_2_type(CCL_KERNEL_DEBUG, kernel_debug);
+    env_2_type(CCL_KERNEL_MODULE_CACHE, kernel_module_cache);
     env_2_type(CCL_KERNEL_GROUP_SIZE, kernel_group_size);
     env_2_type(CCL_KERNEL_GROUP_COUNT, kernel_group_count);
     env_2_type(CCL_KERNEL_MEM_ALIGN, kernel_mem_align);
@@ -444,9 +548,18 @@ void env_data::parse() {
     env_2_type(CCL_SYCL_OUTPUT_EVENT, enable_sycl_output_event);
     env_2_type(CCL_USE_HMEM, use_hmem);
 
+    env_2_type(CCL_BARRIER_SYNC, sync_barrier);
+
     env_2_type(CCL_ZE_BARRIER, enable_ze_barrier);
     env_2_type(CCL_ZE_BIDIR_ALGO, enable_ze_bidir_algo);
     env_2_type(CCL_ZE_CACHE, enable_ze_cache);
+    env_2_type(CCL_ZE_DEVICE_CACHE_EVICT_SMALLEST, ze_device_cache_evict_smallest);
+    env_2_type(CCL_ZE_DEVICE_CACHE_UPPER_LIMIT, ze_device_cache_upper_limit);
+    env_2_type(CCL_ZE_DEVICE_CACHE_NUM_BLOCKS_IN_CHUNK, ze_device_cache_num_blocks_in_chunk);
+    env_2_enum(CCL_ZE_DEVICE_CACHE_POLICY, ccl::ze::device_cache_policy_names, ze_device_cache_policy);
+    env_2_type(CCL_ZE_DEVICE_MEM_DISABLE_CLEAR, ze_device_mem_disable_clear);
+    env_2_type(CCL_ZE_DEVICE_MEM_ALLOC_SIZE, ze_device_mem_alloc_size);
+    env_2_type(CCL_ZE_DEVICE_MEM_ENABLE, ze_device_mem_enable);
     env_2_type(CCL_ZE_CACHE_OPEN_IPC_HANDLES, enable_ze_cache_open_ipc_handles);
     env_2_type(CCL_ZE_CACHE_OPEN_IPC_HANDLES_THRESHOLD, ze_cache_open_ipc_handles_threshold);
     if (enable_ze_cache == 0) {
@@ -463,10 +576,12 @@ void env_data::parse() {
     env_2_type(CCL_ZE_SINGLE_LIST, enable_ze_single_list);
     env_2_type(CCL_ZE_DISABLE_FAMILY_CHECK, disable_ze_family_check);
     env_2_type(CCL_ZE_DISABLE_PORT_CHECK, disable_ze_port_check);
-    env_2_type(CCL_ZE_DISABLE_OVERSUBSCRIPTION_CHECK, ze_disable_oversubscription_check);
+    env_2_type(CCL_ZE_ENABLE_OVERSUBSCRIPTION_FALLBACK, ze_enable_oversubscription_fallback);
+    env_2_type(CCL_ZE_ENABLE_OVERSUBSCRIPTION_THROW, ze_enable_oversubscription_throw);
     env_2_type(CCL_ZE_SERIALIZE, ze_serialize_mode);
     env_2_enum(CCL_ZE_COPY_ENGINE, ccl::ze::copy_engine_names, ze_copy_engine);
     env_2_enum(CCL_ZE_H2D_COPY_ENGINE, ccl::ze::h2d_copy_engine_names, ze_h2d_copy_engine);
+    env_2_enum(CCL_ZE_D2D_COPY_ENGINE, ccl::ze::d2d_copy_engine_names, ze_d2d_copy_engine);
     env_2_type(CCL_ZE_MAX_COMPUTE_QUEUES, ze_max_compute_queues);
     CCL_THROW_IF_NOT(
         ze_max_compute_queues == CCL_ENV_SIZET_NOT_SPECIFIED || ze_max_compute_queues > 0,
@@ -495,7 +610,12 @@ void env_data::parse() {
     env_2_type(CCL_ZE_ENABLE, ze_enable);
     env_2_type(CCL_ZE_FINI_WA, ze_fini_wa);
     env_2_type(CCL_ZE_MULTI_WORKERS, ze_multi_workers);
+    env_2_type(CCL_ZE_AUTO_TUNE_PORTS, enable_ze_auto_tune_ports);
     env_2_enum(CCL_ZE_IPC_EXCHANGE, ze::ipc_exchange_names, ze_ipc_exchange);
+    env_2_type(CCL_ZE_DRM_BDF_SUPPORT, ze_drm_bdf_support);
+    env_2_type(CCL_ZE_PT2PT_READ, ze_pt2pt_read);
+    env_2_enum(CCL_ZE_TYPE2_TUNE_PORTS, type2_tune_mode_names, type2_mode);
+    env_2_type(CCL_ZE_ENABLE_DRMFD_MULTI_INSTANCE, ze_enable_drmfd_multi_instance);
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_PMIX
@@ -599,6 +719,8 @@ void env_data::print(int rank) {
     LOG_INFO(CCL_ATL_CACHE, ": ", enable_atl_cache);
     LOG_DEBUG(CCL_ATL_SYNC_COLL, ": ", enable_sync_coll);
     LOG_DEBUG(CCL_ATL_EXTRA_EP, ": ", enable_extra_ep);
+    LOG_INFO(CCL_ENABLE_RUN_ID_DETECTION, ": ", enable_run_id_detection);
+    LOG_INFO(CCL_ENABLE_RUN_ID_WITH_PPID, ": ", enable_run_id_with_ppid);
 
     LOG_INFO(CCL_MNIC, ": ", str_by_enum(mnic_type_names, mnic_type));
     LOG_INFO(
@@ -624,12 +746,14 @@ void env_data::print(int rank) {
              (barrier_algo_raw.length()) ? barrier_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(
         CCL_BCAST, ": ", (bcast_algo_raw.length()) ? bcast_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_RECV, ": ", (recv_algo_raw.length()) ? recv_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(
         CCL_REDUCE, ": ", (reduce_algo_raw.length()) ? reduce_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(
         CCL_REDUCE_SCATTER,
         ": ",
         (reduce_scatter_algo_raw.length()) ? reduce_scatter_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
+    LOG_INFO(CCL_SEND, ": ", (send_algo_raw.length()) ? send_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_ALLGATHERV,
              ": ",
              (allgatherv_algo_raw.length()) ? allgatherv_algo_raw : CCL_ENV_STR_NOT_SPECIFIED);
@@ -683,7 +807,6 @@ void env_data::print(int rank) {
     LOG_INFO(CCL_STRICT_ORDER, ": ", enable_strict_order);
     LOG_INFO(CCL_STAGING_BUFFER, ": ", str_by_enum(staging_buffer_names, staging_buffer));
     LOG_INFO(CCL_OP_SYNC, ": ", enable_op_sync);
-    LOG_INFO(CCL_USE_EXTERNAL_QUEUE, ": ", enable_external_queue);
 
     LOG_INFO(CCL_CHUNK_COUNT, ": ", chunk_count);
     LOG_INFO(CCL_MIN_CHUNK_SIZE, ": ", min_chunk_size);
@@ -694,11 +817,39 @@ void env_data::print(int rank) {
     LOG_INFO(CCL_ALLGATHERV_TOPO_LARGE_SCALE, ": ", allgatherv_topo_large_scale);
     LOG_INFO(CCL_ALLGATHERV_TOPO_READ, ": ", allgatherv_topo_read);
     LOG_INFO(CCL_ALLTOALLV_TOPO_READ, ": ", alltoallv_topo_read);
+    LOG_INFO(CCL_REDUCE_SCATTER_TOPO_READ, ": ", reduce_scatter_topo_read);
     LOG_INFO(CCL_REDUCE_SCATTER_MONOLITHIC_KERNEL, ": ", reduce_scatter_monolithic_kernel);
+    LOG_INFO(CCL_REDUCE_SCATTER_MONOLITHIC_PIPELINE_KERNEL,
+             ": ",
+             reduce_scatter_monolithic_pipeline_kernel);
+    LOG_INFO(CCL_REDUCE_SCATTER_FALLBACK_ALGO, ": ", reduce_scatter_fallback_algo);
     LOG_INFO(CCL_ALLGATHERV_MONOLITHIC_KERNEL, ": ", allgatherv_monolithic_kernel);
     LOG_INFO(
         CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL, ": ", allgatherv_monolithic_pipeline_kernel);
     LOG_INFO(CCL_ALLTOALLV_MONOLITHIC_KERNEL, ": ", alltoallv_monolithic_kernel);
+    LOG_INFO(CCL_ALLTOALLV_MONOLITHIC_READ_KERNEL, ": ", alltoallv_monolithic_read_kernel);
+
+    LOG_INFO(CCL_ALLGATHERV_PIPE_CHUNK_COUNT, ": ", allgatherv_pipe_chunk_count);
+    LOG_INFO(CCL_ALLREDUCE_PIPE_CHUNK_COUNT, ": ", allreduce_pipe_chunk_count);
+    LOG_INFO(CCL_REDUCE_SCATTER_PIPE_CHUNK_COUNT, ": ", reduce_scatter_pipe_chunk_count);
+    LOG_INFO(CCL_REDUCE_PIPE_CHUNK_COUNT, ": ", reduce_pipe_chunk_count);
+
+    LOG_INFO(CCL_ALLREDUCE_USE_TMP_BUF, ": ", allreduce_use_tmp_buf);
+    LOG_INFO(CCL_ALLREDUCE_SMALL_SIZE_THRESHOLD, ": ", allreduce_small_size_threshold);
+    LOG_INFO(CCL_ALLREDUCE_MEDIUM_SIZE_THRESHOLD, ": ", allreduce_medium_size_threshold);
+
+    LOG_INFO(CCL_REDUCE_SCATTER_USE_TMP_BUF, ": ", reduce_scatter_use_tmp_buf);
+    LOG_INFO(CCL_REDUCE_SCATTER_SMALL_SIZE_THRESHOLD, ": ", reduce_scatter_small_size_threshold);
+    LOG_INFO(CCL_REDUCE_SCATTER_MEDIUM_SIZE_THRESHOLD, ": ", reduce_scatter_medium_size_threshold);
+
+    LOG_INFO(CCL_ALLGATHERV_USE_TMP_BUF, ": ", allgatherv_use_tmp_buf);
+    LOG_INFO(CCL_ALLGATHERV_CHUNK_SIZE, ": ", allgatherv_chunk_size);
+    LOG_INFO(CCL_ALLGATHERV_SMALL_SIZE_THRESHOLD, ": ", allgatherv_small_size_threshold);
+    LOG_INFO(CCL_ALLGATHERV_MEDIUM_SIZE_THRESHOLD, ": ", allgatherv_medium_size_threshold);
+
+    LOG_INFO(CCL_SKIP_SCHEDULER, ": ", skip_scheduler);
+    LOG_INFO(CCL_USE_CCL_BARRIER, ": ", use_ccl_barrier);
+    LOG_INFO(CCL_USE_SYCL_BARRIER, ": ", use_sycl_barrier);
 #endif // CCL_ENABLE_SYCL
 
     LOG_INFO(CCL_ALLREDUCE_NREDUCE_BUFFERING, ": ", allreduce_nreduce_buffering);
@@ -748,6 +899,7 @@ void env_data::print(int rank) {
              (enable_p2p_access != CCL_ENV_INT_NOT_SPECIFIED) ? std::to_string(enable_p2p_access)
                                                               : CCL_ENV_STR_NOT_SPECIFIED);
 
+    LOG_INFO(CCL_TOPO_FABRIC_VERTEX_CONNECTION_CHECK, ": ", enable_fabric_vertex_connection_check);
     LOG_INFO(
         CCL_KERNEL_PATH, ": ", (!kernel_path.empty()) ? kernel_path : CCL_ENV_STR_NOT_SPECIFIED);
     LOG_INFO(CCL_KERNEL_DEBUG, ": ", kernel_debug);
@@ -766,23 +918,35 @@ void env_data::print(int rank) {
     LOG_INFO(CCL_KERNEL_CLOSE_FD_WA, ": ", enable_close_fd_wa);
 
     LOG_INFO(CCL_SYCL_OUTPUT_EVENT, ": ", enable_sycl_output_event);
+    LOG_INFO(CCL_BARRIER_SYNC, ": ", sync_barrier);
     LOG_INFO(CCL_USE_HMEM, ": ", use_hmem);
 
     LOG_INFO(CCL_ZE_BARRIER, ": ", enable_ze_barrier);
     LOG_INFO(CCL_ZE_BIDIR_ALGO, ": ", enable_ze_bidir_algo);
     LOG_INFO(CCL_ZE_CACHE, ": ", enable_ze_cache);
+    LOG_INFO(CCL_ZE_DEVICE_CACHE_EVICT_SMALLEST, ": ", ze_device_cache_evict_smallest);
+    LOG_INFO(CCL_ZE_DEVICE_CACHE_UPPER_LIMIT, ": ", ze_device_cache_upper_limit);
+    LOG_INFO(CCL_ZE_DEVICE_CACHE_NUM_BLOCKS_IN_CHUNK, ": ", ze_device_cache_num_blocks_in_chunk);
+    LOG_INFO(CCL_ZE_DEVICE_CACHE_POLICY, ": ", str_by_enum(ccl::ze::device_cache_policy_names, ze_device_cache_policy));
+    LOG_INFO(CCL_ZE_DEVICE_MEM_DISABLE_CLEAR, ": ", ze_device_mem_disable_clear);
+    LOG_INFO(CCL_ZE_DEVICE_MEM_ALLOC_SIZE, ": ", ze_device_mem_alloc_size);
+    LOG_INFO(CCL_ZE_DEVICE_MEM_ENABLE, ": ", ze_device_mem_enable);
     LOG_INFO(CCL_ZE_CACHE_OPEN_IPC_HANDLES, ": ", enable_ze_cache_open_ipc_handles);
     LOG_INFO(CCL_ZE_CACHE_OPEN_IPC_HANDLES_THRESHOLD, ": ", ze_cache_open_ipc_handles_threshold);
     LOG_INFO(CCL_ZE_CACHE_GET_IPC_HANDLES, ": ", enable_ze_cache_get_ipc_handles);
     LOG_INFO(CCL_ZE_SINGLE_LIST, ": ", enable_ze_single_list);
     LOG_INFO(CCL_ZE_DISABLE_FAMILY_CHECK, ": ", disable_ze_family_check);
     LOG_INFO(CCL_ZE_DISABLE_PORT_CHECK, ": ", disable_ze_port_check);
-    LOG_INFO(CCL_ZE_DISABLE_OVERSUBSCRIPTION_CHECK, ": ", ze_disable_oversubscription_check);
+    LOG_INFO(CCL_ZE_ENABLE_OVERSUBSCRIPTION_FALLBACK, ": ", ze_enable_oversubscription_fallback);
+    LOG_INFO(CCL_ZE_ENABLE_OVERSUBSCRIPTION_THROW, ": ", ze_enable_oversubscription_throw);
     LOG_INFO(CCL_ZE_SERIALIZE, ": ", ze_serialize_mode);
     LOG_INFO(CCL_ZE_COPY_ENGINE, ": ", str_by_enum(ccl::ze::copy_engine_names, ze_copy_engine));
     LOG_INFO(CCL_ZE_H2D_COPY_ENGINE,
              ": ",
              str_by_enum(ccl::ze::h2d_copy_engine_names, ze_h2d_copy_engine));
+    LOG_INFO(CCL_ZE_D2D_COPY_ENGINE,
+             ": ",
+             str_by_enum(ccl::ze::d2d_copy_engine_names, ze_d2d_copy_engine));
     LOG_INFO(CCL_ZE_MAX_COMPUTE_QUEUES,
              ": ",
              (ze_max_compute_queues != CCL_ENV_SIZET_NOT_SPECIFIED)
@@ -803,7 +967,12 @@ void env_data::print(int rank) {
     LOG_INFO(CCL_ZE_ENABLE, ": ", ze_enable);
     LOG_INFO(CCL_ZE_FINI_WA, ": ", ze_fini_wa);
     LOG_INFO(CCL_ZE_MULTI_WORKERS, ": ", ze_multi_workers);
+    LOG_INFO(CCL_ZE_AUTO_TUNE_PORTS, ": ", enable_ze_auto_tune_ports);
     LOG_INFO(CCL_ZE_IPC_EXCHANGE, ": ", str_by_enum(ze::ipc_exchange_names, ze_ipc_exchange));
+    LOG_INFO(CCL_ZE_DRM_BDF_SUPPORT, ": ", ze_drm_bdf_support);
+    LOG_INFO(CCL_ZE_PT2PT_READ, ": ", ze_pt2pt_read);
+    LOG_INFO(CCL_ZE_TYPE2_TUNE_PORTS, ": ", str_by_enum(type2_tune_mode_names, type2_mode));
+    LOG_INFO(CCL_ZE_ENABLE_DRMFD_MULTI_INSTANCE, ": ", ze_enable_drmfd_multi_instance);
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_PMIX
@@ -987,6 +1156,7 @@ int env_data::env_2_worker_affinity(int local_proc_idx, int local_proc_count) {
 
     size_t idx;
     char* env_to_parse = getenv(CCL_WORKER_AFFINITY);
+    long int temp_system_core_count;
     size_t system_core_count;
     size_t affinity_size = local_proc_count * worker_count;
 
@@ -998,7 +1168,12 @@ int env_data::env_2_worker_affinity(int local_proc_idx, int local_proc_count) {
         }
         else {
             /* generate auto affinity as last N cores */
-            system_core_count = sysconf(_SC_NPROCESSORS_ONLN);
+            temp_system_core_count = sysconf(_SC_NPROCESSORS_ONLN);
+            // throw an error on sysconf failure (-1) or if core_count is invalid
+            CCL_THROW_IF_NOT(temp_system_core_count > 0,
+                             "system_core_count is incorrect: ",
+                             temp_system_core_count);
+            system_core_count = static_cast<size_t>(temp_system_core_count);
             for (idx = 0; idx < affinity_size; idx++) {
                 if (idx < system_core_count) {
                     worker_affinity[idx] = system_core_count - idx - 1;
@@ -1057,7 +1232,7 @@ void env_data::env_2_atl_transport() {
 
 bool env_data::with_mpirun() {
     return (getenv("MPI_LOCALRANKID") || getenv("MPI_LOCALNRANKS") || getenv("PMI_RANK") ||
-            getenv("PMI_SIZE"))
+            getenv("PMI_SIZE") || getenv("PMIX_RANK"))
                ? true
                : false;
 }

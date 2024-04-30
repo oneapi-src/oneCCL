@@ -14,6 +14,7 @@
  limitations under the License.
 */
 #include "sched/entry/copy/copy_helper.hpp"
+#include "sched/entry/factory/entry_factory.hpp"
 #include "sched/entry/ze/ze_copy_entry.hpp"
 
 using namespace ccl;
@@ -24,29 +25,35 @@ ze_copy_entry::ze_copy_entry(ccl_sched* sched,
                              size_t count,
                              const ccl_datatype& dtype,
                              const copy_attr& attr,
-                             std::vector<ze_event_handle_t> wait_events,
-                             std::vector<ze_event_handle_t> dep_events)
-        : ze_base_entry(sched, nullptr, 1, wait_events, true /*is_nonblocking*/),
-          sched(sched),
+                             const std::vector<ze_event_handle_t>& wait_events)
+        : ze_base_entry(sched,
+                        wait_events,
+                        nullptr /*comm*/,
+                        1 /*add_event_count*/,
+                        true /*is_nonblocking*/),
           in_buf(in_buf),
           out_buf(out_buf),
           dtype(dtype),
           attr(attr),
-          count(count),
-          dep_events(dep_events) {
+          count(count) {
     CCL_THROW_IF_NOT(sched, "no sched");
 }
 
 void ze_copy_entry::init_ze_hook() {
+    int peer_rank = attr.peer_rank;
+    if (attr.pt2pt_op) {
+        peer_rank = ccl::ze::ipc_handle_manager::pt2pt_handles_size - 1;
+    }
+
     if (attr.peer_rank != ccl_comm::invalid_rank) {
         if (!out_buf) {
             sched->get_memory().handle_manager.get(
-                attr.peer_rank, attr.peer_buf_idx, out_buf, attr.map_comm);
+                peer_rank, attr.peer_buf_idx, out_buf, attr.map_comm, attr.pt2pt_op);
         }
 
         if (!in_buf) {
             sched->get_memory().handle_manager.get(
-                attr.peer_rank, attr.peer_buf_idx, in_buf, attr.map_comm);
+                peer_rank, attr.peer_buf_idx, in_buf, attr.map_comm, attr.pt2pt_op);
         }
     }
 
@@ -54,15 +61,15 @@ void ze_copy_entry::init_ze_hook() {
     void* src = static_cast<char*>(in_buf.get_ptr()) + attr.in_buf_offset * dtype.size();
 
     ze_command_list_handle_t list =
-        ze_base_entry::get_copy_list(attr.direction, attr.hint_queue_index);
-    ZE_CALL(zeCommandListAppendMemoryCopy,
-            (list,
-             dst,
-             src,
-             dtype.size() * count,
-             ze_base_entry::entry_event,
-             dep_events.size(),
-             dep_events.data()));
+        ze_base_entry::get_copy_list(attr.direction, attr.hint_queue_index, attr.force_queue_type);
+
+    ZE_APPEND_CALL(ze_cmd_memory_copy,
+                   list,
+                   dst,
+                   src,
+                   dtype.size() * count,
+                   ze_base_entry::entry_event,
+                   wait_events);
 }
 
 std::string ze_copy_entry::name_ext() const {

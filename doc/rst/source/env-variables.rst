@@ -2,7 +2,9 @@
 Environment Variables
 =====================
 
-Collective algorithms selection
+.. _collective-algorithms-selection:
+
+Collective Algorithms Selection
 ###############################
 oneCCL supports collective operations for the host (CPU) memory buffers and device (GPU) memory buffers. Below you can see how to select the collective algorithm depending on the type of buffer being utilized. 
 
@@ -68,13 +70,44 @@ CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL
    * - <value>
      - Description
    * - ``1``
-     - Uses compute kernels to transfer data across GPUs for the ``ALLGATHERV`` collective. 
+     - Uses compute kernels to transfer data across GPUs for the ``ALLGATHERV`` collective. The default value.
    * - ``0``
-     - Uses copy engines to transfer data across GPUs for the ``ALLGATHERV`` collective. The default value.
+     - Uses copy engines to transfer data across GPUs for the ``ALLGATHERV`` collective. 
   
 **Description**
 
-Set this environment variable to enable compute kernels for the ``ALLGATHERV`` collective using device (GPU) buffers. 
+Set this environment variable to enable compute kernels that pipeline data transfers across tiles in the same GPU with data transfers across different GPUs,  for the ``ALLGATHERV ``collective using device (GPU) buffers.
+
+
+
+CCL_REDUCE_SCATTER_MONOLITHIC_PIPELINE_KERNEL 
++++++++++++++++++++++++++++++++++++++++++++++
+
+**Syntax**
+
+::
+
+  CCL_REDUCE_SCATTER_MONOLITHIC_PIPELINE_KERNEL=<value> 
+
+
+**Arguments**
+
+.. list-table:: 
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+   
+   * - <value>
+     - Description
+   * - ``1``
+     - Uses compute kernels for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER`` collectives. The default value. 
+   * - ``0``
+     - Uses copy engines to transfer data across GPUs for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER collectives``. 
+  
+**Description**
+
+Set this environment variable to enable compute kernels that pipeline data transfers across tiles in the same GPU with data transfers across different GPUs for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER`` collectives using the device (GPU) buffers.  
+ 
 
 CCL_ALLTOALLV_MONOLITHIC_KERNEL 
 +++++++++++++++++++++++++++++++
@@ -103,6 +136,38 @@ CCL_ALLTOALLV_MONOLITHIC_KERNEL
 
 Set this environment variable to enable compute kernels for the ``ALLTOALL`` and ``ALLTOALLV`` collectives using device (GPU) buffers
 ``CCL_<coll_name>_SCALEOUT``. 
+
+
+CCL_SKIP_SCHEDULER  
+++++++++++++++++++
+
+**Syntax**
+
+::
+
+  CCL_SKIP_SCHEDULER=<value> 
+
+**Arguments**
+
+.. list-table:: 
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``1``
+     - Enable SYCL kernels
+   * - ``0``
+     - Disable SYCL kernels. The default value. 
+
+**Description**
+
+Set this environment variable to ``1`` to enable the SYCL kernel-based implementation for ``ALLGATHERV``, ``ALLREDUCE``, and ``REDUCE_SCATTER``. 
+This new optimization enhances all message sizes and supports the ``int32``, ``fp32``, ``fp16``, and ``bf16`` data types, sum operations, and single nodes. 
+oneCCL falls back to other implementations when the support is unavailable with SYCL kernels. Therefore, you can safely set this environment variable.
+
+
 
 SCALEOUT
 ++++++++
@@ -392,6 +457,7 @@ Workers
 
 The group of environment variables to control worker threads.
 
+.. _CCL_WORKER_COUNT:
 
 CCL_WORKER_COUNT
 ****************
@@ -417,6 +483,7 @@ CCL_WORKER_COUNT
 
 Set this environment variable to specify the number of |product_short| worker threads.
 
+.. _CCL_WORKER_AFFINITY:
 
 CCL_WORKER_AFFINITY
 *******************
@@ -445,7 +512,7 @@ CCL_WORKER_AFFINITY
        The i-th local worker is pinned to the i-th core in the list.
        For example ``<a>,<b>-<c>`` defines list of cores contaning core with number ``<a>``
        and range of cores with numbers from ``<b>`` to ``<c>``.
-       The number should not exceed the number of cores available on the system.
+       The core number should not exceed the number of cores available on the system. The length of the list should be equal to the number of workers.
 
 **Description**
 
@@ -487,6 +554,8 @@ ATL
 
 The group of environment variables to control ATL (abstract transport layer).
 
+
+.. _CCL_ATL_TRANSPORT:
 
 CCL_ATL_TRANSPORT
 *****************
@@ -567,6 +636,21 @@ CCL_ATL_SHM
 **Description**
 
 Set this environment variable to enable the OFI shared memory provider to communicate between ranks in the same node of the host (CPU) buffers.
+This capability requires OFI as the transport (``CCL_ATL_TRANSPORT=ofi``). 
+
+The OFI/SHM provider has support to utilize the `Intel(R) Data Streaming Accelerator* (DSA) <https://01.org/blogs/2019/introducing-intel-data-streaming-accelerator>`_. 
+To run it with DSA*, you need:
+* Linux* OS kernel support for the DSA* shared work queues
+* Libfabric* 1.17 or later
+
+To enable DSA, set the following environment variables:   
+
+.. code::
+
+    FI_SHM_DISABLE_CMA=1  
+    FI_SHM_USE_DSA_SAR=1  
+
+Refer to Libfabric* Programmer's Manual for the additional details about DSA* support in the SHM provider: https://ofiwg.github.io/libfabric/main/man/fi_shm.7.html. 
 
 CCL_PROCESS_LAUNCHER
 ********************
@@ -746,6 +830,7 @@ CCL_MNIC_COUNT
 Set this environment variable to specify the maximum number of NICs to be selected.
 The actual number of NICs selected may be smaller due to limitations on transport level or system configuration.
 
+.. _low-precision-datatypes:
 
 Low-precision datatypes
 #######################
@@ -900,6 +985,7 @@ CCL_FUSION
 Set this environment variable to control fusion of collective operations.
 The real fusion depends on additional settings described below.
 
+.. _CCL_FUSION_BYTES_THRESHOLD:
 
 CCL_FUSION_BYTES_THRESHOLD
 **************************
@@ -926,6 +1012,7 @@ CCL_FUSION_BYTES_THRESHOLD
 
 Set this environment variable to specify the threshold of the number of bytes for a collective operation to be fused.
 
+.. _CCL_FUSION_COUNT_THRESHOLD:
 
 CCL_FUSION_COUNT_THRESHOLD
 **************************
@@ -952,6 +1039,8 @@ CCL_FUSION_COUNT_THRESHOLD
 
 Set this environment variable to specify count threshold for a collective operation to be fused.
 
+
+.. _CCL_FUSION_CYCLE_MS:
 
 CCL_FUSION_CYCLE_MS
 *******************
@@ -980,6 +1069,7 @@ CCL_FUSION_CYCLE_MS
 
 Set this environment variable to specify the frequency of checking for collectives operations to be fused.
 
+.. _CCL_PRIORITY:
 
 CCL_PRIORITY
 ############
@@ -1053,9 +1143,9 @@ CCL_SYCL_OUTPUT_EVENT
    * - <value>
      - Description
    * - ``1``
-     - Enable support for SYCL output event.
+     - Enable support for SYCL output event (**default**).
    * - ``0``
-     - Disable support for SYCL output event (**default**).
+     - Disable support for SYCL output event.
 
 **Description**
 
@@ -1087,3 +1177,59 @@ CCL_ZE_LIBRARY_PATH
 **Description**
 
 Set this environment variable to specify the name and full path to ``Level-Zero`` library. The path should be absolute and validated. Set this variable if ``Level-Zero`` is not located in the default path. By default |product_short| uses ``libze_loader.so`` name for dynamic loading.
+
+
+Point-To-Point Operations
+*************************
+
+CCL_RECV 
+#########
+
+**Syntax**
+
+::
+
+  CCL_RECV=<value>
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``direct``
+     - Based on the MPI*/OFI* transport layer.
+   * - ``topo``
+     - Uses XeLinks across GPUs in a multi-GPU node. Default for GPU buffers.  
+   * - ``offload``
+     - Based on the MPI*/OFI* transport layer and GPU RDMA when supported by the hardware.
+
+
+
+CCL_SEND 
+#########
+
+**Syntax**
+
+::
+
+  CCL_SEND=<value>
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``direct``
+     - Based on the MPI*/OFI* transport layer.
+   * - ``topo``
+     - Uses XeLinks across GPUs in a multi-GPU node. Default for GPU buffers.  
+   * - ``offload``
+     - Based on the MPI*/OFI* transport layer and GPU RDMA when supported by the hardware.

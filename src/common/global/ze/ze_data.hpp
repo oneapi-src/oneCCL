@@ -18,7 +18,7 @@
 #include <unordered_map>
 
 #include "common/global/ze/ze_fd_manager.hpp"
-#include "sched/entry/ze/ze_cache.hpp"
+#include "sched/entry/ze/cache/ze_cache.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
 #include "sched/ze/ze_event_manager.hpp"
 
@@ -31,20 +31,24 @@ struct device_info {
     ze_device_handle_t device;
     uint32_t parent_idx;
     ze_device_uuid_t uuid;
+    int physical_idx;
+#ifdef ZE_PCI_PROPERTIES_EXT_NAME
+    ze_pci_address_ext_t pci;
+#endif // ZE_PCI_PROPERTIES_EXT_NAME
 
     device_info(ze_device_handle_t dev, uint32_t parent_idx);
 };
 
-struct global_data_desc {
+class global_data_desc {
+public:
     std::vector<ze_driver_handle_t> drivers;
     std::vector<ze_context_handle_t> contexts;
     std::vector<device_info> devices;
     std::unique_ptr<ze::cache> cache;
+    std::unique_ptr<ze::device_memory_manager> dev_memory_manager;
     std::unordered_map<ze_context_handle_t, ccl::ze::dynamic_event_pool> dynamic_event_pools;
 
     std::atomic<size_t> kernel_counter{};
-
-    std::unique_ptr<ze::fd_manager> fd_manager;
 
     global_data_desc();
     global_data_desc(const global_data_desc&) = delete;

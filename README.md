@@ -1,6 +1,6 @@
 # oneAPI Collective Communications Library (oneCCL) <!-- omit in toc --> <img align="right" width="100" height="100" src="https://spec.oneapi.io/oneapi-logo-white-scaled.jpg">
 
-[Installation](#installation)&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;[Usage](#usage)&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;[Release Notes](https://software.intel.com/content/www/us/en/develop/articles/oneapi-collective-communication-library-ccl-release-notes.html)&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;[Documentation](https://oneapi-src.github.io/oneCCL/)&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;[How to Contribute](CONTRIBUTING.md)&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;[License](LICENSE)
+[Installation](#installation)&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;[Usage](#usage)&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;[Release Notes](https://www.intel.com/content/www/us/en/developer/articles/release-notes/oneapi-collective-communication-library-ccl-release-notes.html)&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;[Documentation](https://oneapi-src.github.io/oneCCL/)&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;[How to Contribute](CONTRIBUTING.md)&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;[License](LICENSE)
 
 oneAPI Collective Communications Library (oneCCL) provides an efficient implementation of communication patterns used in deep learning.
 
@@ -16,6 +16,7 @@ oneCCL is part of [oneAPI](https://oneapi.io).
 - [Installation](#installation)
 - [Usage](#usage)
   - [Launching Example Application](#launching-example-application)
+    - [Using external MPI](#using-external-mpi)
   - [Setting workers affinity](#setting-workers-affinity)
     - [Automatic setup](#automatic-setup)
     - [Explicit setup](#explicit-setup)
@@ -30,7 +31,7 @@ oneCCL is part of [oneAPI](https://oneapi.io).
 - Ubuntu* 18
 - GNU*: C, C++ 4.8.5 or higher.
 
-Refer to [System Requirements](https://software.intel.com/content/www/us/en/develop/articles/oneapi-collective-communication-library-system-requirements.html) for more details.
+Refer to [System Requirements](https://www.intel.com/content/www/us/en/developer/articles/system-requirements/oneapi-collective-communication-library-system-requirements.html) for more details.
 
 ### SYCL support <!-- omit in toc -->
 Intel(R) oneAPI DPC++/C++ Compiler with Level Zero v1.0 support.
@@ -73,6 +74,19 @@ Use the command:
 $ source <install_dir>/env/setvars.sh
 $ mpirun -n 2 <install_dir>/examples/benchmark/benchmark
 ```
+
+#### Using external mpi
+
+The ccl-bundled-mpi flag in vars.sh can take values "yes" or "no" to control if bundled Intel MPI should be used or not. Current default is "yes", which means that oneCCL temporarily overrides the mpi implementation in use.
+
+In order to suppress the behavior and use user-supplied or system-default mpi use the following command *instead* of sourcing `setvars.sh`:
+
+```bash
+$ source <install_dir>/env/vars.sh --ccl-bundled-mpi=no
+```
+
+The mpi implementation will not be overridden. Please note that, in this case, user needs to assure the system finds all required mpi-related binaries.
+
 ### Setting workers affinity
 
 There are two ways to set worker threads (workers) affinity: [automatically](#setting-affinity-automatically) and [explicitly](#setting-affinity-explicitly).

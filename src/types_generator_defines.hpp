@@ -113,7 +113,23 @@
                                       ccl::reduction reduction, \
                                       const ccl::stream::impl_value_t& stream, \
                                       const ccl::reduce_scatter_attr& attr, \
-                                      const ccl::vector_class<ccl::event>& deps = {}) = 0;
+                                      const ccl::vector_class<ccl::event>& deps = {}) = 0; \
+\
+    virtual ccl::event recv(void* recv_buf, \
+                            size_t recv_count, \
+                            ccl::datatype dtype, \
+                            int peer, \
+                            const ccl::stream::impl_value_t& stream, \
+                            const ccl::pt2pt_attr& attr, \
+                            const ccl::vector_class<ccl::event>& deps = {}) = 0; \
+\
+    virtual ccl::event send(void* send_buf, \
+                            size_t send_count, \
+                            ccl::datatype dtype, \
+                            int peer, \
+                            const ccl::stream::impl_value_t& stream, \
+                            const ccl::pt2pt_attr& attr, \
+                            const ccl::vector_class<ccl::event>& deps = {}) = 0;
 
 #define COMM_INTERFACE_COLL_DECLARATION(type) \
 \
@@ -212,6 +228,24 @@
                                       const ccl::stream::impl_value_t& stream, \
                                       const ccl::reduce_scatter_attr& attr, \
                                       const ccl::vector_class<ccl::event>& deps) { \
+        CCL_THROW(std::string(__FUNCTION__) + " - not implemented"); \
+    }; \
+\
+    virtual ccl::event recv(type* recv_buf, \
+                            size_t recv_count, \
+                            int peer, \
+                            const ccl::stream::impl_value_t& stream, \
+                            const ccl::pt2pt_attr& attr, \
+                            const ccl::vector_class<ccl::event>& deps) { \
+        CCL_THROW(std::string(__FUNCTION__) + " - not implemented"); \
+    }; \
+\
+    virtual ccl::event send(type* send_buf, \
+                            size_t send_count, \
+                            int peer, \
+                            const ccl::stream::impl_value_t& stream, \
+                            const ccl::pt2pt_attr& attr, \
+                            const ccl::vector_class<ccl::event>& deps) { \
         CCL_THROW(std::string(__FUNCTION__) + " - not implemented"); \
     };
 
@@ -316,6 +350,24 @@
                                       const ccl::reduce_scatter_attr& attr, \
                                       const ccl::vector_class<ccl::event>& deps = {}) { \
         CCL_THROW(std::string(__FUNCTION__) + " - not implemented"); \
+    }; \
+\
+    virtual ccl::event recv(type& recv_buf, \
+                            size_t recv_count, \
+                            int peer, \
+                            const ccl::stream::impl_value_t& stream, \
+                            const ccl::pt2pt_attr& attr, \
+                            const ccl::vector_class<ccl::event>& deps = {}) { \
+        CCL_THROW(std::string(__FUNCTION__) + " - not implemented"); \
+    }; \
+\
+    virtual ccl::event send(type& send_buf, \
+                            size_t send_count, \
+                            int peer, \
+                            const ccl::stream::impl_value_t& stream, \
+                            const ccl::pt2pt_attr& attr, \
+                            const ccl::vector_class<ccl::event>& deps = {}) { \
+        CCL_THROW(std::string(__FUNCTION__) + " - not implemented"); \
     };
 
 /**
@@ -414,6 +466,26 @@
                               const ccl::vector_class<ccl::event>& deps) override { \
         return get_impl()->reduce_scatter_impl( \
             send_buf, recv_buf, recv_count, dtype, reduction, stream, attr, deps); \
+    } \
+\
+    ccl::event recv(void* recv_buf, \
+                    size_t recv_count, \
+                    ccl::datatype dtype, \
+                    int peer, \
+                    const ccl::stream::impl_value_t& stream, \
+                    const ccl::pt2pt_attr& attr, \
+                    const ccl::vector_class<ccl::event>& deps) override { \
+        return get_impl()->recv_impl(recv_buf, recv_count, dtype, peer, stream, attr, deps); \
+    } \
+\
+    ccl::event send(void* send_buf, \
+                    size_t send_count, \
+                    ccl::datatype dtype, \
+                    int peer, \
+                    const ccl::stream::impl_value_t& stream, \
+                    const ccl::pt2pt_attr& attr, \
+                    const ccl::vector_class<ccl::event>& deps) override { \
+        return get_impl()->send_impl(send_buf, send_count, dtype, peer, stream, attr, deps); \
     }
 
 #define COMM_INTERFACE_COLL_DEFINITION__VOID_OPTIONAL \
@@ -547,6 +619,24 @@
                               const ccl::vector_class<ccl::event>& deps) override { \
         return get_impl()->reduce_scatter_impl( \
             send_buf, recv_buf, recv_count, reduction, stream, attr, deps); \
+    } \
+\
+    ccl::event recv(type* recv_buf, \
+                    size_t recv_count, \
+                    int peer, \
+                    const ccl::stream::impl_value_t& stream, \
+                    const ccl::pt2pt_attr& attr, \
+                    const ccl::vector_class<ccl::event>& deps) override { \
+        return get_impl()->recv_impl(recv_buf, recv_count, peer, stream, attr, deps); \
+    } \
+\
+    ccl::event send(type* send_buf, \
+                    size_t send_count, \
+                    int peer, \
+                    const ccl::stream::impl_value_t& stream, \
+                    const ccl::pt2pt_attr& attr, \
+                    const ccl::vector_class<ccl::event>& deps) override { \
+        return get_impl()->send_impl(send_buf, send_count, peer, stream, attr, deps); \
     }
 
 #define COMM_INTERFACE_COLL_CLASS_DEFINITION(type) \
@@ -653,8 +743,25 @@
                               const ccl::vector_class<ccl::event>& deps) override { \
         return get_impl()->reduce_scatter_impl( \
             send_buf, recv_buf, recv_count, reduction, stream, attr, deps); \
-    }
-
+    } \
+\
+    ccl::event recv(type& recv_buf, \
+                    size_t recv_count, \
+                    int peer, \
+                    const ccl::stream::impl_value_t& stream, \
+                    const ccl::pt2pt_attr& attr, \
+                    const ccl::vector_class<ccl::event>& deps) override { \
+        return get_impl()->recv_impl(recv_buf, recv_count, peer, stream, attr, deps); \
+    } \
+\
+    ccl::event send(type& send_buf, \
+                    size_t send_count, \
+                    int peer, \
+                    const ccl::stream::impl_value_t& stream, \
+                    const ccl::pt2pt_attr& attr, \
+                    const ccl::vector_class<ccl::event>& deps) override { \
+        return get_impl()->send_impl(send_buf, send_count, peer, stream, attr, deps); \
+    } \
 /**
  * Coll implementations
  */
@@ -751,7 +858,23 @@
                                    ccl::reduction reduction, \
                                    const ccl::stream::impl_value_t& stream, \
                                    const ccl::reduce_scatter_attr& attr, \
-                                   const ccl::vector_class<ccl::event>& deps);
+                                   const ccl::vector_class<ccl::event>& deps); \
+\
+    template <class buffer_type> \
+    ccl::event recv_impl(buffer_type* recv_buf, \
+                         size_t recv_count, \
+                         int peer, \
+                         const ccl::stream::impl_value_t& stream, \
+                         const ccl::pt2pt_attr& attr, \
+                         const ccl::vector_class<ccl::event>& deps); \
+\
+    template <class buffer_type> \
+    ccl::event send_impl(buffer_type* send_buf, \
+                         size_t send_count, \
+                         int peer, \
+                         const ccl::stream::impl_value_t& stream, \
+                         const ccl::pt2pt_attr& attr, \
+                         const ccl::vector_class<ccl::event>& deps);
 
 #define COMM_IMPL_DECLARATION_VOID_REQUIRED \
     ccl::event allgatherv_base_impl(const void* send_buf, \
@@ -830,7 +953,23 @@
                                    ccl::reduction reduction, \
                                    const ccl::stream::impl_value_t& stream, \
                                    const ccl::reduce_scatter_attr& attr, \
-                                   const ccl::vector_class<ccl::event>& deps);
+                                   const ccl::vector_class<ccl::event>& deps); \
+\
+    ccl::event recv_impl(void* recv_buf, \
+                         size_t recv_count, \
+                         ccl::datatype dtype, \
+                         int peer, \
+                         const ccl::stream::impl_value_t& stream, \
+                         const ccl::pt2pt_attr& attr, \
+                         const ccl::vector_class<ccl::event>& deps); \
+\
+    ccl::event send_impl(void* send_buf, \
+                         size_t send_count, \
+                         ccl::datatype dtype, \
+                         int peer, \
+                         const ccl::stream::impl_value_t& stream, \
+                         const ccl::pt2pt_attr& attr, \
+                         const ccl::vector_class<ccl::event>& deps);
 
 // we currently don't implement these, so move them into a separate define
 // so they could be skipped by comm implementations
@@ -945,7 +1084,23 @@
                                    ccl::reduction reduction, \
                                    const ccl::stream::impl_value_t& stream, \
                                    const ccl::reduce_scatter_attr& attr, \
-                                   const ccl::vector_class<ccl::event>& deps);
+                                   const ccl::vector_class<ccl::event>& deps); \
+\
+    template <class buffer_type> \
+    ccl::event recv_impl(buffer_type& recv_buf, \
+                         size_t recv_count, \
+                         int peer, \
+                         const ccl::stream::impl_value_t& stream, \
+                         const ccl::pt2pt_attr& attr, \
+                         const ccl::vector_class<ccl::event>& deps); \
+\
+    template <class buffer_type> \
+    ccl::event send_impl(buffer_type& send_buf, \
+                         size_t send_count, \
+                         int peer, \
+                         const ccl::stream::impl_value_t& stream, \
+                         const ccl::pt2pt_attr& attr, \
+                         const ccl::vector_class<ccl::event>& deps);
 
 /**
  * Force intantiations
@@ -1013,7 +1168,21 @@
                                                 int root, \
                                                 const ccl::stream::impl_value_t& stream, \
                                                 const ccl::reduce_attr& attr, \
-                                                const ccl::vector_class<ccl::event>& deps);
+                                                const ccl::vector_class<ccl::event>& deps); \
+\
+    template ccl::event comm_class::recv_impl(type& recv_buf, \
+                                              size_t recv_count, \
+                                              int peer, \
+                                              const ccl::stream::impl_value_t& stream, \
+                                              const ccl::pt2pt_attr& attr, \
+                                              const ccl::vector_class<ccl::event>& deps); \
+\
+    template ccl::event comm_class::send_impl(type& send_buf, \
+                                              size_t send_count, \
+                                              int peer, \
+                                              const ccl::stream::impl_value_t& stream, \
+                                              const ccl::pt2pt_attr& attr, \
+                                              const ccl::vector_class<ccl::event>& deps);
 
 #define COMM_INTERFACE_COLL_INSTANTIATIONS(comm_class, type) \
 \
@@ -1092,4 +1261,18 @@
         ccl::reduction reduction, \
         const ccl::stream::impl_value_t& stream, \
         const ccl::reduce_scatter_attr& attr, \
-        const ccl::vector_class<ccl::event>& deps);
+        const ccl::vector_class<ccl::event>& deps); \
+\
+    template ccl::event comm_class::recv_impl(type* recv_buf, \
+                                              size_t count, \
+                                              int peer, \
+                                              const ccl::stream::impl_value_t& stream, \
+                                              const ccl::pt2pt_attr& attr, \
+                                              const ccl::vector_class<ccl::event>& deps); \
+\
+    template ccl::event comm_class::send_impl(type* send_buf, \
+                                              size_t count, \
+                                              int peer, \
+                                              const ccl::stream::impl_value_t& stream, \
+                                              const ccl::pt2pt_attr& attr, \
+                                              const ccl::vector_class<ccl::event>& deps);

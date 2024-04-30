@@ -24,6 +24,10 @@
 
 #include <memory>
 
+#if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
+#include "sched/entry/ze/ze_command.hpp"
+#endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
+
 typedef ccl::status (*ccl_sched_entry_function_t)(const void*);
 
 class ccl_sched;
@@ -35,7 +39,7 @@ enum ccl_sched_entry_status {
     ccl_sched_entry_status_again,
     ccl_sched_entry_status_started,
     ccl_sched_entry_status_complete,
-    ccl_sched_entry_status_complete_once, // should has higher value than 'complete'
+    ccl_sched_entry_status_complete_once, // should have higher value than 'complete'
     ccl_sched_entry_status_failed,
     ccl_sched_entry_status_invalid
 };
@@ -96,6 +100,13 @@ public:
     virtual void init(){};
     virtual void finalize(){};
 
+#if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
+    const ze_commands_t& get_ze_commands() const;
+    virtual uint32_t ze_commands_submit();
+#endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
+
+    ccl_sched* get_sched() const;
+
 protected:
     virtual void start() = 0;
     virtual void update();
@@ -117,4 +128,12 @@ protected:
     bool detect_update_time_expiration = false;
     bool use_update_timer = false;
     bool is_update_time_expired = false;
+
+#ifdef CCL_ENABLE_ITT
+    __itt_event itt_event = ccl::profile::itt::invalid_event;
+#endif // CCL_ENABLE_ITT
+
+#if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
+    ze_commands_t ze_commands;
+#endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
 };

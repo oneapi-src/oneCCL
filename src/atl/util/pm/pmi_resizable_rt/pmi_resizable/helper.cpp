@@ -31,35 +31,50 @@ int killed_ranks_count = 0;
 std::list<int> new_ranks;
 int new_ranks_count = 0;
 
+/*
+ * WARNING this module contains some legacy, unused or dead code
+ *
+ * some related code that lacked documentation and tests
+ * was annottated as deprecated
+ *
+ * removed, dead code - left for reference:
+ *
+ * kvs_status_t helper::replace_str(char* str, int old_rank, int new_rank) {
+ *    //    throw std::runtime_error("unexpected path");
+ *    LOG_ERROR("unexpected path");
+ *    return KVS_STATUS_FAILURE;
+ *
+ *    char old_str[INT_STR_SIZE];
+ *    char new_str[INT_STR_SIZE];
+ *    char* point_to_replace;
+ *    int old_str_size;
+ *    int new_str_size;
+ *
+ *    SET_STR(old_str, INT_STR_SIZE, RANK_TEMPLATE, old_rank);
+ *    SET_STR(new_str, INT_STR_SIZE, RANK_TEMPLATE, new_rank);
+ *
+ *    point_to_replace = strstr(str, old_str);
+ *    if (point_to_replace == NULL) {
+ *        LOG_ERROR("not found old rank(%d) in str(%s)", old_rank, str);
+ *        return KVS_STATUS_FAILURE;
+ *    }
+ *
+ *    old_str_size = strlen(old_str);
+ *    new_str_size = strlen(new_str);
+ *
+ *    if (old_str_size != new_str_size) {
+ *        size_t rest_len = strlen(point_to_replace) - old_str_size;
+ *        memmove(point_to_replace + new_str_size, point_to_replace + old_str_size, rest_len);
+ *    }
+ *    memcpy(point_to_replace, new_str, new_str_size);
+ *    return KVS_STATUS_SUCCESS;
+ * }
+ *
+ */
+
 kvs_status_t helper::replace_str(char* str, int old_rank, int new_rank) {
-    //    throw std::runtime_error("unexpected path");
-    LOG_ERROR("unexpected path");
+    // This code is a part of the deprecated and undocumnented resizable_pmi functionality
     return KVS_STATUS_FAILURE;
-
-    char old_str[INT_STR_SIZE];
-    char new_str[INT_STR_SIZE];
-    char* point_to_replace;
-    int old_str_size;
-    int new_str_size;
-
-    SET_STR(old_str, INT_STR_SIZE, RANK_TEMPLATE, old_rank);
-    SET_STR(new_str, INT_STR_SIZE, RANK_TEMPLATE, new_rank);
-
-    point_to_replace = strstr(str, old_str);
-    if (point_to_replace == NULL) {
-        LOG_ERROR("not found old rank(%d) in str(%s)", old_rank, str);
-        return KVS_STATUS_FAILURE;
-    }
-
-    old_str_size = strlen(old_str);
-    new_str_size = strlen(new_str);
-
-    if (old_str_size != new_str_size) {
-        size_t rest_len = strlen(point_to_replace) - old_str_size;
-        memmove(point_to_replace + new_str_size, point_to_replace + old_str_size, rest_len);
-    }
-    memcpy(point_to_replace, new_str, new_str_size);
-    return KVS_STATUS_SUCCESS;
 }
 
 kvs_status_t helper::update_ranks(int* old_count,
@@ -234,7 +249,9 @@ kvs_status_t helper::update_kvs_info(int new_rank) {
     char kvs_val[MAX_KVS_VAL_LENGTH];
     size_t kvs_list_size = get_kvs_list_size(ST_CLIENT);
 
+    // this code is a part of undocumented and untested resizable_pmi functionality
     for (size_t kvs_idx = 0; kvs_idx < kvs_list_size; kvs_idx++) {
+        // this code is a part of undocumented and untested resizable_pmi functionality
         cut_head(kvs_name, kvs_key, kvs_val, ST_CLIENT);
 
         KVS_CHECK_STATUS(remove_name_key(kvs_name, kvs_key), "failed to remove name and key");
@@ -251,6 +268,7 @@ kvs_status_t helper::update_kvs_info(int new_rank) {
 kvs_status_t helper::move_to_new_rank(int new_rank) {
     char rank_str[INT_STR_SIZE];
 
+    // this code is a part of undocumented resizable_pmi functionality
     KVS_CHECK_STATUS(update_kvs_info(new_rank), "failed to update kvs info");
     my_rank = new_rank;
 
@@ -265,6 +283,7 @@ kvs_status_t helper::move_to_new_rank(int new_rank) {
 kvs_status_t helper::update_my_info(const std::list<shift_rank_t>& list) {
     char rank_str[INT_STR_SIZE];
 
+    // this code is a part of undocumented resizable_pmi functionality
     for (const auto& it : list) {
         if (it.old_rank == static_cast<int>(my_rank)) {
             int old_rank = my_rank;
@@ -341,6 +360,7 @@ kvs_status_t helper::update(const std::list<shift_rank_t>& list,
                             std::list<int>& dead_up_idx,
                             int root_rank) {
     if (applied == 1) {
+        // this code is a part of undocumented resizable_pmi functionality
         if (!list.empty()) {
             if (static_cast<int>(my_rank) == root_rank) {
                 if (!dead_up_idx.empty()) {
@@ -410,6 +430,7 @@ kvs_status_t helper::get_count_requested_ranks(char* rank, size_t& count_pods_wi
 kvs_status_t helper::occupied_rank(char* rank) {
     std::string idx_val;
 
+    // this code is a part of undocumented resizable_pmi functionality
     KVS_CHECK_STATUS(get_value_by_name_key(KVS_UP, KVS_IDX, idx_val), "failed to get ID");
 
     if ((idx_val.empty()) && (my_rank == 0)) {

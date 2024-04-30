@@ -71,10 +71,14 @@ public:
     }
 
     void start_send() {
-        atl_tag = comm->get_atl_comm()->tag_creator->create(
-            comm->rank(), comm->get_comm_id(), sched->sched_id, sched->get_op_id());
-        size_t bytes = cnt * dtype.size();
+        uint16_t sched_id = sched->sched_id;
+        if (sched->coll_param.ctype == ccl_coll_send) {
+            sched_id = comm->get_atl_comm()->tag_creator->get_pt2pt_sched_id();
+        }
 
+        atl_tag = comm->get_atl_comm()->tag_creator->create(
+            comm->rank(), comm->get_comm_id(), sched_id, sched->get_op_id());
+        size_t bytes = cnt * dtype.size();
         LOG_DEBUG("SEND entry dst ", dst, ", tag ", atl_tag, ", req ", req, ", bytes ", bytes);
 
         atl_status_t atl_status = comm->get_atl_comm()->send(

@@ -46,7 +46,7 @@ private:
                       access_size);
         }
 
-        if ((size != -1) && (offset + access_size > (size_t)size)) {
+        if ((size != -1) && (offset + access_size > (size_t)size) && (access_size != 0)) {
             result = false;
             LOG_ERROR("unexpected (offset + access_size): ",
                       "size ",
@@ -62,7 +62,12 @@ private:
 
 public:
     ccl_buffer(void* src) = delete;
+    // user is responsible for freeing the memory after all buffers
+    // are destroyed
+    ~ccl_buffer() = default;
 
+    // buffer does not take *src* ownership, user is responsible for
+    // freeing all memory after all buffers are destroyed
     ccl_buffer(void* src, ssize_t size, size_t offset, ccl_buffer_type type)
             : src(src),
               size(size),
@@ -117,7 +122,9 @@ public:
                   buf_type,
                   ", old src: ",
                   this->src);
-        CCL_ASSERT(buf_src, "new src is null");
+
+        // check buf_src pointer only if buf_size > 0
+        CCL_ASSERT(!(buf_size > 0) || buf_src, "new src is null");
 
         this->src = buf_src;
         this->size = buf_size;

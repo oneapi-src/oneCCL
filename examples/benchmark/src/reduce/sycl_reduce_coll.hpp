@@ -37,8 +37,6 @@ struct sycl_reduce_coll : sycl_base_coll<Dtype, reduce_strategy_impl> {
         Dtype sbuf_expected = get_val<Dtype>(static_cast<float>(comm.rank()));
         Dtype rbuf_expected = get_val<Dtype>((comm.size() - 1) * ((float)comm.size() / 2));
 
-        int comm_rank = comm.rank();
-
         size_t send_bytes = elem_count * base_coll::get_dtype_size();
         size_t recv_bytes = elem_count * base_coll::get_dtype_size();
 
@@ -55,8 +53,8 @@ struct sycl_reduce_coll : sycl_base_coll<Dtype, reduce_strategy_impl> {
             else {
                 auto send_buf = (static_cast<sycl_buffer_t<Dtype>*>(send_bufs[b_idx][rank_idx]));
                 auto recv_buf = (static_cast<sycl_buffer_t<Dtype>*>(recv_bufs[b_idx][rank_idx]));
-                auto send_buf_acc = send_buf->template get_access<mode::read>();
-                auto recv_buf_acc = recv_buf->template get_access<mode::read>();
+                auto send_buf_acc = send_buf->template get_host_access(sycl::read_only);
+                auto recv_buf_acc = recv_buf->template get_host_access(sycl::read_only);
 
                 stream.get_native()
                     .memcpy(host_send_buf.data(), send_buf_acc.get_pointer(), send_bytes)
@@ -77,8 +75,7 @@ struct sycl_reduce_coll : sycl_base_coll<Dtype, reduce_strategy_impl> {
                               << sbuf_expected << ", got " << value << std::endl;
                     ASSERT(0, "unexpected value");
                 }
-
-                if (comm_rank != COLL_ROOT)
+                if (comm.rank() != COLL_ROOT)
                     continue;
 
                 value = host_recv_buf[e_idx];

@@ -28,8 +28,8 @@ bool is_sycl_event_completed(sycl::event event) {
 bool should_use_sycl_output_event(const ccl_stream* stream) {
     return (stream && stream->is_sycl_device_stream() && stream->is_gpu() &&
             ccl::global_data::env().enable_sycl_output_event &&
-            (getenv("SYCL_DEVICE_FILTER") == nullptr ||
-             !strcmp(getenv("SYCL_DEVICE_FILTER"), "level_zero")));
+            (getenv("ONEAPI_DEVICE_SELECTOR") == nullptr ||
+             !strcmp(getenv("ONEAPI_DEVICE_SELECTOR"), "level_zero:gpu")));
 }
 
 std::string usm_type_to_str(sycl::usm::alloc type) {
@@ -67,9 +67,9 @@ sycl::event submit_barrier(sycl::queue queue) {
 
 sycl::event submit_barrier(sycl::queue queue, sycl::event event) {
 #if ICPX_VERSION >= 140000
-    return queue.ext_oneapi_submit_barrier({ event });
+    return queue.ext_oneapi_submit_barrier({ std::move(event) });
 #elif ICPX_VERSION < 140000
-    return queue.submit_barrier({ event });
+    return queue.submit_barrier({ std::move(event) });
 #endif // ICPX_VERSION
 }
 

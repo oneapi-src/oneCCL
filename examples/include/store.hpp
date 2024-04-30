@@ -41,6 +41,8 @@ public:
 
 class file_store : public base_store {
 public:
+    file_store(const file_store& other) = delete;
+    file_store& operator=(const file_store& other) = delete;
     file_store(std::string path, int rank, const std::chrono::seconds& timeout)
             : base_store(),
               path(path),

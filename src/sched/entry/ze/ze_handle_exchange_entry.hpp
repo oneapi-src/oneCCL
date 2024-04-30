@@ -41,8 +41,12 @@ public:
     explicit ze_handle_exchange_entry(ccl_sched* sched,
                                       ccl_comm* comm,
                                       const std::vector<mem_desc_t>& in_buffers,
-                                      int skip_rank = -1);
+                                      int skip_rank,
+                                      // only for pt2pt usage:
+                                      ccl::utils::pt2pt_handle_exchange_info pt2pt_info);
     ~ze_handle_exchange_entry();
+    ze_handle_exchange_entry& operator=(const ze_handle_exchange_entry&) = delete;
+    ze_handle_exchange_entry(const ze_handle_exchange_entry&) = delete;
 
     void start() override;
     void update() override;
@@ -63,6 +67,8 @@ private:
     const int rank;
     const int comm_size;
     int skip_rank;
+    ccl::utils::pt2pt_handle_exchange_info pt2pt_info;
+
     pid_t current_pid = ccl::utils::invalid_pid;
 
     int start_buf_idx{};
@@ -82,6 +88,7 @@ private:
     std::string left_peer_socket_name;
 
     std::vector<int> device_fds;
+    std::vector<ccl::ze::device_bdf_info> physical_devices;
 
     struct payload_t {
         int mem_handle{ ccl::utils::invalid_mem_handle };
@@ -91,7 +98,6 @@ private:
         uint64_t remote_mem_alloc_id{};
         ssize_t remote_context_id{ ccl::utils::invalid_context_id };
         ssize_t remote_device_id{ ccl::utils::invalid_device_id };
-        int pidfd_fd{ ccl::utils::invalid_fd };
         int device_fd{ ccl::utils::invalid_fd };
     };
 
@@ -102,11 +108,12 @@ private:
                             const size_t buf_idx);
 
     int ipc_to_mem_handle(const ze_ipc_mem_handle_t& ipc_handle,
-                          const int parent_dev_id = ccl::utils::invalid_device_id);
+                          const int dev_id = ccl::utils::invalid_device_id);
 
     void create_local_ipc_handles(const std::vector<mem_desc_t>& bufs);
     int sockets_mode_exchange(const std::vector<mem_desc_t>& bufs);
     void common_fd_mode_exchange(const std::vector<mem_desc_t>& bufs);
+    void pt2pt_fd_mode_exchange(const std::vector<mem_desc_t>& bufs);
 
     bool is_created{};
     bool is_connected{};
@@ -134,8 +141,12 @@ private:
     mem_info_t get_mem_info(const void* ptr);
 
     bool sockets_closed = false;
-    std::vector<int> opened_pidfds;
+    std::vector<int> opened_sockets_fds;
 
     void unlink_sockets();
     void close_sockets();
+
+    uint32_t get_remote_device_id(ccl::ze::device_info& info);
+    int get_remote_physical_device_fd(const ssize_t remote_device_id);
+    int get_handle_idx(ccl_coll_type ctype, int rank_arg);
 };

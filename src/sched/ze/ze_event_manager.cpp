@@ -18,7 +18,7 @@
 #include "common/global/global.hpp"
 #include "common/log/log.hpp"
 #include "common/utils/sycl_utils.hpp"
-#include "sched/entry/ze/ze_cache.hpp"
+#include "sched/entry/ze/cache/ze_cache.hpp"
 #include "sched/ze/ze_event_manager.hpp"
 
 using namespace ccl;
@@ -194,9 +194,10 @@ ze_event_handle_t dynamic_event_pool::get_event() {
 
     event_info slot = {};
 
-    if (find_free_slot(slot)) {
-        return create_event(slot);
-    }
+    //TODO: figure out the issue in GSD-5806 and return this optimization
+    // if (find_free_slot(slot)) {
+    //     return create_event(slot);
+    // }
 
     event_pool_info pool_info = {};
 
@@ -208,7 +209,8 @@ ze_event_handle_t dynamic_event_pool::get_event() {
     pool_info.num_alloc_events = 0;
 
     slot.pool = event_pools.insert(event_pools.end(), pool_info);
-    slot.pool_idx = 0;
+    slot.pool_idx = event_pool_request_idx++;
+    event_pool_request_idx %= event_pool_size;
 
     return create_event(slot);
 }

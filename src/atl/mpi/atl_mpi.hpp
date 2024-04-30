@@ -79,6 +79,8 @@ typedef struct atl_mpi_comm_info : atl_mpi_env_info_t {
 class atl_mpi : public atl_base_transport {
 public:
     atl_mpi() = default;
+    atl_mpi(const atl_mpi& other) = delete;
+    atl_mpi& operator=(const atl_mpi& other) = delete;
     ~atl_mpi();
 
     atl_status_t init(int* argc,

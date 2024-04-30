@@ -211,14 +211,17 @@ run_binary()
             log_files=("${log_files[@]}" "${log_file}")
 
             cmd="$dir/run_binary.sh -s ${SIZE} -r ${rank} -ls ${local_size} -lr ${i}"
-            cmd="${cmd} -cv ${VARS} -lf ${log_file} -km ${kvs_mode} -kp ${kvs_param}"
+            cmd="${cmd} -cclv ${VARS} -lf ${log_file} -km ${kvs_mode} -kp ${kvs_param}"
             if [[ -z ${I_MPI_ROOT} ]]
             then
                 cmd="${cmd} -mv ${IMPI_PATH}/env/vars.sh"
             else
                 cmd="${cmd} -mv ${I_MPI_ROOT}/env/vars.sh"
             fi
-
+            if [[ ! -z "${SYCL_BUNDLE_ROOT}" && "${ENABLE_CODECOV}" = "yes" ]];
+            then
+                cmd="${cmd} -cv ${SYCL_BUNDLE_ROOT}/env/vars.sh"
+            fi
             timeout_prefix="timeout -k $((cmd_timeout))s $((cmd_timeout))s"
             run_cmd ${host} "${cmd}" "${timeout_prefix}"
         done

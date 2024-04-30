@@ -30,6 +30,13 @@
 #include "common/utils/exchange_utils.hpp"
 
 namespace ccl {
+enum class type2_tune_mode : int { undetected, detected, on, off };
+static std::map<type2_tune_mode, std::string> type2_tune_mode_names = {
+    std::make_pair(type2_tune_mode::undetected, "undetected"),
+    std::make_pair(type2_tune_mode::detected, "detected"),
+    std::make_pair(type2_tune_mode::on, "on"),
+    std::make_pair(type2_tune_mode::off, "off")
+};
 
 enum class topo_color_mode : int { fixed, ze, env };
 static std::map<topo_color_mode, std::string> topo_color_names = {
@@ -41,10 +48,10 @@ static std::map<topo_color_mode, std::string> topo_color_names = {
 static constexpr int topo_uuid_len = 35;
 
 struct topo_rank_info {
-    int rank;
-    int host_idx;
-    int local_proc_idx;
-    char uuid[topo_uuid_len];
+    int rank{ ccl::utils::invalid_rank };
+    int host_idx{ ccl::utils::invalid_host_idx };
+    int local_proc_idx{ ccl::utils::invalid_rank };
+    char uuid[topo_uuid_len]{};
 
     topo_rank_info();
 };
@@ -93,6 +100,7 @@ std::string to_string(const ze_rank_info_vec_t& ze_rank_info_vec,
                       const host_info_vec_t& host_info_vec);
 
 using p2p_matrix_t = typename std::vector<std::vector<bool>>;
+using fabric_conn_matrix_t = typename std::vector<std::vector<bool>>;
 using fabric_ports_t = typename std::vector<std::vector<topo_ze_port_info>>;
 using plane_t = typename std::set<int>;
 
@@ -113,6 +121,13 @@ public:
     static constexpr int max_ranks_per_plane = 8;
     static constexpr int max_domain_count = 2;
     static constexpr size_t invalid_device_uuids_count = 0;
+    // to determine the type1 system, 12 number of ports
+    // is used: type1 has 3 pairs and there're 2 links between pairs,
+    // so 3 * 2 * 2 = 12 ports
+    static constexpr uint32_t type1_tune_port_count = 12;
+    // to determine type2 system, 6 number of ports
+    // is used: type2 is one tile host: 3 * 2 * 1 = 6
+    static constexpr uint32_t type2_tune_port_count = 6;
 
     static constexpr int card_domain_idx = 0;
     static constexpr int plane_domain_idx = 1;
@@ -140,15 +155,20 @@ public:
     enum class port_health_status { unknown, ok, fail };
     bool has_failed_ports() const;
     bool has_p2p_access() const;
+    bool has_all_vertices_connected() const;
     std::vector<ze_device_uuid_t> copy_dev_uuids(const rank_info_vec_t& info_vec) const;
     std::vector<ze_device_handle_t> get_filtered_devices(
         const std::vector<ze::device_info>& node_devices) const;
     static p2p_matrix_t build_p2p_matrix(const std::vector<ze_device_handle_t>& devices);
+    static bool build_fabric_connectivity_matrix(std::shared_ptr<atl_base_comm> comm);
+
     static bool is_sub_vector(const std::vector<ze_device_uuid_t>& vec,
                               const std::vector<ze_device_uuid_t>& sub_vec);
+    static void detect_tune_port_count(const std::vector<ze::device_info>& devices);
 
     bool has_oversubscription() const;
     bool is_oversubscription_detected = false;
+    size_t get_unique_device_uuids_count() const;
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
     rank_info_vec_t get_filtered_rank_info_vec(int filter_host_idx) const;
 
@@ -226,7 +246,9 @@ private:
     ze_rank_info_vec_t ze_rank_info_vec;
 
     bool is_p2p_access_enabled = false;
+    bool are_all_vertices_connected = false;
     port_health_status port_status = port_health_status::unknown;
+    size_t unique_device_uuids_count = topo_manager::invalid_device_uuids_count;
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 };
 

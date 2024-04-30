@@ -18,7 +18,7 @@
 #include "sched/entry/ze/allreduce/ze_a2a_allreduce_entry.hpp"
 #include "sched/entry/ze/ze_a2a_allgatherv_entry.hpp"
 #include "sched/entry/ze/ze_a2a_reduce_scatter_entry.hpp"
-#include "sched/entry/ze/ze_cache.hpp"
+#include "sched/entry/ze/cache/ze_cache.hpp"
 #include "sched/entry/ze/ze_primitives.hpp"
 #include "sched/queue/queue.hpp"
 
@@ -36,11 +36,11 @@ ze_a2a_allreduce_entry::ze_a2a_allreduce_entry(ccl_sched* sched,
                                                const ccl_datatype& dtype,
                                                reduction op,
                                                ccl_comm* comm,
-                                               std::vector<ze_event_handle_t> wait_events,
+                                               const std::vector<ze_event_handle_t>& wait_events,
                                                size_t send_buf_idx,
                                                size_t recv_buf_idx,
                                                size_t peer_buf_offset)
-        : ze_base_entry(sched, comm, comm->size() * event_group_count, wait_events),
+        : ze_base_entry(sched, wait_events, comm, comm->size() * event_group_count),
           send_buf(send_buf),
           recv_buf(recv_buf),
           cnt(cnt),
@@ -54,13 +54,20 @@ ze_a2a_allreduce_entry::ze_a2a_allreduce_entry(ccl_sched* sched,
     bool count_check =
         (segment_count > 0) || (segment_count == 0 && static_cast<size_t>(comm->rank()) < cnt);
     skip_entry = !count_check || ((comm->size() == 1) && (send_buf == recv_buf));
-    if (skip_entry) {
-        // skip entry init and finalize
-        sched->ze_entries.pop_back();
-    }
 }
 
 void ze_a2a_allreduce_entry::init_ze_hook() {
+    if (skip_entry) {
+        if (wait_events.empty()) {
+            ZE_APPEND_CALL(ze_cmd_signal_event, get_copy_list(), ze_base_entry::entry_event);
+        }
+        else {
+            ZE_APPEND_CALL(
+                ze_cmd_barrier, get_copy_list(), ze_base_entry::entry_event, wait_events);
+        }
+        return;
+    }
+
     /* get peer buffers */
     std::vector<ccl_buffer> peer_send_bufs(peer_count);
     // allgatherv entry requires the peer_recv_bufs at the same index as rank
@@ -135,12 +142,14 @@ void ze_a2a_allreduce_entry::init_ze_hook() {
     ze_a2a_reduce_scatter_entry::fill_list(this,
                                            send_buf.get_ptr(),
                                            tmp_buf.get_ptr(),
+                                           tmp_buf.get_ptr(),
                                            peer_send_bufs,
                                            peer_count,
                                            comm_rank,
                                            block_count,
-                                           comm_rank * main_block_count,
-                                           pre_copy_events,
+                                           comm_rank * main_block_count, // rank_buf_offset
+                                           wait_events,
+                                           pre_copy_events, // copy_events
                                            kernels,
                                            kernel_events,
                                            barrier_event,
@@ -210,29 +219,18 @@ void ze_a2a_allreduce_entry::init_ze_hook() {
                                      peer_buf_offset,
                                      post_copy_events,
                                      kernel_events,
+                                     ze_base_entry::entry_event,
                                      is_monolithic_allgat,
-                                     false);
+                                     false, // is_inplace
+                                     false); // is_separate_block_handles
     ze_a2a_allgatherv_op::select(init_params, kernels);
 }
 
 void ze_a2a_allreduce_entry::start() {
-    if (skip_entry) {
-        ZE_CALL(zeEventHostSignal, (ze_base_entry::entry_event));
-        status = ccl_sched_entry_status_complete;
-        return;
-    }
-
     ze_base_entry::start();
 }
 
 void ze_a2a_allreduce_entry::update() {
-    for (const auto& event : post_copy_events) {
-        if (!ze_base_entry::is_event_completed(event)) {
-            return;
-        }
-    }
-
-    ZE_CALL(zeEventHostSignal, (ze_base_entry::entry_event));
     ze_base_entry::update();
 }
 

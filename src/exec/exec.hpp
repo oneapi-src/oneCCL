@@ -31,6 +31,12 @@ class ccl_worker;
 class ccl_service_worker;
 class ccl_sched;
 
+enum ccl_wait_result {
+    ccl_wait_result_completed_released,
+    ccl_wait_result_completed_not_released,
+    ccl_wait_result_not_completed,
+};
+
 class alignas(CACHELINE_SIZE) ccl_executor {
     friend class ccl_listener;
 
@@ -53,6 +59,12 @@ public:
         worker_guard(worker_guard&& src) {
             parent = src.parent;
             src.parent = nullptr;
+        }
+        worker_guard& operator=(worker_guard&) = delete;
+        worker_guard& operator=(worker_guard&& src) {
+            parent = src.parent;
+            src.parent = nullptr;
+            return *this;
         }
         ~worker_guard() {
             if (parent)
@@ -110,6 +122,7 @@ inline void ccl_release_sched(ccl_sched* sched) {
     }
 }
 
+/// frees memory if and only if req is detached from its scheduler
 inline void ccl_release_request(ccl_request* req) {
     auto* sched = req->get_sched();
 
@@ -127,7 +140,8 @@ inline void ccl_release_request(ccl_request* req) {
 }
 
 template <class sched_type = ccl_sched>
-inline void ccl_wait_impl(ccl_executor* exec, ccl_request* request) {
+inline ccl_wait_result ccl_wait_impl(ccl_executor* exec, ccl_request* request) {
+    ccl_wait_result ret = ccl_wait_result_not_completed;
     exec->wait(request);
     if (!exec->is_locked) {
         LOG_DEBUG(
@@ -135,9 +149,15 @@ inline void ccl_wait_impl(ccl_executor* exec, ccl_request* request) {
             request,
             " completed, sched ",
             ccl_coll_type_to_str(static_cast<sched_type*>(request->get_sched())->coll_param.ctype));
-        if (!request->synchronous)
+        if (!request->get_sched()->coll_attr.synchronous) {
             ccl_release_request(request);
+            ret = ccl_wait_result_completed_released;
+        }
+        else {
+            ret = ccl_wait_result_completed_not_released;
+        }
     }
+    return ret;
 }
 
 template <class sched_type = ccl_sched>

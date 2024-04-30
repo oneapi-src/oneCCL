@@ -93,10 +93,11 @@ public:
     native_t& get_native();
     const native_t& get_native() const;
 
+    static event create_from_native(native_t& native_event);
+
 private:
     friend class ccl::detail::environment;
 
-    static event create_from_native(native_t& native_event);
     static event create_from_native(native_handle_t native_event_handle, context_t context);
 };
 

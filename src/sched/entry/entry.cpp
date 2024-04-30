@@ -62,6 +62,11 @@ void sched_entry::do_progress() {
             return;
         }
 
+#ifdef CCL_ENABLE_ITT
+        this->itt_event = ccl::profile::itt::event_get(this->name());
+        ccl::profile::itt::event_start(this->itt_event);
+#endif // CCL_ENABLE_ITT
+
         start();
         CCL_THROW_IF_NOT(status >= ccl_sched_entry_status_again,
                          "bad status ",
@@ -106,6 +111,10 @@ void sched_entry::do_progress() {
     }
 
     if (status == ccl_sched_entry_status_complete) {
+#ifdef CCL_ENABLE_ITT
+        ccl::profile::itt::event_end(this->itt_event);
+#endif // CCL_ENABLE_ITT
+
         if (use_total_timer) {
             total_timer.update();
         }
@@ -147,9 +156,6 @@ void sched_entry::reset(size_t idx) {
         update_timer.reset();
         is_update_time_expired = false;
     }
-
-    sched->configured_preparation = false;
-    sched->finished_preparation = false;
 
     if (status == ccl_sched_entry_status_complete_once) {
         return;
@@ -214,6 +220,30 @@ ccl_sched_entry_status sched_entry::get_status() const {
 
 void sched_entry::set_status(ccl_sched_entry_status s) {
     status = s;
+}
+
+#if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
+const ze_commands_t& sched_entry::get_ze_commands() const {
+    return ze_commands;
+}
+
+uint32_t sched_entry::ze_commands_submit() {
+    uint32_t cmd_counter = 0;
+    LOG_DEBUG("entry ", name(), " ze_commands.size() ", ze_commands.size());
+    for (auto& command : ze_commands) {
+        LOG_DEBUG("adding command ", command->name(), " to command list");
+        command->ze_call();
+        ++cmd_counter;
+    }
+    LOG_DEBUG("entry ", name(), " all commands submitted");
+    // TODO: determine the effect of destroying the commands on the cache (e.g. kernel cache)
+    ze_commands.clear();
+    return cmd_counter;
+}
+#endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
+
+ccl_sched* sched_entry::get_sched() const {
+    return sched;
 }
 
 void sched_entry::set_exec_mode(ccl_sched_entry_exec_mode mode) {

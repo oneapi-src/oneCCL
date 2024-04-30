@@ -60,8 +60,17 @@ struct sycl_base_coll : base_coll, private strategy {
                     ASSERT(0, "unexpected bench_alloc_type %d", bench_alloc_type);
 
                 for (size_t idx = 0; idx < base_coll::get_buf_count(); idx++) {
+                    size_t multiplier = send_multiplier;
+                    if (strcmp(coll_strategy::class_name(), "allgatherv") == 0 &&
+                        base_coll::get_inplace()) {
+                        // for allgatherv, send_multiplier = 1 and recv_multiplier = comm_size
+                        // since recv_buffer is comm_size*sizeof(send_buffer).
+                        // for inplace, send_buffer is same size as recv_buffer
+                        // TODO: create prepare_internal for allgatherv
+                        multiplier = recv_multiplier;
+                    }
                     send_bufs[idx][rank_idx] = allocator.allocate(
-                        base_coll::get_max_elem_count() * send_multiplier, usm_alloc_type);
+                        base_coll::get_max_elem_count() * multiplier, usm_alloc_type);
 
                     if (base_coll::get_inplace()) {
                         recv_bufs[idx][rank_idx] = send_bufs[idx][rank_idx];
@@ -162,10 +171,22 @@ struct sycl_base_coll : base_coll, private strategy {
 
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
             if (base_coll::get_sycl_mem_type() == SYCL_MEM_USM) {
-                stream.get_native()
-                    .memcpy(send_bufs[b_idx][rank_idx], host_send_buf.data(), send_bytes)
-                    .wait();
-
+                if (strcmp(coll_strategy::class_name(), "allgatherv") == 0 &&
+                    base_coll::get_inplace()) {
+                    // for inplace allgatherv, the input data needs to be at an index comm_rank*send_count
+                    // of the send_buffer rather than at index 0 for the non-inplace case
+                    //  TODO: create prepare_internal for allgatherv
+                    stream.get_native()
+                        .memcpy((char*)(send_bufs[b_idx][rank_idx]) + send_bytes * comm_rank,
+                                host_send_buf.data(),
+                                send_bytes)
+                        .wait();
+                }
+                else {
+                    stream.get_native()
+                        .memcpy(send_bufs[b_idx][rank_idx], host_send_buf.data(), send_bytes)
+                        .wait();
+                }
                 if (!base_coll::get_inplace()) {
                     stream.get_native().memset(recv_bufs[b_idx][rank_idx], -1, recv_bytes).wait();
                 }

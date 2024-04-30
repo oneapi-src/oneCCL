@@ -38,7 +38,7 @@ Consider a simple oneCCL ``allreduce`` example for GPU:
       const size_t elem_count = <N>;
 
       /* using SYCL buffer and accessor */
-      auto send_buf_host_acc = send_buf.get_access<mode::write>();
+      auto send_buf_host_acc = send_buf.get_host_access(h, sycl::write_only);
       for (idx = 0; idx < elem_count; idx++) {
          send_buf_host_acc[idx] = rank;
       }
@@ -110,7 +110,7 @@ Consider a simple oneCCL ``allreduce`` example for GPU:
 
       ...
 
-      auto recv_buf_host_acc = recv_buf.get_access<mode::read>();
+      auto recv_buf_host_acc = recv_buf.get_host_access(sycl::read_only);
       for (idx = 0; idx < elem_count; idx++) {
          if (recv_buf_host_acc[idx] == -1) {
                std::count << "unexpected value at index " << idx << std::endl;

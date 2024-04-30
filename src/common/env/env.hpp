@@ -36,181 +36,15 @@
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 #include "topology/topo_manager.hpp"
 
-constexpr const char* CCL_ENV_STR_NOT_SPECIFIED = "<not specified>";
-constexpr const ssize_t CCL_ENV_SIZET_NOT_SPECIFIED = -1;
-constexpr const int CCL_ENV_INT_NOT_SPECIFIED = -1;
+#include "common/env/vars.hpp"
+#include "common/env/vars_experimental.hpp"
 
-constexpr const char* CCL_LOG_LEVEL = "CCL_LOG_LEVEL";
-constexpr const char* CCL_ABORT_ON_THROW = "CCL_ABORT_ON_THROW";
-constexpr const char* CCL_QUEUE_DUMP = "CCL_QUEUE_DUMP";
-constexpr const char* CCL_SCHED_DUMP = "CCL_SCHED_DUMP";
-constexpr const char* CCL_SCHED_PROFILE = "CCL_SCHED_PROFILE";
-// maximum amount of time in seconds an entry can spend in update. for debug purpose
-constexpr const char* CCL_ENTRY_MAX_UPDATE_TIME_SEC = "CCL_ENTRY_MAX_UPDATE_TIME_SEC";
+enum ccl_priority_mode { ccl_priority_none,
+                         ccl_priority_direct,
+                         ccl_priority_lifo };
 
-constexpr const char* CCL_FRAMEWORK = "CCL_FRAMEWORK";
-
-constexpr const char* CCL_WORKER_COUNT = "CCL_WORKER_COUNT";
-constexpr const char* CCL_WORKER_OFFLOAD = "CCL_WORKER_OFFLOAD";
-constexpr const char* CCL_WORKER_WAIT = "CCL_WORKER_WAIT";
-constexpr const char* CCL_WORKER_AFFINITY = "CCL_WORKER_AFFINITY";
-constexpr const char* CCL_WORKER_MEM_AFFINITY = "CCL_WORKER_MEM_AFFINITY";
-
-constexpr const char* I_MPI_AVAILABLE_CORES_ENV = "I_MPI_PIN_INFO";
-constexpr const char* I_MPI_AVAILABLE_CORES_DELIMS = ",x";
-
-constexpr const char* CCL_ATL_TRANSPORT = "CCL_ATL_TRANSPORT";
-constexpr const char* CCL_ATL_SHM = "CCL_ATL_SHM";
-constexpr const char* CCL_ATL_RMA = "CCL_ATL_RMA";
-constexpr const char* CCL_ATL_HMEM = "CCL_ATL_HMEM";
-constexpr const char* CCL_ATL_SEND_PROXY = "CCL_ATL_SEND_PROXY";
-constexpr const char* CCL_ATL_SYNC_COLL = "CCL_ATL_SYNC_COLL";
-constexpr const char* CCL_ATL_EXTRA_EP = "CCL_ATL_EXTRA_EP";
-constexpr const char* CCL_ATL_CACHE = "CCL_ATL_CACHE";
-
-constexpr const char* CCL_MNIC = "CCL_MNIC";
-constexpr const char* CCL_MNIC_NAME = "CCL_MNIC_NAME";
-constexpr const char* CCL_MNIC_COUNT = "CCL_MNIC_COUNT";
-constexpr const char* CCL_MNIC_OFFSET = "CCL_MNIC_OFFSET";
-
-constexpr const char* CCL_ALGO_FALLBACK = "CCL_ALGO_FALLBACK";
-constexpr const char* CCL_ALLGATHERV = "CCL_ALLGATHERV";
-constexpr const char* CCL_ALLREDUCE = "CCL_ALLREDUCE";
-constexpr const char* CCL_ALLTOALL = "CCL_ALLTOALL";
-constexpr const char* CCL_ALLTOALLV = "CCL_ALLTOALLV";
-constexpr const char* CCL_BARRIER = "CCL_BARRIER";
-constexpr const char* CCL_BCAST = "CCL_BCAST";
-constexpr const char* CCL_REDUCE = "CCL_REDUCE";
-constexpr const char* CCL_REDUCE_SCATTER = "CCL_REDUCE_SCATTER";
-constexpr const char* CCL_UNORDERED_COLL = "CCL_UNORDERED_COLL";
-constexpr const char* CCL_ALLGATHERV_SCALEOUT = "CCL_ALLGATHERV_SCALEOUT";
-constexpr const char* CCL_ALLREDUCE_SCALEOUT = "CCL_ALLREDUCE_SCALEOUT";
-constexpr const char* CCL_ALLTOALL_SCALEOUT = "CCL_ALLTOALL_SCALEOUT";
-constexpr const char* CCL_ALLTOALLV_SCALEOUT = "CCL_ALLTOALLV_SCALEOUT";
-constexpr const char* CCL_REDUCE_SCALEOUT = "CCL_REDUCE_SCALEOUT";
-
-constexpr const char* CCL_FUSION = "CCL_FUSION";
-constexpr const char* CCL_FUSION_BYTES_THRESHOLD = "CCL_FUSION_BYTES_THRESHOLD";
-constexpr const char* CCL_FUSION_COUNT_THRESHOLD = "CCL_FUSION_COUNT_THRESHOLD";
-constexpr const char* CCL_FUSION_CHECK_URGENT = "CCL_FUSION_CHECK_URGENT";
-constexpr const char* CCL_FUSION_CYCLE_MS = "CCL_FUSION_CYCLE_MS";
-
-constexpr const char* CCL_PRIORITY = "CCL_PRIORITY";
-constexpr const char* CCL_SPIN_COUNT = "CCL_SPIN_COUNT";
-constexpr const char* CCL_YIELD = "CCL_YIELD";
-constexpr const char* CCL_MAX_SHORT_SIZE = "CCL_MAX_SHORT_SIZE";
-constexpr const char* CCL_BCAST_PART_COUNT = "CCL_BCAST_PART_COUNT";
-constexpr const char* CCL_CACHE_KEY = "CCL_CACHE_KEY";
-constexpr const char* CCL_CACHE_FLUSH = "CCL_CACHE_FLUSH";
-constexpr const char* CCL_BUFFER_CACHE = "CCL_BUFFER_CACHE";
-constexpr const char* CCL_STRICT_ORDER = "CCL_STRICT_ORDER";
-constexpr const char* CCL_STAGING_BUFFER = "CCL_STAGING_BUFFER";
-constexpr const char* CCL_OP_SYNC = "CCL_OP_SYNC";
-constexpr const char* CCL_USE_EXTERNAL_QUEUE = "CCL_USE_EXTERNAL_QUEUE";
-
-constexpr const char* CCL_CHUNK_COUNT = "CCL_CHUNK_COUNT";
-constexpr const char* CCL_MIN_CHUNK_SIZE = "CCL_MIN_CHUNK_SIZE";
-constexpr const char* CCL_RS_CHUNK_COUNT = "CCL_RS_CHUNK_COUNT";
-constexpr const char* CCL_RS_MIN_CHUNK_SIZE = "CCL_RS_MIN_CHUNK_SIZE";
-
-#ifdef CCL_ENABLE_SYCL
-// use alternative allgatherv topo algorithm
-constexpr const char* CCL_ALLGATHERV_TOPO_LARGE_SCALE = "CCL_ALLGATHERV_TOPO_LARGE_SCALE";
-constexpr const char* CCL_ALLGATHERV_TOPO_READ = "CCL_ALLGATHERV_TOPO_READ";
-constexpr const char* CCL_ALLTOALLV_TOPO_READ = "CCL_ALLTOALLV_TOPO_READ";
-constexpr const char* CCL_REDUCE_SCATTER_MONOLITHIC_KERNEL = "CCL_REDUCE_SCATTER_MONOLITHIC_KERNEL";
-constexpr const char* CCL_ALLGATHERV_MONOLITHIC_KERNEL = "CCL_ALLGATHERV_MONOLITHIC_KERNEL";
-constexpr const char* CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL =
-    "CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL";
-constexpr const char* CCL_ALLTOALLV_MONOLITHIC_KERNEL = "CCL_ALLTOALLV_MONOLITHIC_KERNEL";
-#endif // CCL_ENABLE_SYCL
-
-constexpr const char* CCL_ALLREDUCE_NREDUCE_BUFFERING = "CCL_ALLREDUCE_NREDUCE_BUFFERING";
-constexpr const char* CCL_ALLREDUCE_NREDUCE_SEGMENT_SIZE = "CCL_ALLREDUCE_NREDUCE_SEGMENT_SIZE";
-
-constexpr const char* CCL_ALLREDUCE_2D_CHUNK_COUNT = "CCL_ALLREDUCE_2D_CHUNK_COUNT";
-constexpr const char* CCL_ALLREDUCE_2D_MIN_CHUNK_SIZE = "CCL_ALLREDUCE_2D_MIN_CHUNK_SIZE";
-constexpr const char* CCL_ALLREDUCE_2D_SWITCH_DIMS = "CCL_ALLREDUCE_2D_SWITCH_DIMS";
-
-constexpr const char* CCL_ALLTOALL_SCATTER_MAX_OPS = "CCL_ALLTOALL_SCATTER_MAX_OPS";
-
-constexpr const char* CCL_BACKEND = "CCL_BACKEND";
-
-constexpr const char* CCL_KERNEL_PATH = "CCL_KERNEL_PATH";
-constexpr const char* CCL_KERNEL_DEBUG = "CCL_KERNEL_DEBUG";
-constexpr const char* CCL_KERNEL_GROUP_SIZE = "CCL_KERNEL_GROUP_SIZE";
-constexpr const char* CCL_KERNEL_GROUP_COUNT = "CCL_KERNEL_GROUP_COUNT";
-constexpr const char* CCL_KERNEL_MEM_ALIGN = "CCL_KERNEL_MEM_ALIGN";
-constexpr const char* CCL_KERNEL_SYNC = "CCL_KERNEL_SYNC";
-constexpr const char* CCL_KERNEL_1S_LEAD = "CCL_KERNEL_1S_LEAD";
-constexpr const char* CCL_KERNEL_1S_USE_COPY_OPS = "CCL_KERNEL_1S_USE_COPY_OPS";
-constexpr const char* CCL_KERNEL_1S_IPC_WA = "CCL_KERNEL_1S_IPC_WA";
-constexpr const char* CCL_KERNEL_SINGLE_REDUCE_PEERS = "CCL_KERNEL_SINGLE_REDUCE_PEERS";
-constexpr const char* CCL_KERNEL_CLOSE_FD_WA = "CCL_KERNEL_CLOSE_FD_WA";
-
-constexpr const char* CCL_LOCAL_RANK = "CCL_LOCAL_RANK";
-constexpr const char* CCL_LOCAL_SIZE = "CCL_LOCAL_SIZE";
-
-constexpr const char* CCL_PROCESS_LAUNCHER = "CCL_PROCESS_LAUNCHER";
-
-constexpr const char* CCL_TOPO_ALGO = "CCL_TOPO_ALGO";
-constexpr const char* CCL_TOPO_COLOR = "CCL_TOPO_COLOR";
-constexpr const char* CCL_TOPO_P2P_ACCESS = "CCL_TOPO_P2P_ACCESS";
-
-#ifdef CCL_ENABLE_MPI
-constexpr const char* CCL_MPI_LIBRARY_PATH = "CCL_MPI_LIBRARY_PATH";
-#endif // CCL_ENABLE_MPI
-constexpr const char* CCL_OFI_LIBRARY_PATH = "CCL_OFI_LIBRARY_PATH";
-
-#ifdef CCL_ENABLE_SYCL
-constexpr const char* CCL_SYCL_OUTPUT_EVENT = "CCL_SYCL_OUTPUT_EVENT";
-constexpr const char* CCL_USE_HMEM = "CCL_USE_HMEM";
-
-constexpr const char* CCL_ZE_BARRIER = "CCL_ZE_BARRIER";
-constexpr const char* CCL_ZE_BIDIR_ALGO = "CCL_ZE_BIDIR_ALGO";
-constexpr const char* CCL_ZE_CACHE = "CCL_ZE_CACHE";
-constexpr const char* CCL_ZE_CACHE_OPEN_IPC_HANDLES = "CCL_ZE_CACHE_OPEN_IPC_HANDLES";
-constexpr const char* CCL_ZE_CACHE_OPEN_IPC_HANDLES_THRESHOLD =
-    "CCL_ZE_CACHE_OPEN_IPC_HANDLES_THRESHOLD";
-constexpr const char* CCL_ZE_CACHE_GET_IPC_HANDLES = "CCL_ZE_CACHE_GET_IPC_HANDLES";
-constexpr const char* CCL_ZE_DISABLE_OVERSUBSCRIPTION_CHECK =
-    "CCL_ZE_DISABLE_OVERSUBSCRIPTION_CHECK";
-constexpr const char* CCL_ZE_SERIALIZE = "CCL_ZE_SERIALIZE";
-
-constexpr const char* CCL_ZE_COPY_ENGINE = "CCL_ZE_COPY_ENGINE";
-constexpr const char* CCL_ZE_H2D_COPY_ENGINE = "CCL_ZE_H2D_COPY_ENGINE";
-constexpr const char* CCL_ZE_MAX_COMPUTE_QUEUES = "CCL_ZE_MAX_COMPUTE_QUEUES";
-constexpr const char* CCL_ZE_MAX_COPY_QUEUES = "CCL_ZE_MAX_COPY_QUEUES";
-// use CCS for intra-card copy if main CE is not available
-constexpr const char* CCL_ZE_ENABLE_CCS_FALLBACK_FOR_COPY = "CCL_ZE_ENABLE_CCS_FALLBACK_FOR_COPY";
-
-constexpr const char* CCL_ZE_LIST_DUMP = "CCL_ZE_LIST_DUMP";
-constexpr const char* CCL_ZE_QUEUE_INDEX_OFFSET = "CCL_ZE_QUEUE_INDEX_OFFSET";
-constexpr const char* CCL_ZE_CLOSE_IPC_WA = "CCL_ZE_CLOSE_IPC_WA";
-constexpr const char* CCL_ZE_SINGLE_LIST = "CCL_ZE_SINGLE_LIST";
-constexpr const char* CCL_ZE_DISABLE_FAMILY_CHECK = "CCL_ZE_DISABLE_FAMILY_CHECK";
-constexpr const char* CCL_ZE_DISABLE_PORT_CHECK = "CCL_ZE_DISABLE_PORT_CHECK";
-constexpr const char* CCL_ZE_LIBRARY_PATH = "CCL_ZE_LIBRARY_PATH";
-constexpr const char* CCL_ZE_ENABLE = "CCL_ZE_ENABLE";
-constexpr const char* CCL_ZE_FINI_WA = "CCL_ZE_FINI_WA";
-constexpr const char* CCL_ZE_MULTI_WORKERS = "CCL_ZE_MULTI_WORKERS";
-constexpr const char* CCL_ZE_IPC_EXCHANGE = "CCL_ZE_IPC_EXCHANGE";
-#endif // CCL_ENABLE_SYCL
-
-#ifdef CCL_ENABLE_PMIX
-constexpr const char* CCL_PMIX_LIBRARY_PATH = "CCL_PMIX_LIBRARY_PATH";
-#endif // CCL_ENABLE_PMIX
-
-#ifdef CCL_ENABLE_ITT
-constexpr const char* CCL_ITT_LEVEL = "CCL_ITT_LEVEL";
-#endif // CCL_ENABLE_ITT
-
-constexpr const char* CCL_BF16 = "CCL_BF16";
-constexpr const char* CCL_FP16 = "CCL_FP16";
-
-enum ccl_priority_mode { ccl_priority_none, ccl_priority_direct, ccl_priority_lifo };
-
-enum ccl_atl_transport { ccl_atl_ofi, ccl_atl_mpi };
+enum ccl_atl_transport { ccl_atl_ofi,
+                         ccl_atl_mpi };
 
 enum ccl_atl_send_proxy {
     ccl_atl_send_proxy_none,
@@ -218,7 +52,8 @@ enum ccl_atl_send_proxy {
     ccl_atl_send_proxy_usm
 };
 
-enum ccl_staging_buffer { ccl_staging_regular, ccl_staging_usm };
+enum ccl_staging_buffer { ccl_staging_regular,
+                          ccl_staging_usm };
 
 enum class backend_mode {
     native,
@@ -279,6 +114,8 @@ public:
     int enable_atl_cache;
     int enable_sync_coll;
     int enable_extra_ep;
+    int enable_run_id_detection;
+    int enable_run_id_with_ppid;
 
     atl_mnic_t mnic_type;
     std::string mnic_name_raw;
@@ -298,8 +135,10 @@ public:
     std::string alltoallv_algo_raw;
     std::string barrier_algo_raw;
     std::string bcast_algo_raw;
+    std::string recv_algo_raw;
     std::string reduce_algo_raw;
     std::string reduce_scatter_algo_raw;
+    std::string send_algo_raw;
     // scale-out selection part
     std::string allgatherv_scaleout_algo_raw;
     std::string allreduce_scaleout_algo_raw;
@@ -307,8 +146,10 @@ public:
     std::string alltoallv_scaleout_algo_raw;
     std::string barrier_scaleout_algo_raw;
     std::string bcast_scaleout_algo_raw;
+    std::string recv_scaleout_algo_raw;
     std::string reduce_scaleout_algo_raw;
     std::string reduce_scatter_scaleout_algo_raw;
+    std::string send_scaleout_algo_raw;
     int enable_unordered_coll;
 
     int enable_fusion;
@@ -328,7 +169,6 @@ public:
     int enable_strict_order;
     ccl_staging_buffer staging_buffer;
     int enable_op_sync;
-    int enable_external_queue;
 
     size_t chunk_count;
     size_t min_chunk_size;
@@ -339,10 +179,36 @@ public:
     int allgatherv_topo_large_scale;
     int allgatherv_topo_read;
     int alltoallv_topo_read;
+    int reduce_scatter_topo_read;
     int reduce_scatter_monolithic_kernel;
+    int reduce_scatter_monolithic_pipeline_kernel;
+    int reduce_scatter_fallback_algo;
     int allgatherv_monolithic_kernel;
     int allgatherv_monolithic_pipeline_kernel;
     int alltoallv_monolithic_kernel;
+    int alltoallv_monolithic_read_kernel;
+
+    size_t allgatherv_pipe_chunk_count;
+    size_t allreduce_pipe_chunk_count;
+    size_t reduce_scatter_pipe_chunk_count;
+    size_t reduce_pipe_chunk_count;
+
+    int allreduce_use_tmp_buf;
+    size_t allreduce_small_size_threshold;
+    size_t allreduce_medium_size_threshold;
+
+    int reduce_scatter_use_tmp_buf;
+    size_t reduce_scatter_small_size_threshold;
+    size_t reduce_scatter_medium_size_threshold;
+
+    size_t allgatherv_use_tmp_buf;
+    size_t allgatherv_chunk_size;
+    size_t allgatherv_small_size_threshold;
+    size_t allgatherv_medium_size_threshold;
+
+    int skip_scheduler;
+    int use_ccl_barrier;
+    int use_sycl_barrier;
 #endif // CCL_ENABLE_SYCL
 
     int allreduce_nreduce_buffering;
@@ -363,6 +229,7 @@ public:
     int enable_topo_algo;
     topo_color_mode topo_color;
     int enable_p2p_access;
+    int enable_fabric_vertex_connection_check;
 
 #ifdef CCL_ENABLE_MPI
     std::string mpi_lib_path;
@@ -372,6 +239,7 @@ public:
 #ifdef CCL_ENABLE_SYCL
     std::string kernel_path;
     int kernel_debug;
+    int kernel_module_cache;
     ssize_t kernel_group_size;
     ssize_t kernel_group_count;
     ssize_t kernel_mem_align;
@@ -385,19 +253,33 @@ public:
     int enable_sycl_output_event;
     int use_hmem;
 
+    int sync_barrier;
+
     int enable_ze_barrier;
     int enable_ze_bidir_algo;
     int enable_ze_cache;
+    int ze_device_cache_evict_smallest;
+    long ze_device_cache_upper_limit;
+    int ze_device_cache_num_blocks_in_chunk;
+    ccl::ze::device_cache_policy_mode ze_device_cache_policy;
+    int ze_device_mem_disable_clear;
+    long ze_device_mem_alloc_size;
+    size_t ze_device_mem_enable;
+    int enable_ze_cache_cmdlists;
+    int enable_ze_cache_cmdqueues;
+    int enable_ze_cache_event_pools;
     int enable_ze_cache_open_ipc_handles;
     int ze_cache_open_ipc_handles_threshold;
     int enable_ze_cache_get_ipc_handles;
     int enable_ze_single_list;
     int disable_ze_family_check;
     int disable_ze_port_check;
-    int ze_disable_oversubscription_check;
+    int ze_enable_oversubscription_fallback;
+    int ze_enable_oversubscription_throw;
     int ze_serialize_mode;
     ccl::ze::copy_engine_mode ze_copy_engine;
     ccl::ze::h2d_copy_engine_mode ze_h2d_copy_engine;
+    ccl::ze::d2d_copy_engine_mode ze_d2d_copy_engine;
     ssize_t ze_max_compute_queues;
     ssize_t ze_max_copy_queues;
     int ze_enable_ccs_fallback_for_copy;
@@ -408,7 +290,12 @@ public:
     int ze_enable;
     int ze_fini_wa;
     int ze_multi_workers;
+    int enable_ze_auto_tune_ports;
     ccl::ze::ipc_exchange_mode ze_ipc_exchange;
+    int ze_drm_bdf_support;
+    int ze_pt2pt_read;
+    type2_tune_mode type2_mode;
+    int ze_enable_drmfd_multi_instance;
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_PMIX

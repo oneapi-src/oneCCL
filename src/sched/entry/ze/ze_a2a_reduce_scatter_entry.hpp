@@ -18,6 +18,22 @@
 #include "common/utils/buffer.hpp"
 #include "sched/entry/ze/ze_base_entry.hpp"
 
+typedef struct {
+    ccl_comm* comm;
+    const std::vector<size_t> recv_counts;
+    const ccl_datatype dtype;
+    ccl::reduction op;
+} reduce_scatter_args;
+
+typedef struct {
+    ccl_buffer send_buf;
+    ccl_buffer recv_buf;
+    ccl_buffer tmp_write_buf;
+    size_t peer_write_buf_idx;
+    size_t send_buf_offset;
+} reduce_scatter_bufs;
+
+// Code path for copy_read + kernel call
 class ze_a2a_reduce_scatter_entry : public ze_base_entry {
 public:
     static constexpr const char* class_name() noexcept {
@@ -38,22 +54,23 @@ public:
                                          const ccl_datatype& dtype,
                                          ccl::reduction op,
                                          ccl_comm* comm,
-                                         std::vector<ze_event_handle_t> wait_events = {},
+                                         const std::vector<ze_event_handle_t>& wait_events = {},
                                          size_t peer_buf_idx = 0,
                                          size_t peer_buf_offset = 0);
 
     void init_ze_hook() override;
-
     void update() override;
 
     static void fill_list(const ze_base_entry* entry,
                           void* send_buf,
                           void* recv_buf,
+                          void* tmp_buf,
                           const std::vector<ccl_buffer>& peer_send_bufs,
                           int peer_count,
                           int comm_rank,
                           size_t block_count,
                           size_t rank_buf_offset,
+                          std::vector<ze_event_handle_t>& wait_events,
                           std::vector<ze_event_handle_t>& copy_events,
                           std::vector<ze_kernel>& kernels,
                           std::vector<ze_event_handle_t>& kernel_events,
@@ -81,7 +98,6 @@ private:
     const int peer_count;
 
     std::vector<ze_event_handle_t> pre_copy_events;
-    std::vector<ze_event_handle_t> post_copy_events;
     ze_event_handle_t barrier_event{};
 
     std::vector<ze_kernel> kernels;
@@ -90,6 +106,7 @@ private:
     static void kernel_init(size_t rank_buf_offset,
                             size_t block_count,
                             void* send_buf,
+                            void* recv_buf,
                             void* base_ptr,
                             const std::vector<ccl_buffer>& peer_send_bufs,
                             int peer_count,
@@ -103,5 +120,114 @@ private:
                             size_t worker_idx,
                             size_t peer_buf_offset,
                             bool is_monolithic,
+                            bool is_single_kernel);
+};
+
+class ze_a2a_reduce_scatter_write_copy_entry : public ze_base_entry {
+public:
+    static constexpr const char* class_name() noexcept {
+        return "ZE_A2A_REDUCE_SCATTER_WRITE_COPY_ENTRY";
+    }
+
+    const char* name() const noexcept override {
+        return class_name();
+    }
+
+    virtual std::string name_ext() const override;
+
+    ze_a2a_reduce_scatter_write_copy_entry() = delete;
+    explicit ze_a2a_reduce_scatter_write_copy_entry(
+        ccl_sched* sched,
+        reduce_scatter_args rs_args,
+        reduce_scatter_bufs rs_bufs,
+        const std::vector<ze_event_handle_t>& wait_events = {});
+    void init_ze_hook() override;
+
+    void update() override;
+    static void fill_list_copy(const ze_base_entry* entry,
+                               reduce_scatter_args rs_args,
+                               reduce_scatter_bufs rs_bufs,
+                               const std::vector<ccl_buffer>& peer_recv_bufs,
+                               int peer_count,
+                               int comm_rank,
+                               int comm_size,
+                               std::vector<ze_event_handle_t>& copy_events,
+                               ze_event_handle_t& barrier_event,
+                               ze_module_handle_t module,
+                               ze_device_handle_t device,
+                               ze_context_handle_t context,
+                               size_t worker_idx,
+                               const std::vector<ze_event_handle_t>& wait_events);
+
+private:
+    static constexpr size_t event_group_count{ 3 };
+
+    const reduce_scatter_args rs_args;
+    const reduce_scatter_bufs rs_bufs;
+    const int peer_count;
+
+    std::vector<ze_event_handle_t> pre_copy_events;
+    ze_event_handle_t barrier_event{};
+};
+
+class ze_a2a_reduce_scatter_write_kernel_entry : public ze_base_entry {
+public:
+    static constexpr const char* class_name() noexcept {
+        return "ZE_A2A_REDUCE_SCATTER_WRITE_KERNEL_ENTRY";
+    }
+
+    const char* name() const noexcept override {
+        return class_name();
+    }
+
+    virtual std::string name_ext() const override;
+
+    ze_a2a_reduce_scatter_write_kernel_entry() = delete;
+    explicit ze_a2a_reduce_scatter_write_kernel_entry(
+        ccl_sched* sched,
+        reduce_scatter_args rs_args,
+        reduce_scatter_bufs rs_bufs,
+        const std::vector<ze_event_handle_t>& wait_events = {});
+    void init_ze_hook() override;
+
+    void update() override;
+    static void fill_list_kernel(const ze_base_entry* entry,
+                                 reduce_scatter_args rs_args,
+                                 reduce_scatter_bufs rs_bufs,
+                                 int peer_count,
+                                 int comm_rank,
+                                 int comm_size,
+                                 size_t rank_buf_offset,
+                                 std::vector<ze_kernel>& kernels,
+                                 std::vector<ze_event_handle_t>& kernel_events,
+                                 ze_module_handle_t module,
+                                 ze_device_handle_t device,
+                                 ze_context_handle_t context,
+                                 size_t worker_idx,
+                                 bool is_single_kernel,
+                                 const std::vector<ze_event_handle_t>& wait_events);
+
+private:
+    static constexpr size_t event_group_count{ 3 };
+
+    const reduce_scatter_args rs_args;
+    const reduce_scatter_bufs rs_bufs;
+    const int peer_count;
+
+    ze_event_handle_t barrier_event{};
+
+    std::vector<ze_kernel> kernels;
+    std::vector<ze_event_handle_t> kernel_events;
+
+    static void kernel_init(size_t rank_buf_offset,
+                            reduce_scatter_args rs_args,
+                            reduce_scatter_bufs rs_bufs,
+                            int peer_count,
+                            int comm_rank,
+                            std::vector<ze_kernel>& kernels,
+                            ze_module_handle_t module,
+                            ze_device_handle_t device,
+                            ze_context_handle_t context,
+                            size_t worker_idx,
                             bool is_single_kernel);
 };

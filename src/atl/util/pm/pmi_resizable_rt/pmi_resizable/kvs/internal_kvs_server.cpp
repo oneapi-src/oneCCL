@@ -93,18 +93,33 @@ kvs_status_t server::try_to_connect_new() {
         }
 
         int new_socket;
+        bool socket_found = false;
         socklen_t peer_addr_size = addr->size();
         if ((new_socket = accept(poll_fds[FDI_LISTENER].fd,
                                  addr->get_sock_addr_ptr(),
                                  (socklen_t*)&peer_addr_size)) < 0) {
-            LOG_ERROR("server_listen_sock accept, %s", strerror(errno));
+            LOG_ERROR("server_listen_sock accept:", strerror(errno));
             return KVS_STATUS_FAILURE;
         }
         for (size_t i = FDI_LAST; i < poll_fds.size(); i++) {
             if (poll_fds[i].fd == free_socket) {
                 poll_fds[i].fd = new_socket;
+                socket_found = true;
                 break;
             }
+        }
+        if (!socket_found) {
+            // the code is written in a way that there should always be a free socket available
+            // if no socket is found, this means that there is an error in the code
+            // or that out of memory exception occurred while resizing the poll_fds vector
+            // and it was not properly handled in the layers above internal_kvs_server
+            LOG_ERROR("free socket not found; this indicates programmer's error");
+            if (close(new_socket)) {
+                // we are already returning failure, there is not much we can do
+                // except for logging the exact error that occurred
+                LOG_ERROR("error closing a socket: ", strerror(errno));
+            }
+            return KVS_STATUS_FAILURE;
         }
         client_count++;
         if (poll_fds.size() - FDI_LAST == client_count) {
@@ -314,7 +329,7 @@ kvs_status_t server::make_client_request(int& socket) {
         default: {
             if (request.name[0] == '\0')
                 return KVS_STATUS_SUCCESS;
-            LOG_ERROR("unknown request mode - %d.\n", request.mode);
+            LOG_ERROR("unknown request mode: ", request.mode);
             return KVS_STATUS_FAILURE;
         }
     }
@@ -338,6 +353,12 @@ kvs_status_t server::check_finalize(size_t& to_finalize) {
 kvs_status_t server::run(void* args) {
     size_t should_stop = false;
     int so_reuse = 1;
+#ifdef SO_REUSEPORT
+    int reuse_optname = SO_REUSEPORT;
+#else
+    int reuse_optname = SO_REUSEADDR;
+#endif
+
     poll_fds.resize(client_count_increase);
     for (auto& it : poll_fds) {
         it.fd = free_socket;
@@ -346,11 +367,11 @@ kvs_status_t server::run(void* args) {
     poll_fds[FDI_LISTENER].fd = ((server_args_t*)args)->sock_listener;
     address_family = ((server_args_t*)args)->args->sin_family();
 
-#ifdef SO_REUSEPORT
-    setsockopt(poll_fds[FDI_LISTENER].fd, SOL_SOCKET, SO_REUSEPORT, &so_reuse, sizeof(so_reuse));
-#else
-    setsockopt(poll_fds[FDI_LISTENER].fd, SOL_SOCKET, SO_REUSEADDR, &so_reuse, sizeof(so_reuse));
-#endif
+    if (setsockopt(
+            poll_fds[FDI_LISTENER].fd, SOL_SOCKET, reuse_optname, &so_reuse, sizeof(so_reuse))) {
+        LOG_ERROR("server_listen_sock setsockopt(%s)", strerror(errno));
+        return KVS_STATUS_FAILURE;
+    }
 
     if (listen(poll_fds[FDI_LISTENER].fd, max_client_queue_size) < 0) {
         LOG_ERROR("server_listen_sock listen(%s)", strerror(errno));

@@ -32,21 +32,7 @@ ushort __fp32_to_bf16(float V) {
 #ifdef cl_intel_bfloat16_conversions
 #pragma OPENCL EXTENSION cl_intel_bfloat16_conversions : enable
 #else // cl_intel_bfloat16_conversions
-
-// declare SPIR-V intrinsics directly
-ushort __builtin_spirv_OpConvertFToBF16INTEL_f32(float);
-float __builtin_spirv_OpConvertBF16ToFINTEL_i16(ushort);
-
-// implement built-in functions using these intrinsics
-#define __ovld __attribute__((overloadable))
-ushort __ovld intel_convert_bfloat16_as_ushort(float f) {
-    return __builtin_spirv_OpConvertFToBF16INTEL_f32(f);
-}
-
-float __ovld intel_convert_as_bfloat16_float(ushort u) {
-    return __builtin_spirv_OpConvertBF16ToFINTEL_i16(u);
-}
-
+#error "cl_intel_bfloat16_conversions are not defined, compilation failed."
 #endif // cl_intel_bfloat16_conversions
 
 float __bf16_to_fp32(ushort V) {

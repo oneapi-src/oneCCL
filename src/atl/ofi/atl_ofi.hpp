@@ -28,6 +28,8 @@
 class atl_ofi : public atl_base_transport {
 public:
     atl_ofi() = default;
+    atl_ofi(const atl_ofi& other) = delete;
+    atl_ofi& operator=(const atl_ofi& other) = delete;
     ~atl_ofi();
 
     atl_status_t init(int* argc,
@@ -204,6 +206,10 @@ private:
     class mr_cache {
     public:
         mr_cache() = default;
+        mr_cache(const mr_cache&) = delete;
+        mr_cache& operator=(const mr_cache&) = delete;
+        mr_cache(mr_cache&&) noexcept = default;
+        mr_cache& operator=(mr_cache&&) noexcept = default;
         ~mr_cache();
 
         void clear();
@@ -232,7 +238,7 @@ private:
         void push(size_t idx, fid_mr* mr);
 
     private:
-        int enable_hmem;
+        int enable_hmem{ 0 };
         std::vector<mr_cache> memory_regions;
     };
 

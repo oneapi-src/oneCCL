@@ -24,21 +24,25 @@ if (CCL_ENABLE_SYCL AND CCL_ENABLE_ZE)
 
         sched/entry/ze/allreduce/ze_a2a_allreduce_entry.cpp
         sched/entry/ze/allreduce/ze_onesided_allreduce_entry.cpp
-        sched/entry/ze/allreduce/ze_ring_allreduce_entry.cpp
         sched/entry/ze/ze_a2a_allgatherv_entry.cpp
-        sched/entry/ze/ze_a2a_gatherv_entry.cpp
         sched/entry/ze/ze_a2a_reduce_scatter_entry.cpp
+        sched/entry/ze/ze_a2a_pipeline_reduce_scatter_entry.cpp
         sched/entry/ze/ze_alltoallv_entry.cpp
         sched/entry/ze/ze_base_entry.cpp
         sched/entry/ze/ze_barrier_entry.cpp
-        sched/entry/ze/ze_cache.cpp
+        sched/entry/ze/cache/ze_cache.cpp
+        sched/entry/ze/cache/ze_device_cache.cpp
         sched/entry/ze/ze_call.cpp
+        sched/entry/ze/ze_command.cpp
         sched/entry/ze/ze_copy_entry.cpp
         sched/entry/ze/ze_handle_exchange_entry.cpp
+        sched/entry/ze/ze_kernel.cpp
         sched/entry/ze/ze_event_signal_entry.cpp
         sched/entry/ze/ze_event_wait_entry.cpp
+        sched/entry/ze/ze_membarrier_entry.cpp
         sched/entry/ze/ze_onesided_reduce_entry.cpp
         sched/entry/ze/ze_primitives.cpp
+        sched/entry/ze/ze_pt2pt_barrier_entry.cpp
         sched/entry/ze/ze_reduce_local_entry.cpp
 
         common/global/ze/ze_data.cpp
@@ -50,6 +54,33 @@ if (CCL_ENABLE_SYCL AND CCL_ENABLE_ZE)
         sched/ze/ze_handle_manager.cpp
         sched/ze/ze_ipc_event_pool_manager.cpp
         sched/ze/ze_list_manager.cpp
+
+        coll/algorithms/allgatherv/sycl/allgatherv_sycl.cpp
+        coll/algorithms/allgatherv/sycl/allgatherv_small_sycl.cpp
+        coll/algorithms/allgatherv/sycl/allgatherv_medium_sycl.cpp
+        coll/algorithms/allgatherv/sycl/allgatherv_large_sycl.cpp
+
+        coll/algorithms/allreduce/sycl/allreduce_small_sycl.cpp
+        coll/algorithms/allreduce/sycl/allreduce_medium_sycl.cpp
+        coll/algorithms/allreduce/sycl/allreduce_medium_sycl_fp16.cpp
+        coll/algorithms/allreduce/sycl/allreduce_medium_sycl_bf16.cpp
+        coll/algorithms/allreduce/sycl/allreduce_medium_sycl_fp32.cpp
+        coll/algorithms/allreduce/sycl/allreduce_medium_sycl_int32.cpp
+        coll/algorithms/allreduce/sycl/allreduce_large_sycl.cpp
+        coll/algorithms/allreduce/sycl/allreduce_large_sycl_fp16.cpp
+        coll/algorithms/allreduce/sycl/allreduce_large_sycl_bf16.cpp
+        coll/algorithms/allreduce/sycl/allreduce_large_sycl_fp32.cpp
+        coll/algorithms/allreduce/sycl/allreduce_large_sycl_int32.cpp
+        coll/algorithms/allreduce/sycl/allreduce_sycl.cpp
+
+        coll/algorithms/reduce_scatter/sycl/reduce_scatter_sycl.cpp
+        coll/algorithms/reduce_scatter/sycl/reduce_scatter_small_sycl.cpp
+        coll/algorithms/reduce_scatter/sycl/reduce_scatter_medium_sycl.cpp
+        coll/algorithms/reduce_scatter/sycl/reduce_scatter_large_sycl.cpp
+        coll/algorithms/reduce_scatter/sycl/reduce_scatter_large_sycl_int32.cpp
+        coll/algorithms/reduce_scatter/sycl/reduce_scatter_large_sycl_fp32.cpp
+        coll/algorithms/reduce_scatter/sycl/reduce_scatter_large_sycl_fp16.cpp
+        coll/algorithms/reduce_scatter/sycl/reduce_scatter_large_sycl_bf16.cpp
         )
 endif(CCL_ENABLE_SYCL AND CCL_ENABLE_ZE)
 
@@ -78,28 +109,31 @@ set(CCL_SRC
     atl/util/pm/pmi_rt/pmi/simple_pmi.c
     atl/util/pm/pmi_rt/pmi/simple_pmiutil.c
 
-    coll/coll_common_attributes.cpp
-    coll/ccl_allgather_op_attr.cpp
-    coll/ccl_allreduce_op_attr.cpp
-    coll/ccl_alltoall_op_attr.cpp
-    coll/ccl_alltoallv_op_attr.cpp
-    coll/ccl_bcast_op_attr.cpp
-    coll/ccl_reduce_op_attr.cpp
-    coll/ccl_reduce_scatter_op_attr.cpp
-    coll/ccl_barrier_op_attr.cpp
+    coll/attr/ccl_common_op_attrs.cpp
+    coll/attr/ccl_allgather_op_attr.cpp
+    coll/attr/ccl_allreduce_op_attr.cpp
+    coll/attr/ccl_alltoall_op_attr.cpp
+    coll/attr/ccl_alltoallv_op_attr.cpp
+    coll/attr/ccl_barrier_op_attr.cpp
+    coll/attr/ccl_bcast_op_attr.cpp
+    coll/attr/ccl_pt2pt_op_attr.cpp
+    coll/attr/ccl_reduce_op_attr.cpp
+    coll/attr/ccl_reduce_scatter_op_attr.cpp
     coll/coll_param.cpp
     coll/coll_util.cpp
-    coll/algorithms/allgatherv.cpp
+    coll/algorithms/allgatherv/allgatherv.cpp
     coll/algorithms/allreduce/allreduce.cpp
     coll/algorithms/allreduce/allreduce_rma.cpp
     coll/algorithms/algorithm_utils.cpp
     coll/algorithms/alltoall.cpp
     coll/algorithms/alltoallv.cpp
-    coll/algorithms/barrier.cpp
+    coll/algorithms/barrier/barrier.cpp
     coll/algorithms/bcast.cpp
     coll/algorithms/double_tree_ops.cpp
+    coll/algorithms/recv.cpp
     coll/algorithms/reduce.cpp
-    coll/algorithms/reduce_scatter.cpp
+    coll/algorithms/reduce_scatter/reduce_scatter.cpp
+    coll/algorithms/send.cpp
     coll/coll.cpp
     coll/coll_check.cpp
     coll/selection/selection.cpp
@@ -109,8 +143,10 @@ set(CCL_SRC
     coll/selection/selector_alltoallv.cpp
     coll/selection/selector_barrier.cpp
     coll/selection/selector_bcast.cpp
+    coll/selection/selector_recv.cpp
     coll/selection/selector_reduce.cpp
     coll/selection/selector_reduce_scatter.cpp
+    coll/selection/selector_send.cpp
 
     comm/atl_tag.cpp
     comm/comm.cpp
@@ -131,6 +167,7 @@ set(CCL_SRC
     common/utils/exchange_utils.cpp
     common/utils/fd_info.cpp
     common/utils/memcpy.cpp
+    common/utils/profile.cpp
     common/utils/spinlock.cpp
     common/utils/utils.cpp
     common/utils/version.cpp
@@ -249,8 +286,7 @@ if (${CMAKE_C_COMPILER_ID} STREQUAL "Intel" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL
     set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -diag-disable=654")
 endif()
 
-
-if (${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
+if ((${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang") OR (${CMAKE_C_COMPILER_ID} STREQUAL "IntelLLVM" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "IntelLLVM"))
     if (USE_CODECOV_FLAGS)
         set(SRC_C_FLAGS "${SRC_C_FLAGS} -fprofile-instr-generate -fcoverage-mapping -Wno-error=unused-command-line-argument -fno-sycl-use-footer")
         set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -fprofile-instr-generate -fcoverage-mapping -Wno-error=unused-command-line-argument -fno-sycl-use-footer")
@@ -349,18 +385,19 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
 if ("${LIBFABRIC_DIR}" STREQUAL "")
     # internal libfabric is used, install it into package
     install(DIRECTORY ${DEPS_DIR}/ofi/lib/
-            DESTINATION ${CCL_INSTALL_LIB})
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/opt/mpi/libfabric/lib)
 endif()
 
 if (ENABLE_MPI)
     file(GLOB mpi_bins "${DEPS_DIR}/mpi/bin/*")
-    install(PROGRAMS ${mpi_bins} DESTINATION ${CCL_INSTALL_BIN})
+    install(PROGRAMS ${mpi_bins}
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/opt/mpi/bin)
     install(DIRECTORY ${DEPS_DIR}/mpi/include/
-            DESTINATION ${CCL_INSTALL_INCLUDE})
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/opt/mpi/include)
     install(DIRECTORY ${DEPS_DIR}/mpi/lib/
-           DESTINATION ${CCL_INSTALL_LIB})
-    install(DIRECTORY ${DEPS_DIR}/mpi/etc/
-            DESTINATION ${CCL_INSTALL_ETC})
+           DESTINATION ${CMAKE_INSTALL_PREFIX}/opt/mpi/lib)
+    install(DIRECTORY ${DEPS_DIR}/mpi/opt/mpi/etc/
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/opt/mpi/etc/)
     install(DIRECTORY ${DEPS_DIR}/mpi/licensing/
             DESTINATION ${CCL_INSTALL_LICENSE}/mpi/)
 endif()

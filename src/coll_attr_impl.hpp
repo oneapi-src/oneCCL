@@ -16,7 +16,7 @@
 #pragma once
 #include "oneapi/ccl/types.hpp"
 #include "oneapi/ccl/coll_attr.hpp"
-#include "coll/coll_attributes.hpp"
+#include "coll/attr/ccl_attrs.hpp"
 
 namespace ccl {
 
@@ -298,6 +298,41 @@ CCL_API const typename detail::ccl_api_type_attr_traits<operation_attr_id, attrI
 barrier_attr::get() const {
     return get_impl().get()->get_attribute_value(
         detail::ccl_api_type_attr_traits<operation_attr_id, attrId>{});
+}
+
+/**
+ * pt2pt attributes definition
+ */
+template<pt2pt_attr_id attrId,
+             class Value/*,
+             typename T*/>
+CCL_API typename detail::ccl_api_type_attr_traits<pt2pt_attr_id, attrId>::return_type pt2pt_attr::set(const Value& v)
+{
+    return get_impl()->set_attribute_value(
+        v, detail::ccl_api_type_attr_traits<pt2pt_attr_id, attrId>{});
+}
+
+template<operation_attr_id attrId,
+             class Value/*,
+             typename T*/>
+CCL_API typename detail::ccl_api_type_attr_traits<operation_attr_id, attrId>::return_type pt2pt_attr::set(const Value& v)
+{
+    return static_cast<ccl_operation_attr_impl_t*>(get_impl().get())
+        ->set_attribute_value(v, detail::ccl_api_type_attr_traits<operation_attr_id, attrId>{});
+}
+
+template <pt2pt_attr_id attrId>
+CCL_API const typename detail::ccl_api_type_attr_traits<pt2pt_attr_id, attrId>::return_type&
+pt2pt_attr::get() const {
+    return get_impl()->get_attribute_value(
+        detail::ccl_api_type_attr_traits<pt2pt_attr_id, attrId>{});
+}
+
+template <operation_attr_id attrId>
+CCL_API const typename detail::ccl_api_type_attr_traits<operation_attr_id, attrId>::return_type&
+pt2pt_attr::get() const {
+    return static_cast<const ccl_operation_attr_impl_t*>(get_impl().get())
+        ->get_attribute_value(detail::ccl_api_type_attr_traits<operation_attr_id, attrId>{});
 }
 
 } // namespace v1

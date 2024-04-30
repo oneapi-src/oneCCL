@@ -64,6 +64,8 @@ public:
 
     ccl_sched_list& operator=(const ccl_sched_list& other) = delete;
 
+    ccl_sched_list(const ccl_sched_list&) = delete;
+
     ccl_sched_list(ccl_sched_list&& src) {
         {
             std::lock_guard<sched_queue_lock_t> lock(src.elem_guard);
@@ -168,6 +170,7 @@ public:
     }
 
     ccl_sched_bin() = delete;
+    ccl_sched_bin(const ccl_sched_bin& other) = delete;
     ccl_sched_bin& operator=(const ccl_sched_bin& other) = delete;
 
     ccl_sched_bin(ccl_sched_bin&& src) = default;

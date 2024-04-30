@@ -49,6 +49,10 @@ public:
 
     ~pmi_resizable_simple() override;
 
+    pmi_resizable_simple& operator=(const pmi_resizable_simple&) = delete;
+
+    pmi_resizable_simple(const pmi_resizable_simple&) = delete;
+
     int is_pm_resize_enabled() override;
 
     atl_status_t pmrt_main_addr_reserve(char* main_addr) override;

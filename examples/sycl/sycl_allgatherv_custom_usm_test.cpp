@@ -24,7 +24,7 @@ struct custom_data_type {
 } __attribute__((packed));
 
 int main(int argc, char *argv[]) {
-    const size_t count = 10 * 1024 * 1024;
+    size_t count = 10 * 1024 * 1024;
 
     int size = 0;
     int rank = 0;
@@ -38,7 +38,18 @@ int main(int argc, char *argv[]) {
     atexit(mpi_finalize);
 
     queue q;
-    if (!create_sycl_queue(argc, argv, rank, q)) {
+    sycl::property_list props;
+    if (argc > 3) {
+        if (strcmp("in_order", argv[3]) == 0) {
+            props = { sycl::property::queue::in_order{} };
+        }
+    }
+
+    if (argc > 4) {
+        count = (size_t)std::atoi(argv[4]);
+    }
+
+    if (!create_sycl_queue(argc, argv, rank, q, props)) {
         return -1;
     }
 
@@ -75,7 +86,7 @@ int main(int argc, char *argv[]) {
     auto stream = ccl::create_stream(q);
 
     /* create buffers */
-    constexpr size_t send_count = count * sizeof(custom_data_type) / sizeof(native_dtype);
+    size_t send_count = count * sizeof(custom_data_type) / sizeof(native_dtype);
 
     auto send_buf = allocator.allocate(send_count, usm_alloc_type);
     auto recv_buf = allocator.allocate(send_count * size, usm_alloc_type);

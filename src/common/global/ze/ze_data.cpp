@@ -21,10 +21,19 @@ namespace ze {
 
 device_info::device_info(ze_device_handle_t dev, uint32_t parent_idx)
         : device(dev),
-          parent_idx(parent_idx) {
+          parent_idx(parent_idx),
+          physical_idx(fd_manager::invalid_physical_idx) {
     ze_device_properties_t dev_props = ccl::ze::default_device_props;
     zeDeviceGetProperties(device, &dev_props);
     uuid = dev_props.uuid;
+
+#ifdef ZE_PCI_PROPERTIES_EXT_NAME
+    ze_pci_ext_properties_t pci_prop = ccl::ze::default_pci_property;
+    ze_result_t ret = zeDevicePciGetPropertiesExt(dev, &pci_prop);
+    if (ret == ZE_RESULT_SUCCESS) {
+        pci = pci_prop.address;
+    }
+#endif // ZE_PCI_PROPERTIES_EXT_NAME
 };
 
 global_data_desc::global_data_desc() {
@@ -32,7 +41,7 @@ global_data_desc::global_data_desc() {
 
     // enables driver initialization and
     // dependencies for system management
-    setenv("ZES_ENABLE_SYSMAN", "1", 0);
+    setenv("ZES_ENABLE_SYSMAN", "1", 1);
 
     ZE_CALL(zeInit, (ZE_INIT_FLAG_GPU_ONLY));
 
@@ -76,20 +85,9 @@ global_data_desc::global_data_desc() {
     LOG_DEBUG("found devices: ", devices.size());
 
     cache = std::make_unique<ze::cache>(global_data::env().worker_count);
+    dev_memory_manager = std::make_unique<ze::device_memory_manager>();
 
-    if (global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::pidfd) {
-        if (!ze::fd_manager::is_pidfd_supported()) {
-            global_data::env().ze_ipc_exchange = ccl::ze::ipc_exchange_mode::drmfd;
-            LOG_WARN("pidfd exchange mode is not supported, fallbacks to drmfd");
-        }
-        else {
-            LOG_DEBUG("pidfd exchange mode is verified successfully");
-        }
-    }
-
-    if (global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::drmfd) {
-        fd_manager = std::make_unique<ze::fd_manager>();
-    }
+    topo_manager::detect_tune_port_count(devices);
 
     LOG_INFO("initialized level-zero");
 }

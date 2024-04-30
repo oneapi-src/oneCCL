@@ -30,6 +30,8 @@ if [ -z "$I_MPI_ROOT" -a -z "$(uname -m | grep 1om)" ] ; then
         . ${0%/*}/mpivars.sh ""
     elif [ -f ${0%/*}/../env/vars.sh ]; then
         . ${0%/*}/../env/vars.sh ""
+    elif [ -f ${0%/*}/../setvars.sh ]; then
+        . ${0%/*}/../setvars.sh ""
     fi # else it can be a runtime package without any scripts to source
 fi
 

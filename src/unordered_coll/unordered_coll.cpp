@@ -161,9 +161,11 @@ void ccl_unordered_coll_manager::start_coordination(const std::string& match_id)
     coll_param.comm = coordination_comm.get();
 
     ccl_sched* null_sched = nullptr;
-    std::unique_ptr<ccl_sched> service_sched(new ccl_sched(
-        { ccl_sched_unordered_coll, coordination_comm->get_sched_id(true), coll_param },
-        null_sched));
+    std::unique_ptr<ccl_sched> service_sched(
+        new ccl_sched({ ccl_sched_unordered_coll,
+                        coordination_comm->get_sched_id(true, coll_param.is_pt2pt),
+                        coll_param },
+                      null_sched));
 
     if (ccl::global_data::env().priority_mode == ccl_priority_lifo) {
         service_sched->coll_attr.priority = ccl_sched_base::get_lifo_priority();
@@ -197,7 +199,7 @@ void ccl_unordered_coll_manager::start_coordination(const std::string& match_id)
                   ctx->match_id_size);
     }
 
-    ccl_coll_entry_param match_id_size_param{};
+    ccl_coll_param match_id_size_param{};
     match_id_size_param.ctype = ccl_coll_bcast;
     match_id_size_param.recv_buf = ccl_buffer(&ctx->match_id_size, sizeof(size_t));
     match_id_size_param.count = sizeof(size_t);
@@ -209,7 +211,7 @@ void ccl_unordered_coll_manager::start_coordination(const std::string& match_id)
     service_sched->add_barrier();
 
     /* 2. broadcast match_id_value */
-    ccl_coll_entry_param match_id_val_param{};
+    ccl_coll_param match_id_val_param{};
     match_id_val_param.ctype = ccl_coll_bcast;
     match_id_val_param.recv_buf = ccl_buffer();
     match_id_val_param.count = 0;

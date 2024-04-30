@@ -13,7 +13,7 @@ Build details
 
 #. :ref:`Build <enable_sycl>` |product_short| with ``SYCL`` support (only Intel\ |reg|\  oneAPI DPC++/C++ Compiler is supported).
 
-#. :ref:`Set up <prerequisites>` the library environment.
+#. `Set up the library environment <https://www.intel.com/content/www/us/en/docs/oneccl/get-started-guide/current/overview.html#SAMPLE-APPLICATION>`_.
 
 #. Use the C++ driver with the -fsycl option to build the sample:
 
@@ -34,3 +34,5 @@ To run the sample, use the following command:
     mpiexec <parameters> ./sample
 
 where ``<parameters>`` represents optional mpiexec parameters such as node count, processes per node, hosts, and so on.
+
+.. note:: Explore the complete list of oneAPI code samples in the `oneAPI Samples Catalog <https://oneapi-src.github.io/oneAPI-samples/>`_. These samples were designed to help you develop, offload, and optimize multiarchitecture applications targeting CPUs, GPUs, and FPGAs.

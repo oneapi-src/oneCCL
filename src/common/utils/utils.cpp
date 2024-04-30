@@ -76,7 +76,7 @@ uintptr_t get_aligned_offset_byte(const void* ptr,
                                   const size_t buf_size_bytes,
                                   const size_t mem_align_bytes) {
     // find the number of data items to remove to start from aligned bytes
-    unsigned long pre_align_offset_byte = (uintptr_t)ptr % mem_align_bytes;
+    unsigned long pre_align_offset_byte = reinterpret_cast<uintptr_t>(ptr) % mem_align_bytes;
     if (pre_align_offset_byte != 0) {
         pre_align_offset_byte = mem_align_bytes - pre_align_offset_byte;
     }
@@ -85,6 +85,22 @@ uintptr_t get_aligned_offset_byte(const void* ptr,
         pre_align_offset_byte = buf_size_bytes;
     }
     return pre_align_offset_byte;
+}
+
+std::string join_strings(const std::vector<std::string>& tokens, const std::string& delimeter) {
+    std::stringstream ss;
+    for (size_t i = 0; i < tokens.size(); ++i) {
+        ss << tokens[i];
+        if (i < tokens.size() - 1) {
+            ss << delimeter;
+        }
+    }
+    return ss.str();
+}
+
+void close_fd(int fd) {
+    LOG_DEBUG("closing fd: ", fd);
+    close(fd);
 }
 
 } // namespace utils

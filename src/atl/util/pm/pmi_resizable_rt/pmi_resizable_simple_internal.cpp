@@ -38,7 +38,7 @@ pmi_resizable_simple_internal::pmi_resizable_simple_internal(int size,
                                                              const char* main_addr)
         : comm_size(size),
           ranks(ranks),
-          k(k),
+          k(std::move(k)),
           main_addr(main_addr),
           max_keylen(MAX_KVS_KEY_LENGTH),
           max_vallen(MAX_KVS_VAL_LENGTH),
@@ -103,15 +103,19 @@ atl_status_t pmi_resizable_simple_internal::registration() {
 
     char* proc_count_str = const_cast<char*>(val_storage_vec.data());
     char* rank_str = strstr(proc_count_str, "_");
+    ATL_CHECK_PTR(rank_str, "proc_count_str contains corrupted data");
     rank_str[0] = '\0';
     rank_str++;
     char* proc_rank_count_str = strstr(rank_str, "_");
+    ATL_CHECK_PTR(proc_rank_count_str, "proc_count_str contains corrupted data");
     proc_rank_count_str[0] = '\0';
     proc_rank_count_str++;
     char* threads_count_str = strstr(proc_rank_count_str, "_");
+    ATL_CHECK_PTR(threads_count_str, "proc_count_str contains corrupted data");
     threads_count_str[0] = '\0';
     threads_count_str++;
     char* thread_num_str = strstr(threads_count_str, "_");
+    ATL_CHECK_PTR(thread_num_str, "proc_count_str contains corrupted data");
     thread_num_str[0] = '\0';
     thread_num_str++;
 
@@ -210,13 +214,14 @@ atl_status_t pmi_resizable_simple_internal::pmrt_kvs_put(char* kvs_key,
                                                          const void* kvs_val,
                                                          size_t kvs_val_len) {
     int ret;
-    char key_storage[max_keylen];
+    std::vector<char> key_storage(max_keylen);
     if (kvs_val_len > max_vallen) {
         LOG_ERROR("asked len > max len");
         return ATL_STATUS_FAILURE;
     }
 
-    ret = snprintf(key_storage, max_keylen - 1, RESIZABLE_PMI_RT_KEY_FORMAT, kvs_key, proc_idx);
+    ret = snprintf(
+        key_storage.data(), max_keylen - 1, RESIZABLE_PMI_RT_KEY_FORMAT, kvs_key, proc_idx);
     if (ret < 0) {
         LOG_ERROR("snprintf failed");
         return ATL_STATUS_FAILURE;
@@ -228,7 +233,7 @@ atl_status_t pmi_resizable_simple_internal::pmrt_kvs_put(char* kvs_key,
         return ATL_STATUS_FAILURE;
     }
 
-    ATL_CHECK_STATUS(kvs_set_value(KVS_NAME, key_storage, val_storage), "failed to set val");
+    ATL_CHECK_STATUS(kvs_set_value(KVS_NAME, key_storage.data(), val_storage), "failed to set val");
 
     return ATL_STATUS_SUCCESS;
 }
@@ -238,16 +243,22 @@ atl_status_t pmi_resizable_simple_internal::pmrt_kvs_get(char* kvs_key,
                                                          void* kvs_val,
                                                          size_t kvs_val_len) {
     int ret;
-    char key_storage[max_keylen];
+    std::vector<char> key_storage(max_keylen);
     std::string val_storage_str;
+    if (kvs_val_len > max_vallen) {
+        LOG_ERROR("asked len > max len");
+        return ATL_STATUS_FAILURE;
+    }
 
-    ret = snprintf(key_storage, max_keylen - 1, RESIZABLE_PMI_RT_KEY_FORMAT, kvs_key, proc_idx);
+    ret = snprintf(
+        key_storage.data(), max_keylen - 1, RESIZABLE_PMI_RT_KEY_FORMAT, kvs_key, proc_idx);
     if (ret < 0) {
         LOG_ERROR("snprintf failed");
         return ATL_STATUS_FAILURE;
     }
 
-    ATL_CHECK_STATUS(kvs_get_value(KVS_NAME, key_storage, val_storage_str), "failed to get val");
+    ATL_CHECK_STATUS(kvs_get_value(KVS_NAME, key_storage.data(), val_storage_str),
+                     "failed to get val");
 
     ret = decode(val_storage_str.c_str(), kvs_val, kvs_val_len);
     if (ret) {
@@ -302,10 +313,13 @@ atl_status_t pmi_resizable_simple_internal::kvs_get_value(const std::string& kvs
     } while (value.empty() && kvs_get_time < kvs_get_timeout);
 
     if (kvs_get_time >= kvs_get_timeout) {
-        LOG_ERROR("KVS get error: timeout limit (%zu > %zu), prefix: %s, key %s\n",
+        LOG_ERROR("KVS get error: timeout limit: ",
                   kvs_get_time,
+                  " > ",
                   kvs_get_timeout,
+                  ", prefix: ",
                   result_kvs_name.c_str(),
+                  ", key: ",
                   key);
         return ATL_STATUS_FAILURE;
     }

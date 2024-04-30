@@ -1,5 +1,5 @@
 /*
- * Copyright © 2019-2020 Inria.  All rights reserved.
+ * Copyright © 2019-2023 Inria.  All rights reserved.
  * See COPYING in top-level directory.
  */
 
@@ -54,6 +54,12 @@ extern "C" {
  * Attribute values for these nodes, if any, may then be obtained with
  * hwloc_memattr_get_value() and manually compared with the desired criteria.
  *
+ * Memory attributes are also used internally to build Memory Tiers which provide
+ * an easy way to distinguish NUMA nodes of different kinds, as explained
+ * in \ref heteromem.
+ *
+ * \sa An example is available in doc/examples/memory-attributes.c in the source tree.
+ *
  * \note The API also supports specific objects as initiator,
  * but it is currently not used internally by hwloc.
  * Users may for instance use it to provide custom performance
@@ -65,19 +71,19 @@ extern "C" {
 
 /** \brief Memory node attributes. */
 enum hwloc_memattr_id_e {
-  /** \brief "Capacity".
-   * The capacity is returned in bytes
-   * (local_memory attribute in objects).
+  /** \brief
+   * The \"Capacity\" is returned in bytes (local_memory attribute in objects).
    *
    * Best capacity nodes are nodes with <b>higher capacity</b>.
    *
    * No initiator is involved when looking at this attribute.
    * The corresponding attribute flags are ::HWLOC_MEMATTR_FLAG_HIGHER_FIRST.
+   * \hideinitializer
    */
   HWLOC_MEMATTR_ID_CAPACITY = 0,
 
-  /** \brief "Locality".
-   * The locality is returned as the number of PUs in that locality
+  /** \brief
+   * The \"Locality\" is returned as the number of PUs in that locality
    * (e.g. the weight of its cpuset).
    *
    * Best locality nodes are nodes with <b>smaller locality</b>
@@ -87,26 +93,87 @@ enum hwloc_memattr_id_e {
    *
    * No initiator is involved when looking at this attribute.
    * The corresponding attribute flags are ::HWLOC_MEMATTR_FLAG_HIGHER_FIRST.
+   * \hideinitializer
    */
   HWLOC_MEMATTR_ID_LOCALITY = 1,
 
-  /** \brief "Bandwidth".
-   * The bandwidth is returned in MiB/s, as seen from the given initiator location.
+  /** \brief
+   * The \"Bandwidth\" is returned in MiB/s, as seen from the given initiator location.
+   *
    * Best bandwidth nodes are nodes with <b>higher bandwidth</b>.
+   *
    * The corresponding attribute flags are ::HWLOC_MEMATTR_FLAG_HIGHER_FIRST
    * and ::HWLOC_MEMATTR_FLAG_NEED_INITIATOR.
+   *
+   * This is the average bandwidth for read and write accesses. If the platform
+   * provides individual read and write bandwidths but no explicit average value,
+   * hwloc computes and returns the average.
+   * \hideinitializer
    */
   HWLOC_MEMATTR_ID_BANDWIDTH = 2,
 
-  /** \brief "Latency".
-   * The latency is returned as nanoseconds, as seen from the given initiator location.
+  /** \brief
+   * The \"ReadBandwidth\" is returned in MiB/s, as seen from the given initiator location.
+   *
+   * Best bandwidth nodes are nodes with <b>higher bandwidth</b>.
+   *
+   * The corresponding attribute flags are ::HWLOC_MEMATTR_FLAG_HIGHER_FIRST
+   * and ::HWLOC_MEMATTR_FLAG_NEED_INITIATOR.
+   * \hideinitializer
+   */
+  HWLOC_MEMATTR_ID_READ_BANDWIDTH = 4,
+
+  /** \brief
+   * The \"WriteBandwidth\" is returned in MiB/s, as seen from the given initiator location.
+   *
+   * Best bandwidth nodes are nodes with <b>higher bandwidth</b>.
+   *
+   * The corresponding attribute flags are ::HWLOC_MEMATTR_FLAG_HIGHER_FIRST
+   * and ::HWLOC_MEMATTR_FLAG_NEED_INITIATOR.
+   * \hideinitializer
+   */
+  HWLOC_MEMATTR_ID_WRITE_BANDWIDTH = 5,
+
+  /** \brief
+   * The \"Latency\" is returned as nanoseconds, as seen from the given initiator location.
+   *
    * Best latency nodes are nodes with <b>smaller latency</b>.
+   *
    * The corresponding attribute flags are ::HWLOC_MEMATTR_FLAG_LOWER_FIRST
    * and ::HWLOC_MEMATTR_FLAG_NEED_INITIATOR.
+   *
+   * This is the average latency for read and write accesses. If the platform
+   * provides individual read and write latencies but no explicit average value,
+   * hwloc computes and returns the average.
+   * \hideinitializer
    */
-  HWLOC_MEMATTR_ID_LATENCY = 3
+  HWLOC_MEMATTR_ID_LATENCY = 3,
 
-  /* TODO read vs write, persistence? */
+  /** \brief
+   * The \"ReadLatency\" is returned as nanoseconds, as seen from the given initiator location.
+   *
+   * Best latency nodes are nodes with <b>smaller latency</b>.
+   *
+   * The corresponding attribute flags are ::HWLOC_MEMATTR_FLAG_LOWER_FIRST
+   * and ::HWLOC_MEMATTR_FLAG_NEED_INITIATOR.
+   * \hideinitializer
+   */
+  HWLOC_MEMATTR_ID_READ_LATENCY = 6,
+
+  /** \brief
+   * The \"WriteLatency\" is returned as nanoseconds, as seen from the given initiator location.
+   *
+   * Best latency nodes are nodes with <b>smaller latency</b>.
+   *
+   * The corresponding attribute flags are ::HWLOC_MEMATTR_FLAG_LOWER_FIRST
+   * and ::HWLOC_MEMATTR_FLAG_NEED_INITIATOR.
+   * \hideinitializer
+   */
+  HWLOC_MEMATTR_ID_WRITE_LATENCY = 7,
+
+  /* TODO persistence? */
+
+  HWLOC_MEMATTR_ID_MAX /**< \private Sentinel value */
 };
 
 /** \brief A memory attribute identifier.
@@ -115,6 +182,9 @@ enum hwloc_memattr_id_e {
 typedef unsigned hwloc_memattr_id_t;
 
 /** \brief Return the identifier of the memory attribute with the given name.
+ *
+ * \return 0 on success.
+ * \return -1 with errno set to \c EINVAL if no such attribute exists.
  */
 HWLOC_DECLSPEC int
 hwloc_memattr_get_by_name(hwloc_topology_t topology,
@@ -184,6 +254,8 @@ enum hwloc_local_numanode_flag_e {
  * or the number of nodes that would have been stored if there were
  * enough room.
  *
+ * \return 0 on success or -1 on error.
+ *
  * \note Some of these NUMA nodes may not have any memory attribute
  * values and hence not be reported as actual targets in other functions.
  *
@@ -212,6 +284,10 @@ hwloc_get_local_numanode_objs(hwloc_topology_t topology,
  * location \p initiator is ignored and may be \c NULL.
  *
  * \p flags must be \c 0 for now.
+ *
+ * \return 0 on success.
+ * \return -1 on error, for instance with errno set to \c EINVAL if flags
+ * are invalid or no such attribute exists.
  *
  * \note The initiator \p initiator should be of type ::HWLOC_LOCATION_TYPE_CPUSET
  * when refering to accesses performed by CPU cores.
@@ -244,7 +320,10 @@ hwloc_memattr_get_value(hwloc_topology_t topology,
  *
  * \p flags must be \c 0 for now.
  *
- * If there are no matching targets, \c -1 is returned with \p errno set to \c ENOENT;
+ * \return 0 on success.
+ * \return -1 with errno set to \c ENOENT if there are no matching targets.
+ * \return -1 with errno set to \c EINVAL if flags are invalid,
+ * or no such attribute exists.
  *
  * \note The initiator \p initiator should be of type ::HWLOC_LOCATION_TYPE_CPUSET
  * when refering to accesses performed by CPU cores.
@@ -261,10 +340,6 @@ hwloc_memattr_get_best_target(hwloc_topology_t topology,
 
 /** \brief Return the best initiator for the given attribute and target NUMA node.
  *
- * If the attribute does not relate to a specific initiator
- * (it does not have the flag ::HWLOC_MEMATTR_FLAG_NEED_INITIATOR),
- * \c -1 is returned and \p errno is set to \c EINVAL.
- *
  * If \p value is non \c NULL, the corresponding value is returned there.
  *
  * If multiple initiators have the same attribute values, only one is
@@ -279,7 +354,10 @@ hwloc_memattr_get_best_target(hwloc_topology_t topology,
  *
  * \p flags must be \c 0 for now.
  *
- * If there are no matching initiators, \c -1 is returned with \p errno set to \c ENOENT;
+ * \return 0 on success.
+ * \return -1 with errno set to \c ENOENT if there are no matching initiators.
+ * \return -1 with errno set to \c EINVAL if the attribute does not relate to a specific initiator
+ * (it does not have the flag ::HWLOC_MEMATTR_FLAG_NEED_INITIATOR).
  */
 HWLOC_DECLSPEC int
 hwloc_memattr_get_best_initiator(hwloc_topology_t topology,
@@ -296,6 +374,9 @@ hwloc_memattr_get_best_initiator(hwloc_topology_t topology,
  */
 
 /** \brief Return the name of a memory attribute.
+ *
+ * \return 0 on success.
+ * \return -1 with errno set to \c EINVAL if the attribute does not exist.
  */
 HWLOC_DECLSPEC int
 hwloc_memattr_get_name(hwloc_topology_t topology,
@@ -305,6 +386,9 @@ hwloc_memattr_get_name(hwloc_topology_t topology,
 /** \brief Return the flags of the given attribute.
  *
  * Flags are a OR'ed set of ::hwloc_memattr_flag_e.
+ *
+ * \return 0 on success.
+ * \return -1 with errno set to \c EINVAL if the attribute does not exist.
  */
 HWLOC_DECLSPEC int
 hwloc_memattr_get_flags(hwloc_topology_t topology,
@@ -334,6 +418,9 @@ enum hwloc_memattr_flag_e {
  * Add a specific memory attribute that is not defined in ::hwloc_memattr_id_e.
  * Flags are a OR'ed set of ::hwloc_memattr_flag_e. It must contain at least
  * one of ::HWLOC_MEMATTR_FLAG_HIGHER_FIRST or ::HWLOC_MEMATTR_FLAG_LOWER_FIRST.
+ *
+ * \return 0 on success.
+ * \return -1 with errno set to \c EBUSY if another attribute already uses this name.
  */
 HWLOC_DECLSPEC int
 hwloc_memattr_register(hwloc_topology_t topology,
@@ -354,10 +441,12 @@ hwloc_memattr_register(hwloc_topology_t topology,
  * \p flags must be \c 0 for now.
  *
  * \note The initiator \p initiator should be of type ::HWLOC_LOCATION_TYPE_CPUSET
- * when refering to accesses performed by CPU cores.
+ * when referring to accesses performed by CPU cores.
  * ::HWLOC_LOCATION_TYPE_OBJECT is currently unused internally by hwloc,
  * but users may for instance use it to provide custom information about
  * host memory accesses performed by GPUs.
+ *
+ * \return 0 on success or -1 on error.
  */
 HWLOC_DECLSPEC int
 hwloc_memattr_set_value(hwloc_topology_t topology,
@@ -397,8 +486,10 @@ hwloc_memattr_set_value(hwloc_topology_t topology,
  * NUMA nodes with hwloc_get_local_numanode_objs() and then look at their attribute
  * values.
  *
+ * \return 0 on success or -1 on error.
+ *
  * \note The initiator \p initiator should be of type ::HWLOC_LOCATION_TYPE_CPUSET
- * when refering to accesses performed by CPU cores.
+ * when referring to accesses performed by CPU cores.
  * ::HWLOC_LOCATION_TYPE_OBJECT is currently unused internally by hwloc,
  * but users may for instance use it to provide custom information about
  * host memory accesses performed by GPUs.
@@ -408,7 +499,7 @@ hwloc_memattr_get_targets(hwloc_topology_t topology,
                           hwloc_memattr_id_t attribute,
                           struct hwloc_location *initiator,
                           unsigned long flags,
-                          unsigned *nrp, hwloc_obj_t *targets, hwloc_uint64_t *values);
+                          unsigned *nr, hwloc_obj_t *targets, hwloc_uint64_t *values);
 
 /** \brief Return the initiators that have values for a given attribute for a specific target NUMA node.
  *
@@ -433,6 +524,8 @@ hwloc_memattr_get_targets(hwloc_topology_t topology,
  * If the attribute does not relate to a specific initiator
  * (it does not have the flag ::HWLOC_MEMATTR_FLAG_NEED_INITIATOR),
  * no initiator is returned.
+ *
+ * \return 0 on success or -1 on error.
  *
  * \note This function is meant for tools and debugging (listing internal information)
  * rather than for application queries. Applications should rather select useful

@@ -18,6 +18,7 @@
 #include "common/utils/spinlock.hpp"
 #include "sched/cache/key.hpp"
 #include "sched/sched.hpp"
+#include "sched/sched_timer.hpp"
 
 #include <atomic>
 #include <functional>
@@ -44,7 +45,7 @@ public:
     ccl_sched_cache(const ccl_sched_cache& other) = delete;
     ccl_sched_cache& operator=(const ccl_sched_cache& other) = delete;
     template <class Lambda>
-    std::pair<ccl_sched*, bool> find_or_create(ccl_sched_key&& key, Lambda create_fn);
+    std::pair<ccl_sched*, bool> find_or_create(ccl_sched_key&& key, const Lambda& create_fn);
     void recache(const ccl_sched_key& old_key, ccl_sched_key&& new_key);
     void release(ccl_sched* sched);
     bool try_flush();
@@ -60,16 +61,30 @@ private:
 };
 
 template <class Lambda>
-std::pair<ccl_sched*, bool> ccl_sched_cache::find_or_create(ccl_sched_key&& key, Lambda create_fn) {
+/// create_fn lmbda is NOT copied internally or used after function exit
+std::pair<ccl_sched*, bool> ccl_sched_cache::find_or_create(ccl_sched_key&& key,
+                                                            const Lambda& create_fn) {
     ccl_sched* sched = nullptr;
+
     bool is_created = false;
     {
         std::lock_guard<sched_cache_lock_t> lock{ guard };
         sched = find_unsafe(key);
         if (sched) {
+#ifdef CCL_ENABLE_ITT
+            __itt_event sched_cached_event = ccl::profile::itt::event_get("SCHED_CACHED");
+            ccl::profile::itt::event_start(sched_cached_event);
+#endif // CCL_ENABLE_ITT
             reference_counter++;
+#ifdef CCL_ENABLE_ITT
+            ccl::profile::itt::event_end(sched_cached_event);
+#endif // CCL_ENABLE_ITT
         }
         else {
+#ifdef CCL_ENABLE_ITT
+            __itt_event sched_new_event = ccl::profile::itt::event_get("SCHED_NEW");
+            ccl::profile::itt::event_start(sched_new_event);
+#endif // CCL_ENABLE_ITT
             LOG_DEBUG("didn't find sched in cache, the new one will be created");
             sched = create_fn();
             {
@@ -87,6 +102,9 @@ std::pair<ccl_sched*, bool> ccl_sched_cache::find_or_create(ccl_sched_key&& key,
                       table.load_factor(),
                       ", max_load_factor ",
                       table.max_load_factor());
+#ifdef CCL_ENABLE_ITT
+            ccl::profile::itt::event_end(sched_new_event);
+#endif // CCL_ENABLE_ITT
         }
     }
     LOG_TRACE("reference_counter=", reference_counter);

@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+# shellcheck shell=sh
+
+DEFAULT_BUNDLED_MPI="yes"
 
 get_script_path() (
     script="$1"
@@ -111,3 +114,36 @@ CPATH=$(prepend_path "${CCL_ROOT}/include" "${CPATH:-}"); export CPATH
 CMAKE_PREFIX_PATH=$(prepend_path "${CCL_ROOT}/lib/cmake/oneCCL" "${CMAKE_PREFIX_PATH:-}"); export CMAKE_PREFIX_PATH
 LIBRARY_PATH=$(prepend_path "${CCL_ROOT}/lib" "${LIBRARY_PATH:-}"); export LIBRARY_PATH
 LD_LIBRARY_PATH=$(prepend_path "${CCL_ROOT}/lib" "${LD_LIBRARY_PATH:-}"); export LD_LIBRARY_PATH
+
+args=$*
+for arg in $args
+do
+    case "$arg" in
+        --ccl-bundled-mpi=*)
+            ccl_bundled_mpi="${arg#*=}"
+            ;;
+    esac
+done
+
+if [ -z "${SETVARS_CALL:-}" ] ; then
+    if [ -z "${ccl_bundled_mpi:-}" ]; then
+        ccl_bundled_mpi="${DEFAULT_BUNDLED_MPI}"
+    elif [ "$ccl_bundled_mpi" != "yes" ] && [ "$ccl_bundled_mpi" != "no" ]; then
+        echo ":: WARNING: ccl_bundled_mpi=${ccl_bundled_mpi} is unrecognized."
+        echo ":: ccl_bundled_mpi will be set to ${DEFAULT_BUNDLED_MPI}"
+        ccl_bundled_mpi="${DEFAULT_BUNDLED_MPI}"
+    fi
+
+    if [ "$ccl_bundled_mpi" = "yes" ] ; then
+        export I_MPI_ROOT="${CCL_ROOT}/opt/mpi"
+        CPATH=$(prepend_path "${I_MPI_ROOT}/include" "${CPATH:-}"); export CPATH
+        LD_LIBRARY_PATH=$(prepend_path "${I_MPI_ROOT}/lib" "${LD_LIBRARY_PATH:-}") ; export LD_LIBRARY_PATH
+        LIBRARY_PATH=$(prepend_path "${I_MPI_ROOT}/lib" "${LIBRARY_PATH:-}"); export LIBRARY_PATH
+        PATH="${I_MPI_ROOT}/bin:${PATH}"; export PATH
+    fi
+else
+    if [ ! -z "${ccl_bundled_mpi:-}" ]; then
+        echo ":: WARNING: ccl_bundled_mpi was specified for setvars.sh script"
+        echo ":: ccl_bundled_mpi is only supported by direct call vars.sh, ignoring"
+    fi
+fi

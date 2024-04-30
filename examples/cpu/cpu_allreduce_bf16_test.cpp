@@ -35,7 +35,7 @@
         for (size_t i = 0; i < COUNT; i++) { \
             double expected = ((comm_size * (comm_size - 1) / 2) + ((float)(i)*comm_size)); \
             double max_error = g * expected; \
-            if (fabs(max_error) < fabs(expected - recv_buf[i])) { \
+            if (std::fabs(max_error) < std::fabs(expected - recv_buf[i])) { \
                 printf( \
                     "[%d] got recv_buf[%zu] = %0.7f, but expected = %0.7f, max_error = %0.16f\n", \
                     comm.rank(), \

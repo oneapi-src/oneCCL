@@ -5,7 +5,7 @@
 - Ubuntu* 18
 - GNU*: C, C++ 4.8.5 or higher.
 
-Refer to [System Requirements](https://software.intel.com/content/www/us/en/develop/articles/oneapi-collective-communication-library-system-requirements.html) for more details.
+Refer to [System Requirements](https://www.intel.com/content/www/us/en/developer/articles/system-requirements/oneapi-collective-communication-library-system-requirements.html) for more details.
 
 ### SYCL support <!-- omit in toc -->
 Intel(R) oneAPI DPC++/C++ Compiler with L0 v1.0 support

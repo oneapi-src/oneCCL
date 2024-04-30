@@ -16,7 +16,6 @@
 #pragma once
 
 #include "common/global/global.hpp"
-#include "sched/entry/coll/coll_entry_param.hpp"
 #include "sched/entry/copy/copy_helper.hpp"
 #if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
 #include "sched/entry/ze/ze_handle_exchange_entry.hpp"
@@ -24,7 +23,7 @@
 
 namespace ccl {
 
-void add_coll_entry(ccl_sched* sched, const ccl_coll_entry_param& param);
+void add_coll_entry(ccl_sched* sched, const ccl_coll_param& param);
 
 #if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
 static constexpr int invalid_host_buf_size = 0;
@@ -35,34 +34,36 @@ ze_event_handle_t add_signal_event(ccl_sched* sched);
 
 void add_comm_barrier(ccl_sched* sched,
                       ccl_comm* comm,
-                      ze_event_pool_handle_t ipc_pool = {},
-                      size_t ipc_event_idx = 0);
-
-void add_comm_barrier(ccl_sched* sched,
-                      ccl_comm* comm,
-                      std::vector<ze_event_handle_t>& wait_events,
+                      const std::vector<ze_event_handle_t>& wait_events,
+                      ze_event_handle_t& out_event,
                       ze_event_pool_handle_t ipc_pool = {},
                       size_t ipc_event_idx = 0);
 
 void add_handle_exchange(ccl_sched* sched,
                          ccl_comm* comm,
+                         const std::vector<ze_event_handle_t>& wait_events,
+                         ze_event_handle_t& out_event,
                          const std::vector<ze_handle_exchange_entry::mem_desc_t>& in_buffers,
                          int skip_rank = ccl_comm::invalid_rank,
                          ze_event_pool_handle_t pool = nullptr,
-                         size_t event_idx = 0);
+                         size_t event_idx = 0,
+                         const ccl::utils::pt2pt_handle_exchange_info& info = {});
 
-void add_coll(ccl_sched* sched,
-              const ccl_coll_entry_param& param,
-              std::vector<ze_event_handle_t>& wait_events);
+ze_event_handle_t add_coll(ccl_sched* sched,
+                           const ccl_coll_param& param,
+                           const std::vector<ze_event_handle_t>& wait_events);
 
 void add_scaleout(ccl_sched* sched,
-                  const ccl_coll_entry_param& in_coll_param,
+                  const ccl_coll_param& in_coll_param,
                   const bool is_single_node,
-                  std::vector<ze_event_handle_t>& wait_events,
+                  const std::vector<ze_event_handle_t>& wait_events,
+                  ze_event_handle_t& out_event,
                   const copy_attr& h2d_copy_attr = copy_attr(copy_direction::h2d),
                   ccl_comm* global_comm = nullptr,
                   ccl_buffer global_recv = {},
                   int global_root = 0);
+
+bool is_queue_in_order(const ccl_stream* s);
 #endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
 
 } // namespace ccl

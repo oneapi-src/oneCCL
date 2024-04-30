@@ -16,6 +16,7 @@
 #include <iomanip>
 #include <numeric>
 #include <sstream>
+#include <unordered_map>
 
 #include "common/global/global.hpp"
 #include "common/log/log.hpp"
@@ -23,6 +24,8 @@
 
 #ifdef CCL_ENABLE_ITT
 #include "ittnotify.h"
+#include <map>
+#include <stack>
 #endif // CCL_ENABLE_ITT
 
 namespace ccl {
@@ -65,78 +68,97 @@ std::string to_string(const sched_timer& timer) {
 namespace profile {
 namespace itt {
 
-static __itt_domain* get_domain() {
-    static __itt_domain* domain = __itt_domain_create("oneCCL");
-    return domain;
-}
-
-static __itt_string_handle* get_operation_handle() {
-    static __itt_string_handle* handle = __itt_string_handle_create("ccl_operation");
-    return handle;
-}
-
-static __itt_string_handle* get_api_call_handle() {
-    static __itt_string_handle* handle = __itt_string_handle_create("ccl_api_call");
-    return handle;
-}
-
-#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-
-static __itt_string_handle* get_preparation_handle() {
-    static __itt_string_handle* handle = __itt_string_handle_create("ccl_init");
-    return handle;
-}
-
-static __itt_string_handle* get_device_work_handle() {
-    static __itt_string_handle* handle = __itt_string_handle_create("ccl_submit_and_execute");
-    return handle;
-}
-
-static __itt_string_handle* get_deps_handling_handle() {
-    static __itt_string_handle* handle = __itt_string_handle_create("ccl_deps_handling");
-    return handle;
-}
-
-static __itt_string_handle* get_completion_handle() {
-    static __itt_string_handle* handle = __itt_string_handle_create("ccl_finalize");
-    return handle;
-}
-
-#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+static constexpr unsigned max_entry_name_length = 64;
+// Map of vectors of events that allows us to avoid multiple
+// expensive calls to `__itt_event_create`.
+thread_local std::unordered_map<const char*, std::vector<__itt_event>> event_cache;
+// Inflight events are events fetched from cache that were not returned yet.
+// This structure allows us to easily return finished event to cache vector
+// it belongs to.
+thread_local std::unordered_map<__itt_event, std::vector<__itt_event>*> inflight_event_cache;
+thread_local std::unordered_map<__itt_event, unsigned> inflight_event_ref_counts;
 
 void set_thread_name(const std::string& name) {
     __itt_thread_set_name(name.c_str());
 }
 
-static __itt_string_handle* get_handle_for_type(task_type type) {
-    switch (type) {
-        case task_type::operation: return get_operation_handle();
-        case task_type::api_call: return get_api_call_handle();
-#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-        case task_type::preparation: return get_preparation_handle();
-        case task_type::device_work: return get_device_work_handle();
-        case task_type::deps_handling: return get_deps_handling_handle();
-        case task_type::completion: return get_completion_handle();
-#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
-        default: CCL_THROW("invalid task type: ", (int)type);
+__itt_event event_get(const char* name) {
+    if (ccl::global_data::env().itt_level == 0) {
+        return invalid_event;
     }
+
+    __itt_event event;
+
+    auto cache_entry = event_cache.find(name);
+
+    if (cache_entry == event_cache.end()) {
+        // Initialize vector of __itt_events
+        event_cache[name];
+        cache_entry = event_cache.find(name);
+    }
+
+    // Entry in event_cache is initialized, we
+    // can fetch vector with specific event type
+    auto cached_vector = &cache_entry->second;
+
+    if (!cached_vector->empty()) {
+        // There is cached __itt_event handle
+        // that can be used once again
+        event = cached_vector->back();
+        cached_vector->pop_back();
+    }
+    else {
+        // No cached events
+        char prefix_name[max_entry_name_length] = "oneCCL::";
+        strncat(prefix_name, name, max_entry_name_length - strlen(prefix_name));
+        event = __itt_event_create(prefix_name, strlen(prefix_name));
+    }
+
+    // Record cache vector to which the event should be
+    // returned on event_end
+    inflight_event_cache[event] = cached_vector;
+
+    auto event_ref_count = inflight_event_ref_counts.find(event);
+
+    if (event_ref_count == inflight_event_ref_counts.end()) {
+        // The event handle is not in use by any entry
+        inflight_event_ref_counts[event] = 1;
+    }
+    else {
+        event_ref_count->second++;
+    }
+
+    return event;
 }
 
-void task_start(task_type type) {
-    if (ccl::global_data::env().itt_level == 0)
+void event_start(__itt_event event) {
+    if (ccl::global_data::env().itt_level == 0) {
         return;
+    }
 
-    auto* handle = get_handle_for_type(type);
-    __itt_task_begin(get_domain(), __itt_null, __itt_null, handle);
+    __itt_event_start(event);
 }
 
-void task_end(task_type type) {
-    if (ccl::global_data::env().itt_level == 0)
+void event_end(__itt_event event) {
+    if (ccl::global_data::env().itt_level == 0) {
         return;
+    }
 
-    // ignore for now, use only to identify the task that's being ended
-    (void)type;
-    __itt_task_end(get_domain());
+    __itt_event_end(event);
+    inflight_event_cache[event]->push_back(event);
+
+    auto event_ref_count = inflight_event_ref_counts.find(event);
+
+    CCL_THROW_IF_NOT(event_ref_count != inflight_event_ref_counts.end(), "itt event not found");
+
+    event_ref_count->second--;
+    if (event_ref_count->second == 0) {
+        // No more references to the event are currently used
+        // which means that we can remove the event from
+        // 'inflight' cache.
+        inflight_event_cache.erase(event);
+        inflight_event_ref_counts.erase(event);
+    }
 }
 
 } // namespace itt

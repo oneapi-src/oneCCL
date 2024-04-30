@@ -17,7 +17,6 @@
 
 #include "common/global/global.hpp"
 #include "comp/comp.hpp"
-#include "sched/entry/coll/coll_entry_param.hpp"
 #include "sched/entry/subsched_entry.hpp"
 
 class coll_entry : public subsched_entry,
@@ -33,7 +32,7 @@ public:
     }
 
     coll_entry() = delete;
-    coll_entry(ccl_sched* sched, const ccl_coll_entry_param& param, ccl_op_id_t op_id = 0)
+    coll_entry(ccl_sched* sched, const ccl_coll_param& param, ccl_op_id_t op_id = 0)
             : subsched_entry(
                   sched,
                   op_id,
@@ -79,7 +78,7 @@ public:
         return param.send_count;
     }
 
-    static ccl::status build_sched(ccl_sched* sched, const ccl_coll_entry_param& param);
+    static ccl::status build_sched(ccl_sched* sched, const ccl_coll_param& param);
 
 protected:
     void dump_detail(std::stringstream& str) const override {
@@ -102,5 +101,5 @@ protected:
     }
 
 private:
-    ccl_coll_entry_param param;
+    ccl_coll_param param;
 };

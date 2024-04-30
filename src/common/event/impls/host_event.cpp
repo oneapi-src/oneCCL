@@ -13,6 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#include "coll/coll_util.hpp"
 #include "common/request/request.hpp"
 #include "common/event/impls/host_event.hpp"
 #include "exec/exec.hpp"
@@ -30,8 +31,15 @@ host_event_impl::host_event_impl(ccl_request* r) : req(r) {
     }
 #ifdef CCL_ENABLE_SYCL
     native_event = req->share_native_event();
+    sync_event = req->share_sync_event();
+#ifdef CCL_ENABLE_ZE
+    if (sync_event) {
+        stream = req->get_sched()->coll_param.stream;
+        ze_context = stream->get_ze_context();
+    }
+#endif // CCL_ENABLE_ZE
 #endif // CCL_ENABLE_SYCL
-    if (req->synchronous) {
+    if (req->get_sched()->coll_attr.synchronous) {
         if (!ccl::global_data::get().executor.get()->is_locked) {
             ccl_release_request(req);
         }
@@ -39,7 +47,6 @@ host_event_impl::host_event_impl(ccl_request* r) : req(r) {
         // in place and in this case we mark request as completed,
         // all calls to wait() or test() will do nothing
         completed = true;
-        synchronous = true;
     }
 }
 
@@ -49,8 +56,7 @@ host_event_impl::~host_event_impl() {
     // event which always complete, this way LOG_ERROR is never called
     if (!completed
 #ifdef CCL_ENABLE_SYCL
-        && (ccl::global_data::env().enable_sycl_output_event &&
-            !utils::is_sycl_event_completed(get_native()))) {
+        && (native_event && !utils::is_sycl_event_completed(*native_event))) {
         LOG_WARN("not completed event is destroyed");
     }
 #else // CCL_ENABLE_SYCL
@@ -63,15 +69,41 @@ host_event_impl::~host_event_impl() {
     // but we need to ensure that the bound schedule is actually destroyed. For this
     // to happen, call wait() to do a proper finalization and cleanup.
     wait();
+
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    if (sync_event) {
+        auto& pools = ccl::global_data::get().ze_data->dynamic_event_pools;
+        auto pool_it = pools.find(ze_context);
+        if (pool_it == pools.end()) {
+            LOG_ERROR("pool must be initialized for the context");
+        }
+        else {
+            try {
+                pool_it->second.put_event(ccl::utils::get_native_event(*sync_event));
+            }
+            // runtime_error is __SYCL2020_DEPRECATED, catch generic exception
+            catch (sycl::exception& e) {
+                LOG_ERROR(
+                    "sycl event not recovered: ", e.what(), " potential resource/memory leak");
+            }
+        }
+    }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 }
 
 void host_event_impl::wait() {
     if (!completed) {
         auto* exec = ccl::global_data::get().executor.get();
-        ccl_wait_impl(exec, req);
-        if (synchronous && !exec->is_locked) {
+        auto wait_result = ccl_wait_impl(exec, req);
+        if (wait_result == ccl_wait_result_completed_not_released) {
             ccl_release_request(req);
         }
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+        //TODO call native_event->wait() both for out-of-order and in-order queues (MLSL-2374)
+        if (native_event && ccl::is_queue_in_order(stream)) {
+            native_event->wait();
+        }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
         completed = true;
     }
 }

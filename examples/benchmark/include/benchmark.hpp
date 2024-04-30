@@ -44,7 +44,7 @@ using namespace cl::sycl::access;
 #include "bf16.hpp"
 #include "coll.hpp"
 
-/* free letters: k e v z */
+/* free letters: k v z */
 void print_help_usage(const char* app) {
     PRINT("\nUSAGE:\n"
           "\t%s [OPTIONS]\n\n"
@@ -68,12 +68,13 @@ void print_help_usage(const char* app) {
           "\t[-g,--sycl_root_dev <select root devices only]: %d\n"
           "\t[-m,--sycl_mem_type <sycl memory type>]: %s\n"
           "\t[-u,--sycl_usm_type <sycl usm type>]: %s\n"
+          "\t[-e,--sycl_queue_type <sycl queue type>]: %s\n"
 #endif // CCL_ENABLE_SYCL
           "\t[-l,--coll <collectives list/all>]: %s\n"
           "\t[-d,--dtype <datatypes list/all>]: %s\n"
           "\t[-r,--reduction <reductions list/all>]: %s\n"
           "\t[-o,--csv_filepath <file to store CSV-formatted data into>]: %s\n"
-          "\t[-x,--ext <show additional information>]\n"
+          "\t[-x,--ext <show additional information>]: %s\n"
           "\t[-h,--help]\n\n"
           "example:\n\t--coll allgatherv,allreduce --backend host --elem_counts 64,1024\n",
           app,
@@ -97,20 +98,13 @@ void print_help_usage(const char* app) {
           DEFAULT_SYCL_ROOT_DEV,
           sycl_mem_names[DEFAULT_SYCL_MEM_TYPE].c_str(),
           sycl_usm_names[DEFAULT_SYCL_USM_TYPE].c_str(),
+          sycl_queue_names[DEFAULT_SYCL_QUEUE_TYPE].c_str(),
 #endif // CCL_ENABLE_SYCL
           DEFAULT_COLL_LIST,
           DEFAULT_DTYPES_LIST,
           DEFAULT_REDUCTIONS_LIST,
-          DEFAULT_CSV_FILEPATH);
-}
-
-template <class Dtype, class Container>
-std::string find_str_val(Container& mp, const Dtype& key) {
-    typename std::map<Dtype, std::string>::iterator it;
-    it = mp.find(key);
-    if (it != mp.end())
-        return it->second;
-    return NULL;
+          DEFAULT_CSV_FILEPATH,
+          ext_values_names[DEFAULT_EXT_VALUES].c_str());
 }
 
 template <class Dtype, class Container>
@@ -129,24 +123,6 @@ bool is_check_values_enabled(check_values_t check_values) {
     if (check_values == CHECK_LAST_ITER || check_values == CHECK_ALL_ITERS)
         return true;
     return ret;
-}
-
-int check_supported_options(const std::string& option_name,
-                            const std::string& option_value,
-                            const std::set<std::string>& supported_option_values) {
-    std::stringstream sstream;
-
-    if (supported_option_values.find(option_value) == supported_option_values.end()) {
-        PRINT("unsupported %s: %s", option_name.c_str(), option_value.c_str());
-
-        std::copy(supported_option_values.begin(),
-                  supported_option_values.end(),
-                  std::ostream_iterator<std::string>(sstream, " "));
-        PRINT("supported values: %s", sstream.str().c_str());
-        return -1;
-    }
-
-    return 0;
 }
 
 int set_backend(const std::string& option_value, backend_type_t& backend) {
@@ -202,6 +178,29 @@ int set_check_values(const std::string& option_value, check_values_t& check) {
     return 0;
 }
 
+int set_ext_info(const std::string& option_value, ext_values_t& ext) {
+    std::string option_name = "ext";
+
+    std::set<std::string> supported_option_values{ ext_values_names[EXT_OFF],
+                                                   ext_values_names[EXT_AUTO],
+                                                   ext_values_names[EXT_ON] };
+
+    if (check_supported_options(option_name, option_value, supported_option_values))
+        return -1;
+
+    if (option_value == ext_values_names[EXT_OFF]) {
+        ext = EXT_OFF;
+    }
+    else if (option_value == ext_values_names[EXT_AUTO]) {
+        ext = EXT_AUTO;
+    }
+    else if (option_value == ext_values_names[EXT_ON]) {
+        ext = EXT_ON;
+    }
+
+    return 0;
+}
+
 #ifdef CCL_ENABLE_SYCL
 int set_sycl_dev_type(const std::string& option_value, sycl_dev_type_t& dev) {
     std::string option_name = "sycl_dev_type";
@@ -244,6 +243,20 @@ int set_sycl_usm_type(const std::string& option_value, sycl_usm_type_t& usm) {
         return -1;
 
     usm = (option_value == sycl_usm_names[SYCL_USM_SHARED]) ? SYCL_USM_SHARED : SYCL_USM_DEVICE;
+
+    return 0;
+}
+
+int set_sycl_queue_type(const std::string& option_value, sycl_queue_type_t& queue) {
+    std::string option_name = "sycl_queue_type";
+    std::set<std::string> supported_option_values{ sycl_queue_names[SYCL_QUEUE_OUT_ORDER],
+                                                   sycl_queue_names[SYCL_QUEUE_IN_ORDER] };
+
+    if (check_supported_options(option_name, option_value, supported_option_values))
+        return -1;
+
+    queue = (option_value == sycl_queue_names[SYCL_QUEUE_OUT_ORDER]) ? SYCL_QUEUE_OUT_ORDER
+                                                                     : SYCL_QUEUE_IN_ORDER;
 
     return 0;
 }
@@ -332,6 +345,26 @@ size_t get_iter_count(size_t bytes, size_t max_iter_count, iter_policy_t policy)
     return res;
 }
 
+bool show_extened_info(ext_values_t ext_info) {
+    bool result = false;
+    switch (ext_info) {
+        case EXT_OFF:
+            setenv("CCL_PLATFORM_INFO_HIDE", "1", 0);
+            result = false;
+            break;
+        case EXT_AUTO:
+            setenv("CCL_PLATFORM_INFO_HIDE", "0", 0);
+            result = false;
+            break;
+        case EXT_ON:
+            setenv("CCL_PLATFORM_INFO_HIDE", "0", 0);
+            result = true;
+            break;
+        default: ASSERT(0, "unknown value for --ext %d", ext_info); break;
+    }
+    return result;
+}
+
 void store_to_csv(const user_options_t& options,
                   size_t nranks,
                   size_t elem_count,
@@ -358,9 +391,10 @@ void store_to_csv(const user_options_t& options,
             };
 
             csvf << nranks << "," << cop << "," << get_op_name() << "," << dtype_names.at(dtype)
-                 << "," << ccl::get_datatype_size(dtype) << "," << elem_count << "," << buf_count
-                 << "," << iter_count << "," << min_time << "," << max_time << "," << avg_time
-                 << "," << stddev << "," << wait_avg_time << std::endl;
+                 << "," << ccl::get_datatype_size(dtype) << "," << elem_count << ","
+                 << ccl::get_datatype_size(dtype) * elem_count << "," << buf_count << ","
+                 << iter_count << "," << min_time << "," << max_time << "," << avg_time << ","
+                 << stddev << "," << wait_avg_time << std::endl;
         }
         csvf.close();
     }
@@ -444,7 +478,7 @@ void print_timings(const ccl::communicator& comm,
            << std::setw(COL_WIDTH - 3) << std::setprecision(COL_PRECISION) << stddev
            << std::setw(COL_WIDTH + 3);
 
-        if (options.show_additional_info) {
+        if (show_extened_info(options.show_additional_info)) {
             ss << std::right << std::fixed << std::setprecision(COL_PRECISION) << wait_avg_time;
         }
         ss << std::endl;
@@ -506,16 +540,6 @@ void adjust_elem_counts(user_options_t& options) {
     }
 }
 
-bool is_valid_integer_option(const char* option) {
-    std::string str(option);
-    bool only_digits = (str.find_first_not_of("0123456789") == std::string::npos);
-    return (only_digits && atoi(option) >= 0);
-}
-
-bool is_valid_integer_option(int option) {
-    return (option >= 0);
-}
-
 void adjust_user_options(user_options_t& options) {
     adjust_elem_counts(options);
 }
@@ -535,7 +559,7 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
 
     char short_options[1024] = { 0 };
 
-    const char* base_options = "b:i:w:j:n:f:t:c:p:q:o:s:l:d:r:y:xh";
+    const char* base_options = "b:i:w:j:n:f:t:c:p:q:o:s:l:d:r:y:x:h";
     memcpy(short_options, base_options, strlen(base_options));
 
 #ifdef CCL_ENABLE_NUMA
@@ -544,7 +568,7 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
 #endif // CCL_ENABLE_NUMA
 
 #ifdef CCL_ENABLE_SYCL
-    const char* sycl_options = "a:g:m:u:";
+    const char* sycl_options = "a:g:m:u:e:";
     memcpy(short_options + strlen(short_options), sycl_options, strlen(sycl_options));
 #endif // CCL_ENABLE_SYCL
 
@@ -568,12 +592,13 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
         { "sycl_root_dev", required_argument, nullptr, 'g' },
         { "sycl_mem_type", required_argument, nullptr, 'm' },
         { "sycl_usm_type", required_argument, nullptr, 'u' },
+        { "sycl_queue_type", required_argument, nullptr, 'e' },
 #endif // CCL_ENABLE_SYCL
         { "coll", required_argument, nullptr, 'l' },
         { "dtype", required_argument, nullptr, 'd' },
         { "reduction", required_argument, nullptr, 'r' },
         { "csv_filepath", required_argument, nullptr, 'o' },
-        { "ext", no_argument, nullptr, 'x' },
+        { "ext", required_argument, nullptr, 'x' },
         { "help", no_argument, nullptr, 'h' },
         { nullptr, 0, nullptr, 0 } // required at end of array.
     };
@@ -675,6 +700,12 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
                     errors++;
                 }
                 break;
+            case 'e':
+                if (set_sycl_queue_type(optarg, options.sycl_queue_type)) {
+                    PRINT("failed to parse 'sycl_queue_type' option");
+                    errors++;
+                }
+                break;
 #endif // CCL_ENABLE_SYCL
             case 'l':
                 if (strcmp("all", optarg) == 0) {
@@ -694,7 +725,12 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
                 should_parse_reductions = true;
                 break;
             case 'o': options.csv_filepath = std::string(optarg); break;
-            case 'x': options.show_additional_info = true; break;
+            case 'x':
+                if (set_ext_info(optarg, options.show_additional_info)) {
+                    PRINT("failed to parse 'ext' option");
+                    errors++;
+                };
+                break;
             case 'h': return -1;
             default:
                 PRINT("failed to parse unknown option");
@@ -721,10 +757,11 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
     }
 
     if (options.inplace) {
-        //TODO: "allgatherv"
-        std::initializer_list<std::string> supported_colls = { "allreduce",
-                                                               "alltoall",
-                                                               "alltoallv" };
+        //TODO: "allgatherv", "reduce_scatter" it'd pass with sycl kernels
+        // they must be checked with schedule architicture
+        std::initializer_list<std::string> supported_colls = {
+            "allgatherv", "allreduce", "alltoall", "alltoallv", "reduce_scatter"
+        };
         for (auto name : options.coll_names) {
             if (!is_inplace_supported(name, supported_colls)) {
                 PRINT("inplace is not supported for %s yet", name.c_str());
@@ -790,40 +827,45 @@ void print_user_options(const user_options_t& options, const ccl::communicator& 
     std::string backend_str = find_str_val(backend_names, options.backend);
     std::string iter_policy_str = find_str_val(iter_policy_names, options.iter_policy);
     std::string check_values_str = find_str_val(check_values_names, options.check_values);
+    std::string show_additional_info_str =
+        find_str_val(ext_values_names, options.show_additional_info);
 
 #ifdef CCL_ENABLE_SYCL
     std::string sycl_dev_type_str = find_str_val(sycl_dev_names, options.sycl_dev_type);
     std::string sycl_mem_type_str = find_str_val(sycl_mem_names, options.sycl_mem_type);
     std::string sycl_usm_type_str = find_str_val(sycl_usm_names, options.sycl_usm_type);
-#endif
+    std::string sycl_queue_type_str = find_str_val(sycl_queue_names, options.sycl_queue_type);
+#endif // CCL_ENABLE_SYCL
 
     PRINT_BY_ROOT(comm,
                   "\noptions:"
-                  "\n  processes:      %d"
-                  "\n  backend:        %s"
-                  "\n  iters:          %zu"
-                  "\n  warmup_iters:   %zu"
-                  "\n  iter_policy:    %s"
-                  "\n  buf_count:      %zu"
-                  "\n  min_elem_count: %zu"
-                  "\n  max_elem_count: %zu"
-                  "\n  elem_counts:    %s"
-                  "\n  check:          %s"
-                  "\n  cache:          %d"
-                  "\n  inplace:        %d"
+                  "\n  processes:       %d"
+                  "\n  backend:         %s"
+                  "\n  iters:           %zu"
+                  "\n  warmup_iters:    %zu"
+                  "\n  iter_policy:     %s"
+                  "\n  buf_count:       %zu"
+                  "\n  min_elem_count:  %zu"
+                  "\n  max_elem_count:  %zu"
+                  "\n  elem_counts:     %s"
+                  "\n  check:           %s"
+                  "\n  cache:           %d"
+                  "\n  inplace:         %d"
 #ifdef CCL_ENABLE_NUMA
-                  "\n  numa_node:      %s"
+                  "\n  numa_node:       %s"
 #endif // CCL_ENABLE_NUMA
 #ifdef CCL_ENABLE_SYCL
-                  "\n  sycl_dev_type:  %s"
-                  "\n  sycl_root_dev:  %d"
-                  "\n  sycl_mem_type:  %s"
-                  "\n  sycl_usm_type:  %s"
+                  "\n  sycl_dev_type:   %s"
+                  "\n  sycl_root_dev:   %d"
+                  "\n  sycl_mem_type:   %s"
+                  "\n  sycl_usm_type:   %s"
+                  "\n  sycl_queue_type: %s"
 #endif // CCL_ENABLE_SYCL
-                  "\n  collectives:    %s"
-                  "\n  datatypes:      %s"
-                  "\n  reductions:     %s"
-                  "\n  csv_filepath:   %s",
+                  "\n  collectives:     %s"
+                  "\n  datatypes:       %s"
+                  "\n  reductions:      %s"
+                  "\n  extended info:   %s"
+                  "\n  csv_filepath:    %s",
                   comm.size(),
                   backend_str.c_str(),
                   options.iters,
@@ -846,9 +888,11 @@ void print_user_options(const user_options_t& options, const ccl::communicator& 
                   options.sycl_root_dev,
                   sycl_mem_type_str.c_str(),
                   sycl_usm_type_str.c_str(),
+                  sycl_queue_type_str.c_str(),
 #endif // CCL_ENABLE_SYCL
                   collectives_str.c_str(),
                   datatypes_str.c_str(),
                   reductions_str.c_str(),
+                  show_additional_info_str.c_str(),
                   options.csv_filepath.c_str());
 }

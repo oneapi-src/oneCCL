@@ -29,9 +29,8 @@ static int get_unique_id() {
 }
 
 static kvs::address_type convert_id_to_addr(int id) {
-    kvs::address_type addr;
+    kvs::address_type addr{ 0 };
 
-    memset(addr.data(), 0, sizeof(addr));
     memcpy(addr.data(), &id, sizeof(id));
 
     return addr;

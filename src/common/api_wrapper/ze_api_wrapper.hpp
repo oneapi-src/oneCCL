@@ -57,11 +57,14 @@ typedef struct ze_lib_ops {
     decltype(zeCommandListAppendMemoryCopy) *zeCommandListAppendMemoryCopy;
     decltype(zeCommandListAppendLaunchKernel) *zeCommandListAppendLaunchKernel;
     decltype(zeCommandListAppendWaitOnEvents) *zeCommandListAppendWaitOnEvents;
+    decltype(zeCommandListAppendSignalEvent) *zeCommandListAppendSignalEvent;
     decltype(zeCommandListAppendBarrier) *zeCommandListAppendBarrier;
+    decltype(zeCommandListAppendMemoryRangesBarrier) *zeCommandListAppendMemoryRangesBarrier;
     decltype(zeCommandListClose) *zeCommandListClose;
     decltype(zeCommandListReset) *zeCommandListReset;
     decltype(zeCommandListDestroy) *zeCommandListDestroy;
     decltype(zeContextCreate) *zeContextCreate;
+    decltype(zeContextSystemBarrier) *zeContextSystemBarrier;
     decltype(zeContextDestroy) *zeContextDestroy;
     decltype(zeEventPoolCreate) *zeEventPoolCreate;
     decltype(zeEventCreate) *zeEventCreate;
@@ -86,6 +89,7 @@ typedef struct ze_lib_ops {
     decltype(zeModuleDestroy) *zeModuleDestroy;
     decltype(zeModuleBuildLogGetString) *zeModuleBuildLogGetString;
     decltype(zeModuleBuildLogDestroy) *zeModuleBuildLogDestroy;
+    decltype(zeModuleGetNativeBinary) *zeModuleGetNativeBinary;
     decltype(zeDeviceGetComputeProperties) *zeDeviceGetComputeProperties;
     decltype(zeDeviceGetMemoryAccessProperties) *zeDeviceGetMemoryAccessProperties;
     decltype(zeDeviceGetMemoryProperties) *zeDeviceGetMemoryProperties;
@@ -95,6 +99,14 @@ typedef struct ze_lib_ops {
     decltype(zesFabricPortGetConfig) *zesFabricPortGetConfig;
     decltype(zesFabricPortGetProperties) *zesFabricPortGetProperties;
     decltype(zesFabricPortGetState) *zesFabricPortGetState;
+#ifdef ZE_PCI_PROPERTIES_EXT_NAME
+    decltype(zeDevicePciGetPropertiesExt) *zeDevicePciGetPropertiesExt;
+#endif // ZE_PCI_PROPERTIES_EXT_NAME
+    decltype(zeDriverGetExtensionFunctionAddress) *zeDriverGetExtensionFunctionAddress;
+    decltype(zeFabricVertexGetExp) *zeFabricVertexGetExp;
+    decltype(zeFabricVertexGetSubVerticesExp) *zeFabricVertexGetSubVerticesExp;
+    decltype(zeFabricEdgeGetExp) *zeFabricEdgeGetExp;
+    decltype(zeFabricEdgeGetPropertiesExp) *zeFabricEdgeGetPropertiesExp;
 } ze_lib_ops_t;
 
 static std::vector<std::string> ze_fn_names = {
@@ -127,11 +139,14 @@ static std::vector<std::string> ze_fn_names = {
     "zeCommandListAppendMemoryCopy",
     "zeCommandListAppendLaunchKernel",
     "zeCommandListAppendWaitOnEvents",
+    "zeCommandListAppendSignalEvent",
     "zeCommandListAppendBarrier",
+    "zeCommandListAppendMemoryRangesBarrier",
     "zeCommandListClose",
     "zeCommandListReset",
     "zeCommandListDestroy",
     "zeContextCreate",
+    "zeContextSystemBarrier",
     "zeContextDestroy",
     "zeEventPoolCreate",
     "zeEventCreate",
@@ -156,6 +171,7 @@ static std::vector<std::string> ze_fn_names = {
     "zeModuleDestroy",
     "zeModuleBuildLogGetString",
     "zeModuleBuildLogDestroy",
+    "zeModuleGetNativeBinary",
     "zeDeviceGetComputeProperties",
     "zeDeviceGetMemoryAccessProperties",
     "zeDeviceGetMemoryProperties",
@@ -165,6 +181,14 @@ static std::vector<std::string> ze_fn_names = {
     "zesFabricPortGetConfig",
     "zesFabricPortGetProperties",
     "zesFabricPortGetState",
+#ifdef ZE_PCI_PROPERTIES_EXT_NAME
+    "zeDevicePciGetPropertiesExt",
+#endif // ZE_PCI_PROPERTIES_EXT_NAME
+    "zeDriverGetExtensionFunctionAddress",
+    "zeFabricVertexGetExp",
+    "zeFabricVertexGetSubVerticesExp",
+    "zeFabricEdgeGetExp",
+    "zeFabricEdgeGetPropertiesExp",
 };
 
 extern ccl::ze_lib_ops_t ze_lib_ops;
@@ -199,11 +223,15 @@ extern ccl::ze_lib_ops_t ze_lib_ops;
 #define zeCommandListAppendMemoryCopy     ccl::ze_lib_ops.zeCommandListAppendMemoryCopy
 #define zeCommandListAppendLaunchKernel   ccl::ze_lib_ops.zeCommandListAppendLaunchKernel
 #define zeCommandListAppendWaitOnEvents   ccl::ze_lib_ops.zeCommandListAppendWaitOnEvents
+#define zeCommandListAppendSignalEvent    ccl::ze_lib_ops.zeCommandListAppendSignalEvent
 #define zeCommandListAppendBarrier        ccl::ze_lib_ops.zeCommandListAppendBarrier
+#define zeCommandListAppendMemoryRangesBarrier \
+    ccl::ze_lib_ops.zeCommandListAppendMemoryRangesBarrier
 #define zeCommandListClose                ccl::ze_lib_ops.zeCommandListClose
 #define zeCommandListReset                ccl::ze_lib_ops.zeCommandListReset
 #define zeCommandListDestroy              ccl::ze_lib_ops.zeCommandListDestroy
 #define zeContextCreate                   ccl::ze_lib_ops.zeContextCreate
+#define zeContextSystemBarrier            ccl::ze_lib_ops.zeContextSystemBarrier
 #define zeContextDestroy                  ccl::ze_lib_ops.zeContextDestroy
 #define zeEventPoolCreate                 ccl::ze_lib_ops.zeEventPoolCreate
 #define zeEventCreate                     ccl::ze_lib_ops.zeEventCreate
@@ -228,6 +256,7 @@ extern ccl::ze_lib_ops_t ze_lib_ops;
 #define zeModuleDestroy                   ccl::ze_lib_ops.zeModuleDestroy
 #define zeModuleBuildLogGetString         ccl::ze_lib_ops.zeModuleBuildLogGetString
 #define zeModuleBuildLogDestroy           ccl::ze_lib_ops.zeModuleBuildLogDestroy
+#define zeModuleGetNativeBinary           ccl::ze_lib_ops.zeModuleGetNativeBinary
 #define zeDeviceGetComputeProperties      ccl::ze_lib_ops.zeDeviceGetComputeProperties
 #define zeDeviceGetMemoryAccessProperties ccl::ze_lib_ops.zeDeviceGetMemoryAccessProperties
 #define zeDeviceGetMemoryProperties       ccl::ze_lib_ops.zeDeviceGetMemoryProperties
@@ -237,6 +266,14 @@ extern ccl::ze_lib_ops_t ze_lib_ops;
 #define zesFabricPortGetConfig            ccl::ze_lib_ops.zesFabricPortGetConfig
 #define zesFabricPortGetProperties        ccl::ze_lib_ops.zesFabricPortGetProperties
 #define zesFabricPortGetState             ccl::ze_lib_ops.zesFabricPortGetState
+#ifdef ZE_PCI_PROPERTIES_EXT_NAME
+#define zeDevicePciGetPropertiesExt ccl::ze_lib_ops.zeDevicePciGetPropertiesExt
+#endif // ZE_PCI_PROPERTIES_EXT_NAME
+#define zeDriverGetExtensionFunctionAddress ccl::ze_lib_ops.zeDriverGetExtensionFunctionAddress
+#define zeFabricVertexGetExp                ccl::ze_lib_ops.zeFabricVertexGetExp
+#define zeFabricVertexGetSubVerticesExp     ccl::ze_lib_ops.zeFabricVertexGetSubVerticesExp
+#define zeFabricEdgeGetExp                  ccl::ze_lib_ops.zeFabricEdgeGetExp
+#define zeFabricEdgeGetPropertiesExp        ccl::ze_lib_ops.zeFabricEdgeGetPropertiesExp
 
 bool ze_api_init();
 void ze_api_fini();

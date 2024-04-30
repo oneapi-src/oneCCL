@@ -28,6 +28,8 @@ public:
     }
 
     write_entry() = delete;
+    write_entry(const write_entry& other) = delete;
+    write_entry& operator=(const write_entry& other) = delete;
     write_entry(ccl_sched* sched,
                 ccl_buffer src_buf,
                 atl_mr_t* src_mr,

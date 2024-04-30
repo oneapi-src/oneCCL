@@ -557,15 +557,12 @@ atl_status_t atl_mpi_ctx::set_impi_env(const atl_attr_t& attr, const atl_mpi_lib
     setenv("I_MPI_SHM_CMA", "0", 0);
     if (attr.in.enable_hmem && lib_attr.hmem) {
         setenv("I_MPI_OFFLOAD", "2", 0);
-        setenv("I_MPI_OFFLOAD_TOPOLIB", "l0", 0);
-        setenv("I_MPI_OFFLOAD_QUEUE_CACHE", "1", 0);
-        setenv("I_MPI_OFFLOAD_LIST_CACHE", "1", 0);
-        setenv("I_MPI_OFFLOAD_MEMCPY_KIND", "blocked", 0);
         if (attr.in.ep_count > 1) {
             /* try to set global lock level before vci level
                because setenv is invoked with overwrite=0 */
             setenv("I_MPI_THREAD_LOCK_LEVEL", "global", 0);
         }
+        LOG_DEBUG("IMPI case: gpu support is enabled");
     }
 #endif // CCL_ENABLE_SYCL
 
@@ -586,18 +583,6 @@ atl_status_t atl_mpi_ctx::set_mpich_env(const atl_attr_t& attr) {
     setenv("MPIR_CVAR_CH4_NUM_VCIS", ep_count_str, 0);
     setenv("MPIR_CVAR_CH4_OFI_MAX_VCIS", ep_count_str, 0);
     setenv("MPIR_COMM_HINT_VCI", EP_IDX_KEY, 0);
-
-    int enable_gpu = 0;
-#ifdef CCL_ENABLE_SYCL
-    if (attr.in.enable_hmem) {
-        enable_gpu = 1;
-    }
-#endif // CCL_ENABLE_SYCL
-    setenv("MPIR_CVAR_ENABLE_GPU", (enable_gpu ? "1" : "0"), 0);
-
-    if (enable_gpu) {
-        setenv("MPIR_CVAR_CH4_IPC_ZE_SHAREABLE_HANDLE", "pidfd", 0);
-    }
 
     auto& env = ccl::global_data::env();
     if (env.log_level >= ccl_log_level::debug) {
@@ -621,11 +606,11 @@ atl_status_t atl_mpi_ctx::check_impi_env(const atl_attr_t& attr) {
     if (atoi(ep_count_env) != (int)(get_ep_count(attr)))
         return ATL_STATUS_FAILURE;
 
-    if (!getenv("I_MPI_ROOT")) {
+    if (!getenv("ONEAPI_ROOT") && !getenv("I_MPI_ROOT")) {
         atl_mpi_lib_type_t type = ATL_MPI_LIB_IMPI;
         LOG_ERROR("CCL/MPI uses ",
                   mpi_lib_infos[type].version_prefix_1,
-                  " but I_MPI_ROOT is not set. ",
+                  " but neither I_MPI_ROOT nor ONEAPI_ROOT is set. ",
                   "Please source ",
                   mpi_lib_infos[type].kind_value,
                   " version of ",

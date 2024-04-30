@@ -12,6 +12,7 @@ function(set_lp_env)
     set(CLANG_BF16_AVX512BF_MIN_SUPPORTED "9.3.0")
 
     if (${CMAKE_C_COMPILER_ID} STREQUAL "Intel"
+        OR (${CMAKE_C_COMPILER_ID} STREQUAL "IntelLLVM")
         OR (${CMAKE_C_COMPILER_ID} STREQUAL "Clang"
             AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${CLANG_BF16_MIN_SUPPORTED})
         OR (${CMAKE_C_COMPILER_ID} STREQUAL "GNU"
@@ -30,7 +31,8 @@ function(set_lp_env)
     string(REGEX MATCH "([0-9]+)\\.([0-9]+)" BINUTILS_VERSION ${BINUTILS_VERSION_RAW})
     message(STATUS "binutils version: " "${BINUTILS_VERSION}")
 
-    if ((${CMAKE_C_COMPILER_ID} STREQUAL "Intel"
+    if (((${CMAKE_C_COMPILER_ID} STREQUAL "Intel"
+        OR ${CMAKE_C_COMPILER_ID} STREQUAL "IntelLLVM")
             AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${ICC_BF16_AVX512BF_MIN_SUPPORTED})
         OR (${CMAKE_C_COMPILER_ID} STREQUAL "Clang"
             AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${CLANG_BF16_AVX512BF_MIN_SUPPORTED})
@@ -46,7 +48,7 @@ function(set_lp_env)
     message(STATUS "BF16 AVX512BF compiler: ${CCL_BF16_AVX512BF_COMPILER}")
 
     if (CCL_BF16_COMPILER)
-        if ((${CMAKE_C_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_C_COMPILER_ID} STREQUAL "GNU"))
+        if ((${CMAKE_C_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_C_COMPILER_ID} STREQUAL "IntelLLVM" OR  ${CMAKE_C_COMPILER_ID} STREQUAL "GNU"))
             add_definitions(-DCCL_BF16_TARGET_ATTRIBUTES)
             set(CCL_BF16_TARGET_ATTRIBUTES ON)
         else()
@@ -66,6 +68,7 @@ function(set_lp_env)
     set(CLANG_FP16_MIN_SUPPORTED "9.0.0")
 
     if (${CMAKE_C_COMPILER_ID} STREQUAL "Intel"
+        OR (${CMAKE_C_COMPILER_ID} STREQUAL "IntelLLVM")
         OR (${CMAKE_C_COMPILER_ID} STREQUAL "Clang"
             AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${CLANG_FP16_MIN_SUPPORTED})
         OR (${CMAKE_C_COMPILER_ID} STREQUAL "GNU"
@@ -79,7 +82,8 @@ function(set_lp_env)
     message(STATUS "FP16 compiler: ${CCL_FP16_COMPILER}")
 
     if (CCL_FP16_COMPILER)
-        if ((${CMAKE_C_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_C_COMPILER_ID} STREQUAL "GNU"))
+        if ((${CMAKE_C_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_C_COMPILER_ID} STREQUAL "IntelLLVM"
+        OR ${CMAKE_C_COMPILER_ID} STREQUAL "GNU"))
             add_definitions(-DCCL_FP16_TARGET_ATTRIBUTES)
             set(CCL_FP16_TARGET_ATTRIBUTES ON)
         else()
@@ -104,6 +108,7 @@ function(set_avx_env)
     set(CLANG_AVX_MIN_SUPPORTED "9.0.0")
 
     if (${CMAKE_C_COMPILER_ID} STREQUAL "Intel"
+        OR ${CMAKE_C_COMPILER_ID} STREQUAL "IntelLLVM"
         OR (${CMAKE_C_COMPILER_ID} STREQUAL "Clang"
             AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${CLANG_AVX_MIN_SUPPORTED})
         OR (${CMAKE_C_COMPILER_ID} STREQUAL "GNU"
@@ -117,7 +122,7 @@ function(set_avx_env)
     message(STATUS "AVX compiler: ${CCL_AVX_COMPILER}")
 
     if (CCL_AVX_COMPILER)
-        if ((${CMAKE_C_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_C_COMPILER_ID} STREQUAL "GNU"))
+        if ((${CMAKE_C_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_C_COMPILER_ID} STREQUAL "IntelLLVM" OR ${CMAKE_C_COMPILER_ID} STREQUAL "GNU"))
             add_definitions(-DCCL_AVX_TARGET_ATTRIBUTES)
             set(CCL_AVX_TARGET_ATTRIBUTES ON)
         else()
@@ -147,6 +152,10 @@ function(check_compiler_version)
     elseif(${CMAKE_C_COMPILER_ID} STREQUAL "Clang")
         if(${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${CLANG_MIN_SUPPORTED})
             message(FATAL_ERROR "clang min supported version is ${CLANG_MIN_SUPPORTED}, current version ${CMAKE_C_COMPILER_VERSION}")
+        endif()
+    elseif(${CMAKE_C_COMPILER_ID} STREQUAL "IntelLLVM")
+        if(${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${ICC_MIN_SUPPORTED})
+            message(FATAL_ERROR "icc min supported version is ${ICC_MIN_SUPPORTED}, current version ${CMAKE_C_COMPILER_VERSION}")
         endif()
     else()
         message(WARNING "Compilation with ${CMAKE_C_COMPILER_ID} was not tested, no warranty")

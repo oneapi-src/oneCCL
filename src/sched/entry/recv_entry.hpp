@@ -28,6 +28,8 @@ public:
         return "RECV";
     }
 
+    recv_entry(const recv_entry& other) = delete;
+    recv_entry& operator=(const recv_entry& other) = delete;
     recv_entry() = delete;
     recv_entry(ccl_sched* sched,
                ccl_buffer buf,
@@ -53,10 +55,14 @@ public:
     void start() override {
         update_fields();
 
-        atl_tag = comm->get_atl_comm()->tag_creator->create(
-            src, comm->get_comm_id(), sched->sched_id, sched->get_op_id());
-        size_t bytes = cnt * dtype.size();
+        uint16_t sched_id = sched->sched_id;
+        if (sched->coll_param.ctype == ccl_coll_recv) {
+            sched_id = comm->get_atl_comm()->tag_creator->get_pt2pt_sched_id();
+        }
 
+        atl_tag = comm->get_atl_comm()->tag_creator->create(
+            src, comm->get_comm_id(), sched_id, sched->get_op_id());
+        size_t bytes = cnt * dtype.size();
         LOG_DEBUG("RECV entry src ", src, ", tag ", atl_tag, ", req ", req, ", bytes ", bytes);
 
         atl_status_t atl_status = comm->get_atl_comm()->recv(

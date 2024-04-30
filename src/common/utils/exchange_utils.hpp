@@ -36,6 +36,25 @@ bool allgatherv(std::shared_ptr<atl_base_comm> comm,
                 const std::vector<int>& recv_bytes,
                 bool sync = true);
 
+void check(std::shared_ptr<atl_base_comm> comm, atl_req_t& req);
+
+void recv(std::shared_ptr<atl_base_comm> comm,
+          void* buf,
+          int count,
+          int peer_rank,
+          uint64_t tag,
+          bool sync = true);
+
+void send(std::shared_ptr<atl_base_comm> comm,
+          void* buf,
+          int count,
+          int peer_rank,
+          uint64_t tag,
+          bool sync = true);
+
+void send_ack_to_peer(std::shared_ptr<atl_base_comm> comm, uint64_t tag, int peer_rank);
+void recv_ack_from_peer(std::shared_ptr<atl_base_comm> comm, uint64_t tag, int peer_rank);
+
 int check_msg_retval(std::string operation_name,
                      ssize_t bytes,
                      struct iovec iov,

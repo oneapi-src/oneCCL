@@ -37,10 +37,6 @@ ccl_request::~ccl_request() {
     if (counter != 0 && !ccl::global_data::get().is_ft_enabled) {
         LOG_WARN("unexpected completion_counter ", counter);
     }
-
-    // notify sched about request release to update its state.
-    // if event is empty, sched will that
-    sched.release_sync_event(this);
 }
 
 bool ccl_request::complete() {
@@ -73,8 +69,8 @@ bool ccl_request::is_completed() const {
 
 void ccl_request::set_counter(int counter) {
     // add +1 to the inital counter value, this allows us to order
-    // finalization/cleanup work on the request and its schedule rigth
-    // before it's completion, like this:
+    // finalization/cleanup work on the request and its schedule right
+    // before its completion, like this:
     // if (req->complete_counter() == 1) {
     //    // do cleanup
     //    req->complete();
