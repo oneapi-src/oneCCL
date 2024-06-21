@@ -44,6 +44,9 @@ struct sycl_base_coll : base_coll, private strategy {
         size_t send_multiplier = coll_strategy::get_send_multiplier();
         size_t recv_multiplier = coll_strategy::get_recv_multiplier();
 
+        if (base_coll::get_max_elem_count() == 0) {
+            return;
+        }
         for (size_t rank_idx = 0; rank_idx < base_coll::get_ranks_per_proc(); rank_idx++) {
             if (base_coll::get_sycl_mem_type() == SYCL_MEM_USM) {
                 allocators.push_back(buf_allocator<Dtype>(streams[rank_idx].get_native()));
@@ -60,24 +63,36 @@ struct sycl_base_coll : base_coll, private strategy {
                     ASSERT(0, "unexpected bench_alloc_type %d", bench_alloc_type);
 
                 for (size_t idx = 0; idx < base_coll::get_buf_count(); idx++) {
-                    size_t multiplier = send_multiplier;
-                    if (strcmp(coll_strategy::class_name(), "allgatherv") == 0 &&
-                        base_coll::get_inplace()) {
-                        // for allgatherv, send_multiplier = 1 and recv_multiplier = comm_size
-                        // since recv_buffer is comm_size*sizeof(send_buffer).
-                        // for inplace, send_buffer is same size as recv_buffer
-                        // TODO: create prepare_internal for allgatherv
-                        multiplier = recv_multiplier;
-                    }
-                    send_bufs[idx][rank_idx] = allocator.allocate(
-                        base_coll::get_max_elem_count() * multiplier, usm_alloc_type);
-
-                    if (base_coll::get_inplace()) {
-                        recv_bufs[idx][rank_idx] = send_bufs[idx][rank_idx];
-                    }
-                    else {
+                    if (!base_coll::get_inplace()) {
+                        send_bufs[idx][rank_idx] = allocator.allocate(
+                            base_coll::get_max_elem_count() * send_multiplier, usm_alloc_type);
                         recv_bufs[idx][rank_idx] = allocator.allocate(
                             base_coll::get_max_elem_count() * recv_multiplier, usm_alloc_type);
+                    }
+                    else {
+                        bool is_allgatherv = strcmp(coll_strategy::class_name(), "allgatherv") == 0;
+                        bool is_allgather = strcmp(coll_strategy::class_name(), "allgather") == 0;
+                        bool is_reduce_scatter =
+                            strcmp(coll_strategy::class_name(), "reduce_scatter") == 0;
+                        if (is_allgatherv || is_allgather) {
+                            recv_bufs[idx][rank_idx] = allocator.allocate(
+                                base_coll::get_max_elem_count() * recv_multiplier, usm_alloc_type);
+                            send_bufs[idx][rank_idx] =
+                                nullptr; // This will be set when the count is known, since the offset is unknown at this point.
+                        }
+                        else if (is_reduce_scatter) {
+                            send_bufs[idx][rank_idx] = allocator.allocate(
+                                base_coll::get_max_elem_count() * send_multiplier, usm_alloc_type);
+                            // recv_buf will be set when the count is known, since the offset is unknown at this point.
+                            recv_bufs[idx][rank_idx] = nullptr;
+                        }
+                        else {
+                            send_bufs[idx][rank_idx] =
+                                allocator.allocate(base_coll::get_max_elem_count() *
+                                                       std::max(send_multiplier, recv_multiplier),
+                                                   usm_alloc_type);
+                            recv_bufs[idx][rank_idx] = send_bufs[idx][rank_idx];
+                        }
                     }
                 }
             }
@@ -90,7 +105,6 @@ struct sycl_base_coll : base_coll, private strategy {
                 }
             }
         }
-
         host_send_buf.resize(base_coll::get_max_elem_count() * send_multiplier);
         host_recv_buf.resize(base_coll::get_max_elem_count() * recv_multiplier);
     }
@@ -135,20 +149,6 @@ struct sycl_base_coll : base_coll, private strategy {
                                               coll_strategy::get_op_attr(attr));
             }
             else {
-                /*sycl_buffer_t<Dtype>& send_buf =
-                    *(static_cast<sycl_buffer_t<Dtype>*>(send_bufs[buf_idx][rank_idx]));
-                sycl_buffer_t<Dtype>& recv_buf =
-                    *(static_cast<sycl_buffer_t<Dtype>*>(recv_bufs[buf_idx][rank_idx]));
-                coll_strategy::template start_internal<sycl_buffer_t<Dtype>&>(
-                    comms[rank_idx],
-                    count,
-                    send_buf,
-                    recv_buf,
-                    attr,
-                    reqs,
-                    streams[rank_idx],
-                    coll_strategy::get_op_attr(attr));*/
-
                 throw std::runtime_error(std::string(__FUNCTION__) +
                                          " - only USM buffers are supported\n");
             }
@@ -171,13 +171,14 @@ struct sycl_base_coll : base_coll, private strategy {
 
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
             if (base_coll::get_sycl_mem_type() == SYCL_MEM_USM) {
-                if (strcmp(coll_strategy::class_name(), "allgatherv") == 0 &&
+                if ((strcmp(coll_strategy::class_name(), "allgatherv") == 0 ||
+                     strcmp(coll_strategy::class_name(), "allgather") == 0) &&
                     base_coll::get_inplace()) {
-                    // for inplace allgatherv, the input data needs to be at an index comm_rank*send_count
+                    // for inplace allgather(v), the input data needs to be at an index comm_rank*send_count
                     // of the send_buffer rather than at index 0 for the non-inplace case
                     //  TODO: create prepare_internal for allgatherv
                     stream.get_native()
-                        .memcpy((char*)(send_bufs[b_idx][rank_idx]) + send_bytes * comm_rank,
+                        .memcpy((char*)(recv_bufs[b_idx][rank_idx]) + send_bytes * comm_rank,
                                 host_send_buf.data(),
                                 send_bytes)
                         .wait();

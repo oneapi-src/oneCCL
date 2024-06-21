@@ -55,12 +55,14 @@ struct ccl_coll_attr {
     ccl_coll_attr(const ccl_coll_attr&) = default;
     ccl_coll_attr& operator=(const ccl_coll_attr&) = default;
 
+    ccl_coll_attr(const ccl::allgather_attr& attr);
     ccl_coll_attr(const ccl::allgatherv_attr& attr);
     ccl_coll_attr(const ccl::allreduce_attr& attr);
     ccl_coll_attr(const ccl::alltoall_attr& attr);
     ccl_coll_attr(const ccl::alltoallv_attr& attr);
     ccl_coll_attr(const ccl::barrier_attr& attr);
     ccl_coll_attr(const ccl::broadcast_attr& attr);
+    ccl_coll_attr(const ccl::broadcastExt_attr& attr);
     ccl_coll_attr(const ccl::pt2pt_attr& attr);
     ccl_coll_attr(const ccl::reduce_attr& attr);
     ccl_coll_attr(const ccl::reduce_scatter_attr& attr);
@@ -131,6 +133,7 @@ struct ccl_coll_param {
     std::vector<ccl::event> deps{};
     bool is_scaleout{ false };
     bool is_validate{ true };
+    bool is_hmem_enabled{ false };
     bool is_pt2pt{ false };
 
     ccl_coll_param(bool in_is_validate = true);
@@ -167,6 +170,14 @@ struct ccl_coll_param {
                            ccl_comm* comm,
                            const ccl_stream* stream,
                            const std::vector<ccl::event>& deps);
+    static ccl_coll_param create_allgather_param(const void* send_buf,
+                                                 void* recv_buf,
+                                                 size_t count,
+                                                 ccl::datatype dtype,
+                                                 const ccl_coll_attr& attr,
+                                                 ccl_comm* comm,
+                                                 const ccl_stream* stream,
+                                                 const std::vector<ccl::event>& deps = {});
 
     static ccl_coll_param create_allgatherv_param(const void* send_buf,
                                                   size_t send_count,
@@ -219,6 +230,16 @@ struct ccl_coll_param {
                                                  ccl_comm* comm,
                                                  const ccl_stream* stream,
                                                  const std::vector<ccl::event>& deps = {});
+
+    static ccl_coll_param create_broadcastExt_param(void* send_buf,
+                                                    void* recv_buf,
+                                                    size_t count,
+                                                    ccl::datatype dtype,
+                                                    int root,
+                                                    const ccl_coll_attr& attr,
+                                                    ccl_comm* comm,
+                                                    const ccl_stream* stream,
+                                                    const std::vector<ccl::event>& deps = {});
 
     static ccl_coll_param create_reduce_param(const void* send_buf,
                                               void* recv_buf,

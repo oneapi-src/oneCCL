@@ -104,8 +104,15 @@ int main(int argc, char *argv[]) {
 
     /* invoke allgatherv */
     auto attr = ccl::create_operation_attr<ccl::allgatherv_attr>();
-    ccl::allgatherv(
-        recv_buf, count, recv_buf, recv_counts, ccl::datatype::int32, comm, stream, attr, deps)
+    ccl::allgatherv(&(recv_buf[count * rank]),
+                    count,
+                    recv_buf,
+                    recv_counts,
+                    ccl::datatype::int32,
+                    comm,
+                    stream,
+                    attr,
+                    deps)
         .wait();
 
     /* open recv_buf and check its correctness on the device side */

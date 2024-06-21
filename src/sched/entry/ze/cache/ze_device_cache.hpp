@@ -31,6 +31,14 @@ void device_allocate(ze_context_handle_t context,
                      ze_device_handle_t device,
                      void** pptr);
 
+void device_allocate_shared(ze_context_handle_t context,
+                            const ze_device_mem_alloc_desc_t& device_mem_alloc_desc,
+                            const ze_host_mem_alloc_desc_t& host_mem_alloc_desc,
+                            size_t bytes,
+                            size_t alignment,
+                            ze_device_handle_t device,
+                            void** pptr);
+
 void device_free(ze_context_handle_t context, void* ptr);
 
 enum class device_cache_policy_mode : int { plain, chunk, none };

@@ -23,6 +23,9 @@
 #include "coll/algorithms/algorithms.hpp"
 #include "coll/coll_util.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+#include "sched/entry/ze/ze_dummy_entry.hpp"
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
 #define MIN(a, b) std::min(a, b)
 
@@ -263,6 +266,19 @@ ccl::status ccl_coll_build_topo_bcast(ccl_sched* sched,
 
     ccl::add_handle_exchange(sched, node_comm, wait_events, out_event, buffers);
     clear_and_push_back(wait_events, out_event);
+
+    if (!sched->is_deps_barrier() && sched->has_deps_entry()) {
+        // Submit dummy ze_entry for earlier L0 submission of the workload
+        // This has to be done after handle exchange to ensure that the IPC handles are ready
+        entry_factory::create<ze_dummy_entry>(sched);
+
+        // Dependencies output signal event has to be among wait events for comm_barrier
+        wait_events.push_back(sched->get_related_deps_out_event());
+
+        // Submit comm_barrier to ensure synchronization for early submitted entries
+        ccl::add_comm_barrier(sched, node_comm, wait_events, out_event);
+        clear_and_push_back(wait_events, out_event);
+    }
 
     if (comm->rank() != root) {
         auto entry = entry_factory::create<ze_copy_entry>(sched,

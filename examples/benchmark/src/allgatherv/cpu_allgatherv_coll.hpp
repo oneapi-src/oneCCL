@@ -33,13 +33,16 @@ struct cpu_allgatherv_coll : cpu_base_coll<Dtype, allgatherv_strategy_impl> {
         Dtype sbuf_expected = get_val<Dtype>(static_cast<float>(comm.rank()));
         Dtype value;
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
-            for (size_t e_idx = 0; e_idx < elem_count; e_idx++) {
-                value = ((Dtype*)send_bufs[b_idx][rank_idx])[e_idx];
-                if (value != sbuf_expected) {
-                    std::cout << this->name() << " send_bufs: buf_idx " << b_idx << ", rank_idx "
-                              << rank_idx << ", elem_idx " << e_idx << ", expected "
-                              << sbuf_expected << ", got " << value << std::endl;
-                    ASSERT(0, "unexpected value");
+            if (!base_coll::get_inplace()) {
+                for (size_t e_idx = 0; e_idx < elem_count; e_idx++) {
+                    value = ((Dtype*)send_bufs[b_idx][rank_idx])[e_idx];
+                    if (value != sbuf_expected) {
+                        std::cout << this->name() << " send_bufs: buf_idx " << b_idx
+                                  << ", rank_idx " << rank_idx << ", elem_idx " << e_idx
+                                  << ", expected " << sbuf_expected << ", got " << value
+                                  << std::endl;
+                        ASSERT(0, "unexpected value");
+                    }
                 }
             }
 

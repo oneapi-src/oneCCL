@@ -29,6 +29,14 @@
 class ccl_sched;
 class ccl_request;
 
+ccl::status ccl_coll_build_allgather(ccl_sched* sched,
+                                     ccl_buffer send_buf,
+                                     ccl_buffer recv_buf,
+                                     size_t count,
+                                     const ccl_datatype& dtype,
+                                     ccl_comm* comm,
+                                     bool is_scaleout);
+
 ccl::status ccl_coll_build_allgatherv(ccl_sched* sched,
                                       ccl_buffer send_buf,
                                       size_t send_count,
@@ -37,7 +45,8 @@ ccl::status ccl_coll_build_allgatherv(ccl_sched* sched,
                                       const std::vector<ccl_buffer>& recv_device_bufs,
                                       const ccl_datatype& dtype,
                                       ccl_comm* comm,
-                                      bool is_scaleout);
+                                      bool is_scaleout,
+                                      bool is_hmem_enabled = false);
 
 // TODO: pack this arguments in ccl_coll_build parameters structure
 ccl::status ccl_coll_build_allreduce(ccl_sched* sched,
@@ -75,6 +84,13 @@ ccl::status ccl_coll_build_bcast(ccl_sched* sched,
                                  const ccl_datatype& dtype,
                                  int root,
                                  ccl_comm* comm);
+ccl::status ccl_coll_build_bcastExt(ccl_sched* sched,
+                                    ccl_buffer send_buf,
+                                    ccl_buffer recv_buf,
+                                    size_t count,
+                                    const ccl_datatype& dtype,
+                                    int root,
+                                    ccl_comm* comm);
 
 ccl::status ccl_coll_build_reduce(ccl_sched* sched,
                                   ccl_buffer send_buf,
@@ -109,6 +125,15 @@ ccl::status ccl_coll_build_send(ccl_sched* sched,
                                 const ccl_datatype& dtype,
                                 int peer,
                                 ccl_comm* comm);
+
+ccl_request* ccl_allgather_impl(const void* send_buf,
+                                void* recv_buf,
+                                size_t count,
+                                ccl::datatype dtype,
+                                const ccl_coll_attr& attr,
+                                ccl_comm* comm,
+                                const ccl_stream* stream,
+                                const std::vector<ccl::event>& deps);
 
 ccl_request* ccl_allgatherv_impl(const void* send_buf,
                                  size_t send_count,
@@ -161,6 +186,16 @@ ccl_request* ccl_broadcast_impl(void* buf,
                                 ccl_comm* comm,
                                 const ccl_stream* stream,
                                 const std::vector<ccl::event>& deps);
+
+ccl_request* ccl_broadcastExt_impl(void* send_buf,
+                                   void* recv_buf,
+                                   size_t count,
+                                   ccl::datatype dtype,
+                                   int root,
+                                   const ccl_coll_attr& attr,
+                                   ccl_comm* comm,
+                                   const ccl_stream* stream,
+                                   const std::vector<ccl::event>& deps);
 
 ccl_request* ccl_reduce_impl(const void* send_buf,
                              void* recv_buf,

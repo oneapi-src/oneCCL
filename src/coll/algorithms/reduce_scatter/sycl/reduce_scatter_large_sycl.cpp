@@ -23,7 +23,7 @@
                                           uint32_t rank_in, \
                                           uint32_t world_in); \
     ccl::event run_reduce_scatter_large_##TYPE(ccl::datatype dtype, \
-                                               sycl::queue queue, \
+                                               sycl::queue &queue, \
                                                const void *send_buf, \
                                                void *recv_buf, \
                                                size_t recv_count, \
@@ -56,7 +56,7 @@ void init_reduce_scatter_large(ccl::datatype dtype,
     case ccl_type: e = run_reduce_scatter_large_##TYPE(dtype, queue, send_buf, recv_buf, recv_count, done); break;
 
 ccl::event run_reduce_scatter_large(ccl::datatype dtype,
-                                    sycl::queue queue,
+                                    sycl::queue &queue,
                                     const void *send_buf,
                                     void *recv_buf,
                                     size_t recv_count,
@@ -70,4 +70,67 @@ ccl::event run_reduce_scatter_large(ccl::datatype dtype,
         default: assert(0);
     }
     return e;
+}
+
+#include "coll/algorithms/reduce_scatter/sycl/reduce_scatter_large_sycl_impl.hpp"
+
+ccl::event reduce_scatter_large(const void *send_buf,
+                                void *recv_buf,
+                                size_t recv_count,
+                                ccl::datatype dtype,
+                                ccl::reduction reduction,
+                                ccl_comm *comm,
+                                ccl_stream *global_stream,
+                                const ccl::vector_class<ccl::event> &deps) {
+    LOG_DEBUG("invoking reduce_scatter_large");
+
+    std::shared_ptr<ccl_comm> pair_comm = comm->get_pair_comm();
+    std::shared_ptr<ccl_comm> even_comm = comm->get_even_comm();
+
+    const size_t dsize = ccl::global_data::get().dtypes->get(dtype).size();
+    const bool is_odd = recv_count % 2 != 0 && dsize < sizeof(int);
+    const bool is_aligned = (recv_count * dsize) % ccl::global_data::env().kernel_mem_align == 0;
+    const bool is_use_tmp = ccl::global_data::env().sycl_reduce_scatter_tmp_buf || is_odd ||
+                            (!is_aligned && ccl::global_data::env().sycl_auto_use_tmp_buf);
+
+    if (!is_use_tmp) {
+        std::vector<void *> ptrs{ (void *)send_buf, recv_buf }; // index 0 and 1
+        auto [sched, exchange_entry] = do_ipc_exchange(comm, global_stream, ptrs);
+
+        xelink_ptrs_rd = get_ipc_ptrs<void, MAX_GPUS>(even_comm, 0, (void *)send_buf, sched);
+
+        if (pair_comm->size() > 1) {
+            assert(pair_comm->size() == MAX_TILES);
+            int peer_pair_rank = pair_comm->rank() ? 0 : 1;
+            mdfi_ptr_rd = get_ipc_ptrs<void, MAX_TILES>(pair_comm, 0, (void *)send_buf, sched)[peer_pair_rank];
+        }
+        delete exchange_entry;
+        delete sched;
+
+        coll_init(comm, global_stream);
+    }
+    else {
+        coll_init(comm, global_stream);
+        // 0 index is used for tmp work buffer and
+        // 1 index is used to copy input data
+        xelink_ptrs_rd = get_remote_even_tmp_buf(1);
+        if (pair_comm->size() > 1) {
+            assert(pair_comm->size() == MAX_TILES);
+            int peer_pair_rank = pair_comm->rank() ? 0 : 1;
+            mdfi_ptr_rd = get_remote_pair_tmp_buf(1)[peer_pair_rank];
+        }
+    }
+
+    auto lambda = [&]<typename T, int NE, int NP>() {
+        if (is_odd) {
+            return reduce_scatter_large_impl<T, NE, NP, true>(
+                send_buf, recv_buf, recv_count, dtype, reduction, comm, global_stream, deps);
+        }
+        else {
+            return reduce_scatter_large_impl<T, NE, NP, false>(
+                send_buf, recv_buf, recv_count, dtype, reduction, comm, global_stream, deps);
+        }
+    };
+
+    return invoke_collective(lambda, comm, dtype);
 }

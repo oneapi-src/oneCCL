@@ -54,7 +54,15 @@ struct allgatherv_strategy_impl {
         for (int idx = 0; idx < comm.size(); idx++) {
             recv_counts[idx] = count;
         }
-        reqs.push_back(ccl::allgatherv(send_buf,
+
+        auto send_buf_adjusted = send_buf;
+        if (send_buf == nullptr) {
+            // In-place operation
+            size_t offset_count = count * comm.rank();
+            send_buf_adjusted = recv_buf + offset_count;
+        }
+
+        reqs.push_back(ccl::allgatherv(send_buf_adjusted,
                                        count,
                                        recv_buf,
                                        recv_counts,

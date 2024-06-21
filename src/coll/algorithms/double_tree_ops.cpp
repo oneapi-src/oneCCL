@@ -226,6 +226,24 @@ ccl::status ccl_coll_build_double_tree_op(ccl_sched* sched,
                     "bcast_t2");
 
                 break;
+            case ccl_coll_bcastExt:
+                entry_factory::create<subsched_entry>(
+                    sched,
+                    t1_op_id,
+                    [t1_work_buf, t1_work_count, dtype, t1, comm](ccl_sched* s) {
+                        bcast_tree(t1, s, t1_work_buf, t1_work_count, dtype, comm);
+                    },
+                    "bcast_t1");
+
+                entry_factory::create<subsched_entry>(
+                    sched,
+                    t2_op_id,
+                    [t2_work_buf, t2_work_count, dtype, t2, comm](ccl_sched* s) {
+                        bcast_tree(t2, s, t2_work_buf, t2_work_count, dtype, comm);
+                    },
+                    "bcast_t2");
+
+                break;
             case ccl_coll_reduce: {
                 if (comm->rank() % 2 == 0) {
                     //even ranks are leaves in T2, start schedule with T2

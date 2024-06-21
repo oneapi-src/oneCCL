@@ -43,6 +43,11 @@ enum class operation_attr_id : int {
 
 // To maintain backward compatibility with past releases,
 // op_id_offset value starts at 5. It's not necessary for new enums.
+
+enum class allgather_attr_id : int {
+    op_id_offset = 5,
+};
+
 enum class allgatherv_attr_id : int {
     op_id_offset = 5,
 };
@@ -69,6 +74,10 @@ enum class broadcast_attr_id : int {
     op_id_offset = 5,
 };
 
+enum class broadcastExt_attr_id : int {
+    op_id_offset = 5,
+};
+
 enum class reduce_attr_id : int {
     op_id_offset = 5,
 
@@ -91,12 +100,14 @@ enum class pt2pt_attr_id : int {
 
 using v1::operation_attr_id;
 
+using v1::allgather_attr_id;
 using v1::allgatherv_attr_id;
 using v1::allreduce_attr_id;
 using v1::alltoall_attr_id;
 using v1::alltoallv_attr_id;
 using v1::barrier_attr_id;
 using v1::broadcast_attr_id;
+using v1::broadcastExt_attr_id;
 using v1::pt2pt_attr_id;
 using v1::reduce_attr_id;
 using v1::reduce_scatter_attr_id;

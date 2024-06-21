@@ -27,6 +27,16 @@ ccl::status coll_entry::build_sched(ccl_sched* sched, const ccl_coll_param& para
 #endif // CCL_ENABLE_ITT
 
     switch (param.ctype) {
+        case ccl_coll_allgather: {
+            res = ccl_coll_build_allgather(sched,
+                                           param.send_buf,
+                                           param.recv_buf,
+                                           param.count,
+                                           param.dtype,
+                                           param.comm,
+                                           param.is_scaleout);
+            break;
+        }
         case ccl_coll_allgatherv: {
             res = ccl_coll_build_allgatherv(sched,
                                             param.send_buf,
@@ -36,7 +46,8 @@ ccl::status coll_entry::build_sched(ccl_sched* sched, const ccl_coll_param& para
                                             param.recv_scale_out_bufs,
                                             param.dtype,
                                             param.comm,
-                                            param.is_scaleout);
+                                            param.is_scaleout,
+                                            param.is_hmem_enabled);
             break;
         }
         case ccl_coll_allreduce: {
@@ -79,6 +90,16 @@ ccl::status coll_entry::build_sched(ccl_sched* sched, const ccl_coll_param& para
         case ccl_coll_bcast: {
             res = ccl_coll_build_bcast(
                 sched, param.recv_buf, param.count, param.dtype, param.root, param.comm);
+            break;
+        }
+        case ccl_coll_bcastExt: {
+            res = ccl_coll_build_bcastExt(sched,
+                                          param.send_buf,
+                                          param.recv_buf,
+                                          param.count,
+                                          param.dtype,
+                                          param.root,
+                                          param.comm);
             break;
         }
         case ccl_coll_reduce: {

@@ -242,6 +242,12 @@ atl_status_t pmi_resizable_simple_internal::pmrt_kvs_get(char* kvs_key,
                                                          int proc_idx,
                                                          void* kvs_val,
                                                          size_t kvs_val_len) {
+    if (strcmp(kvs_key, ATL_MPI_ROOT_RANK_KEY) == 0) {
+        std::string root_rank = std::to_string(k->get_root_rank());
+        strncpy((char*)kvs_val, root_rank.c_str(), kvs_val_len - 1);
+        return ATL_STATUS_SUCCESS;
+    }
+
     int ret;
     std::vector<char> key_storage(max_keylen);
     std::string val_storage_str;

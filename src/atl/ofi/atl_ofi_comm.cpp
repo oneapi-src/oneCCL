@@ -83,8 +83,8 @@ atl_status_t atl_ofi_comm::allgatherv(size_t ep_idx,
                                       const void* send_buf,
                                       size_t send_len,
                                       void* recv_buf,
-                                      const int* recv_lens,
-                                      const int* offsets,
+                                      const size_t* recv_lens,
+                                      const size_t* offsets,
                                       atl_req_t& req) {
     std::vector<atl_req> send_reqs(size - 1);
     std::vector<atl_req> recv_reqs(size - 1);
@@ -203,8 +203,8 @@ atl_ofi_comm::atl_ofi_comm(atl_ofi_comm* parent, int color) {
 
     std::vector<rank_info_t> ranks_info(parent_size);
     rank_info_t rank_info{ color, parent_rank, coord.hostname_hash };
-    std::vector<int> recv_lens(parent_size, sizeof(rank_info));
-    std::vector<int> offsets(parent_size);
+    std::vector<size_t> recv_lens(parent_size, sizeof(rank_info));
+    std::vector<size_t> offsets(parent_size);
     offsets[0] = 0;
     for (size_t i = 1; i < offsets.size(); i++) {
         offsets[i] = offsets[i - 1] + recv_lens[i];

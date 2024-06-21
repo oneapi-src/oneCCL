@@ -366,8 +366,14 @@ void mem_handle_cache::get(ze_context_handle_t context,
     std::lock_guard<std::mutex> lock(mutex);
 
     bool found{};
+    // key_t should uniquely identify opened IPC handle for the memory buffer from the remote process.
+    // Furthermore, there are two possible situations we should check in advance if keys are matched:
+    // * the remote buffer is freed and a new buffer is allocated to the same memory address.
+    // * the handle for the remote buffer is closed with zeMemPutIpcHandle(). A new handle_id is created
+    //   everytime a call to zeMemGetIpcHandle() is done, to guarantee that the handle_id is unique
+    // If it is the same we re-use entry from the cache. Otherwise, we remove the entry from the cache and create a new one.
     key_t key(info.remote_pid,
-              info.remote_mem_alloc_id,
+              info.remote_ptr,
               info.remote_context_id,
               info.remote_device_id,
               context,
@@ -377,14 +383,32 @@ void mem_handle_cache::get(ze_context_handle_t context,
         value_t& value = key_value->second->second;
         const auto& handle_from_cache = value->handle;
         int fd = get_fd_from_handle(handle_from_cache);
-        if (fd_is_valid(fd)) {
-            // move key_value to the beginning of the list
-            cache_list.splice(cache_list.begin(), cache_list, key_value->second);
-            *out_value = value;
-            found = true;
+
+        // We need to check that our value in the cache matches the handle_id/mem_alloc_id that
+        // is being requested. If it does not match, flush the entry from the cache.
+        if ((value->handle_id == info.handle_id) &&
+            (value->remote_mem_alloc_id == info.remote_mem_alloc_id)) {
+            if (fd_is_valid(fd)) {
+                cache_list.splice(cache_list.begin(), cache_list, key_value->second);
+                *out_value = value;
+                found = true;
+            }
+            else {
+                LOG_DEBUG("handle is invalid in the cache");
+                cache_list.erase(key_value->second);
+                cache.erase(key_value);
+                found = false;
+            }
         }
         else {
-            LOG_DEBUG("handle is invalid in the cache");
+            LOG_DEBUG("handle with different current handle_id: ",
+                      info.handle_id,
+                      ", found handle_id: ",
+                      value->handle_id,
+                      ", current remote_mem_alloc_id: ",
+                      info.remote_mem_alloc_id,
+                      ", found remote_mem_alloc_id: ",
+                      value->remote_mem_alloc_id);
             cache_list.erase(key_value->second);
             cache.erase(key_value);
             found = false;
@@ -408,9 +432,9 @@ void mem_handle_cache::push(ze_device_handle_t device,
 
     void* ptr{};
     ze_ipc_mem_handle_t handle = info.mem_to_ipc_handle();
-
     ZE_CALL(zeMemOpenIpcHandle, (remote_context, device, handle, {}, &ptr));
-    *out_value = std::make_shared<const handle_desc>(remote_context, handle, ptr);
+    *out_value = std::make_shared<const handle_desc>(
+        remote_context, handle, ptr, info.handle_id, info.remote_mem_alloc_id);
     cache_list.push_front(std::make_pair(key, *out_value));
     cache.insert(std::make_pair(key, cache_list.begin()));
 }
@@ -421,10 +445,14 @@ bool mem_handle_cache::fd_is_valid(int fd) {
 
 mem_handle_cache::handle_desc::handle_desc(ze_context_handle_t remote_context,
                                            const ze_ipc_mem_handle_t& handle,
-                                           const void* ptr)
+                                           const void* ptr,
+                                           size_t handle_id,
+                                           uint64_t remote_mem_alloc_id)
         : remote_context(remote_context),
           handle(handle),
-          ptr(ptr) {}
+          ptr(ptr),
+          handle_id(handle_id),
+          remote_mem_alloc_id(remote_mem_alloc_id) {}
 
 const void* mem_handle_cache::handle_desc::get_ptr() const {
     return ptr;
@@ -437,7 +465,6 @@ void mem_handle_cache::handle_desc::close_handle() const {
         close_handle_fd(handle);
         return;
     }
-
     auto fd = get_fd_from_handle(handle);
     auto res = zeMemCloseIpcHandle(remote_context, ptr);
     if (res == ZE_RESULT_ERROR_INVALID_ARGUMENT) {
@@ -446,20 +473,24 @@ void mem_handle_cache::handle_desc::close_handle() const {
     else if (res != ZE_RESULT_SUCCESS) {
         CCL_THROW("error at zeMemCloseIpcHandle, code: ", to_string(res));
     }
+
+    if (ccl::global_data::env().ze_ipc_exchange != ccl::ze::ipc_exchange_mode::sockets) {
+        close_handle_fd(handle);
+    }
 }
 
 mem_handle_cache::handle_desc::~handle_desc() {
     close_handle();
 }
 
-// ipc_handle cache
 void ipc_handle_cache::clear() {
     LOG_DEBUG("clear ipc_handle_cache: size: ", cache.size());
     std::lock_guard<std::mutex> lock(mutex);
     for (auto& key_value : cache) {
-        close_handle_fd(key_value.second);
+        close_handle_fd(key_value.second.handle);
     }
     cache.clear();
+    lru_order.clear();
 }
 
 ipc_handle_cache::~ipc_handle_cache() {
@@ -468,6 +499,7 @@ ipc_handle_cache::~ipc_handle_cache() {
         clear();
     }
 }
+
 void ipc_handle_cache::get(ze_context_handle_t context,
                            ze_device_handle_t device,
                            const ipc_get_handle_desc& ipc_desc,
@@ -478,25 +510,71 @@ void ipc_handle_cache::get(ze_context_handle_t context,
 
     std::lock_guard<std::mutex> lock(mutex);
 
-    key_t key(ipc_desc.ptr, ipc_desc.mem_id);
-
-    auto key_value = cache.find(key);
+    bool found = false;
+    auto key_value = cache.find(ipc_desc.ptr);
     if (key_value != cache.end()) {
         value_t& value = key_value->second;
-        *out_value = value;
+        if (value.mem_id == ipc_desc.mem_id) {
+            *out_value = value;
+            found = true;
+        }
+        else {
+            cache.erase(key_value);
+            lru_order.remove(ipc_desc.ptr);
+            found = false;
+        }
     }
-    else {
+
+    if (!found) {
         LOG_DEBUG("ipc_handle is not found in the cache");
-        push(context, std::move(key), ipc_desc, out_value);
+        push(context, device, ipc_desc.ptr, ipc_desc, out_value);
+        update_lru_order(ipc_desc.ptr);
     }
 }
 
 void ipc_handle_cache::push(ze_context_handle_t context,
-                            key_t&& key,
+                            ze_device_handle_t device,
+                            key_t key,
                             const ipc_get_handle_desc& ipc_desc,
                             value_t* out_value) {
-    ZE_CALL(zeMemGetIpcHandle, (context, ipc_desc.ptr, out_value));
-    cache.insert({ std::move(key), *out_value });
+    // global_handle_id ensures that each handle added to the cache gets
+    // a unique identifier by incrementing a global counter each time
+    // a new handle is created.
+    static std::atomic<size_t> global_handle_id = 0;
+
+    while (cache.size() >= (size_t)global_data::env().ze_cache_get_ipc_handles_threshold) {
+        auto lru_key = lru_order.back();
+        auto lru_iter = cache.find(lru_key);
+
+        if (lru_iter != cache.end()) {
+            ze_memory_allocation_properties_t alloc_props = ccl::ze::default_alloc_props;
+            ZE_CALL(zeMemGetAllocProperties, (context, lru_key, &alloc_props, &device));
+            if (alloc_props.type != ZE_MEMORY_TYPE_UNKNOWN &&
+                lru_iter->second.mem_id == alloc_props.id) {
+                ZE_CALL(zeMemPutIpcHandle, (context, lru_iter->second.handle));
+            }
+            else {
+                LOG_WARN(
+                    "ipc_handle_cache: handle type is unexpected. Not calling zeMemPutIpcHandle, mem_id: ",
+                    lru_iter->second.mem_id);
+            }
+            lru_order.pop_back();
+            cache.erase(lru_iter);
+        }
+    }
+
+    ZE_CALL(zeMemGetIpcHandle, (context, ipc_desc.ptr, &out_value->handle));
+
+    out_value->mem_id = ipc_desc.mem_id;
+    out_value->handle_id = global_handle_id++;
+
+    cache.insert({ key, *out_value });
+    update_lru_order(key);
+}
+
+void ipc_handle_cache::update_lru_order(key_t key) {
+    lru_order.remove(key);
+    lru_order.push_front(key);
 }
 
 // cache

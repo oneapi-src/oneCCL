@@ -155,6 +155,10 @@ foreach(proc_map ${PROC_MAPS})
     foreach(ppn ${PPNS})
 
         foreach(algo direct; naive; flat; multi_bcast; topo)
+            add_test (NAME allgather_${algo}_${N}_${ppn} CONFIGURATIONS allgather_${algo}_${N}_${ppn} COMMAND mpiexec.hydra -l -n ${N} -ppn ${ppn} ${CCL_INSTALL_TESTS}/allgather_test --gtest_output=xml:${CCL_INSTALL_TESTS}/allgather_${algo}_${N}_${ppn}_report.junit.xml)
+        endforeach()
+
+        foreach(algo direct; naive; flat; multi_bcast; topo)
             add_test (NAME allgatherv_${algo}_${N}_${ppn} CONFIGURATIONS allgatherv_${algo}_${N}_${ppn} COMMAND mpiexec.hydra -l -n ${N} -ppn ${ppn} ${CCL_INSTALL_TESTS}/allgatherv_test --gtest_output=xml:${CCL_INSTALL_TESTS}/allgatherv_${algo}_${N}_${ppn}_report.junit.xml)
         endforeach()
 
@@ -172,6 +176,10 @@ foreach(proc_map ${PROC_MAPS})
 
         foreach(algo direct; ring; double_tree; naive; topo)
             add_test (NAME bcast_${algo}_${N}_${ppn} CONFIGURATIONS bcast_${algo}_${N}_${ppn} COMMAND mpiexec.hydra -l -n ${N} -ppn ${ppn} ${CCL_INSTALL_TESTS}/bcast_test --gtest_output=xml:${CCL_INSTALL_TESTS}/bcast_${algo}_${N}_${ppn}_report.junit.xml)
+        endforeach()
+
+        foreach(algo direct; ring; double_tree; naive; topo)
+            add_test (NAME bcastExt_${algo}_${N}_${ppn} CONFIGURATIONS bcastExt_${algo}_${N}_${ppn} COMMAND mpiexec.hydra -l -n ${N} -ppn ${ppn} ${CCL_INSTALL_TESTS}/bcastExt_test --gtest_output=xml:${CCL_INSTALL_TESTS}/bcastExt_${algo}_${N}_${ppn}_report.junit.xml)
         endforeach()
 
         foreach(algo direct; rabenseifner; ring; tree; double_tree; topo)

@@ -199,7 +199,7 @@ public:
 
     static std::map<ccl_log_level, std::string> level_names;
 
-    static void set_abort_on_throw(int val) {
+    static void set_abort_on_throw(bool val) {
         abort_on_throw = val;
     }
 

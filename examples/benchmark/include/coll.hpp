@@ -52,12 +52,14 @@ typedef struct bench_exec_attr {
         }
     };
 
-    using supported_op_attr_t = std::tuple<ccl::shared_ptr_class<ccl::allgatherv_attr>,
+    using supported_op_attr_t = std::tuple<ccl::shared_ptr_class<ccl::allgather_attr>,
+                                           ccl::shared_ptr_class<ccl::allgatherv_attr>,
                                            ccl::shared_ptr_class<ccl::allreduce_attr>,
                                            ccl::shared_ptr_class<ccl::alltoall_attr>,
                                            ccl::shared_ptr_class<ccl::alltoallv_attr>,
                                            ccl::shared_ptr_class<ccl::reduce_attr>,
                                            ccl::shared_ptr_class<ccl::broadcast_attr>,
+                                           ccl::shared_ptr_class<ccl::broadcastExt_attr>,
                                            ccl::shared_ptr_class<ccl::reduce_scatter_attr>>;
 
     template <class attr_t>

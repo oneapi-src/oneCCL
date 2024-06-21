@@ -36,19 +36,14 @@ std::string to_string(ipc_mem_type mem_type) {
     }
 }
 
+std::string to_string(const ze_ipc_mem_handle_t& handle) {
+    return ccl::utils::to_hex(handle.data, ZE_MAX_IPC_HANDLE_SIZE);
+}
+
 // ipc_handle_desc
 ipc_handle_desc::ipc_handle_desc() {
     memset(&ipc_handle, 0, sizeof(ipc_handle));
 }
-
-ipc_handle_desc::ipc_handle_desc(const ze_ipc_mem_handle_t& ipc_handle,
-                                 size_t mem_offset,
-                                 ipc_mem_type mem_type,
-                                 int mem_handle)
-        : ipc_handle(ipc_handle),
-          mem_offset(mem_offset),
-          mem_type(mem_type),
-          mem_handle(mem_handle) {}
 
 ze_ipc_mem_handle_t ipc_handle_desc::mem_to_ipc_handle() const {
     if (ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::sockets) {
@@ -67,9 +62,7 @@ ze_ipc_mem_handle_t ipc_handle_desc::mem_to_ipc_handle() const {
         CCL_THROW_IF_NOT(remote_pid != ccl::utils::invalid_pid, "remote_pid is invalid value");
         int opened_fd = ccl::ze::fd_manager::pidfd_open(remote_pid);
         fd = ccl::ze::fd_manager::mem_handle_to_fd(opened_fd, mem_handle);
-        if (!global_data::env().enable_ze_cache) {
-            ccl::utils::close_fd(opened_fd);
-        }
+        ccl::utils::close_fd(opened_fd);
         LOG_DEBUG("remote_pid: ", remote_pid, ", gotten fd from mem_handle_to_fd: ", fd);
     }
     else {
@@ -174,7 +167,6 @@ void ipc_handle_manager::clear() {
     }
 
     handles.clear();
-    cached_handles.clear();
 }
 
 void ipc_handle_manager::set(const mem_handle_map_t& handles_arg, bool pt2pt_op) {
@@ -284,14 +276,17 @@ void ipc_handle_manager::get(int rank,
     buf = (ze_event_pool_handle_t)get_ptr(rank, buf_idx, map_comm, pt2pt_op);
 }
 
-void ipc_handle_manager::get_handle(void* ptr, ze_ipc_mem_handle_t* ipc_handle) {
+void ipc_handle_manager::get_handle(void* ptr, ze_ipc_mem_handle_t* ipc_handle, size_t* handle_id) {
     CCL_THROW_IF_NOT(ptr, "no mem pointer");
     if (global_data::env().enable_ze_cache && global_data::env().enable_ze_cache_get_ipc_handles) {
         ze_memory_allocation_properties_t alloc_props = ccl::ze::default_alloc_props;
         ZE_CALL(zeMemGetAllocProperties, (context, ptr, &alloc_props, &device));
 
         ipc_get_handle_desc ipc_desc = { ptr, alloc_props.id };
-        global_data::get().ze_data->cache->get(context, device, ipc_desc, ipc_handle);
+        ipc_entry_t tmp_ipc{};
+        global_data::get().ze_data->cache->get(context, device, ipc_desc, &tmp_ipc);
+        *ipc_handle = tmp_ipc.handle;
+        *handle_id = tmp_ipc.handle_id;
     }
     else {
         ZE_CALL(zeMemGetIpcHandle, (context, ptr, ipc_handle));
@@ -321,12 +316,12 @@ void ipc_handle_manager::open_handle(ipc_handle_desc& info, void** ptr, bool to_
     else {
         auto handle = info.mem_to_ipc_handle();
         ZE_CALL(zeMemOpenIpcHandle, (context, device, handle, 0 /* cache allocation */, ptr));
-        if (ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::pidfd) {
-            close_handle_fd(handle);
-        }
         if (!to_cache) {
             // used by Sycl kernels, IPC handle needs to be kept open
             info.is_cached = true;
+        }
+        else {
+            close_handle_fd(handle);
         }
     }
 }

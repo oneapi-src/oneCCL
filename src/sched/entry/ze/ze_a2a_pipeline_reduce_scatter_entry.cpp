@@ -37,6 +37,8 @@ ze_a2a_pipeline_read_write_entry::ze_a2a_pipeline_read_write_entry(
     std::vector<ccl_buffer> tmp_bufs,
     size_t tmp_buf_idx_start,
     size_t count,
+    size_t count_per_rank,
+    size_t read_block_inner_offset,
     const ccl_datatype& dtype,
     ccl::reduction op,
     std::vector<ze_event_handle_t>& wait_events,
@@ -46,6 +48,8 @@ ze_a2a_pipeline_read_write_entry::ze_a2a_pipeline_read_write_entry(
           tmp_bufs(std::move(tmp_bufs)),
           tmp_buf_idx_start(tmp_buf_idx_start),
           count(count),
+          count_per_rank(count_per_rank),
+          read_block_inner_offset(read_block_inner_offset),
           dtype(dtype),
           op(op),
           attrs(attrs) {}
@@ -55,8 +59,12 @@ void ze_a2a_pipeline_read_write_entry::init_ze_hook() {
 
     ccl_comm* pair_comm = comm->get_pair_comm().get();
     ccl_comm* even_comm = comm->get_even_comm().get();
+    ccl_comm* node_comm = comm->get_node_comm().get();
 
     size_t base_count = count / pair_comm->size();
+    // TODO: if the code is used with `ccl_offset_explicit` chunking
+    // and `use_continous_data` attribute, the `pair_comm_offset_bytes`
+    // might need to be calculated using `send_buf_count_per_rank`.
     size_t pair_comm_offset_bytes = base_count * pair_comm->rank() * dtype.size();
     if (pair_comm->rank() == pair_comm->size() - 1)
         base_count += count % pair_comm->size();
@@ -80,7 +88,6 @@ void ze_a2a_pipeline_read_write_entry::init_ze_hook() {
                          block_count,
                          " should be equal to last block_count : ",
                          block_count_last_rank);
-        pair_comm_offset_bytes = block_count * pair_comm->rank() * dtype.size();
     }
 
     kernel_name = "reduce_read_write_kernel_" + std::to_string(even_comm->size() - 1) + "_" +
@@ -90,12 +97,21 @@ void ze_a2a_pipeline_read_write_entry::init_ze_hook() {
 
     auto fill_vec = [&](std::vector<void*>& vec, void* base_ptr) {
         for (int idx = 0; idx < even_comm->size(); idx++) {
-            auto even_comm_offset_bytes = main_block_count * idx * dtype.size();
             if (!attrs.use_continous_data) {
-                even_comm_offset_bytes *= pair_comm->size();
+                const int global_rank = even_comm->get_global_rank(idx);
+                const int node_rank = node_comm->get_rank_from_global(global_rank);
+
+                // The offset must be calculated independently from `count`, because it
+                // might change depending on chunks count.
+                auto even_comm_offset_bytes = count_per_rank * node_rank * dtype.size();
+                vec[idx] =
+                    static_cast<char*>(base_ptr) + even_comm_offset_bytes + read_block_inner_offset;
             }
-            vec[idx] =
-                static_cast<char*>(base_ptr) + pair_comm_offset_bytes + even_comm_offset_bytes;
+            else {
+                auto even_comm_offset_bytes = count_per_rank * idx * dtype.size();
+                vec[idx] = static_cast<char*>(base_ptr) + pair_comm_offset_bytes +
+                           even_comm_offset_bytes + read_block_inner_offset;
+            }
         }
     };
 

@@ -6,7 +6,10 @@ Environment Variables
 
 Collective Algorithms Selection
 ###############################
-oneCCL supports collective operations for the host (CPU) memory buffers and device (GPU) memory buffers. Below you can see how to select the collective algorithm depending on the type of buffer being utilized. 
+
+oneCCL supports collective operations for the host (CPU) memory buffers and
+device (GPU) memory buffers. Below you can see how to select the collective
+algorithm depending on the type of buffer being utilized.
 
 Device (GPU) Memory Buffers
 ***************************
@@ -19,34 +22,34 @@ SCALEUP
 +++++++
 Use the following environment variables to select the scaleup algorithm:
 
-:: 
-  
-  CCL_REDUCE_SCATTER_MONOLITHIC_KERNEL 
+::
+
+  CCL_REDUCE_SCATTER_MONOLITHIC_KERNEL
 
 **Syntax**
 
-:: 
-  
+::
+
   CCL_REDUCE_SCATTER_MONOLITHIC_KERNEL=<value>
 
 **Arguments**
 
-.. list-table:: 
+.. list-table::
    :widths: 25 50
    :header-rows: 1
    :align: left
-   
+
    * - <value>
      - Description
    * - ``1``
-     - Uses compute kernels to transfer data across GPUs for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER`` collectives. 
+     - Uses compute kernels to transfer data across GPUs for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER`` collectives.
    * - ``0``
      - Uses copy engines to transfer data across GPUs for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER`` collectives. The default value.
 
 
 **Description**
 
-Set this environment variable to enable compute kernels for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER`` collectives using device (GPU) buffers. 
+Set this environment variable to enable compute kernels for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER`` collectives using device (GPU) buffers.
 
 
 
@@ -57,99 +60,103 @@ CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL
 
 ::
 
-  CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL=<value> 
+  CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL=<value>
 
 
 **Arguments**
 
-.. list-table:: 
+.. list-table::
    :widths: 25 50
    :header-rows: 1
    :align: left
-   
+
    * - <value>
      - Description
    * - ``1``
      - Uses compute kernels to transfer data across GPUs for the ``ALLGATHERV`` collective. The default value.
    * - ``0``
-     - Uses copy engines to transfer data across GPUs for the ``ALLGATHERV`` collective. 
-  
+     - Uses copy engines to transfer data across GPUs for the ``ALLGATHERV`` collective.
+
 **Description**
 
-Set this environment variable to enable compute kernels that pipeline data transfers across tiles in the same GPU with data transfers across different GPUs,  for the ``ALLGATHERV ``collective using device (GPU) buffers.
+Set this environment variable to enable compute kernels that pipeline data
+transfers across tiles in the same GPU with data transfers across different
+GPUs, for the ``ALLGATHERV`` collective using device (GPU) buffers.
 
 
 
-CCL_REDUCE_SCATTER_MONOLITHIC_PIPELINE_KERNEL 
+CCL_REDUCE_SCATTER_MONOLITHIC_PIPELINE_KERNEL
 +++++++++++++++++++++++++++++++++++++++++++++
 
 **Syntax**
 
 ::
 
-  CCL_REDUCE_SCATTER_MONOLITHIC_PIPELINE_KERNEL=<value> 
+  CCL_REDUCE_SCATTER_MONOLITHIC_PIPELINE_KERNEL=<value>
 
 
 **Arguments**
 
-.. list-table:: 
+.. list-table::
    :widths: 25 50
    :header-rows: 1
    :align: left
-   
+
    * - <value>
      - Description
    * - ``1``
-     - Uses compute kernels for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER`` collectives. The default value. 
+     - Uses compute kernels for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER`` collectives. The default value.
    * - ``0``
-     - Uses copy engines to transfer data across GPUs for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER collectives``. 
-  
+     - Uses copy engines to transfer data across GPUs for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER collectives``.
+
 **Description**
 
-Set this environment variable to enable compute kernels that pipeline data transfers across tiles in the same GPU with data transfers across different GPUs for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER`` collectives using the device (GPU) buffers.  
- 
+Set this environment variable to enable compute kernels, that pipeline data
+transfers across tiles in the same GPU with data transfers across different
+GPUs, for the ``ALLREDUCE``, ``REDUCE``, and ``REDUCE_SCATTER`` collectives
+using the device (GPU) buffers.
 
-CCL_ALLTOALLV_MONOLITHIC_KERNEL 
+
+CCL_ALLTOALLV_MONOLITHIC_KERNEL
 +++++++++++++++++++++++++++++++
 
 **Syntax**
 
 ::
 
-  CCL_ALLTOALLV_MONOLITHIC_KERNEL=<value> 
+  CCL_ALLTOALLV_MONOLITHIC_KERNEL=<value>
 
 **Arguments**
 
-.. list-table:: 
+.. list-table::
    :widths: 25 50
    :header-rows: 1
    :align: left
-   
+
    * - <value>
      - Description
    * - ``1``
      - Uses compute kernels to transfer data across GPUs for the ``ALLTOALL`` and ``ALLTOALLV`` collectives. The default value.
    * - ``0``
      - Uses copy engines to transfer data across GPUs for the ``ALLTOALL`` and ``ALLTOALLV`` collectives.
-  
+
 **Description**
 
 Set this environment variable to enable compute kernels for the ``ALLTOALL`` and ``ALLTOALLV`` collectives using device (GPU) buffers
-``CCL_<coll_name>_SCALEOUT``. 
+``CCL_<coll_name>_SCALEOUT``.
 
-
-CCL_SKIP_SCHEDULER  
+CCL_SKIP_SCHEDULER
 ++++++++++++++++++
 
 **Syntax**
 
 ::
 
-  CCL_SKIP_SCHEDULER=<value> 
+  CCL_SKIP_SCHEDULER=<value>
 
 **Arguments**
 
-.. list-table:: 
+.. list-table::
    :widths: 25 50
    :header-rows: 1
    :align: left
@@ -159,27 +166,28 @@ CCL_SKIP_SCHEDULER
    * - ``1``
      - Enable SYCL kernels
    * - ``0``
-     - Disable SYCL kernels. The default value. 
+     - Disable SYCL kernels. The default value.
 
 **Description**
 
-Set this environment variable to ``1`` to enable the SYCL kernel-based implementation for ``ALLGATHERV``, ``ALLREDUCE``, and ``REDUCE_SCATTER``. 
-This new optimization enhances all message sizes and supports the ``int32``, ``fp32``, ``fp16``, and ``bf16`` data types, sum operations, and single nodes. 
-oneCCL falls back to other implementations when the support is unavailable with SYCL kernels. Therefore, you can safely set this environment variable.
-
-
+Set this environment variable to ``1`` to enable the SYCL kernel-based
+implementation for ``ALLGATHERV``, ``ALLREDUCE``, and ``REDUCE_SCATTER``. This
+new optimization enhances all message sizes and supports the ``int32``,
+``fp32``, ``fp16``, and ``bf16`` data types, sum operations, and single nodes.
+oneCCL falls back to other implementations when the support is unavailable with
+SYCL kernels. Therefore, you can safely set this environment variable.
 
 SCALEOUT
 ++++++++
 
-The following environment variables can be used to select the scaleout algorithm used. 
+The following environment variables can be used to select the scaleout algorithm used.
 
 **Syntax**
 
 To set a specific algorithm for scaleout for the device (GPU) buffers for the whole message size range:
 
 ::
-   
+
    CCL_<coll_name>_SCALEOUT=<algo_name>
 
 To set a specific algorithm for scaleout for the device (GPU) buffers for a specific message size range:
@@ -193,14 +201,14 @@ Where:
 
 * ``<coll_name>`` is selected from a list of the available collective operations (`Available collectives`_).
 * ``<algo_name>`` is selected from a list of the available algorithms for the specific collective operation (`Available collectives`_).
-* ``<size_range>`` is described by the left and the right size borders in the ``<left>-<right>`` format. The size is specified in bytes. To specify the maximum message size, use reserved word max. 
+* ``<size_range>`` is described by the left and the right size borders in the ``<left>-<right>`` format. The size is specified in bytes. To specify the maximum message size, use reserved word max.
 
-oneCCL internally fills the algorithm selection table with sensible defaults. Your input complements the selection table. 
+oneCCL internally fills the algorithm selection table with sensible defaults. Your input complements the selection table.
 To see the actual table values, set ``CCL_LOG_LEVEL=info``.
 
 .. rubric:: Example
 
-:: 
+::
 
   CCL_ALLREDUCE_SCALEOUT="recursive_doubling:0-8192;rabenseifner:8193-1048576;ring:1048577-max"
 
@@ -227,10 +235,10 @@ Available algorithms for each collective operation (``<algo_name>``):
 ``ALLGATHERV`` algorithms
 +++++++++++++++++++++++++
 
-.. list-table:: 
+.. list-table::
    :widths: 25 50
    :align: left
-   
+
    * - ``direct``
      - Based on ``MPI_Iallgatherv``
    * - ``naive``
@@ -246,7 +254,7 @@ Available algorithms for each collective operation (``<algo_name>``):
 ``ALLREDUCE`` algorithms
 ++++++++++++++++++++++++
 
-.. list-table:: 
+.. list-table::
    :widths: 25 50
    :align: left
 
@@ -256,7 +264,7 @@ Available algorithms for each collective operation (``<algo_name>``):
      - Rabenseifner’s algorithm
    * - ``nreduce``
      - May be beneficial for imbalanced workloads
-   * - ``ring`` 
+   * - ``ring``
      - reduce_scatter + allgather ring.
        Use ``CCL_RS_CHUNK_COUNT`` and ``CCL_RS_MIN_CHUNK_SIZE``
        to control pipelining on reduce_scatter phase.
@@ -271,7 +279,7 @@ Available algorithms for each collective operation (``<algo_name>``):
 ``ALLTOALL`` algorithms
 ++++++++++++++++++++++++
 
-.. list-table:: 
+.. list-table::
    :widths: 25 50
    :align: left
 
@@ -286,7 +294,7 @@ Available algorithms for each collective operation (``<algo_name>``):
 ``ALLTOALLV`` algorithms
 ++++++++++++++++++++++++
 
-.. list-table:: 
+.. list-table::
    :widths: 25 50
    :align: left
 
@@ -301,10 +309,10 @@ Available algorithms for each collective operation (``<algo_name>``):
 ``BARRIER`` algorithms
 ++++++++++++++++++++++
 
-.. list-table:: 
+.. list-table::
    :widths: 25 50
    :align: left
-   
+
    * - ``direct``
      - Based on ``MPI_Ibarrier``
    * - ``ring``
@@ -316,13 +324,13 @@ Available algorithms for each collective operation (``<algo_name>``):
 ``BCAST`` algorithms
 ++++++++++++++++++++
 
-.. list-table:: 
+.. list-table::
    :widths: 25 50
    :align: left
 
    * - ``direct``
      - Based on ``MPI_Ibcast``
-   * - ``ring`` 
+   * - ``ring``
      - Ring
    * - ``double_tree``
      - Double-tree algorithm
@@ -335,7 +343,7 @@ Available algorithms for each collective operation (``<algo_name>``):
 ``REDUCE`` algorithms
 +++++++++++++++++++++
 
-.. list-table:: 
+.. list-table::
    :widths: 25 50
    :align: left
 
@@ -352,17 +360,18 @@ Available algorithms for each collective operation (``<algo_name>``):
 ``REDUCE_SCATTER`` algorithms
 +++++++++++++++++++++++++++++
 
-.. list-table:: 
+.. list-table::
    :widths: 25 50
    :align: left
 
    * - ``direct``
      - Based on ``MPI_Ireduce_scatter_block``
-   * - ``ring`` 
-     - Use ``CCL_RS_CHUNK_COUNT`` and ``CCL_RS_MIN_CHUNK_SIZE``
+   * - ``naive``
+     - Send to all, receive and reduce from all
+   * - ``ring``
+     - Ring-based algorithm.
+       Use ``CCL_RS_CHUNK_COUNT`` and ``CCL_RS_MIN_CHUNK_SIZE``
        to control pipelining.
-
-.. note:: The ``REDUCE_SCATTER`` algorithm does not yet support the ``CCL_REDUCE_SCATTER_SCALEOUT`` environment variable. To change the algorithm for ``REDUCE_SCATTER``, use the ``CCL_REDUCE_SCATTER`` environment variable.
 
 Host (CPU) Memory Buffers
 *************************
@@ -388,15 +397,15 @@ Where:
 
 - ``<coll_name>`` is selected from a list of available collective operations (`Available collectives`_).
 - ``<algo_name>`` is selected from a list of available algorithms for a specific collective operation (`Available algorithms`_).
-- ``<size_range>`` is described by the left and the right size borders in a format ``<left>-<right>``. 
+- ``<size_range>`` is described by the left and the right size borders in a format ``<left>-<right>``.
   Size is specified in bytes. Use reserved word ``max`` to specify the maximum message size.
 
-|product_short| internally fills algorithm selection table with sensible defaults. User input complements the selection table. 
+|product_short| internally fills algorithm selection table with sensible defaults. User input complements the selection table.
 To see the actual table values set ``CCL_LOG_LEVEL=info``.
 
 .. rubric:: Example
 
-:: 
+::
 
   CCL_ALLREDUCE="recursive_doubling:0-8192;rabenseifner:8193-1048576;ring:1048577-max"
 
@@ -404,18 +413,18 @@ CCL_RS_CHUNK_COUNT
 ++++++++++++++++++
 **Syntax**
 
-:: 
+::
 
   CCL_RS_CHUNK_COUNT=<value>
 
 **Arguments**
 
-.. list-table:: 
+.. list-table::
    :widths: 25 50
    :header-rows: 1
    :align: left
-   
-   * - <value> 
+
+   * - <value>
      - Description
    * - ``COUNT``
      - Maximum number of chunks.
@@ -429,25 +438,27 @@ CCL_RS_MIN_CHUNK_SIZE
 +++++++++++++++++++++
 **Syntax**
 
-:: 
+::
 
   CCL_RS_MIN_CHUNK_SIZE=<value>
 
 **Arguments**
 
-.. list-table:: 
+.. list-table::
    :widths: 25 50
    :header-rows: 1
    :align: left
-   
-   * - <value> 
+
+   * - <value>
      - Description
    * - ``SIZE``
      - Minimum number of bytes in chunk.
 
 **Description**
 
-Set this environment variable to specify minimum number of bytes in chunk for reduce_scatter phase in ring allreduce. Affects actual value of ``CCL_RS_CHUNK_COUNT``.
+Set this environment variable to specify minimum number of bytes in chunk for
+reduce_scatter phase in ring allreduce. Affects actual value of
+``CCL_RS_CHUNK_COUNT``.
 
 
 
@@ -463,18 +474,18 @@ CCL_WORKER_COUNT
 ****************
 **Syntax**
 
-:: 
+::
 
   CCL_WORKER_COUNT=<value>
 
 **Arguments**
 
-.. list-table:: 
+.. list-table::
    :widths: 25 50
    :header-rows: 1
    :align: left
-   
-   * - <value> 
+
+   * - <value>
      - Description
    * - ``N``
      - The number of worker threads for |product_short| rank (``1`` if not specified).
@@ -489,17 +500,17 @@ CCL_WORKER_AFFINITY
 *******************
 **Syntax**
 
-:: 
+::
 
   CCL_WORKER_AFFINITY=<cpulist>
 
 **Arguments**
 
-.. list-table:: 
+.. list-table::
    :widths: 25 50
    :header-rows: 1
    :align: left
-   
+
    * - <cpulist>
      - Description
    * - ``auto``
@@ -523,17 +534,17 @@ CCL_WORKER_MEM_AFFINITY
 ***********************
 **Syntax**
 
-:: 
+::
 
   CCL_WORKER_MEM_AFFINITY=<nodelist>
 
 **Arguments**
 
-.. list-table:: 
+.. list-table::
    :widths: 25 50
    :header-rows: 1
    :align: left
-   
+
    * - <nodelist>
      - Description
    * - ``auto``
@@ -561,18 +572,18 @@ CCL_ATL_TRANSPORT
 *****************
 **Syntax**
 
-:: 
+::
 
   CCL_ATL_TRANSPORT=<value>
 
 **Arguments**
 
-.. list-table:: 
+.. list-table::
    :widths: 25 50
    :header-rows: 1
    :align: left
-   
-   * - <value> 
+
+   * - <value>
      - Description
    * - ``mpi``
      - MPI transport (**default**).
@@ -615,7 +626,7 @@ CCL_ATL_SHM
 ***********
 
 **Syntax**
-:: 
+::
 
   CCL_ATL_SHM=<value>
 
@@ -631,35 +642,38 @@ CCL_ATL_SHM
    * - ``0``
      - Disables the OFI shared memory provider. The default value.
    * - ``1``
-     - Enables the OFI shared memory provider. 
+     - Enables the OFI shared memory provider.
 
 **Description**
 
-Set this environment variable to enable the OFI shared memory provider to communicate between ranks in the same node of the host (CPU) buffers.
-This capability requires OFI as the transport (``CCL_ATL_TRANSPORT=ofi``). 
+Set this environment variable to enable the OFI shared memory provider to
+communicate between ranks in the same node of the host (CPU) buffers. This
+capability requires OFI as the transport (``CCL_ATL_TRANSPORT=ofi``).
 
-The OFI/SHM provider has support to utilize the `Intel(R) Data Streaming Accelerator* (DSA) <https://01.org/blogs/2019/introducing-intel-data-streaming-accelerator>`_. 
+The OFI/SHM provider has support to utilize the `Intel(R) Data Streaming Accelerator* (DSA) <https://01.org/blogs/2019/introducing-intel-data-streaming-accelerator>`_.
 To run it with DSA*, you need:
 * Linux* OS kernel support for the DSA* shared work queues
 * Libfabric* 1.17 or later
 
-To enable DSA, set the following environment variables:   
+To enable DSA, set the following environment variables:
 
 .. code::
 
-    FI_SHM_DISABLE_CMA=1  
-    FI_SHM_USE_DSA_SAR=1  
+    FI_SHM_DISABLE_CMA=1
+    FI_SHM_USE_DSA_SAR=1
 
-Refer to Libfabric* Programmer's Manual for the additional details about DSA* support in the SHM provider: https://ofiwg.github.io/libfabric/main/man/fi_shm.7.html. 
+Refer to Libfabric* Programmer's Manual for the additional details about DSA*
+support in the SHM provider:
+https://ofiwg.github.io/libfabric/main/man/fi_shm.7.html.
 
 CCL_PROCESS_LAUNCHER
 ********************
 
 **Syntax**
-:: 
+::
 
   CCL_PROCESS_LAUNCHER=<value>
-  
+
 **Arguments**
 
 .. list-table::
@@ -672,15 +686,15 @@ CCL_PROCESS_LAUNCHER
    * - ``hydra``
      - Uses the MPI hydra job launcher. The default value.
    * - ``torch``
-     - Uses a torch job launcher. 
+     - Uses a torch job launcher.
    * - ``pmix``
      - Is used with the PALS job launcher that uses the pmix API. The ``mpiexec`` command should be similar to:
-       
+
        ::
-         
+
          CCL_PROCESS_LAUNCHER=pmix CCL_ATL_TRANSPORT=mpi mpiexec -np 2 -ppn 2 --pmi=pmix ...
    * - ``none``
-     - No job launcher is used. You should specify the values for ``CCL_LOCAL_SIZE and CCL_LOCAL_RANK``.  
+     - No job launcher is used. You should specify the values for ``CCL_LOCAL_SIZE and CCL_LOCAL_RANK``.
 
 
 **Description**
@@ -692,11 +706,11 @@ CCL_LOCAL_SIZE
 **************
 
 **Syntax**
-:: 
+::
 
   CCL_LOCAL_SIZE=<value>
-  
-  
+
+
 **Arguments**
 
 .. list-table::
@@ -711,16 +725,16 @@ CCL_LOCAL_SIZE
 
 **Description**
 
-Set this environment variable to specify a total number of ranks on a local host. 
+Set this environment variable to specify a total number of ranks on a local host.
 
 CCL_LOCAL_RANK
 **************
 
 **Syntax**
-:: 
+::
 
   CCL_LOCAL_RANK=<value>
-  
+
 **Arguments**
 
 .. list-table::
@@ -731,13 +745,13 @@ CCL_LOCAL_RANK
    * - <value>
      - Description
    * - ``RANK``
-     - Rank number of the current process on the local host. 
-     
- 
+     - Rank number of the current process on the local host.
+
+
 **Description**
- 
+
 Set this environment variable to specify the rank number of the current process in the local host.
-  
+
 Multi-NIC
 #########
 
@@ -827,8 +841,75 @@ CCL_MNIC_COUNT
 
 **Description**
 
-Set this environment variable to specify the maximum number of NICs to be selected.
-The actual number of NICs selected may be smaller due to limitations on transport level or system configuration.
+Set this environment variable to specify the maximum number of NICs to be
+selected. The actual number of NICs selected may be smaller due to limitations
+on transport level or system configuration.
+
+Inter Process Communication (IPC)
+#################################
+
+CCL_ZE_CACHE_OPEN_IPC_HANDLES_THRESHOLD
+***************************************
+
+**Syntax**
+
+::
+
+  CCL_ZE_CACHE_OPEN_IPC_HANDLES_THRESHOLD=<value>
+
+.. list-table::
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``N``
+     - The number IPC handles in the receiver cache. Default is 1000.
+
+**Description**
+
+Use this environment variable to change the number of IPC
+handles opened with ``zeMemOpenIpcHandle()`` that oneCCL maintains in its receiving
+cache. IPC handles refer to `Level Zero Memory IPCs
+<https://spec.oneapi.io/level-zero/latest/core/PROG.html#memory-1>`_.
+
+The IPC handles opened with ``zeMemOpenIpcHandle()`` are stored by oneCCL in
+the receiving cache. However, when the number of opened IPC handles exceeds the
+specified threshold, the cache will evict a handle using a LRU (Last Recently
+Used) policy. The default value starting with version 2021.10 is 1000.
+
+
+CCL_ZE_CACHE_GET_IPC_HANDLES_THRESHOLD
+**************************************
+
+**Syntax**
+
+::
+
+  CCL_ZE_CACHE_GET_IPC_HANDLES_THRESHOLD=<value>
+
+.. list-table::
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``N``
+     -	The number IPC handles in the receiver cache. Default is 1000
+
+**Description**
+
+Use this environment variable to change the number of IPC handles obtained with
+``zeMemGetIpcHandle()`` that oneCCL maintains in its sender cache. IPC handles
+refer to `Level Zero Memory IPCs <https://spec.oneapi.io/level-zero/latest/core/PROG.html#memory-1>`_.
+
+The IPC handles obtained with ``zeMemGetIpcHandle()`` are stored by oneCCL in the
+sender cache. However, when the number of get IPC handles exceeds the specified
+threshold, the cache will evict a handle using a LRU (Last Recently Used)
+policy. The default value is 1000.
+
 
 .. _low-precision-datatypes:
 
@@ -888,28 +969,33 @@ CCL_FP16
      - Select implementation based on ``F16C`` instructions.
    * - ``avx512f``
      - Select implementation based on ``AVX512F`` instructions.
+   * - ``avx512fp16``
+     - Select implementation based on ``AVX512FP16`` instructions.
 
 **Description**
 
-Set this environment variable to select implementation for FP16 <-> FP32 conversion on reduction phase of collective operation.
-Default value depends on instruction set support on specific CPU. ``AVX512F``-based implementation has precedence over ``F16C``-based one.
+Set this environment variable to select implementation for on reduction phase of collective operation.
+``AVX512FP16`` uses native FP16 numeric operations for reduction.
+``AVX512F`` and ``F16C`` use FP16 <-> FP32 conversion operations to perform the reduction.
+Default value depends on instruction set support on specific CPU.
+``AVX512FP16``-based implementation has precedence over ``AVX512F`` and ``F16C``-based one.
 
 
 CCL_LOG_LEVEL
 #############
 **Syntax**
 
-:: 
+::
 
   CCL_LOG_LEVEL=<value>
 
 **Arguments**
 
-.. list-table:: 
+.. list-table::
    :header-rows: 1
    :align: left
-   
-   * - <value> 
+
+   * - <value>
    * - ``error``
    * - ``warn`` (**default**)
    * - ``info``
@@ -1182,7 +1268,7 @@ Set this environment variable to specify the name and full path to ``Level-Zero`
 Point-To-Point Operations
 *************************
 
-CCL_RECV 
+CCL_RECV
 #########
 
 **Syntax**
@@ -1203,13 +1289,13 @@ CCL_RECV
    * - ``direct``
      - Based on the MPI*/OFI* transport layer.
    * - ``topo``
-     - Uses XeLinks across GPUs in a multi-GPU node. Default for GPU buffers.  
+     - Uses XeLinks across GPUs in a multi-GPU node. Default for GPU buffers.
    * - ``offload``
      - Based on the MPI*/OFI* transport layer and GPU RDMA when supported by the hardware.
 
 
 
-CCL_SEND 
+CCL_SEND
 #########
 
 **Syntax**
@@ -1230,6 +1316,37 @@ CCL_SEND
    * - ``direct``
      - Based on the MPI*/OFI* transport layer.
    * - ``topo``
-     - Uses XeLinks across GPUs in a multi-GPU node. Default for GPU buffers.  
+     - Uses XeLinks across GPUs in a multi-GPU node. Default for GPU buffers.
    * - ``offload``
      - Based on the MPI*/OFI* transport layer and GPU RDMA when supported by the hardware.
+
+
+CCL_ZE_TMP_BUF_SIZE
+#####################
+
+**Syntax**
+
+::
+
+  CCL_SERIAL_CHUNK_SIZE=<value> 
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``N``
+     - Size of the temporary buffer (in bytes) oneCCL uses to perform collective operations with topo algorithm and Level Zero path. Default is 536870912, that is, 512 MBs.
+
+
+**Description**
+
+Set this environment variable to change the size of the temporary buffer used by the topo algorithm in the Level Zero path. The value is specified in bytes; the default value is 536870912.  
+Tune the value of this variable depending on the system memory available, the memory the application requires, and the message size of the collectives used. 
+With larger values, oneCCL consumes more memory but can provide higher performance. Similarly, small values will reduce memory utilization but can degrade performance.  
+
+

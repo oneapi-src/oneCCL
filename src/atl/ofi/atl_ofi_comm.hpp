@@ -73,12 +73,20 @@ public:
         return transport->probe(eps[ep_idx], rank2proc_map[src_proc_idx], tag, found, recv_len);
     }
 
+    atl_status_t allgather(size_t ep_idx,
+                           const void* send_buf,
+                           void* recv_buf,
+                           size_t len,
+                           atl_req_t& req) override {
+        return ATL_STATUS_UNSUPPORTED;
+    }
+
     atl_status_t allgatherv(size_t ep_idx,
                             const void* send_buf,
                             size_t send_len,
                             void* recv_buf,
-                            const int* recv_lens,
-                            const int* offsets,
+                            const size_t* recv_lens,
+                            const size_t* offsets,
                             atl_req_t& req) override;
 
     atl_status_t allreduce(size_t ep_idx,
@@ -101,11 +109,11 @@ public:
 
     atl_status_t alltoallv(size_t ep_idx,
                            const void* send_buf,
-                           const int* send_lens,
-                           const int* send_offsets,
+                           const size_t* send_lens,
+                           const size_t* send_offsets,
                            void* recv_buf,
-                           const int* recv_lens,
-                           const int* recv_offsets,
+                           const size_t* recv_lens,
+                           const size_t* recv_offsets,
                            atl_req_t& req) override {
         return ATL_STATUS_UNSUPPORTED;
     }

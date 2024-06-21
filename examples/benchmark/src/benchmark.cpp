@@ -100,9 +100,10 @@ void run(ccl::communicator& service_comm,
             if (service_comm.rank() == 0) {
                 std::stringstream ss;
                 ss << std::right << std::setw(COL_WIDTH) << "#bytes" << std::setw(COL_WIDTH)
-                   << "#repetitions" << std::setw(COL_WIDTH) << "t_min[usec]"
-                   << std::setw(COL_WIDTH) << "t_max[usec]" << std::setw(COL_WIDTH) << "t_avg[usec]"
-                   << std::setw(COL_WIDTH - 3) << "stddev[%]";
+                   << "#elem_count" << std::setw(COL_WIDTH) << "#repetitions"
+                   << std::setw(COL_WIDTH) << "t_min[usec]" << std::setw(COL_WIDTH) << "t_max[usec]"
+                   << std::setw(COL_WIDTH) << "t_avg[usec]" << std::setw(COL_WIDTH - 3)
+                   << "stddev[%]";
 
                 if (show_extened_info(options.show_additional_info)) {
                     ss << std::right << std::setw(COL_WIDTH + 3) << "wait_t_avg[usec]";
@@ -221,7 +222,10 @@ void create_cpu_colls(bench_init_attr& init_attr, user_options_t& options, coll_
 
     for (auto names_it = options.coll_names.begin(); names_it != options.coll_names.end();) {
         const std::string& name = *names_it;
-        if (name == allgatherv_strategy_impl::class_name()) {
+        if (name == allgather_strategy_impl::class_name()) {
+            colls.emplace_back(new cpu_allgather_coll<Dtype>(init_attr));
+        }
+        else if (name == allgatherv_strategy_impl::class_name()) {
             colls.emplace_back(new cpu_allgatherv_coll<Dtype>(init_attr));
         }
         else if (name == allreduce_strategy_impl::class_name()) {
@@ -235,6 +239,9 @@ void create_cpu_colls(bench_init_attr& init_attr, user_options_t& options, coll_
         }
         else if (name == bcast_strategy_impl::class_name()) {
             colls.emplace_back(new cpu_bcast_coll<Dtype>(init_attr));
+        }
+        else if (name == bcastExt_strategy_impl::class_name()) {
+            colls.emplace_back(new cpu_bcastExt_coll<Dtype>(init_attr));
         }
         else if (name == reduce_strategy_impl::class_name()) {
             colls.emplace_back(new cpu_reduce_coll<Dtype>(init_attr));
@@ -266,8 +273,10 @@ void create_sycl_colls(bench_init_attr& init_attr, user_options_t& options, coll
 
     for (auto names_it = options.coll_names.begin(); names_it != options.coll_names.end();) {
         const std::string& name = *names_it;
-
-        if (name == allgatherv_strategy_impl::class_name()) {
+        if (name == allgather_strategy_impl::class_name()) {
+            colls.emplace_back(new sycl_allgather_coll<Dtype>(init_attr));
+        }
+        else if (name == allgatherv_strategy_impl::class_name()) {
             colls.emplace_back(new sycl_allgatherv_coll<Dtype>(init_attr));
         }
         else if (name == allreduce_strategy_impl::class_name()) {
@@ -281,6 +290,9 @@ void create_sycl_colls(bench_init_attr& init_attr, user_options_t& options, coll
         }
         else if (name == bcast_strategy_impl::class_name()) {
             colls.emplace_back(new sycl_bcast_coll<Dtype>(init_attr));
+        }
+        else if (name == bcastExt_strategy_impl::class_name()) {
+            colls.emplace_back(new sycl_bcastExt_coll<Dtype>(init_attr));
         }
         else if (name == reduce_strategy_impl::class_name()) {
             colls.emplace_back(new sycl_reduce_coll<Dtype>(init_attr));

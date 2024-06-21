@@ -40,6 +40,7 @@ typedef struct ze_lib_ops {
     decltype(zeMemOpenIpcHandle) *zeMemOpenIpcHandle;
     decltype(zeMemCloseIpcHandle) *zeMemCloseIpcHandle;
     decltype(zeMemGetIpcHandle) *zeMemGetIpcHandle;
+    decltype(zeMemPutIpcHandle) *zeMemPutIpcHandle;
     decltype(zeDeviceGet) *zeDeviceGet;
     decltype(zeDeviceGetProperties) *zeDeviceGetProperties;
     decltype(zeDeviceCanAccessPeer) *zeDeviceCanAccessPeer;
@@ -60,6 +61,7 @@ typedef struct ze_lib_ops {
     decltype(zeCommandListAppendSignalEvent) *zeCommandListAppendSignalEvent;
     decltype(zeCommandListAppendBarrier) *zeCommandListAppendBarrier;
     decltype(zeCommandListAppendMemoryRangesBarrier) *zeCommandListAppendMemoryRangesBarrier;
+    decltype(zeCommandListAppendWriteGlobalTimestamp) *zeCommandListAppendWriteGlobalTimestamp;
     decltype(zeCommandListClose) *zeCommandListClose;
     decltype(zeCommandListReset) *zeCommandListReset;
     decltype(zeCommandListDestroy) *zeCommandListDestroy;
@@ -107,6 +109,7 @@ typedef struct ze_lib_ops {
     decltype(zeFabricVertexGetSubVerticesExp) *zeFabricVertexGetSubVerticesExp;
     decltype(zeFabricEdgeGetExp) *zeFabricEdgeGetExp;
     decltype(zeFabricEdgeGetPropertiesExp) *zeFabricEdgeGetPropertiesExp;
+    decltype(zeDeviceGetFabricVertexExp) *zeDeviceGetFabricVertexExp;
 } ze_lib_ops_t;
 
 static std::vector<std::string> ze_fn_names = {
@@ -122,6 +125,7 @@ static std::vector<std::string> ze_fn_names = {
     "zeMemOpenIpcHandle",
     "zeMemCloseIpcHandle",
     "zeMemGetIpcHandle",
+    "zeMemPutIpcHandle",
     "zeDeviceGet",
     "zeDeviceGetProperties",
     "zeDeviceCanAccessPeer",
@@ -142,6 +146,7 @@ static std::vector<std::string> ze_fn_names = {
     "zeCommandListAppendSignalEvent",
     "zeCommandListAppendBarrier",
     "zeCommandListAppendMemoryRangesBarrier",
+    "zeCommandListAppendWriteGlobalTimestamp",
     "zeCommandListClose",
     "zeCommandListReset",
     "zeCommandListDestroy",
@@ -189,6 +194,7 @@ static std::vector<std::string> ze_fn_names = {
     "zeFabricVertexGetSubVerticesExp",
     "zeFabricEdgeGetExp",
     "zeFabricEdgeGetPropertiesExp",
+    "zeDeviceGetFabricVertexExp",
 };
 
 extern ccl::ze_lib_ops_t ze_lib_ops;
@@ -205,6 +211,7 @@ extern ccl::ze_lib_ops_t ze_lib_ops;
 #define zeMemOpenIpcHandle      ccl::ze_lib_ops.zeMemOpenIpcHandle
 #define zeMemCloseIpcHandle     ccl::ze_lib_ops.zeMemCloseIpcHandle
 #define zeMemGetIpcHandle       ccl::ze_lib_ops.zeMemGetIpcHandle
+#define zeMemPutIpcHandle       ccl::ze_lib_ops.zeMemPutIpcHandle
 #define zeDeviceGet             ccl::ze_lib_ops.zeDeviceGet
 #define zeDeviceGetProperties   ccl::ze_lib_ops.zeDeviceGetProperties
 #define zeDeviceCanAccessPeer   ccl::ze_lib_ops.zeDeviceCanAccessPeer
@@ -227,6 +234,8 @@ extern ccl::ze_lib_ops_t ze_lib_ops;
 #define zeCommandListAppendBarrier        ccl::ze_lib_ops.zeCommandListAppendBarrier
 #define zeCommandListAppendMemoryRangesBarrier \
     ccl::ze_lib_ops.zeCommandListAppendMemoryRangesBarrier
+#define zeCommandListAppendWriteGlobalTimestamp \
+    ccl::ze_lib_ops.zeCommandListAppendWriteGlobalTimestamp
 #define zeCommandListClose                ccl::ze_lib_ops.zeCommandListClose
 #define zeCommandListReset                ccl::ze_lib_ops.zeCommandListReset
 #define zeCommandListDestroy              ccl::ze_lib_ops.zeCommandListDestroy
@@ -274,6 +283,7 @@ extern ccl::ze_lib_ops_t ze_lib_ops;
 #define zeFabricVertexGetSubVerticesExp     ccl::ze_lib_ops.zeFabricVertexGetSubVerticesExp
 #define zeFabricEdgeGetExp                  ccl::ze_lib_ops.zeFabricEdgeGetExp
 #define zeFabricEdgeGetPropertiesExp        ccl::ze_lib_ops.zeFabricEdgeGetPropertiesExp
+#define zeDeviceGetFabricVertexExp          ccl::ze_lib_ops.zeDeviceGetFabricVertexExp
 
 bool ze_api_init();
 void ze_api_fini();

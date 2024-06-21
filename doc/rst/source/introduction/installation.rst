@@ -94,6 +94,6 @@ You can customize CLI-based installation (for example, specify directory, compil
 
 Find More
 *********
-- `oneCCL Get Started Guide <https://www.intel.com/content/www/us/en/docs/oneccl/get-started-guide/2021-11/overview.html>`_
+- `oneCCL Get Started Guide <https://www.intel.com/content/www/us/en/docs/oneccl/get-started-guide/current/overview.html>`_
 - `oneCCL GitHub Source Code Repository <https://github.com/oneapi-src/oneCCL>`_
-- `oneCCL Documentation <https://oneapi-src.github.io/oneCCL/??#>`_
+- `oneCCL Documentation <https://oneapi-src.github.io/oneCCL/>`_

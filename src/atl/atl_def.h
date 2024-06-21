@@ -93,6 +93,15 @@
             err_action; \
         } \
     } while (0)
+// TODO: Why are we using FI_SUCCESS? Shouldn't this be ATL_STATUS_SUCCESS?
+
+#define ATL_CALL_THROW_IF_ERROR(func) \
+    do { \
+        atl_status_t status = func; \
+        if (unlikely(status != ATL_STATUS_SUCCESS)) { \
+            CCL_THROW(#func "\n fails with status: ", status); \
+        } \
+    } while (0)
 
 class ipmi;
 
@@ -153,11 +162,11 @@ extern std::map<atl_mnic_offset_t, std::string> mnic_offset_names;
 
 typedef struct atl_attr {
     struct {
-        int enable_shm;
-        int enable_rma;
-        int enable_hmem;
-        int enable_sync_coll;
-        int enable_extra_ep;
+        bool enable_shm;
+        bool enable_rma;
+        bool enable_hmem;
+        bool enable_sync_coll;
+        bool enable_extra_ep;
         size_t ep_count;
         atl_mnic_t mnic_type;
         std::string mnic_name;
@@ -165,9 +174,9 @@ typedef struct atl_attr {
         atl_mnic_offset_t mnic_offset;
     } in;
     struct {
-        int enable_shm;
-        int enable_rma;
-        int enable_hmem;
+        bool enable_shm;
+        bool enable_rma;
+        bool enable_hmem;
         atl_mnic_t mnic_type;
         size_t mnic_count;
         size_t tag_bits;
@@ -225,3 +234,11 @@ std::string to_string(atl_mnic_offset_t offset);
 std::string to_string(atl_proc_coord_t& coord);
 std::string to_string(atl_attr_t& attr);
 std::ostream& operator<<(std::ostream& str, const atl_req_t& req);
+
+namespace ccl {
+enum class kvs_mode : int { pmi, mpi };
+static std::map<kvs_mode, std::string> kvs_mode_names = {
+    std::make_pair(kvs_mode::pmi, "pmi"),
+    std::make_pair(kvs_mode::mpi, "mpi"),
+};
+} // namespace ccl

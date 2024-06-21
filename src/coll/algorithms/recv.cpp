@@ -76,6 +76,7 @@ ccl::status ccl_coll_build_topo_recv(ccl_sched* sched,
 
     ccl::add_handle_exchange(
         sched, node_comm, wait_events, out_event, buffer, ccl_comm::invalid_rank, nullptr, 0, info);
+    ccl::utils::clear_and_push_back(wait_events, out_event);
     LOG_DEBUG("build RECV: add_handle_exchange is done");
 
     ccl_sched_id_t pt2pt_ack_tag = node_comm->get_atl_comm()->tag_creator->get_pt2pt_ack_tag();

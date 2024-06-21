@@ -32,7 +32,7 @@ int allreduce_large_buffer_index = 0;
                                      uint32_t rank_in, \
                                      uint32_t world_in); \
     ccl::event run_allreduce_large_##TYPE( \
-        ccl::datatype dtype, sycl::queue queue, const void *in_buf, void *out_buf, size_t count)
+        ccl::datatype dtype, sycl::queue &queue, const void *in_buf, void *out_buf, size_t count)
 
 ALLREDUCE_LARGE_API_DECL(fp16);
 ALLREDUCE_LARGE_API_DECL(bf16);
@@ -63,7 +63,7 @@ void init_allreduce_large(ccl::datatype dtype,
     case ccl_type: e = run_allreduce_large_##TYPE(dtype, queue, in_buf, out_buf, count); break;
 
 ccl::event run_allreduce_large(ccl::datatype dtype,
-                               sycl::queue queue,
+                               sycl::queue &queue,
                                const void *in_buf,
                                void *out_buf,
                                size_t count) {
@@ -76,4 +76,64 @@ ccl::event run_allreduce_large(ccl::datatype dtype,
         default: CCL_THROW("unsupported datatype for allreduce"); assert(0);
     }
     return e;
+}
+
+#include "coll/algorithms/allreduce/sycl/allreduce_large_sycl_impl.hpp"
+
+ccl::event allreduce_large(const void *send_buf,
+                           void *recv_buf,
+                           size_t count,
+                           ccl::datatype dtype,
+                           ccl::reduction reduction,
+                           ccl_comm *comm,
+                           ccl_stream *global_stream,
+                           const ccl::vector_class<ccl::event> &deps) {
+    LOG_DEBUG("invoking allreduce_large");
+
+    std::shared_ptr<ccl_comm> pair_comm = comm->get_pair_comm();
+    std::shared_ptr<ccl_comm> even_comm = comm->get_even_comm();
+    std::shared_ptr<ccl_comm> node_comm = comm->get_node_comm();
+
+    const bool is_use_tmp = ccl::global_data::env().sycl_allreduce_tmp_buf;
+    if (!is_use_tmp) {
+        std::vector<void *> ptrs{ (void *)send_buf, recv_buf }; // index 0 and 1
+        auto [sched, exchange_entry] = do_ipc_exchange(comm, global_stream, ptrs);
+
+        xelink_ptrs_rd = get_ipc_ptrs<void, MAX_GPUS>(even_comm, 0, (void *)send_buf, sched);
+        xelink_ptrs_wr = get_ipc_ptrs<void, MAX_GPUS>(even_comm, 1, (void *)recv_buf, sched);
+
+        if (pair_comm->size() > 1) {
+            assert(pair_comm->size() == MAX_TILES);
+            int peer_pair_rank = pair_comm->rank() ? 0 : 1;
+            mdfi_ptr_rd = get_ipc_ptrs<void, MAX_TILES>(
+                pair_comm, 0, (void *)send_buf, sched)[peer_pair_rank];
+            mdfi_ptr_wr = get_ipc_ptrs<void, MAX_TILES>(
+                pair_comm, 1, (void *)recv_buf, sched)[peer_pair_rank];
+        }
+
+        delete exchange_entry;
+        delete sched;
+
+        coll_init(comm, global_stream);
+    }
+    else {
+        coll_init(comm, global_stream);
+        // 0 index is used for tmp work buffer and
+        // 1 index is used to copy input data
+        // 2 index is used to copy output data
+        xelink_ptrs_rd = get_remote_even_tmp_buf(1);
+        if (pair_comm->size() > 1) {
+            assert(pair_comm->size() == MAX_TILES);
+            int peer_pair_rank = pair_comm->rank() ? 0 : 1;
+            mdfi_ptr_rd = get_remote_pair_tmp_buf(1)[peer_pair_rank];
+            mdfi_ptr_wr = get_remote_pair_tmp_buf(2)[peer_pair_rank];
+        }
+    }
+
+    auto lambda = [&]<typename T, int NE, int NP>() {
+        return allreduce_large_impl<T, NE, NP>(
+            send_buf, recv_buf, count, dtype, reduction, comm, global_stream, deps);
+    };
+
+    return invoke_collective(lambda, comm, dtype);
 }

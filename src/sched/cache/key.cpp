@@ -44,6 +44,7 @@ void ccl_sched_key::set(const ccl_coll_param& param, const ccl_coll_attr& attr) 
     f.comm = param.comm;
 
     switch (f.ctype) {
+        case ccl_coll_allgather: f.count1 = param.get_send_count(); break;
         case ccl_coll_allgatherv:
             f.count1 = param.get_send_count();
             vec1 = param.recv_counts;
@@ -59,6 +60,7 @@ void ccl_sched_key::set(const ccl_coll_param& param, const ccl_coll_attr& attr) 
             break;
         case ccl_coll_barrier: break;
         case ccl_coll_bcast:
+        case ccl_coll_bcastExt:
             f.count1 = param.get_send_count();
             f.root = param.root;
             break;
@@ -92,6 +94,7 @@ bool ccl_sched_key::check(const ccl_coll_param& param, const ccl_coll_attr& attr
                param.dtype == f.dtype || param.comm == f.comm);
 
     switch (f.ctype) {
+        case ccl_coll_allgather: result &= (param.get_send_count() == f.count1); break;
         case ccl_coll_allgatherv:
             result &= (param.get_send_count() == f.count1 && param.recv_counts == vec1);
             break;
@@ -104,6 +107,7 @@ bool ccl_sched_key::check(const ccl_coll_param& param, const ccl_coll_attr& attr
             break;
         case ccl_coll_barrier: break;
         case ccl_coll_bcast:
+        case ccl_coll_bcastExt:
             result &= (param.get_send_count() == f.count1 && param.root == f.root);
             break;
         case ccl_coll_reduce:

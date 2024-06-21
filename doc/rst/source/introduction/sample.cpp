@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
 
     atexit(mpi_finalize);
 
-    sycl::default_selector device_selector;
+    auto device_selector = sycl::default_selector_v;
     sycl::queue q(device_selector);
     std::cout << "Running on " << q.get_device().get_info<sycl::info::device::name>() << "\n";
 

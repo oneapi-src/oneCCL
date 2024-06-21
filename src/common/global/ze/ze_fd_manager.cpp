@@ -212,7 +212,7 @@ std::vector<bdf_info> fd_manager::init_device_bdfs(const size_t size) {
 }
 
 // fill functions impl
-std::vector<int> fd_manager::fill_device_fds(std::vector<std::string> dev_names) {
+std::vector<int> fd_manager::fill_device_fds(const std::vector<std::string> &dev_names) {
     CCL_THROW_IF_NOT(!dev_names.empty(), "device names are empty");
     std::vector<int> fds(dev_names.size());
     device_bdfs = init_device_bdfs(dev_names.size());

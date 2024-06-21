@@ -33,6 +33,10 @@
     if (to->to_cache != from.get<ccl::operation_attr_id::to_cache>()) \
         LOG_INFO("collective caching is requested but no match_id is provided, disable caching");
 
+ccl_coll_attr::ccl_coll_attr(const ccl::allgather_attr& attr) {
+    COPY_COMMON_OP_ATTRS(attr, this);
+}
+
 ccl_coll_attr::ccl_coll_attr(const ccl::allgatherv_attr& attr) {
     COPY_COMMON_OP_ATTRS(attr, this);
 }
@@ -56,6 +60,10 @@ ccl_coll_attr::ccl_coll_attr(const ccl::barrier_attr& attr) {
 }
 
 ccl_coll_attr::ccl_coll_attr(const ccl::broadcast_attr& attr) {
+    COPY_COMMON_OP_ATTRS(attr, this);
+}
+
+ccl_coll_attr::ccl_coll_attr(const ccl::broadcastExt_attr& attr) {
     COPY_COMMON_OP_ATTRS(attr, this);
 }
 
@@ -118,6 +126,7 @@ void ccl_coll_param::copy(const ccl_coll_param& other) {
     stream = other.stream;
     peer_rank = other.peer_rank;
     is_scaleout = other.is_scaleout;
+    is_hmem_enabled = other.is_hmem_enabled;
     is_validate = other.is_validate;
     is_pt2pt = other.is_pt2pt;
     copy_deps(other.deps);
@@ -136,6 +145,7 @@ ccl_coll_param::ccl_coll_param(bool in_is_validate) {
     stream = nullptr;
     comm = nullptr;
     is_scaleout = false;
+    is_hmem_enabled = false;
     is_validate = in_is_validate;
     is_pt2pt = false;
 }
@@ -171,7 +181,7 @@ std::string ccl_coll_param::to_string() const {
         ss << ", rt: " << ccl_reduction_to_str(reduction);
     }
 
-    if (ctype == ccl_coll_bcast || ctype == ccl_coll_reduce) {
+    if (ctype == ccl_coll_bcast || ctype == ccl_coll_bcastExt || ctype == ccl_coll_reduce) {
         ss << ", root: " << root;
     }
 
@@ -254,13 +264,34 @@ bool ccl_coll_param::is_inplace(buf_type type) const {
         send_buf_ptr = get_send_buf(0, type);
     }
 
-    if ((ctype == ccl_coll_allgatherv || ctype == ccl_coll_alltoall ||
-         ctype == ccl_coll_alltoallv) &&
-        (recv_bufs.size() > 1)) {
+    bool scaleout_hmem_enabled = is_scaleout && is_hmem_enabled && ctype == ccl_coll_allgatherv;
+
+    if (scaleout_hmem_enabled && recv_scale_out_bufs.size() > 1) {
+        recv_buf_ptr = recv_scale_out_bufs[comm->rank()].get_ptr();
+    }
+    else if ((ctype == ccl_coll_allgather || ctype == ccl_coll_allgatherv ||
+              ctype == ccl_coll_alltoall || ctype == ccl_coll_alltoallv) &&
+             (recv_bufs.size() > 1)) {
         recv_buf_ptr = get_recv_buf(comm->rank(), type);
     }
     else {
         recv_buf_ptr = get_recv_buf(0, type);
+    }
+
+    if ((scaleout_hmem_enabled && recv_scale_out_bufs.size() == 1) ||
+        ((ctype == ccl_coll_allgatherv || ctype == ccl_coll_allgather) && recv_bufs.size() == 1)) {
+        return ccl::is_allgatherv_inplace(send_buf_ptr,
+                                          get_send_count(),
+                                          recv_buf_ptr,
+                                          recv_counts.data(),
+                                          dtype.size(),
+                                          comm->rank(),
+                                          comm->size());
+    }
+
+    if (ctype == ccl_coll_reduce_scatter) {
+        return ccl::is_reduce_scatter_inplace(
+            send_buf_ptr, recv_buf_ptr, get_recv_count(), dtype.size(), comm->rank(), comm->size());
     }
 
     return (send_buf_ptr && (send_buf_ptr == recv_buf_ptr)) ? true : false;
@@ -307,7 +338,9 @@ std::vector<void*> ccl_coll_param::get_all_non_zero_bufs() const {
         }
         case ccl_coll_allreduce:
         case ccl_coll_alltoall:
+        case ccl_coll_allgather:
         case ccl_coll_bcast:
+        case ccl_coll_bcastExt:
         case ccl_coll_reduce:
         case ccl_coll_reduce_scatter:
             if (get_send_count()) {
@@ -408,7 +441,9 @@ void ccl_coll_param::validate() const {
         }
         case ccl_coll_allreduce:
         case ccl_coll_alltoall:
+        case ccl_coll_allgather:
         case ccl_coll_bcast:
+        case ccl_coll_bcastExt:
         case ccl_coll_reduce:
         case ccl_coll_reduce_scatter:
             CCL_THROW_IF_NOT(send_bufs.size() == send_counts.size(),
@@ -477,6 +512,27 @@ void ccl_coll_param::set_common_fields(ccl::datatype d,
     comm = c;
     stream = (ccl_stream*)s;
     copy_deps(ds);
+}
+
+ccl_coll_param ccl_coll_param::create_allgather_param(const void* send_buf,
+                                                      void* recv_buf,
+                                                      size_t count,
+                                                      ccl::datatype dtype,
+                                                      const ccl_coll_attr& attr,
+                                                      ccl_comm* comm,
+                                                      const ccl_stream* stream,
+                                                      const std::vector<ccl::event>& deps) {
+    ccl_coll_param param{};
+
+    param.ctype = ccl_coll_allgather;
+    param.send_bufs.push_back((void*)send_buf);
+    param.send_counts.push_back(count);
+    param.recv_bufs.push_back(recv_buf);
+    param.recv_counts.push_back(count);
+    param.set_common_fields(dtype, comm, stream, deps);
+    param.validate();
+
+    return param;
 }
 
 ccl_coll_param ccl_coll_param::create_allgatherv_param(const void* send_buf,
@@ -613,6 +669,29 @@ ccl_coll_param ccl_coll_param::create_broadcast_param(void* buf,
     param.send_bufs.push_back(buf);
     param.send_counts.push_back(count);
     param.recv_bufs.push_back(buf);
+    param.recv_counts.push_back(count);
+    param.root = root;
+    param.set_common_fields(dtype, comm, stream, deps);
+    param.validate();
+
+    return param;
+}
+
+ccl_coll_param ccl_coll_param::create_broadcastExt_param(void* send_buf,
+                                                         void* recv_buf,
+                                                         size_t count,
+                                                         ccl::datatype dtype,
+                                                         int root,
+                                                         const ccl_coll_attr& attr,
+                                                         ccl_comm* comm,
+                                                         const ccl_stream* stream,
+                                                         const std::vector<ccl::event>& deps) {
+    ccl_coll_param param{};
+
+    param.ctype = ccl_coll_bcastExt;
+    param.send_bufs.push_back(send_buf);
+    param.send_counts.push_back(count);
+    param.recv_bufs.push_back(recv_buf);
     param.recv_counts.push_back(count);
     param.root = root;
     param.set_common_fields(dtype, comm, stream, deps);

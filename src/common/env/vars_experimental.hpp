@@ -167,24 +167,128 @@ constexpr const char* CCL_ZE_TYPE2_TUNE_PORTS = "CCL_ZE_TYPE2_TUNE_PORTS";
  * By-default: "1 (SYNC)"
  */
 constexpr const char* CCL_BARRIER_SYNC = "CCL_BARRIER_SYNC";
+/**
+ * @brief Enable SYCL kernels
+ *
+ * @details Setting this environment variable to 1 enables SYCL kernel-based
+ * implementation for allgatherv, allreduce, and reduce_scatter. Support includes
+ * all message sizes and some data types (int32, fp32, fp16, and bf16), sum operation,
+ * and single node. oneCCL falls back to other implementations when the support is not
+ * available with SYCL kernels, so the user can safely setup this environment variable.
+ *
+ * "<value>" :  "0", "1"
+ *
+ * By-default: "0 (disabled)"
+ */
+constexpr const char* CCL_ENABLE_SYCL_KERNELS = "CCL_ENABLE_SYCL_KERNELS";
+
+/**
+ * @brief Enable the use of persistent temporary buffer in allgatherv
+ *
+ * @details Setting this environment variable to 1 enables the use of a persistent temporary
+ * buffer to perform the allgatherv operation. This implementation makes the collective fully
+ * asynchronous but adds some additional overhead due to the extra copy of the user buffer
+ * to a (persistent) temporary buffer.
+ *
+ * "<value>" : "0", "1"
+ *
+ * By-default: "0 (disabled)"
+ */
+constexpr const char* CCL_SYCL_ALLGATHERV_TMP_BUF = "CCL_SYCL_ALLGATHERV_TMP_BUF";
+
+/**
+ * @brief Specify the threshold for the small size algorithm in allgatherv
+ *
+ * @details Set the threshold in bytes to specify the small size algorithm in the allgatherv
+ * collective. Default value is 131072. "<value>"" : ">=0"
+ * 
+ */
+constexpr const char* CCL_SYCL_ALLGATHERV_SMALL_THRESHOLD = "CCL_SYCL_ALLGATHERV_SMALL_THRESHOLD";
+
+/**
+ * @brief Specify the threshold for the medium size algorithm in allgatherv
+ *
+ * @details Set the threshold in bytes to specify the medium size algorithm in the allgatherv
+ * collective. Default value is 2097152. "<value>"" : ">=0"
+ * 
+ */
+constexpr const char* CCL_SYCL_ALLGATHERV_MEDIUM_THRESHOLD = "CCL_SYCL_ALLGATHERV_MEDIUM_THRESHOLD";
+
+/**
+ * @brief Enable the use of persistent temporary buffer in allreduce
+ *
+ * @details Setting this environment variable to 1 enables the use of a persistent temporary
+ * buffer to perform the allreduce operation. This implementation makes the collective fully
+ * asynchronous but adds some additional overhead due to the extra copy of the user buffer
+ * to a (persistent) temporary buffer.
+ *
+ * "<value>" : "0", "1"
+ *
+ * By-default: "0 (disabled)"
+ */
+constexpr const char* CCL_SYCL_ALLREDUCE_TMP_BUF = "CCL_SYCL_ALLREDUCE_TMP_BUF";
+
+/**
+ * @brief Specify the threshold for the small size algorithm in allreduce
+ *
+ * @details Set the threshold in bytes to specify the small size algorithm in the allreduce
+ * collective. Default value is 524288. "<value>"" : ">=0"
+ * 
+ */
+constexpr const char* CCL_SYCL_ALLREDUCE_SMALL_THRESHOLD = "CCL_SYCL_ALLREDUCE_SMALL_THRESHOLD";
+
+// CCL_SYCL_ALLREDUCE_MEDIUM_THRESHOLD
+/**
+ * @brief Specify the threshold for the medium size algorithm in allreduce
+ *
+ * @details Set the threshold in bytes to specify the medium size algorithm in the allreduce
+ * collective. Default value is 16777216. "<value>"" : ">=0"
+ * 
+ */
+constexpr const char* CCL_SYCL_ALLREDUCE_MEDIUM_THRESHOLD = "CCL_SYCL_ALLREDUCE_MEDIUM_THRESHOLD";
+
+/**
+ * @brief Enable the use of persistent temporary buffer in reduce_scatter
+ *
+ * @details Setting this environment variable to 1 enables the use of a persistent temporary
+ * buffer to perform the reduce_scatter operation. This implementation makes the collective
+ * fully asynchronous but adds some additional overhead due to the extra copy of the user
+ * buffer to a (persistent) temporary buffer.
+ *
+ * "<value>" : "0", "1"
+ *
+ * By-default: "0 (disabled)"
+ */
+constexpr const char* CCL_SYCL_REDUCE_SCATTER_TMP_BUF = "CCL_SYCL_REDUCE_SCATTER_TMP_BUF";
+
+/**
+ * @brief Specify the threshold for the small size algorithm in reduce_scatter
+ *
+ * @details Set the threshold in bytes to specify the small size algorithm in the reduce_scatter
+ * collective. Default value is 2097152."<value>"" : ">=0"
+ * 
+ */
+constexpr const char* CCL_SYCL_REDUCE_SCATTER_SMALL_THRESHOLD = "CCL_SYCL_REDUCE_SCATTER_SMALL_THRESHOLD";
+
+/**
+ * @brief Specify the threshold for the medium size algorithm in reduce_scatter
+ *
+ * @details Set the threshold in bytes to specify the medium size algorithm in the reduce_scatter
+ * collective. Default value is 67108864. "<value>"" : ">=0"
+ * 
+ */
+constexpr const char* CCL_SYCL_REDUCE_SCATTER_MEDIUM_THRESHOLD = "CCL_SYCL_REDUCE_SCATTER_MEDIUM_THRESHOLD";
 /** @} */
 /** @} */
 
-constexpr const char* CCL_ALLREDUCE_USE_TMP_BUF = "CCL_ALLREDUCE_USE_TMP_BUF";
-constexpr const char* CCL_ALLREDUCE_SMALL_SIZE_THRESHOLD = "CCL_ALLREDUCE_SMALL_SIZE_THRESHOLD";
-constexpr const char* CCL_ALLREDUCE_MEDIUM_SIZE_THRESHOLD = "CCL_ALLREDUCE_MEDIUM_SIZE_THRESHOLD";
-
-constexpr const char* CCL_REDUCE_SCATTER_USE_TMP_BUF = "CCL_REDUCE_SCATTER_USE_TMP_BUF";
-constexpr const char* CCL_REDUCE_SCATTER_SMALL_SIZE_THRESHOLD = "CCL_REDUCE_SCATTER_SMALL_SIZE_THRESHOLD";
-constexpr const char* CCL_REDUCE_SCATTER_MEDIUM_SIZE_THRESHOLD = "CCL_REDUCE_SCATTER_MEDIUM_SIZE_THRESHOLD";
-
-constexpr const char* CCL_ALLGATHERV_USE_TMP_BUF = "CCL_ALLGATHERV_USE_TMP_BUF";
-constexpr const char* CCL_ALLGATHERV_CHUNK_SIZE = "CCL_ALLGATHERV_CHUNK_SIZE";
-constexpr const char* CCL_ALLGATHERV_SMALL_SIZE_THRESHOLD = "CCL_ALLGATHERV_SMALL_SIZE_THRESHOLD";
-constexpr const char* CCL_ALLGATHERV_MEDIUM_SIZE_THRESHOLD = "CCL_ALLGATHERV_MEDIUM_SIZE_THRESHOLD";
-
-constexpr const char* CCL_SKIP_SCHEDULER = "CCL_SKIP_SCHEDULER";
-constexpr const char* CCL_USE_CCL_BARRIER = "CCL_USE_CCL_BARRIER";
-constexpr const char* CCL_USE_SYCL_BARRIER = "CCL_USE_SYCL_BARRIER";
+constexpr const char* CCL_SYCL_CCL_BARRIER = "CCL_SYCL_CCL_BARRIER";
+constexpr const char* CCL_SYCL_SINGLE_NODE_ALGORITHM = "CCL_SYCL_SINGLE_NODE_ALGORITHM";
+constexpr const char* CCL_SYCL_AUTO_USE_TMP_BUF = "CCL_SYCL_AUTO_USE_TMP_BUF";
+constexpr const char* CCL_SYCL_COPY_ENGINE = "CCL_SYCL_COPY_ENGINE";
+constexpr const char* CCL_SYCL_KERNEL_COPY = "CCL_SYCL_KERNEL_COPY";
+constexpr const char* CCL_SYCL_ESIMD = "CCL_SYCL_ESIMD";
+constexpr const char* CCL_SYCL_TMP_BUF_SIZE = "CCL_SYCL_TMP_BUF_SIZE";
+constexpr const char* CCL_SYCL_SCALEOUT_HOST_BUF_SIZE = "CCL_SYCL_SCALEOUT_HOST_BUF_SIZE";
+constexpr const char* CCL_SYCL_KERNELS_LINE_SIZE = "CCL_SYCL_KERNELS_LINE_SIZE";
 
 #endif // CCL_ENABLE_SYCL

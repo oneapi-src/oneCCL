@@ -23,7 +23,7 @@
                                   uint32_t rank_in, \
                                   uint32_t world_in); \
     ccl::event run_allreduce_##MSGSIZE( \
-        ccl::datatype dtype, sycl::queue q, const void* in_buf, void* out_buf, size_t count);
+        ccl::datatype dtype, sycl::queue& q, const void* in_buf, void* out_buf, size_t count);
 
 SYCL_ALLREDUCE_FUNCTIONS(small)
 SYCL_ALLREDUCE_FUNCTIONS(medium)
@@ -33,7 +33,7 @@ namespace ccl {
 
 namespace v1 {
 
-event allreduce_sycl(sycl::queue q,
+event allreduce_sycl(sycl::queue& q,
                      const void* send_buf,
                      void* recv_buf,
                      size_t count,
@@ -48,3 +48,33 @@ event allreduce_sycl(sycl::queue q,
 } // namespace v1
 
 } // namespace ccl
+
+ccl::event allreduce_small(const void* send_buf,
+                           void* recv_buf,
+                           size_t count,
+                           ccl::datatype dtype,
+                           ccl::reduction reduction,
+                           ccl_comm* comm,
+                           ccl_stream* global_stream,
+                           const ccl::vector_class<ccl::event>& deps);
+
+ccl::event allreduce_large(const void* send_buf,
+                           void* recv_buf,
+                           size_t count,
+                           ccl::datatype dtype,
+                           ccl::reduction reduction,
+                           ccl_comm* comm,
+                           ccl_stream* global_stream,
+                           const ccl::vector_class<ccl::event>& deps);
+
+ccl::event allreduce_scaleout_sycl(sycl::queue& q,
+                                   const void* send_buf,
+                                   void* recv_buf,
+                                   size_t count,
+                                   ccl::datatype dtype,
+                                   ccl::reduction reduction,
+                                   ccl_comm* comm,
+                                   ccl::vector_class<ccl::event>& deps,
+                                   bool& done,
+                                   bool copy_to_host = true,
+                                   bool is_cpu_buffers = false);

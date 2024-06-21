@@ -38,17 +38,26 @@ struct cpu_reduce_scatter_coll : cpu_base_coll<Dtype, reduce_scatter_strategy_im
 
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
             for (size_t e_idx = 0; e_idx < elem_count; e_idx++) {
-                value = ((Dtype*)send_bufs[b_idx][rank_idx])[e_idx];
-                if (value != sbuf_expected) {
-                    std::cout << this->name() << " send_bufs: buf_idx " << b_idx << ", rank_idx "
-                              << rank_idx << ", elem_idx " << e_idx << ", expected "
-                              << sbuf_expected << ", got " << value << std::endl;
-                    ASSERT(0, "unexpected value");
+                if (!base_coll::get_inplace()) {
+                    value = ((Dtype*)send_bufs[b_idx][rank_idx])[e_idx];
+                    if (value != sbuf_expected) {
+                        std::cout << this->name() << " send_bufs: buf_idx " << b_idx
+                                  << ", rank_idx " << rank_idx << ", elem_idx " << e_idx
+                                  << ", expected " << sbuf_expected << ", got " << value
+                                  << std::endl;
+                        ASSERT(0, "unexpected value");
+                    }
                 }
             }
 
             for (size_t e_idx = 0; e_idx < recv_elem_count; e_idx++) {
-                value = ((Dtype*)recv_bufs[b_idx][rank_idx])[e_idx];
+                auto recv_buf_adjusted = (Dtype*)recv_bufs[b_idx][rank_idx];
+                if (base_coll::get_inplace()) {
+                    size_t offset_count = recv_elem_count * comm.rank();
+                    auto send_buf = (Dtype*)send_bufs[b_idx][rank_idx];
+                    recv_buf_adjusted = send_buf + offset_count;
+                }
+                value = recv_buf_adjusted[e_idx];
                 if (base_coll::check_error<Dtype>(value, rbuf_expected, comm)) {
                     std::cout << this->name() << " recv_bufs: buf_idx " << b_idx << ", rank_idx "
                               << rank_idx << ", elem_idx " << e_idx << ", expected "

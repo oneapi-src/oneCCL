@@ -22,27 +22,21 @@
 namespace ccl {
 namespace v1 {
 
-struct impl_dispatch {
-    template <class Object>
-    const typename Object::impl_value_t& operator()(const Object& obj) {
-        return obj.get_impl();
-    }
-};
-
-ccl::event reduce_scatter_sycl(sycl::queue q,
-                               const void* send_buf,
-                               void* recv_buf,
-                               size_t recv_count,
-                               datatype dtype,
-                               reduction reduction,
-                               const ccl::communicator& comm,
-                               const stream& op_stream,
-                               bool& done) {
+ccl::event reduce_scatter_sycl_single_node(sycl::queue& q,
+                                           const void* send_buf,
+                                           void* recv_buf,
+                                           size_t recv_count,
+                                           datatype dtype,
+                                           reduction reduction,
+                                           ccl_comm* comm,
+                                           ccl_stream* global_stream,
+                                           const vector_class<event>& deps,
+                                           bool& done) {
     ccl::event e;
     done = true;
 
-    uint32_t world = comm.size();
-    int rank = comm.rank();
+    uint32_t world = comm->get_node_comm()->size();
+    int rank = comm->get_node_comm()->rank();
 
     auto ccl_dtype = ccl::global_data::get().dtypes->get(dtype);
 
@@ -54,19 +48,41 @@ ccl::event reduce_scatter_sycl(sycl::queue q,
         return ccl::event::create_from_native(sycl_e);
     }
 
-    ccl::impl_dispatch disp;
-    std::shared_ptr<ccl::comm_interface> disp_comm = disp(comm);
-    ccl_comm* global_comm = (ccl_comm*)(disp_comm.get());
-    ccl_stream* global_stream = get_stream_ptr(disp(op_stream));
-
-    const bool is_single_tile = global_comm->get_pair_comm()->size() == 1;
-    const bool has_all_vertices_connected = global_comm->get_topo_manager().has_all_vertices_connected();
+    const bool is_single_tile = comm->get_pair_comm()->size() == 1;
+    const bool has_all_vertices_connected = comm->get_topo_manager().has_all_vertices_connected();
     LOG_DEBUG("|CCL_SYCL| has_all_vertices_connected", has_all_vertices_connected);
 
-    if (recv_count * world * ccl_dtype.size() <= ccl::global_data::env().reduce_scatter_small_size_threshold &&
+    if (!ccl::global_data::env().sycl_esimd) {
+        if (recv_count * world * ccl_dtype.size() <= ccl::global_data::env().sycl_reduce_scatter_small_threshold) {
+#ifdef CCL_ENABLE_ITT
+            __itt_event coll_create_itt_event = ccl::profile::itt::event_get("CCL_REDUCE_SCATTER_SMALL");
+            ccl::profile::itt::event_start(coll_create_itt_event);
+#endif // CCL_ENABLE_ITT
+            LOG_DEBUG("invoking small reduce_scatter: recv_count:", recv_count, " datatype: ", dtype);
+            e = reduce_scatter_small(send_buf, recv_buf, recv_count, dtype, reduction, comm, global_stream, deps);
+#ifdef CCL_ENABLE_ITT
+            ccl::profile::itt::event_end(coll_create_itt_event);
+#endif // CCL_ENABLE_ITT
+        }
+        else {
+#ifdef CCL_ENABLE_ITT
+            __itt_event coll_create_itt_event = ccl::profile::itt::event_get("CCL_REDUCE_SCATTER_LARGE");
+            ccl::profile::itt::event_start(coll_create_itt_event);
+#endif // CCL_ENABLE_ITT
+            LOG_DEBUG("invoking large reduce_scatter: recv_count:", recv_count, " datatype: ", dtype);
+            e = reduce_scatter_large(send_buf, recv_buf, recv_count, dtype, reduction, comm, global_stream, deps);
+#ifdef CCL_ENABLE_ITT
+            ccl::profile::itt::event_end(coll_create_itt_event);
+#endif // CCL_ENABLE_ITT
+        }
+
+        return e;
+    }
+
+    if (recv_count * world * ccl_dtype.size() <= ccl::global_data::env().sycl_reduce_scatter_small_threshold &&
         has_all_vertices_connected) {
         if ((recv_count * ccl_dtype.size()) % 4 == 0 || recv_count * ccl_dtype.size() == 2) {
-            init_reduce_scatter_small(dtype, q, global_comm, global_stream, rank, world);
+            init_reduce_scatter_small(dtype, q, comm, global_stream, rank, world);
 
 #ifdef CCL_ENABLE_ITT
             __itt_event coll_create_itt_event = ccl::profile::itt::event_get("CCL_REDUCE_SCATTER_SMALL");
@@ -89,10 +105,10 @@ ccl::event reduce_scatter_sycl(sycl::queue q,
         }
     }
     else if (recv_count * world * ccl_dtype.size() <=
-                 ccl::global_data::env().reduce_scatter_medium_size_threshold &&
+                 ccl::global_data::env().sycl_reduce_scatter_medium_threshold &&
              !is_single_tile) {
         if ((recv_count * ccl_dtype.size()) % 4 == 0) {
-            init_reduce_scatter_medium(dtype, q, global_comm, global_stream, rank, world);
+            init_reduce_scatter_medium(dtype, q, comm, global_stream, rank, world);
 
 #ifdef CCL_ENABLE_ITT
             __itt_event coll_create_itt_event = ccl::profile::itt::event_get("CCL_REDUCE_SCATTER_MEDIUM");
@@ -110,7 +126,7 @@ ccl::event reduce_scatter_sycl(sycl::queue q,
     }
     else if (!is_single_tile) {
         if ((recv_count * ccl_dtype.size()) % 4 == 0) {
-            init_reduce_scatter_large(dtype, q, global_comm, global_stream, rank, world);
+            init_reduce_scatter_large(dtype, q, comm, global_stream, rank, world);
 
 #ifdef CCL_ENABLE_ITT
             __itt_event coll_create_itt_event = ccl::profile::itt::event_get("CCL_REDUCE_SCATTER_LARGE");
@@ -130,6 +146,26 @@ ccl::event reduce_scatter_sycl(sycl::queue q,
         done = false;
     }
     return e;
+}
+
+ccl::event reduce_scatter_sycl(sycl::queue& q,
+                               const void* send_buf,
+                               void* recv_buf,
+                               size_t recv_count,
+                               datatype dtype,
+                               reduction reduction,
+                               const ccl::communicator& comm,
+                               const stream& op_stream,
+                               const reduce_scatter_attr& attr,
+                               const vector_class<event>& deps,
+                               bool& done) {
+    ccl::impl_dispatch disp;
+    std::shared_ptr<ccl::comm_interface> disp_comm = disp(comm);
+    ccl_comm* comm_ = (ccl_comm*)(disp_comm.get());
+    ccl_stream* global_stream = get_stream_ptr(disp(op_stream));
+
+    return reduce_scatter_sycl_single_node(
+        q, send_buf, recv_buf, recv_count, dtype, reduction, comm_, global_stream, deps, done);
 }
 
 } // namespace v1

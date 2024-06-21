@@ -45,6 +45,31 @@ void device_allocate(ze_context_handle_t context,
     }
 }
 
+void device_allocate_shared(ze_context_handle_t context,
+                            const ze_device_mem_alloc_desc_t& device_mem_alloc_desc,
+                            const ze_host_mem_alloc_desc_t& host_mem_alloc_desc,
+                            size_t bytes,
+                            size_t alignment,
+                            ze_device_handle_t device,
+                            void** pptr) {
+    current_allocated_memory += bytes;
+    LOG_DEBUG("|MEMLOG| Allocating: ",
+              bytes / 1024,
+              "KB. Current memory footprint: ",
+              current_allocated_memory / 1024,
+              "KB");
+
+    ZE_CALL(
+        zeMemAllocShared,
+        (context, &device_mem_alloc_desc, &host_mem_alloc_desc, bytes, alignment, device, pptr));
+    auto [_, inserted] = recorded_allocations.try_emplace(*pptr, bytes);
+
+    if (!inserted) {
+        LOG_WARN(
+            "Could not record device allocation. Memory footprint might not be representing real consumption!");
+    }
+}
+
 void device_free(ze_context_handle_t context, void* ptr) {
     auto recorded_allocation = recorded_allocations.find(ptr);
 

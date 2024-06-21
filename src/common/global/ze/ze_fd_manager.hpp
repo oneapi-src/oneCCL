@@ -137,7 +137,7 @@ private:
     std::vector<int> init_device_fds();
     std::vector<bdf_info> init_device_bdfs(const size_t size);
     // fill
-    std::vector<int> fill_device_fds(std::vector<std::string> dev_names);
+    std::vector<int> fill_device_fds(const std::vector<std::string>& dev_names);
     std::vector<device_bdf_info> fill_physical_devices();
 
     // find

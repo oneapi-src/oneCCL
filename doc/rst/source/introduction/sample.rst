@@ -19,7 +19,7 @@ Build details
 
    ::
 
-      icpx -o sample sample.cpp -lccl -lmpi
+      icpx -o sample sample.cpp -lccl -lmpi -fsycl
 
 
 Run the sample

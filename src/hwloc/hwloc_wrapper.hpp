@@ -56,6 +56,9 @@ public:
     int get_numa_node_by_cpu(int cpu);
     ccl_numa_node get_numa_node(int numa_node);
 
+    void* alloc_memory(size_t alignment, size_t size, int numa_node_os_idx);
+    void dealloc_memory(void* buffer);
+
 private:
     bool is_valid_numa_node(int numa_node);
     bool check_membind(int numa_node);
@@ -68,4 +71,8 @@ private:
     bool membind_thread_supported;
     hwloc_cpuset_t bindset;
     hwloc_topology_t topology;
+
+    // maps from aligned ptr (which was returned to the user by alloc_memory)
+    //      to <misaligned ptr (returned by hwloc_alloc_membind), len>
+    std::map<void*, std::pair<void*, size_t>> allocated_memory_map;
 };

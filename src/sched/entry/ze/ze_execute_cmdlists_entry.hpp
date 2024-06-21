@@ -78,10 +78,7 @@ public:
     ze_execute_cmdlists_on_start_entry(ccl_sched* sched,
                                        std::shared_ptr<sync_object> sync_obj = nullptr,
                                        ze_commands_submit_function_t submit_fn = nullptr)
-            : sched_entry(sched,
-                          false /*is_barrier*/,
-                          false /*is_urgent*/,
-                          false /*is_nonblocking*/),
+            : sched_entry(sched),
               sync_obj(std::move(sync_obj)),
               submit_fn(submit_fn) {}
 

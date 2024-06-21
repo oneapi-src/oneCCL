@@ -27,7 +27,8 @@ typedef enum {
     ccl_fp16_no_compiler_support = 0,
     ccl_fp16_no_hardware_support,
     ccl_fp16_f16c,
-    ccl_fp16_avx512f
+    ccl_fp16_avx512f,
+    ccl_fp16_avx512fp16
 } ccl_fp16_impl_type;
 
 extern std::map<ccl_fp16_impl_type, std::string> fp16_impl_names;
@@ -39,6 +40,7 @@ __attribute__((__always_inline__)) inline std::set<ccl_fp16_impl_type> ccl_fp16_
 #ifdef CCL_FP16_COMPILER
     int is_f16c_enabled = 0;
     int is_avx512f_enabled = 0;
+    int is_avx512fp16_enabled = 0;
 
     uint32_t reg[4];
 
@@ -57,13 +59,26 @@ __attribute__((__always_inline__)) inline std::set<ccl_fp16_impl_type> ccl_fp16_
     is_avx512f_enabled = ((reg[1] & (1u << 16)) >> 16) & ((reg[1] & (1u << 30)) >> 30) &
                          ((reg[1] & (1u << 31)) >> 31);
 
+#ifdef CCL_FP16_AVX512FP16_COMPILER
+    /* AVX512 capabilities for FP16 arithmetic operations support */
+    /* CPUID.(EAX=07H, ECX=0):EBX.AVX512BW [bit 30] */
+    /* CPUID.(EAX=07H, ECX=0):EDX.AVX512_FP16 [bit 23] */
+    __asm__ __volatile__("cpuid"
+                         : "=a"(reg[0]), "=b"(reg[1]), "=c"(reg[2]), "=d"(reg[3])
+                         : "a"(7), "c"(0));
+    is_avx512fp16_enabled = ((reg[1] & (1u << 30)) >> 30) & ((reg[3] & (1u << 23)) >> 23);
+#endif // CCL_FP16_AVX512FP16_COMPILER
+
+    if (is_avx512fp16_enabled)
+        result.insert(ccl_fp16_avx512fp16);
+
     if (is_avx512f_enabled)
         result.insert(ccl_fp16_avx512f);
 
     if (is_f16c_enabled)
         result.insert(ccl_fp16_f16c);
 
-    if (!is_avx512f_enabled && !is_f16c_enabled)
+    if (!is_avx512fp16_enabled && !is_avx512f_enabled && !is_f16c_enabled)
         result.insert(ccl_fp16_no_hardware_support);
 #else
     result.insert(ccl_fp16_no_compiler_support);

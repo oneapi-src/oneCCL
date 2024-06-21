@@ -31,11 +31,7 @@ ze_membarrier_entry::ze_membarrier_entry(ccl_sched* sched,
                                          const std::vector<size_t>& range_sizes,
                                          const std::vector<const void*>& ranges,
                                          const std::vector<ze_event_handle_t>& wait_events)
-        : ze_base_entry(sched,
-                        wait_events,
-                        nullptr /*comm*/,
-                        1 /*add_event_count*/,
-                        true /*is_nonblocking*/),
+        : ze_base_entry(sched, wait_events, nullptr /*comm*/, 1 /*add_event_count*/),
           range_sizes(range_sizes),
           ranges(ranges) {
     CCL_THROW_IF_NOT(sched, "no sched");

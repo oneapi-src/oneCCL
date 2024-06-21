@@ -155,6 +155,7 @@ static constexpr int invalid_fd = -1;
 static constexpr int invalid_mem_handle = -1;
 static constexpr int invalid_pid = -1;
 static constexpr size_t initial_count_value = 0;
+static constexpr size_t initial_handle_id_value = 0;
 static constexpr int invalid_peer_rank = -1;
 static constexpr int invalid_rank = -1;
 static constexpr int invalid_host_idx = -1;
@@ -254,6 +255,8 @@ std::string to_hex(T integer) {
     ss << "0x" << std::hex << std::setw(sizeof(T) * 2) << std::setfill('0') << integer;
     return ss.str();
 }
+
+std::string to_hex(const char* data, size_t size);
 
 void close_fd(int fd);
 

@@ -898,7 +898,7 @@ public:
     }
 
     void init(sycl::queue &queue,
-              ccl_comm *comm,
+              ccl_comm *comm_in,
               ccl_stream *stream,
               uint32_t rank_in,
               uint32_t world_in) {
@@ -917,7 +917,7 @@ public:
         int size_per_buffer_nocopy = NOCOPY_MAX_SIZE + SYNC_BYTE;
         int alloc_size_nocopy = size_per_buffer_nocopy * NOCOPY_BUFFER_COUNT;
 
-        if (ccl::global_data::env().allreduce_use_tmp_buf) {
+        if (ccl::global_data::env().sycl_allreduce_tmp_buf) {
             data_size_per_buffer = COPY_MAX_COUNT;
             size_per_buffer = size_per_buffer_copy;
         }
@@ -934,7 +934,7 @@ public:
             e.wait();
 
             this->exchange_peer_ipc_mem(queue,
-                                        comm,
+                                        comm_in,
                                         stream,
                                         allreduce_large_buffer,
                                         NULL,
@@ -952,15 +952,15 @@ public:
         this->initialized = true;
 
         global_stream = stream;
-        global_comm = comm;
-        even_comm = global_comm->get_even_comm().get();
+        this->comm = comm_in;
+        even_comm = comm_in->get_even_comm().get();
     }
 
     ccl::event allreduce(sycl::queue &queue,
                          const void *in_buffer,
                          void *out_buffer,
                          uint32_t size) {
-        if (ccl::global_data::env().allreduce_use_tmp_buf) {
+        if (ccl::global_data::env().sycl_allreduce_tmp_buf) {
             return allreduce_copy(queue, in_buffer, out_buffer, size);
         }
         else {
@@ -992,7 +992,7 @@ private:
         int even_ranks[max_rank];
         int myrank;
         for (int i = 0; i < world / 2; i++) {
-            even_ranks[i] = even_comm->get_global_rank(i);
+            even_ranks[i] = even_comm->get_node_rank(i);
             if (even_ranks[i] == (int)temp_rank) {
                 myrank = i;
             }
@@ -1108,8 +1108,9 @@ private:
                 //The first kernel does the actual computation while the second kernel does the sync across ranks.
                 e = queue.submit([&](sycl::handler &cgh) {
                     cgh.parallel_for<class Kernel_compute<data_type>>(
-                        sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::item<1> idx) SYCL_ESIMD_KERNEL
+                        sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::nd_item<1> idx2) SYCL_ESIMD_KERNEL
                         {
+                        uint32_t idx = idx2.get_global_id();
                         //ESIMD kernel
                         //check if there is any kernel in the SW pipelines. If yes, execute them.
                         //to optimize, the order of loop i=0,1,2,.. can be shuffled so that different ranks can do different kernels at particular time. The purpose is to better balance the HW resource usage in the PVC node.
@@ -1697,7 +1698,7 @@ private:
         int even_ranks[max_rank];
         int myrank;
         for (int i = 0; i < world / 2; i++) {
-            even_ranks[i] = even_comm->get_global_rank(i);
+            even_ranks[i] = even_comm->get_node_rank(i);
             if (even_ranks[i] == (int)temp_rank)
                 myrank = i;
         }
@@ -1705,7 +1706,7 @@ private:
         void *in_buffers[max_rank];
         void *out_buffers[max_rank];
         this->exchange_peer_ipc_mem(queue,
-                                    global_comm,
+                                    comm,
                                     global_stream,
                                     (void **)in_buffer,
                                     out_buffer,
@@ -1832,8 +1833,9 @@ private:
                 //The first kernel does the actual computation while the second kernel does the sync across ranks.
                 e = queue.submit([&](sycl::handler &cgh) {
                     cgh.parallel_for<class NoCopyKernel_compute<data_type>>(
-                        sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::item<1> idx) SYCL_ESIMD_KERNEL
+                        sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::nd_item<1> idx2) SYCL_ESIMD_KERNEL
                         {
+                        uint32_t idx = idx2.get_global_id();
                         //ESIMD kernel
                         //check if there is any kernel in the SW pipelines. If yes, execute them.
                         //to optimize, the order of loop i=0,1,2,.. can be shuffled so that different ranks can do different kernels at particular time. The purpose is to better balance the HW resource usage in the PVC node.
@@ -1877,7 +1879,7 @@ private:
     }
 
     //sync all the ranks here before consuming the results.
-    sycl::event global_sync(sycl::queue queue,
+    sycl::event global_sync(sycl::queue &queue,
                             int temp_rank,
                             uint32_t temp_world,
                             int offset,
@@ -1895,7 +1897,7 @@ private:
         int wg_size = 1;
         e = queue.submit([&](sycl::handler &cgh) {
             cgh.parallel_for<class AllreduceLargeKernel_GlobalSync<data_type>>(
-                sycl::nd_range<1>({ total_threads_needed_sync }, wg_size), [=](sycl::item<1> idx) SYCL_ESIMD_KERNEL
+                sycl::nd_range<1>({ total_threads_needed_sync }, wg_size), [=](sycl::nd_item<1> idx) SYCL_ESIMD_KERNEL
                 {
                 //ESIMD kernel
                 simd<ushort, SIMD_SYNC> ramp;
@@ -1960,7 +1962,7 @@ private:
     }
 
     // sync tiles in a GPU
-    sycl::event local_sync(sycl::queue queue,
+    sycl::event local_sync(sycl::queue &queue,
                            int temp_rank,
                            uint32_t temp_world,
                            int offset,
@@ -1979,7 +1981,7 @@ private:
 
         e = queue.submit([&](sycl::handler &cgh) {
             cgh.parallel_for<class AllreduceLargeKernel_LocalSync<data_type>>(
-                sycl::nd_range<1>({ total_threads_needed_sync }, wg_size), [=](sycl::item<1> idx) SYCL_ESIMD_KERNEL
+                sycl::nd_range<1>({ total_threads_needed_sync }, wg_size), [=](sycl::nd_item<1> idx) SYCL_ESIMD_KERNEL
                 {
                 //ESIMD kernel
                 simd<ushort, SIMD_SYNC> ramp;
@@ -2063,7 +2065,7 @@ private:
     int size_per_buffer{ ccl::utils::invalid_bytes_value };
     int data_size_per_buffer{ ccl::utils::invalid_bytes_value };
     ccl_stream *global_stream{};
-    ccl_comm *global_comm{};
+    ccl_comm *comm{};
     ccl_comm *even_comm{};
 };
 
@@ -2080,7 +2082,10 @@ private:
         } \
     } \
 \
-    ccl::event run_allreduce_large_##TYPE( \
-        ccl::datatype dtype, sycl::queue queue, const void *in_buf, void *out_buf, size_t count) { \
+    ccl::event run_allreduce_large_##TYPE(ccl::datatype dtype, \
+                                          sycl::queue &queue, \
+                                          const void *in_buf, \
+                                          void *out_buf, \
+                                          size_t count) { \
         return ar_large_##TYPE.allreduce(queue, in_buf, out_buf, count); \
     }

@@ -40,6 +40,7 @@ class ccl_algorithm_selector_wrapper;
 namespace ccl {
 
 class buffer_cache;
+class recycle_storage;
 
 struct os_information {
     std::string sysname;
@@ -76,12 +77,14 @@ public:
     std::unique_ptr<ccl_datatype_storage> dtypes;
     std::unique_ptr<ccl_executor> executor;
     std::unique_ptr<ccl_sched_cache> sched_cache;
+    std::unique_ptr<ccl::recycle_storage> recycle_storage;
     std::unique_ptr<ccl::buffer_cache> buffer_cache;
     std::unique_ptr<ccl_parallelizer> parallelizer;
     std::unique_ptr<ccl_fusion_manager> fusion_manager;
     std::unique_ptr<ccl_algorithm_selector_wrapper<CCL_COLL_LIST>> algorithm_selector;
     std::unique_ptr<ccl_hwloc_wrapper> hwloc_wrapper;
     std::unique_ptr<profile::metrics_manager> metrics_profiler;
+    std::unique_ptr<profile::timestamp_manager> timestamp_manager;
 
 #if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
     std::unique_ptr<ze::global_data_desc> ze_data;
@@ -104,10 +107,6 @@ public:
         local_proc_count = local_count;
     }
 
-    std::string get_local_run_id() const {
-        return local_run_id;
-    }
-
 private:
     global_data();
 
@@ -116,7 +115,6 @@ private:
 
     int local_proc_idx{ ccl_comm::invalid_rank };
     int local_proc_count{ ccl::utils::invalid_err_code };
-    std::string local_run_id{ "" };
     void getenv_local_coord(const char* local_proc_idx_env_name,
                             const char* local_proc_count_env_name);
     void set_local_coord();

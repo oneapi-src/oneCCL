@@ -26,6 +26,7 @@
 #include "common/utils/buffer.hpp"
 #include "sched/buffer/buffer_manager.hpp"
 #include "sched/entry/entry.hpp"
+#include "sched/sched_group.hpp"
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
 #include "sched/ze/ze_event_manager.hpp"
@@ -157,6 +158,8 @@ struct ccl_sched_base {
         return lifo_priority++;
     }
 
+    std::shared_ptr<sched_group> group;
+
 protected:
     ~ccl_sched_base();
 
@@ -174,4 +177,6 @@ protected:
     ccl_sched_memory memory;
     ccl_sched_entry_exec_mode exec_mode = ccl_sched_entry_exec_regular;
     ccl_sched_add_mode add_mode = ccl_sched_add_back;
+
+    bool deps_is_barrier{ true };
 };

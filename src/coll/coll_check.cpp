@@ -35,7 +35,10 @@ void ccl_check_usm_pointers(const ccl_coll_param& param) {
 
     std::set<sycl::usm::alloc> usm_types;
     for (size_t idx = 0; idx < bufs.size(); idx++) {
-        usm_types.insert(sycl::get_pointer_type(bufs[idx], ctx));
+        auto ptr_type = sycl::get_pointer_type(bufs[idx], ctx);
+        usm_types.insert(ptr_type);
+        LOG_DEBUG(
+            "ptr: ", bufs[idx], ", usm pointer type: ", ccl::utils::usm_type_to_str(ptr_type));
     }
 
     if (usm_types.size() != 1) {
@@ -102,7 +105,8 @@ void ccl_coll_validate_user_input(const ccl_coll_param& param, const ccl_coll_at
                      "vector buffer is not supported for ",
                      ccl_coll_type_to_str(param.ctype));
 
-    if (param.ctype == ccl_coll_bcast || param.ctype == ccl_coll_reduce) {
+    if (param.ctype == ccl_coll_bcast || param.ctype == ccl_coll_bcastExt ||
+        param.ctype == ccl_coll_reduce) {
         CCL_THROW_IF_NOT(param.root < param.comm->size(),
                          "unexpected root ",
                          param.root,

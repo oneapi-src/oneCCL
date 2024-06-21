@@ -32,6 +32,7 @@ struct device_info {
     uint32_t parent_idx;
     ze_device_uuid_t uuid;
     int physical_idx;
+    uint32_t total_threads;
 #ifdef ZE_PCI_PROPERTIES_EXT_NAME
     ze_pci_address_ext_t pci;
 #endif // ZE_PCI_PROPERTIES_EXT_NAME
@@ -56,6 +57,17 @@ public:
     global_data_desc& operator=(const global_data_desc&) = delete;
     global_data_desc& operator=(global_data_desc&&) = delete;
     ~global_data_desc();
+
+    void init_external_pointer_registration();
+    bool external_pointer_registration_enabled{ false };
+    void import_external_pointer(void* ptr, size_t size);
+    void release_imported_pointer(void* ptr);
+
+private:
+    typedef ze_result_t (*pFnzexDriverImportExternalPointer)(ze_driver_handle_t, void*, size_t);
+    typedef ze_result_t (*pFnzexDriverReleaseImportedPointer)(ze_driver_handle_t, void*);
+    pFnzexDriverImportExternalPointer zexDriverImportExternalPointer = nullptr;
+    pFnzexDriverReleaseImportedPointer zexDriverReleaseImportedPointer = nullptr;
 };
 
 } // namespace ze

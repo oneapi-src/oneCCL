@@ -26,6 +26,7 @@
 #include "oneapi/ccl/datatype_attr_ids.hpp"
 #include "oneapi/ccl/datatype_attr_ids_traits.hpp"
 #include "oneapi/ccl/datatype_attr.hpp"
+#include "atl/atl_def.h"
 
 class ccl_datatype {
 public:
@@ -36,6 +37,10 @@ public:
 
     ccl::datatype idx() const noexcept {
         return m_idx;
+    }
+
+    atl_datatype_t atl_datatype() const noexcept {
+        return static_cast<atl_datatype_t>(idx());
     }
 
     size_t size() const {

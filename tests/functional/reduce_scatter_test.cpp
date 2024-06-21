@@ -27,7 +27,9 @@ public:
                  elem_idx += op.get_check_step(elem_idx)) {
                 size_t real_elem_idx = my_rank * op.elem_count + elem_idx;
                 T expected = base_test<T>::calculate_reduce_value(op, buf_idx, real_elem_idx);
-                if (base_test<T>::check_error(op, expected, buf_idx, elem_idx))
+                size_t check_elem_idx =
+                    op.get_param().place_type == PLACE_IN ? real_elem_idx : elem_idx;
+                if (base_test<T>::check_error(op, expected, buf_idx, check_elem_idx))
                     return TEST_FAILURE;
             }
         }
@@ -45,16 +47,19 @@ public:
             op.prepare_attr(attr, buf_idx);
             send_buf = op.get_send_buf(buf_idx);
             recv_buf = op.get_recv_buf(buf_idx);
+            auto recv_buf_char_ptr = static_cast<char*>(recv_buf);
+            auto recv_buf_with_offset =
+                recv_buf_char_ptr + (op.comm_rank * op.elem_count * op.datatype_size);
 
-            op.events.push_back(
-                ccl::reduce_scatter((param.place_type == PLACE_IN) ? recv_buf : send_buf,
-                                    recv_buf,
-                                    op.elem_count,
-                                    op.datatype,
-                                    op.reduction,
-                                    transport_data::instance().get_comm(),
-                                    transport_data::instance().get_stream(),
-                                    attr));
+            op.events.push_back(ccl::reduce_scatter(
+                (param.place_type == PLACE_IN) ? recv_buf : send_buf,
+                (param.place_type == PLACE_IN) ? recv_buf_with_offset : recv_buf,
+                op.elem_count,
+                op.datatype,
+                op.reduction,
+                transport_data::instance().get_comm(),
+                transport_data::instance().get_stream(),
+                attr));
         }
     }
 };

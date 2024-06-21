@@ -20,4 +20,24 @@
 CCL_FP16_DEFINE_ELEM_FUNCS(256);
 CCL_FP16_DEFINE_ELEM_FUNCS(512);
 
+#ifdef CCL_FP16_AVX512FP16_COMPILER
+FP16_TARGET_ATTRIBUTE_512FP16 __m512 fp16_sum_wrap_512FP16(__m512 a, __m512 b) {
+    return _mm512_add_ph(a, b);
+}
+FP16_TARGET_ATTRIBUTE_512FP16 __m512 fp16_prod_wrap_512FP16(__m512 a, __m512 b) {
+    return _mm512_mul_ph(a, b);
+}
+FP16_TARGET_ATTRIBUTE_512FP16 __m512 fp16_min_wrap_512FP16(__m512 a, __m512 b) {
+    return _mm512_min_ph(a, b);
+}
+FP16_TARGET_ATTRIBUTE_512FP16 __m512 fp16_max_wrap_512FP16(__m512 a, __m512 b) {
+    return _mm512_max_ph(a, b);
+}
+FP16_TARGET_ATTRIBUTE_512FP16 __m512 fp16_reduce_512FP16(__m512 a,
+                                                         __m512 b,
+                                                         ccl_fp16_reduction_func_ptr_512FP16 op) {
+    return (*op)(a, b);
+}
+#endif // CCL_FP16_AVX512FP16_COMPILER
+
 #endif // CCL_FP16_COMPILER
