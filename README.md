@@ -1,4 +1,4 @@
-# oneAPI Collective Communications Library (oneCCL) <!-- omit in toc --> <img align="right" width="100" height="100" src="https://spec.oneapi.io/oneapi-logo-white-scaled.jpg">
+# oneAPI Collective Communications Library (oneCCL) <!-- omit in toc --> <img align="right" width="200" height="100" src="https://raw.githubusercontent.com/uxlfoundation/artwork/e98f1a7a3d305c582d02c5f532e41487b710d470/foundation/uxl-foundation-logo-horizontal-color.svg">
 
 [Installation](#installation)&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;[Usage](#usage)&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;[Release Notes](https://www.intel.com/content/www/us/en/developer/articles/release-notes/oneapi-collective-communication-library-ccl-release-notes.html)&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;[Documentation](https://oneapi-src.github.io/oneCCL/)&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;[How to Contribute](CONTRIBUTING.md)&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;[License](LICENSE)
 
@@ -8,7 +8,8 @@ oneCCL is integrated into:
 * [Horovod\*](https://github.com/horovod/horovod) (distributed training framework). Refer to [Horovod with oneCCL](https://github.com/horovod/horovod/blob/master/docs/oneccl.rst) for details.
 * [PyTorch\*](https://github.com/pytorch/pytorch) (machine learning framework). Refer to [PyTorch bindings for oneCCL](https://github.com/intel/torch-ccl) for details.
 
-oneCCL is part of [oneAPI](https://oneapi.io).
+oneCCL is governed by the [UXL Foundation](http://www.uxlfoundation.org) and is an implementation of the [oneAPI specification](https://spec.oneapi.io).
+
 
 ## Table of Contents <!-- omit in toc -->
 
@@ -146,6 +147,12 @@ To generate oneCCLConfig files for oneCCL package, use the provided [`cmake/scri
 ```
 cmake [-DOUTPUT_DIR=<output_dir>] -P cmake/script/config_generation.cmake
 ```
+
+## Governance
+
+The oneCCL project is governed by the UXL Foundation and you can get involved in this project in multiple ways. It is possible to join the [Special Interest Groups (SIG)](https://github.com/uxlfoundation/foundation) meetings where the group discuss and demonstrates work using the foundation projects. Members can also join the Open Source and Specification Working Group meetings.
+
+You can also join the mailing lists for the [UXL Foundation](https://lists.uxlfoundation.org/g/main/subgroups) to be informed of when meetings are happening and receive the latest information and discussions.
 
 ## Additional Resources
 
