@@ -557,7 +557,8 @@ void reduce_read_write(int *even_ranks,
                        int outer_iter,
                        int size_per_buffer_kernel,
                        int buffer_index_kernel,
-                       uint32_t threads_needed_per_chunk) {
+                       uint32_t threads_needed_per_chunk,
+                       int in_place) {
     using namespace __ESIMD_NS;
     using namespace __ESIMD_ENS;
 
@@ -618,7 +619,7 @@ void reduce_read_write(int *even_ranks,
     }
 
     //store the result to the first half of the buffer
-    if (TEMP_WORLD > 2) {
+    if (TEMP_WORLD > 2 || in_place) {
         //#pragma unroll
         for (uint32_t r = 0; r < TEMP_WORLD / 2; r++) {
             int rr = even_ranks[r];
@@ -740,7 +741,7 @@ public:
         buffer_index = 0;
     }
 
-    void init(sycl::queue &queue, ccl_comm *comm, ccl_stream *stream, uint32_t rank_in, uint32_t world_in) {
+    void init(sycl::queue &queue, ccl_comm *comm_in, ccl_stream *stream, uint32_t rank_in, uint32_t world_in) {
         //using namespace __ESIMD_NS;
         //using namespace __ESIMD_ENS;
 
@@ -748,7 +749,7 @@ public:
         world = world_in;
         // temporal buffer used for allreduce temporal use only.
         size_t alloc_size;
-        if (ccl::global_data::env().reduce_scatter_use_tmp_buf) {
+        if (ccl::global_data::env().sycl_reduce_scatter_tmp_buf) {
             max_count_per_rank = (MAX_COUNT + SIMD_COMPUTE * UNROLL_SIZE - 1) / (SIMD_COMPUTE * UNROLL_SIZE) *
                                  SIMD_COMPUTE * UNROLL_SIZE;
             data_size_per_buffer = max_count_per_rank * world;
@@ -768,7 +769,7 @@ public:
 
         // XXX: gain access to remote pointers
         this->exchange_peer_ipc_mem(queue,
-                                    comm,
+                                    comm_in,
                                     stream,
                                     local_buffer,
                                     NULL,
@@ -785,8 +786,8 @@ public:
         this->initialized = true;
 
         global_stream = stream;
-        global_comm = comm;
-        even_comm = global_comm->get_even_comm().get();
+        this->comm = comm_in;
+        even_comm = comm_in->get_even_comm().get();
     }
 
     ccl::event reduce_scatter(sycl::queue &queue,
@@ -794,7 +795,7 @@ public:
                               void *out_buffer,
                               uint32_t recv_size,
                               bool &done) {
-        if (ccl::global_data::env().reduce_scatter_use_tmp_buf) {
+        if (ccl::global_data::env().sycl_reduce_scatter_tmp_buf) {
             return reduce_scatter_copy(queue, send_buf, out_buffer, recv_size, done);
         }
         else {
@@ -830,10 +831,11 @@ private:
             return ccl::event::create_from_native(e);
         }
 
+        int in_place = ((char *)send_buf + rank * recv_size * sizeof(data_type) == out_buffer);
         int even_ranks[max_rank];
         int my_rank_index = -1;
         for (int i = 0; i < world / 2; i++) {
-            even_ranks[i] = even_comm->get_global_rank(i);
+            even_ranks[i] = even_comm->get_node_rank(i);
             if (even_ranks[i] == (int)temp_rank)
                 my_rank_index = i;
             //printf("even rank %d: %d neighbor: %d\n", i, even_ranks[i], even_ranks[i] ^ 1);
@@ -937,8 +939,9 @@ private:
 
                 e = queue.submit([&](sycl::handler &cgh) {
                         cgh.parallel_for<class ReduceScatterLargeKernel<data_type>>(
-                            sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::item<1> idx) SYCL_ESIMD_KERNEL
+                            sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::nd_item<1> idx2) SYCL_ESIMD_KERNEL
                             {
+                            uint32_t idx = idx2.get_global_id();
                             //check if there is any kernel in the SW pipelines. If yes, execute them.
                             //to optimize, the order of loop i=0,1,2,.. can be shuffled so that different
                             //ranks can do different kernels at particular time. The purpose is to better
@@ -1080,7 +1083,8 @@ private:
                                                                                 outer_iter,
                                                                                 size_per_buffer_kernel,
                                                                                 ii,
-                                                                                threads_needed_per_chunk);
+                                                                                threads_needed_per_chunk,
+                                                                                in_place);
                                                 break;
                                             case 4:
                                                 reduce_read_write<4, data_type>((int *)even_ranks,
@@ -1095,7 +1099,8 @@ private:
                                                                                 outer_iter,
                                                                                 size_per_buffer_kernel,
                                                                                 ii,
-                                                                                threads_needed_per_chunk);
+                                                                                threads_needed_per_chunk,
+                                                                                in_place);
                                                 break;
                                             case 6:
                                                 reduce_read_write<6, data_type>((int *)even_ranks,
@@ -1110,7 +1115,8 @@ private:
                                                                                 outer_iter,
                                                                                 size_per_buffer_kernel,
                                                                                 ii,
-                                                                                threads_needed_per_chunk);
+                                                                                threads_needed_per_chunk,
+                                                                                in_place);
                                                 break;
                                             case 8:
                                                 reduce_read_write<8, data_type>((int *)even_ranks,
@@ -1125,7 +1131,8 @@ private:
                                                                                 outer_iter,
                                                                                 size_per_buffer_kernel,
                                                                                 ii,
-                                                                                threads_needed_per_chunk);
+                                                                                threads_needed_per_chunk,
+                                                                                in_place);
                                                 break;
                                             case 10:
                                                 reduce_read_write<10, data_type>((int *)even_ranks,
@@ -1140,7 +1147,8 @@ private:
                                                                                  outer_iter,
                                                                                  size_per_buffer_kernel,
                                                                                  ii,
-                                                                                 threads_needed_per_chunk);
+                                                                                 threads_needed_per_chunk,
+                                                                                 in_place);
                                                 break;
                                             case 12:
                                                 reduce_read_write<12, data_type>((int *)even_ranks,
@@ -1155,7 +1163,8 @@ private:
                                                                                  outer_iter,
                                                                                  size_per_buffer_kernel,
                                                                                  ii,
-                                                                                 threads_needed_per_chunk);
+                                                                                 threads_needed_per_chunk,
+                                                                                 in_place);
                                                 break;
                                             case 14:
                                                 reduce_read_write<14, data_type>((int *)even_ranks,
@@ -1170,7 +1179,8 @@ private:
                                                                                  outer_iter,
                                                                                  size_per_buffer_kernel,
                                                                                  ii,
-                                                                                 threads_needed_per_chunk);
+                                                                                 threads_needed_per_chunk,
+                                                                                 in_place);
                                                 break;
                                             case 16:
                                                 reduce_read_write<16, data_type>((int *)even_ranks,
@@ -1185,13 +1195,15 @@ private:
                                                                                  outer_iter,
                                                                                  size_per_buffer_kernel,
                                                                                  ii,
-                                                                                 threads_needed_per_chunk);
+                                                                                 threads_needed_per_chunk,
+                                                                                 in_place);
                                                 break;
                                             default: break;
                                         }
                                     }
                                 } // end of if SECOND_KERNEL
-                                if ((sw_pipeline_kernel_state[ii] & THIRD_KERNEL) && temp_world > 2) {
+                                if ((sw_pipeline_kernel_state[ii] & THIRD_KERNEL) &&
+                                    (temp_world > 2 || in_place)) {
                                     for (int inner_iter = 0; inner_iter < innerloop_iter_count; inner_iter++) {
                                         int index = idx + inner_iter * HW_THREAD_COUNT;
                                         if ((uint32_t)index >= total_threads_needed)
@@ -1360,7 +1372,7 @@ private:
         int even_ranks[max_rank];
         int my_rank_index = -1;
         for (int i = 0; i < world / 2; i++) {
-            even_ranks[i] = even_comm->get_global_rank(i);
+            even_ranks[i] = even_comm->get_node_rank(i);
             if (even_ranks[i] == (int)temp_rank)
                 my_rank_index = i;
             //printf("even rank %d: %d neighbor: %d\n", i, even_ranks[i], even_ranks[i] ^ 1);
@@ -1401,7 +1413,7 @@ private:
         //ctimer.start(0);
         void *in_buffers[max_rank];
         this->exchange_peer_ipc_mem(queue,
-                                    global_comm,
+                                    comm,
                                     global_stream,
                                     (void **)send_buf,
                                     NULL,
@@ -1490,8 +1502,9 @@ private:
 
                 e = queue.submit([&](sycl::handler &cgh) {
                         cgh.parallel_for<class ReduceScatterLargeNoCopyKernel<data_type>>(
-                            sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::item<1> idx) SYCL_ESIMD_KERNEL
+                            sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::nd_item<1> idx2) SYCL_ESIMD_KERNEL
                             {
+                            uint32_t idx = idx2.get_global_id();
                             //ESIMD kernel
 
                             //check if there is any kernel in the SW pipelines. If yes, execute them.
@@ -1547,7 +1560,7 @@ private:
         int wg_size = 1;
         e = queue.submit([&](sycl::handler &cgh) {
             cgh.parallel_for<class ReduceScatterLargeKernel_GlobalSync<data_type>>(
-                sycl::nd_range<1>({ total_threads_needed_sync }, wg_size), [=](sycl::item<1> idx) SYCL_ESIMD_KERNEL
+                sycl::nd_range<1>({ total_threads_needed_sync }, wg_size), [=](sycl::nd_item<1> idx) SYCL_ESIMD_KERNEL
                 {
                 simd<ushort, SIMD_SYNC> ramp;
 #pragma unroll
@@ -1627,7 +1640,7 @@ private:
 
         e = queue.submit([&](sycl::handler &cgh) {
             cgh.parallel_for<class ReduceScatterLargeKernel_LocalSync<data_type>>(
-                sycl::nd_range<1>({ total_threads_needed_sync }, wg_size), [=](sycl::item<1> idx) SYCL_ESIMD_KERNEL
+                sycl::nd_range<1>({ total_threads_needed_sync }, wg_size), [=](sycl::nd_item<1> idx) SYCL_ESIMD_KERNEL
                 {
                 simd<ushort, SIMD_SYNC> ramp;
 #pragma unroll
@@ -1713,7 +1726,7 @@ private:
     uint32_t max_count_per_rank{ 0 };
     int buffer_index{ ccl::utils::invalid_err_code };
     ccl_stream *global_stream{};
-    ccl_comm *global_comm{};
+    ccl_comm *comm{};
     ccl_comm *even_comm{};
 };
 
@@ -1731,7 +1744,7 @@ private:
     } \
 \
     ccl::event run_reduce_scatter_large_##TYPE(ccl::datatype dtype, \
-                                               sycl::queue queue, \
+                                               sycl::queue &queue, \
                                                const void *send_buf, \
                                                void *recv_buf, \
                                                size_t recv_count, \

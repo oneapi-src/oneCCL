@@ -18,7 +18,7 @@
 
 ze_event_wait_entry::ze_event_wait_entry(ccl_sched* sched,
                                          std::vector<ze_event_handle_t> wait_events)
-        : sched_entry(sched, false /*is_barrier*/, false /*is_urgent*/, true /*is_nonblocking*/),
+        : sched_entry(sched),
           wait_events(wait_events.cbegin(), wait_events.cend()) {
     CCL_THROW_IF_NOT(sched, "no sched");
 }
@@ -41,12 +41,11 @@ void ze_event_wait_entry::start() {
 }
 
 void ze_event_wait_entry::update() {
-    for (auto it = wait_events.begin(); it != wait_events.end();) {
+    for (auto it = wait_events.begin(); it != wait_events.end(); it++) {
         bool is_completed = check_event_status(*it);
         if (!is_completed) {
             return;
         }
-        it = wait_events.erase(it);
     }
     status = ccl_sched_entry_status_complete;
 }

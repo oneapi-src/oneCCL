@@ -33,8 +33,11 @@ if (CCL_ENABLE_SYCL AND CCL_ENABLE_ZE)
         sched/entry/ze/cache/ze_cache.cpp
         sched/entry/ze/cache/ze_device_cache.cpp
         sched/entry/ze/ze_call.cpp
+        sched/entry/ze/ze_cmdlist_timestamp.cpp
+        sched/entry/ze/ze_cmdlist_event_signal_entry.cpp
         sched/entry/ze/ze_command.cpp
         sched/entry/ze/ze_copy_entry.cpp
+        sched/entry/ze/ze_dummy_entry.cpp
         sched/entry/ze/ze_handle_exchange_entry.cpp
         sched/entry/ze/ze_kernel.cpp
         sched/entry/ze/ze_event_signal_entry.cpp
@@ -72,6 +75,7 @@ if (CCL_ENABLE_SYCL AND CCL_ENABLE_ZE)
         coll/algorithms/allreduce/sycl/allreduce_large_sycl_fp32.cpp
         coll/algorithms/allreduce/sycl/allreduce_large_sycl_int32.cpp
         coll/algorithms/allreduce/sycl/allreduce_sycl.cpp
+        coll/algorithms/allreduce/sycl/allreduce_scaleout_sycl.cpp
 
         coll/algorithms/reduce_scatter/sycl/reduce_scatter_sycl.cpp
         coll/algorithms/reduce_scatter/sycl/reduce_scatter_small_sycl.cpp
@@ -81,6 +85,8 @@ if (CCL_ENABLE_SYCL AND CCL_ENABLE_ZE)
         coll/algorithms/reduce_scatter/sycl/reduce_scatter_large_sycl_fp32.cpp
         coll/algorithms/reduce_scatter/sycl/reduce_scatter_large_sycl_fp16.cpp
         coll/algorithms/reduce_scatter/sycl/reduce_scatter_large_sycl_bf16.cpp
+
+        coll/algorithms/utils/sycl_coll_base.cpp
         )
 endif(CCL_ENABLE_SYCL AND CCL_ENABLE_ZE)
 
@@ -111,6 +117,7 @@ set(CCL_SRC
 
     coll/attr/ccl_common_op_attrs.cpp
     coll/attr/ccl_allgather_op_attr.cpp
+    coll/attr/ccl_allgatherv_op_attr.cpp
     coll/attr/ccl_allreduce_op_attr.cpp
     coll/attr/ccl_alltoall_op_attr.cpp
     coll/attr/ccl_alltoallv_op_attr.cpp
@@ -121,6 +128,7 @@ set(CCL_SRC
     coll/attr/ccl_reduce_scatter_op_attr.cpp
     coll/coll_param.cpp
     coll/coll_util.cpp
+    coll/algorithms/allgather.cpp
     coll/algorithms/allgatherv/allgatherv.cpp
     coll/algorithms/allreduce/allreduce.cpp
     coll/algorithms/allreduce/allreduce_rma.cpp
@@ -129,6 +137,7 @@ set(CCL_SRC
     coll/algorithms/alltoallv.cpp
     coll/algorithms/barrier/barrier.cpp
     coll/algorithms/bcast.cpp
+    coll/algorithms/bcastExt.cpp
     coll/algorithms/double_tree_ops.cpp
     coll/algorithms/recv.cpp
     coll/algorithms/reduce.cpp
@@ -137,6 +146,7 @@ set(CCL_SRC
     coll/coll.cpp
     coll/coll_check.cpp
     coll/selection/selection.cpp
+    coll/selection/selector_allgather.cpp
     coll/selection/selector_allgatherv.cpp
     coll/selection/selector_allreduce.cpp
     coll/selection/selector_alltoall.cpp
@@ -156,6 +166,7 @@ set(CCL_SRC
     common/datatype/datatype.cpp
     common/device/device.cpp
     common/env/env.cpp
+    common/env/env_parser.cpp
     common/event/ccl_event.cpp
     common/event/impls/host_event.cpp
     common/event/impls/native_event.cpp
@@ -202,9 +213,11 @@ set(CCL_SRC
     sched/buffer/buffer_manager.cpp
     sched/cache/cache.cpp
     sched/cache/key.cpp
+    sched/cache/recycle_storage.cpp
     sched/entry/coll/coll_entry.cpp
     sched/entry/copy/copy_entry.cpp
     sched/entry/copy/copy_helper.cpp
+    sched/entry/deps_entry.cpp
     sched/entry/entry.cpp
     sched/entry/factory/chunked_entry_factory.cpp
     sched/entry/recv_copy_entry.cpp
@@ -214,6 +227,7 @@ set(CCL_SRC
     sched/queue/strict_queue.cpp
     sched/sched.cpp
     sched/sched_base.cpp
+    sched/sched_group.cpp
     sched/sched_restart_manager.cpp
     sched/sched_timer.cpp
 
@@ -288,8 +302,8 @@ endif()
 
 if ((${CMAKE_C_COMPILER_ID} STREQUAL "Clang" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang") OR (${CMAKE_C_COMPILER_ID} STREQUAL "IntelLLVM" AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "IntelLLVM"))
     if (USE_CODECOV_FLAGS)
-        set(SRC_C_FLAGS "${SRC_C_FLAGS} -fprofile-instr-generate -fcoverage-mapping -Wno-error=unused-command-line-argument -fno-sycl-use-footer")
-        set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -fprofile-instr-generate -fcoverage-mapping -Wno-error=unused-command-line-argument -fno-sycl-use-footer")
+        set(SRC_C_FLAGS "${SRC_C_FLAGS} -fprofile-instr-generate -fcoverage-mapping -Wno-error=unused-command-line-argument -Wno-error=option-ignored -fno-sycl-use-footer")
+        set(SRC_CXX_FLAGS "${SRC_CXX_FLAGS} -fprofile-instr-generate -fcoverage-mapping -Wno-error=unused-command-line-argument -Wno-error=option-ignored -fno-sycl-use-footer")
     endif()
 endif()
 

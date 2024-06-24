@@ -29,9 +29,9 @@ sycl_allgatherv_small<int> agv_small_int32;
         break;
 
 void init_allgatherv_small(ccl::datatype dtype,
-                           sycl::queue &queue,
-                           ccl_comm *comm,
-                           ccl_stream *stream,
+                           sycl::queue& queue,
+                           ccl_comm* comm,
+                           ccl_stream* stream,
                            uint32_t rank_in,
                            uint32_t world_in) {
     switch (dtype) {
@@ -49,12 +49,12 @@ void init_allgatherv_small(ccl::datatype dtype,
         break;
 
 ccl::event run_allgatherv_small(ccl::datatype dtype,
-                                sycl::queue queue,
-                                const void *send_buf,
+                                sycl::queue& queue,
+                                const void* send_buf,
                                 size_t send_count,
-                                void *recv_buf,
-                                const ccl::vector_class<size_t> &recv_counts,
-                                bool &done) {
+                                void* recv_buf,
+                                const ccl::vector_class<size_t>& recv_counts,
+                                bool& done) {
     ccl::event e;
     switch (dtype) {
         SWITCH_RUN_TYPE(fp16, ccl::datatype::float16)
@@ -64,4 +64,25 @@ ccl::event run_allgatherv_small(ccl::datatype dtype,
         default: assert(0);
     }
     return e;
+}
+
+#include "coll/algorithms/allgatherv/sycl/allgatherv_small_sycl_impl.hpp"
+
+ccl::event allgatherv_small(const void* send_buf,
+                            size_t send_count,
+                            void* recv_buf,
+                            const ccl::vector_class<size_t>& recv_counts,
+                            ccl::datatype dtype,
+                            ccl_comm* comm,
+                            ccl_stream* global_stream,
+                            const ccl::vector_class<ccl::event>& deps) {
+    LOG_DEBUG("invoking allgatherv_small");
+    coll_init(comm, global_stream);
+
+    auto lambda = [&]<typename T, int NE, int NP>() {
+        return allgatherv_small_impl<T, NE, NP>(
+            send_buf, send_count, recv_buf, recv_counts, dtype, comm, global_stream, deps);
+    };
+
+    return invoke_collective(lambda, comm, dtype);
 }

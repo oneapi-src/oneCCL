@@ -67,6 +67,10 @@ struct ccl_api_type_attr_traits<operation_attr_id, operation_attr_id::match_id> 
 };
 
 /**
+ * Traits specialization for allgather op attributes
+ */
+
+/**
  * Traits specialization for allgatherv op attributes
  */
 

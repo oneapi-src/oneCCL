@@ -125,7 +125,7 @@ communicator create_communicator(const int size,
 } // namespace preview
 
 namespace v1 {
-
+/******************** COMMUNICATOR ********************/
 communicator create_communicator(const int size,
                                  const int rank,
                                  shared_ptr_class<kvs_interface> kvs,
@@ -133,7 +133,19 @@ communicator create_communicator(const int size,
     return detail::environment::instance().create_communicator(size, rank, kvs, attr);
 }
 
-/******************** COMMUNICATOR ********************/
+/******************** GROUP CALLS ********************/
+
+void group_start() {
+    throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
+    return;
+}
+
+void group_end() {
+    throw ccl::exception(std::string(__PRETTY_FUNCTION__) + " - is not implemented");
+    return;
+}
+
+/******************** OPERATION ********************/
 
 #define CHECK_DEPS(deps) \
     do { \
@@ -143,6 +155,135 @@ communicator create_communicator(const int size,
                 " - handling a vector of events that the operation should depend on is not implemented"); \
         } \
     } while (0)
+
+/* allgather */
+event allgather(const void* send_buf,
+                void* recv_buf,
+                size_t count,
+                datatype dtype,
+                const communicator& comm,
+                const stream& op_stream,
+                const allgather_attr& attr,
+                const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->allgather(send_buf, recv_buf, count, dtype, disp(op_stream), attr, deps);
+}
+
+event allgather(const void* send_buf,
+                void* recv_buf,
+                size_t count,
+                datatype dtype,
+                const communicator& comm,
+                const allgather_attr& attr,
+                const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->allgather(
+        send_buf, recv_buf, count, dtype, disp(default_stream), attr, deps);
+}
+
+event allgather(const void* send_buf,
+                const vector_class<void*>& recv_buf,
+                size_t count,
+                datatype dtype,
+                const communicator& comm,
+                const stream& op_stream,
+                const allgather_attr& attr,
+                const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->allgather(send_buf, recv_buf, count, dtype, disp(op_stream), attr, deps);
+}
+
+template <class BufferType, typename T>
+event allgather(const BufferType* send_buf,
+                BufferType* recv_buf,
+                size_t count,
+                const communicator& comm,
+                const stream& op_stream,
+                const allgather_attr& attr,
+                const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->allgather(send_buf, recv_buf, count, disp(op_stream), attr, deps);
+}
+
+template <class BufferType, typename T>
+event allgather(const BufferType* send_buf,
+                BufferType* recv_buf,
+                size_t count,
+                const communicator& comm,
+                const allgather_attr& attr,
+                const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->allgather(send_buf, recv_buf, count, disp(default_stream), attr, deps);
+}
+
+template <class BufferType, typename T>
+event allgather(const BufferType* send_buf,
+                vector_class<BufferType*>& recv_buf,
+                size_t count,
+                const communicator& comm,
+                const stream& op_stream,
+                const allgather_attr& attr,
+                const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->allgather(send_buf, recv_buf, count, disp(op_stream), attr, deps);
+}
+
+template <class BufferType, typename T>
+event allgather(const BufferType* send_buf,
+                vector_class<BufferType*>& recv_buf,
+                size_t count,
+                const communicator& comm,
+                const allgather_attr& attr,
+                const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->allgather(send_buf, recv_buf, count, disp(default_stream), attr, deps);
+}
+
+template <class BufferObjectType, typename T>
+event allgather(const BufferObjectType& send_buf,
+                BufferObjectType& recv_buf,
+                size_t count,
+                const communicator& comm,
+                const stream& op_stream,
+                const allgather_attr& attr,
+                const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->allgather(send_buf, recv_buf, count, disp(op_stream), attr, deps);
+}
+
+template <class BufferObjectType, typename T>
+event allgather(const BufferObjectType& send_buf,
+                BufferObjectType& recv_buf,
+                size_t count,
+                const communicator& comm,
+                const allgather_attr& attr,
+                const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->allgather(send_buf, recv_buf, count, disp(default_stream), attr, deps);
+}
+
+template <class BufferObjectType, typename T>
+event allgather(const BufferObjectType& send_buf,
+                vector_class<reference_wrapper_class<BufferObjectType>>& recv_buf,
+                size_t count,
+                const communicator& comm,
+                const stream& op_stream,
+                const allgather_attr& attr,
+                const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->allgather(send_buf, recv_buf, count, disp(op_stream), attr, deps);
+}
+
+template <class BufferObjectType, typename T>
+event allgather(const BufferObjectType& send_buf,
+                vector_class<reference_wrapper_class<BufferObjectType>>& recv_buf,
+                size_t count,
+                const communicator& comm,
+                const allgather_attr& attr,
+                const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->allgather(send_buf, recv_buf, count, disp(default_stream), attr, deps);
+}
 
 /* allgatherv */
 event allgatherv(const void* send_buf,
@@ -170,12 +311,15 @@ event allgatherv(const void* send_buf,
         is_oversubscription = topo_manager.has_oversubscription();
     }
 
-    sycl::queue q = op_stream.get_native();
+    sycl::queue& q = const_cast<sycl::queue&>(op_stream.get_native());
 
-    if (ccl::global_data::env().skip_scheduler && q.is_in_order() && is_single_node &&
-        comm.size() == ccl::global_data::get().get_local_proc_count() && !is_oversubscription &&
+    bool is_datatype_supported_sycl =
         (dtype == ccl::datatype::float16 || dtype == ccl::datatype::bfloat16 ||
-         dtype == ccl::datatype::float32 || dtype == ccl::datatype::int32)) {
+         dtype == ccl::datatype::float32 || dtype == ccl::datatype::int32);
+
+    if (ccl::global_data::env().enable_sycl_kernels && q.is_in_order() && is_single_node &&
+        comm.size() == ccl::global_data::get().get_local_proc_count() && !is_oversubscription &&
+        is_datatype_supported_sycl) {
         LOG_DEBUG("|CCL_SYCL| allgatherv selects sycl-kernels send_count: ",
                   send_count,
                   ", datatype: ",
@@ -382,13 +526,17 @@ event allreduce(const void* send_buf,
         is_oversubscription = topo_manager.has_oversubscription();
     }
 
-    sycl::queue q = op_stream.get_native();
+    sycl::queue& q = const_cast<sycl::queue&>(op_stream.get_native());
 
-    if (ccl::global_data::env().skip_scheduler && is_single_node && !is_oversubscription &&
-        q.is_in_order() && reduction == ccl::reduction::sum &&
-        comm.size() == ccl::global_data::get().get_local_proc_count() &&
+    bool is_datatype_supported_sycl =
         (dtype == ccl::datatype::float16 || dtype == ccl::datatype::bfloat16 ||
-         dtype == ccl::datatype::float32 || dtype == ccl::datatype::int32)) {
+         dtype == ccl::datatype::float32 || dtype == ccl::datatype::int32);
+
+    if (ccl::global_data::env().enable_sycl_kernels && !is_oversubscription && q.is_in_order() &&
+        reduction == ccl::reduction::sum && is_datatype_supported_sycl &&
+        ((is_single_node && comm.size() == ccl::global_data::get().get_local_proc_count()) ||
+         (!is_single_node && global_comm->get_node_comm()->size() ==
+                                 ccl::global_data::get().get_local_proc_count()))) {
         LOG_DEBUG(
             "|CCL_SYCL| allreduce selects sycl-kernels count: ", count, ", datatype: ", dtype);
 
@@ -854,6 +1002,88 @@ event broadcast(BufferObjectType& buf,
     return disp(comm)->bcast(buf, count, root, disp(default_stream), attr, deps);
 }
 
+/* broadcastExt */
+event broadcastExt(void* send_buf,
+                   void* recv_buf,
+                   size_t count,
+                   datatype dtype,
+                   int root,
+                   const communicator& comm,
+                   const stream& op_stream,
+                   const broadcastExt_attr& attr,
+                   const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->bcastExt(
+        send_buf, recv_buf, count, dtype, root, disp(op_stream), attr, deps);
+}
+
+event broadcastExt(void* send_buf,
+                   void* recv_buf,
+                   size_t count,
+                   datatype dtype,
+                   int root,
+                   const communicator& comm,
+                   const broadcastExt_attr& attr,
+                   const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->bcastExt(
+        send_buf, recv_buf, count, dtype, root, disp(default_stream), attr, deps);
+}
+
+template <class BufferType, typename T>
+event broadcastExt(BufferType* send_buf,
+                   BufferType* recv_buf,
+                   size_t count,
+                   int root,
+                   const communicator& comm,
+                   const stream& op_stream,
+                   const broadcastExt_attr& attr,
+                   const vector_class<event>& deps)
+
+{
+    impl_dispatch disp;
+    return disp(comm)->bcastExt(send_buf, recv_buf, count, root, disp(op_stream), attr, deps);
+}
+
+template <class BufferType, typename T>
+event broadcastExt(BufferType* send_buf,
+                   BufferType* recv_buf,
+                   size_t count,
+                   int root,
+                   const communicator& comm,
+                   const broadcastExt_attr& attr,
+                   const vector_class<event>& deps)
+
+{
+    impl_dispatch disp;
+    return disp(comm)->bcastExt(send_buf, recv_buf, count, root, disp(default_stream), attr, deps);
+}
+
+template <class BufferObjectType, typename T>
+event broadcastExt(BufferObjectType& send_buf,
+                   BufferObjectType& recv_buf,
+                   size_t count,
+                   int root,
+                   const communicator& comm,
+                   const stream& op_stream,
+                   const broadcastExt_attr& attr,
+                   const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->bcastExt(send_buf, recv_buf, count, root, disp(op_stream), attr, deps);
+}
+
+template <class BufferObjectType, typename T>
+event broadcastExt(BufferObjectType& send_buf,
+                   BufferObjectType& recv_buf,
+                   size_t count,
+                   int root,
+                   const communicator& comm,
+                   const broadcastExt_attr& attr,
+                   const vector_class<event>& deps) {
+    impl_dispatch disp;
+    return disp(comm)->bcastExt(send_buf, recv_buf, count, root, disp(default_stream), attr, deps);
+}
+
 /* reduce */
 event reduce(const void* send_buf,
              void* recv_buf,
@@ -968,13 +1198,15 @@ event reduce_scatter(const void* send_buf,
         is_oversubscription = topo_manager.has_oversubscription();
     }
 
-    sycl::queue q = op_stream.get_native();
+    sycl::queue& q = const_cast<sycl::queue&>(op_stream.get_native());
 
-    if (ccl::global_data::env().skip_scheduler && is_single_node && q.is_in_order() &&
-        !is_oversubscription && comm.size() == ccl::global_data::get().get_local_proc_count() &&
+    bool is_datatype_supported_sycl =
         (dtype == ccl::datatype::float16 || dtype == ccl::datatype::bfloat16 ||
-         dtype == ccl::datatype::float32 || dtype == ccl::datatype::int32) &&
-        reduction == ccl::reduction::sum) {
+         dtype == ccl::datatype::float32 || dtype == ccl::datatype::int32);
+
+    if (ccl::global_data::env().enable_sycl_kernels && is_single_node && q.is_in_order() &&
+        !is_oversubscription && comm.size() == ccl::global_data::get().get_local_proc_count() &&
+        is_datatype_supported_sycl && reduction == ccl::reduction::sum) {
         LOG_DEBUG("|CCL_SYCL| reduce_scatter selects sycl-kernels recv_count: ",
                   recv_count,
                   ", datatype: ",
@@ -982,7 +1214,7 @@ event reduce_scatter(const void* send_buf,
         ccl::event e;
         bool done = false;
         e = reduce_scatter_sycl(
-            q, send_buf, recv_buf, recv_count, dtype, reduction, comm, op_stream, done);
+            q, send_buf, recv_buf, recv_count, dtype, reduction, comm, op_stream, attr, deps, done);
         if (done) {
             if (ccl::global_data::env().enable_op_sync) {
                 e.wait();

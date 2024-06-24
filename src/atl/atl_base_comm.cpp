@@ -81,8 +81,8 @@ int atl_base_comm::create_comm_id() {
     std::vector<int> all_comm_id_maps(size * comm_id_map.size(),
                                       atl_comm_id_storage::invalid_comm_id);
 
-    std::vector<int> recv_bytes(size, send_bytes);
-    std::vector<int> offsets(size, 0);
+    std::vector<size_t> recv_bytes(size, send_bytes);
+    std::vector<size_t> offsets(size, 0);
     for (int i = 1; i < size; i++) {
         offsets[i] = offsets[i - 1] + recv_bytes[i - 1];
     }

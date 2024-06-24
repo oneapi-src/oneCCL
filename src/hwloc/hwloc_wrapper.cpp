@@ -99,7 +99,25 @@ ccl_hwloc_wrapper::ccl_hwloc_wrapper()
                 hwloc_obj_t cpu_obj = hwloc_get_obj_inside_cpuset_by_type(
                     topology, core_obj->cpuset, HWLOC_OBJ_PU, cpu_idx);
                 cpus.push_back(cpu_obj->os_index);
+                //LOG_DEBUG("hwloc L#", numa_node->logical_index, " P#", os_idx, /*" subtype (", numa_node->subtype,")",*/ " mb ", mem_in_mb, " core_count ", core_count, " core ", core_idx,".",cpu_idx);
             }
+
+            struct hwloc_location initiator;
+            initiator.type = HWLOC_LOCATION_TYPE_CPUSET;
+            initiator.location.cpuset = core_obj->cpuset;
+
+            hwloc_uint64_t latency, bandwidth;
+            int err = hwloc_memattr_get_value(
+                topology, HWLOC_MEMATTR_ID_BANDWIDTH, numa_node, &initiator, 0, &bandwidth);
+            if (err < 0) {
+                bandwidth = 0;
+            }
+            err = hwloc_memattr_get_value(
+                topology, HWLOC_MEMATTR_ID_LATENCY, numa_node, &initiator, 0, &latency);
+            if (err < 0) {
+                latency = 0;
+            }
+            //LOG_DEBUG(" bandwidth is ", bandwidth, " MiB/s   latency is ", latency, " ns");
         }
         numa_nodes.push_back(
             ccl_numa_node(os_idx, mem_in_mb, core_count, cpus, check_membind(os_idx)));
@@ -264,6 +282,50 @@ bool ccl_hwloc_wrapper::is_valid_numa_node(int numa_node) {
     }
 
     return false;
+}
+
+// Note: the pointer returned is not a 'freeable' address.
+//       Call ccl_hwloc_wrapper::dealloc_memory instead
+void* ccl_hwloc_wrapper::alloc_memory(size_t alignment, size_t size, int numa_node_os_idx) {
+    // TODO: How can we determine which numa_node_os_idx is HBM and which one is DDR?
+    //       One idea would be to use bandwidth and latency as reported by hwloc (see above)
+
+    CCL_THROW_IF_NOT(is_valid_numa_node(numa_node_os_idx), "Incorrect numa node requested");
+
+    hwloc_obj_t numa_node_obj = hwloc_get_numanode_obj_by_os_index(topology, numa_node_os_idx);
+    void* buffer = hwloc_alloc_membind(topology,
+                                       size + alignment, // TODO: handle alignment better
+                                       numa_node_obj->nodeset,
+                                       HWLOC_MEMBIND_BIND,
+                                       HWLOC_MEMBIND_STRICT | HWLOC_MEMBIND_BYNODESET);
+
+    if (!buffer) {
+        CCL_THROW("Failed to allocate memory on numa_node ", numa_node_os_idx);
+    }
+
+    void* ret = buffer;
+    if (((uintptr_t)buffer) % alignment) {
+        // TODO: handle alignment better
+        size_t offset = alignment - (((uintptr_t)buffer) % alignment);
+        ret = ((char*)buffer) + offset;
+    }
+    CCL_THROW_IF_NOT((((uintptr_t)ret) % alignment) == 0);
+
+    // Add size and potential misalignement to allocated_memory_map for later freeing.
+    allocated_memory_map[ret] = std::make_pair(buffer, size);
+
+    return ret;
+}
+
+void ccl_hwloc_wrapper::dealloc_memory(void* buffer) {
+    // TODO: do a better job at allocating with alignment.
+    CCL_THROW_IF_NOT(buffer != nullptr, "We were asked to dealloc a nullptr");
+    auto it = allocated_memory_map.find(buffer);
+    CCL_THROW_IF_NOT(it != allocated_memory_map.end(),
+                     "We were asked to dealloc memory that hasn't been allocated");
+    if (hwloc_free(topology, it->second.first, it->second.second) < 0) {
+        LOG_WARN("hwloc_free failed (", strerror(errno), ")");
+    }
 }
 
 bool ccl_hwloc_wrapper::check_membind(int numa_node) {

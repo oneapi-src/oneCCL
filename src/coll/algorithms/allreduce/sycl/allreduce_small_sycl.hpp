@@ -86,7 +86,7 @@ public:
     }
 
     void init(sycl::queue &queue,
-              ccl_comm *comm,
+              ccl_comm *comm_in,
               ccl_stream *stream,
               uint32_t rank_in,
               uint32_t world_in) {
@@ -111,7 +111,7 @@ public:
             auto e = queue.memset(allreduce_small_buffer, 0, size_per_buffer * TRIPLE_BUFFER);
             e.wait();
             this->exchange_peer_ipc_mem(queue,
-                                        comm,
+                                        comm_in,
                                         stream,
                                         allreduce_small_buffer,
                                         NULL,
@@ -130,7 +130,7 @@ public:
             //dummy kernel to avoid hang. The hang happens when there is no dummy kernel and allreduce() is called right after init().
             e = queue.submit([&](sycl::handler &cgh) {
                 cgh.parallel_for(sycl::nd_range<1>({ 1 }, wg_size),
-                                 [=](sycl::item<1> idx) SYCL_ESIMD_KERNEL {
+                                 [=](sycl::nd_item<1> idx) SYCL_ESIMD_KERNEL {
 
                                  });
             });
@@ -139,8 +139,8 @@ public:
 
         this->initialized = true;
 
-        global_comm = comm;
-        even_comm = global_comm->get_even_comm().get();
+        this->comm = comm_in;
+        even_comm = comm_in->get_even_comm().get();
     }
 
     ccl::event allreduce(sycl::queue &queue,
@@ -1208,6 +1208,6 @@ private:
     int size_per_buffer{ ccl::utils::invalid_bytes_value };
     int data_size_per_buffer{ ccl::utils::invalid_bytes_value };
     ccl_stream *global_stream{};
-    ccl_comm *global_comm{};
+    ccl_comm *comm{};
     ccl_comm *even_comm{};
 };

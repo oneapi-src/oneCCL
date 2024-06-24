@@ -35,6 +35,8 @@ enum class ipc_mem_type : int { unknown = 0, memory, pool };
 
 std::string to_string(ipc_mem_type type);
 
+std::string to_string(const ze_ipc_mem_handle_t& handle);
+
 struct ipc_get_handle_desc {
     void* ptr{ nullptr };
     uint64_t mem_id{};
@@ -44,7 +46,9 @@ struct ipc_handle_desc {
     ze_ipc_mem_handle_t ipc_handle{};
     size_t mem_offset{};
     void* mem_ptr{};
+    void* remote_ptr{};
     ipc_mem_type mem_type{};
+    size_t handle_id{ ccl::utils::initial_handle_id_value };
     int mem_handle{ ccl::utils::invalid_mem_handle };
     pid_t remote_pid{ ccl::utils::invalid_pid };
     ssize_t remote_context_id{ ccl::utils::invalid_context_id };
@@ -55,10 +59,6 @@ struct ipc_handle_desc {
     bool is_cached = false;
 
     ipc_handle_desc();
-    ipc_handle_desc(const ze_ipc_mem_handle_t& ipc_handle,
-                    size_t offset,
-                    ipc_mem_type type,
-                    int mem_handle = ccl::utils::invalid_mem_handle);
     ipc_handle_desc(const ipc_handle_desc&) = default;
     ipc_handle_desc& operator=(const ipc_handle_desc&) = default;
 
@@ -102,7 +102,7 @@ public:
              const ccl_comm* map_comm,
              bool pt2pt_op = false);
 
-    void get_handle(void* ptr, ze_ipc_mem_handle_t* ipc_handle);
+    void get_handle(void* ptr, ze_ipc_mem_handle_t* ipc_handle, size_t* handle_id);
     void get_handle(ze_event_pool_handle_t pool, ze_ipc_event_pool_handle_t* ipc_handle);
     void open_handle(ipc_handle_desc& info, void** ptr, bool to_cache);
     void open_handle(const ze_ipc_event_pool_handle_t& ipc_handle, ze_event_pool_handle_t* pool);

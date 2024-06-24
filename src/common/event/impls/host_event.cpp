@@ -17,6 +17,7 @@
 #include "common/request/request.hpp"
 #include "common/event/impls/host_event.hpp"
 #include "exec/exec.hpp"
+#include "sched/cache/recycle_storage.hpp"
 
 #ifdef CCL_ENABLE_SYCL
 #include "common/utils/sycl_utils.hpp"
@@ -54,23 +55,35 @@ host_event_impl::~host_event_impl() {
     // TODO: need to find a way to synchronize these 2 statuses, right now there are
     // some issues, e.g. in case of pure host event get_native() is an empty sycl
     // event which always complete, this way LOG_ERROR is never called
+#ifdef CCL_ENABLE_SYCL
+    auto& recycle_storage = ccl::global_data::get().recycle_storage;
+    bool native_event_completed = true;
+    if (native_event) {
+        native_event_completed = utils::is_sycl_event_completed(*native_event);
+    }
+#endif // CCL_ENABLE_SYCL
     if (!completed
 #ifdef CCL_ENABLE_SYCL
-        && (native_event && !utils::is_sycl_event_completed(*native_event))) {
-        LOG_WARN("not completed event is destroyed");
+        && !native_event_completed) {
+        recycle_storage->store_request(req);
     }
 #else // CCL_ENABLE_SYCL
     ) {
         LOG_ERROR("not completed event is destroyed");
+        wait();
     }
 #endif // NOT CCL_ENABLE_SYCL
 
-    // when using native event user might not call wait/test on ccl event(complete = false)
-    // but we need to ensure that the bound schedule is actually destroyed. For this
-    // to happen, call wait() to do a proper finalization and cleanup.
-    wait();
+    // call wait() to do a proper finalization and cleanup if the task is completed
+    if (completed
+#ifdef CCL_ENABLE_SYCL
+        || (native_event && native_event_completed)
+#endif // CCL_ENABLE_SYCL
+    ) {
+        wait();
+    }
 
-#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+#ifdef CCL_ENABLE_SYCL
     if (sync_event) {
         auto& pools = ccl::global_data::get().ze_data->dynamic_event_pools;
         auto pool_it = pools.find(ze_context);
@@ -78,17 +91,10 @@ host_event_impl::~host_event_impl() {
             LOG_ERROR("pool must be initialized for the context");
         }
         else {
-            try {
-                pool_it->second.put_event(ccl::utils::get_native_event(*sync_event));
-            }
-            // runtime_error is __SYCL2020_DEPRECATED, catch generic exception
-            catch (sycl::exception& e) {
-                LOG_ERROR(
-                    "sycl event not recovered: ", e.what(), " potential resource/memory leak");
-            }
+            recycle_storage->store_events(&(pool_it->second), sync_event, native_event);
         }
     }
-#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+#endif // CCL_ENABLE_SYCL
 }
 
 void host_event_impl::wait() {
@@ -99,8 +105,7 @@ void host_event_impl::wait() {
             ccl_release_request(req);
         }
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-        //TODO call native_event->wait() both for out-of-order and in-order queues (MLSL-2374)
-        if (native_event && ccl::is_queue_in_order(stream)) {
+        if (native_event) {
             native_event->wait();
         }
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE

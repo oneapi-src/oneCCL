@@ -97,6 +97,10 @@ public:
     static const int CCL_IP_LEN = 128;
     static const char SCOPE_ID_DELIM = '%';
 
+    int get_root_rank() const {
+        return root_rank;
+    }
+
 private:
     kvs_status_t init_main_server_by_string(const char* main_addr);
     kvs_status_t init_main_server_by_env();
@@ -105,6 +109,8 @@ private:
     bool is_inited{ false };
 
     pthread_t kvs_thread = 0;
+
+    int root_rank = 0;
 
     char main_host_ip[CCL_IP_LEN];
     std::list<std::string> local_host_ips;
@@ -159,7 +165,7 @@ public:
         memset(&addr, 0, sizeof(sockaddr_in));
         addr.sin_addr.s_addr = INADDR_ANY;
         addr.sin_family = AF_INET;
-        addr.sin_port = default_start_port;
+        addr.sin_port = htons(default_start_port);
     }
     in_port_t get_sin_port() override {
         return ntohs(addr.sin_port);

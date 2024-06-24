@@ -15,6 +15,11 @@
 */
 #pragma once
 
+/* allgather implementation */
+#include "allgather/allgather_strategy.hpp"
+#include "allgather/cpu_allgather_coll.hpp"
+#include "allgather/sycl_allgather_coll.hpp"
+
 /* allgatherv implementation */
 #include "allgatherv/allgatherv_strategy.hpp"
 #include "allgatherv/cpu_allgatherv_coll.hpp"

@@ -49,7 +49,7 @@ comm_interface_ptr comm_selector::create_comm_impl(const size_t size,
     CCL_THROW_IF_NOT(ccl::global_data::env().backend == backend_mode::native,
                      "host communicator is only supported for native backend");
 
-    return comm_interface_ptr(ccl_comm::create(size, kvs));
+    return comm_interface_ptr(ccl_comm::create(size, std::move(kvs)));
 }
 
 comm_interface_ptr comm_selector::create_comm_impl(const size_t size,
@@ -76,11 +76,12 @@ comm_interface_ptr comm_selector::create_comm_impl(const size_t size,
 
 #ifdef CCL_ENABLE_STUB_BACKEND
     if (ccl::global_data::env().backend == backend_mode::stub) {
-        return comm_interface_ptr(ccl::stub_comm::create(device, context, size, rank, kvs));
+        return comm_interface_ptr(
+            ccl::stub_comm::create(device, context, size, rank, std::move(kvs)));
     }
 #endif // CCL_ENABLE_STUB_BACKEND
 
-    return comm_interface_ptr(ccl_comm::create(device, context, size, rank, kvs));
+    return comm_interface_ptr(ccl_comm::create(device, context, size, rank, std::move(kvs)));
 }
 
 } // namespace ccl

@@ -16,6 +16,7 @@
 #pragma once
 #include "coll/attr/ccl_common_op_attrs.hpp"
 #include "coll/attr/ccl_allgather_op_attr.hpp"
+#include "coll/attr/ccl_allgatherv_op_attr.hpp"
 #include "coll/attr/ccl_allreduce_op_attr.hpp"
 #include "coll/attr/ccl_alltoall_op_attr.hpp"
 #include "coll/attr/ccl_alltoallv_op_attr.hpp"

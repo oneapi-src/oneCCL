@@ -23,11 +23,14 @@
 using namespace std;
 
 int main() {
-    const size_t count = 128;
+    const size_t count = 4096;
 
-    size_t i = 0;
+    int i = 0;
+    size_t j = 0;
+
     vector<int> send_buf;
     vector<int> recv_buf;
+    vector<int> expected_buf;
     vector<size_t> recv_counts;
 
     ccl::init();
@@ -58,32 +61,38 @@ int main() {
 
     send_buf.resize(count, rank);
     recv_buf.resize(size * count);
+    expected_buf.resize(size * count);
     recv_counts.resize(size, count);
 
     /* modify send_buf */
-    for (i = 0; i < count; i++) {
-        send_buf[i] += 1;
+    for (j = 0; j < count; j++) {
+        send_buf[j] += 1;
     }
-
+    /* fill up expected_buf */
+    for (i = 0; i < size; i++) {
+        for (j = 0; j < count; j++) {
+            expected_buf[i * count + j] = i + 1;
+        }
+    }
     /* invoke allgatherv */
     ccl::allgatherv(send_buf.data(), count, recv_buf.data(), recv_counts, comm).wait();
 
     /* check correctness of recv_buf */
-    for (i = 0; i < count; i++) {
-        if (recv_buf[i] != rank + 1) {
-            recv_buf[i] = -1;
+    for (j = 0; j < size * count; j++) {
+        if (recv_buf[j] != expected_buf[j]) {
+            recv_buf[j] = -1;
         }
     }
 
     /* print out the result of the test */
     if (rank == 0) {
-        for (i = 0; i < count; i++) {
-            if (recv_buf[i] == -1) {
+        for (j = 0; j < size * count; j++) {
+            if (recv_buf[j] == -1) {
                 cout << "FAILED\n";
                 break;
             }
         }
-        if (i == count) {
+        if (j == size * count) {
             cout << "PASSED\n";
         }
     }

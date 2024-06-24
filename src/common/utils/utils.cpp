@@ -98,6 +98,15 @@ std::string join_strings(const std::vector<std::string>& tokens, const std::stri
     return ss.str();
 }
 
+std::string to_hex(const char* data, size_t size) {
+    std::stringstream ss;
+    ss << "0x";
+    for (size_t i = 0; i < size; ++i) {
+        ss << std::hex << std::setfill('0') << std::setw(2) << static_cast<int>(data[i]);
+    }
+    return ss.str();
+}
+
 void close_fd(int fd) {
     LOG_DEBUG("closing fd: ", fd);
     close(fd);

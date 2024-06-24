@@ -55,6 +55,7 @@
 #include "sched/entry/ze/ze_event_signal_entry.hpp"
 #include "sched/entry/ze/ze_event_wait_entry.hpp"
 #include "sched/entry/ze/ze_execute_cmdlists_entry.hpp"
+#include "sched/entry/ze/ze_cmdlist_event_signal_entry.hpp"
 #include "sched/entry/ze/ze_onesided_reduce_entry.hpp"
 #include "sched/entry/ze/ze_reduce_local_entry.hpp"
 #include "sched/entry/ze/ze_a2a_pipeline_reduce_scatter_entry.hpp"

@@ -174,7 +174,7 @@ ze_event_handle_t add_coll(ccl_sched* sched,
     if (sched->use_single_list) {
         ccl::add_wait_events(sched, wait_events);
     }
-    if (ccl::global_data::env().ze_multi_workers) {
+    if (ccl::global_data::env().ze_multi_workers && !param.is_hmem_enabled) {
         ccl_coll_attr attr{};
         ccl_coll_param coll_param;
         switch (param.ctype) {
@@ -306,6 +306,29 @@ ze_event_handle_t add_copy_entry_with_offset(std::vector<ccl_buffer> bufs,
     return add_signal_event(sched);
 }
 
+ccl_buffer alloc_host_buffer(ccl_sched* sched, size_t host_buf_size, void* device_ptr) {
+    // host and device buffer are required to be aligned on the same alignment
+    // when using compute kernels for H2D and D2H copy. Therefore, use kernel_mem_align as an anchor
+    // to find the device pointer alignment and apply the setting to host buffer allocation.
+    // Otherwise, bad performance or even performance bugs (MLSL-2628: unexpectedly high execution time) may appear.
+    if (ccl::global_data::env().ze_h2d_copy_engine == h2d_copy_engine_mode::none &&
+        ccl::global_data::env().ze_enable_ccs_fallback_for_copy) {
+        uintptr_t offset_bytes = ccl::utils::get_aligned_offset_byte(
+            device_ptr, host_buf_size, ccl::global_data::env().kernel_mem_align);
+        if (offset_bytes && offset_bytes != host_buf_size) {
+            // 256 minimum alignment space value was choosen as the best performing constant on ccl benchmark
+            size_t alignment_space =
+                std::max((ssize_t)(256), ccl::global_data::env().kernel_mem_align);
+            ccl::alloc_param alloc_param(host_buf_size + alignment_space,
+                                         ccl::buffer_type::regular,
+                                         ccl::buffer_place::host);
+            return sched->alloc_buffer(alloc_param) + alignment_space - offset_bytes;
+        }
+    }
+    ccl::alloc_param alloc_param(host_buf_size, ccl::buffer_type::regular, ccl::buffer_place::host);
+    return sched->alloc_buffer(alloc_param);
+}
+
 ze_event_handle_t fill_scaleout_coll_param(const ccl_coll_param& in_coll_param,
                                            ccl_coll_param& out_coll_param,
                                            ccl_sched* sched,
@@ -331,14 +354,18 @@ ze_event_handle_t fill_scaleout_coll_param(const ccl_coll_param& in_coll_param,
                                                  ccl::utils::initial_count_value);
         a2av_send_bytes = a2av_send_count * dtype_size;
         a2av_recv_bytes = a2av_recv_count * dtype_size;
+        if (a2av_send_bytes == 0 || a2av_recv_count == 0) {
+            return out_event;
+        }
     }
-    else if (ctype == ccl_coll_alltoall || ctype == ccl_coll_allgatherv) {
+    else if (ctype == ccl_coll_alltoall || ctype == ccl_coll_allgatherv ||
+             ctype == ccl_coll_allgather) {
         // assume sum of send_counts and recv_counts are equal
         host_buf_size = std::accumulate(out_coll_param.recv_counts.begin(),
                                         out_coll_param.recv_counts.end(),
                                         ccl::utils::initial_count_value) *
                         dtype_size;
-        LOG_DEBUG("alltoall(v)/allgatherv scale_out host buf size: ", host_buf_size);
+        LOG_DEBUG("alltoall(v)/allgather(v) scale_out host buf size: ", host_buf_size);
     }
     else if (ctype == ccl_coll_reduce_scatter) {
         host_buf_size = out_coll_param.count * counts_size * dtype_size;
@@ -356,13 +383,32 @@ ze_event_handle_t fill_scaleout_coll_param(const ccl_coll_param& in_coll_param,
         out_coll_param.send_buf = sched->alloc_buffer(a2av_send_alloc_param);
         out_coll_param.recv_buf = sched->alloc_buffer(a2av_recv_alloc_param);
     }
-    else {
+    else if (ctype == ccl_coll_reduce_scatter) {
         CCL_THROW_IF_NOT(host_buf_size != invalid_host_buf_size,
                          "unexpected the size of buffer in scaleout phase");
-        ccl::alloc_param alloc_param(
-            host_buf_size, ccl::buffer_type::regular, ccl::buffer_place::host);
-        out_coll_param.send_buf = sched->alloc_buffer(alloc_param);
-        out_coll_param.recv_buf = out_coll_param.send_buf;
+        out_coll_param.send_buf =
+            alloc_host_buffer(sched, host_buf_size, in_coll_param.send_buf.get_ptr());
+        out_coll_param.recv_buf = out_coll_param.send_buf +
+                                  out_coll_param.comm->rank() * out_coll_param.count * dtype_size;
+    }
+    else {
+        if (host_buf_size == 0) {
+            return out_event;
+        }
+
+        out_coll_param.recv_buf =
+            alloc_host_buffer(sched, host_buf_size, in_coll_param.send_buf.get_ptr());
+        if (ctype == ccl_coll_allgatherv || ctype == ccl_coll_allgather) {
+            size_t offset =
+                std::accumulate(out_coll_param.recv_counts.begin(),
+                                out_coll_param.recv_counts.begin() + out_coll_param.comm->rank(),
+                                ccl::utils::initial_count_value) *
+                dtype_size;
+            out_coll_param.send_buf = out_coll_param.recv_buf + offset;
+        }
+        else {
+            out_coll_param.send_buf = out_coll_param.recv_buf;
+        }
     }
 
     // transform array of buffers in contiguous buffer with offsets
@@ -394,14 +440,18 @@ ze_event_handle_t fill_scaleout_coll_param(const ccl_coll_param& in_coll_param,
                                                sched,
                                                wait_events);
     }
-    else if (ctype == ccl_coll_allgatherv) {
-        size_t offset =
-            std::accumulate(out_coll_param.recv_counts.begin(),
-                            out_coll_param.recv_counts.begin() + out_coll_param.comm->rank(),
-                            ccl::utils::initial_count_value) *
-            dtype_size;
+    else if (ctype == ccl_coll_allgather) {
         out_event = add_copy_entry(in_coll_param.send_buf,
-                                   out_coll_param.send_buf + offset,
+                                   out_coll_param.send_buf,
+                                   out_coll_param.count,
+                                   out_coll_param.dtype,
+                                   copy_attr(copy_direction::d2h),
+                                   sched,
+                                   wait_events);
+    }
+    else if (ctype == ccl_coll_allgatherv) {
+        out_event = add_copy_entry(in_coll_param.send_buf,
+                                   out_coll_param.send_buf,
                                    out_coll_param.send_count,
                                    out_coll_param.dtype,
                                    copy_attr(copy_direction::d2h),
@@ -476,6 +526,30 @@ bool is_copy_overlap_enabled(ccl_sched* sched, const ccl_coll_param& coll_param,
     return false;
 }
 
+bool use_hmem_with_algo(ccl_sched* sched, const ccl_coll_param& coll_param) {
+    ccl_selector_param selector_param;
+    selector_param.ctype = coll_param.ctype;
+    selector_param.count = coll_param.send_count;
+    selector_param.recv_counts =
+        const_cast<size_t*>(reinterpret_cast<const size_t*>(coll_param.recv_counts.data()));
+    selector_param.hint_algo = coll_param.hint_algo;
+    selector_param.dtype = coll_param.dtype;
+    selector_param.comm = coll_param.comm;
+    selector_param.stream = coll_param.stream;
+    selector_param.buf =
+        (coll_param.send_buf) ? coll_param.send_buf.get_ptr() : coll_param.recv_buf.get_ptr();
+    selector_param.is_vector_buf = sched->coll_attr.is_vector_buf;
+#ifdef CCL_ENABLE_SYCL
+    selector_param.is_sycl_buf = sched->coll_attr.is_sycl_buf;
+#endif // CCL_ENABLE_SYCL
+    selector_param.is_scaleout = coll_param.is_scaleout;
+
+    if (ccl_is_direct_algo(selector_param))
+        return false;
+
+    return true;
+}
+
 void add_scaleout(ccl_sched* sched,
                   const ccl_coll_param& in_coll_param,
                   const bool is_single_node,
@@ -492,10 +566,15 @@ void add_scaleout(ccl_sched* sched,
     bool multi_node =
         (!is_single_node && (coll_param.count != 0 || coll_param.recv_counts.size() != 0));
     bool enable_hmem = (ccl::global_data::env().use_hmem && atl_base_comm::attr.out.enable_hmem);
+    if (enable_hmem && in_coll_param.ctype == ccl_coll_allgatherv &&
+        ccl::global_data::env().atl_transport == ccl_atl_mpi) {
+        enable_hmem = use_hmem_with_algo(sched, in_coll_param);
+    }
+
     bool do_h2d_copy =
         ((coll_param.ctype == ccl_coll_allreduce || coll_param.ctype == ccl_coll_reduce_scatter ||
           coll_param.ctype == ccl_coll_alltoallv || coll_param.ctype == ccl_coll_alltoall ||
-          coll_param.ctype == ccl_coll_allgatherv) &&
+          coll_param.ctype == ccl_coll_allgatherv || coll_param.ctype == ccl_coll_allgather) &&
          multi_node && !enable_hmem) ||
         (coll_param.ctype == ccl_coll_reduce && coll_param.comm->rank() == coll_param.root);
 
@@ -505,7 +584,9 @@ void add_scaleout(ccl_sched* sched,
 
             // mostly initialize contiguous send/recv buffers from array of input buffers
             out_event = fill_scaleout_coll_param(in_coll_param, coll_param, sched, wait_events);
-            utils::clear_and_push_back(wait_events, out_event);
+            if (out_event) {
+                utils::clear_and_push_back(wait_events, out_event);
+            }
             sched->add_barrier();
 
             LOG_DEBUG("topo/scale_out: ze_copy_entry of D2H for ",
@@ -514,8 +595,8 @@ void add_scaleout(ccl_sched* sched,
         }
         // pass the scale-out selection param directly
         coll_param.is_scaleout = true;
+        coll_param.is_hmem_enabled = enable_hmem;
         // do inplace collective
-
         out_event = ccl::add_coll(sched, coll_param, wait_events);
         utils::clear_and_push_back(wait_events, out_event);
     }
@@ -533,7 +614,7 @@ void add_scaleout(ccl_sched* sched,
     }
 
     if (coll_param.ctype == ccl_coll_alltoallv || coll_param.ctype == ccl_coll_alltoall ||
-        coll_param.ctype == ccl_coll_allgatherv) {
+        coll_param.ctype == ccl_coll_allgatherv || coll_param.ctype == ccl_coll_allgather) {
         out_event = add_copy_entry_with_offset(in_coll_param.recv_scale_out_bufs,
                                                coll_param.recv_buf,
                                                coll_param.recv_counts,
@@ -565,5 +646,137 @@ bool is_queue_in_order(const ccl_stream* s) {
 }
 
 #endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
+
+bool is_allgatherv_inplace(const void* send_buf,
+                           const size_t send_count,
+                           const void* recv_buf,
+                           const size_t* recv_counts,
+                           const size_t dtype_size,
+                           const size_t rank,
+                           const size_t comm_size) {
+    // From MPI 4.1: The "in place" option for intra-communicators is specified
+    // by passing the value MPI_IN_PLACE to the argument sendbuf at all MPI
+    // processes. sendcount and sendtype are ignored. Then the input data of
+    // each MPI process is assumed to be in the area where that MPI process
+    // would receive its own contribution to the receive buffer.
+
+    // The next block of code calculates whether or not the MPI_IN_PLACE option
+    // should be used (i.e. if the data is "in the area where that MPI process
+    // would receive its own contribution to the receive buffer"). It also
+    // warns the user if the send_buf is within the recv_buf but at an
+    // unexpected location.
+
+    // It is the responsibility of the user to use "in place" option correctly
+    // in *all* processes that call atl_mpi::allgatherv, as specified in the
+    // MPI standard.
+
+    size_t total_recv_buf_count = 0;
+    size_t curr_recv_buf_offset_count = 0;
+    for (size_t i = 0; i < comm_size; ++i) {
+        if (i == rank) {
+            curr_recv_buf_offset_count = total_recv_buf_count;
+        }
+        total_recv_buf_count += recv_counts[i];
+    }
+
+    size_t recv_buf_size = total_recv_buf_count * dtype_size;
+    const char* send_buf_ptr = reinterpret_cast<const char*>(send_buf);
+    const char* recv_buf_start_ptr = reinterpret_cast<const char*>(recv_buf);
+    const char* recv_buf_end_ptr = recv_buf_start_ptr + recv_buf_size;
+    bool address_aliasing =
+        (send_buf_ptr >= recv_buf_start_ptr) && (send_buf_ptr < recv_buf_end_ptr);
+
+    size_t curr_recv_buf_offset = curr_recv_buf_offset_count * dtype_size;
+    const char* curr_recv_buf = recv_buf_start_ptr + curr_recv_buf_offset;
+    bool inplace = (send_buf_ptr == nullptr) || (send_buf_ptr == curr_recv_buf);
+
+    CCL_THROW_IF_NOT(send_count == recv_counts[rank],
+                     "send_count excpected to be equal to recv_counts[my_rank]");
+
+    LOG_DEBUG("send_count: ",
+              send_count,
+              ", recv_buf_size: ",
+              recv_buf_size,
+              ", inplace: ",
+              inplace,
+              ", send_buf: ",
+              send_buf,
+              ", recv_buf: ",
+              recv_buf);
+    if (address_aliasing && !inplace) {
+        std::stringstream ss_send, ss_recv;
+        ss_send << send_buf;
+        ss_recv << recv_buf;
+
+        std::string warning_msg("using allgatherv with a send_buf that is not in-place"
+                                " but that overlaps with recv_buf! Did you mean to place your"
+                                " send_buf in the appropriate location within recv_buf?");
+        LOG_DEBUG("CAUTION: ", warning_msg);
+        LOG_DEBUG("   send_buf ", ss_send.str());
+        LOG_DEBUG("   recv_buf ", ss_recv.str());
+        if (ccl::global_data::env().check_inplace_aliasing) {
+            CCL_THROW("ERROR: " + warning_msg + ".\n" +
+                      "Set CCL_CHECK_INPLACE_ALIASING=0 to disable this check.");
+        }
+    }
+
+    return inplace;
+}
+
+bool is_reduce_scatter_inplace(const void* send_buf,
+                               const void* recv_buf,
+                               const size_t recv_count,
+                               const size_t dtype_size,
+                               const size_t rank,
+                               const size_t comm_size) {
+    // Contrary to MPI, oneCCL defines "in-place" semantics differently.
+    // For reduce-scatter, in-place operations are done when
+    // the per-rank recv pointer is located at the rank offset
+    // of the global send buffer.
+
+    // It is the responsibility of the user to use "in place" option correctly
+    // in *all* processes that call ccl::reduce_scatter,
+    // as specified in the comment above.
+
+    size_t recv_buf_size = recv_count * dtype_size;
+    size_t send_buf_size = recv_buf_size * comm_size;
+
+    const char* send_buf_start_ptr = reinterpret_cast<const char*>(send_buf);
+    const char* send_buf_end_ptr = send_buf_start_ptr + send_buf_size;
+    const char* recv_buf_ptr = reinterpret_cast<const char*>(recv_buf);
+
+    bool address_aliasing =
+        (recv_buf_ptr >= send_buf_start_ptr) && (recv_buf_ptr < send_buf_end_ptr);
+
+    const char* curr_send_buf = send_buf_start_ptr + rank * recv_buf_size;
+    bool inplace = recv_buf_ptr == curr_send_buf;
+
+    LOG_DEBUG("recv_count: ",
+              recv_count,
+              ", inplace: ",
+              inplace,
+              ", send_buf: ",
+              send_buf,
+              ", recv_buf: ",
+              recv_buf);
+    if (address_aliasing && !inplace) {
+        std::stringstream ss_send, ss_recv;
+        ss_send << send_buf;
+        ss_recv << recv_buf;
+
+        std::string warning_msg("using reduce_scatter with a recv_buf that is not in-place"
+                                " but that overlaps with send_buf! Did you mean to place your"
+                                " recv_buf in the appropriate location within send_buf?");
+        LOG_DEBUG("CAUTION: ", warning_msg);
+        LOG_DEBUG("   send_buf ", ss_send.str());
+        LOG_DEBUG("   recv_buf ", ss_recv.str());
+        if (ccl::global_data::env().check_inplace_aliasing) {
+            CCL_THROW("ERROR: " + warning_msg + ".\n" +
+                      "Set CCL_CHECK_INPLACE_ALIASING=0 to disable this check.");
+        }
+    }
+
+    return inplace;
+}
 
 } // namespace ccl

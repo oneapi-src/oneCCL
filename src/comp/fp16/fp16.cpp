@@ -26,12 +26,14 @@ std::map<ccl_fp16_impl_type, std::string> fp16_impl_names = {
     std::make_pair(ccl_fp16_no_compiler_support, "no_compiler_support"),
     std::make_pair(ccl_fp16_no_hardware_support, "no_hardware_support"),
     std::make_pair(ccl_fp16_f16c, "f16c"),
-    std::make_pair(ccl_fp16_avx512f, "avx512f")
+    std::make_pair(ccl_fp16_avx512f, "avx512f"),
+    std::make_pair(ccl_fp16_avx512fp16, "avx512fp16")
 };
 
 std::map<ccl_fp16_impl_type, std::string> fp16_env_impl_names = {
     std::make_pair(ccl_fp16_f16c, "f16c"),
-    std::make_pair(ccl_fp16_avx512f, "avx512f")
+    std::make_pair(ccl_fp16_avx512f, "avx512f"),
+    std::make_pair(ccl_fp16_avx512fp16, "avx512fp16")
 };
 
 #ifdef CCL_FP16_COMPILER
@@ -41,7 +43,7 @@ void ccl_fp16_reduce(const void* in_buf,
                      void* inout_buf,
                      size_t* out_cnt,
                      ccl::reduction op) {
-    LOG_DEBUG("FP16 reduction for", in_cnt, " elements");
+    LOG_DEBUG("FP16 reduction for ", in_cnt, " elements");
 
     if (out_cnt != nullptr) {
         *out_cnt = in_cnt;

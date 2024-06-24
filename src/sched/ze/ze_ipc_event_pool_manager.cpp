@@ -54,3 +54,17 @@ ze_event_pool_handle_t ipc_event_pool_manager::create(size_t event_count) {
     LOG_DEBUG("created manager completed. event_pool_info.size: ", event_pool_info.size());
     return event_pool;
 }
+
+void ipc_event_pool_manager::check_ipc_event_count(ccl_coll_type ctype,
+                                                   const size_t& ipc_event_count,
+                                                   const size_t& max_ipc_event_count) {
+    if (ccl::global_data::env().enable_ze_barrier) {
+        CCL_THROW_IF_NOT(ipc_event_count <= max_ipc_event_count,
+                         "coll:  ",
+                         ccl_coll_type_to_str(ctype),
+                         ", unexpected ipc_event_count: ",
+                         ipc_event_count,
+                         ", expected max: ",
+                         max_ipc_event_count);
+    }
+}

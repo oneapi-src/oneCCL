@@ -36,6 +36,12 @@ public:
 private:
     typedef struct {
         atl_mpi_lib_type_t type;
+
+        /* current version of library */
+        int version_value;
+        /* current sub-version of library */
+        int sub_version_value;
+
         int hmem;
     } atl_mpi_lib_attr_t;
     typedef struct {
@@ -100,7 +106,9 @@ public:
     size_t mnic_count;
     atl_mnic_offset_t mnic_offset;
     atl_mpi_bf16_data_t bf16;
+    bool is_bf16_native;
     atl_mpi_fp16_data_t fp16;
+    bool is_fp16_native;
     atl_progress_mode_t progress_mode;
     bool sync_coll;
     size_t ep_count;
@@ -113,6 +121,8 @@ public:
               mnic_type(ATL_MNIC_NONE),
               mnic_count(1),
               mnic_offset(ATL_MNIC_OFFSET_NONE),
+              is_bf16_native(0),
+              is_fp16_native(0),
               progress_mode(ATL_PROGRESS_CHECK),
               sync_coll(0),
               ep_count(0) {

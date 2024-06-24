@@ -49,7 +49,7 @@ void init_reduce_scatter_medium(ccl::datatype dtype,
         break;
 
 ccl::event run_reduce_scatter_medium(ccl::datatype dtype,
-                                     sycl::queue queue,
+                                     sycl::queue &queue,
                                      const void *send_buf,
                                      void *recv_buf,
                                      size_t recv_count,

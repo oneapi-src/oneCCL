@@ -42,9 +42,11 @@ struct sycl_allgatherv_coll : sycl_base_coll<Dtype, allgatherv_strategy_impl> {
 
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
             if (base_coll::get_sycl_mem_type() == SYCL_MEM_USM) {
-                stream.get_native()
-                    .memcpy(host_send_buf.data(), send_bufs[b_idx][rank_idx], send_bytes)
-                    .wait();
+                if (!base_coll::get_inplace()) {
+                    stream.get_native()
+                        .memcpy(host_send_buf.data(), send_bufs[b_idx][rank_idx], send_bytes)
+                        .wait();
+                }
 
                 stream.get_native()
                     .memcpy(host_recv_buf.data(), recv_bufs[b_idx][rank_idx], recv_bytes)
@@ -56,9 +58,11 @@ struct sycl_allgatherv_coll : sycl_base_coll<Dtype, allgatherv_strategy_impl> {
                 auto send_buf_acc = send_buf->template get_host_access(sycl::read_only);
                 auto recv_buf_acc = recv_buf->template get_host_access(sycl::read_only);
 
-                stream.get_native()
-                    .memcpy(host_send_buf.data(), send_buf_acc.get_pointer(), send_bytes)
-                    .wait();
+                if (!base_coll::get_inplace()) {
+                    stream.get_native()
+                        .memcpy(host_send_buf.data(), send_buf_acc.get_pointer(), send_bytes)
+                        .wait();
+                }
 
                 stream.get_native()
                     .memcpy(host_recv_buf.data(), recv_buf_acc.get_pointer(), recv_bytes)

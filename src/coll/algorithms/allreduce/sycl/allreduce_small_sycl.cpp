@@ -66,7 +66,7 @@ void init_allreduce_small(ccl::datatype dtype,
 }
 
 ccl::event run_allreduce_small(ccl::datatype dtype,
-                               sycl::queue queue,
+                               sycl::queue &queue,
                                const void *in_buf,
                                void *out_buf,
                                size_t count) {
@@ -79,4 +79,25 @@ ccl::event run_allreduce_small(ccl::datatype dtype,
         default: CCL_THROW("unsupported datatype for allreduce"); assert(0);
     }
     return e;
+}
+
+#include "coll/algorithms/allreduce/sycl/allreduce_small_sycl_impl.hpp"
+
+ccl::event allreduce_small(const void *send_buf,
+                           void *recv_buf,
+                           size_t count,
+                           ccl::datatype dtype,
+                           ccl::reduction reduction,
+                           ccl_comm *comm,
+                           ccl_stream *global_stream,
+                           const ccl::vector_class<ccl::event> &deps) {
+    LOG_DEBUG("invoking allreduce_small");
+    coll_init(comm, global_stream);
+
+    auto lambda = [&]<typename T, int NE, int NP>() {
+        return allreduce_small_impl<T, NE, NP>(
+            send_buf, recv_buf, count, dtype, reduction, comm, global_stream, deps);
+    };
+
+    return invoke_collective(lambda, comm, dtype);
 }

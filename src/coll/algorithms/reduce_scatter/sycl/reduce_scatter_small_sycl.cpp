@@ -29,9 +29,9 @@ sycl_reduce_scatter_small<float> rs_small_fp32;
         break;
 
 void init_reduce_scatter_small(ccl::datatype dtype,
-                               sycl::queue &queue,
-                               ccl_comm *comm,
-                               ccl_stream *stream,
+                               sycl::queue& queue,
+                               ccl_comm* comm,
+                               ccl_stream* stream,
                                uint32_t rank_in,
                                uint32_t world_in) {
     switch (dtype) {
@@ -47,11 +47,11 @@ void init_reduce_scatter_small(ccl::datatype dtype,
     case ccl_type: e = rs_small_##TYPE.reduce_scatter(queue, send_buf, recv_buf, dtype, recv_count, done); break;
 
 ccl::event run_reduce_scatter_small(ccl::datatype dtype,
-                                    sycl::queue queue,
-                                    const void *send_buf,
-                                    void *recv_buf,
+                                    sycl::queue& queue,
+                                    const void* send_buf,
+                                    void* recv_buf,
                                     size_t recv_count,
-                                    bool &done) {
+                                    bool& done) {
     ccl::event e;
     switch (dtype) {
         SWITCH_RUN_TYPE(fp16, ccl::datatype::float16)
@@ -61,4 +61,25 @@ ccl::event run_reduce_scatter_small(ccl::datatype dtype,
         default: CCL_THROW("unsupported datatype for reduce_scatter"); assert(0);
     }
     return e;
+}
+
+#include "coll/algorithms/reduce_scatter/sycl/reduce_scatter_small_sycl_impl.hpp"
+
+ccl::event reduce_scatter_small(const void* send_buf,
+                                void* recv_buf,
+                                size_t recv_count,
+                                ccl::datatype dtype,
+                                ccl::reduction reduction,
+                                ccl_comm* comm,
+                                ccl_stream* global_stream,
+                                const ccl::vector_class<ccl::event>& deps) {
+    LOG_DEBUG("invoking reduce_scatter_small");
+    coll_init(comm, global_stream);
+
+    auto lambda = [&]<typename T, int NE, int NP>() {
+        return reduce_scatter_small_impl<T, NE, NP>(
+            send_buf, recv_buf, recv_count, dtype, reduction, comm, global_stream, deps);
+    };
+
+    return invoke_collective(lambda, comm, dtype);
 }

@@ -23,6 +23,7 @@
 #include "parallelizer/parallelizer.hpp"
 #include "sched/buffer/buffer_cache.hpp"
 #include "sched/cache/cache.hpp"
+#include "sched/cache/recycle_storage.hpp"
 
 #include <sys/utsname.h>
 
@@ -54,6 +55,8 @@ global_data::global_data() {
 }
 
 global_data::~global_data() {
+    recycle_storage->recycle_events();
+    recycle_storage->recycle_requests();
     reset();
 }
 
@@ -106,6 +109,8 @@ ccl::status global_data::init() {
         env_object.enable_topo_algo = 0;
     }
 
+    recycle_storage.reset(new ccl::recycle_storage());
+
     init_resize_dependent_objects();
     init_resize_independent_objects();
 
@@ -135,6 +140,7 @@ void global_data::init_resize_independent_objects() {
     hwloc_wrapper.reset(new ccl_hwloc_wrapper());
 
     metrics_profiler.reset(new profile::metrics_manager());
+    timestamp_manager.reset(new profile::timestamp_manager());
     metrics_profiler->init();
 }
 
@@ -159,12 +165,6 @@ void global_data::getenv_local_coord(const char* local_proc_idx_env_name,
     if (!(local_idx_env && local_count_env)) {
         LOG_WARN("could not get local_idx/count from environment variables, "
                  "trying to get them from ATL");
-#if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
-        LOG_WARN("fallback to 'sockets' mode of ze exchange mechanism, to use "
-                 "CCL_ZE_IPC_EXHANGE=drmfd, set CCL_LOCAL_RANK/SIZE explicitly "
-                 " or use process launcher");
-        global_data::env().ze_ipc_exchange = ccl::ze::ipc_exchange_mode::sockets;
-#endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
         local_proc_idx = CCL_ENV_INT_NOT_SPECIFIED;
         local_proc_count = CCL_ENV_INT_NOT_SPECIFIED;
         return;
@@ -195,12 +195,6 @@ void global_data::set_local_coord() {
                 local_proc_count == CCL_ENV_INT_NOT_SPECIFIED) {
                 LOG_WARN("could not get local_idx/count from environment variables, "
                          "trying to get them from ATL");
-#if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
-                LOG_WARN("fallback to 'sockets' mode of ze exchange mechanism, to use "
-                         "CCL_ZE_IPC_EXHANGE=drmfd, set CCL_LOCAL_RANK/SIZE explicitly "
-                         " or use process launcher");
-                env.ze_ipc_exchange = ccl::ze::ipc_exchange_mode::sockets;
-#endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
             }
             else {
                 CCL_THROW("unexpected behaviour of get_pmix_local_coord local_proc_idx: ",

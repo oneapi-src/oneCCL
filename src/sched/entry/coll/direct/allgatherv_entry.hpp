@@ -123,7 +123,7 @@ private:
     const ccl_comm* comm;
     atl_req_t req{};
 
-    std::vector<int> recv_bytes;
-    std::vector<int> offsets;
+    std::vector<size_t> recv_bytes;
+    std::vector<size_t> offsets;
     size_t sum_recv_bytes;
 };

@@ -155,6 +155,24 @@ void ccl_sched::set_ze_commands_bypass_flag(bool bypass) {
     is_ze_commands_bypass = bypass;
 }
 
+ze_event_handle_t ccl_sched::get_related_deps_out_event() {
+    ze_event_handle_t out_event = nullptr;
+    if (subsched_entry_parent_sched) {
+        CCL_THROW_IF_NOT(subsched_entry_parent_sched->entries.size(),
+                         "subsched_entry_parent_sched is empty");
+        CCL_THROW_IF_NOT(subsched_entry_parent_sched->entries[0]->is_deps(),
+                         "subsched_entry_parent_sched first entry is not deps");
+        out_event = ((deps_entry*)(subsched_entry_parent_sched->entries[0].get()))->out_event;
+    }
+    else {
+        CCL_THROW_IF_NOT(entries.size(), "sched is empty");
+        CCL_THROW_IF_NOT(entries[0]->is_deps(), "first sched entry is not deps");
+        out_event = ((deps_entry*)(entries[0].get()))->out_event;
+    }
+    CCL_THROW_IF_NOT(out_event, "dependencies out event is not initialized");
+    return out_event;
+}
+
 std::shared_ptr<sync_object>& ccl_sched::get_init_ze_hook_sync_obj() {
     return init_ze_hook_sync_obj;
 }
@@ -371,10 +389,6 @@ ccl_sched::ccl_sched_ptr ccl_sched::create(const ccl_coll_param& param, const cc
     return sched;
 }
 
-bool ccl_sched::is_submitted_to_gpu() {
-    return submitted_to_gpu;
-}
-
 void ccl_sched::set_submitted_to_gpu(bool submitted) {
     LOG_DEBUG(
         "sched ", this, " parent_sched ", parent_sched, " set_submitted_to_gpu(", submitted, ")");
@@ -387,6 +401,39 @@ void ccl_sched::set_submitted_to_gpu(bool submitted) {
     if (subsched_entry_parent_sched) {
         subsched_entry_parent_sched->set_submitted_to_gpu(submitted);
     }
+}
+
+bool ccl_sched::is_submitted_to_gpu() {
+    return submitted_to_gpu;
+}
+
+bool ccl_sched::is_deps_barrier() {
+    if (subsched_entry_parent_sched) {
+        return subsched_entry_parent_sched->is_deps_barrier();
+    }
+    if (parent_sched) {
+        return parent_sched->is_deps_barrier();
+    }
+    return deps_is_barrier;
+}
+
+void ccl_sched::set_deps_is_barrier(bool is_barrier) {
+    deps_is_barrier = is_barrier;
+    if (subsched_entry_parent_sched) {
+        subsched_entry_parent_sched->deps_is_barrier = is_barrier;
+    }
+    if (parent_sched) {
+        parent_sched->deps_is_barrier = is_barrier;
+    }
+}
+
+bool ccl_sched::has_deps_entry() {
+    if ((subsched_entry_parent_sched && subsched_entry_parent_sched->entries.size() > 0 &&
+         subsched_entry_parent_sched->entries[0]->is_deps()) ||
+        (entries.size() > 0 && entries[0]->is_deps())) {
+        return true;
+    }
+    return false;
 }
 
 void ccl_sched::do_progress() {

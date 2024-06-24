@@ -162,7 +162,9 @@ public:
         handle_desc() = delete;
         handle_desc(ze_context_handle_t remote_context,
                     const ze_ipc_mem_handle_t& handle,
-                    const void* ptr);
+                    const void* ptr,
+                    size_t handle_id,
+                    uint64_t remote_mem_alloc_id);
         handle_desc(const handle_desc&) = delete;
         handle_desc& operator=(const handle_desc&) = delete;
         ~handle_desc();
@@ -174,6 +176,8 @@ public:
         const ze_context_handle_t remote_context;
         const ze_ipc_mem_handle_t handle;
         const void* ptr{};
+        uint64_t remote_mem_alloc_id;
+        size_t handle_id;
 
         void close_handle() const;
     };
@@ -194,11 +198,11 @@ public:
 
 private:
     using key_t = typename std::
-        tuple<pid_t, uint64_t, ssize_t, ssize_t, ze_context_handle_t, ze_device_handle_t>;
+        tuple<pid_t, void*, ssize_t, ssize_t, ze_context_handle_t, ze_device_handle_t>;
 
     enum class key_id : size_t {
         remote_pid,
-        remote_alloc_id,
+        remote_ptr,
         remote_context_id,
         remote_device_id,
         context,
@@ -221,9 +225,15 @@ private:
 
 struct ipc_get_handle_desc;
 
+struct ipc_entry_t {
+    ze_ipc_mem_handle_t handle{};
+    uint64_t mem_id{};
+    size_t handle_id{ ccl::utils::initial_handle_id_value };
+};
+
 class ipc_handle_cache {
 public:
-    using value_t = ze_ipc_mem_handle_t;
+    using value_t = ipc_entry_t;
 
     ipc_handle_cache() = default;
     ipc_handle_cache(const ipc_handle_cache&) = delete;
@@ -238,14 +248,18 @@ public:
              value_t* out_value);
 
 private:
-    using key_t = typename std::tuple<void*, uint64_t>;
-    std::unordered_multimap<key_t, value_t, utils::tuple_hash> cache;
+    using key_t = void*;
+    std::unordered_multimap<key_t, value_t> cache;
+    std::list<key_t> lru_order;
     std::mutex mutex;
 
     void push(ze_context_handle_t context,
-              key_t&& key,
+              ze_device_handle_t device,
+              key_t key,
               const ipc_get_handle_desc& ipc_info,
               value_t* out_value);
+
+    void update_lru_order(key_t key);
 };
 
 class cache {

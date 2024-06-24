@@ -102,11 +102,12 @@ void ze_alltoallv_entry::init_ze_hook() {
             kernel_args.push_back(&(in_bufs[global_rank]));
         }
         else {
-            CCL_THROW_IF_NOT(counts[idx] == 0, "kernel input buffer is null but counts > 0");
+            CCL_THROW_IF_NOT(counts[global_rank] == 0,
+                             "kernel input buffer is null but counts > 0");
             kernel_args.push_back({});
         }
         kernel_args.push_back(&(out_bufs[global_rank]));
-        kernel_args.push_back(&(counts[idx]));
+        kernel_args.push_back(&(counts[global_rank]));
     }
 
     kernel_args.push_back(&comm_size);

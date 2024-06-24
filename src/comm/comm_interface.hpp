@@ -37,12 +37,14 @@ struct ccl_device;
 
 namespace ccl {
 namespace v1 {
+class allgather_attr;
 class allgatherv_attr;
 class allreduce_attr;
 class alltoall_attr;
 class alltoallv_attr;
 class barrier_attr;
 class broadcast_attr;
+class broadcastExt_attr;
 class pt2pt_attr;
 class reduce_attr;
 class reduce_scatter_attr;

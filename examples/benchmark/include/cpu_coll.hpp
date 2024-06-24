@@ -40,7 +40,22 @@ struct cpu_base_coll : base_coll, protected strategy {
                 send_bufs[idx][rank_idx] =
                     alloc_buffer(base_coll::get_max_elem_count() * sizeof(Dtype) * send_multiplier);
                 if (base_coll::get_inplace()) {
-                    recv_bufs[idx][rank_idx] = send_bufs[idx][rank_idx];
+                    bool is_allgatherv = strcmp(coll_strategy::class_name(), "allgatherv") == 0;
+                    bool is_allgather = strcmp(coll_strategy::class_name(), "allgather") == 0;
+                    bool is_reduce_scatter =
+                        strcmp(coll_strategy::class_name(), "reduce_scatter") == 0;
+                    if (is_allgatherv || is_allgather) {
+                        recv_bufs[idx][rank_idx] = send_bufs[idx][rank_idx];
+                        send_bufs[idx][rank_idx] =
+                            nullptr; // This will be set when the count is known, since the offset is unknown at this point.
+                    }
+                    else if (is_reduce_scatter) {
+                        // recv_buf will be set when the count is known, since the offset is unknown at this point.
+                        recv_bufs[idx][rank_idx] = nullptr;
+                    }
+                    else {
+                        recv_bufs[idx][rank_idx] = send_bufs[idx][rank_idx];
+                    }
                 }
                 else {
                     recv_bufs[idx][rank_idx] = alloc_buffer(base_coll::get_max_elem_count() *
@@ -59,8 +74,10 @@ struct cpu_base_coll : base_coll, protected strategy {
         size_t recv_multiplier = coll_strategy::get_recv_multiplier();
         for (size_t rank_idx = 0; rank_idx < base_coll::get_ranks_per_proc(); rank_idx++) {
             for (size_t idx = 0; idx < base_coll::get_buf_count(); idx++) {
-                free_buffer(send_bufs[idx][rank_idx],
-                            base_coll::get_max_elem_count() * sizeof(Dtype) * send_multiplier);
+                if (send_bufs[idx][rank_idx]) {
+                    free_buffer(send_bufs[idx][rank_idx],
+                                base_coll::get_max_elem_count() * sizeof(Dtype) * send_multiplier);
+                }
                 if (!base_coll::get_inplace()) {
                     free_buffer(recv_bufs[idx][rank_idx],
                                 base_coll::get_max_elem_count() * sizeof(Dtype) * recv_multiplier);
@@ -80,7 +97,6 @@ struct cpu_base_coll : base_coll, protected strategy {
         auto& transport = transport_data::instance();
         auto& comms = transport.get_comms();
         size_t ranks_per_proc = base_coll::get_ranks_per_proc();
-
         for (size_t rank_idx = 0; rank_idx < ranks_per_proc; rank_idx++) {
             coll_strategy::start_internal(comms[rank_idx],
                                           count,
@@ -107,7 +123,18 @@ struct cpu_base_coll : base_coll, protected strategy {
         auto fill_vector = get_initial_values<Dtype>(send_count, comm_rank);
 
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
-            memcpy(send_bufs[b_idx][rank_idx], fill_vector.data(), send_bytes);
+            if ((strcmp(coll_strategy::class_name(), "allgatherv") == 0 ||
+                 strcmp(coll_strategy::class_name(), "allgather") == 0) &&
+                base_coll::get_inplace()) {
+                // for inplace allgatherv, the input data needs to be at an index comm_rank*send_count
+                // of the recv_buffer rather than at index 0 for the non-inplace case
+                memcpy((char*)(recv_bufs[b_idx][rank_idx]) + send_bytes * comm_rank,
+                       fill_vector.data(),
+                       send_bytes);
+            }
+            else {
+                memcpy(send_bufs[b_idx][rank_idx], fill_vector.data(), send_bytes);
+            }
             if (!base_coll::get_inplace()) {
                 memset(recv_bufs[b_idx][rank_idx], -1, recv_bytes);
             }

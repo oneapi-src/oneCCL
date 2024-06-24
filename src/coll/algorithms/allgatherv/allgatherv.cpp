@@ -18,6 +18,9 @@
 #include "comm/comm.hpp"
 #include "sched/entry/factory/chunked_entry_factory.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+#include "sched/entry/ze/ze_dummy_entry.hpp"
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
 #include <numeric>
 
@@ -42,8 +45,10 @@ ccl::status ccl_coll_build_naive_allgatherv(ccl_sched* sched,
                                             size_t send_count,
                                             ccl_buffer recv_buf,
                                             const size_t* recv_counts,
+                                            const std::vector<ccl_buffer>& recv_device_bufs,
                                             const ccl_datatype& dtype,
-                                            ccl_comm* comm) {
+                                            ccl_comm* comm,
+                                            bool is_scaleout) {
     LOG_DEBUG("build naive allgatherv");
     CCL_THROW_IF_NOT(recv_counts[comm->rank()] == send_count,
                      "unexpected send count: ",
@@ -52,22 +57,41 @@ ccl::status ccl_coll_build_naive_allgatherv(ccl_sched* sched,
                      recv_counts[comm->rank()]);
 
     ccl::status status = ccl::status::success;
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    // Note: HMEM case does not require copy to device stage
+    bool enable_hmem = (ccl::global_data::env().use_hmem && atl_base_comm::attr.out.enable_hmem);
+    bool scaleout_hmem_enabled = is_scaleout && enable_hmem;
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
     int comm_size = comm->size();
     int comm_rank = comm->rank();
     size_t dtype_size = dtype.size();
     std::vector<size_t> offsets(comm_size);
 
-    offsets[0] = 0;
-    for (int rank = 1; rank < comm_size; rank++) {
-        offsets[rank] = offsets[rank - 1] + recv_counts[rank - 1] * dtype_size;
-    }
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    if (!scaleout_hmem_enabled) {
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+        offsets[0] = 0;
+        for (int rank = 1; rank < comm_size; rank++) {
+            offsets[rank] = offsets[rank - 1] + recv_counts[rank - 1] * dtype_size;
+        }
 
-    if ((send_buf != recv_buf) && (send_count > 0)) {
-        // out-of-place case
-        entry_factory::create<copy_entry>(
-            sched, send_buf, recv_buf + offsets[comm_rank], send_count, dtype);
+        bool is_inplace = ccl::is_allgatherv_inplace(send_buf.get_ptr(),
+                                                     send_count,
+                                                     recv_buf.get_ptr(),
+                                                     recv_counts,
+                                                     dtype.size(),
+                                                     comm_rank,
+                                                     comm_size);
+
+        if ((!is_inplace) && (send_count > 0)) {
+            // out-of-place case
+            entry_factory::create<copy_entry>(
+                sched, send_buf, recv_buf + offsets[comm_rank], send_count, dtype);
+        }
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
     }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
     for (int idx = 1; idx < comm_size; idx++) {
         int dst = (comm_rank + idx) % comm_size;
@@ -75,14 +99,28 @@ ccl::status ccl_coll_build_naive_allgatherv(ccl_sched* sched,
 
         if (send_count > 0) {
             // send own buffer to other ranks
-            entry_factory::create<send_entry>(
-                sched, recv_buf + offsets[comm_rank], send_count, dtype, dst, comm);
+            entry_factory::create<send_entry>(sched,
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+                                              scaleout_hmem_enabled ? recv_device_bufs[comm_rank] :
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+                                                                    recv_buf + offsets[comm_rank],
+                                              send_count,
+                                              dtype,
+                                              dst,
+                                              comm);
         }
 
         if (recv_counts[src] > 0) {
             // recv other's rank buffer
-            entry_factory::create<recv_entry>(
-                sched, recv_buf + offsets[src], recv_counts[src], dtype, src, comm);
+            entry_factory::create<recv_entry>(sched,
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+                                              scaleout_hmem_enabled ? recv_device_bufs[src] :
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+                                                                    recv_buf + offsets[src],
+                                              recv_counts[src],
+                                              dtype,
+                                              src,
+                                              comm);
         }
     }
 
@@ -97,7 +135,8 @@ ccl::status ccl_coll_build_ring_allgatherv(ccl_sched* main_sched,
                                            const size_t* recv_counts,
                                            const std::vector<ccl_buffer>& recv_device_bufs,
                                            const ccl_datatype& dtype,
-                                           ccl_comm* comm) {
+                                           ccl_comm* comm,
+                                           bool is_scaleout) {
     LOG_DEBUG("build ring allgatherv, send_count ", send_count);
     CCL_THROW_IF_NOT(main_sched || (!main_sched && scheds.size() == 1),
                      "unexpected scheduler/sub-schedulers combination");
@@ -114,25 +153,39 @@ ccl::status ccl_coll_build_ring_allgatherv(ccl_sched* main_sched,
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
     // Note: HMEM case does not require copy to device stage
     bool enable_hmem = (ccl::global_data::env().use_hmem && atl_base_comm::attr.out.enable_hmem);
+    bool scaleout_hmem_enabled = is_scaleout && enable_hmem;
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
     size_t* offsets = static_cast<size_t*>(CCL_MALLOC(comm_size * sizeof(size_t), "offsets"));
-    offsets[0] = 0;
-    for (int rank_idx = 1; rank_idx < comm_size; ++rank_idx) {
-        offsets[rank_idx] = offsets[rank_idx - 1] + recv_counts[rank_idx - 1] * dtype_size;
-    }
 
-    if ((send_buf != recv_buf) && (send_count > 0)) {
-        // initialize recv_buffer with initial send_buf value
-        // scheds.front contains either main scheduler or first sub-scheduler
-        entry_factory::create<copy_entry>(
-            scheds.front(), send_buf, recv_buf + offsets[rank], send_count, dtype);
-        // in parallel case all workers have to wait for the data copy completion
-        if (main_sched) {
-            main_sched->sync_subscheds();
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    if (!scaleout_hmem_enabled) {
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+        offsets[0] = 0;
+        for (int rank_idx = 1; rank_idx < comm_size; ++rank_idx) {
+            offsets[rank_idx] = offsets[rank_idx - 1] + recv_counts[rank_idx - 1] * dtype_size;
         }
-    }
 
+        bool is_inplace = ccl::is_allgatherv_inplace(send_buf.get_ptr(),
+                                                     send_count,
+                                                     recv_buf.get_ptr(),
+                                                     recv_counts,
+                                                     dtype.size(),
+                                                     rank,
+                                                     comm_size);
+        if ((!is_inplace) && (send_count > 0)) {
+            // initialize recv_buffer with initial send_buf value
+            // scheds.front contains either main scheduler or first sub-scheduler
+            entry_factory::create<copy_entry>(
+                scheds.front(), send_buf, recv_buf + offsets[rank], send_count, dtype);
+            // in parallel case all workers have to wait for the data copy completion
+            if (main_sched) {
+                main_sched->sync_subscheds();
+            }
+        }
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
     ccl_buffer sbuf, rbuf;
 
     int src = (comm_size + rank - 1) % comm_size;
@@ -149,10 +202,20 @@ ccl::status ccl_coll_build_ring_allgatherv(ccl_sched* main_sched,
         recv_block_idx = (comm_size + block_idx - 1) % comm_size;
         send_block_count = recv_counts[send_block_idx];
         recv_block_count = recv_counts[recv_block_idx];
-        send_block_offset = offsets[send_block_idx];
-        recv_block_offset = offsets[recv_block_idx];
-        sbuf = recv_buf + send_block_offset;
-        rbuf = recv_buf + recv_block_offset;
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+        if (scaleout_hmem_enabled) {
+            sbuf = recv_device_bufs[send_block_idx];
+            rbuf = recv_device_bufs[recv_block_idx];
+        }
+        else {
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+            send_block_offset = offsets[send_block_idx];
+            recv_block_offset = offsets[recv_block_idx];
+            sbuf = recv_buf + send_block_offset;
+            rbuf = recv_buf + recv_block_offset;
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+        }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
         // parallelize partitioned data send/recv
         std::vector<size_t> send_block_thread_counts(sched_count, send_block_count / sched_count);
@@ -233,15 +296,19 @@ ccl::status ccl_coll_get_allgatherv_bufs(const ccl_coll_param& coll_param,
 
     recv_bufs.resize(comm_size);
 
-    if (coll_param.recv_bufs.size() > 1) {
-        CCL_THROW_IF_NOT((int)coll_param.recv_bufs.size() == comm_size,
+    bool scaleout_hmem_enabled = coll_param.is_scaleout && coll_param.is_hmem_enabled;
+    size_t vec_buf_size =
+        scaleout_hmem_enabled ? coll_param.recv_scale_out_bufs.size() : coll_param.recv_bufs.size();
+    if (vec_buf_size > 1) {
+        CCL_THROW_IF_NOT((int)vec_buf_size == comm_size,
                          "unexpected recv_bufs.size ",
-                         coll_param.recv_bufs.size(),
+                         vec_buf_size,
                          ", expected ",
                          comm_size);
 
         for (int idx = 0; idx < comm_size; idx++) {
-            recv_bufs[idx].set(coll_param.get_recv_buf(idx),
+            recv_bufs[idx].set(scaleout_hmem_enabled ? coll_param.recv_scale_out_bufs[idx].get_ptr()
+                                                     : coll_param.get_recv_buf(idx),
                                coll_param.get_recv_count(idx) * dtype_size);
         }
     }
@@ -287,14 +354,6 @@ ccl::status ccl_coll_build_flat_allgatherv(ccl_sched* main_sched,
                 coll_param.get_recv_count(comm_rank),
                 dtype);
         }
-    }
-    else {
-        size_t total_recv_bytes = std::accumulate(coll_param.recv_counts.begin(),
-                                                  coll_param.recv_counts.end(),
-                                                  ccl::utils::initial_count_value) *
-                                  dtype_size;
-        send_seg = ccl_buffer(
-            coll_param.get_send_buf(), total_recv_bytes, recv_bufs[comm_rank].get_offset());
     }
 
     CCL_THROW_IF_NOT(static_cast<int>(sched_count) == comm_size || !main_sched,
@@ -449,6 +508,19 @@ ccl::status ccl_coll_build_topo_allgatherv_fill(ccl_sched* sched,
     ccl::add_handle_exchange(sched, node_comm, wait_events, out_event, in_buffers);
     clear_and_push_back(wait_events, out_event);
 
+    if (!sched->is_deps_barrier() && sched->has_deps_entry()) {
+        // Submit dummy ze_entry for earlier L0 submission of the workload
+        // This has to be done after handle exchange to ensure that the IPC handles are ready
+        entry_factory::create<ze_dummy_entry>(sched);
+
+        // Dependencies output signal event has to be among wait events for comm_barrier
+        wait_events.push_back(sched->get_related_deps_out_event());
+
+        // Submit comm_barrier to ensure synchronization for early submitted entries
+        ccl::add_comm_barrier(sched, node_comm, wait_events, out_event);
+        clear_and_push_back(wait_events, out_event);
+    }
+
     auto add_sched_barrier_for_parallel_copies = [&]() {
         wait_events.insert(
             wait_events.end(), parallel_copy_events.begin(), parallel_copy_events.end());
@@ -465,22 +537,33 @@ ccl::status ccl_coll_build_topo_allgatherv_fill(ccl_sched* sched,
             std::vector<size_t> recv_counts_r2r;
             for (int i = 0; i < r2r_comm->size(); i++) {
                 const int global_rank = r2r_comm->get_global_rank(i);
-                recv_bufs_r2r.push_back(recv_bufs[global_rank]);
+                if (global_rank == comm->rank()) {
+                    recv_bufs_r2r.push_back(send_buf);
+                }
+                else {
+                    recv_bufs_r2r.push_back(recv_bufs[global_rank]);
+                }
                 recv_counts_r2r.push_back(recv_counts[global_rank]);
             }
 
             ccl_coll_param coll_param_scaleout{ false };
             coll_param_scaleout.ctype = ccl_coll_allgatherv;
             coll_param_scaleout.send_buf = send_buf;
-            coll_param_scaleout.recv_scale_out_bufs = recv_bufs_r2r;
+            coll_param_scaleout.recv_scale_out_bufs = std::move(recv_bufs_r2r);
             coll_param_scaleout.send_count = send_count;
-            coll_param_scaleout.recv_counts = recv_counts_r2r;
+            coll_param_scaleout.recv_counts = std::move(recv_counts_r2r);
             coll_param_scaleout.dtype = dtype;
             coll_param_scaleout.comm = r2r_comm;
 
             ccl::add_scaleout(sched, coll_param_scaleout, is_single_node, wait_events, out_event);
             CCL_THROW_IF_NOT(out_event,
                              "scaleout must be added to schedule, but it has not been added");
+
+            // make sure scaleout of even comm ranks is finished
+            // so that we can start to read from them
+            clear_and_push_back(wait_events, out_event);
+            ccl::add_comm_barrier(sched, even_comm, wait_events, out_event);
+            clear_and_push_back(wait_events, out_event);
         }
 
         // local copy runs in parallel with scaleout
@@ -497,14 +580,6 @@ ccl::status ccl_coll_build_topo_allgatherv_fill(ccl_sched* sched,
                                                               wait_events);
             CCL_ASSERT(parallel_copy_events.empty(), "parallel_copy_events must be empty");
             parallel_copy_events.push_back(entry->entry_event);
-        }
-
-        // make sure scaleout of even comm ranks is finished
-        // so that we can start to read from them
-        if (!is_single_node) {
-            clear_and_push_back(wait_events, out_event);
-            ccl::add_comm_barrier(sched, even_comm, wait_events, out_event);
-            clear_and_push_back(wait_events, out_event);
         }
 
         size_t hint_index = 0;
@@ -863,6 +938,12 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
 
     sched->try_enable_ze_single_list();
 
+    // Currently, the allgatherv implementation is not using any device cache,
+    // so we are safe not to allocate any `memory_context` for the group.
+    // Additionally, allgatherv is not split into serial chunks which means
+    // one group is enough for gpu submission to work correctly.
+    auto group = std::make_shared<sched_group>(sched, comm, nullptr, 0);
+
     // recalculate size of chunks based on cache alignment
     // e.g. we might need to have bigger chunks than actually calculated due to cache alignment
     // chunk_count stays the same, but some chunks might be bigger and others might be zero-sized
@@ -870,27 +951,25 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
     // count that caused pipelining should be printed => use array of bools
     std::vector<bool> is_parallelizable_chunks_idx(comm->size(), true);
     bool is_parallelizable_chunks = true; // convenience variable
-    size_t mem_align = 0;
+    size_t mem_align = ccl::global_data::env().kernel_mem_align;
     std::vector<size_t> chunked_recv_counts(comm->size(), 0);
     std::vector<ccl_buffer> chunked_recv_bufs(comm->size());
     for (size_t chunk_idx = 0; chunk_idx < chunk_count; ++chunk_idx) {
         size_t send_buffer_offset = 0;
         bool is_empty_total_size = true;
         for (int rank_idx = 0; rank_idx < comm->size(); rank_idx++) {
-            size_t main_chunk_count = 0;
-            bool pipe_possible =
-                ccl_is_pipe_enabled(recv_counts[rank_idx],
-                                    dtype.size(),
-                                    ccl::global_data::env().allgatherv_pipe_chunk_count,
-                                    main_chunk_count,
-                                    mem_align);
-            if (!pipe_possible) {
+            std::optional<size_t> main_chunk_count_opt =
+                ccl_get_pipe_size(recv_counts[rank_idx] * dtype.size(),
+                                  dtype.size(),
+                                  ccl::global_data::env().allgatherv_pipe_chunk_count);
+            if (!main_chunk_count_opt.has_value()) {
                 // only a single buffer might have issues with alignemnt, but we need to pipeline
                 // either all or none; we split the chunks, but we don't parallelize them
                 is_parallelizable_chunks = false;
                 is_parallelizable_chunks_idx[rank_idx] = false;
             }
             // more than two last chunks might have different size
+            size_t main_chunk_count = main_chunk_count_opt.value_or(0);
             size_t already_processed_buffer_size = main_chunk_count * chunk_idx;
             if (rank_idx == comm->rank()) {
                 // send_buffer is current recv_buffer
@@ -923,11 +1002,13 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
         else {
             chunked_send_buf = chunked_recv_bufs[comm->rank()];
         }
+
         entry_factory::create<subsched_entry>(
             sched,
             chunk_idx,
             [sched,
              comm,
+             group,
              is_inplace,
              dtype,
              chunked_send_buf,
@@ -940,6 +1021,7 @@ ccl::status ccl_coll_build_topo_allgatherv(ccl_sched* main_sched,
                 s->inherit_ze_managers_from(sched);
                 s->set_init_ze_hook_sync_obj(sync_obj);
                 s->set_ze_commands_bypass_flag(false);
+                s->set_group(group);
 
                 if (is_empty_total_size) {
                     // TODO: ccl_coll_build_topo_allgatherv_fill should be able to handle 0-sized inputs!

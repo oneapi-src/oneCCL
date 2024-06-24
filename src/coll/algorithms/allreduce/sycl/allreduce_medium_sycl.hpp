@@ -748,7 +748,7 @@ public:
     }
 
     void init(sycl::queue &queue,
-              ccl_comm *comm,
+              ccl_comm *comm_in,
               ccl_stream *stream,
               uint32_t rank_in,
               uint32_t world_in) {
@@ -769,7 +769,7 @@ public:
 
             // XXX: gain access to remote pointers
             this->exchange_peer_ipc_mem(queue,
-                                        comm,
+                                        comm_in,
                                         stream,
                                         allreduce_medium_buffer,
                                         NULL,
@@ -788,15 +788,15 @@ public:
         this->initialized = true;
 
         global_stream = stream;
-        global_comm = comm;
-        even_comm = global_comm->get_even_comm().get();
+        this->comm = comm_in;
+        even_comm = comm_in->get_even_comm().get();
     }
 
     ccl::event allreduce(sycl::queue &queue,
                          const void *in_buffer,
                          void *out_buffer,
                          uint32_t size) {
-        if (ccl::global_data::env().allreduce_use_tmp_buf) {
+        if (ccl::global_data::env().sycl_allreduce_tmp_buf) {
             return allreduce_copy(queue, in_buffer, out_buffer, size);
         }
         else {
@@ -836,7 +836,7 @@ private:
         int even_ranks[max_rank];
         int myrank;
         for (int i = 0; i < world / 2; i++) {
-            even_ranks[i] = even_comm->get_global_rank(i);
+            even_ranks[i] = even_comm->get_node_rank(i);
             if (even_ranks[i] == (int)temp_rank)
                 myrank = i;
             //printf("even rank %d: %d neighbor: %d\n", i, even_ranks[i], even_ranks[i] ^ 1);
@@ -886,8 +886,9 @@ private:
             //Data is sent to other tile within the same gpu via MDFI
             queue.submit([&](sycl::handler &cgh) {
                 cgh.parallel_for<class Kernel_load_input_to_temp_buffer<data_type>>(
-                    sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::item<1> idx) SYCL_ESIMD_KERNEL
+                    sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::nd_item<1> idx2) SYCL_ESIMD_KERNEL
                     {
+                    uint32_t idx = idx2.get_global_id();
                     //ESIMD kernel
                     for (int inner_iter = 0; inner_iter < innerloop_iter_count; inner_iter++) {
                         int index = idx + inner_iter * HW_THREAD_COUNT;
@@ -1004,8 +1005,9 @@ private:
             //local reduction kernel
             queue.submit([&](sycl::handler &cgh) {
                     cgh.parallel_for<class Kernel_local_sum_and_distribute_to_remote_ranks<data_type>>(
-                        sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::item<1> idx) SYCL_ESIMD_KERNEL
+                        sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::nd_item<1> idx2) SYCL_ESIMD_KERNEL
                         {
+                        uint32_t idx = idx2.get_global_id();
                         //ESIMD kernel
                         for (int inner_iter = 0; inner_iter < innerloop_iter_count; inner_iter++) {
                             int index = idx + inner_iter * HW_THREAD_COUNT;
@@ -1137,8 +1139,9 @@ private:
             //local reduction kernel
             queue.submit([&](sycl::handler &cgh) {
                     cgh.parallel_for<class Kernel_all_sum<data_type>>(
-                        sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::item<1> idx) SYCL_ESIMD_KERNEL
+                        sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::nd_item<1> idx2) SYCL_ESIMD_KERNEL
                         {
+                        uint32_t idx = idx2.get_global_id();
                         //ESIMD kernel
                         for (int inner_iter = 0; inner_iter < innerloop_iter_count; inner_iter++) {
                             int index = idx + inner_iter * HW_THREAD_COUNT;
@@ -1246,8 +1249,9 @@ private:
             //copy the results to all the ranks.
             queue.submit([&](sycl::handler &cgh) {
                     cgh.parallel_for<class Kernel_gather_from_remote_and_dist_to_rank_pair<data_type>>(
-                        sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::item<1> idx) SYCL_ESIMD_KERNEL
+                        sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::nd_item<1> idx2) SYCL_ESIMD_KERNEL
                         {
+                        uint32_t idx = idx2.get_global_id();
                         //ESIMD kernel
                         for (int inner_iter = 0; inner_iter < innerloop_iter_count; inner_iter++) {
                             int index = idx + inner_iter * HW_THREAD_COUNT;
@@ -1378,8 +1382,9 @@ private:
             //copy the results to all the ranks.
             e = queue.submit([&](sycl::handler &cgh) {
                     cgh.parallel_for<class Kernel_write_output<data_type>>(
-                        sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::item<1> idx) SYCL_ESIMD_KERNEL
+                        sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::nd_item<1> idx2) SYCL_ESIMD_KERNEL
                         {
+                        uint32_t idx = idx2.get_global_id();
                         //ESIMD kernel
                         for (int inner_iter = 0; inner_iter < innerloop_iter_count; inner_iter++) {
                             int index = idx + inner_iter * HW_THREAD_COUNT;
@@ -1521,7 +1526,7 @@ private:
         int even_ranks[max_rank];
         int myrank;
         for (int i = 0; i < world / 2; i++) {
-            even_ranks[i] = even_comm->get_global_rank(i);
+            even_ranks[i] = even_comm->get_node_rank(i);
             if (even_ranks[i] == (int)temp_rank) {
                 myrank = i;
             }
@@ -1530,7 +1535,7 @@ private:
         void *in_buffers[max_rank];
         void *out_buffers[max_rank];
         this->exchange_peer_ipc_mem(queue,
-                                    global_comm,
+                                    comm,
                                     global_stream,
                                     (void **)in_buffer,
                                     out_buffer,
@@ -1590,8 +1595,9 @@ private:
             //local reduction kernel
             e = queue.submit([&](sycl::handler &cgh) {
                 cgh.parallel_for<class NoCopyKernel_local_sum_and_distribute_to_remote_ranks<data_type>>(
-                    sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::item<1> idx) SYCL_ESIMD_KERNEL
+                    sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::nd_item<1> idx2) SYCL_ESIMD_KERNEL
                     {
+                    uint32_t idx = idx2.get_global_id();
                     //ESIMD kernel
                     for (int inner_iter = 0; inner_iter < innerloop_iter_count; inner_iter++) {
                         int index = idx + inner_iter * HW_THREAD_COUNT;
@@ -1722,8 +1728,9 @@ private:
             //local reduction kernel
             e = queue.submit([&](sycl::handler &cgh) {
                 cgh.parallel_for<class NoCopyKernel_all_sum<data_type>>(
-                    sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::item<1> idx) SYCL_ESIMD_KERNEL
+                    sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::nd_item<1> idx2) SYCL_ESIMD_KERNEL
                     {
+                    uint32_t idx = idx2.get_global_id();
                     //ESIMD kernel
                     for (int inner_iter = 0; inner_iter < innerloop_iter_count; inner_iter++) {
                         int index = idx + inner_iter * HW_THREAD_COUNT;
@@ -1832,9 +1839,10 @@ private:
             //copy the results to all the ranks.
             e = queue.submit([&](sycl::handler &cgh) {
                     cgh.parallel_for<class NoCopyKernel_gather_from_remote_and_dist_to_rank_pair<data_type>>(
-                        sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::item<1> idx) SYCL_ESIMD_KERNEL
+                        sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::nd_item<1> idx2) SYCL_ESIMD_KERNEL
                         {
                         //ESIMD kernel
+                        uint32_t idx = idx2.get_global_id();
                         for (int inner_iter = 0; inner_iter < innerloop_iter_count; inner_iter++) {
                             int index = idx + inner_iter * HW_THREAD_COUNT;
                             if ((uint32_t)index >= total_threads_needed)
@@ -1983,7 +1991,7 @@ private:
         void *in_buffers[2];
         void *out_buffers[2];
         this->exchange_peer_ipc_mem(queue,
-                                    global_comm,
+                                    comm,
                                     global_stream,
                                     (void **)in_buffer,
                                     out_buffer,
@@ -2068,7 +2076,7 @@ private:
     }
 
     //sync all the ranks here before consuming the results.
-    sycl::event global_sync(sycl::queue queue,
+    sycl::event global_sync(sycl::queue &queue,
                             int temp_rank,
                             uint32_t temp_world,
                             int offset,
@@ -2086,7 +2094,7 @@ private:
         int wg_size = 1;
         e = queue.submit([&](sycl::handler &cgh) {
             cgh.parallel_for<class AllreduceMediumKernel_GlobalSync<data_type>>(
-                sycl::nd_range<1>({ total_threads_needed_sync }, wg_size), [=](sycl::item<1> idx) SYCL_ESIMD_KERNEL
+                sycl::nd_range<1>({ total_threads_needed_sync }, wg_size), [=](sycl::nd_item<1> idx) SYCL_ESIMD_KERNEL
                 {
                 //ESIMD kernel
                 simd<ushort, SIMD_SYNC> ramp;
@@ -2150,7 +2158,7 @@ private:
     }
 
     // sync tiles in a GPU
-    sycl::event local_sync(sycl::queue queue,
+    sycl::event local_sync(sycl::queue &queue,
                            int temp_rank,
                            uint32_t temp_world,
                            int offset,
@@ -2169,7 +2177,7 @@ private:
 
         e = queue.submit([&](sycl::handler &cgh) {
             cgh.parallel_for<class AllreduceMediumKernel_LocalSync<data_type>>(
-                sycl::nd_range<1>({ total_threads_needed_sync }, wg_size), [=](sycl::item<1> idx) SYCL_ESIMD_KERNEL
+                sycl::nd_range<1>({ total_threads_needed_sync }, wg_size), [=](sycl::nd_item<1> idx) SYCL_ESIMD_KERNEL
                 {
                 //ESIMD kernel
                 simd<ushort, SIMD_SYNC> ramp;
@@ -2237,7 +2245,7 @@ private:
     int size_per_buffer{ ccl::utils::invalid_bytes_value };
     int data_size_per_buffer{ ccl::utils::invalid_bytes_value };
     ccl_stream *global_stream{};
-    ccl_comm *global_comm{};
+    ccl_comm *comm{};
     ccl_comm *even_comm{};
 };
 
@@ -2254,7 +2262,10 @@ private:
         } \
     } \
 \
-    ccl::event run_allreduce_medium_##TYPE( \
-        ccl::datatype dtype, sycl::queue queue, const void *in_buf, void *out_buf, size_t count) { \
+    ccl::event run_allreduce_medium_##TYPE(ccl::datatype dtype, \
+                                           sycl::queue &queue, \
+                                           const void *in_buf, \
+                                           void *out_buf, \
+                                           size_t count) { \
         return ar_medium_##TYPE.allreduce(queue, in_buf, out_buf, count); \
     }

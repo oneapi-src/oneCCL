@@ -63,9 +63,14 @@ function(set_lp_env)
     endif()
     message(STATUS "BF16 GPU truncate: ${CCL_BF16_GPU_TRUNCATE}")
 
-
     set(GCC_FP16_MIN_SUPPORTED "4.9.0")
+    set(GCC_FP16_AVX512FP16_MIN_SUPPORTED "12.0.0")
+    set(GCC_FP16_AVX512FP16_BINUTILS_MIN_SUPPORTED "2.38")
+
+    set(ICX_FP16_AVX512FP16_MIN_SUPPORTED "2021.4.0")
+
     set(CLANG_FP16_MIN_SUPPORTED "9.0.0")
+    set(CLANG_FP16_AVX512FP16_MIN_SUPPORTED "14.0.0")
 
     if (${CMAKE_C_COMPILER_ID} STREQUAL "Intel"
         OR (${CMAKE_C_COMPILER_ID} STREQUAL "IntelLLVM")
@@ -80,6 +85,21 @@ function(set_lp_env)
         set(CCL_FP16_COMPILER OFF)
     endif()
     message(STATUS "FP16 compiler: ${CCL_FP16_COMPILER}")
+
+    if ((${CMAKE_C_COMPILER_ID} STREQUAL "IntelLLVM"
+            AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${ICX_FP16_AVX512FP16_MIN_SUPPORTED})
+        OR (${CMAKE_C_COMPILER_ID} STREQUAL "Clang"
+            AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${CLANG_FP16_AVX512FP16_MIN_SUPPORTED})
+        OR (${CMAKE_C_COMPILER_ID} STREQUAL "GNU"
+            AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${GCC_FP16_AVX512FP16_MIN_SUPPORTED}
+	    AND NOT ${BINUTILS_VERSION} VERSION_LESS ${GCC_FP16_AVX512FP16_BINUTILS_MIN_SUPPORTED})
+        )
+        add_definitions(-DCCL_FP16_AVX512FP16_COMPILER)
+        set(CCL_FP16_AVX512FP16_COMPILER ON)
+    else()
+        set(CCL_FP16_AVX512FP16_COMPILER OFF)
+    endif()
+    message(STATUS "FP16 AVX512FP16 compiler: ${CCL_FP16_AVX512FP16_COMPILER}")
 
     if (CCL_FP16_COMPILER)
         if ((${CMAKE_C_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_C_COMPILER_ID} STREQUAL "IntelLLVM"
@@ -101,6 +121,28 @@ function(set_lp_env)
     set(LP_ENV_DEFINED 1 PARENT_SCOPE)
 
 endfunction(set_lp_env)
+
+function(set_sycl_env)
+    set(ICX_SYCL_VEC_BF16_MIN_SUPPORTED "2024.2.0")
+
+    if (CCL_ENABLE_SYCL
+    AND ${CMAKE_C_COMPILER_ID} STREQUAL "IntelLLVM"
+    AND NOT ${CMAKE_C_COMPILER_VERSION} VERSION_LESS ${ICX_SYCL_VEC_BF16_MIN_SUPPORTED})
+        add_definitions(-DCCL_SYCL_VEC_SUPPORT_BF16)
+	set(CCL_SYCL_VEC_SUPPORT_BF16 ON)
+    else()
+        set(CCL_SYCL_VEC_SUPPORT_BF16 OFF)
+    endif()
+
+    if (CCL_ENABLE_SYCL
+    AND ${CMAKE_C_COMPILER_ID} STREQUAL "Clang")
+        set(CCL_SYCL_VEC_SUPPORT_FP16 OFF)
+    else()
+        add_definitions(-DCCL_SYCL_VEC_SUPPORT_FP16)
+	set(CCL_SYCL_VEC_SUPPORT_FP16 ON)
+    endif()
+
+endfunction(set_sycl_env)
 
 function(set_avx_env)
 
@@ -277,6 +319,8 @@ function(set_compute_backend COMMON_CMAKE_DIR)
 
         set(CCL_ENABLE_ZE ON PARENT_SCOPE)
         message(STATUS "Enable CCL Level Zero support")
+
+        set (CMAKE_CXX_FLAGS "-Wno-c++20-extensions" PARENT_SCOPE)
 
         execute_process(COMMAND icpx -v
             OUTPUT_VARIABLE ICPX_VERSION

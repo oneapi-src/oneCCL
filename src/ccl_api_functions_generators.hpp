@@ -27,6 +27,36 @@ namespace v1 {
  */
 #define API_COMM_OP_PTR_EXPLICIT_INSTANTIATION(BufferType) \
 \
+    template event CCL_API allgather(const BufferType* send_buf, \
+                                     BufferType* recv_buf, \
+                                     size_t count, \
+                                     const communicator& comm, \
+                                     const stream& op_stream, \
+                                     const allgather_attr& attr, \
+                                     const vector_class<event>& deps); \
+\
+    template event CCL_API allgather(const BufferType* send_buf, \
+                                     BufferType* recv_buf, \
+                                     size_t count, \
+                                     const communicator& comm, \
+                                     const allgather_attr& attr, \
+                                     const vector_class<event>& deps); \
+\
+    template event CCL_API allgather(const BufferType* send_buf, \
+                                     vector_class<BufferType*>& recv_buf, \
+                                     size_t count, \
+                                     const communicator& comm, \
+                                     const stream& op_stream, \
+                                     const allgather_attr& attr, \
+                                     const vector_class<event>& deps); \
+\
+    template event CCL_API allgather(const BufferType* send_buf, \
+                                     vector_class<BufferType*>& recv_buf, \
+                                     size_t count, \
+                                     const communicator& comm, \
+                                     const allgather_attr& attr, \
+                                     const vector_class<event>& deps); \
+\
     template event CCL_API allgatherv(const BufferType* send_buf, \
                                       size_t send_count, \
                                       BufferType* recv_buf, \
@@ -156,6 +186,23 @@ namespace v1 {
                                      const communicator& comm, \
                                      const broadcast_attr& attr, \
                                      const vector_class<event>& deps); \
+\
+    template event CCL_API broadcastExt(BufferType* send_buf, \
+                                        BufferType* recv_buf, \
+                                        size_t count, \
+                                        int root, \
+                                        const communicator& comm, \
+                                        const stream& op_stream, \
+                                        const broadcastExt_attr& attr, \
+                                        const vector_class<event>& deps); \
+\
+    template event CCL_API broadcastExt(BufferType* send_buf, \
+                                        BufferType* recv_buf, \
+                                        size_t count, \
+                                        int root, \
+                                        const communicator& comm, \
+                                        const broadcastExt_attr& attr, \
+                                        const vector_class<event>& deps); \
 \
     template event CCL_API reduce(const BufferType* send_buf, \
                                   BufferType* recv_buf, \
@@ -225,6 +272,38 @@ namespace v1 {
 
 #define API_COMM_OP_REF_EXPLICIT_INSTANTIATION(BufferObjectType) \
 \
+    template event CCL_API allgather(const BufferObjectType& send_buf, \
+                                     BufferObjectType& recv_buf, \
+                                     size_t count, \
+                                     const communicator& comm, \
+                                     const stream& op_stream, \
+                                     const allgather_attr& attr, \
+                                     const vector_class<event>& deps); \
+\
+    template event CCL_API allgather(const BufferObjectType& send_buf, \
+                                     BufferObjectType& recv_buf, \
+                                     size_t count, \
+                                     const communicator& comm, \
+                                     const allgather_attr& attr, \
+                                     const vector_class<event>& deps); \
+\
+    template event CCL_API allgather( \
+        const BufferObjectType& send_buf, \
+        vector_class<reference_wrapper_class<BufferObjectType>>& recv_buf, \
+        size_t count, \
+        const communicator& comm, \
+        const stream& op_stream, \
+        const allgather_attr& attr, \
+        const vector_class<event>& deps); \
+\
+    template event CCL_API allgather( \
+        const BufferObjectType& send_buf, \
+        vector_class<reference_wrapper_class<BufferObjectType>>& recv_buf, \
+        size_t count, \
+        const communicator& comm, \
+        const allgather_attr& attr, \
+        const vector_class<event>& deps); \
+\
     template event CCL_API allgatherv(const BufferObjectType& send_buf, \
                                       size_t send_count, \
                                       BufferObjectType& recv_buf, \
@@ -360,6 +439,23 @@ namespace v1 {
                                      const communicator& comm, \
                                      const broadcast_attr& attr, \
                                      const vector_class<event>& deps); \
+\
+    template event CCL_API broadcastExt(BufferObjectType& send_buf, \
+                                        BufferObjectType& recv_buf, \
+                                        size_t count, \
+                                        int root, \
+                                        const communicator& comm, \
+                                        const stream& op_stream, \
+                                        const broadcastExt_attr& attr, \
+                                        const vector_class<event>& deps); \
+\
+    template event CCL_API broadcastExt(BufferObjectType& send_buf, \
+                                        BufferObjectType& recv_buf, \
+                                        size_t count, \
+                                        int root, \
+                                        const communicator& comm, \
+                                        const broadcastExt_attr& attr, \
+                                        const vector_class<event>& deps); \
 \
     template event CCL_API reduce(const BufferObjectType& send_buf, \
                                   BufferObjectType& recv_buf, \
