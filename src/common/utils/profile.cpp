@@ -45,3 +45,38 @@ void ccl::profile::metrics_manager::init() {
     this->reduce_scatter_pipe.init();
     this->allgatherv_pipe.init();
 }
+
+void ccl::profile::timestamp_manager::add_timestamp(std::string text, uint64_t* timestamp_ptr) {
+    recorded_timestamps.emplace_back(text, timestamp_ptr);
+}
+
+void ccl::profile::timestamp_manager::init() {
+    recorded_timestamps.clear();
+}
+
+ccl::profile::timestamp_manager::~timestamp_manager() {
+    finalize();
+}
+
+void ccl::profile::timestamp_manager::finalize() {
+    std::string timestamp_metrics;
+
+    std::vector<std::pair<std::string, size_t*>> sorted_timestamps(recorded_timestamps.begin(),
+                                                                   recorded_timestamps.end());
+    std::sort(
+        sorted_timestamps.begin(),
+        sorted_timestamps.end(),
+        [](const std::pair<std::string, size_t*>& a, const std::pair<std::string, size_t*>& b) {
+            return *(a.second) < *(b.second);
+        });
+
+    if (!sorted_timestamps.empty()) {
+        size_t first_timestamp = *(sorted_timestamps.front().second);
+
+        for (const auto& pair : sorted_timestamps) {
+            std::string key = pair.first;
+            size_t offset = *(pair.second) - first_timestamp;
+            LOG_DEBUG("|ZE_TIMESTAMP| ", key, " => ", offset);
+        }
+    }
+}

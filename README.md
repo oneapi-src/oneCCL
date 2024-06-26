@@ -148,6 +148,13 @@ To generate oneCCLConfig files for oneCCL package, use the provided [`cmake/scri
 cmake [-DOUTPUT_DIR=<output_dir>] -P cmake/script/config_generation.cmake
 ```
 
+### OS File Descriptors 
+
+oneCCL uses [Level Zero IPC handles](https://spec.oneapi.io/level-zero/latest/core/PROG.html#memory-1) so that a process can access a memory allocation done by a different process. 
+However, these IPC handles consume OS File Descriptors (FDs). As a result, to avoid running out of OS FDs, we recommend to increase the default limit of FDs in the system for applications running with oneCCL and GPU buffers. 
+
+The number of FDs required is application-dependent, but the recommended limit is ``1048575``. This value can be modified with the ulimit command.  
+
 ## Governance
 
 The oneCCL project is governed by the UXL Foundation and you can get involved in this project in multiple ways. It is possible to join the [Special Interest Groups (SIG)](https://github.com/uxlfoundation/foundation) meetings where the group discuss and demonstrates work using the foundation projects. Members can also join the Open Source and Specification Working Group meetings.

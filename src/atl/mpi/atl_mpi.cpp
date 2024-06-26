@@ -18,6 +18,7 @@
 #include "atl/atl_def.h"
 #include "atl/mpi/atl_mpi.hpp"
 #include "atl/util/pm/pm_rt.h"
+#include "coll/coll_util.hpp"
 
 atl_mpi::~atl_mpi() {
     if (!is_finalized) {
@@ -120,7 +121,7 @@ atl_status_t atl_mpi::send(atl_ep_t& ep,
 
     init_req(req);
 
-    int ret = MPI_Isend(
+    int ret = MPI_Isend_c(
         buf, len, MPI_CHAR, dst_proc_idx, (int)tag, mpi_ep->mpi_comm, &mpi_req->native_req);
 
     check_ep(ep);
@@ -139,7 +140,7 @@ atl_status_t atl_mpi::recv(atl_ep_t& ep,
 
     init_req(req);
 
-    int ret = MPI_Irecv(
+    int ret = MPI_Irecv_c(
         buf, len, MPI_CHAR, src_proc_idx, (int)tag, mpi_ep->mpi_comm, &mpi_req->native_req);
 
     check_ep(ep);
@@ -172,12 +173,20 @@ atl_status_t atl_mpi::probe(atl_ep_t& ep,
     return ATL_MPI_RET(ret);
 }
 
+atl_status_t atl_mpi::allgather(atl_ep_t& ep,
+                                const void* send_buf,
+                                void* recv_buf,
+                                size_t len,
+                                atl_req_t& req) {
+    return ATL_STATUS_UNSUPPORTED;
+}
+
 atl_status_t atl_mpi::allgatherv(atl_ep_t& ep,
                                  const void* send_buf,
                                  size_t send_len,
                                  void* recv_buf,
-                                 const int* recv_lens,
-                                 const int* offsets,
+                                 const size_t* recv_lens,
+                                 const size_t* offsets,
                                  atl_req_t& req) {
     int ret = MPI_SUCCESS;
 
@@ -186,26 +195,48 @@ atl_status_t atl_mpi::allgatherv(atl_ep_t& ep,
 
     init_req(req);
 
+    int comm_size, rank;
+    MPI_Comm_size(mpi_ep->mpi_comm, &comm_size);
+    MPI_Comm_rank(mpi_ep->mpi_comm, &rank);
+
+    std::vector<size_t> recv_lens_size_t(comm_size, 0);
+    std::vector<Compat_MPI_Count_t> recv_conv_lens(comm_size);
+    std::vector<Compat_MPI_Aint_t> recv_conv_offsets(comm_size);
+
+    for (int i = 0; i < comm_size; ++i) {
+        recv_lens_size_t[i] = recv_lens[i];
+        recv_conv_lens[i] = static_cast<Compat_MPI_Aint_t>(recv_lens[i]);
+        recv_conv_offsets[i] = static_cast<Compat_MPI_Aint_t>(offsets[i]);
+    }
+
+    bool inplace = ccl::is_allgatherv_inplace(send_buf,
+                                              send_len,
+                                              recv_buf,
+                                              recv_lens_size_t.data(),
+                                              1 /*dtype_size*/, // size of MPI_CHAR dtype is 1
+                                              rank,
+                                              comm_size);
+
     if (ctx.sync_coll) {
-        ret = MPI_Allgatherv((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
-                             send_len,
-                             MPI_CHAR,
-                             recv_buf,
-                             recv_lens,
-                             offsets,
-                             MPI_CHAR,
-                             mpi_ep->mpi_comm);
+        ret = MPI_Allgatherv_c(inplace ? MPI_IN_PLACE : send_buf,
+                               send_len,
+                               MPI_CHAR,
+                               recv_buf,
+                               recv_conv_lens.data(),
+                               recv_conv_offsets.data(),
+                               MPI_CHAR,
+                               mpi_ep->mpi_comm);
     }
     else {
-        ret = MPI_Iallgatherv((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
-                              send_len,
-                              MPI_CHAR,
-                              recv_buf,
-                              recv_lens,
-                              offsets,
-                              MPI_CHAR,
-                              mpi_ep->mpi_comm,
-                              &mpi_req->native_req);
+        ret = MPI_Iallgatherv_c(inplace ? MPI_IN_PLACE : send_buf,
+                                send_len,
+                                MPI_CHAR,
+                                recv_buf,
+                                recv_conv_lens.data(),
+                                recv_conv_offsets.data(),
+                                MPI_CHAR,
+                                mpi_ep->mpi_comm,
+                                &mpi_req->native_req);
     }
 
     check_ep(ep);
@@ -231,22 +262,22 @@ atl_status_t atl_mpi::allreduce(atl_ep_t& ep,
     init_req(req);
 
     if (ctx.sync_coll) {
-        ret = MPI_Allreduce((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
-                            recv_buf,
-                            len,
-                            mpi_dtype,
-                            mpi_op,
-                            mpi_ep->mpi_comm);
+        ret = MPI_Allreduce_c((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
+                              recv_buf,
+                              len,
+                              mpi_dtype,
+                              mpi_op,
+                              mpi_ep->mpi_comm);
     }
     else {
         //printf("atl_mpi: send_buf %p, recv_buf %p\n", send_buf, recv_buf);
-        ret = MPI_Iallreduce((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
-                             recv_buf,
-                             len,
-                             mpi_dtype,
-                             mpi_op,
-                             mpi_ep->mpi_comm,
-                             &mpi_req->native_req);
+        ret = MPI_Iallreduce_c((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
+                               recv_buf,
+                               len,
+                               mpi_dtype,
+                               mpi_op,
+                               mpi_ep->mpi_comm,
+                               &mpi_req->native_req);
     }
 
     check_ep(ep);
@@ -267,23 +298,23 @@ atl_status_t atl_mpi::alltoall(atl_ep_t& ep,
     init_req(req);
 
     if (ctx.sync_coll) {
-        ret = MPI_Alltoall((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
-                           len,
-                           MPI_CHAR,
-                           recv_buf,
-                           len,
-                           MPI_CHAR,
-                           mpi_ep->mpi_comm);
+        ret = MPI_Alltoall_c((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
+                             len,
+                             MPI_CHAR,
+                             recv_buf,
+                             len,
+                             MPI_CHAR,
+                             mpi_ep->mpi_comm);
     }
     else {
-        ret = MPI_Ialltoall((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
-                            len,
-                            MPI_CHAR,
-                            recv_buf,
-                            len,
-                            MPI_CHAR,
-                            mpi_ep->mpi_comm,
-                            &mpi_req->native_req);
+        ret = MPI_Ialltoall_c((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
+                              len,
+                              MPI_CHAR,
+                              recv_buf,
+                              len,
+                              MPI_CHAR,
+                              mpi_ep->mpi_comm,
+                              &mpi_req->native_req);
     }
 
     check_ep(ep);
@@ -293,11 +324,11 @@ atl_status_t atl_mpi::alltoall(atl_ep_t& ep,
 
 atl_status_t atl_mpi::alltoallv(atl_ep_t& ep,
                                 const void* send_buf,
-                                const int* send_lens,
-                                const int* send_offsets,
+                                const size_t* send_lens,
+                                const size_t* send_offsets,
                                 void* recv_buf,
-                                const int* recv_lens,
-                                const int* recv_offsets,
+                                const size_t* recv_lens,
+                                const size_t* recv_offsets,
                                 atl_req_t& req) {
     int ret = MPI_SUCCESS;
 
@@ -306,28 +337,43 @@ atl_status_t atl_mpi::alltoallv(atl_ep_t& ep,
 
     init_req(req);
 
+    int comm_size;
+    MPI_Comm_size(mpi_ep->mpi_comm, &comm_size);
+
+    std::vector<Compat_MPI_Count_t> send_conv_lens(comm_size);
+    std::vector<Compat_MPI_Count_t> recv_conv_lens(comm_size);
+    std::vector<Compat_MPI_Aint_t> send_conv_offsets(comm_size);
+    std::vector<Compat_MPI_Aint_t> recv_conv_offsets(comm_size);
+
+    for (int i = 0; i < comm_size; ++i) {
+        send_conv_lens[i] = static_cast<Compat_MPI_Count_t>(send_lens[i]);
+        recv_conv_lens[i] = static_cast<Compat_MPI_Count_t>(recv_lens[i]);
+        send_conv_offsets[i] = static_cast<Compat_MPI_Aint_t>(send_offsets[i]);
+        recv_conv_offsets[i] = static_cast<Compat_MPI_Aint_t>(recv_offsets[i]);
+    }
+
     if (ctx.sync_coll) {
-        ret = MPI_Alltoallv((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
-                            send_lens,
-                            send_offsets,
-                            MPI_CHAR,
-                            recv_buf,
-                            recv_lens,
-                            recv_offsets,
-                            MPI_CHAR,
-                            mpi_ep->mpi_comm);
+        ret = MPI_Alltoallv_c((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
+                              send_conv_lens.data(),
+                              send_conv_offsets.data(),
+                              MPI_CHAR,
+                              recv_buf,
+                              recv_conv_lens.data(),
+                              recv_conv_offsets.data(),
+                              MPI_CHAR,
+                              mpi_ep->mpi_comm);
     }
     else {
-        ret = MPI_Ialltoallv((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
-                             send_lens,
-                             send_offsets,
-                             MPI_CHAR,
-                             recv_buf,
-                             recv_lens,
-                             recv_offsets,
-                             MPI_CHAR,
-                             mpi_ep->mpi_comm,
-                             &mpi_req->native_req);
+        ret = MPI_Ialltoallv_c((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
+                               send_conv_lens.data(),
+                               send_conv_offsets.data(),
+                               MPI_CHAR,
+                               recv_buf,
+                               recv_conv_lens.data(),
+                               recv_conv_offsets.data(),
+                               MPI_CHAR,
+                               mpi_ep->mpi_comm,
+                               &mpi_req->native_req);
     }
 
     check_ep(ep);
@@ -364,10 +410,35 @@ atl_status_t atl_mpi::bcast(atl_ep_t& ep, void* buf, size_t len, int root, atl_r
     init_req(req);
 
     if (ctx.sync_coll) {
-        ret = MPI_Bcast(buf, len, MPI_CHAR, root, mpi_ep->mpi_comm);
+        ret = MPI_Bcast_c(buf, len, MPI_CHAR, root, mpi_ep->mpi_comm);
     }
     else {
-        ret = MPI_Ibcast(buf, len, MPI_CHAR, root, mpi_ep->mpi_comm, &mpi_req->native_req);
+        ret = MPI_Ibcast_c(buf, len, MPI_CHAR, root, mpi_ep->mpi_comm, &mpi_req->native_req);
+    }
+
+    check_ep(ep);
+
+    return ATL_MPI_RET(ret);
+}
+
+atl_status_t atl_mpi::bcastExt(atl_ep_t& ep,
+                               void* send_buf,
+                               void* recv_buf,
+                               size_t len,
+                               int root,
+                               atl_req_t& req) {
+    int ret = MPI_SUCCESS;
+
+    atl_mpi_ep_t* mpi_ep = ((atl_mpi_ep_t*)ep.internal);
+    atl_mpi_req_t* mpi_req = ((atl_mpi_req_t*)req.internal);
+
+    init_req(req);
+
+    if (ctx.sync_coll) {
+        ret = MPI_Bcast(recv_buf, len, MPI_CHAR, root, mpi_ep->mpi_comm);
+    }
+    else {
+        ret = MPI_Ibcast(recv_buf, len, MPI_CHAR, root, mpi_ep->mpi_comm, &mpi_req->native_req);
     }
 
     check_ep(ep);
@@ -395,7 +466,7 @@ atl_status_t atl_mpi::reduce(atl_ep_t& ep,
     init_req(req);
 
     if (ctx.sync_coll) {
-        ret = MPI_Reduce(
+        ret = MPI_Reduce_c(
             (send_buf && (send_buf == recv_buf) && (root == my_proc_idx)) ? MPI_IN_PLACE : send_buf,
             recv_buf,
             len,
@@ -405,7 +476,7 @@ atl_status_t atl_mpi::reduce(atl_ep_t& ep,
             mpi_ep->mpi_comm);
     }
     else {
-        ret = MPI_Ireduce(
+        ret = MPI_Ireduce_c(
             (send_buf && (send_buf == recv_buf) && (root == my_proc_idx)) ? MPI_IN_PLACE : send_buf,
             recv_buf,
             len,
@@ -438,24 +509,30 @@ atl_status_t atl_mpi::reduce_scatter(atl_ep_t& ep,
 
     init_req(req);
 
+    // From MPI 4.1: The “in place” option for intra-communicators
+    // is specified by passing MPI_IN_PLACE in the sendbuf argument
+    // on all MPI processes.
+    // In this case, the input data is taken from the receive buffer.
+    // Note that, it is different from the current oneCCL/NCCL semantics,
+    // where in-place operation will happen if "recv_buf == send_buf + rank * recv_len".
+    bool inplace = send_buf == recv_buf;
+
     if (ctx.sync_coll) {
-        ret =
-            MPI_Reduce_scatter_block((send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
-                                     recv_buf,
-                                     recv_len,
-                                     mpi_dtype,
-                                     mpi_op,
-                                     mpi_ep->mpi_comm);
+        ret = MPI_Reduce_scatter_block_c((send_buf && (inplace)) ? MPI_IN_PLACE : send_buf,
+                                         recv_buf,
+                                         recv_len,
+                                         mpi_dtype,
+                                         mpi_op,
+                                         mpi_ep->mpi_comm);
     }
     else {
-        ret = MPI_Ireduce_scatter_block(
-            (send_buf && (send_buf == recv_buf)) ? MPI_IN_PLACE : send_buf,
-            recv_buf,
-            recv_len,
-            mpi_dtype,
-            mpi_op,
-            mpi_ep->mpi_comm,
-            &mpi_req->native_req);
+        ret = MPI_Ireduce_scatter_block_c((send_buf && (inplace)) ? MPI_IN_PLACE : send_buf,
+                                          recv_buf,
+                                          recv_len,
+                                          mpi_dtype,
+                                          mpi_op,
+                                          mpi_ep->mpi_comm,
+                                          &mpi_req->native_req);
     }
 
     check_ep(ep);
@@ -717,6 +794,83 @@ atl_status_t atl_mpi::finalize(int global_idx) {
     return ATL_MPI_RET(ret);
 }
 
+// find 'mpi_ranks' based on 'comm' and a known 'root_rank' within the 'comm'
+// into a new communicator whose new 'rank' and new 'size' are given.
+// output mpi_ranks has 'size' number of elements where mpi_ranks[i]
+// tells the 'comm' based rank of i th rank in new_communicator
+void atl_mpi::get_mpi_ranks(const int rank,
+                            const int size,
+                            const int root_rank,
+                            MPI_Comm comm,
+                            std::vector<int>& mpi_ranks) {
+    int my_mpi_rank, my_mpi_size;
+    MPI_Comm_rank(comm, &my_mpi_rank);
+    MPI_Comm_size(comm, &my_mpi_size);
+
+    if (size == my_mpi_size) {
+        int* recv_ranks = new int[size];
+        MPI_Allgather(&rank, 1, MPI_INT, recv_ranks, 1, MPI_INT, comm);
+        for (int i = 0; i < size; i++) {
+            mpi_ranks[recv_ranks[i]] = i;
+        }
+        delete[] recv_ranks;
+    }
+    else {
+        // simple allgather where root collects and distributes data
+        if (my_mpi_rank == root_rank) {
+            MPI_Request* reqs = new MPI_Request[size - 1];
+            MPI_Status* stats = new MPI_Status[size - 1];
+            int* recv_ranks = new int[size - 1];
+            // root collects rank from everyone
+            for (int i = 0; i < size - 1; i++) {
+                MPI_Irecv(recv_ranks + i,
+                          1,
+                          MPI_INT,
+                          MPI_ANY_SOURCE,
+                          KVS_MPI_TAG_TO_ROOT,
+                          comm,
+                          reqs + i);
+            }
+            MPI_Waitall(size - 1, reqs, stats);
+
+            // put received ranks to correct position in mpi_ranks
+            mpi_ranks[rank] = my_mpi_rank;
+            for (int i = 0; i < size - 1; i++) {
+                int src_mpi_rank = stats[i].MPI_SOURCE;
+                mpi_ranks[recv_ranks[i]] = src_mpi_rank;
+            }
+
+            // root sends collected data back to everyone
+            for (int i = 0, req_id = 0; i < size; i++) {
+                if (mpi_ranks[i] != root_rank) {
+                    MPI_Isend(mpi_ranks.data(),
+                              size,
+                              MPI_INT,
+                              mpi_ranks[i],
+                              KVS_MPI_TAG_FROM_ROOT,
+                              comm,
+                              reqs + (req_id++));
+                }
+            }
+            MPI_Waitall(size - 1, reqs, stats);
+            delete[] reqs;
+            delete[] stats;
+            delete[] recv_ranks;
+        }
+        else {
+            MPI_Request req = 0;
+            // send rank to root
+            MPI_Isend(&rank, 1, MPI_INT, root_rank, KVS_MPI_TAG_TO_ROOT, comm, &req);
+            MPI_Wait(&req, MPI_STATUS_IGNORE);
+
+            // get global ranks of everyone in the sub_communicator
+            MPI_Irecv(
+                mpi_ranks.data(), size, MPI_INT, root_rank, KVS_MPI_TAG_FROM_ROOT, comm, &req);
+            MPI_Wait(&req, MPI_STATUS_IGNORE);
+        }
+    }
+}
+
 atl_status_t atl_mpi::comm_create(int comm_size,
                                   const std::vector<int>& comm_ranks,
                                   std::shared_ptr<ipmi> pmi,
@@ -732,19 +886,30 @@ atl_status_t atl_mpi::comm_create(int comm_size,
     int my_pmi_rank = pmi->get_rank();
 
     std::vector<int> mpi_ranks(comm_size);
-    ATL_CHECK_STATUS(pmi->pmrt_kvs_put((char*)ATL_MPI_RANK_INFO_PM_KEY,
-                                       my_pmi_rank,
-                                       my_mpi_rank_str.c_str(),
-                                       ATL_MPI_RANK_STR_SIZE),
-                     "pmrt_kvs_put: error");
 
-    char returned_mpi_rank[ATL_MPI_RANK_STR_SIZE];
-    for (int i = 0; i < comm_size; ++i) {
+    // gather mpi ranks. When kvs_init_mode equals mpi, use MPI functions.
+    if (ccl::global_data::env().kvs_init_mode == ccl::kvs_mode::mpi) {
+        char root_rank[ATL_MPI_RANK_STR_SIZE];
         ATL_CHECK_STATUS(
-            pmi->pmrt_kvs_get(
-                (char*)ATL_MPI_RANK_INFO_PM_KEY, i, returned_mpi_rank, ATL_MPI_RANK_STR_SIZE),
+            pmi->pmrt_kvs_get((char*)ATL_MPI_ROOT_RANK_KEY, 0, root_rank, ATL_MPI_RANK_STR_SIZE),
             "pmrt_kvs_get: error");
-        mpi_ranks[i] = std::atoi(returned_mpi_rank);
+        get_mpi_ranks(my_pmi_rank, comm_size, std::atoi(root_rank), MPI_COMM_WORLD, mpi_ranks);
+    }
+    else {
+        ATL_CHECK_STATUS(pmi->pmrt_kvs_put((char*)ATL_MPI_RANK_INFO_PM_KEY,
+                                           my_pmi_rank,
+                                           my_mpi_rank_str.c_str(),
+                                           ATL_MPI_RANK_STR_SIZE),
+                         "pmrt_kvs_put: error");
+
+        char returned_mpi_rank[ATL_MPI_RANK_STR_SIZE];
+        for (int i = 0; i < comm_size; ++i) {
+            ATL_CHECK_STATUS(
+                pmi->pmrt_kvs_get(
+                    (char*)ATL_MPI_RANK_INFO_PM_KEY, i, returned_mpi_rank, ATL_MPI_RANK_STR_SIZE),
+                "pmrt_kvs_get: error");
+            mpi_ranks[i] = std::atoi(returned_mpi_rank);
+        }
     }
 
     MPI_Group_incl(world_group, comm_size, mpi_ranks.data(), &new_group);
@@ -811,10 +976,24 @@ MPI_Datatype atl_mpi::atl2mpi_dtype(atl_datatype_t dtype) {
         case ATL_DTYPE_UINT32: return MPI_UINT32_T;
         case ATL_DTYPE_INT64: return MPI_LONG_LONG;
         case ATL_DTYPE_UINT64: return MPI_UNSIGNED_LONG_LONG;
-        case ATL_DTYPE_FLOAT16: return MPI_FLOAT16;
+        case ATL_DTYPE_FLOAT16: {
+#ifdef MPIX_C_FLOAT16
+            if (ctx.is_fp16_native) {
+                return MPIX_C_FLOAT16;
+            }
+#endif /* MPIX_C_FLOAT16 */
+            return MPI_FLOAT16;
+        }
         case ATL_DTYPE_FLOAT32: return MPI_FLOAT;
         case ATL_DTYPE_FLOAT64: return MPI_DOUBLE;
-        case ATL_DTYPE_BFLOAT16: return MPI_BFLOAT16;
+        case ATL_DTYPE_BFLOAT16: {
+#ifdef MPIX_C_BF16
+            if (ctx.is_bf16_native) {
+                return MPIX_C_BF16;
+            }
+#endif /* MPIX_C_FLOAT16 */
+            return MPI_BFLOAT16;
+        }
         default: printf("unknown datatype: %d\n", dtype); exit(1);
     }
 }

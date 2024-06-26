@@ -245,7 +245,7 @@ void ccl_worker::update_wait_condition(ccl_base_thread::wait_data::update_type t
 
     LOG_DEBUG("type ", type, ", delta ", delta);
 
-    if (ccl::global_data::env().worker_wait == 0)
+    if (!ccl::global_data::env().worker_wait)
         return;
 
     std::unique_lock<std::mutex> lock(wait.mtx);

@@ -119,7 +119,7 @@ args=$*
 for arg in $args
 do
     case "$arg" in
-        --ccl-bundled-mpi=*)
+        --ccl-bundled-mpi=*|-ccl-bundled-mpi=*)
             ccl_bundled_mpi="${arg#*=}"
             ;;
     esac

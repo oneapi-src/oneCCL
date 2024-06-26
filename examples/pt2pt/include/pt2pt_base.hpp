@@ -176,6 +176,11 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
             case 'c':
                 if (is_valid_integer_option(optarg)) {
                     options.cache = atoll(optarg);
+                    if (options.cache) {
+                        PRINT(
+                            "Warning: Caching mode is not supported at the moment. Option has been disabled");
+                        options.cache = 0;
+                    }
                 }
                 else
                     errors++;

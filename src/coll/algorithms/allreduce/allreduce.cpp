@@ -27,6 +27,9 @@
 #include "sched/entry/copy/copy_helper.hpp"
 #include "sched/entry/factory/chunked_entry_factory.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+#include "sched/entry/ze/ze_dummy_entry.hpp"
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
 using namespace ccl::utils;
 
@@ -421,10 +424,11 @@ ccl::status ccl_coll_build_nreduce_allreduce(ccl_sched* sched,
         }
         else {
             CCL_CALL(ccl_coll_build_naive_allgatherv(sched,
-                                                     seg_recv_buf,
+                                                     seg_recv_buf + elem_offsets[comm_rank],
                                                      elem_counts[comm_rank],
                                                      seg_recv_buf,
                                                      elem_counts.data(),
+                                                     std::vector<ccl_buffer>{},
                                                      dtype,
                                                      comm));
         }
@@ -462,7 +466,7 @@ ccl::status ccl_coll_build_ring_allreduce(ccl_sched* sched,
                      recv_buf);
 
     ccl::status status = ccl::status::success;
-    ccl_coll_build_ring_reduce_scatter(sched, send_buf, recv_buf, count, dtype, op, comm);
+    ccl_coll_build_reduce_scatter_block(sched, send_buf, recv_buf, count, dtype, op, comm);
 
     sched->add_barrier();
 
@@ -520,7 +524,7 @@ ccl::status ccl_coll_build_ring_allreduce(ccl_sched* sched,
     std::vector<ccl_sched*> part_scheds = { sched };
     ccl_coll_build_ring_allgatherv(nullptr,
                                    part_scheds,
-                                   recv_buf,
+                                   recv_buf + comm->rank() * main_block_count * dtype.size(),
                                    recv_counts[comm->rank()],
                                    recv_buf,
                                    recv_counts.data(),
@@ -686,7 +690,7 @@ static void ccl_allreduce_2d_add_allreduce_allgather(ccl_sched* sched,
     // with different order on different ranks
     sched->hint_algo.allgatherv = ccl_coll_allgatherv_ring;
     ccl_coll_build_allgatherv(sched,
-                              rbuf,
+                              rbuf + first_dim_comm->rank() * main_block_count * dtype_size,
                               ar_count,
                               rbuf,
                               ag_recv_counts.data(),
@@ -997,17 +1001,30 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
                              ipc_event_count++);
     clear_and_push_back(wait_events, out_event);
 
+    sched->group->register_chunk_start(sched);
+
     CCL_THROW_IF_NOT(comm_size % 2 == 0, "unexpected comm_size ", comm_size);
     CCL_THROW_IF_NOT(node_comm_size % 2 == 0, "unexpected node_comm_size ", node_comm_size);
+
+    if (!sched->is_deps_barrier() && sched->has_deps_entry()) {
+        // Submit dummy ze_entry for earlier L0 submission of the workload
+        // This has to be done after handle exchange to ensure that the IPC handles are ready
+        entry_factory::create<ze_dummy_entry>(sched);
+
+        // Dependencies output signal event has to be among wait events for comm_barrier
+        wait_events.push_back(sched->get_related_deps_out_event());
+
+        // Submit comm_barrier to ensure synchronization for early submitted entries
+        ccl::add_comm_barrier(
+            sched, node_comm, wait_events, out_event, ipc_event_pool, ipc_event_count++);
+        clear_and_push_back(wait_events, out_event);
+    }
 
     if (barrier_1s_handle_exchange) {
         ccl::add_comm_barrier(
             sched, pair_comm, wait_events, out_event, ipc_event_pool, ipc_event_count++);
-        CCL_THROW_IF_NOT(ipc_event_count <= max_ipc_event_count,
-                         "unexpected ipc_event_count ",
-                         ipc_event_count,
-                         ", expected max ",
-                         max_ipc_event_count);
+        ipc_event_pool_manager::check_ipc_event_count(
+            sched->coll_param.ctype, ipc_event_count, max_ipc_event_count);
         return ccl::status::success;
     }
 
@@ -1020,6 +1037,11 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
     if (use_reduce_scatter_pipeline) {
         LOG_DEBUG("topo/scale_up/intra: use ze_a2a_pipeline_read_write_entry");
 
+        // Read block size used to offset send buffer.
+        const size_t read_block_count = count / pair_comm->size() / even_comm->size();
+        // Offset inside a read block.
+        const size_t read_block_inner_offset = 0;
+
         ze_a2a_pipeline_read_write_entry::attr attrs{ .use_continous_data = true,
                                                       .use_remote_target = true };
         auto reduce_entry =
@@ -1029,6 +1051,8 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
                                                                     tmp_bufs,
                                                                     tmp_buf_idx_start,
                                                                     count,
+                                                                    read_block_count,
+                                                                    read_block_inner_offset,
                                                                     dtype,
                                                                     op,
                                                                     wait_events,
@@ -1180,7 +1204,7 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
                     // copy using write
                     LOG_DEBUG("topo/scale_up/inter: use ze_a2a_reduce_scatter_write_copy_entry ");
 
-                    reduce_scatter_args rs_args = { even_comm, block_counts, dtype, op };
+                    reduce_scatter_args rs_args = { even_comm, std::move(block_counts), dtype, op };
                     reduce_scatter_bufs rs_bufs = { recv_buf,
                                                     even_comm_recv_buf,
                                                     tmp_write_buf,
@@ -1222,6 +1246,7 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
     coll_param.ctype = ccl_coll_allreduce;
     coll_param.send_buf = even_comm_recv_buf;
     coll_param.recv_buf = even_comm_recv_buf;
+    // used inside ring algo for allgatherv H2D copy overlap with send operations
     coll_param.recv_scale_out_bufs = std::vector<ccl_buffer>{ even_comm_recv_buf };
     coll_param.count = block_count;
     coll_param.dtype = dtype;
@@ -1320,12 +1345,9 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
     ccl::add_comm_barrier(
         sched, pair_comm, wait_events, out_event, ipc_event_pool, ipc_event_count++);
 
-    CCL_THROW_IF_NOT(ipc_event_count <= max_ipc_event_count,
-                     "unexpected ipc_event_count ",
-                     ipc_event_count,
-                     ", expected max ",
-                     max_ipc_event_count);
-
+    sched->group->register_chunk_end(sched, out_event);
+    ipc_event_pool_manager::check_ipc_event_count(
+        sched->coll_param.ctype, ipc_event_count, max_ipc_event_count);
     return ccl::status::success;
 }
 
@@ -1345,11 +1367,18 @@ ccl::status ccl_coll_build_topo_allreduce(ccl_sched* sched,
         ccl::global_data::env().allreduce_pipe_chunk_count,
         "ALLREDUCE",
         ccl::global_data::get().metrics_profiler->allreduce_pipe,
-        [dtype, op, comm](ccl_sched* sched, ccl_buffer send_buf, ccl_buffer recv_buf, size_t count)
-            -> ccl::status {
+        comm,
+        [dtype, op, comm](ccl_sched* sched,
+                          ccl_buffer send_buf,
+                          ccl_buffer recv_buf,
+                          size_t count,
+                          size_t offset,
+                          size_t combined_count) -> ccl::status {
             return ccl_coll_build_topo_allreduce_fill(
                 sched, send_buf, recv_buf, count, dtype, op, comm);
-        });
+        },
+        ccl_chunking_mode::ccl_buffer_implicit,
+        ccl_coll_type::ccl_coll_allreduce);
 }
 
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE

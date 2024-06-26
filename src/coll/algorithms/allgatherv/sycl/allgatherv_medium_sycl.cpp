@@ -49,7 +49,7 @@ void init_allgatherv_medium(ccl::datatype dtype,
         break;
 
 ccl::event run_allgatherv_medium(ccl::datatype dtype,
-                                 sycl::queue queue,
+                                 sycl::queue &queue,
                                  const void *send_buf,
                                  size_t send_count,
                                  void *recv_buf,

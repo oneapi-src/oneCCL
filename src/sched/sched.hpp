@@ -19,6 +19,7 @@
 #include "common/utils/sync_object.hpp"
 #include "sched/sched_base.hpp"
 #include "sched/sched_timer.hpp"
+#include "sched/sched_group.hpp"
 #include "sched/queue/flow_control.hpp"
 #include "internal_types.hpp"
 
@@ -91,6 +92,17 @@ public:
         memory.list_manager = sched->memory.list_manager;
     }
 #endif // CCL_ENABLE_ZE && CCL_ENABLE_SYCL
+
+    void set_group(std::shared_ptr<sched_group> new_group) {
+        CCL_THROW_IF_NOT(entries.empty());
+        CCL_THROW_IF_NOT(subscheds.empty());
+        CCL_THROW_IF_NOT(new_group.get() != nullptr);
+        group = new_group;
+    }
+
+    std::shared_ptr<sched_group> get_group() {
+        return group;
+    }
 
     /**
      * Reset completion counter of @b req
@@ -265,9 +277,15 @@ public:
     bool get_ze_commands_bypass_flag();
     void set_ze_commands_bypass_flag(bool bypass);
 
+    ze_event_handle_t get_related_deps_out_event();
+
     std::shared_ptr<sync_object>& get_init_ze_hook_sync_obj();
     void set_init_ze_hook_sync_obj(std::shared_ptr<sync_object> sync_obj);
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+
+    bool is_deps_barrier();
+    void set_deps_is_barrier(bool is_barrier);
+    bool has_deps_entry();
 
 private:
     void create_sync_event(ccl_request* request);

@@ -22,6 +22,7 @@
 #include <map>
 #include <string>
 
+#define CCL_ALLGATHER_SHORT_MSG_SIZE  32768
 #define CCL_ALLGATHERV_SHORT_MSG_SIZE 32768
 #define CCL_ALLREDUCE_SHORT_MSG_SIZE  8192
 #define CCL_ALLREDUCE_MEDIUM_MSG_SIZE (1024 * 1024)
@@ -89,12 +90,14 @@ struct ccl_algorithm_selector_base {
         ccl_algorithm_selector(); \
     };
 
+CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_allgather, ccl_coll_allgather_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_allgatherv, ccl_coll_allgatherv_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_allreduce, ccl_coll_allreduce_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_alltoall, ccl_coll_alltoall_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_alltoallv, ccl_coll_alltoallv_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_barrier, ccl_coll_barrier_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_bcast, ccl_coll_bcast_algo);
+CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_bcastExt, ccl_coll_bcastExt_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_recv, ccl_coll_recv_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_reduce, ccl_coll_reduce_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_reduce_scatter, ccl_coll_reduce_scatter_algo);

@@ -26,6 +26,9 @@
 #include "coll/coll_util.hpp"
 #include "sched/entry/factory/chunked_entry_factory.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+#include "sched/entry/ze/ze_dummy_entry.hpp"
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
 using namespace ccl::utils;
 
@@ -457,6 +460,19 @@ ccl::status ccl_coll_build_topo_alltoallv(ccl_sched* main_sched,
     ccl::add_handle_exchange(sched, node_comm, wait_events, out_event, in_buffers);
     clear_and_push_back(wait_events, out_event);
 
+    if (!sched->is_deps_barrier() && sched->has_deps_entry()) {
+        // Submit dummy ze_entry for earlier L0 submission of the workload
+        // This has to be done after handle exchange to ensure that the IPC handles are ready
+        entry_factory::create<ze_dummy_entry>(sched);
+
+        // Dependencies output signal event has to be among wait events for comm_barrier
+        wait_events.push_back(sched->get_related_deps_out_event());
+
+        // Submit comm_barrier to ensure synchronization for early submitted entries
+        ccl::add_comm_barrier(sched, node_comm, wait_events, out_event);
+        clear_and_push_back(wait_events, out_event);
+    }
+
     auto add_sched_barrier_for_parallel_copies = [&]() {
         wait_events.insert(
             wait_events.end(), parallel_copy_events.begin(), parallel_copy_events.end());
@@ -518,10 +534,10 @@ ccl::status ccl_coll_build_topo_alltoallv(ccl_sched* main_sched,
         // preparation for host alltoall coll
         ccl_coll_param host_coll_param{ false };
         host_coll_param.ctype = ccl_coll_alltoallv;
-        host_coll_param.send_scale_out_bufs = in_bufs;
-        host_coll_param.recv_scale_out_bufs = out_bufs;
-        host_coll_param.send_counts = tmp_send_counts;
-        host_coll_param.recv_counts = tmp_recv_counts;
+        host_coll_param.send_scale_out_bufs = std::move(in_bufs);
+        host_coll_param.recv_scale_out_bufs = std::move(out_bufs);
+        host_coll_param.send_counts = std::move(tmp_send_counts);
+        host_coll_param.recv_counts = std::move(tmp_recv_counts);
         host_coll_param.dtype = dtype;
         host_coll_param.comm = comm;
         host_coll_param.hint_algo.alltoallv = ccl_coll_alltoallv_direct;

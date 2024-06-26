@@ -35,7 +35,7 @@ ze_handle_exchange_entry::ze_handle_exchange_entry(
     const std::vector<mem_desc_t>& in_buffers,
     int skip_rank,
     ccl::utils::pt2pt_handle_exchange_info pt2pt_info)
-        : sched_entry(sched, false /*is_barrier*/, true /*is_urgent*/),
+        : sched_entry(sched),
           comm(comm),
           in_buffers(in_buffers),
           rank(comm->rank()),
@@ -60,7 +60,7 @@ ze_handle_exchange_entry::ze_handle_exchange_entry(
             "/tmp/ccl-handle-" + std::to_string((rank + 1) % comm_size) + "-" + unique_tag;
         left_peer_socket_name = "/tmp/ccl-handle-" + std::to_string(rank) + "-" + unique_tag;
     }
-    create_local_ipc_handles(in_buffers);
+    create_local_ipc_handles();
     LOG_DEBUG("init completed");
 }
 
@@ -94,7 +94,7 @@ uint32_t ze_handle_exchange_entry::get_remote_device_id(ccl::ze::device_info& in
     return static_cast<uint32_t>(idx);
 }
 
-void ze_handle_exchange_entry::create_local_ipc_handles(const std::vector<mem_desc_t>& bufs) {
+void ze_handle_exchange_entry::create_local_ipc_handles() {
     if (comm_size == 1) {
         this->skip_rank = rank;
     }
@@ -124,6 +124,7 @@ void ze_handle_exchange_entry::create_local_ipc_handles(const std::vector<mem_de
         mem_info_t mem_info{};
 
         ze_ipc_mem_handle_t ipc_handle{};
+        size_t handle_id{};
         if (rank != this->skip_rank) {
             if (mem_type == ccl::ze::ipc_mem_type::memory) {
                 // zeMemGetIpcHandle requires the provided pointer to be the base of an allocation.
@@ -132,7 +133,8 @@ void ze_handle_exchange_entry::create_local_ipc_handles(const std::vector<mem_de
                 // and the offset is sent to the other rank. On that rank the base ptr is retrieved
                 // and offsetted to get the actual input buffer ptr.
                 mem_info = get_mem_info(mem_ptr);
-                sched->get_memory().handle_manager.get_handle(mem_info.first, &ipc_handle);
+                sched->get_memory().handle_manager.get_handle(
+                    mem_info.first, &ipc_handle, &handle_id);
 
                 if (ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::drmfd) {
                     physical_devices = comm->get_fd_manager()->get_physical_devices();
@@ -162,7 +164,21 @@ void ze_handle_exchange_entry::create_local_ipc_handles(const std::vector<mem_de
             }
         }
         int handle_idx = get_handle_idx(sched->coll_param.ctype, rank);
-        handles[handle_idx][buf_idx] = { ipc_handle, mem_info.second, mem_type, mem_handle };
+        auto& this_handle = handles[handle_idx][buf_idx];
+
+        this_handle.ipc_handle = ipc_handle;
+        this_handle.mem_offset = mem_info.second; // offset  of this buffer on the allocation
+        this_handle.mem_ptr = nullptr;
+        this_handle.remote_ptr = mem_info.first; // base_ptr of this buffer on the allocation
+        this_handle.mem_type = mem_type;
+        this_handle.handle_id = handle_id;
+        this_handle.mem_handle = mem_handle;
+        this_handle.remote_pid = ccl::utils::invalid_pid;
+        this_handle.remote_context_id = ccl::utils::invalid_context_id;
+        this_handle.remote_mem_alloc_id = 0;
+        this_handle.remote_device_id = ccl::utils::invalid_device_id;
+        this_handle.device_fd = ccl::utils::invalid_fd;
+
         LOG_DEBUG("set IPC handle: { rank: ",
                   rank,
                   ", buf_idx: ",
@@ -182,7 +198,6 @@ int ze_handle_exchange_entry::ipc_to_mem_handle(const ze_ipc_mem_handle_t& ipc_h
     if (ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::drmfd) {
         // convert dma_buf fd to GEM handle
         memcpy(&dmabuf_fd, &ipc_handle, sizeof(dmabuf_fd));
-
         mem_handle = ccl::ze::fd_manager::fd_to_mem_handle(physical_devices[dev_id].fd, dmabuf_fd);
         LOG_DEBUG("device_fd: ", physical_devices[dev_id].fd);
     }
@@ -200,16 +215,19 @@ int ze_handle_exchange_entry::ipc_to_mem_handle(const ze_ipc_mem_handle_t& ipc_h
     return mem_handle;
 }
 
-void ze_handle_exchange_entry::fill_payload(payload_t& payload,
-                                            const std::vector<mem_desc_t>& bufs,
-                                            size_t buf_idx) {
+void ze_handle_exchange_entry::fill_payload(payload_t& payload, size_t buf_idx) {
     int handle_idx = get_handle_idx(sched->coll_param.ctype, rank);
-    payload.mem_handle = handles[handle_idx][buf_idx].mem_handle;
-    payload.mem_type = handles[handle_idx][buf_idx].mem_type;
-    payload.mem_offset = handles[handle_idx][buf_idx].mem_offset;
+    auto& this_handle = handles[handle_idx][buf_idx];
+
+    payload.mem_handle = this_handle.mem_handle;
+    payload.mem_type = this_handle.mem_type;
+    payload.mem_offset = this_handle.mem_offset;
+    payload.handle_id = this_handle.handle_id;
     payload.remote_pid = getpid();
-    const void* ptr = bufs[buf_idx].first;
-    if (ptr == nullptr) {
+    payload.remote_ptr = this_handle.remote_ptr;
+
+    auto mem_ptr = in_buffers[buf_idx].first;
+    if (mem_ptr == nullptr) {
         return;
     }
 
@@ -218,7 +236,7 @@ void ze_handle_exchange_entry::fill_payload(payload_t& payload,
     ze_memory_allocation_properties_t mem_alloc_props{};
 
     if (!ccl::ze::get_buffer_context_and_device(
-            ptr, &remote_context, &remote_device, &mem_alloc_props)) {
+            mem_ptr, &remote_context, &remote_device, &mem_alloc_props)) {
         CCL_THROW("unable to get context from ptr\n");
     }
     ssize_t remote_context_id{ ccl::utils::invalid_context_id };
@@ -239,14 +257,21 @@ void ze_handle_exchange_entry::fill_remote_handle(const payload_t& payload,
                                                   ze_ipc_mem_handle_t ipc_handle,
                                                   const size_t idx,
                                                   const size_t buf_idx) {
-    handles[idx][buf_idx] = {
-        ipc_handle, payload.mem_offset, payload.mem_type, payload.mem_handle
-    };
-    handles[idx][buf_idx].remote_mem_alloc_id = payload.remote_mem_alloc_id;
-    handles[idx][buf_idx].remote_context_id = payload.remote_context_id;
-    handles[idx][buf_idx].remote_pid = payload.remote_pid;
-    handles[idx][buf_idx].remote_device_id = payload.remote_device_id;
-    handles[idx][buf_idx].device_fd = payload.device_fd;
+    auto& this_handle = handles[idx][buf_idx];
+
+    this_handle.ipc_handle = ipc_handle;
+    this_handle.mem_offset = payload.mem_offset;
+    this_handle.mem_ptr = nullptr;
+    this_handle.remote_ptr = payload.remote_ptr;
+    this_handle.mem_type = payload.mem_type;
+    this_handle.handle_id = payload.handle_id;
+    this_handle.mem_handle = payload.mem_handle;
+    this_handle.remote_pid = payload.remote_pid;
+    this_handle.remote_context_id = payload.remote_context_id;
+    this_handle.remote_device_id = payload.remote_device_id;
+    this_handle.device_fd = payload.device_fd;
+    this_handle.remote_mem_alloc_id = payload.remote_mem_alloc_id;
+
     LOG_DEBUG("get IPC handle: { peer: ",
               idx,
               ", buf_idx: ",
@@ -280,20 +305,20 @@ int ze_handle_exchange_entry::get_remote_physical_device_fd(const ssize_t remote
     return ret;
 }
 
-void ze_handle_exchange_entry::common_fd_mode_exchange(const std::vector<mem_desc_t>& bufs) {
-    std::vector<payload_t> all_payloads(comm_size * bufs.size());
-    std::vector<payload_t> local_payloads(bufs.size());
+void ze_handle_exchange_entry::common_fd_mode_exchange() {
+    std::vector<payload_t> all_payloads(comm_size * in_buffers.size());
+    std::vector<payload_t> local_payloads(in_buffers.size());
 
-    for (size_t buf_idx = 0; buf_idx < bufs.size(); buf_idx++) {
+    for (size_t buf_idx = 0; buf_idx < in_buffers.size(); buf_idx++) {
         payload_t payload{};
-        fill_payload(payload, bufs, buf_idx);
+        fill_payload(payload, buf_idx);
         local_payloads[buf_idx] = payload;
     }
 
     if (!(ccl::utils::allgather(comm->get_atl_comm(),
                                 local_payloads.data(),
                                 all_payloads.data(),
-                                sizeof(payload_t) * bufs.size()))) {
+                                sizeof(payload_t) * in_buffers.size()))) {
         CCL_THROW("allgather exchange is failed");
     }
 
@@ -301,8 +326,8 @@ void ze_handle_exchange_entry::common_fd_mode_exchange(const std::vector<mem_des
         if (comm->rank() == rank_idx) {
             continue;
         }
-        for (size_t buf_idx = 0; buf_idx < bufs.size(); buf_idx++) {
-            int payload_idx = rank_idx * bufs.size() + buf_idx;
+        for (size_t buf_idx = 0; buf_idx < in_buffers.size(); buf_idx++) {
+            int payload_idx = rank_idx * in_buffers.size() + buf_idx;
             if (ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::drmfd) {
                 all_payloads[payload_idx].device_fd =
                     get_remote_physical_device_fd(all_payloads[payload_idx].remote_device_id);
@@ -320,24 +345,24 @@ void ze_handle_exchange_entry::common_fd_mode_exchange(const std::vector<mem_des
               " mode completed, handles size: ",
               handles.size(),
               ", in_buffers size: ",
-              bufs.size());
+              in_buffers.size());
     sched->get_memory().handle_manager.set(handles);
 }
 
-void ze_handle_exchange_entry::pt2pt_fd_mode_exchange(const std::vector<mem_desc_t>& bufs) {
+void ze_handle_exchange_entry::pt2pt_fd_mode_exchange() {
     int peer_rank = pt2pt_info.peer_rank;
     int pt2pt_sched_id = comm->get_atl_comm()->tag_creator->get_pt2pt_sched_id();
 
-    LOG_DEBUG("pt2pt_fd_mode_exchange is chosen: bufs size: ",
-              bufs.size(),
+    LOG_DEBUG("pt2pt_fd_mode_exchange is chosen: in_buffers size: ",
+              in_buffers.size(),
               ", rank: ",
               rank,
               ", peer_rank: ",
               peer_rank);
-    for (size_t buf_idx = 0; buf_idx < bufs.size(); buf_idx++) {
+    for (size_t buf_idx = 0; buf_idx < in_buffers.size(); buf_idx++) {
         std::vector<payload_t> payloads(1);
         payload_t payload{};
-        fill_payload(payload, bufs, buf_idx);
+        fill_payload(payload, buf_idx);
 
         if (pt2pt_info.role == ccl::utils::pt2pt_handle_exchange_role::sender) {
             ccl::utils::send(
@@ -389,7 +414,7 @@ void ze_handle_exchange_entry::pt2pt_fd_mode_exchange(const std::vector<mem_desc
     sched->get_memory().handle_manager.set(handles, true);
 }
 
-int ze_handle_exchange_entry::sockets_mode_exchange(const std::vector<mem_desc_t>& bufs) {
+int ze_handle_exchange_entry::sockets_mode_exchange() {
     if (!is_created) {
         // server
         left_peer_connect_socket =
@@ -438,7 +463,7 @@ int ze_handle_exchange_entry::sockets_mode_exchange(const std::vector<mem_desc_t
                 // send own handle to right peer
                 int send_fd = ccl::ze::get_fd_from_handle(handles[rank][buf_idx].ipc_handle);
                 payload_t payload{};
-                fill_payload(payload, in_buffers, buf_idx);
+                fill_payload(payload, buf_idx);
                 ccl::utils::sendmsg_call(
                     right_peer_socket, send_fd, &payload, sizeof(payload_t), rank);
                 skip_first_send = true;
@@ -522,17 +547,17 @@ void ze_handle_exchange_entry::update() {
                 "sockets ipc_exchange_mode is not supported for pt2pt operations, use drmfd or pidfd");
         }
 
-        if (sockets_mode_exchange(in_buffers)) {
+        if (sockets_mode_exchange()) {
             return;
         }
     }
     else if (ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::drmfd ||
              ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::pidfd) {
         if (sched->coll_param.ctype == ccl_coll_send || sched->coll_param.ctype == ccl_coll_recv) {
-            pt2pt_fd_mode_exchange(in_buffers);
+            pt2pt_fd_mode_exchange();
         }
         else {
-            common_fd_mode_exchange(in_buffers);
+            common_fd_mode_exchange();
         }
     }
     else {

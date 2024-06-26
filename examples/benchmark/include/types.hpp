@@ -112,8 +112,12 @@ std::list<T> tokenize(const std::string& input, char delimeter) {
 
 void generate_counts(std::list<size_t>& counts, size_t min_count, size_t max_count) {
     counts.clear();
-    size_t count = 0;
-    for (count = min_count; count <= max_count; count *= 2) {
+    size_t count = min_count;
+    if (count == 0) {
+        counts.push_back(0);
+        count++;
+    }
+    for (; count <= max_count; count *= 2) {
         counts.push_back(count);
     }
     if (*counts.rbegin() != max_count)

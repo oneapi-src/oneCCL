@@ -24,6 +24,22 @@
 // these are currently optional for comm to implement
 #define COMM_INTERFACE_COLL_DECLARATION__VOID \
 \
+    virtual ccl::event allgather(const void* send_buf, \
+                                 void* recv_buf, \
+                                 size_t count, \
+                                 ccl::datatype dtype, \
+                                 const ccl::stream::impl_value_t& stream, \
+                                 const ccl::allgather_attr& attr, \
+                                 const ccl::vector_class<ccl::event>& deps = {}) = 0; \
+\
+    virtual ccl::event allgather(const void* send_buf, \
+                                 const ccl::vector_class<void*>& recv_buf, \
+                                 size_t count, \
+                                 ccl::datatype dtype, \
+                                 const ccl::stream::impl_value_t& stream, \
+                                 const ccl::allgather_attr& attr, \
+                                 const ccl::vector_class<ccl::event>& deps = {}) = 0; \
+\
     virtual ccl::event allgatherv(const void* send_buf, \
                                   size_t send_count, \
                                   void* recv_buf, \
@@ -96,6 +112,15 @@
                              const ccl::broadcast_attr& attr, \
                              const ccl::vector_class<ccl::event>& deps = {}) = 0; \
 \
+    virtual ccl::event bcastExt(void* send_buf, \
+                                void* recv_buf, \
+                                size_t count, \
+                                ccl::datatype dtype, \
+                                int root, \
+                                const ccl::stream::impl_value_t& stream, \
+                                const ccl::broadcastExt_attr& attr, \
+                                const ccl::vector_class<ccl::event>& deps = {}) = 0; \
+\
     virtual ccl::event reduce(const void* send_buf, \
                               void* recv_buf, \
                               size_t count, \
@@ -132,6 +157,24 @@
                             const ccl::vector_class<ccl::event>& deps = {}) = 0;
 
 #define COMM_INTERFACE_COLL_DECLARATION(type) \
+\
+    virtual ccl::event allgather(const type* send_buf, \
+                                 type* recv_buf, \
+                                 size_t count, \
+                                 const ccl::stream::impl_value_t& stream, \
+                                 const ccl::allgather_attr& attr, \
+                                 const ccl::vector_class<ccl::event>& deps = {}) { \
+        CCL_THROW(std::string(__FUNCTION__) + " - not implemented"); \
+    }; \
+\
+    virtual ccl::event allgather(const type* send_buf, \
+                                 ccl::vector_class<type*>& recv_buf, \
+                                 size_t count, \
+                                 const ccl::stream::impl_value_t& stream, \
+                                 const ccl::allgather_attr& attr, \
+                                 const ccl::vector_class<ccl::event>& deps = {}) { \
+        CCL_THROW(std::string(__FUNCTION__) + " - not implemented"); \
+    }; \
 \
     virtual ccl::event allgatherv(const type* send_buf, \
                                   size_t send_count, \
@@ -210,6 +253,16 @@
         CCL_THROW(std::string(__FUNCTION__) + " - not implemented"); \
     }; \
 \
+    virtual ccl::event bcastExt(type* send_buf, \
+                                type* recv_buf, \
+                                size_t count, \
+                                int root, \
+                                const ccl::stream::impl_value_t& stream, \
+                                const ccl::broadcastExt_attr& attr, \
+                                const ccl::vector_class<ccl::event>& deps = {}) { \
+        CCL_THROW(std::string(__FUNCTION__) + " - not implemented"); \
+    }; \
+\
     virtual ccl::event reduce(const type* send_buf, \
                               type* recv_buf, \
                               size_t count, \
@@ -250,6 +303,24 @@
     };
 
 #define COMM_INTERFACE_COLL_CLASS_DECLARATION(type) \
+\
+    virtual ccl::event allgather(const type& send_buf, \
+                                 type& recv_buf, \
+                                 size_t count, \
+                                 const ccl::stream::impl_value_t& stream, \
+                                 const ccl::allgather_attr& attr, \
+                                 const ccl::vector_class<ccl::event>& deps = {}) { \
+        CCL_THROW(std::string(__FUNCTION__) + " - not implemented"); \
+    }; \
+\
+    virtual ccl::event allgather(const type& send_buf, \
+                                 ccl::vector_class<ccl::reference_wrapper_class<type>>& recv_buf, \
+                                 size_t count, \
+                                 const ccl::stream::impl_value_t& stream, \
+                                 const ccl::allgather_attr& attr, \
+                                 const ccl::vector_class<ccl::event>& deps = {}) { \
+        CCL_THROW(std::string(__FUNCTION__) + " - not implemented"); \
+    }; \
 \
     virtual ccl::event allgatherv(const type& send_buf, \
                                   size_t send_count, \
@@ -331,6 +402,16 @@
         CCL_THROW(std::string(__FUNCTION__) + " - not implemented"); \
     }; \
 \
+    virtual ccl::event bcastExt(type& send_buf, \
+                                type& recv_buf, \
+                                size_t count, \
+                                int root, \
+                                const ccl::stream::impl_value_t& stream, \
+                                const ccl::broadcastExt_attr& attr, \
+                                const ccl::vector_class<ccl::event>& deps = {}) { \
+        CCL_THROW(std::string(__FUNCTION__) + " - not implemented"); \
+    }; \
+\
     virtual ccl::event reduce(const type& send_buf, \
                               type& recv_buf, \
                               size_t count, \
@@ -374,6 +455,26 @@
  * Specific coll instantiation
  */
 #define COMM_INTERFACE_COLL_DEFINITION__VOID_REQUIRED \
+\
+    ccl::event allgather(const void* send_buf, \
+                         void* recv_buf, \
+                         size_t count, \
+                         ccl::datatype dtype, \
+                         const ccl::stream::impl_value_t& stream, \
+                         const ccl::allgather_attr& attr, \
+                         const ccl::vector_class<ccl::event>& deps = {}) override { \
+        return get_impl()->allgather_impl(send_buf, recv_buf, count, dtype, stream, attr, deps); \
+    } \
+\
+    ccl::event allgather(const void* send_buf, \
+                         const ccl::vector_class<void*>& recv_buf, \
+                         size_t count, \
+                         ccl::datatype dtype, \
+                         const ccl::stream::impl_value_t& stream, \
+                         const ccl::allgather_attr& attr, \
+                         const ccl::vector_class<ccl::event>& deps = {}) override { \
+        return get_impl()->allgather_impl(send_buf, recv_buf, count, dtype, stream, attr, deps); \
+    } \
 \
     ccl::event allgatherv(const void* send_buf, \
                           size_t send_count, \
@@ -441,6 +542,18 @@
                      const ccl::broadcast_attr& attr, \
                      const ccl::vector_class<ccl::event>& deps = {}) override { \
         return get_impl()->broadcast_impl(buf, count, dtype, root, stream, attr, deps); \
+    } \
+\
+    ccl::event bcastExt(void* send_buf, \
+                        void* recv_buf, \
+                        size_t count, \
+                        ccl::datatype dtype, \
+                        int root, \
+                        const ccl::stream::impl_value_t& stream, \
+                        const ccl::broadcastExt_attr& attr, \
+                        const ccl::vector_class<ccl::event>& deps = {}) override { \
+        return get_impl()->broadcastExt_impl( \
+            send_buf, recv_buf, count, dtype, root, stream, attr, deps); \
     } \
 \
     ccl::event reduce(const void* send_buf, \
@@ -516,6 +629,24 @@
     COMM_INTERFACE_COLL_DEFINITION__VOID_OPTIONAL
 
 #define COMM_INTERFACE_COLL_DEFINITION(type) \
+\
+    ccl::event allgather(const type* send_buf, \
+                         type* recv_buf, \
+                         size_t count, \
+                         const ccl::stream::impl_value_t& stream, \
+                         const ccl::allgather_attr& attr, \
+                         const ccl::vector_class<ccl::event>& deps = {}) override { \
+        return get_impl()->allgather_impl(send_buf, recv_buf, count, stream, attr, deps); \
+    } \
+\
+    ccl::event allgather(const type* send_buf, \
+                         ccl::vector_class<type*>& recv_buf, \
+                         size_t count, \
+                         const ccl::stream::impl_value_t& stream, \
+                         const ccl::allgather_attr& attr, \
+                         const ccl::vector_class<ccl::event>& deps = {}) override { \
+        return get_impl()->allgather_impl(send_buf, recv_buf, count, stream, attr, deps); \
+    } \
 \
     ccl::event allgatherv(const type* send_buf, \
                           size_t send_count, \
@@ -598,6 +729,16 @@
         return get_impl()->broadcast_impl(buf, count, root, stream, attr, deps); \
     } \
 \
+    ccl::event bcastExt(type* send_buf, \
+                        type* recv_buf, \
+                        size_t count, \
+                        int root, \
+                        const ccl::stream::impl_value_t& stream, \
+                        const ccl::broadcastExt_attr& attr, \
+                        const ccl::vector_class<ccl::event>& deps) override { \
+        return get_impl()->broadcastExt_impl(send_buf, recv_buf, count, root, stream, attr, deps); \
+    } \
+\
     ccl::event reduce(const type* send_buf, \
                       type* recv_buf, \
                       size_t count, \
@@ -640,6 +781,24 @@
     }
 
 #define COMM_INTERFACE_COLL_CLASS_DEFINITION(type) \
+\
+    ccl::event allgather(const type& send_buf, \
+                         type& recv_buf, \
+                         size_t count, \
+                         const ccl::stream::impl_value_t& stream, \
+                         const ccl::allgather_attr& attr, \
+                         const ccl::vector_class<ccl::event>& deps = {}) override { \
+        return get_impl()->allgather_impl(send_buf, recv_buf, count, stream, attr, deps); \
+    } \
+\
+    ccl::event allgather(const type& send_buf, \
+                         ccl::vector_class<ccl::reference_wrapper_class<type>>& recv_buf, \
+                         size_t count, \
+                         const ccl::stream::impl_value_t& stream, \
+                         const ccl::allgather_attr& attr, \
+                         const ccl::vector_class<ccl::event>& deps = {}) override { \
+        return get_impl()->allgather_impl(send_buf, recv_buf, count, stream, attr, deps); \
+    } \
 \
     ccl::event allgatherv(const type& send_buf, \
                           size_t send_count, \
@@ -722,6 +881,16 @@
         return get_impl()->broadcast_impl(buf, count, root, stream, attr, deps); \
     } \
 \
+    ccl::event bcastExt(type& send_buf, \
+                        type& recv_buf, \
+                        size_t count, \
+                        int root, \
+                        const ccl::stream::impl_value_t& stream, \
+                        const ccl::broadcastExt_attr& attr, \
+                        const ccl::vector_class<ccl::event>& deps = {}) override { \
+        return get_impl()->broadcastExt_impl(send_buf, recv_buf, count, root, stream, attr, deps); \
+    } \
+\
     ccl::event reduce(const type& send_buf, \
                       type& recv_buf, \
                       size_t count, \
@@ -766,6 +935,28 @@
  * Coll implementations
  */
 #define COMM_IMPL_DECLARATION_TYPED \
+    template <class buffer_type> \
+    ccl::event allgather_base_impl(const buffer_type* send_buf, \
+                                   buffer_type* recv_buf, \
+                                   size_t count, \
+                                   const ccl::stream::impl_value_t& stream, \
+                                   const ccl_coll_attr& attr, \
+                                   const ccl::vector_class<ccl::event>& deps); \
+    template <class buffer_type> \
+    ccl::event allgather_impl(const buffer_type* send_buf, \
+                              buffer_type* recv_buf, \
+                              size_t count, \
+                              const ccl::stream::impl_value_t& stream, \
+                              const ccl::allgather_attr& attr, \
+                              const ccl::vector_class<ccl::event>& deps); \
+    template <class buffer_type> \
+    ccl::event allgather_impl(const buffer_type* send_buf, \
+                              ccl::vector_class<buffer_type*>& recv_buf, \
+                              size_t count, \
+                              const ccl::stream::impl_value_t& stream, \
+                              const ccl::allgather_attr& attr, \
+                              const ccl::vector_class<ccl::event>& deps); \
+\
     template <class buffer_type> \
     ccl::event allgatherv_base_impl(const buffer_type* send_buf, \
                                     size_t send_count, \
@@ -842,6 +1033,15 @@
                               const ccl::vector_class<ccl::event>& deps); \
 \
     template <class buffer_type> \
+    ccl::event broadcastExt_impl(buffer_type* send_buf, \
+                                 buffer_type* recv_buf, \
+                                 size_t count, \
+                                 int root, \
+                                 const ccl::stream::impl_value_t& stream, \
+                                 const ccl::broadcastExt_attr& attr, \
+                                 const ccl::vector_class<ccl::event>& deps); \
+\
+    template <class buffer_type> \
     ccl::event reduce_impl(const buffer_type* send_buf, \
                            buffer_type* recv_buf, \
                            size_t count, \
@@ -877,6 +1077,28 @@
                          const ccl::vector_class<ccl::event>& deps);
 
 #define COMM_IMPL_DECLARATION_VOID_REQUIRED \
+    ccl::event allgather_base_impl(const void* send_buf, \
+                                   void* recv_buf, \
+                                   size_t count, \
+                                   ccl::datatype dtype, \
+                                   const ccl::stream::impl_value_t& stream, \
+                                   const ccl_coll_attr& attr, \
+                                   const ccl::vector_class<ccl::event>& deps); \
+    ccl::event allgather_impl(const void* send_buf, \
+                              void* recv_buf, \
+                              size_t count, \
+                              ccl::datatype dtype, \
+                              const ccl::stream::impl_value_t& stream, \
+                              const ccl::allgather_attr& attr, \
+                              const ccl::vector_class<ccl::event>& deps); \
+    ccl::event allgather_impl(const void* send_buf, \
+                              const ccl::vector_class<void*>& recv_buf, \
+                              size_t count, \
+                              ccl::datatype dtype, \
+                              const ccl::stream::impl_value_t& stream, \
+                              const ccl::allgather_attr& attr, \
+                              const ccl::vector_class<ccl::event>& deps); \
+\
     ccl::event allgatherv_base_impl(const void* send_buf, \
                                     size_t send_count, \
                                     void* recv_buf, \
@@ -935,6 +1157,15 @@
                               const ccl::stream::impl_value_t& stream, \
                               const ccl::broadcast_attr& attr, \
                               const ccl::vector_class<ccl::event>& deps); \
+\
+    ccl::event broadcastExt_impl(void* send_buf, \
+                                 void* recv_buf, \
+                                 size_t count, \
+                                 ccl::datatype dtype, \
+                                 int root, \
+                                 const ccl::stream::impl_value_t& stream, \
+                                 const ccl::broadcastExt_attr& attr, \
+                                 const ccl::vector_class<ccl::event>& deps); \
 \
     ccl::event reduce_impl(const void* send_buf, \
                            void* recv_buf, \
@@ -1000,6 +1231,22 @@
     COMM_IMPL_DECLARATION_TYPED
 
 #define COMM_IMPL_CLASS_DECLARATION \
+    template <class buffer_type> \
+    ccl::event allgather_impl(const buffer_type& send_buf, \
+                              buffer_type& recv_buf, \
+                              size_t count, \
+                              const ccl::stream::impl_value_t& stream, \
+                              const ccl::allgather_attr& attr, \
+                              const ccl::vector_class<ccl::event>& deps); \
+    template <class buffer_type> \
+    ccl::event allgather_impl( \
+        const buffer_type& send_buf, \
+        ccl::vector_class<ccl::reference_wrapper_class<buffer_type>>& recv_buf, \
+        size_t count, \
+        const ccl::stream::impl_value_t& stream, \
+        const ccl::allgather_attr& attr, \
+        const ccl::vector_class<ccl::event>& deps); \
+\
     template <class buffer_type> \
     ccl::event allgatherv_impl(const buffer_type& send_buf, \
                                size_t send_count, \
@@ -1067,6 +1314,16 @@
                               const ccl::stream::impl_value_t& stream, \
                               const ccl::broadcast_attr& attr, \
                               const ccl::vector_class<ccl::event>& deps); \
+\
+    template <class buffer_type> \
+    ccl::event broadcastExt_impl(buffer_type& send_buf, \
+                                 buffer_type& recv_buf, \
+                                 size_t count, \
+                                 int root, \
+                                 const ccl::stream::impl_value_t& stream, \
+                                 const ccl::broadcastExt_attr& attr, \
+                                 const ccl::vector_class<ccl::event>& deps); \
+\
     template <class buffer_type> \
     ccl::event reduce_impl(const buffer_type& send_buf, \
                            buffer_type& recv_buf, \
@@ -1106,6 +1363,14 @@
  * Force intantiations
  */
 #define COMM_INTERFACE_COLL_CLASS_INSTANTIATIONS(comm_class, type) \
+\
+    template ccl::event comm_class::allgather_impl(const type& send_buf, \
+                                                   type& recv_buf, \
+                                                   size_t count, \
+                                                   const ccl::stream::impl_value_t& stream, \
+                                                   const ccl::allgather_attr& attr, \
+                                                   const ccl::vector_class<ccl::event>& deps); \
+\
     template ccl::event comm_class::allgatherv_impl(const type& send_buf, \
                                                     size_t send_count, \
                                                     type& recv_buf, \
@@ -1161,6 +1426,14 @@
                                                    const ccl::broadcast_attr& attr, \
                                                    const ccl::vector_class<ccl::event>& deps); \
 \
+    template ccl::event comm_class::broadcastExt_impl(type& send_buf, \
+                                                      type& recv_buf, \
+                                                      size_t count, \
+                                                      int root, \
+                                                      const ccl::stream::impl_value_t& stream, \
+                                                      const ccl::broadcastExt_attr& attr, \
+                                                      const ccl::vector_class<ccl::event>& deps); \
+\
     template ccl::event comm_class::reduce_impl(const type& send_buf, \
                                                 type& recv_buf, \
                                                 size_t count, \
@@ -1185,6 +1458,20 @@
                                               const ccl::vector_class<ccl::event>& deps);
 
 #define COMM_INTERFACE_COLL_INSTANTIATIONS(comm_class, type) \
+\
+    template ccl::event comm_class::allgather_impl(const type* send_buf, \
+                                                   type* recv_buf, \
+                                                   size_t count, \
+                                                   const ccl::stream::impl_value_t& stream, \
+                                                   const ccl::allgather_attr& attr, \
+                                                   const ccl::vector_class<ccl::event>& deps); \
+\
+    template ccl::event comm_class::allgather_impl(const type* send_buf, \
+                                                   ccl::vector_class<type*>& recv_buf, \
+                                                   size_t count, \
+                                                   const ccl::stream::impl_value_t& stream, \
+                                                   const ccl::allgather_attr& attr, \
+                                                   const ccl::vector_class<ccl::event>& deps); \
 \
     template ccl::event comm_class::allgatherv_impl(const type* send_buf, \
                                                     size_t send_count, \
@@ -1245,6 +1532,14 @@
                                                    const ccl::stream::impl_value_t& stream, \
                                                    const ccl::broadcast_attr& attr, \
                                                    const ccl::vector_class<ccl::event>& deps); \
+\
+    template ccl::event comm_class::broadcastExt_impl(type* send_buf, \
+                                                      type* recv_buf, \
+                                                      size_t count, \
+                                                      int root, \
+                                                      const ccl::stream::impl_value_t& stream, \
+                                                      const ccl::broadcastExt_attr& attr, \
+                                                      const ccl::vector_class<ccl::event>& deps); \
 \
     template ccl::event comm_class::reduce_impl(const type* send_buf, \
                                                 type* recv_buf, \

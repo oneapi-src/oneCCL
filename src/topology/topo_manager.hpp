@@ -160,7 +160,8 @@ public:
     std::vector<ze_device_handle_t> get_filtered_devices(
         const std::vector<ze::device_info>& node_devices) const;
     static p2p_matrix_t build_p2p_matrix(const std::vector<ze_device_handle_t>& devices);
-    static bool build_fabric_connectivity_matrix(std::shared_ptr<atl_base_comm> comm);
+    static bool build_fabric_connectivity_matrix(std::shared_ptr<atl_base_comm> comm,
+                                                 const std::vector<ze_device_handle_t>& devices);
 
     static bool is_sub_vector(const std::vector<ze_device_uuid_t>& vec,
                               const std::vector<ze_device_uuid_t>& sub_vec);
@@ -212,11 +213,12 @@ private:
 
     void build_host_info();
 
-    void base_init(std::shared_ptr<atl_base_comm> atl_comm,
-                   std::shared_ptr<ccl::device> device,
-                   std::shared_ptr<ccl::context> context);
+    void base_init(const std::shared_ptr<atl_base_comm>& atl_comm,
+                   const std::shared_ptr<ccl::device>& device,
+                   const std::shared_ptr<ccl::context>& context);
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-    void ze_base_init(std::shared_ptr<ccl::device> device, std::shared_ptr<ccl::context> context);
+    void ze_base_init(const std::shared_ptr<ccl::device>& device,
+                      const std::shared_ptr<ccl::context>& context);
 
     bool oversubscription_detected(const ze_rank_info_vec_t& ze_rank_infos,
                                    const host_info_vec_t& host_infos);

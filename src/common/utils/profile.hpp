@@ -16,7 +16,9 @@
 #pragma once
 
 #include <map>
+#include <string>
 #include <cstddef>
+#include <vector>
 
 namespace ccl {
 namespace profile {
@@ -41,6 +43,16 @@ public:
     metrics_counter allgatherv_pipe{ "allgatherv" };
 
     void init();
+};
+
+class timestamp_manager {
+    void finalize();
+    std::vector<std::pair<std::string, size_t *>> recorded_timestamps;
+
+public:
+    void add_timestamp(std::string text, uint64_t *timestamp_ptr);
+    void init();
+    ~timestamp_manager();
 };
 
 } // namespace profile

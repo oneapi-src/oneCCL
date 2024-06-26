@@ -58,6 +58,8 @@ public:
                                               std::vector<ccl_buffer> tmp_bufs,
                                               size_t tmp_buf_idx_start,
                                               size_t count,
+                                              size_t count_per_rank,
+                                              size_t read_block_inner_offset,
                                               const ccl_datatype& dtype,
                                               ccl::reduction op,
                                               std::vector<ze_event_handle_t>& wait_events,
@@ -74,6 +76,14 @@ private:
 
     size_t tmp_buf_idx_start;
     size_t count;
+    // Count of elements in send/mdfi read buffer
+    // for just one rank. In case of chunking,
+    // we need the variable to find start
+    // of `send_buf` that is required by a single rank.
+    size_t count_per_rank;
+    // Without chunking, the offset is 0. In case of chunking,
+    // it represents chunk offset inside rank's buffer buffer.
+    size_t read_block_inner_offset;
 
     const ccl_datatype dtype;
     ccl::reduction op;

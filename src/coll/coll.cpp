@@ -37,6 +37,7 @@
 #include "coll/coll.hpp"
 #include "coll/attr/ccl_common_op_attrs.hpp"
 #include "coll/attr/ccl_allgather_op_attr.hpp"
+#include "coll/attr/ccl_allgatherv_op_attr.hpp"
 #include "coll/attr/ccl_allreduce_op_attr.hpp"
 #include "coll/attr/ccl_alltoall_op_attr.hpp"
 #include "coll/attr/ccl_alltoallv_op_attr.hpp"
@@ -77,7 +78,7 @@ ccl_request* exec_single_rank_inplace_coll(const ccl_coll_param& param) {
         dummy_param.comm = param.comm;
         auto dummy_sched = ccl_sched::create(dummy_param, {});
         auto req = dummy_sched->get_request();
-        req->set_native_event(ev);
+        req->set_native_event(std::move(ev));
         return req;
     }
     return nullptr;
@@ -109,7 +110,7 @@ ccl_request* exec_single_rank_coll(const ccl_coll_param& param) {
                                         param.send_counts[0] * param.dtype.size(),
                                         events);
         event.wait();
-        req->set_native_event(event);
+        req->set_native_event(std::move(event));
 
         LOG_DEBUG("single rank: out-of-place case, coll: ", ccl_coll_type_to_str(param.ctype));
         return req;
@@ -199,6 +200,11 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
     selector_param.peer_rank = param.peer_rank;
     selector_param.is_scaleout = param.is_scaleout;
 
+    if ((param.ctype == ccl_coll_send || param.ctype == ccl_coll_recv) && attr.to_cache) {
+        // cache mode is disabled for point-to-point operations
+        attr.to_cache = 0;
+    }
+
     if (!(param.ctype == ccl_coll_barrier || param.ctype == ccl_coll_send ||
           param.ctype == ccl_coll_recv) &&
         param.stream && param.comm->size() == 1 && ccl_is_device_side_algo(selector_param)) {
@@ -275,8 +281,7 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
                          "internal error, valid request was released");
 #ifdef CCL_ENABLE_SYCL
         if (ccl::utils::should_use_sycl_output_event(param.stream) || is_queue_in_order) {
-            request->set_native_event(
-                ccl::utils::submit_barrier(param.stream->get_native_stream()));
+            request->set_native_event(request->get_sync_event());
         }
 #endif // CCL_ENABLE_SYCL
     }
@@ -287,18 +292,12 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
             data.executor.get()->do_work();
         }
         LOG_DEBUG("setting sycl_barrier on sched ", sched);
-        if (!request->is_completed()) {
-            if (is_queue_in_order) {
-                request->set_native_event(ccl::utils::submit_barrier(
-                    param.stream->get_native_stream(), request->get_sync_event()));
-            }
-            else {
-                request->set_native_event(request->get_sync_event());
-            }
+        if (!request->is_completed() && is_queue_in_order) {
+            request->set_native_event(ccl::utils::submit_barrier(param.stream->get_native_stream(),
+                                                                 request->get_sync_event()));
         }
         else {
-            request->set_native_event(
-                ccl::utils::submit_barrier(param.stream->get_native_stream()));
+            request->set_native_event(request->get_sync_event());
         }
     }
 #endif // CCL_ENABLE_SYCL
@@ -310,6 +309,47 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
     return request;
 }
 
+ccl::status ccl_coll_build_allgather(ccl_sched* sched,
+                                     ccl_buffer send_buf,
+                                     ccl_buffer recv_buf,
+                                     size_t count,
+                                     const ccl_datatype& dtype,
+                                     ccl_comm* comm,
+                                     bool is_scaleout) {
+    ccl::status status = ccl::status::success;
+
+    ccl_selector_param param;
+    param.ctype = ccl_coll_allgather;
+    param.count = count;
+    param.dtype = dtype;
+    param.comm = comm;
+    param.stream = sched->coll_param.stream;
+    param.buf = send_buf.get_ptr();
+    param.is_vector_buf = false;
+#ifdef CCL_ENABLE_SYCL
+    param.is_sycl_buf = sched->coll_attr.is_sycl_buf;
+#endif // CCL_ENABLE_SYCL
+    param.hint_algo = sched->hint_algo;
+    param.is_scaleout = is_scaleout;
+
+    auto algo = ccl::global_data::get().algorithm_selector->get<ccl_coll_allgather>(param);
+
+    switch (algo) {
+        case ccl_coll_allgather_direct:
+            CCL_CALL(
+                ccl_coll_build_direct_allgather(sched, send_buf, recv_buf, count, dtype, comm));
+            break;
+        case ccl_coll_allgather_naive:
+            CCL_CALL(ccl_coll_build_naive_allgather(sched, send_buf, recv_buf, count, dtype, comm));
+            break;
+        default:
+            CCL_FATAL("unexpected allgather_algo ", ccl_coll_algorithm_to_str(algo));
+            return ccl::status::invalid_arguments;
+    }
+
+    return status;
+}
+
 ccl::status ccl_coll_build_allgatherv(ccl_sched* sched,
                                       ccl_buffer send_buf,
                                       size_t send_count,
@@ -318,7 +358,8 @@ ccl::status ccl_coll_build_allgatherv(ccl_sched* sched,
                                       const std::vector<ccl_buffer>& recv_device_bufs,
                                       const ccl_datatype& dtype,
                                       ccl_comm* comm,
-                                      bool is_scaleout) {
+                                      bool is_scaleout,
+                                      bool is_hmem_enabled) {
     ccl::status status = ccl::status::success;
 
     ccl_selector_param selector_param;
@@ -341,13 +382,17 @@ ccl::status ccl_coll_build_allgatherv(ccl_sched* sched,
     auto get_coll_param = [&]() {
         ccl_coll_param coll_param{};
         coll_param.ctype = ccl_coll_allgatherv, coll_param.send_bufs.push_back(send_buf.get_ptr()),
-        coll_param.send_counts.push_back(send_count),
-        coll_param.recv_bufs.push_back(recv_buf.get_ptr()),
+        coll_param.send_counts.push_back(send_count), coll_param.send_count = send_count;
+        if (is_hmem_enabled && is_scaleout)
+            coll_param.recv_scale_out_bufs.assign(recv_device_bufs.begin(), recv_device_bufs.end());
+        else
+            coll_param.recv_bufs.push_back(recv_buf.get_ptr());
         coll_param.recv_counts.reserve(comm->size()),
-        coll_param.recv_counts.insert(
-            coll_param.recv_counts.end(), recv_counts, recv_counts + comm->size()),
-        coll_param.dtype = dtype, coll_param.comm = comm,
-        coll_param.stream = sched->coll_param.stream;
+            coll_param.recv_counts.insert(
+                coll_param.recv_counts.end(), recv_counts, recv_counts + comm->size()),
+            coll_param.dtype = dtype, coll_param.comm = comm,
+            coll_param.is_hmem_enabled = is_hmem_enabled, coll_param.is_scaleout = is_scaleout,
+            coll_param.stream = sched->coll_param.stream;
         return coll_param;
     };
     std::vector<ccl_sched*> part_scheds = { sched };
@@ -365,8 +410,15 @@ ccl::status ccl_coll_build_allgatherv(ccl_sched* sched,
                 ccl_coll_build_multi_bcast_allgatherv(nullptr, part_scheds, get_coll_param(), 1));
             break;
         case ccl_coll_allgatherv_naive:
-            CCL_CALL(ccl_coll_build_naive_allgatherv(
-                sched, send_buf, send_count, recv_buf, recv_counts, dtype, comm));
+            CCL_CALL(ccl_coll_build_naive_allgatherv(sched,
+                                                     send_buf,
+                                                     send_count,
+                                                     recv_buf,
+                                                     recv_counts,
+                                                     recv_device_bufs,
+                                                     dtype,
+                                                     comm,
+                                                     is_scaleout));
             break;
         case ccl_coll_allgatherv_ring:
             CCL_CALL(ccl_coll_build_ring_allgatherv(nullptr,
@@ -377,7 +429,8 @@ ccl::status ccl_coll_build_allgatherv(ccl_sched* sched,
                                                     recv_counts,
                                                     recv_device_bufs,
                                                     dtype,
-                                                    comm));
+                                                    comm,
+                                                    is_scaleout));
             break;
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
         case ccl_coll_allgatherv_topo:
@@ -626,6 +679,67 @@ ccl::status ccl_coll_build_bcast(ccl_sched* sched,
     return status;
 }
 
+ccl::status ccl_coll_build_bcastExt(ccl_sched* sched,
+                                    ccl_buffer send_buf,
+                                    ccl_buffer recv_buf,
+                                    size_t count,
+                                    const ccl_datatype& dtype,
+                                    int root,
+                                    ccl_comm* comm) {
+    ccl::status status = ccl::status::success;
+
+    ccl_selector_param param;
+    param.ctype = ccl_coll_bcastExt;
+    param.count = count;
+    param.dtype = dtype;
+    param.comm = comm;
+    param.stream = sched->coll_param.stream;
+    param.buf = send_buf.get_ptr();
+#ifdef CCL_ENABLE_SYCL
+    param.is_sycl_buf = sched->coll_attr.is_sycl_buf;
+#endif // CCL_ENABLE_SYCL
+    param.hint_algo = sched->hint_algo;
+
+    auto algo = ccl::global_data::get().algorithm_selector->get<ccl_coll_bcastExt>(param);
+
+    switch (algo) {
+        case ccl_coll_bcastExt_direct:
+            CCL_CALL(ccl_coll_build_direct_bcastExt(
+                sched, send_buf, recv_buf, count, dtype, root, comm));
+            break;
+        case ccl_coll_bcastExt_ring:
+            CCL_CALL(ccl_coll_build_scatter_ring_allgather_bcastExt(
+                sched, send_buf, recv_buf, count, dtype, root, comm));
+            break;
+        case ccl_coll_bcastExt_double_tree:
+            CCL_CALL(ccl_coll_build_double_tree_op(
+                sched,
+                ccl_coll_bcastExt,
+                send_buf,
+                recv_buf,
+                count,
+                dtype,
+                ccl::reduction::custom,
+                root == 0 ? comm->dtree() : comm->dtree().copy_with_new_root(root),
+                comm));
+            break;
+        case ccl_coll_bcastExt_naive:
+            CCL_CALL(
+                ccl_coll_build_naive_bcastExt(sched, send_buf, recv_buf, count, dtype, root, comm));
+            break;
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+        case ccl_coll_bcastExt_topo:
+            CCL_CALL(
+                ccl_coll_build_topo_bcastExt(sched, send_buf, recv_buf, count, dtype, root, comm));
+            break;
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+        default:
+            CCL_FATAL("unexpected bcastExt_algo ", ccl_coll_algorithm_to_str(algo));
+            return ccl::status::invalid_arguments;
+    }
+    return status;
+}
+
 ccl::status ccl_coll_build_reduce(ccl_sched* sched,
                                   ccl_buffer send_buf,
                                   ccl_buffer recv_buf,
@@ -729,13 +843,19 @@ ccl::status ccl_coll_build_reduce_scatter(ccl_sched* sched,
                     sched, send_buf, recv_buf, count, dtype, reduction, comm));
                 break;
             }
+        case ccl_coll_reduce_scatter_naive:
+            if (!from_allreduce) {
+                CCL_CALL(ccl_coll_build_naive_reduce_scatter(
+                    sched, send_buf, recv_buf, count, dtype, reduction, comm));
+                break;
+            }
         case ccl_coll_reduce_scatter_ring:
             if (from_allreduce) {
-                CCL_CALL(ccl_coll_build_ring_reduce_scatter(
+                CCL_CALL(ccl_coll_build_reduce_scatter_block(
                     sched, send_buf, recv_buf, count, dtype, reduction, comm));
             }
             else {
-                CCL_CALL(ccl_coll_build_ring_reduce_scatter_block(
+                CCL_CALL(ccl_coll_build_ring_reduce_scatter(
                     sched, send_buf, recv_buf, count, dtype, reduction, comm));
             }
             break;
@@ -839,6 +959,22 @@ ccl::status ccl_coll_build_send(ccl_sched* sched,
     return status;
 }
 
+ccl_request* ccl_allgather_impl(const void* send_buf,
+                                void* recv_buf,
+                                size_t count,
+                                ccl::datatype dtype,
+                                const ccl_coll_attr& attr,
+                                ccl_comm* comm,
+                                const ccl_stream* stream,
+                                const std::vector<ccl::event>& deps) {
+    ccl_coll_param param = ccl_coll_param::create_allgather_param(
+        send_buf, recv_buf, count, dtype, attr, comm, stream, deps);
+
+    auto req = ccl_coll_create(param, attr);
+    LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req);
+    return req;
+}
+
 ccl_request* ccl_allgatherv_impl(const void* send_buf,
                                  size_t send_count,
                                  void* recv_buf,
@@ -867,6 +1003,8 @@ ccl_request* ccl_allreduce_impl(const void* send_buf,
                                 const std::vector<ccl::event>& deps) {
     ccl_coll_param param = ccl_coll_param::create_allreduce_param(
         send_buf, recv_buf, count, dtype, reduction, attr, comm, stream, deps);
+
+    // TODO: skip_scheduler code should go here...
 
     auto req = ccl_coll_create(param, attr);
     LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req, " count ", count);
@@ -944,6 +1082,23 @@ ccl_request* ccl_broadcast_impl(void* buf,
                                 const std::vector<ccl::event>& deps) {
     ccl_coll_param param =
         ccl_coll_param::create_broadcast_param(buf, count, dtype, root, attr, comm, stream, deps);
+
+    auto req = ccl_coll_create(param, attr);
+    LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req);
+    return req;
+}
+
+ccl_request* ccl_broadcastExt_impl(void* send_buf,
+                                   void* recv_buf,
+                                   size_t count,
+                                   ccl::datatype dtype,
+                                   int root,
+                                   const ccl_coll_attr& attr,
+                                   ccl_comm* comm,
+                                   const ccl_stream* stream,
+                                   const std::vector<ccl::event>& deps) {
+    ccl_coll_param param = ccl_coll_param::create_broadcastExt_param(
+        send_buf, recv_buf, count, dtype, root, attr, comm, stream, deps);
 
     auto req = ccl_coll_create(param, attr);
     LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req);

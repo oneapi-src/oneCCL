@@ -25,35 +25,35 @@
 
 namespace ccl {
 namespace utils {
-bool allgather(std::shared_ptr<atl_base_comm> comm,
+bool allgather(const std::shared_ptr<atl_base_comm>& comm,
                const void* send_buf,
                void* recv_buf,
-               int bytes,
+               size_t bytes,
                bool sync = true);
-bool allgatherv(std::shared_ptr<atl_base_comm> comm,
+bool allgatherv(const std::shared_ptr<atl_base_comm>& comm,
                 const void* send_buf,
                 void* recv_buf,
-                const std::vector<int>& recv_bytes,
+                const std::vector<size_t>& recv_bytes,
                 bool sync = true);
 
-void check(std::shared_ptr<atl_base_comm> comm, atl_req_t& req);
+void check(const std::shared_ptr<atl_base_comm>& comm, atl_req_t& req);
 
-void recv(std::shared_ptr<atl_base_comm> comm,
+void recv(const std::shared_ptr<atl_base_comm>& comm,
           void* buf,
           int count,
           int peer_rank,
           uint64_t tag,
           bool sync = true);
 
-void send(std::shared_ptr<atl_base_comm> comm,
+void send(const std::shared_ptr<atl_base_comm>& comm,
           void* buf,
           int count,
           int peer_rank,
           uint64_t tag,
           bool sync = true);
 
-void send_ack_to_peer(std::shared_ptr<atl_base_comm> comm, uint64_t tag, int peer_rank);
-void recv_ack_from_peer(std::shared_ptr<atl_base_comm> comm, uint64_t tag, int peer_rank);
+void send_ack_to_peer(const std::shared_ptr<atl_base_comm>& comm, uint64_t tag, int peer_rank);
+void recv_ack_from_peer(const std::shared_ptr<atl_base_comm>& comm, uint64_t tag, int peer_rank);
 
 int check_msg_retval(std::string operation_name,
                      ssize_t bytes,

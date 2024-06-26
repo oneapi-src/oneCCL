@@ -30,6 +30,8 @@
 
 #include "internal_kvs.h"
 #include "internal_kvs_server.hpp"
+#include "common/api_wrapper/mpi_api_wrapper.hpp"
+#include "common/global/global.hpp"
 #include "common/log/log.hpp"
 
 kvs_status_t internal_kvs::kvs_set_value(const std::string& kvs_name,
@@ -219,6 +221,18 @@ kvs_status_t internal_kvs::init_main_server_by_string(const char* main_addr) {
     port[0] = '\0';
     port++;
 
+    // check if main_addr has root rank
+    if (ccl::global_data::env().atl_transport == ccl_atl_mpi &&
+        ccl::global_data::env().kvs_init_mode == ccl::kvs_mode::mpi) {
+        // main_addr format : ip_port_root
+        char* root_rank_str = nullptr;
+        if ((root_rank_str = strstr(port, "_")) == nullptr) {
+            LOG_ERROR("set ", CCL_KVS_IP_PORT_ENV, " in format <ip>_<port>_<root_rank>");
+            return KVS_STATUS_FAILURE;
+        }
+        root_rank_str[0] = '\0';
+    }
+
     KVS_CHECK_STATUS(safe_strtol(port, main_port), "failed to convert main_port");
     main_server_address->set_sin_port(main_port);
     KVS_CHECK_STATUS(main_server_address->set_sin_addr(main_host_ip), "failed to set main_ip");
@@ -359,6 +373,14 @@ kvs_status_t internal_kvs::kvs_main_server_address_reserve(char* main_address) {
              INT_STR_SIZE + 1,
              "_%d",
              main_server_address->get_sin_port());
+    // Add rank to main_address
+    if (ccl::global_data::env().atl_transport == ccl_atl_mpi &&
+        ccl::global_data::env().kvs_init_mode == ccl::kvs_mode::mpi) {
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        int str_len = strnlen(main_address, ccl::v1::kvs::address_max_size);
+        sprintf(main_address + str_len, "_%d", rank);
+    }
 
     return KVS_STATUS_SUCCESS;
 }
@@ -382,6 +404,25 @@ kvs_status_t internal_kvs::init_main_server_address(const char* main_addr) {
 
     if (server_address.empty()) {
         if (main_addr != NULL) {
+            // Get root_rank from main_addr
+            if (ccl::global_data::env().atl_transport == ccl_atl_mpi &&
+                ccl::global_data::env().kvs_init_mode == ccl::kvs_mode::mpi) {
+                // main_addr format : ip_port_root
+                std::string main_addr_str(main_addr);
+                size_t pos_1 = std::string::npos;
+                size_t pos_2 = std::string::npos;
+                pos_1 = main_addr_str.find("_");
+                if (pos_1 != std::string::npos) {
+                    pos_2 = main_addr_str.find("_", pos_1 + 1);
+                    if (pos_2 != std::string::npos) {
+                        root_rank = std::stoi(main_addr_str.substr(pos_2 + 1));
+                    }
+                }
+                if (pos_1 == std::string::npos || pos_2 == std::string::npos) {
+                    LOG_ERROR("failed to find root_rank in ", main_addr);
+                }
+            }
+
             ip_getting_mode = IGT_ENV;
             if (server_listen_sock ==
                 INVALID_SOCKET) { // make sure the socket is not initialized twice
@@ -514,11 +555,12 @@ kvs_status_t internal_kvs::kvs_init(const char* main_addr) {
         return KVS_STATUS_FAILURE;
     }
 
-    server_args args;
-    args.args = addr;
-    args.sock_listener = server_listen_sock;
-    err = pthread_create(&kvs_thread, nullptr, kvs_server_init, &args);
+    server_args* args = new server_args();
+    args->args = std::move(addr);
+    args->sock_listener = server_listen_sock;
+    err = pthread_create(&kvs_thread, nullptr, kvs_server_init, args);
     if (err) {
+        delete args;
         LOG_ERROR("failed to create kvs server thread, pthread_create returns ", err);
         return KVS_STATUS_FAILURE;
     }

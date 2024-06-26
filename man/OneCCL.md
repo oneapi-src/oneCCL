@@ -50,6 +50,20 @@ Set to specify memory affinity for oneCCL worker threads. <br />
 By-default: &quot;not-specified&quot; 
         
 
+## CCL_KVS_MODE
+
+
+Select the mechanism to collect ranks while creating a communicator. 
+        
+
+
+&quot;&lt;value&gt;&quot;: <br />
+&quot;0&quot; - use default implementation using sockets <br />
+&quot;1&quot; - use mpi <br />
+KVS implemention with sockets is used to collect the rank information while creating communicator by default. <br />
+ By-default: &quot;0&quot; 
+        
+
 ## CCL_ATL_SHM
 
 
@@ -75,6 +89,31 @@ Description<br />
 
 
 By-default: &quot;0&quot; 
+        
+
+## CCL_ALLGATHER
+
+
+Set allgather algorithm. 
+        
+
+
+ALLGATHER algorithms
+ - direct Based on MPI_Iallgather
+
+ - naive Send to all, receive from all
+
+ - ring Alltoall-based algorithm
+
+ - flat Alltoall-based algorithm
+
+ - multi_bcast Series of broadcast operations with different root ranks
+
+ - topo Topo scaleup algorithm
+
+
+
+By-default: &quot;topo&quot;, if sycl and l0 are enabled, otherwise &quot;naive&quot; for ofi or &quot;direct&quot; for mpi; &quot;ring&quot; used as fallback 
         
 
 ## CCL_ALLGATHERV
@@ -197,7 +236,29 @@ Set broadcast algorithm.
 
 
 BCAST algorithms
- - direc Based on MPI_Ibcast
+ - direct Based on MPI_Ibcast
+
+ - ring Ring
+
+ - double_tree Double-tree algorithm
+
+ - naive Send to all from root rank
+
+
+
+Note: BCAST algorithm does not support yet the CCL_BCAST_SCALEOUT environment variable. To change the algorithm for BCAST, use CCL_BCAST.
+By-default: &quot;direct&quot; 
+        
+
+## CCL_BCASTEXT
+
+
+Set broadcastExt algorithm (send_buf, recv_buf) 
+        
+
+
+BCAST algorithms
+ - direct Based on MPI_Ibcast
 
  - ring Ring
 
@@ -246,14 +307,15 @@ Set reduce-scatter algorithm.
 REDUCE_SCATTER algorithms
  - direct Based on MPI_Ireduce_scatter_block
 
- - ring Use CCL_RS_CHUNK_COUNT and CCL_RS_MIN_CHUNK_SIZE to control pipelining.
+ - naive Send to all, receive and reduce from all
+
+ - ring Ring-based algorithm. Use CCL_RS_CHUNK_COUNT and CCL_RS_MIN_CHUNK_SIZE to control pipelining.
 
  - topo Topo algorithm (available if sycl and l0 are enabled, scaleup only)
 
 
 
-Note: REDUCE_SCATTER algorithm does not support yet the CCL_REDUCE_SCATTER_SCALEOUT environment variable. To change the algorithm for REDUCE_SCATTER scaleout, use CCL_REDUCE_SCATTER.
-By-default: &quot;direct&quot; 
+By-default: &quot;topo&quot; if sycl and l0 are enabled, otherwise naive for ofi transport or direct for mpi 
         
 
 ## CCL_RECV
@@ -292,6 +354,29 @@ SEND algorithms
 
 
 By-default: &quot;topo&quot; if sycl and l0 are enabled, otherwise offload for ofi/mpi transport 
+        
+
+## CCL_ALLGATHER_SCALEOUT
+
+
+Set scaleout allgather algorithm. 
+        
+
+
+ALLGATHER algorithms
+ - direct Based on MPI_Iallgather
+
+ - naive Send to all, receive from all
+
+ - ring Alltoall-based algorithm
+
+ - flat Alltoall-based algorithm
+
+ - multi_bcast Series of broadcast operations with different root ranks
+
+
+
+By-default: &quot;naive&quot; for ofi or &quot;direct&quot; for mpi; &quot;ring&quot; used as fallback 
         
 
 ## CCL_ALLGATHERV_SCALEOUT
@@ -405,6 +490,44 @@ REDUCE algorithms
 By-default: &quot;double_tree&quot; 
         
 
+## CCL_REDUCE_SCATTER_SCALEOUT
+
+
+Set reduce-scatter scaleout algorithm. 
+        
+
+
+REDUCE_SCATTER algorithms
+ - direct Based on MPI_Ireduce_scatter_block
+
+ - naive Send to all, receive and reduce from all
+
+ - ring Ring-based algorithm. Use CCL_RS_CHUNK_COUNT and CCL_RS_MIN_CHUNK_SIZE to control pipelining.
+
+
+
+By-default: &quot;naive&quot; 
+        
+
+## CCL_ZE_TMP_BUF_SIZE
+
+
+Specifies the size of the intermediate buffer used by oneCCL for collective operations. 
+        
+
+
+The CCL_ZE_TMP_BUF_SIZE environment variable controls the size of the buffer that is used for temporary buffers of collective operations in 'topo' algorithms. It has no effect on other algorithms. Smaller values can reduce memory usage at the expense of performance for 'topo' algorithms.
+Syntax
+CCL_ZE_TMP_BUF_SIZE=&quot;&lt;value&gt;&quot;
+Arguments
+&quot;&lt;value&gt;&quot; Description
+ - SIZE The size of the buffer in bytes.
+
+
+
+By-default: &quot;536870912&quot; 
+        
+
 ## CCL_RS_CHUNK_COUNT
 
 
@@ -425,6 +548,30 @@ Set to specify minimum number of bytes in chunk for reduce_scatter phase in ring
 
 &quot;&lt;size&gt;&quot; - Minimum number of bytes in chunk for reduce_scatter phase in ring allreduce. Affects actual value of CCL_RS_CHUNK_COUNT.
 By-default: &quot;65536&quot; 
+        
+
+## CCL_ALLGATHERV_TOPO_LARGE_SCALE
+
+
+        
+
+
+        
+
+## CCL_ALLGATHERV_TOPO_READ
+
+
+        
+
+
+        
+
+## CCL_ALLTOALLV_TOPO_READ
+
+
+        
+
+
         
 
 ## CCL_REDUCE_SCATTER_TOPO_READ
@@ -448,6 +595,27 @@ Set this environment variable to select read or write based device-to-device dat
 By-default: &quot;1&quot; 
         
 
+## CCL_ZE_DEPS_SYNC
+
+
+Set this environment variable to 1 to enable synchronous dependencies processing for oneCCL operations. 
+        
+
+
+Syntax CCL_ZE_DEPS_SYNC=&quot;&lt;value&gt;&quot;
+Arguments
+&quot;&lt;value&gt;&quot; Description
+ - 1 Dependencies of oneCCL operations are processed synchronously.
+
+ - 0 Dependencies of oneCCL operations are processed asynchronously (default), meaning that further L0 submissions are being done while dependencies are in progress. Dependencies are signaling when processed.
+
+
+
+Description
+Set this environment variable to 1 to make oneCCL block the thread while previous sycl/L0 submissions are not finished.
+By-default: &quot;0&quot; 
+        
+
 ## CCL_REDUCE_SCATTER_MONOLITHIC_KERNEL
 
 
@@ -469,6 +637,14 @@ Set this environment variable to enable compute kernels for Allreduce, Reduce, a
 By-default: &quot;0&quot; 
         
 
+## CCL_ALLGATHERV_MONOLITHIC_KERNEL
+
+
+        
+
+
+        
+
 ## CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL
 
 
@@ -479,14 +655,14 @@ Set this environment variable to enable compute kernels for Allgather collective
 Syntax
 CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL=&quot;&lt;value&gt;&quot; Arguments
 &quot;&lt;value&gt;&quot; Description
- - 1 Uses compute kernels to transfer data across GPUs for Allgather collective
+ - 1 Uses compute kernels to transfer data across GPUs for Allgatherv collectives
 
- - 0 Uses copy engines to transfer data across GPUs for Allgather collectives (default)
+ - 0 Uses copy engines to transfer data across GPUs for Allgatherv collectives (default)
 
 
 
 Description
-Set this environment variable to enable compute kernels for Allgather collectives using device (GPU) buffers
+Set this environment variable to enable compute kernels for Allgatherv collectives using device (GPU) buffers
 By-default: &quot;0&quot; 
         
 
@@ -510,6 +686,22 @@ Arguments
 Description
 Set this environment variable to enable compute kernels for Alltoall and Alltoallv collectives using device (GPU) buffers
 By-default: &quot;1&quot; 
+        
+
+## CCL_ALLTOALLV_MONOLITHIC_READ_KERNEL
+
+
+        
+
+
+        
+
+## CCL_REDUCE_MONOLITHIC_KERNEL
+
+
+        
+
+
         
 
 ## CCL_ALLGATHERV_PIPE_CHUNK_COUNT
@@ -600,6 +792,166 @@ Set this environment variable to enable control how many chunks are used for Red
 By-default: &quot;0&quot; 
         
 
+## CCL_ALLREDUCE_NREDUCE_BUFFERING
+
+
+        
+
+
+        
+
+## CCL_ALLREDUCE_NREDUCE_SEGMENT_SIZE
+
+
+        
+
+
+        
+
+## CCL_ALLREDUCE_2D_CHUNK_COUNT
+
+
+        
+
+
+        
+
+## CCL_ALLREDUCE_2D_MIN_CHUNK_SIZE
+
+
+        
+
+
+        
+
+## CCL_ALLREDUCE_2D_SWITCH_DIMS
+
+
+        
+
+
+        
+
+## CCL_CHECK_INPLACE_ALIASING
+
+
+        
+
+
+        
+
+## CCL_ALLTOALL_SCATTER_MAX_OPS
+
+
+        
+
+
+        
+
+## CCL_BACKEND
+
+
+        
+
+
+        
+
+## CCL_KERNEL_PATH
+
+
+        
+
+
+        
+
+## CCL_KERNEL_MODULE_CACHE
+
+
+        
+
+
+        
+
+## CCL_KERNEL_DEBUG
+
+
+        
+
+
+        
+
+## CCL_KERNEL_GROUP_SIZE
+
+
+        
+
+
+        
+
+## CCL_KERNEL_GROUP_COUNT
+
+
+        
+
+
+        
+
+## CCL_KERNEL_MEM_ALIGN
+
+
+        
+
+
+        
+
+## CCL_KERNEL_SYNC
+
+
+        
+
+
+        
+
+## CCL_KERNEL_1S_LEAD
+
+
+        
+
+
+        
+
+## CCL_KERNEL_1S_USE_COPY_OPS
+
+
+        
+
+
+        
+
+## CCL_KERNEL_1S_IPC_WA
+
+
+        
+
+
+        
+
+## CCL_KERNEL_SINGLE_REDUCE_PEERS
+
+
+        
+
+
+        
+
+## CCL_KERNEL_CLOSE_FD_WA
+
+
+        
+
+
+        
+
 ## CCL_LOCAL_RANK
 
 
@@ -666,6 +1018,214 @@ Set this environment variable to specify the job launcher to use.
 By-default: &quot;hydra&quot; 
         
 
+## CCL_TOPO_ALGO
+
+
+        
+
+
+        
+
+## CCL_TOPO_COLOR
+
+
+        
+
+
+        
+
+## CCL_TOPO_P2P_ACCESS
+
+
+        
+
+
+        
+
+## CCL_TOPO_FABRIC_VERTEX_CONNECTION_CHECK
+
+
+        
+
+
+        
+
+## CCL_OFI_LIBRARY_PATH
+
+
+        
+
+
+        
+
+## CCL_SYCL_OUTPUT_EVENT
+
+
+        
+
+
+        
+
+## CCL_USE_HMEM
+
+
+        
+
+
+        
+
+## CCL_ZE_BARRIER
+
+
+        
+
+
+        
+
+## CCL_ZE_BIDIR_ALGO
+
+
+        
+
+
+        
+
+## CCL_ZE_CACHE
+
+
+        
+
+
+        
+
+## CCL_ZE_DEVICE_CACHE_EVICT_SMALLEST
+
+
+        
+
+
+        
+
+## CCL_ZE_DEVICE_CACHE_UPPER_LIMIT
+
+
+        
+
+
+        
+
+## CCL_ZE_DEVICE_CACHE_NUM_BLOCKS_IN_CHUNK
+
+
+        
+
+
+        
+
+## CCL_ZE_DEVICE_CACHE_POLICY
+
+
+        
+
+
+        
+
+## CCL_ZE_DEVICE_MEM_DISABLE_CLEAR
+
+
+        
+
+
+        
+
+## CCL_ZE_DEVICE_MEM_ALLOC_SIZE
+
+
+        
+
+
+        
+
+## CCL_ZE_DEVICE_MEM_ENABLE
+
+
+        
+
+
+        
+
+## CCL_ZE_CACHE_OPEN_IPC_HANDLES
+
+
+Set this environment variable to enable or disable the caching of IPC handles opened with zeMemOpenIpcHandle(). 
+        
+
+
+This controls whether it caches IPC handles opened with zeMemOpenIpcHandle() on receiver's side. When enabled, it caches opened IPC handles, which can improve performance in certain scenarios. See &lt;ulink url=&quot;https://spec.oneapi.io/level-zero/latest/core/PROG.html#memory-1&quot;&gt;https://spec.oneapi.io/level-zero/latest/core/PROG.html#memory-1&lt;/ulink&gt;
+CCL_ZE_CACHE_OPEN_IPC_HANDLES=&quot;&lt;value&gt;&quot;
+&quot;&lt;value&gt;&quot;
+ - 0 Disables the caching of opened IPC handles.
+
+ - 1 Enables the caching of opened IPC handles (default).
+
+
+
+By-default: &quot;1&quot; 
+        
+
+## CCL_ZE_CACHE_OPEN_IPC_HANDLES_THRESHOLD
+
+
+Set this environment variable to specify the per process threshold for caching IPC handles opened with zeMemOpenIpcHandle(). 
+        
+
+
+This specifies the threshold for caching open IPC handles on receiver's side. When the number of open IPC handles exceeds this threshold, the cache will start evicting handles via LRU from the cache.
+CCL_ZE_CACHE_OPEN_IPC_HANDLES_THRESHOLD=&quot;&lt;value&gt;&quot;
+&quot;&lt;value&gt;&quot;
+ - SIZE The threshold value for caching open IPC handles.
+
+
+
+By-default: &quot;1000&quot; 
+        
+
+## CCL_ZE_CACHE_GET_IPC_HANDLES_THRESHOLD
+
+
+Set this environment variable to enable or disable the caching of IPC handles obtained with zeMemGetIpcHandle(). 
+        
+
+
+This environment variable specifies the threshold for caching get IPC handles on sender's side. When the number of IPC handles obtained with zeMemGetIpcHandle() exceeds this threshold, the cache will start evicting handles via LRU from the cache.
+CCL_ZE_CACHE_GET_IPC_HANDLES_THRESHOLD=&quot;&lt;value&gt;&quot;
+&quot;&lt;value&gt;&quot;
+ - SIZE The threshold value for caching get IPC handles.
+
+
+
+By-default: &quot;1000&quot; 
+        
+
+## CCL_ZE_CACHE_GET_IPC_HANDLES
+
+
+Set this environment variable to specify the per process threshold for caching IPC handles obtained with zeMemGetIpcHandle(). 
+        
+
+
+This controls whether it caches IPC handles obtained with zeMemGetIpcHandle() on sender's side. When enabled, it caches IPC handles, which can improve performance in certain scenarios. By default, the caching of get IPC handles is enabled. See &lt;ulink url=&quot;https://spec.oneapi.io/level-zero/latest/core/PROG.html#memory-1&quot;&gt;https://spec.oneapi.io/level-zero/latest/core/PROG.html#memory-1&lt;/ulink&gt;
+CCL_ZE_CACHE_GET_IPC_HANDLES=&quot;&lt;value&gt;&quot;
+&quot;&lt;value&gt;&quot;
+ - 0 Disables the caching of get IPC handles.
+
+ - 1 Enables the caching of get IPC handles (default).
+
+
+
+By-default: &quot;1&quot; 
+        
+
 ## CCL_ZE_ENABLE_OVERSUBSCRIPTION_FALLBACK
 
 
@@ -688,6 +1248,166 @@ Set to enable oversubscription throw for all collectives.
 This enviroment variable enables or disables the oversubscription throw check
 &quot;&lt;value&gt;&quot; : &quot;0&quot;, &quot;1&quot;
 By-default: &quot;1&quot; 
+        
+
+## CCL_ZE_SERIALIZE
+
+
+        
+
+
+        
+
+## CCL_ZE_COPY_ENGINE
+
+
+        
+
+
+        
+
+## CCL_ZE_H2D_COPY_ENGINE
+
+
+        
+
+
+        
+
+## CCL_ZE_D2D_COPY_ENGINE
+
+
+        
+
+
+        
+
+## CCL_ZE_MAX_COMPUTE_QUEUES
+
+
+        
+
+
+        
+
+## CCL_ZE_MAX_COPY_QUEUES
+
+
+        
+
+
+        
+
+## CCL_ZE_ENABLE_CCS_FALLBACK_FOR_COPY
+
+
+        
+
+
+        
+
+## CCL_ZE_LIST_DUMP
+
+
+        
+
+
+        
+
+## CCL_ZE_QUEUE_INDEX_OFFSET
+
+
+        
+
+
+        
+
+## CCL_ZE_CLOSE_IPC_WA
+
+
+        
+
+
+        
+
+## CCL_ZE_SINGLE_LIST
+
+
+        
+
+
+        
+
+## CCL_ZE_DISABLE_FAMILY_CHECK
+
+
+        
+
+
+        
+
+## CCL_ZE_DISABLE_PORT_CHECK
+
+
+        
+
+
+        
+
+## CCL_ZE_LIBRARY_PATH
+
+
+        
+
+
+        
+
+## CCL_ZE_ENABLE
+
+
+        
+
+
+        
+
+## CCL_ZE_FINI_WA
+
+
+        
+
+
+        
+
+## CCL_ZE_MULTI_WORKERS
+
+
+        
+
+
+        
+
+## CCL_DEBUG_TIMESTAMPS_LEVEL
+
+
+        
+
+
+        
+
+## CCL_BF16
+
+
+        
+
+
+        
+
+## CCL_FP16
+
+
+        
+
+
         
 
 
@@ -796,6 +1516,114 @@ Switch ccl::barrier() host-sync / host-async options.
 
 Historically ccl::barrier() was always synchronous. That does not match with oneCCL asynchronous concept. Same as other collectives, ccl::barrier() should be host-asynchronous if possible. As it would be too much to change in one moment, we start through experimental variable which introduces the option to make barrier host-asynchronous. Use CCL_BARRIER_SYNC=0 to achieve that.
 By-default: &quot;1 (SYNC)&quot; 
+        
+
+## CCL_ENABLE_SYCL_KERNELS
+
+
+Enable SYCL kernels. 
+        
+
+
+Setting this environment variable to 1 enables SYCL kernel-based implementation for allgatherv, allreduce, and reduce_scatter. Support includes all message sizes and some data types (int32, fp32, fp16, and bf16), sum operation, and single node. oneCCL falls back to other implementations when the support is not available with SYCL kernels, so the user can safely setup this environment variable.
+&quot;&lt;value&gt;&quot; : &quot;0&quot;, &quot;1&quot;
+By-default: &quot;0 (disabled)&quot; 
+        
+
+## CCL_SYCL_ALLGATHERV_TMP_BUF
+
+
+Enable the use of persistent temporary buffer in allgatherv. 
+        
+
+
+Setting this environment variable to 1 enables the use of a persistent temporary buffer to perform the allgatherv operation. This implementation makes the collective fully asynchronous but adds some additional overhead due to the extra copy of the user buffer to a (persistent) temporary buffer.
+&quot;&lt;value&gt;&quot; : &quot;0&quot;, &quot;1&quot;
+By-default: &quot;0 (disabled)&quot; 
+        
+
+## CCL_SYCL_ALLGATHERV_SMALL_THRESHOLD
+
+
+Specify the threshold for the small size algorithm in allgatherv. 
+        
+
+
+Set the threshold in bytes to specify the small size algorithm in the allgatherv collective. Default value is 131072. &quot;&lt;value&gt;&quot;&quot; : &quot;&gt;=0&quot; 
+        
+
+## CCL_SYCL_ALLGATHERV_MEDIUM_THRESHOLD
+
+
+Specify the threshold for the medium size algorithm in allgatherv. 
+        
+
+
+Set the threshold in bytes to specify the medium size algorithm in the allgatherv collective. Default value is 2097152. &quot;&lt;value&gt;&quot;&quot; : &quot;&gt;=0&quot; 
+        
+
+## CCL_SYCL_ALLREDUCE_TMP_BUF
+
+
+Enable the use of persistent temporary buffer in allreduce. 
+        
+
+
+Setting this environment variable to 1 enables the use of a persistent temporary buffer to perform the allreduce operation. This implementation makes the collective fully asynchronous but adds some additional overhead due to the extra copy of the user buffer to a (persistent) temporary buffer.
+&quot;&lt;value&gt;&quot; : &quot;0&quot;, &quot;1&quot;
+By-default: &quot;0 (disabled)&quot; 
+        
+
+## CCL_SYCL_ALLREDUCE_SMALL_THRESHOLD
+
+
+Specify the threshold for the small size algorithm in allreduce. 
+        
+
+
+Set the threshold in bytes to specify the small size algorithm in the allreduce collective. Default value is 524288. &quot;&lt;value&gt;&quot;&quot; : &quot;&gt;=0&quot; 
+        
+
+## CCL_SYCL_ALLREDUCE_MEDIUM_THRESHOLD
+
+
+Specify the threshold for the medium size algorithm in allreduce. 
+        
+
+
+Set the threshold in bytes to specify the medium size algorithm in the allreduce collective. Default value is 16777216. &quot;&lt;value&gt;&quot;&quot; : &quot;&gt;=0&quot; 
+        
+
+## CCL_SYCL_REDUCE_SCATTER_TMP_BUF
+
+
+Enable the use of persistent temporary buffer in reduce_scatter. 
+        
+
+
+Setting this environment variable to 1 enables the use of a persistent temporary buffer to perform the reduce_scatter operation. This implementation makes the collective fully asynchronous but adds some additional overhead due to the extra copy of the user buffer to a (persistent) temporary buffer.
+&quot;&lt;value&gt;&quot; : &quot;0&quot;, &quot;1&quot;
+By-default: &quot;0 (disabled)&quot; 
+        
+
+## CCL_SYCL_REDUCE_SCATTER_SMALL_THRESHOLD
+
+
+Specify the threshold for the small size algorithm in reduce_scatter. 
+        
+
+
+Set the threshold in bytes to specify the small size algorithm in the reduce_scatter collective. Default value is 2097152.&quot;&lt;value&gt;&quot;&quot; : &quot;&gt;=0&quot; 
+        
+
+## CCL_SYCL_REDUCE_SCATTER_MEDIUM_THRESHOLD
+
+
+Specify the threshold for the medium size algorithm in reduce_scatter. 
+        
+
+
+Set the threshold in bytes to specify the medium size algorithm in the reduce_scatter collective. Default value is 67108864. &quot;&lt;value&gt;&quot;&quot; : &quot;&gt;=0&quot; 
         
 
 

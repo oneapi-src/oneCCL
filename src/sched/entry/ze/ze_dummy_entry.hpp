@@ -14,14 +14,23 @@
  limitations under the License.
 */
 #pragma once
-#include "oneapi/ccl.hpp"
 
-ccl::event allgatherv_large(const void* send_buf,
-                            size_t send_count,
-                            void* recv_buf,
-                            const ccl::vector_class<size_t>& recv_counts,
-                            ccl::datatype dtype,
-                            const ccl::communicator& comm,
-                            const ccl::stream& op_stream,
-                            const ccl::allgatherv_attr& attr,
-                            const ccl::vector_class<ccl::event>& deps);
+#include "sched/entry/factory/entry_factory.hpp"
+
+class ze_dummy_entry : public ze_base_entry {
+public:
+    static constexpr const char* class_name() noexcept {
+        return "ZE_DUMMY";
+    }
+
+    const char* name() const override {
+        return class_name();
+    }
+
+    virtual std::string name_ext() const override;
+
+    void update() override;
+
+    explicit ze_dummy_entry(ccl_sched* sched,
+                            const std::vector<ze_event_handle_t>& wait_events = {});
+};

@@ -84,7 +84,11 @@
 
 
 #if defined(__SYCL_DEVICE_ONLY__)
+#ifdef SYCL_EXTERNAL
 #define IMPI_DEVICE_EXPORT SYCL_EXTERNAL
+#else
+#define IMPI_DEVICE_EXPORT __DPCPP_SYCL_EXTERNAL
+#endif
 #else
 #define IMPI_DEVICE_EXPORT
 #endif
@@ -322,6 +326,7 @@ static const MPI_Datatype mpich_mpi_uint64_t MPICH_ATTR_TYPE_TAG_STDINT(uint64_t
 #define MPI_C_LONG_DOUBLE_COMPLEX  ((MPI_Datatype)0x4c002042)
 /* other extension types */
 #define MPIX_C_FLOAT16             ((MPI_Datatype)0x4c000246)
+#define MPIX_C_BF16                ((MPI_Datatype)0x4c000247)
 
 #ifdef MPICH_DEFINE_ATTR_TYPE_TYPES
 static const MPI_Datatype mpich_mpi_c_bool                MPICH_ATTR_TYPE_TAG_C99(_Bool)           = MPI_C_BOOL;
@@ -527,8 +532,14 @@ typedef int MPI_Request;
 /* MPI message objects for Mprobe and related functions */
 typedef int MPI_Message;
 
+/* Definitions that are determined by configure. */
+typedef long MPI_Aint;
+typedef int MPI_Fint;
+typedef long long MPI_Count;
+
 /* User combination function */
 typedef void (MPI_User_function) ( void *, void *, int *, MPI_Datatype * ); 
+typedef void (MPI_User_function_c) ( void *, void *, MPI_Count *, MPI_Datatype * );
 
 /* MPI Attribute copy and delete functions */
 typedef int (MPI_Copy_function) ( MPI_Comm, int, void *, void *, void *, int * );
@@ -599,8 +610,8 @@ typedef int (MPI_Delete_function) ( MPI_Comm, int, void *, void * );
  * digits for REV, 1 digit for EXT and 2 digits for EXT_NUMBER. So,
  * 2019.0.0b0 will have the numeric version 20190000100.
  */
-#define I_MPI_VERSION "2021.12.0"
-#define I_MPI_NUMVERSION 20211200300
+#define I_MPI_VERSION "2021.13.0"
+#define I_MPI_NUMVERSION 20211300300
 
 /* for the datatype decoders */
 enum MPIR_Combiner_enum {
@@ -656,11 +667,6 @@ typedef int MPI_Info;
 #define MPIX_COMM_TYPE_NEIGHBORHOOD 2
 
 #define MPI_COMM_TYPE_HW_GUIDED    3
-
-/* Definitions that are determined by configure. */
-typedef long MPI_Aint;
-typedef int MPI_Fint;
-typedef long long MPI_Count;
 
 #ifdef MPICH_DEFINE_ATTR_TYPE_TYPES
 static const MPI_Datatype mpich_mpi_aint   MPICH_ATTR_TYPE_TAG(MPI_Aint)   = MPI_AINT;
@@ -1141,6 +1147,7 @@ int MPI_Unpack(const void *inbuf, int insize, int *position, void *outbuf, int o
                MPI_Datatype datatype, MPI_Comm comm) MPICH_ATTR_POINTER_WITH_TYPE_TAG(4,6) MPICH_API_PUBLIC;
 int MPI_Pack_size(int incount, MPI_Datatype datatype, MPI_Comm comm, int *size) MPICH_API_PUBLIC;
 int MPI_Op_create(MPI_User_function *user_fn, int commute, MPI_Op *op) MPICH_API_PUBLIC;
+int MPI_Op_create_c(MPI_User_function_c *user_fn, int commute, MPI_Op *op) MPICH_API_PUBLIC;
 int MPI_Op_free(MPI_Op *op) MPICH_API_PUBLIC;
 int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf,
                   int recvcount, MPI_Datatype recvtype, MPI_Comm comm)
@@ -1342,6 +1349,9 @@ int MPI_Reduce_init(const void *sendbuf, void *recvbuf, int count, MPI_Datatype 
 int MPI_Reduce_local(const void *inbuf, void *inoutbuf, int count, MPI_Datatype datatype,
                      MPI_Op op)
                      MPICH_ATTR_POINTER_WITH_TYPE_TAG(1,4) MPICH_ATTR_POINTER_WITH_TYPE_TAG(2,4) MPICH_API_PUBLIC;
+int MPI_Reduce_local_c(const void *inbuf, void *inoutbuf, MPI_Count count, MPI_Datatype datatype,
+                       MPI_Op op)
+                       MPICH_ATTR_POINTER_WITH_TYPE_TAG(1,4) MPICH_ATTR_POINTER_WITH_TYPE_TAG(2,4) MPICH_API_PUBLIC;
 int MPI_Reduce_scatter(const void *sendbuf, void *recvbuf, const int recvcounts[],
                        MPI_Datatype datatype, MPI_Op op, MPI_Comm comm)
                        MPICH_ATTR_POINTER_WITH_TYPE_TAG(1,4) MPICH_ATTR_POINTER_WITH_TYPE_TAG(2,4) MPICH_API_PUBLIC;
@@ -1484,6 +1494,20 @@ IMPI_DEVICE_EXPORT int MPI_Get(void *origin_addr, int origin_count, MPI_Datatype
 IMPI_DEVICE_EXPORT int MPI_Put(const void *origin_addr, int origin_count, MPI_Datatype origin_datatype,
             int target_rank, MPI_Aint target_disp, int target_count,
             MPI_Datatype target_datatype, MPI_Win win) MPICH_ATTR_POINTER_WITH_TYPE_TAG(1,3) MPICH_API_PUBLIC;
+
+IMPI_DEVICE_EXPORT int MPIX_Get_notify(void *origin_addr, int origin_count, MPI_Datatype origin_datatype,
+            int target_rank, MPI_Aint target_disp, int target_count,
+            MPI_Datatype target_datatype, int notification_idx, MPI_Win win) MPICH_ATTR_POINTER_WITH_TYPE_TAG(1,3) MPICH_API_PUBLIC;
+IMPI_DEVICE_EXPORT int MPIX_Put_notify(const void *origin_addr, int origin_count, MPI_Datatype origin_datatype,
+            int target_rank, MPI_Aint target_disp, int target_count,
+            MPI_Datatype target_datatype, int notification_idx, MPI_Win win) MPICH_ATTR_POINTER_WITH_TYPE_TAG(1,3) MPICH_API_PUBLIC;
+
+int MPIX_Get_notify_c(void *origin_addr, MPI_Count origin_count, MPI_Datatype origin_datatype,
+            int target_rank, MPI_Aint target_disp, MPI_Count target_count,
+            MPI_Datatype target_datatype, int notification_idx, MPI_Win win) MPICH_ATTR_POINTER_WITH_TYPE_TAG(1,3) MPICH_API_PUBLIC;
+int MPIX_Put_notify_c(const void *origin_addr, MPI_Count origin_count, MPI_Datatype origin_datatype,
+            int target_rank, MPI_Aint target_disp, MPI_Count target_count,
+            MPI_Datatype target_datatype, int notification_idx, MPI_Win win) MPICH_ATTR_POINTER_WITH_TYPE_TAG(1,3) MPICH_API_PUBLIC;
 int MPI_Win_complete(MPI_Win win) MPICH_API_PUBLIC;
 int MPI_Win_create(void *base, MPI_Aint size, int disp_unit, MPI_Info info, MPI_Comm comm,
                    MPI_Win *win) MPICH_API_PUBLIC;
@@ -1510,7 +1534,7 @@ int MPI_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info, MPI_Comm comm,
                      MPI_Win *win) MPICH_API_PUBLIC;
 int MPI_Win_allocate_shared(MPI_Aint size, int disp_unit, MPI_Info info, MPI_Comm comm,
                             void *baseptr, MPI_Win *win) MPICH_API_PUBLIC;
-int MPI_Win_shared_query(MPI_Win win, int rank, MPI_Aint *size, int *disp_unit, void *baseptr) MPICH_API_PUBLIC;
+IMPI_DEVICE_EXPORT int MPI_Win_shared_query(MPI_Win win, int rank, MPI_Aint *size, int *disp_unit, void *baseptr) MPICH_API_PUBLIC;
 int MPI_Win_create_dynamic(MPI_Info info, MPI_Comm comm, MPI_Win *win) MPICH_API_PUBLIC;
 int MPI_Win_attach(MPI_Win win, void *base, MPI_Aint size) MPICH_API_PUBLIC;
 int MPI_Win_detach(MPI_Win win, const void *base) MPICH_API_PUBLIC;
@@ -1561,6 +1585,13 @@ IMPI_DEVICE_EXPORT int MPI_Win_flush_all(MPI_Win win) MPICH_API_PUBLIC;
 int MPI_Win_flush_local(int rank, MPI_Win win) MPICH_API_PUBLIC;
 int MPI_Win_flush_local_all(MPI_Win win) MPICH_API_PUBLIC;
 int MPI_Win_sync(MPI_Win win) MPICH_API_PUBLIC;
+
+/* MPI notification extentions */
+int MPIX_Win_create_notify(MPI_Win win, int notification_num) MPICH_API_PUBLIC;
+int MPIX_Win_free_notify(MPI_Win win) MPICH_API_PUBLIC;
+IMPI_DEVICE_EXPORT int MPIX_Win_get_notify(MPI_Win win, int notification_idx, MPI_Count *notification) MPICH_API_PUBLIC;
+IMPI_DEVICE_EXPORT int MPIX_Win_set_notify(MPI_Win win, int notification_idx, MPI_Count notification) MPICH_API_PUBLIC;
+int MPIX_Win_get_notify_request(MPI_Win win, int notification_idx, MPI_Count expected_value, MPI_Request *request) MPICH_API_PUBLIC;
  
 /* External Interfaces */
 int MPI_Add_error_class(int *errorclass) MPICH_API_PUBLIC;
@@ -1608,7 +1639,7 @@ int MPI_Win_create_keyval(MPI_Win_copy_attr_function *win_copy_attr_fn,
                           void *extra_state) MPICH_API_PUBLIC;
 int MPI_Win_delete_attr(MPI_Win win, int win_keyval) MPICH_API_PUBLIC;
 int MPI_Win_free_keyval(int *win_keyval) MPICH_API_PUBLIC;
-int MPI_Win_get_attr(MPI_Win win, int win_keyval, void *attribute_val, int *flag) MPICH_API_PUBLIC;
+IMPI_DEVICE_EXPORT int MPI_Win_get_attr(MPI_Win win, int win_keyval, void *attribute_val, int *flag) MPICH_API_PUBLIC;
 int MPI_Win_get_name(MPI_Win win, char *win_name, int *resultlen) MPICH_API_PUBLIC;
 int MPI_Win_set_attr(MPI_Win win, int win_keyval, void *attribute_val) MPICH_API_PUBLIC;
 int MPI_Win_set_name(MPI_Win win, const char *win_name) MPICH_API_PUBLIC;
@@ -1889,6 +1920,7 @@ int PMPI_Unpack(const void *inbuf, int insize, int *position, void *outbuf, int 
                 MPI_Datatype datatype, MPI_Comm comm) MPICH_ATTR_POINTER_WITH_TYPE_TAG(4,6) MPICH_API_PUBLIC;
 int PMPI_Pack_size(int incount, MPI_Datatype datatype, MPI_Comm comm, int *size) MPICH_API_PUBLIC;
 int PMPI_Op_create(MPI_User_function *user_fn, int commute, MPI_Op *op) MPICH_API_PUBLIC;
+int PMPI_Op_create_c(MPI_User_function_c *user_fn, int commute, MPI_Op *op) MPICH_API_PUBLIC;
 int PMPI_Op_free(MPI_Op *op) MPICH_API_PUBLIC;
 int PMPI_Group_size(MPI_Group group, int *size) MPICH_API_PUBLIC;
 int PMPI_Group_rank(MPI_Group group, int *rank) MPICH_API_PUBLIC;
@@ -1994,6 +2026,21 @@ int PMPI_Get(void *origin_addr, int origin_count, MPI_Datatype origin_datatype,
 int PMPI_Put(const void *origin_addr, int origin_count, MPI_Datatype origin_datatype,
              int target_rank, MPI_Aint target_disp, int target_count,
              MPI_Datatype target_datatype, MPI_Win win) MPICH_ATTR_POINTER_WITH_TYPE_TAG(1,3) MPICH_API_PUBLIC;
+
+int PMPIX_Get_notify(void *origin_addr, int origin_count, MPI_Datatype origin_datatype,
+            int target_rank, MPI_Aint target_disp, int target_count,
+            MPI_Datatype target_datatype, int notification_idx, MPI_Win win) MPICH_ATTR_POINTER_WITH_TYPE_TAG(1,3) MPICH_API_PUBLIC;
+int PMPIX_Put_notify(const void *origin_addr, int origin_count, MPI_Datatype origin_datatype,
+            int target_rank, MPI_Aint target_disp, int target_count,
+            MPI_Datatype target_datatype, int notification_idx, MPI_Win win) MPICH_ATTR_POINTER_WITH_TYPE_TAG(1,3) MPICH_API_PUBLIC;
+
+int PMPIX_Get_notify_c(void *origin_addr, MPI_Count origin_count, MPI_Datatype origin_datatype,
+            int target_rank, MPI_Aint target_disp, MPI_Count target_count,
+            MPI_Datatype target_datatype, int notification_idx, MPI_Win win) MPICH_ATTR_POINTER_WITH_TYPE_TAG(1,3) MPICH_API_PUBLIC;
+int PMPIX_Put_notify_c(const void *origin_addr, MPI_Count origin_count, MPI_Datatype origin_datatype,
+            int target_rank, MPI_Aint target_disp, MPI_Count target_count,
+            MPI_Datatype target_datatype, int notification_idx, MPI_Win win) MPICH_ATTR_POINTER_WITH_TYPE_TAG(1,3) MPICH_API_PUBLIC;
+
 int PMPI_Win_complete(MPI_Win win) MPICH_API_PUBLIC;
 int PMPI_Win_create(void *base, MPI_Aint size, int disp_unit, MPI_Info info, MPI_Comm comm,
                     MPI_Win *win) MPICH_API_PUBLIC;
@@ -2063,7 +2110,13 @@ int PMPI_Win_flush_all(MPI_Win win) MPICH_API_PUBLIC;
 int PMPI_Win_flush_local(int rank, MPI_Win win) MPICH_API_PUBLIC;
 int PMPI_Win_flush_local_all(MPI_Win win) MPICH_API_PUBLIC;
 int PMPI_Win_sync(MPI_Win win) MPICH_API_PUBLIC;
- 
+
+/* MPI notification extentions */
+int PMPIX_Win_create_notify(MPI_Win win, int notification_num) MPICH_API_PUBLIC;
+int PMPIX_Win_free_notify(MPI_Win win) MPICH_API_PUBLIC;
+int PMPIX_Win_get_notify(MPI_Win win, int notification_idx, MPI_Count *notification) MPICH_API_PUBLIC;
+int PMPIX_Win_set_notify(MPI_Win win, int notification_idx, MPI_Count notification) MPICH_API_PUBLIC;
+int PMPIX_Win_get_notify_request(MPI_Win win, int notification_idx, MPI_Count expected_value, MPI_Request *request) MPICH_API_PUBLIC;
 /* External Interfaces */
 int PMPI_Add_error_class(int *errorclass) MPICH_API_PUBLIC;
 int PMPI_Add_error_code(int errorclass, int *errorcode) MPICH_API_PUBLIC;
@@ -2191,6 +2244,9 @@ int PMPI_Type_create_f90_complex(int p, int r, MPI_Datatype *newtype) MPICH_API_
 int PMPI_Reduce_local(const void *inbuf, void *inoutbuf, int count, MPI_Datatype datatype,
                       MPI_Op op)
                       MPICH_ATTR_POINTER_WITH_TYPE_TAG(1,4) MPICH_ATTR_POINTER_WITH_TYPE_TAG(2,4) MPICH_API_PUBLIC;
+int PMPI_Reduce_local_c(const void *inbuf, void *inoutbuf, MPI_Count count, MPI_Datatype datatype,
+                        MPI_Op op)
+                        MPICH_ATTR_POINTER_WITH_TYPE_TAG(1,4) MPICH_ATTR_POINTER_WITH_TYPE_TAG(2,4) MPICH_API_PUBLIC;
 int PMPI_Op_commutative(MPI_Op op, int *commute) MPICH_API_PUBLIC;
 int PMPI_Reduce_scatter_block(const void *sendbuf, void *recvbuf, int recvcount,
                               MPI_Datatype datatype, MPI_Op op, MPI_Comm comm)

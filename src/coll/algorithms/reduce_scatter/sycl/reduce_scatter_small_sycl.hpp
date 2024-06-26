@@ -121,9 +121,15 @@ public:
         }
         else if (total_count * sizeof(data_type) <= 524288) {
             e = reduce_scatter_esimd<1>(queue, send_buf, out_buffer, dtype, recv_size, done);
+            if (!done) {
+                e = reduce_scatter_esimd<2>(queue, send_buf, out_buffer, dtype, recv_size, done);
+            }
         }
         else {
             e = reduce_scatter_esimd<2>(queue, send_buf, out_buffer, dtype, recv_size, done);
+            if (!done) {
+                e = reduce_scatter_esimd<3>(queue, send_buf, out_buffer, dtype, recv_size, done);
+            }
         }
         return ccl::event::create_from_native(e);
     }
@@ -175,6 +181,17 @@ public:
 
         uint32_t total_threads_needed_for_reduce = (recv_size + SIMD * UNROLL_SIZE * kernel_inner_loop - 1) /
                                                    (SIMD * UNROLL_SIZE * kernel_inner_loop); //ceiling
+
+        // checking oversubscription of hardware threads
+        ze_device_handle_t ze_dev = sycl::get_native<sycl::backend::ext_oneapi_level_zero>(queue.get_device());
+        ssize_t dev_id{ ccl::utils::invalid_device_id };
+        if (!ccl::ze::get_device_global_id(ze_dev, &dev_id)) {
+            CCL_THROW("unable to get global id for device\n");
+        }
+        if (total_threads_dispatched > ccl::global_data::get().ze_data->devices[dev_id].total_threads) {
+            done = 0;
+            return e;
+        }
 
         //e[r] = queue.submit([&](sycl::handler& cgh) {
         e = queue.submit([&](sycl::handler &cgh) {

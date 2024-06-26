@@ -88,12 +88,20 @@ public:
         return transport->probe(eps[ep_idx], src_proc_idx, tag, found, recv_len);
     }
 
+    virtual atl_status_t allgather(size_t ep_idx,
+                                   const void* send_buf,
+                                   void* recv_buf,
+                                   size_t len,
+                                   atl_req_t& req) {
+        return transport->allgather(eps[ep_idx], send_buf, recv_buf, len, req);
+    }
+
     virtual atl_status_t allgatherv(size_t ep_idx,
                                     const void* send_buf,
                                     size_t send_len,
                                     void* recv_buf,
-                                    const int* recv_lens,
-                                    const int* offsets,
+                                    const size_t* recv_lens,
+                                    const size_t* offsets,
                                     atl_req_t& req) {
         return transport->allgatherv(
             eps[ep_idx], send_buf, send_len, recv_buf, recv_lens, offsets, req);
@@ -119,11 +127,11 @@ public:
 
     virtual atl_status_t alltoallv(size_t ep_idx,
                                    const void* send_buf,
-                                   const int* send_lens,
-                                   const int* send_offsets,
+                                   const size_t* send_lens,
+                                   const size_t* send_offsets,
                                    void* recv_buf,
-                                   const int* recv_lens,
-                                   const int* recv_offsets,
+                                   const size_t* recv_lens,
+                                   const size_t* recv_offsets,
                                    atl_req_t& req) {
         return transport->alltoallv(
             eps[ep_idx], send_buf, send_lens, send_offsets, recv_buf, recv_lens, recv_offsets, req);
@@ -135,6 +143,15 @@ public:
 
     virtual atl_status_t bcast(size_t ep_idx, void* buf, size_t len, int root, atl_req_t& req) {
         return transport->bcast(eps[ep_idx], buf, len, root, req);
+    }
+
+    virtual atl_status_t bcastExt(size_t ep_idx,
+                                  void* send_buf,
+                                  void* recv_buf,
+                                  size_t len,
+                                  int root,
+                                  atl_req_t& req) {
+        return transport->bcastExt(eps[ep_idx], send_buf, recv_buf, len, root, req);
     }
 
     virtual atl_status_t reduce(size_t ep_idx,

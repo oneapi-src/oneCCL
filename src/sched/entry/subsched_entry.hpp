@@ -31,11 +31,7 @@ public:
                    std::function<void(ccl_sched*)> build_fn,
                    const char* subsched_name,
                    bool is_coll = false)
-            : sched_entry(sched,
-                          false /*is_barrier*/,
-                          false /*is_urgent*/,
-                          false /*is_nonblocking*/,
-                          is_coll),
+            : sched_entry(sched, false /*is_barrier*/, is_coll),
               build_fn(build_fn),
               op_id(op_id),
               subsched_name(subsched_name),

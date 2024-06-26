@@ -48,9 +48,19 @@ struct sycl_reduce_scatter_coll : sycl_base_coll<Dtype, reduce_scatter_strategy_
                     .memcpy(host_send_buf.data(), send_bufs[b_idx][rank_idx], send_bytes)
                     .wait();
 
-                stream.get_native()
-                    .memcpy(host_recv_buf.data(), recv_bufs[b_idx][rank_idx], recv_bytes)
-                    .wait();
+                if (!base_coll::get_inplace()) {
+                    stream.get_native()
+                        .memcpy(host_recv_buf.data(), recv_bufs[b_idx][rank_idx], recv_bytes)
+                        .wait();
+                }
+                else {
+                    auto recv_buf_adjusted = static_cast<Dtype*>(send_bufs[b_idx][rank_idx]) +
+                                             recv_elem_count * comm.rank();
+                    auto recv_elem_bytes = recv_elem_count * base_coll::get_dtype_size();
+                    stream.get_native()
+                        .memcpy(host_recv_buf.data(), recv_buf_adjusted, recv_elem_bytes)
+                        .wait();
+                }
             }
             else {
                 auto send_buf = (static_cast<sycl_buffer_t<Dtype>*>(send_bufs[b_idx][rank_idx]));
@@ -62,9 +72,19 @@ struct sycl_reduce_scatter_coll : sycl_base_coll<Dtype, reduce_scatter_strategy_
                     .memcpy(host_send_buf.data(), send_buf_acc.get_pointer(), send_bytes)
                     .wait();
 
-                stream.get_native()
-                    .memcpy(host_recv_buf.data(), recv_buf_acc.get_pointer(), recv_bytes)
-                    .wait();
+                if (!base_coll::get_inplace()) {
+                    stream.get_native()
+                        .memcpy(host_recv_buf.data(), recv_buf_acc.get_pointer(), recv_bytes)
+                        .wait();
+                }
+                else {
+                    auto recv_buf_adjusted =
+                        send_buf_acc.get_pointer() + recv_elem_count * comm.rank();
+                    auto recv_elem_bytes = recv_elem_count * base_coll::get_dtype_size();
+                    stream.get_native()
+                        .memcpy(host_recv_buf.data(), recv_buf_adjusted, recv_elem_bytes)
+                        .wait();
+                }
             }
 
             for (size_t e_idx = 0; e_idx < elem_count; e_idx++) {

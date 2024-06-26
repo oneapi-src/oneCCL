@@ -26,6 +26,8 @@ device_info::device_info(ze_device_handle_t dev, uint32_t parent_idx)
     ze_device_properties_t dev_props = ccl::ze::default_device_props;
     zeDeviceGetProperties(device, &dev_props);
     uuid = dev_props.uuid;
+    total_threads = dev_props.numThreadsPerEU * dev_props.numEUsPerSubslice *
+                    dev_props.numSubslicesPerSlice * dev_props.numSlices;
 
 #ifdef ZE_PCI_PROPERTIES_EXT_NAME
     ze_pci_ext_properties_t pci_prop = ccl::ze::default_pci_property;
@@ -89,6 +91,8 @@ global_data_desc::global_data_desc() {
 
     topo_manager::detect_tune_port_count(devices);
 
+    init_external_pointer_registration();
+
     LOG_INFO("initialized level-zero");
 }
 
@@ -110,6 +114,59 @@ global_data_desc::~global_data_desc() {
     drivers.clear();
 
     LOG_INFO("finalized level-zero");
+}
+
+void global_data_desc::init_external_pointer_registration() {
+    if (!global_data::env().enable_buffer_cache || drivers.empty()) {
+        external_pointer_registration_enabled = false;
+        return;
+    }
+    auto ze_driver_handle = drivers.front();
+
+    ze_result_t res_import = zeDriverGetExtensionFunctionAddress(
+        ze_driver_handle,
+        "zexDriverImportExternalPointer",
+        reinterpret_cast<void**>(&zexDriverImportExternalPointer));
+    ze_result_t res_release = zeDriverGetExtensionFunctionAddress(
+        ze_driver_handle,
+        "zexDriverReleaseImportedPointer",
+        reinterpret_cast<void**>(&zexDriverReleaseImportedPointer));
+    if ((res_import != ZE_RESULT_SUCCESS) || (res_release != ZE_RESULT_SUCCESS)) {
+        // Reset function pointers for safety
+        zexDriverImportExternalPointer = nullptr;
+        zexDriverReleaseImportedPointer = nullptr;
+        external_pointer_registration_enabled = false;
+        LOG_INFO("Can not initialize Import Extension API ",
+                 "(zexDriverReleaseImportedPointer/zexDriverImportExternalPointer: ",
+                 std::to_string(res_import),
+                 " ",
+                 std::to_string(res_release));
+    }
+    else {
+        external_pointer_registration_enabled = true;
+    }
+}
+
+void global_data_desc::import_external_pointer(void* ptr, size_t size) {
+    CCL_THROW_IF_NOT(external_pointer_registration_enabled);
+    auto ze_driver_handle = drivers.front();
+
+    // TODO: maybe use this via SYCL's sycl_ext_oneapi_copy_optimize?
+    ze_result_t res = zexDriverImportExternalPointer(ze_driver_handle, ptr, size);
+    if (res != ZE_RESULT_SUCCESS) {
+        LOG_INFO("zexDriverImportExternalPointer can not register the pointer with error: ",
+                 std::to_string(res));
+    }
+}
+
+void global_data_desc::release_imported_pointer(void* ptr) {
+    CCL_THROW_IF_NOT(external_pointer_registration_enabled);
+    auto ze_driver_handle = drivers.front();
+    ze_result_t res = zexDriverReleaseImportedPointer(ze_driver_handle, ptr);
+    if (res != ZE_RESULT_SUCCESS) {
+        LOG_INFO("zexDriverReleaseImportPointer can not release the pointer with error: ",
+                 std::to_string(res));
+    }
 }
 
 } // namespace ze

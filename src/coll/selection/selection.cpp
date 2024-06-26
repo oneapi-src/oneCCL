@@ -70,6 +70,9 @@ bool ccl_is_direct_algo(const ccl_selector_param& param) {
 
     auto& selector = ccl::global_data::get().algorithm_selector;
 
+    if (param.ctype == ccl_coll_allgather) {
+        res = (selector->get<ccl_coll_allgather>(param) == ccl_coll_allgather_direct);
+    }
     if (param.ctype == ccl_coll_allgatherv) {
         res = (selector->get<ccl_coll_allgatherv>(param) == ccl_coll_allgatherv_direct);
     }
@@ -87,6 +90,9 @@ bool ccl_is_direct_algo(const ccl_selector_param& param) {
     }
     else if (param.ctype == ccl_coll_bcast) {
         res = (selector->get<ccl_coll_bcast>(param) == ccl_coll_bcast_direct);
+    }
+    else if (param.ctype == ccl_coll_bcastExt) {
+        res = (selector->get<ccl_coll_bcastExt>(param) == ccl_coll_bcastExt_direct);
     }
     else if (param.ctype == ccl_coll_recv) {
         res = (selector->get<ccl_coll_recv>(param) == ccl_coll_recv_direct);
@@ -194,6 +200,9 @@ bool is_single_card(const ccl_selector_param& param) {
 static bool ccl_is_device_side_algo(ccl_coll_algo algo, const ccl_selector_param& param) {
     CCL_THROW_IF_NOT(algo.has_value(), "empty algo value");
 
+    if (param.ctype == ccl_coll_allgather) {
+        return algo.allgather == ccl_coll_allgather_topo;
+    }
     if (param.ctype == ccl_coll_allgatherv) {
         return algo.allgatherv == ccl_coll_allgatherv_topo;
     }
@@ -208,6 +217,9 @@ static bool ccl_is_device_side_algo(ccl_coll_algo algo, const ccl_selector_param
     }
     else if (param.ctype == ccl_coll_bcast) {
         return algo.bcast == ccl_coll_bcast_topo;
+    }
+    else if (param.ctype == ccl_coll_bcastExt) {
+        return algo.bcastExt == ccl_coll_bcastExt_topo;
     }
     else if (param.ctype == ccl_coll_recv) {
         return algo.recv == ccl_coll_recv_topo;
@@ -236,9 +248,10 @@ bool ccl_is_device_side_algo(const ccl_selector_param& param) {
     return false;
 #endif // CCL_ENABLE_SYCL
 
-    auto supported_colls = { ccl_coll_allgatherv, ccl_coll_allreduce,      ccl_coll_alltoall,
-                             ccl_coll_alltoallv,  ccl_coll_bcast,          ccl_coll_recv,
-                             ccl_coll_reduce,     ccl_coll_reduce_scatter, ccl_coll_send };
+    auto supported_colls = { ccl_coll_allgather,      ccl_coll_allgatherv, ccl_coll_allreduce,
+                             ccl_coll_alltoall,       ccl_coll_alltoallv,  ccl_coll_bcast,
+                             ccl_coll_bcastExt,       ccl_coll_recv,       ccl_coll_reduce,
+                             ccl_coll_reduce_scatter, ccl_coll_send };
     RETURN_FALSE_IF(!checkers::is_coll_supported(supported_colls, param.ctype),
                     "coll ",
                     ccl_coll_type_to_str(param.ctype),
@@ -247,6 +260,9 @@ bool ccl_is_device_side_algo(const ccl_selector_param& param) {
     ccl_coll_algo algo{};
     auto& selector = ccl::global_data::get().algorithm_selector;
 
+    if (param.ctype == ccl_coll_allgather) {
+        algo.allgather = selector->get<ccl_coll_allgather>(param);
+    }
     if (param.ctype == ccl_coll_allgatherv) {
         algo.allgatherv = selector->get<ccl_coll_allgatherv>(param);
     }
@@ -261,6 +277,9 @@ bool ccl_is_device_side_algo(const ccl_selector_param& param) {
     }
     else if (param.ctype == ccl_coll_bcast) {
         algo.bcast = selector->get<ccl_coll_bcast>(param);
+    }
+    else if (param.ctype == ccl_coll_bcastExt) {
+        algo.bcastExt = selector->get<ccl_coll_bcastExt>(param);
     }
     else if (param.ctype == ccl_coll_recv) {
         algo.recv = selector->get<ccl_coll_recv>(param);
@@ -285,9 +304,10 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
     return false;
 #endif // CCL_ENABLE_SYCL
 
-    auto supported_colls = { ccl_coll_allgatherv, ccl_coll_allreduce,      ccl_coll_alltoall,
-                             ccl_coll_alltoallv,  ccl_coll_bcast,          ccl_coll_recv,
-                             ccl_coll_reduce,     ccl_coll_reduce_scatter, ccl_coll_send };
+    auto supported_colls = { ccl_coll_allgather,      ccl_coll_allgatherv, ccl_coll_allreduce,
+                             ccl_coll_alltoall,       ccl_coll_alltoallv,  ccl_coll_bcast,
+                             ccl_coll_bcastExt,       ccl_coll_recv,       ccl_coll_reduce,
+                             ccl_coll_reduce_scatter, ccl_coll_send };
     RETURN_FALSE_IF(!checkers::is_coll_supported(supported_colls, param.ctype),
                     "coll is not supported");
 
@@ -335,7 +355,8 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
                     "processes are not properly distributed among domains");
 
     if (comm_size > 2 && !(param.ctype == ccl_coll_recv || param.ctype == ccl_coll_send)) {
-        if (ccl::global_data::env().ze_enable_oversubscription_throw) {
+        if (ccl::global_data::env().ze_enable_oversubscription_throw &&
+            param.ctype != ccl_coll_allreduce && param.ctype != ccl_coll_bcast) {
             CCL_THROW_IF_NOT(
                 !param.comm->get_topo_manager().has_oversubscription(),
                 "oversubscription case is detected: \n OneCCL expects max one rank per device, "
@@ -390,7 +411,8 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
     }
 #endif // CCL_ENABLE_SYCL
 
-    RETURN_FALSE_IF(param.ctype == ccl_coll_bcast && !checkers::is_single_node(param),
+    RETURN_FALSE_IF((param.ctype == ccl_coll_bcast || param.ctype == ccl_coll_bcastExt) &&
+                        !checkers::is_single_node(param),
                     "multi-node for ",
                     ccl_coll_type_to_str(param.ctype),
                     " is not supported");

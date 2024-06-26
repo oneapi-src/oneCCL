@@ -52,7 +52,7 @@ public:
                                                  send_buf.get_ptr(send_bytes),
                                                  recv_buf.get_ptr(recv_bytes),
                                                  recv_cnt,
-                                                 static_cast<atl_datatype_t>(dtype.idx()),
+                                                 dtype.atl_datatype(),
                                                  static_cast<atl_reduction_t>(op),
                                                  req);
 

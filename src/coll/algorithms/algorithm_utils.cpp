@@ -24,12 +24,14 @@
 const char* ccl_coll_type_to_str(ccl_coll_type type) {
     auto type_str = "undefined";
     switch (type) {
+        case ccl_coll_allgather: return "allgather";
         case ccl_coll_allgatherv: return "allgatherv";
         case ccl_coll_allreduce: return "allreduce";
         case ccl_coll_alltoall: return "alltoall";
         case ccl_coll_alltoallv: return "alltoallv";
         case ccl_coll_barrier: return "barrier";
         case ccl_coll_bcast: return "bcast";
+        case ccl_coll_bcastExt: return "bcastExt";
         case ccl_coll_recv: return "recv";
         case ccl_coll_reduce: return "reduce";
         case ccl_coll_reduce_scatter: return "reduce_scatter";
@@ -95,6 +97,9 @@ bool ccl_is_ptr_aligned(uintptr_t ptr, size_t alignment) {
 }
 
 #if defined(CCL_ENABLE_ZE) && defined(CCL_ENABLE_SYCL)
+
+using entry_iterator = std::deque<std::unique_ptr<sched_entry>>::iterator;
+
 static bool is_reorderable_algo(const char* algo_name) {
     const char* reordable_algo_prefixes[] = {
         "ALLREDUCE_PIPE",
@@ -108,6 +113,15 @@ static bool is_reorderable_algo(const char* algo_name) {
         }
     }
     return false;
+}
+
+std::string to_string(ccl_chunking_mode& mode) {
+    switch (mode) {
+        case ccl_chunking_mode::ccl_pipeline_none: return "ccl_pipeline_none";
+        case ccl_chunking_mode::ccl_buffer_implicit: return "ccl_buffer_implicit";
+        case ccl_chunking_mode::ccl_offset_explicit: return "ccl_offset_explicit";
+        default: return "unknown";
+    }
 }
 
 // Reorders commands to minimize wait time
@@ -125,65 +139,96 @@ static bool is_reorderable_algo(const char* algo_name) {
 //
 // Opportunity for micro-optimization and simplification: compare enum instead of strings
 uint32_t ccl_submit_ze_commands_in_subsched_entries(ccl_sched* sched) {
-    std::vector<subsched_entry*> subsched_chunks;
+    // The structure is mapping group's index onto a vector with pairs of iterators. First iterator in a
+    // pair represents an iterator over entries of a single subschedule in the group. Second iterator is
+    // equal to `chunk->get_subsched()->entries.end()` and is used to check if the first iterator is finished.
+    //
+    // Example structure shape:
+    // 0-->[<a->entries->begin(), a->entries->end()>, <b->entries->begin(), b->entries->end()>]
+    // 1-->[<c->entries->begin(), c->entries->end()>, <d->entries->begin(), d->entries->end()>]
+    std::map<size_t, std::vector<std::pair<entry_iterator, entry_iterator>>> groups_iterators_map;
+    std::unordered_map<size_t, std::shared_ptr<sched_group>> groups_map;
     for (auto& entry : sched->entries) {
         if (is_reorderable_algo(entry->name())) {
-            subsched_chunks.push_back(static_cast<subsched_entry*>(entry.get()));
+            auto chunk = static_cast<subsched_entry*>(entry.get());
+            auto chunk_group = chunk->get_subsched()->get_group();
+            auto& group_iterators = groups_iterators_map[chunk_group->get_id()];
+            group_iterators.push_back(std::pair(chunk->get_subsched()->entries.begin(),
+                                                chunk->get_subsched()->entries.end()));
+
+            groups_map[chunk_group->get_id()] = std::move(chunk_group);
         }
         else {
             LOG_DEBUG("entry: ", entry->name(), "is NOT reorderable algo")
         }
     }
 
-    auto chunk_count = subsched_chunks.size();
-    LOG_DEBUG("chunk_count ", chunk_count);
-
-    std::vector<size_t> next_entry(chunk_count, 0);
-    bool done = false;
     uint32_t command_count = 0;
-    int cmd_idx = 0;
-    // iterate over each stage
-    while (!done) {
-        done = true;
-        // iterate over each chunk
-        for (size_t chunk_idx = 0; chunk_idx < chunk_count; ++chunk_idx) {
-            LOG_DEBUG("cmd_idx=",
-                      cmd_idx,
-                      ", chunk_idx=",
-                      chunk_idx,
-                      ", | ",
-                      subsched_chunks[chunk_idx]->name(),
-                      ", entries.size=",
-                      subsched_chunks[chunk_idx]->get_subsched()->entries.size(),
-                      ", next_entry=",
-                      next_entry[chunk_idx]);
-            if (next_entry[chunk_idx] <
-                subsched_chunks[chunk_idx]->get_subsched()->entries.size()) {
-                LOG_DEBUG("cmd_idx=", cmd_idx, ", chunk_idx=", chunk_idx, ", submitting commands");
-                command_count += subsched_chunks[chunk_idx]
-                                     ->get_subsched()
-                                     ->entries[next_entry[chunk_idx]++]
-                                     ->ze_commands_submit();
-                done = false;
+
+    for (auto& [group_id, group_iterators] : groups_iterators_map) {
+        auto group = groups_map[group_id];
+        LOG_DEBUG("|GROUPS| Submitting group: ",
+                  group->get_id(),
+                  ", iterators count: ",
+                  group_iterators.size());
+
+        while (!group_iterators.empty()) {
+            // `group_iterators` is a vector which constists of iterators
+            // over all subscheds in a group. Aim of the loop is to submit
+            // all entries in these subscheds with regard to their parallel
+            // execution.
+            for (auto& chunk_iterator : group_iterators) {
+                bool is_chunk_partial_submission_finished = false;
+                while (is_chunk_partial_submission_finished == false) {
+                    // Exit condition for non parallelizable groups and
+                    // subsheds with no entries at all
+                    if (chunk_iterator.first == chunk_iterator.second) {
+                        // If the group is NOT parallelizable we MUST submit
+                        // all entries from each subsched sequentially, so
+                        // entries from a subsched are NOT interrupted by
+                        // the other subscheds. To acheive that here we submit all
+                        // the entries from a subsched in one take.
+                        // This approach results in following entry pattern:
+                        // a[0]->a[1]->a[2]->b[0]->n[1]->b[2]
+                        is_chunk_partial_submission_finished = true;
+                        break;
+                    }
+
+                    auto entry = chunk_iterator.first->get();
+                    LOG_DEBUG("|GROUPS| Submitting entry: ", entry->name());
+                    command_count += entry->ze_commands_submit();
+                    chunk_iterator.first++;
+
+                    // Exit condition for parallelizable groups
+                    if (group->parallelizable()) {
+                        // If a group can be parallelized we should submit
+                        // one entry per subsched in each iteration of the for loop.
+                        // The aim is to achieve concurrent execution of the entries, so
+                        // having two subscheds `a` and `b` we want submit each subsched in
+                        // turns. This approach results in following entry pattern:
+                        // a[0]->b[0]->a[1]->b[1]->a[2]->b[2]
+                        is_chunk_partial_submission_finished = true;
+                    }
+                }
             }
-            LOG_DEBUG("cmd_idx=", cmd_idx, ", chunk_idx=", chunk_idx, ", done=", done);
+
+            auto new_end =
+                std::remove_if(group_iterators.begin(), group_iterators.end(), [](auto e) {
+                    // Remove if entries iterator is equal to entries.end()
+                    return e.first == e.second;
+                });
+            group_iterators.erase(new_end, group_iterators.end());
         }
-        ++cmd_idx;
     }
 
     return command_count;
 }
 
-// checks if pipelining is enabled and returns pipelining parameters
-// output params:
-//  - main_chunk_count: number of elements in the "standard" chunk, i.e. not counting the remainder
-//  - mem_align: alignment required for each chunk; cannot be zero
-bool ccl_is_pipe_enabled(const size_t count,
-                         const size_t dtype_size,
-                         const size_t chunk_count,
-                         size_t& main_chunk_count,
-                         size_t& mem_align) {
-    bool ret = true;
+// Attempts to calculate buffer size for pipelining. If the pipeline
+// is not possible with such parameters returns std::nullopt
+std::optional<size_t> ccl_get_pipe_size(const size_t buf_size,
+                                        const size_t dtype_size,
+                                        const size_t chunk_count) {
     // Note about cache lines and pipelining: The same cache line must contain
     // a single chunk only.
     //
@@ -198,10 +243,14 @@ bool ccl_is_pipe_enabled(const size_t count,
 
     bool is_pipe = chunk_count > 1 && ccl::global_data::env().enable_ze_single_list;
 
+    if (!is_pipe) {
+        LOG_DEBUG("Pipelining code disabled");
+        return std::nullopt;
+    }
+
     // TODO: why does oneCCL have CACHELINE_SIZE *and* CCL_KERNEL_MEM_ALIGN?
-    mem_align = ccl::global_data::env().kernel_mem_align;
+    size_t mem_align = ccl::global_data::env().kernel_mem_align;
     CCL_THROW_IF_NOT(mem_align != 0, "memory alignment cannot be zero by definition");
-    size_t buf_size_bytes = count * dtype_size;
 
     // First, determine if we need to fallback to non-pipelined algorightm.
     // Such a fallback may happen in cases such as (1) the user requests it,
@@ -209,48 +258,193 @@ bool ccl_is_pipe_enabled(const size_t count,
     // divisible by the data type size.
 
     size_t number_of_cache_lines_per_chunk =
-        is_pipe ? std::max(mem_align, buf_size_bytes / chunk_count) / mem_align : 1;
+        std::max(mem_align, buf_size / chunk_count) / mem_align;
     size_t main_chunk_size_bytes = mem_align * number_of_cache_lines_per_chunk;
-    main_chunk_count = main_chunk_size_bytes / dtype_size;
 
     bool is_dtype_divisible = ((main_chunk_size_bytes % dtype_size) == 0);
-    bool is_msg_bigger_than_cache_line = buf_size_bytes > main_chunk_size_bytes;
-
+    bool is_msg_bigger_than_cache_line = buf_size > main_chunk_size_bytes;
     bool is_singleworker =
         !ccl::global_data::env().ze_multi_workers || (ccl::global_data::env().worker_count <= 1);
 
-    if (!is_pipe) {
-        LOG_DEBUG("Pipelining code disabled");
-        ret = false;
+    if (!is_dtype_divisible) {
+        LOG_INFO("Running without pipelining because datatype size (",
+                 dtype_size,
+                 ") is not divisible by cache line size (",
+                 mem_align,
+                 ")");
+        return std::nullopt;
     }
-    else {
-        if (!is_dtype_divisible) {
-            LOG_INFO("Running without pipelining because datatype size (",
-                     dtype_size,
-                     ") is not divisible by cache line size (",
-                     mem_align,
-                     ")");
-            ret = false;
+
+    if (!is_msg_bigger_than_cache_line) {
+        LOG_INFO("Running without pipelining because message size (",
+                 buf_size,
+                 ") is smaller than a cache line (",
+                 mem_align,
+                 ") or than main_chunk_size_bytes (",
+                 main_chunk_size_bytes,
+                 ")");
+        return std::nullopt;
+    }
+
+    if (!is_singleworker) {
+        LOG_INFO("Running without pipelining because ze_multi_workers was requested with ",
+                 ccl::global_data::env().worker_count,
+                 " workers, which is more than one worker ");
+        return std::nullopt;
+    }
+
+    return main_chunk_size_bytes;
+}
+
+size_t estimate_tmp_bufs_count(size_t count,
+                               size_t pair_comm_size,
+                               size_t even_comm_size,
+                               size_t comm_size) {
+    size_t base_count = count / pair_comm_size;
+    base_count += count % pair_comm_size;
+
+    size_t main_block_count = base_count / even_comm_size;
+    size_t block_count = main_block_count;
+    block_count += base_count % even_comm_size;
+
+    return block_count;
+}
+
+// Estimate count of elements needed by temporary buffers
+// to execute the operation
+size_t estimate_tmp_count(ccl_coll_type coll_type,
+                          size_t count,
+                          size_t pair_comm_size,
+                          size_t even_comm_size,
+                          size_t comm_size,
+                          bool is_scaleout) {
+    size_t result = 0;
+    size_t buf_count = 0;
+    switch (coll_type) {
+        case ccl_coll_reduce_scatter:
+            result += estimate_tmp_bufs_count(
+                          count * comm_size, pair_comm_size, even_comm_size, comm_size) *
+                      even_comm_size;
+            buf_count += even_comm_size;
+            LOG_DEBUG("|GROUPS| tmp_bufs will utilize: ", result);
+            if (is_scaleout) {
+                result += count * comm_size;
+                buf_count += 1;
+                LOG_DEBUG("|GROUPS| scaleout will utilize: ", result);
+            }
+
+            // Account for possible alignment
+            result += buf_count * ccl::global_data::env().kernel_mem_align;
+            LOG_DEBUG("|GROUPS| alignments will utilize: ", result);
+            return result;
+        default: return count;
+    }
+}
+
+using sched_group_size_vec = std::vector<std::pair<std::shared_ptr<sched_group>, size_t>>;
+
+sched_group_size_vec serialize_chunks(const sched_group_size_vec& chunks,
+                                      size_t memory_scale_factor) {
+    // TODO: The code seems to break collectives when outputting count that is less than comm->size()
+    if (!ccl::global_data::env().enable_ze_single_list) {
+        // Currently only single list mode is supported, so we do not split the collective
+        // in any way.
+        return chunks;
+    }
+
+    LOG_DEBUG("|GROUPS| Serialize operation with memory scale factor: ", memory_scale_factor);
+
+    sched_group_size_vec new_serial_chunks;
+    for (auto [group, bytes] : chunks) {
+        size_t mem_align = ccl::global_data::env().kernel_mem_align;
+        size_t serial_chunk_bytes = ccl::global_data::env().ze_tmp_buf_size / memory_scale_factor;
+        serial_chunk_bytes = (serial_chunk_bytes / mem_align) * mem_align;
+
+        if (serial_chunk_bytes == 0) {
+            // We were unable to align `serial_chunk_bytes` to `mem_align`.
+            // This is very unlikely, and would require user to set very low
+            // `CCL_ZE_TMP_BUF_SIZE`.
+            static bool memory_warning_issued = false;
+            if (!memory_warning_issued) {
+                LOG_WARN("Memory usage might exceed `CCL_ZE_TMP_BUF_SIZE`");
+                memory_warning_issued = true;
+            }
+            serial_chunk_bytes = mem_align;
         }
-        if (!is_msg_bigger_than_cache_line) {
-            LOG_INFO("Running without pipelining because message size (",
-                     buf_size_bytes,
-                     ") is smaller than a cache line (",
-                     mem_align,
-                     ") or than main_chunk_size_bytes (",
-                     main_chunk_size_bytes,
-                     ")");
-            ret = false;
+
+        size_t half_serial_chunk_bytes = serial_chunk_bytes / 2;
+        if (bytes > serial_chunk_bytes) {
+            size_t bytes_left = bytes;
+            auto cur_group = group;
+            while (bytes_left > 0) {
+                size_t new_serial_chunk_bytes =
+                    bytes_left > serial_chunk_bytes ? serial_chunk_bytes : bytes_left;
+                size_t next_serial_chunk_bytes = bytes_left - new_serial_chunk_bytes;
+
+                // If next chunk after currently processed one would be less than half of `serial_chunk_bytes`
+                // we should split the bytes_left approximately in half rounding first chunk to cacheline size.
+                if (next_serial_chunk_bytes > 0 &&
+                    next_serial_chunk_bytes < half_serial_chunk_bytes) {
+                    new_serial_chunk_bytes = (bytes_left / 2 / mem_align) * mem_align;
+
+                    if (new_serial_chunk_bytes == 0) {
+                        new_serial_chunk_bytes = half_serial_chunk_bytes;
+                    }
+                    // After the iteration `bytes_left` will be a little more than
+                    // current `new_serial_chunk_bytes`
+                }
+
+                bytes_left -= new_serial_chunk_bytes;
+                new_serial_chunks.emplace_back(cur_group, new_serial_chunk_bytes);
+                cur_group = std::make_shared<sched_group>(*cur_group);
+
+                LOG_DEBUG("|GROUPS| New serial chunk: ", new_serial_chunk_bytes);
+            }
         }
-        if (!is_singleworker) {
-            LOG_INFO("Running without pipelining because ze_multi_workers was requested with ",
-                     ccl::global_data::env().worker_count,
-                     " workers, which is more than one worker ");
-            ret = false;
+        else {
+            // Operation size is smaller than chunk size, so there will
+            // be only one sequential chunk. Since there's only one chunk
+            // we do not need barrier after GPU entries from the chunk.
+            group->disable_last_chunk_barrier();
+
+            new_serial_chunks.emplace_back(group, bytes);
+            LOG_DEBUG("|GROUPS| New serial chunk: ", bytes);
         }
     }
 
-    return ret;
+    LOG_DEBUG("|GROUPS| Serialized: ", new_serial_chunks.size())
+    return new_serial_chunks;
+}
+
+sched_group_size_vec parallelize_chunks(const sched_group_size_vec& chunks,
+                                        const size_t dtype_size,
+                                        const size_t pipe_chunk_count) {
+    sched_group_size_vec new_parallel_chunks;
+
+    for (auto [group, bytes] : chunks) {
+        std::optional<size_t> pipe_chunk_size_opt =
+            ccl_get_pipe_size(bytes, dtype_size, pipe_chunk_count);
+        size_t pipe_chunk_size = pipe_chunk_size_opt.value_or(bytes);
+
+        size_t bytes_left = bytes;
+        while (bytes_left > 0) {
+            size_t new_parallel_chunk_count = pipe_chunk_size;
+            LOG_DEBUG("|GROUPS| Bytes left: ", bytes_left);
+            if (bytes_left - pipe_chunk_size < pipe_chunk_size) {
+                // Next chunk would end up smaller than `pipe_chunk_size`,
+                // so we make this one bigger.
+                new_parallel_chunk_count = bytes_left;
+            }
+
+            new_parallel_chunks.emplace_back(group, new_parallel_chunk_count);
+            group->increase_chunk_count();
+            bytes_left -= new_parallel_chunk_count;
+
+            LOG_DEBUG("|GROUPS| New parallel chunk: ", new_parallel_chunk_count);
+        }
+    }
+    LOG_DEBUG("|GROUPS| Paralellized: ", new_parallel_chunks.size())
+    return new_parallel_chunks;
 }
 
 ccl::status ccl_build_topo_uniform_buff_size_op(
@@ -262,14 +456,97 @@ ccl::status ccl_build_topo_uniform_buff_size_op(
     size_t pipe_nof_chunks,
     const std::string& op_name,
     ccl::profile::metrics_counter& metrics,
-    std::function<
-        ccl::status(ccl_sched* sched, ccl_buffer send_buf, ccl_buffer recv_buf, size_t count)>
-        fill_op_lambda) {
-    size_t mem_align = 0;
-    size_t main_chunk_count = 0;
-    if (!ccl_is_pipe_enabled(count, dtype_size, pipe_nof_chunks, main_chunk_count, mem_align)) {
+    ccl_comm* comm,
+    std::function<ccl::status(ccl_sched* sched,
+                              ccl_buffer send_buf,
+                              ccl_buffer recv_buf,
+                              size_t count,
+                              size_t offset,
+                              size_t combined_count)> fill_op_lambda,
+    ccl_chunking_mode mode,
+    ccl_coll_type coll) {
+    // Allocate buffer used as `memory_context` for all `sched_groups`. This means that
+    // subschedules inside one group will share allocations across the buffer and
+    // other groups will reuse the same memory but with ability to allocate different buffers
+    // over the same allocation. Groups guarantee that only one group is executed at a time on GPU,
+    // so we are safe to perform such overlapping allocations because the ownership of each allocation
+    // will be exclusive during execution of each group.
+    //
+    //                    ┌───────────────────┬─────► memory_context_ptr
+    //    ┌────────────┐  │   ┌────────────┐  │
+    //    │  Group 1   │  │   │  Group 2   │  │
+    //    ├────────────┼──┘   ├────────────┼──┘
+    //    │Allocation 1│      │Allocation 1│
+    //    ├────────────┤      │            │
+    //    │Allocation 2│      │            │
+    //    │            │      ├────────────┤
+    //    │            │      │Allocation 2│
+    //    ├────────────┤      │            │
+    //    │Allocation 3│      │            │
+    //    └┬──────────▲┘      └┬──────────▲┘
+    //    ┌▼──────────┼┐      ┌▼──────────┼┐               GPU Timeline
+    // ───┴────────────┴──────┴────────────┴───────────────────────────►
+    //
+    static void* memory_context_ptr = nullptr;
+    if (memory_context_ptr == nullptr) {
+        auto stream = sched->coll_param.stream;
+        auto context = stream->get_ze_context();
+        auto device = stream->get_ze_device();
+        device_allocate(context,
+                        ccl::ze::default_device_mem_alloc_desc,
+                        ccl::global_data::env().ze_tmp_buf_size,
+                        ccl::global_data::env().kernel_mem_align,
+                        device,
+                        &memory_context_ptr);
+    }
+
+    // This is an initial `sched_group` that is used to group execution of
+    // serial chunks and provide them shared resources.
+    auto base_group = std::make_shared<sched_group>(
+        sched, comm, memory_context_ptr, ccl::global_data::env().ze_tmp_buf_size);
+
+    sched_group_size_vec final_chunk_bytes_per_group;
+
+    if (mode == ccl_chunking_mode::ccl_pipeline_none) {
+        // Pipeline disenabled
+        final_chunk_bytes_per_group.emplace_back(std::move(base_group), count * dtype_size);
+    }
+    else if (count > 0) {
+        // Normal counts
+        sched_group_size_vec initial_chunk_bytes_per_group;
+        initial_chunk_bytes_per_group.emplace_back(std::move(base_group), count * dtype_size);
+
+        const ccl::topo_manager& topo_manager = comm->get_topo_manager();
+        const bool is_scaleout = !topo_manager.is_single_node;
+
+        ccl_comm* pair_comm = comm->get_pair_comm().get();
+        ccl_comm* even_comm = comm->get_even_comm().get();
+
+        size_t estimated_tmp_count = estimate_tmp_count(
+            coll, count, pair_comm->size(), even_comm->size(), comm->size(), is_scaleout);
+
+        // Divide and round up count of temporary elements by operation count
+        size_t memory_scale_factor =
+            estimated_tmp_count / count + (estimated_tmp_count % count != 0);
+
+        auto serialized_chunks =
+            serialize_chunks(initial_chunk_bytes_per_group, memory_scale_factor);
+        auto parallelized_chunks =
+            parallelize_chunks(serialized_chunks, dtype_size, pipe_nof_chunks);
+        final_chunk_bytes_per_group = std::move(parallelized_chunks);
+    }
+    else {
+        // Zero count
+        final_chunk_bytes_per_group.emplace_back(std::move(base_group), 0);
+    }
+
+    if (final_chunk_bytes_per_group.size() == 1) {
         // Fall back to topo algorithm without pipelining
-        fill_op_lambda(sched, send_buf, recv_buf, count);
+        auto group = final_chunk_bytes_per_group[0].first;
+
+        sched->set_group(group);
+        fill_op_lambda(sched, send_buf, recv_buf, count, 0, count);
+
         entry_factory::create<ze_execute_cmdlists_on_init_entry>(sched);
 
         return ccl::status::success;
@@ -277,35 +554,65 @@ ccl::status ccl_build_topo_uniform_buff_size_op(
 
     LOG_DEBUG("build pipe ", op_name);
 
-    // Need to re-calculate chunk_count after main_chunk_size_bytes calculation
-    // with cache alignment in mind.
-    size_t chunk_count = count / main_chunk_count;
-    size_t last_chunk_count = main_chunk_count + (count % main_chunk_count);
-
     sched->try_enable_ze_single_list();
-    auto sync_obj = std::make_shared<sync_object>(chunk_count);
+    auto sync_obj = std::make_shared<sync_object>(final_chunk_bytes_per_group.size());
+    auto groups_sync_obj = std::make_shared<sync_object>(final_chunk_bytes_per_group.size());
     bool is_parallelizable_chunks = true;
 
-    for (size_t chunk_idx = 0; chunk_idx < chunk_count; ++chunk_idx) {
-        size_t chunk_offset = chunk_idx * main_chunk_count * dtype_size;
-        ccl_buffer sbuf = send_buf + chunk_offset;
-        ccl_buffer rbuf = recv_buf + chunk_offset;
-        size_t this_chunk_count =
-            (chunk_idx == (chunk_count - 1)) ? last_chunk_count : main_chunk_count;
+    size_t chunk_idx = 0;
+    size_t combined_recv_count = count;
+    size_t offset = 0;
+    size_t mem_align = ccl::global_data::env().kernel_mem_align;
+
+    for (auto& [group, bytes] : final_chunk_bytes_per_group) {
+        ccl_buffer sbuf = send_buf;
+        ccl_buffer rbuf = recv_buf;
+
+        if (mode == ccl_chunking_mode::ccl_buffer_implicit) {
+            sbuf += offset;
+            rbuf += offset;
+        }
+
+        LOG_DEBUG("|GROUPS| Creating subsched with group: ",
+                  group->get_id(),
+                  ", offset: ",
+                  offset,
+                  ", bytes: ",
+                  bytes,
+                  ", mode: ",
+                  to_string(mode));
+
+        auto group_copy = group;
+        group_copy->set_sync_obj(groups_sync_obj);
+        size_t this_chunk_count = bytes / dtype_size;
+        LOG_DEBUG("Count: ", this_chunk_count);
 
         if (this_chunk_count || (count == 0 && chunk_idx == 0)) {
             entry_factory::create<subsched_entry>(
                 sched,
                 chunk_idx,
-                [sched, sbuf, rbuf, this_chunk_count, sync_obj, fill_op_lambda](ccl_sched* s) {
+                [sched,
+                 sbuf,
+                 rbuf,
+                 this_chunk_count,
+                 sync_obj,
+                 group_copy,
+                 offset,
+                 combined_recv_count,
+                 fill_op_lambda](ccl_sched* s) {
                     s->inherit_ze_managers_from(sched);
                     s->set_init_ze_hook_sync_obj(sync_obj);
                     s->set_ze_commands_bypass_flag(false);
+                    s->set_group(group_copy);
 
-                    fill_op_lambda(s, sbuf, rbuf, this_chunk_count);
+                    fill_op_lambda(s, sbuf, rbuf, this_chunk_count, offset, combined_recv_count);
                 },
                 (op_name + "_PIPE" + std::to_string(chunk_idx)).c_str());
         }
+
+        offset += bytes;
+        chunk_idx++;
+
         // WARNING: previous chunk has part of this chunk's first cache
         // line. Cannot use pipelining. However, since this is a
         // "local" decision (i.e., other ranks may decide differently),
@@ -316,6 +623,9 @@ ccl::status ccl_build_topo_uniform_buff_size_op(
         // with an event.
         is_parallelizable_chunks &=
             ccl_is_ptr_aligned(reinterpret_cast<uintptr_t>(rbuf.get_ptr()), mem_align);
+        if (!is_parallelizable_chunks) {
+            group->disable_parallel_execution();
+        }
     }
 
     static bool is_chunk_mem_align_warning_printed{};
@@ -337,10 +647,10 @@ ccl::status ccl_build_topo_uniform_buff_size_op(
         metrics.parallel_calls_per_count[count]++;
     }
 
-    entry_factory::create<ze_execute_cmdlists_on_start_entry>(
-        sched,
-        sync_obj,
-        is_parallelizable_chunks ? ccl_submit_ze_commands_in_subsched_entries : nullptr);
+    if (sched->use_single_list) {
+        entry_factory::create<ze_execute_cmdlists_on_start_entry>(
+            sched, sync_obj, ccl_submit_ze_commands_in_subsched_entries);
+    }
 
     return ccl::status::success;
 }

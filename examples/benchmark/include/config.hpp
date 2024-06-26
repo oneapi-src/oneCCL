@@ -19,7 +19,8 @@
 #define LARGE_MSG_ALIGNMENT (2 * 1024 * 1024)
 #define LARGE_MSG_THRESHOLD (1 * 1024 * 1024)
 
-#define ALL_COLLS_LIST "allgatherv,allreduce,alltoall,alltoallv,bcast,reduce,reduce_scatter"
+#define ALL_COLLS_LIST \
+    "allgather,allgatherv,allreduce,alltoall,alltoallv,bcast,bcastExt,reduce,reduce_scatter"
 
 #define ALL_DTYPES_LIST "int8,int32,int64,uint64,float16,float32,float64,bfloat16"
 
@@ -38,7 +39,7 @@
 #define DEFAULT_WARMUP_ITERS    (16)
 #define DEFAULT_ITER_POLICY     ITER_POLICY_AUTO
 #define DEFAULT_BUF_COUNT       (1)
-#define DEFAULT_MIN_ELEM_COUNT  (1)
+#define DEFAULT_MIN_ELEM_COUNT  (0)
 #define DEFAULT_MAX_ELEM_COUNT  (128)
 #define DEFAULT_CHECK_VALUES    CHECK_LAST_ITER
 #define DEFAULT_EXT_VALUES      EXT_AUTO

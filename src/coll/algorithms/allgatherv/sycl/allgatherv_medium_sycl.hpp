@@ -134,10 +134,11 @@ void read_write(int *even_ranks,
     data_type *out_ptr = (data_type *)out_buffer;
     int abs_offset_in_chunk = idx + threads_already_processed;
     int write_offset = abs_offset_in_chunk * SIMD_COMPUTE * UNROLL_SIZE;
+    bool in_place = send_buf == (data_type *)out_buffer + temp_rank * size;
     if (write_offset + SIMD_COMPUTE * UNROLL_SIZE <= size) {
         //#pragma unroll
         for (uint32_t r = 0; r < TEMP_WORLD / 2; r++) {
-            if ((int)r == my_rank_index && send_buf == out_buffer) {
+            if ((int)r == my_rank_index && in_place) {
                 continue;
             }
             int rr = even_ranks[r];
@@ -155,7 +156,7 @@ void read_write(int *even_ranks,
     }
     else {
         for (uint32_t r = 0; r < TEMP_WORLD / 2; r++) {
-            if ((int)r == my_rank_index && send_buf == out_buffer) {
+            if ((int)r == my_rank_index && in_place) {
                 continue;
             }
             int rr = even_ranks[r];
@@ -276,9 +277,7 @@ void nocopy_read_write(int *even_ranks,
         int r0 = (my_rank_index + r) % (TEMP_WORLD / 2);
         int rr = even_ranks[r0];
         data_type *read_ptr = (data_type *)send_bufs[rr];
-        int in_place = send_bufs[rr] == out_buffers[rr];
-        int myoffset = in_place ? rr * size : 0;
-        read_ptr += myoffset + offset;
+        read_ptr += offset;
 #pragma unroll
         for (int i = 0; i < UNROLL_SIZE; i++) {
 #if 1
@@ -298,16 +297,18 @@ void nocopy_read_write(int *even_ranks,
     // write to mdfi buffer and output buffer
     data_type *mdfi_buffer = (data_type *)out_buffers[temp_rank ^ 1];
     data_type *out_ptr = (data_type *)out_buffers[temp_rank];
+    int rank_in_place = send_bufs[temp_rank] == ((data_type *)out_buffers[temp_rank] + temp_rank * size);
+    int mdfi_in_place =
+        send_bufs[temp_rank ^ 1] == ((data_type *)out_buffers[temp_rank ^ 1] + (temp_rank ^ 1) * size);
     if (offset + SIMD_COMPUTE * UNROLL_SIZE <= size) {
         //#pragma unroll
         for (uint32_t r = 0; r < TEMP_WORLD / 2; r++) {
             uint32_t r0 = (my_rank_index + r) % (TEMP_WORLD / 2);
             uint32_t rr = even_ranks[r0];
-            int in_place = send_bufs[rr] == out_buffers[rr];
 #pragma unroll
             for (uint32_t i = 0; i < UNROLL_SIZE; i++) {
 #if 1
-                if (rr != (temp_rank ^ 1) || !in_place) {
+                if (rr != (temp_rank ^ 1) || !mdfi_in_place) {
                     lsc_block_store<data_type,
                                     SIMD_COMPUTE,
                                     lsc_data_size::default_size,
@@ -316,7 +317,7 @@ void nocopy_read_write(int *even_ranks,
                                                           in_buffer.template select<SIMD_COMPUTE, 1>(
                                                               r * SIMD_COMPUTE * UNROLL_SIZE + i * SIMD_COMPUTE));
                 }
-                if (rr != temp_rank || !in_place) {
+                if (rr != temp_rank || !rank_in_place) {
                     lsc_block_store<data_type,
                                     SIMD_COMPUTE,
                                     lsc_data_size::default_size,
@@ -346,7 +347,6 @@ void nocopy_read_write(int *even_ranks,
         for (uint32_t r = 0; r < TEMP_WORLD / 2; r++) {
             uint32_t r0 = (my_rank_index + r) % (TEMP_WORLD / 2);
             uint32_t rr = even_ranks[r0];
-            int in_place = send_bufs[rr] == out_buffers[rr];
 #if 0
             int count = (size - offset + SIMD_COMPUTE - 1) / SIMD_COMPUTE;
             for (int i = 0; i < count; i++)
@@ -358,27 +358,31 @@ void nocopy_read_write(int *even_ranks,
             }
 #else
             for (int i = 0; i < vc_count; i++) {
-                lsc_block_store<data_type,
-                                SIMD_COMPUTE,
-                                lsc_data_size::default_size,
-                                cache_hint::uncached,
-                                cache_hint::uncached>(
-                    mdfi_buffer + rr * size + offset + i * SIMD_COMPUTE,
-                    in_buffer.template select<SIMD_COMPUTE, 1>(r * SIMD_COMPUTE * UNROLL_SIZE + i * SIMD_COMPUTE));
-                lsc_block_store<data_type,
-                                SIMD_COMPUTE,
-                                lsc_data_size::default_size,
-                                cache_hint::uncached,
-                                cache_hint::uncached>(
-                    out_ptr + rr * size + offset + i * SIMD_COMPUTE,
-                    in_buffer.template select<SIMD_COMPUTE, 1>(r * SIMD_COMPUTE * UNROLL_SIZE + i * SIMD_COMPUTE));
+                if (rr != (temp_rank ^ 1) || !mdfi_in_place) {
+                    lsc_block_store<data_type,
+                                    SIMD_COMPUTE,
+                                    lsc_data_size::default_size,
+                                    cache_hint::uncached,
+                                    cache_hint::uncached>(mdfi_buffer + rr * size + offset + i * SIMD_COMPUTE,
+                                                          in_buffer.template select<SIMD_COMPUTE, 1>(
+                                                              r * SIMD_COMPUTE * UNROLL_SIZE + i * SIMD_COMPUTE));
+                }
+                if (rr != temp_rank || !rank_in_place) {
+                    lsc_block_store<data_type,
+                                    SIMD_COMPUTE,
+                                    lsc_data_size::default_size,
+                                    cache_hint::uncached,
+                                    cache_hint::uncached>(out_ptr + rr * size + offset + i * SIMD_COMPUTE,
+                                                          in_buffer.template select<SIMD_COMPUTE, 1>(
+                                                              r * SIMD_COMPUTE * UNROLL_SIZE + i * SIMD_COMPUTE));
+                }
             }
             for (int i = 0; i < count; i++) {
-                if (rr != (temp_rank ^ 1) || !in_place) {
+                if (rr != (temp_rank ^ 1) || !mdfi_in_place) {
                     mdfi_buffer[rr * size + offset + vc_count * SIMD_COMPUTE + i] =
                         in_buffer[r * SIMD_COMPUTE * UNROLL_SIZE + vc_count * SIMD_COMPUTE + i];
                 }
-                if (rr != temp_rank || !in_place) {
+                if (rr != temp_rank || !rank_in_place) {
                     out_ptr[rr * size + offset + vc_count * SIMD_COMPUTE + i] =
                         in_buffer[r * SIMD_COMPUTE * UNROLL_SIZE + vc_count * SIMD_COMPUTE + i];
                 }
@@ -414,7 +418,7 @@ public:
         size_per_buffer = 0;
     }
 
-    void init(sycl::queue &queue, ccl_comm *comm, ccl_stream *stream, uint32_t rank_in, uint32_t world_in) {
+    void init(sycl::queue &queue, ccl_comm *comm_in, ccl_stream *stream, uint32_t rank_in, uint32_t world_in) {
         using namespace __ESIMD_NS;
         using namespace __ESIMD_ENS;
         rank = rank_in;
@@ -429,7 +433,7 @@ public:
         e.wait();
 
         this->exchange_peer_ipc_mem(queue,
-                                    comm,
+                                    comm_in,
                                     stream,
                                     local_triple_buffer,
                                     NULL,
@@ -446,8 +450,8 @@ public:
         this->initialized = true;
 
         global_stream = stream;
-        global_comm = comm;
-        even_comm = global_comm->get_even_comm().get();
+        comm = comm_in->get_node_comm().get();
+        even_comm = comm_in->get_even_comm().get();
     }
 
     ccl::event allgatherv(sycl::queue &queue,
@@ -461,7 +465,7 @@ public:
             done = false;
             return ccl::event();
         }
-        if (ccl::global_data::env().allgatherv_use_tmp_buf) {
+        if (ccl::global_data::env().sycl_allgatherv_tmp_buf) {
             return allgatherv_copy(queue, send_buf, send_count, recv_buf, recv_counts);
         }
         else {
@@ -505,7 +509,7 @@ private:
         int even_ranks[max_rank];
         int myrank;
         for (int i = 0; i < world / 2; i++) {
-            even_ranks[i] = even_comm->get_global_rank(i);
+            even_ranks[i] = even_comm->get_node_rank(i);
             if (even_ranks[i] == (int)temp_rank)
                 myrank = i;
             //printf("even rank %d: %d neighbor: %d\n", i, even_ranks[i], even_ranks[i] ^ 1);
@@ -891,7 +895,7 @@ private:
         int even_ranks[max_rank];
         int myrank;
         for (int i = 0; i < world / 2; i++) {
-            even_ranks[i] = even_comm->get_global_rank(i);
+            even_ranks[i] = even_comm->get_node_rank(i);
             if (even_ranks[i] == (int)temp_rank)
                 myrank = i;
             //printf("[%d] even rank %d: %d neighbor: %d\n", temp_rank, i, even_ranks[i], even_ranks[i] ^ 1);
@@ -902,7 +906,7 @@ private:
         LOG_DEBUG("No-copy kernel calling exchange_peer_ipc_mem");
         //printf("[%d] before exchange: %p %p \n", rank, send_buf, recv_buf);
         this->exchange_peer_ipc_mem(queue,
-                                    global_comm,
+                                    comm,
                                     global_stream,
                                     (void **)send_buf,
                                     recv_buf,
@@ -1063,7 +1067,7 @@ private:
 
     //sync all the ranks here before consuming the results.
     // offset = size_per_buffer_for_sync_kernel * buffer_index_kernel
-    sycl::event global_sync(sycl::queue queue,
+    sycl::event global_sync(sycl::queue &queue,
                             int temp_rank,
                             uint32_t temp_world,
                             int offset,
@@ -1081,7 +1085,7 @@ private:
         int wg_size = 1;
         e = queue.submit([&](sycl::handler &cgh) {
             cgh.parallel_for<class AllgathervMediumKernel_GlobalSync<data_type>>(
-                sycl::nd_range<1>({ total_threads_needed_sync }, wg_size), [=](sycl::item<1> idx) SYCL_ESIMD_KERNEL
+                sycl::nd_range<1>({ total_threads_needed_sync }, wg_size), [=](sycl::nd_item<1> idx) SYCL_ESIMD_KERNEL
                 {
                 //ESIMD kernel
                 simd<ushort, SIMD_SYNC> ramp;
@@ -1252,6 +1256,6 @@ private:
     int max_count_per_rank{ ccl::utils::initial_count_value };
     int data_size_per_buffer{ ccl::utils::invalid_bytes_value };
     ccl_stream *global_stream{};
-    ccl_comm *global_comm{};
+    ccl_comm *comm{};
     ccl_comm *even_comm{};
 };

@@ -36,6 +36,12 @@ std::map<int, ccl::datatype> data_type_values = {
     { DATATYPE_FLOAT16, ccl::datatype::float16 }, { DATATYPE_FLOAT32, ccl::datatype::float32 },
     { DATATYPE_FLOAT64, ccl::datatype::float64 }, { DATATYPE_BFLOAT16, ccl::datatype::bfloat16 },
 };
+std::map<int, size_t> data_type_size_values = {
+    { DATATYPE_INT8, 1 },    { DATATYPE_UINT8, 1 },   { DATATYPE_INT16, 2 },
+    { DATATYPE_UINT16, 2 },  { DATATYPE_INT32, 4 },   { DATATYPE_UINT32, 4 },
+    { DATATYPE_INT64, 8 },   { DATATYPE_UINT64, 8 },  { DATATYPE_FLOAT16, 2 },
+    { DATATYPE_FLOAT32, 4 }, { DATATYPE_FLOAT64, 8 }, { DATATYPE_BFLOAT16, 2 },
+};
 
 ccl_size_type first_size_type = SIZE_SMALL;
 ccl_size_type last_size_type = SIZE_LAST;
@@ -125,6 +131,10 @@ size_t get_buffer_count(const test_param& param) {
 
 ccl::datatype get_ccl_datatype(const test_param& param) {
     return data_type_values[param.datatype];
+}
+
+size_t get_ccl_datatype_size(const test_param& param) {
+    return data_type_size_values[param.datatype];
 }
 
 ccl::reduction get_ccl_reduction(const test_param& param) {

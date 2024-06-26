@@ -19,6 +19,7 @@ template <>
 std::map<ccl_coll_reduce_scatter_algo, std::string>
     ccl_algorithm_selector_helper<ccl_coll_reduce_scatter_algo>::algo_names = {
         std::make_pair(ccl_coll_reduce_scatter_direct, "direct"),
+        std::make_pair(ccl_coll_reduce_scatter_naive, "naive"),
         std::make_pair(ccl_coll_reduce_scatter_ring, "ring"),
 #ifdef CCL_ENABLE_SYCL
         std::make_pair(ccl_coll_reduce_scatter_topo, "topo"),
@@ -30,14 +31,14 @@ ccl_algorithm_selector<ccl_coll_reduce_scatter>::ccl_algorithm_selector() {
     insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_reduce_scatter_topo);
 #else // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
     if (ccl::global_data::env().atl_transport == ccl_atl_ofi) {
-        insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_reduce_scatter_ring);
+        insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_reduce_scatter_naive);
     }
     else if (ccl::global_data::env().atl_transport == ccl_atl_mpi) {
         insert(main_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_reduce_scatter_direct);
     }
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
-    insert(scaleout_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_reduce_scatter_ring);
-    insert(fallback_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_reduce_scatter_ring);
+    insert(scaleout_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_reduce_scatter_naive);
+    insert(fallback_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_reduce_scatter_naive);
 }
 
 template <>

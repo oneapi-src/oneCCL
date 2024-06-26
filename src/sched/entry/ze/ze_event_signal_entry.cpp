@@ -17,16 +17,17 @@
 #include "sched/entry/ze/ze_event_signal_entry.hpp"
 #include "sched/queue/queue.hpp"
 #include "sched/sched.hpp"
+#include "sched/cache/recycle_storage.hpp"
 
 ze_event_signal_entry::ze_event_signal_entry(ccl_sched* sched, ccl_sched* master_sched)
-        : sched_entry(sched, false /*is_barrier*/, false /*is_urgent*/, true /*is_nonblocking*/),
+        : sched_entry(sched),
           master_sched(master_sched) {
     CCL_THROW_IF_NOT(sched, "no sched");
     CCL_THROW_IF_NOT(master_sched, "no master_sched");
 }
 
 ze_event_signal_entry::ze_event_signal_entry(ccl_sched* sched, ze_event_handle_t event)
-        : sched_entry(sched, false /*is_barrier*/, false /*is_urgent*/, true /*is_nonblocking*/),
+        : sched_entry(sched),
           event(event) {
     CCL_THROW_IF_NOT(sched, "no sched");
 }
@@ -40,6 +41,13 @@ void ze_event_signal_entry::start() {
     ZE_CALL(zeEventHostSignal, (signal_event));
 
     status = ccl_sched_entry_status_started;
+
+    // recycle threshold is empirical value. It is set to balance recycling speed
+    // TODO: create env variable? MLSL-2699
+    size_t recycle_threshold = 8;
+    auto& recycle_storage = ccl::global_data::get().recycle_storage;
+    recycle_storage->recycle_events(recycle_threshold, recycle_threshold / 2);
+    recycle_storage->recycle_requests(recycle_threshold);
 }
 
 void ze_event_signal_entry::handle_sycl_event_status() {

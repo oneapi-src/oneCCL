@@ -21,6 +21,7 @@
 #include "coll/selection/selection.hpp"
 #include "common/global/global.hpp"
 #include "comm/comm.hpp"
+#include "sched/buffer/buffer_manager.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
 #include "sched/sched_base.hpp"
 
@@ -157,6 +158,18 @@ ccl_buffer ccl_sched_base::alloc_buffer(const ccl::alloc_param& user_param) {
         param.buf_place = ccl::buffer_place::host;
     }
 
+    if (group.get() != nullptr && param.buf_place == ccl::buffer_place::device) {
+        size_t default_alignment = 8;
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+        default_alignment = ccl::global_data::env().kernel_mem_align;
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+        auto ptr = group->allocate(user_param.bytes, default_alignment);
+
+        if (ptr != nullptr) {
+            return ccl_buffer(ptr, param.bytes);
+        }
+    }
+
     return ccl_buffer(memory.buffer_manager.alloc(param), param.bytes);
 }
 
@@ -169,6 +182,11 @@ void ccl_sched_base::dealloc_buffer(const ccl::dealloc_param& user_param) {
     }
 #endif // CCL_ENABLE_SYCL
 
+    if (group.get() != nullptr && param.buf_type == ccl::buffer_type::ze &&
+        group->is_pointer_within_memory_context(param.ptr)) {
+        return;
+    }
+
     memory.buffer_manager.dealloc(param);
 }
 
@@ -177,7 +195,7 @@ void ccl_sched_base::try_enable_ze_single_list() {
     CCL_THROW_IF_NOT(ze_entries.empty(),
                      "trying to modify the list mode after ze_entries has already been formed");
     use_single_list = ccl::global_data::env().enable_ze_single_list &&
-                      ccl::global_data::env().kernel_debug == 0 &&
+                      !ccl::global_data::env().kernel_debug &&
                       !ccl::global_data::env().enable_fusion;
     LOG_DEBUG("ze_single_list set to: ", use_single_list);
 }
@@ -341,6 +359,10 @@ void ccl_sched_base::get_pre_post_copy_counts(std::vector<size_t>& d2h_counts,
     reuse_buffers = false;
 
     switch (param.ctype) {
+        case ccl_coll_allgather:
+            d2h_counts.push_back(param.get_send_count());
+            h2d_counts.push_back(param.get_recv_count() * param.comm->size());
+            break;
         case ccl_coll_allgatherv:
             d2h_counts.push_back(param.get_send_count());
             if (param.recv_bufs.size() > 1) {
@@ -381,6 +403,7 @@ void ccl_sched_base::get_pre_post_copy_counts(std::vector<size_t>& d2h_counts,
             }
             break;
         case ccl_coll_bcast:
+        case ccl_coll_bcastExt:
             if (param.comm->rank() == param.root)
                 d2h_counts.push_back(param.get_send_count());
             h2d_counts.push_back(param.get_recv_count());

@@ -89,6 +89,10 @@ const std::string& ccl_coll_algorithm_to_str(algo_group_type algo) {
     }
 
 template <>
+std::map<ccl_coll_allgather_algo, std::string>
+    ccl_algorithm_selector_helper<ccl_coll_allgather_algo>::algo_names;
+
+template <>
 std::map<ccl_coll_allgatherv_algo, std::string>
     ccl_algorithm_selector_helper<ccl_coll_allgatherv_algo>::algo_names;
 
@@ -103,6 +107,10 @@ std::map<ccl_coll_barrier_algo, std::string>
 template <>
 std::map<ccl_coll_bcast_algo, std::string>
     ccl_algorithm_selector_helper<ccl_coll_bcast_algo>::algo_names;
+
+template <>
+std::map<ccl_coll_bcastExt_algo, std::string>
+    ccl_algorithm_selector_helper<ccl_coll_bcastExt_algo>::algo_names;
 
 template <>
 std::map<ccl_coll_reduce_algo, std::string>

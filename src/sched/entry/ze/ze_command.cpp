@@ -70,3 +70,8 @@ void ze_cmd_signal_event::ze_call() {
             (cmdlist, //ze_command_list_handle_t command_list_handle,
              signal_event));
 }
+
+void ze_cmd_timestamp::ze_call() {
+    ZE_CALL(zeCommandListAppendWriteGlobalTimestamp,
+            (cmdlist, timestamp_ptr, signal_event, wait_events.size(), wait_events.data()));
+}

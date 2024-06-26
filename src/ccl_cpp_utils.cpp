@@ -19,8 +19,7 @@
 #include "oneapi/ccl/lp_types.hpp"
 #include "oneapi/ccl/types.hpp"
 #include "common/utils/enums.hpp"
-
-std::ostream& operator<<(std::ostream& out, const ccl::device_index_type& index);
+#include "oneapi/ccl/device_types.hpp"
 
 namespace ccl {
 
@@ -32,7 +31,7 @@ std::string to_string(const float16& v) {
     return std::to_string(v.get_data());
 }
 
-std::string to_string(const device_index_type& device_id) {
+CCL_API ccl::string to_string(const device_index_type& device_id) {
     std::stringstream ss;
     ss << "[" << std::get<ccl::device_index_enum::driver_index_id>(device_id) << ":"
        << std::get<ccl::device_index_enum::device_index_id>(device_id) << ":";
@@ -49,17 +48,18 @@ std::string to_string(const device_index_type& device_id) {
     return ss.str();
 }
 
-device_index_type from_string(const std::string& device_id_str) {
-    std::string::size_type from_pos = device_id_str.find('[');
+CCL_API device_index_type from_string(const ccl::string& device_id_str) {
+    std::string device_id_native_str = std::string(device_id_str);
+    std::string::size_type from_pos = device_id_native_str.find('[');
     if (from_pos == std::string::npos) {
         throw std::invalid_argument(std::string("Cannot get ccl::device_index_type from input: ") +
-                                    device_id_str);
+                                    device_id_native_str);
     }
 
-    if (device_id_str.size() == 1) {
+    if (device_id_native_str.size() == 1) {
         throw std::invalid_argument(
             std::string("Cannot get ccl::device_index_type from input, too less: ") +
-            device_id_str);
+            device_id_native_str);
     }
     from_pos++;
 
@@ -67,10 +67,10 @@ device_index_type from_string(const std::string& device_id_str) {
 
     size_t cur_index = 0;
     do {
-        std::string::size_type to_pos = device_id_str.find(':', from_pos);
+        std::string::size_type to_pos = device_id_native_str.find(':', from_pos);
         std::string::size_type count =
             (to_pos != std::string::npos ? to_pos - from_pos : std::string::npos);
-        std::string index_string(device_id_str, from_pos, count);
+        std::string index_string(device_id_native_str, from_pos, count);
         switch (cur_index) {
             case device_index_enum::driver_index_id: {
                 auto index = std::atoll(index_string.c_str());
@@ -78,7 +78,7 @@ device_index_type from_string(const std::string& device_id_str) {
                     throw std::invalid_argument(
                         std::string("Cannot get ccl::device_index_type from input, "
                                     "driver index invalid: ") +
-                        device_id_str);
+                        device_id_native_str);
                 }
                 std::get<device_index_enum::driver_index_id>(path) = index;
                 break;
@@ -89,7 +89,7 @@ device_index_type from_string(const std::string& device_id_str) {
                     throw std::invalid_argument(
                         std::string("Cannot get ccl::device_index_type from input, "
                                     "device index invalid: ") +
-                        device_id_str);
+                        device_id_native_str);
                 }
                 std::get<device_index_enum::device_index_id>(path) = index;
                 break;
@@ -104,55 +104,16 @@ device_index_type from_string(const std::string& device_id_str) {
                 throw std::invalid_argument(
                     std::string("Cannot get ccl::device_index_type from input, "
                                 "unsupported format: ") +
-                    device_id_str);
+                    device_id_native_str);
         }
 
         cur_index++;
-        if (device_id_str.size() > to_pos) {
+        if (device_id_native_str.size() > to_pos) {
             to_pos++;
         }
         from_pos = to_pos;
-    } while (from_pos < device_id_str.size());
+    } while (from_pos < device_id_native_str.size());
 
     return path;
 }
-
-std::string to_string(const device_indices_type& device_indices) {
-    std::string str;
-    constexpr const char separator[] = ", ";
-
-    if (!device_indices.empty()) {
-        auto index_it = device_indices.begin();
-        auto prev_end_index_it = device_indices.begin();
-        std::advance(prev_end_index_it, device_indices.size() - 1);
-        for (; index_it != prev_end_index_it; ++index_it) {
-            str += to_string(*index_it);
-            str += separator;
-        }
-
-        str += to_string(*index_it);
-    }
-    return str;
-}
-
-std::string to_string(const process_device_indices_type& indices) {
-    std::stringstream ss;
-    for (const auto& process : indices) {
-        ss << process.first << "\t" << to_string(process.second) << "\n";
-    }
-    return ss.str();
-}
-
-std::string to_string(const cluster_device_indices_type& indices) {
-    std::stringstream ss;
-    for (const auto& host : indices) {
-        ss << host.first << "\n" << to_string(host.second) << "\n";
-    }
-    return ss.str();
-}
 } // namespace ccl
-
-std::ostream& operator<<(std::ostream& out, const ccl::device_index_type& index) {
-    out << ccl::to_string(index);
-    return out;
-}

@@ -20,7 +20,7 @@
 #include "common/global/global.hpp"
 #include "common/log/log.hpp"
 
-atl_mpi_ctx::atl_mpi_lib_attr_t atl_mpi_ctx::mpi_lib_attr{ ATL_MPI_LIB_NONE, 0 };
+atl_mpi_ctx::atl_mpi_lib_attr_t atl_mpi_ctx::mpi_lib_attr{ ATL_MPI_LIB_NONE, 0, 0, 0 };
 
 const atl_mpi_ctx::atl_mpi_lib_info_t atl_mpi_ctx::mpi_lib_infos[MPI_LIB_INFO_MAX_COUNT] = {
     { ATL_MPI_LIB_IMPI,
@@ -55,10 +55,7 @@ void check_op_params(void* in_buf,
 
 #ifdef ATL_MPI_FP16
 
-void FP16_INLINE_TARGET_ATTRIBUTE_ALL fp16_base_op(void* in,
-                                                   void* inout,
-                                                   int* length,
-                                                   ccl::reduction op) {
+void fp16_base_op(void* in, void* inout, int* length, ccl::reduction op) {
     unsigned short* in_buf = (unsigned short*)in;
     unsigned short* inout_buf = (unsigned short*)inout;
 
@@ -66,34 +63,22 @@ void FP16_INLINE_TARGET_ATTRIBUTE_ALL fp16_base_op(void* in,
     ccl_fp16_reduce_impl(in_buf, inout_buf, len, op);
 }
 
-void FP16_TARGET_ATTRIBUTE_ALL fp16_sum_op(void* in,
-                                           void* inout,
-                                           int* length,
-                                           MPI_Datatype* datatype) {
+void fp16_sum_op(void* in, void* inout, int* length, MPI_Datatype* datatype) {
     check_op_params(in, inout, length, datatype, __FUNCTION__);
     fp16_base_op(in, inout, length, ccl::reduction::sum);
 }
 
-void FP16_TARGET_ATTRIBUTE_ALL fp16_prod_op(void* in,
-                                            void* inout,
-                                            int* length,
-                                            MPI_Datatype* datatype) {
+void fp16_prod_op(void* in, void* inout, int* length, MPI_Datatype* datatype) {
     check_op_params(in, inout, length, datatype, __FUNCTION__);
     fp16_base_op(in, inout, length, ccl::reduction::prod);
 }
 
-void FP16_TARGET_ATTRIBUTE_ALL fp16_min_op(void* in,
-                                           void* inout,
-                                           int* length,
-                                           MPI_Datatype* datatype) {
+void fp16_min_op(void* in, void* inout, int* length, MPI_Datatype* datatype) {
     check_op_params(in, inout, length, datatype, __FUNCTION__);
     fp16_base_op(in, inout, length, ccl::reduction::min);
 }
 
-void FP16_TARGET_ATTRIBUTE_ALL fp16_max_op(void* in,
-                                           void* inout,
-                                           int* length,
-                                           MPI_Datatype* datatype) {
+void fp16_max_op(void* in, void* inout, int* length, MPI_Datatype* datatype) {
     check_op_params(in, inout, length, datatype, __FUNCTION__);
     fp16_base_op(in, inout, length, ccl::reduction::max);
 }
@@ -152,7 +137,7 @@ size_t atl_mpi_ctx::get_nic_count(const char* nic_count_key) {
 }
 
 atl_mpi_ctx::atl_mpi_lib_attr_t atl_mpi_ctx::get_lib_attr() {
-    atl_mpi_lib_attr_t lib_attr = { ATL_MPI_LIB_NONE, 0 };
+    atl_mpi_lib_attr_t lib_attr = { ATL_MPI_LIB_NONE, 0, 0, 0 };
 
     char mpi_version[MPI_MAX_LIBRARY_VERSION_STRING] = { 0 };
     int mpi_version_len = -1, i;
@@ -212,6 +197,21 @@ atl_mpi_ctx::atl_mpi_lib_attr_t atl_mpi_ctx::get_lib_attr() {
 
             int version_value = (version_substr) ? atoi(version_substr) : -1;
             LOG_DEBUG("MPI numerical version: ", version_value);
+            int sub_version_value = -1;
+            /* find sub version value for impi */
+            if (i == 0) {
+                version_substr = strstr(version_substr, ".");
+                if (version_substr) {
+                    version_substr++;
+                    if (version_substr && version_substr[0] != '\0') {
+                        sub_version_value = atoi(version_substr);
+                    }
+                }
+                if (sub_version_value == -1) {
+                    LOG_DEBUG("can't find sub_version_value");
+                    sub_version_value = 0;
+                }
+            }
 
             if (version_value < info->min_version_value) {
                 LOG_WARN("loaded MPI doesn't match with expected version, "
@@ -272,6 +272,8 @@ atl_mpi_ctx::atl_mpi_lib_attr_t atl_mpi_ctx::get_lib_attr() {
             final_info = info;
 
             lib_attr.type = info->type;
+            lib_attr.version_value = version_value;
+            lib_attr.sub_version_value = sub_version_value;
             LOG_DEBUG("set lib_attr.type = ",
                       info->name,
                       ", version ",
@@ -311,75 +313,103 @@ size_t atl_mpi_ctx::get_ep_count(const atl_attr_t& attr) {
 int atl_mpi_ctx::bf16_init() {
     int ret = MPI_SUCCESS;
 
-    // create custom MPI BF16 dtype
-    ret = MPI_Type_contiguous(2, MPI_BYTE, &bf16.dtype);
-    if (ret != MPI_SUCCESS) {
-        LOG_ERROR("cannot create MPI BF16 dtype");
-        print_mpi_error(ret);
-        return ATL_STATUS_FAILURE;
+    bool env_mpi_bf16_native = (bool)(ccl::global_data::env().mpi_bf16_native);
+#ifdef MPIX_C_BF16
+    if (mpi_lib_attr.type == atl_mpi_lib_type_t::ATL_MPI_LIB_IMPI &&
+        mpi_lib_attr.version_value >= 2021 && mpi_lib_attr.sub_version_value >= 13 &&
+        env_mpi_bf16_native) {
+        is_bf16_native = true;
+        bf16.dtype = MPIX_C_BF16;
+        bf16.sum_op = MPI_SUM;
+        bf16.prod_op = MPI_PROD;
+        bf16.min_op = MPI_MIN;
+        bf16.max_op = MPI_MAX;
     }
-
-    ret = MPI_Type_commit(&bf16.dtype);
-    if (ret != MPI_SUCCESS) {
-        LOG_ERROR("cannot commit MPI BF16 type");
-        print_mpi_error(ret);
-        return ATL_STATUS_FAILURE;
+    else {
+        is_bf16_native = false;
     }
-
-    // create custom MPI BF16 summation op
-    ret = MPI_Op_create(&bf16_sum_op, 1, &bf16.sum_op);
-    if (ret != MPI_SUCCESS) {
-        LOG_ERROR("cannot create MPI BF16 sum op");
-        print_mpi_error(ret);
-        return ATL_STATUS_FAILURE;
+#else
+    is_bf16_native = false;
+#endif /* MPIX_C_BF16 */
+    if (env_mpi_bf16_native && !is_bf16_native) {
+        LOG_WARN("native Intel MPI BF16 is not available");
     }
-
-    // create custom MPI BF16 production op
-    ret = MPI_Op_create(&bf16_prod_op, 1, &bf16.prod_op);
-    if (ret != MPI_SUCCESS) {
-        LOG_ERROR("cannot create MPI BF16 prod op");
-        print_mpi_error(ret);
-        return ATL_STATUS_FAILURE;
+    if (is_bf16_native) {
+        LOG_INFO("native Intel MPI BF16 is enabled");
     }
+    else {
+        // create custom MPI BF16 dtype
+        ret = MPI_Type_contiguous(2, MPI_BYTE, &bf16.dtype);
+        if (ret != MPI_SUCCESS) {
+            LOG_ERROR("cannot create MPI BF16 dtype");
+            print_mpi_error(ret);
+            return ATL_STATUS_FAILURE;
+        }
 
-    // create custom MPI BF16 min op
-    ret = MPI_Op_create(&bf16_min_op, 1, &bf16.min_op);
-    if (ret != MPI_SUCCESS) {
-        LOG_ERROR("cannot create MPI BF16 min op");
-        print_mpi_error(ret);
-        return ATL_STATUS_FAILURE;
-    }
+        ret = MPI_Type_commit(&bf16.dtype);
+        if (ret != MPI_SUCCESS) {
+            LOG_ERROR("cannot commit MPI BF16 type");
+            print_mpi_error(ret);
+            return ATL_STATUS_FAILURE;
+        }
 
-    // create custom MPI BF16 max op
-    ret = MPI_Op_create(&bf16_max_op, 1, &bf16.max_op);
-    if (ret != MPI_SUCCESS) {
-        LOG_ERROR("cannot create MPI BF16 max op");
-        print_mpi_error(ret);
-        return ATL_STATUS_FAILURE;
+        // create custom MPI BF16 summation op
+        ret = MPI_Op_create(&bf16_sum_op, 1, &bf16.sum_op);
+        if (ret != MPI_SUCCESS) {
+            LOG_ERROR("cannot create MPI BF16 sum op");
+            print_mpi_error(ret);
+            return ATL_STATUS_FAILURE;
+        }
+
+        // create custom MPI BF16 production op
+        ret = MPI_Op_create(&bf16_prod_op, 1, &bf16.prod_op);
+        if (ret != MPI_SUCCESS) {
+            LOG_ERROR("cannot create MPI BF16 prod op");
+            print_mpi_error(ret);
+            return ATL_STATUS_FAILURE;
+        }
+
+        // create custom MPI BF16 min op
+        ret = MPI_Op_create(&bf16_min_op, 1, &bf16.min_op);
+        if (ret != MPI_SUCCESS) {
+            LOG_ERROR("cannot create MPI BF16 min op");
+            print_mpi_error(ret);
+            return ATL_STATUS_FAILURE;
+        }
+
+        // create custom MPI BF16 max op
+        ret = MPI_Op_create(&bf16_max_op, 1, &bf16.max_op);
+        if (ret != MPI_SUCCESS) {
+            LOG_ERROR("cannot create MPI BF16 max op");
+            print_mpi_error(ret);
+            return ATL_STATUS_FAILURE;
+        }
     }
 
     return ATL_STATUS_SUCCESS;
 }
 
 void atl_mpi_ctx::bf16_finalize() {
-    if (bf16.dtype != MPI_DATATYPE_NULL) {
-        MPI_Type_free(&bf16.dtype);
-    }
+    if (!is_bf16_native) {
+        if (bf16.dtype != MPI_DATATYPE_NULL) {
+            MPI_Type_free(&bf16.dtype);
+        }
 
-    if (bf16.sum_op != MPI_OP_NULL) {
-        MPI_Op_free(&bf16.sum_op);
-    }
+        if (bf16.sum_op != MPI_OP_NULL) {
+            MPI_Op_free(&bf16.sum_op);
+        }
 
-    if (bf16.prod_op != MPI_OP_NULL) {
-        MPI_Op_free(&bf16.prod_op);
-    }
+        if (bf16.prod_op != MPI_OP_NULL) {
+            MPI_Op_free(&bf16.prod_op);
+        }
 
-    if (bf16.min_op != MPI_OP_NULL) {
-        MPI_Op_free(&bf16.min_op);
-    }
+        if (bf16.min_op != MPI_OP_NULL) {
+            MPI_Op_free(&bf16.min_op);
+        }
 
-    if (bf16.max_op != MPI_OP_NULL) {
-        MPI_Op_free(&bf16.max_op);
+        if (bf16.max_op != MPI_OP_NULL) {
+            MPI_Op_free(&bf16.max_op);
+        }
     }
 }
 
@@ -392,51 +422,77 @@ int atl_mpi_ctx::fp16_init() {
 
     int ret = MPI_SUCCESS;
 
-    // create custom MPI FP16 dtype
-    ret = MPI_Type_contiguous(2, MPI_BYTE, &fp16.dtype);
-    if (ret != MPI_SUCCESS) {
-        LOG_ERROR("cannot create MPI FP16 dtype");
-        print_mpi_error(ret);
-        return ATL_STATUS_FAILURE;
+    bool env_mpi_fp16_native = (bool)(ccl::global_data::env().mpi_fp16_native);
+#ifdef MPIX_C_FLOAT16
+    if (mpi_lib_attr.type == atl_mpi_lib_type_t::ATL_MPI_LIB_IMPI &&
+        mpi_lib_attr.version_value >= 2021 && mpi_lib_attr.sub_version_value >= 13 &&
+        env_mpi_fp16_native) {
+        is_fp16_native = true;
+        fp16.dtype = MPIX_C_FLOAT16;
+        fp16.sum_op = MPI_SUM;
+        fp16.prod_op = MPI_PROD;
+        fp16.min_op = MPI_MIN;
+        fp16.max_op = MPI_MAX;
     }
-
-    ret = MPI_Type_commit(&fp16.dtype);
-    if (ret != MPI_SUCCESS) {
-        LOG_ERROR("cannot commit MPI FP16 type");
-        print_mpi_error(ret);
-        return ATL_STATUS_FAILURE;
+    else {
+        is_fp16_native = false;
     }
-
-    // create custom MPI FP16 summation op
-    ret = MPI_Op_create(&fp16_sum_op, 1, &fp16.sum_op);
-    if (ret != MPI_SUCCESS) {
-        LOG_ERROR("cannot create MPI FP16 sum op");
-        print_mpi_error(ret);
-        return ATL_STATUS_FAILURE;
+#else
+    is_fp16_native = false;
+#endif /* MPIX_C_FLOAT16 */
+    if (env_mpi_fp16_native && !is_fp16_native) {
+        LOG_WARN("native Intel MPI FP16 is not available");
     }
-
-    // create custom MPI FP16 production op
-    ret = MPI_Op_create(&fp16_prod_op, 1, &fp16.prod_op);
-    if (ret != MPI_SUCCESS) {
-        LOG_ERROR("cannot create MPI FP16 prod op");
-        print_mpi_error(ret);
-        return ATL_STATUS_FAILURE;
+    if (is_fp16_native) {
+        LOG_INFO("native Intel MPI FP16 is enabled");
     }
+    else {
+        // create custom MPI FP16 dtype
+        ret = MPI_Type_contiguous(2, MPI_BYTE, &fp16.dtype);
+        if (ret != MPI_SUCCESS) {
+            LOG_ERROR("cannot create MPI FP16 dtype");
+            print_mpi_error(ret);
+            return ATL_STATUS_FAILURE;
+        }
 
-    // create custom MPI FP16 min op
-    ret = MPI_Op_create(&fp16_min_op, 1, &fp16.min_op);
-    if (ret != MPI_SUCCESS) {
-        LOG_ERROR("cannot create MPI FP16 min op");
-        print_mpi_error(ret);
-        return ATL_STATUS_FAILURE;
-    }
+        ret = MPI_Type_commit(&fp16.dtype);
+        if (ret != MPI_SUCCESS) {
+            LOG_ERROR("cannot commit MPI FP16 type");
+            print_mpi_error(ret);
+            return ATL_STATUS_FAILURE;
+        }
 
-    // create custom MPI FP16 max op
-    ret = MPI_Op_create(&fp16_max_op, 1, &fp16.max_op);
-    if (ret != MPI_SUCCESS) {
-        LOG_ERROR("cannot create MPI FP16 max op");
-        print_mpi_error(ret);
-        return ATL_STATUS_FAILURE;
+        // create custom MPI FP16 summation op
+        ret = MPI_Op_create(&fp16_sum_op, 1, &fp16.sum_op);
+        if (ret != MPI_SUCCESS) {
+            LOG_ERROR("cannot create MPI FP16 sum op");
+            print_mpi_error(ret);
+            return ATL_STATUS_FAILURE;
+        }
+
+        // create custom MPI FP16 production op
+        ret = MPI_Op_create(&fp16_prod_op, 1, &fp16.prod_op);
+        if (ret != MPI_SUCCESS) {
+            LOG_ERROR("cannot create MPI FP16 prod op");
+            print_mpi_error(ret);
+            return ATL_STATUS_FAILURE;
+        }
+
+        // create custom MPI FP16 min op
+        ret = MPI_Op_create(&fp16_min_op, 1, &fp16.min_op);
+        if (ret != MPI_SUCCESS) {
+            LOG_ERROR("cannot create MPI FP16 min op");
+            print_mpi_error(ret);
+            return ATL_STATUS_FAILURE;
+        }
+
+        // create custom MPI FP16 max op
+        ret = MPI_Op_create(&fp16_max_op, 1, &fp16.max_op);
+        if (ret != MPI_SUCCESS) {
+            LOG_ERROR("cannot create MPI FP16 max op");
+            print_mpi_error(ret);
+            return ATL_STATUS_FAILURE;
+        }
     }
 
 #endif // ATL_MPI_FP16
@@ -445,24 +501,26 @@ int atl_mpi_ctx::fp16_init() {
 }
 
 void atl_mpi_ctx::fp16_finalize() {
-    if (fp16.dtype != MPI_DATATYPE_NULL) {
-        MPI_Type_free(&fp16.dtype);
-    }
+    if (!is_fp16_native) {
+        if (fp16.dtype != MPI_DATATYPE_NULL) {
+            MPI_Type_free(&fp16.dtype);
+        }
 
-    if (fp16.sum_op != MPI_OP_NULL) {
-        MPI_Op_free(&fp16.sum_op);
-    }
+        if (fp16.sum_op != MPI_OP_NULL) {
+            MPI_Op_free(&fp16.sum_op);
+        }
 
-    if (fp16.prod_op != MPI_OP_NULL) {
-        MPI_Op_free(&fp16.prod_op);
-    }
+        if (fp16.prod_op != MPI_OP_NULL) {
+            MPI_Op_free(&fp16.prod_op);
+        }
 
-    if (fp16.min_op != MPI_OP_NULL) {
-        MPI_Op_free(&fp16.min_op);
-    }
+        if (fp16.min_op != MPI_OP_NULL) {
+            MPI_Op_free(&fp16.min_op);
+        }
 
-    if (fp16.max_op != MPI_OP_NULL) {
-        MPI_Op_free(&fp16.max_op);
+        if (fp16.max_op != MPI_OP_NULL) {
+            MPI_Op_free(&fp16.max_op);
+        }
     }
 }
 

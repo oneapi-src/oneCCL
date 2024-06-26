@@ -28,6 +28,8 @@
 
 #define ATL_MPI_RANK_STR_SIZE 8
 
+#define ATL_MPI_ROOT_RANK_KEY "ROOT_RANK"
+
 #define MPI_BFLOAT16 \
     ({ \
         CCL_THROW_IF_NOT(ctx.bf16.dtype != MPI_DATATYPE_NULL, \
@@ -41,6 +43,10 @@
                          "unsupported datatype: ATL_DTYPE_FP16"); \
         ctx.fp16.dtype; \
     })
+
+// MLSL-3103
+#define KVS_MPI_TAG_TO_ROOT   222
+#define KVS_MPI_TAG_FROM_ROOT 223
 
 typedef enum { ATL_MPI_COMP_POSTED, ATL_MPI_COMP_COMPLETED } atl_mpi_comp_state_t;
 
@@ -121,12 +127,18 @@ public:
                        int* found,
                        size_t* recv_len) override;
 
+    atl_status_t allgather(atl_ep_t& ep,
+                           const void* send_buf,
+                           void* recv_buf,
+                           size_t len,
+                           atl_req_t& req) override;
+
     atl_status_t allgatherv(atl_ep_t& ep,
                             const void* send_buf,
                             size_t send_len,
                             void* recv_buf,
-                            const int* recv_lens,
-                            const int* offsets,
+                            const size_t* recv_lens,
+                            const size_t* offsets,
                             atl_req_t& req) override;
 
     atl_status_t allreduce(atl_ep_t& ep,
@@ -145,16 +157,22 @@ public:
 
     atl_status_t alltoallv(atl_ep_t& ep,
                            const void* send_buf,
-                           const int* send_lens,
-                           const int* send_offsets,
+                           const size_t* send_lens,
+                           const size_t* send_offsets,
                            void* recv_buf,
-                           const int* recv_lens,
-                           const int* recv_offsets,
+                           const size_t* recv_lens,
+                           const size_t* recv_offsets,
                            atl_req_t& req) override;
 
     atl_status_t barrier(atl_ep_t& ep, atl_req_t& req) override;
 
     atl_status_t bcast(atl_ep_t& ep, void* buf, size_t len, int root, atl_req_t& req) override;
+    atl_status_t bcastExt(atl_ep_t& ep,
+                          void* send_buf,
+                          void* recv_buf,
+                          size_t len,
+                          int root,
+                          atl_req_t& req) override;
 
     atl_status_t reduce(atl_ep_t& ep,
                         const void* send_buf,
@@ -225,6 +243,12 @@ public:
     std::string to_string() override;
 
     atl_status_t finalize(int global_idx = 0) override;
+
+    static void get_mpi_ranks(const int rank,
+                              const int size,
+                              const int root_rank,
+                              MPI_Comm comm,
+                              std::vector<int>& mpi_ranks);
 
     atl_status_t comm_create(int comm_size,
                              const std::vector<int>& comm_ranks,

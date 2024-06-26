@@ -59,6 +59,7 @@ extern ccl_data_type first_data_type;
 extern ccl_data_type last_data_type;
 extern std::map<int, std::string> data_type_names;
 extern std::map<int, ccl::datatype> data_type_values;
+extern std::map<int, size_t> data_type_sizes_values;
 
 typedef enum { SIZE_SMALL = 0, SIZE_MEDIUM, SIZE_LARGE, SIZE_LAST } ccl_size_type;
 extern ccl_size_type first_size_type;
@@ -145,6 +146,7 @@ std::ostream& operator<<(std::ostream& stream, test_param const& conf);
 size_t get_elem_count(const test_param& param);
 size_t get_buffer_count(const test_param& param);
 ccl::datatype get_ccl_datatype(const test_param& param);
+size_t get_ccl_datatype_size(const test_param& param);
 ccl::reduction get_ccl_reduction(const test_param& param);
 void init_test_dims();
 void init_test_params();

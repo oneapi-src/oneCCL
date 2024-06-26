@@ -79,7 +79,7 @@ public:
     std::string to_string() const;
 
 #ifdef CCL_ENABLE_SYCL
-    int get_enable_topo_algo() const {
+    bool get_enable_topo_algo() const {
         return enable_topo_algo;
     }
 
@@ -92,12 +92,118 @@ private:
     std::shared_ptr<ccl::device> device;
 
 #ifdef CCL_ENABLE_SYCL
-    int enable_topo_algo;
+    bool enable_topo_algo;
     ccl::ze::copy_engine_mode ze_copy_engine;
     ccl::ze::h2d_copy_engine_mode ze_h2d_copy_engine;
 
 #endif // CCL_ENABLE_SYCL
 };
+
+#ifdef CCL_ENABLE_SYCL
+constexpr size_t MAX_NODE_RANKS =
+    ccl::topo_manager::max_ranks_per_card * ccl::topo_manager::max_ranks_per_plane;
+class alignas(CACHELINE_SIZE) ccl_barrier_data {
+private:
+    int m_rank;
+    int m_size;
+    size_t m_count = slots - 1;
+    bool m_is_set = false;
+    std::array<size_t*, MAX_NODE_RANKS> m_remote_ptrs;
+
+public:
+    static constexpr int slots = 3;
+
+    ccl_barrier_data(int rank, int size) : m_rank(rank), m_size(size) {}
+
+    int rank() const {
+        return m_rank;
+    }
+
+    int size() const {
+        return m_size;
+    }
+
+    bool is_set() const {
+        return m_is_set;
+    }
+
+    size_t inc(size_t n) {
+        m_count += n;
+        return m_count;
+    }
+
+    size_t count() const {
+        return m_count / slots;
+    }
+
+    int slot() const {
+        return m_count % slots;
+    }
+
+    std::array<size_t*, MAX_NODE_RANKS> remote_ptrs() const {
+        return m_remote_ptrs;
+    }
+
+    void set_remote_ptrs(std::array<size_t*, MAX_NODE_RANKS> ptrs) {
+        assert(!is_set());
+        m_is_set = true;
+        m_remote_ptrs = ptrs;
+    }
+};
+
+class alignas(CACHELINE_SIZE) ccl_tmp_bufs {
+public:
+    // to avoid data race towards the end of a collective and starting of
+    // next collective we use different buffers on consecutive collectives.
+    static constexpr int buf_count = 2;
+    // use largest threshold among all the small buffers algorithms
+    static constexpr size_t buf_size = 2097152;
+
+    void set_tmp_buf(void* ptr, int idx) {
+        tmp_bufs[idx] = ptr;
+    }
+
+    void set_remote_tmp_bufs(std::array<void*, MAX_NODE_RANKS> ptrs, int idx) {
+        remote_tmp_bufs[idx] = ptrs;
+    }
+
+    int get_next_index() {
+        return ++index % buf_count;
+    }
+
+    void* get_tmp_buf(int idx) const {
+        return tmp_bufs[idx];
+    }
+
+    std::array<void*, MAX_NODE_RANKS> get_remote_tmp_buf(int idx) const {
+        return remote_tmp_bufs[idx];
+    }
+
+    std::pair<void*, std::array<void*, MAX_NODE_RANKS>> get_all_tmp_bufs(bool is_next) {
+        int idx = is_next ? get_next_index() : index;
+        return { get_tmp_buf(idx), get_remote_tmp_buf(idx) };
+    }
+
+private:
+    void* tmp_bufs[buf_count];
+    std::array<void*, MAX_NODE_RANKS> remote_tmp_bufs[buf_count];
+
+    int index = 0;
+};
+
+class alignas(CACHELINE_SIZE) ccl_scaleout_host_bufs {
+public:
+    ~ccl_scaleout_host_bufs();
+    void* get_scaleout_host_buf();
+    size_t get_scaleout_host_buf_size();
+
+private:
+    static constexpr int buf_count = 3;
+    size_t buf_size = 0;
+    void* host_bufs[buf_count] = { nullptr, nullptr, nullptr };
+    int index = 0;
+};
+#endif // CCL_ENABLE_SYCL
 
 // the main purpose of internal comm is to hold
 // shareable parts of ccl_comm which don't need to
@@ -128,6 +234,41 @@ public:
 
     void reset(int rank, int size);
 
+#ifdef CCL_ENABLE_SYCL
+    ccl_barrier_data barrier_data() const {
+        return m_barrier_data;
+    }
+
+    ccl_barrier_data barrier_inc(const size_t n) {
+        m_barrier_data.inc(n);
+        return m_barrier_data;
+    };
+
+    void set_barrier_ptrs(std::array<size_t*, MAX_NODE_RANKS> ptrs) {
+        m_barrier_data.set_remote_ptrs(ptrs);
+    }
+
+    std::pair<void*, std::array<void*, MAX_NODE_RANKS>> get_all_tmp_bufs(bool is_next) {
+        return m_tmp_buf.get_all_tmp_bufs(is_next);
+    }
+
+    void set_tmp_buf(void* ptr, int idx) {
+        m_tmp_buf.set_tmp_buf(ptr, idx);
+    }
+
+    void set_remote_tmp_bufs(std::array<void*, MAX_NODE_RANKS> ptrs, int idx) {
+        m_tmp_buf.set_remote_tmp_bufs(ptrs, idx);
+    }
+
+    void* get_scaleout_host_buf() {
+        return m_scaleout_host_bufs.get_scaleout_host_buf();
+    }
+
+    size_t get_scaleout_host_buf_size() {
+        return m_scaleout_host_bufs.get_scaleout_host_buf_size();
+    }
+#endif // CCL_ENABLE_SYCL
+
     std::shared_ptr<atl_base_comm> atl_comm;
     std::unique_ptr<ccl_unordered_coll_manager> unordered_coll_manager;
 
@@ -137,6 +278,11 @@ private:
     int m_pof2;
 
     ccl_double_tree m_dtree;
+#ifdef CCL_ENABLE_SYCL
+    ccl_barrier_data m_barrier_data;
+    ccl_tmp_bufs m_tmp_buf;
+    ccl_scaleout_host_bufs m_scaleout_host_bufs;
+#endif // CCL_ENABLE_SYCL
 };
 
 class alignas(CACHELINE_SIZE) ccl_comm : public ccl::comm_interface {
@@ -144,7 +290,7 @@ public:
     static constexpr int invalid_rank = -1;
 
     void init(int comm_id,
-              std::shared_ptr<atl_base_comm> atl_comm,
+              const std::shared_ptr<atl_base_comm>& atl_comm,
               bool share_resources = false,
               bool is_sub_communicator = false);
     ccl_comm(int comm_id,
@@ -215,6 +361,14 @@ public:
 
     int get_rank_from_global(int global_rank) const;
     bool try_get_rank_from_global(int global_rank) const;
+
+    /**
+     * Returns the number of @c rank in the node communicator
+     * @param rank a rank which is part of the current communicator
+     * @return number of @c rank in the node communicator
+     */
+    int get_node_rank(int rank) const;
+
     ccl_sched_id_t get_sched_id(bool use_internal_space, bool is_pt2pt);
 
     device_ptr_t get_device() const override {
@@ -234,18 +388,34 @@ public:
     }
 
     std::shared_ptr<ccl_comm> get_r2r_comm() const {
+        if (parent_comm) {
+            return parent_comm->get_r2r_comm();
+        }
+        CCL_ASSERT(r2r_comm, "no r2r_comm");
         return r2r_comm;
     }
 
     std::shared_ptr<ccl_comm> get_node_comm() const {
+        if (parent_comm) {
+            return parent_comm->get_node_comm();
+        }
+        CCL_ASSERT(node_comm, "no node_comm");
         return node_comm;
     }
 
     std::shared_ptr<ccl_comm> get_even_comm() const {
+        if (parent_comm) {
+            return parent_comm->get_even_comm();
+        }
+        CCL_ASSERT(even_comm, "no even_comm");
         return even_comm;
     }
 
     std::shared_ptr<ccl_comm> get_pair_comm() const {
+        if (parent_comm) {
+            return parent_comm->get_pair_comm();
+        }
+        CCL_ASSERT(pair_comm, "no pair_comm");
         return pair_comm;
     }
 
@@ -300,6 +470,39 @@ public:
     const ccl_double_tree& dtree() const {
         return comm_impl->dtree();
     }
+
+#ifdef CCL_ENABLE_SYCL
+    ccl_barrier_data barrier_data() const {
+        return comm_impl->barrier_data();
+    }
+
+    ccl_barrier_data barrier_inc(const size_t n = 1) {
+        return comm_impl->barrier_inc(n);
+    }
+
+    void set_barrier_ptrs(std::array<size_t*, MAX_NODE_RANKS> ptrs) {
+        comm_impl->set_barrier_ptrs(ptrs);
+    }
+
+    std::pair<void*, std::array<void*, MAX_NODE_RANKS>> get_all_tmp_bufs(bool is_next) {
+        return comm_impl->get_all_tmp_bufs(is_next);
+    }
+
+    void set_tmp_buf(void* ptr, int idx) {
+        comm_impl->set_tmp_buf(ptr, idx);
+    }
+
+    void set_remote_tmp_bufs(std::array<void*, MAX_NODE_RANKS> ptrs, int idx) {
+        comm_impl->set_remote_tmp_bufs(ptrs, idx);
+    }
+
+    void* get_scaleout_host_buf() {
+        return comm_impl->get_scaleout_host_buf();
+    }
+    size_t get_scaleout_host_buf_size() {
+        return comm_impl->get_scaleout_host_buf_size();
+    }
+#endif // CCL_ENABLE_SYCL
 
     // collectives operation declarations
     ccl::event barrier(const ccl::stream::impl_value_t& stream,

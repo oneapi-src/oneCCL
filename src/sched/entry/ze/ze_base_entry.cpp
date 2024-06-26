@@ -31,9 +31,8 @@ using namespace ccl::ze;
 ze_base_entry::ze_base_entry(ccl_sched *sched,
                              const std::vector<ze_event_handle_t> &wait_events,
                              ccl_comm *comm,
-                             uint32_t add_event_count,
-                             bool is_nonblocking)
-        : sched_entry(sched, false /*is_barrier*/, false /*is_urgent*/, is_nonblocking),
+                             uint32_t add_event_count)
+        : sched_entry(sched),
           comm(comm),
           use_single_list(sched->use_single_list),
           wait_events(wait_events) {

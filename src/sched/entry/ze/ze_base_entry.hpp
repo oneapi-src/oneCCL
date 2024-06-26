@@ -53,8 +53,7 @@ protected:
     explicit ze_base_entry(ccl_sched *sched,
                            const std::vector<ze_event_handle_t> &wait_events,
                            ccl_comm *comm = nullptr,
-                           uint32_t add_event_count = 0,
-                           bool is_nonblocking = false);
+                           uint32_t add_event_count = 0);
 
     void init() override;
     void finalize() override;

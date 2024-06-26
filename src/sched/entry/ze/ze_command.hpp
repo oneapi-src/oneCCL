@@ -15,6 +15,7 @@
 */
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include "sched/entry/ze/ze_kernel.hpp"
 
@@ -210,6 +211,33 @@ public:
     ze_cmd_signal_event(ze_command_list_handle_t cmdlist, ze_event_handle_t signal_event)
             : cmdlist(cmdlist),
               signal_event(signal_event) {}
+
+    void ze_call() override;
+};
+
+class ze_cmd_timestamp : public ze_command_t {
+    ze_command_list_handle_t cmdlist{};
+    uint64_t* timestamp_ptr{};
+    ze_event_handle_t signal_event{};
+    std::vector<ze_event_handle_t> wait_events;
+
+public:
+    static constexpr const char* class_name() noexcept {
+        return "ZECMD_TIMESTAMP";
+    }
+    const char* name() const override {
+        return class_name();
+    }
+
+    ze_cmd_timestamp() = delete;
+    ze_cmd_timestamp(ze_command_list_handle_t cmdlist,
+                     uint64_t* timestamp_ptr,
+                     ze_event_handle_t signal_event,
+                     const std::vector<ze_event_handle_t>& wait_events)
+            : cmdlist(cmdlist),
+              timestamp_ptr(timestamp_ptr),
+              signal_event(signal_event),
+              wait_events(wait_events) {}
 
     void ze_call() override;
 };

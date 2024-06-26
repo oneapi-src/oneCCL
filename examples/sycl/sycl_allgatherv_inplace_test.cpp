@@ -111,7 +111,10 @@ int main(int argc, char *argv[]) {
 
     /* invoke allgatherv */
     /* make in-place operation by providing recv_buf as input */
-    ccl::allgatherv(recv_buf, send_buf_count, recv_buf, recv_counts, comm, stream).wait();
+    buffer recv_buff_with_offset(recv_buf, sycl::id{ rbuf_idx }, sycl::range{ recv_counts[rank] });
+
+    ccl::allgatherv(recv_buff_with_offset, send_buf_count, recv_buf, recv_counts, comm, stream)
+        .wait();
 
     /* open recv_buf and check its correctness on the device side */
     q.submit([&](auto &h) {

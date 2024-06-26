@@ -69,7 +69,7 @@ std::unique_ptr<ccl_sched_queue> ccl_executor::create_sched_queue(size_t idx,
                                                                   size_t ep_per_worker) {
     std::vector<size_t> ep_vec(ep_per_worker);
     std::iota(std::begin(ep_vec), std::end(ep_vec), idx * ep_per_worker);
-    std::unique_ptr<ccl_sched_queue> sched_queue{ new ccl_sched_queue(idx, ep_vec) };
+    std::unique_ptr<ccl_sched_queue> sched_queue{ new ccl_sched_queue(idx, std::move(ep_vec)) };
     return sched_queue;
 }
 

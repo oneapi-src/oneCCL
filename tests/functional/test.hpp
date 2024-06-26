@@ -35,6 +35,7 @@ struct test_operation {
     size_t elem_count;
     size_t buffer_count;
     ccl::datatype datatype;
+    size_t datatype_size;
     ccl::reduction reduction;
 
     int comm_size;
@@ -63,6 +64,7 @@ struct test_operation {
               elem_count(get_elem_count(param)),
               buffer_count(get_buffer_count(param)),
               datatype(get_ccl_datatype(param)),
+              datatype_size(get_ccl_datatype_size(param)),
               reduction(get_ccl_reduction(param)) {
         comm_size = transport_data::instance().get_comm().size();
         comm_rank = transport_data::instance().get_comm().rank();
@@ -188,10 +190,14 @@ public:
             case DATATYPE_UINT32: return run<uint32_t>(param);
             case DATATYPE_INT64: return run<int64_t>(param);
             case DATATYPE_UINT64: return run<uint64_t>(param);
-            case DATATYPE_FLOAT16: return run<float>(param);
+            case DATATYPE_FLOAT16:
+                // TODO: use C++23 std::float16_t. Then, remove convert_fp32_to_lp and all of lp_impl.hpp
+                return run<float>(param);
             case DATATYPE_FLOAT32: return run<float>(param);
             case DATATYPE_FLOAT64: return run<double>(param);
-            case DATATYPE_BFLOAT16: return run<float>(param);
+            case DATATYPE_BFLOAT16:
+                // TODO: use C++23 std::bfloat16_t. Then, remove convert_fp32_to_lp and all of lp_impl.hpp
+                return run<float>(param);
             default:
                 EXPECT_TRUE(false) << "Unexpected data type: " << param.datatype;
                 return TEST_FAILURE;

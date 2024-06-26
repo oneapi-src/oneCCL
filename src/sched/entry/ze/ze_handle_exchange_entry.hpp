@@ -93,15 +93,17 @@ private:
     struct payload_t {
         int mem_handle{ ccl::utils::invalid_mem_handle };
         ccl::ze::ipc_mem_type mem_type{};
+        size_t handle_id{ ccl::utils::initial_handle_id_value };
         pid_t remote_pid{ ccl::utils::invalid_pid };
         size_t mem_offset{};
+        void* remote_ptr{};
         uint64_t remote_mem_alloc_id{};
         ssize_t remote_context_id{ ccl::utils::invalid_context_id };
         ssize_t remote_device_id{ ccl::utils::invalid_device_id };
         int device_fd{ ccl::utils::invalid_fd };
     };
 
-    void fill_payload(payload_t& payload, const std::vector<mem_desc_t>& bufs, size_t buf_idx);
+    void fill_payload(payload_t& payload, size_t buf_idx);
     void fill_remote_handle(const payload_t& payload,
                             ze_ipc_mem_handle_t ipc_handle,
                             const size_t idx,
@@ -110,10 +112,10 @@ private:
     int ipc_to_mem_handle(const ze_ipc_mem_handle_t& ipc_handle,
                           const int dev_id = ccl::utils::invalid_device_id);
 
-    void create_local_ipc_handles(const std::vector<mem_desc_t>& bufs);
-    int sockets_mode_exchange(const std::vector<mem_desc_t>& bufs);
-    void common_fd_mode_exchange(const std::vector<mem_desc_t>& bufs);
-    void pt2pt_fd_mode_exchange(const std::vector<mem_desc_t>& bufs);
+    void create_local_ipc_handles();
+    int sockets_mode_exchange();
+    void common_fd_mode_exchange();
+    void pt2pt_fd_mode_exchange();
 
     bool is_created{};
     bool is_connected{};

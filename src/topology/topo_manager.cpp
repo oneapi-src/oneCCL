@@ -348,45 +348,65 @@ p2p_matrix_t topo_manager::build_p2p_matrix(const std::vector<ze_device_handle_t
     return matrix;
 }
 
-bool topo_manager::build_fabric_connectivity_matrix(std::shared_ptr<atl_base_comm> comm) {
+bool topo_manager::build_fabric_connectivity_matrix(
+    std::shared_ptr<atl_base_comm> comm,
+    const std::vector<ze_device_handle_t>& devices) {
     if (!ccl::global_data::env().enable_fabric_vertex_connection_check) {
         return true;
     }
 
     auto driver = global_data::get().ze_data->drivers[0];
-    bool is_include_devices = true;
-    bool is_include_sub_devices_enabled = false;
+    ze_driver_properties_t driver_props;
+    ZE_CALL(zeDriverGetProperties, (driver, &driver_props));
+
+    if (comm->get_rank() == 0) {
+        LOG_INFO("level zero driver version: ", driver_props.driverVersion);
+    }
+
     bool is_matrix_connected = true;
-
-    uint32_t total_vertex_count = 0;
     std::vector<std::pair<ze_fabric_vertex_handle_t, char>> all_vertices;
-    // get the total number of fabric vertices
-    ZE_CALL(zeFabricVertexGetExp, (driver, &total_vertex_count, nullptr));
-    std::vector<ze_fabric_vertex_handle_t> vertices(total_vertex_count);
-    // retrieve all fabric vertices
-    ZE_CALL(zeFabricVertexGetExp, (driver, &total_vertex_count, vertices.data()));
 
-    // iterate through each vertex
-    for (auto& vertex : vertices) {
-        if (is_include_devices) {
-            all_vertices.push_back(std::make_pair(vertex, 'R'));
-        }
-        // check if including sub-devices, false by default since our model is FLAT
-        // meaning that all the devices that do not have sub-devices
-        if (is_include_sub_devices_enabled) {
-            uint32_t subdev_vertex_count = 0;
-            // get the number of sub-vertices
-            ZE_CALL(zeFabricVertexGetSubVerticesExp, (vertex, &subdev_vertex_count, nullptr));
-            // retrieve sub-vertices
-            std::vector<ze_fabric_vertex_handle_t> subVertices(subdev_vertex_count);
-            ZE_CALL(zeFabricVertexGetSubVerticesExp,
-                    (vertex, &subdev_vertex_count, subVertices.data()));
-            // add sub-vertices to the list
-            for (auto& subVertex : subVertices) {
-                all_vertices.push_back(std::make_pair(subVertex, 'S'));
+    if (driver_props.driverVersion < 17002026) {
+        bool is_include_devices = true;
+        bool is_include_sub_devices_enabled = false;
+
+        uint32_t total_vertex_count = 0;
+        // get the total number of fabric vertices
+        ZE_CALL(zeFabricVertexGetExp, (driver, &total_vertex_count, nullptr));
+        std::vector<ze_fabric_vertex_handle_t> vertices(total_vertex_count);
+        // retrieve all fabric vertices
+        ZE_CALL(zeFabricVertexGetExp, (driver, &total_vertex_count, vertices.data()));
+
+        // iterate through each vertex
+        for (auto& vertex : vertices) {
+            if (is_include_devices) {
+                all_vertices.push_back(std::make_pair(vertex, 'R'));
+            }
+            // check if including sub-devices, false by default since our model is FLAT
+            // meaning that all the devices that do not have sub-devices
+            if (is_include_sub_devices_enabled) {
+                uint32_t subdev_vertex_count = 0;
+                // get the number of sub-vertices
+                ZE_CALL(zeFabricVertexGetSubVerticesExp, (vertex, &subdev_vertex_count, nullptr));
+                // retrieve sub-vertices
+                std::vector<ze_fabric_vertex_handle_t> subVertices(subdev_vertex_count);
+                ZE_CALL(zeFabricVertexGetSubVerticesExp,
+                        (vertex, &subdev_vertex_count, subVertices.data()));
+                // add sub-vertices to the list
+                for (auto& subVertex : subVertices) {
+                    all_vertices.push_back(std::make_pair(subVertex, 'S'));
+                }
             }
         }
     }
+    else {
+        for (const auto& device : devices) {
+            ze_fabric_vertex_handle_t vertex = nullptr;
+            ZE_CALL(zeDeviceGetFabricVertexExp, (device, &vertex));
+            all_vertices.emplace_back(vertex, 'R');
+        }
+    }
+    LOG_DEBUG("all_vertices size: ", all_vertices.size(), ", devices size: ", devices.size());
 
     // check if there are no fabric vertices
     if (all_vertices.size() == 0) {
@@ -946,6 +966,7 @@ fabric_ports_t topo_manager::get_fabric_ports() {
     std::vector<zes_fabric_port_handle_t> ports(port_count);
     ZE_CALL(zesDeviceEnumFabricPorts, ((zes_device_handle_t)ze_device, &port_count, ports.data()));
 
+    // TODO: revert back to "false" when MLSL-3007 is fixed
     bool use_all_ports = true;
     if (ccl::ze::get_device_family(ze_device) == ccl::device_family::unknown) {
         LOG_WARN("device_family is unknown, topology discovery could be incorrect,"
@@ -1026,7 +1047,7 @@ fabric_ports_t topo_manager::get_fabric_ports() {
     }
 
     // exchange port info
-    std::vector<int> recv_bytes(comm_size, sizeof(topo_ze_port_info) * all_port_counts[0]);
+    std::vector<size_t> recv_bytes(comm_size, sizeof(topo_ze_port_info) * all_port_counts[0]);
     std::vector<int> port_count_offsets(comm_size, 0);
 
     for (int i = 1; i < comm_size; i++) {
@@ -1344,7 +1365,7 @@ void topo_manager::build_host_info() {
             std::string(all_hostnames_raw.data() + (idx * max_hostname_len), max_hostname_len);
         str.erase(std::find(str.begin(), str.end(), '\0'), str.end());
         unique_hostnames.insert(str);
-        all_hostnames[idx] = str;
+        all_hostnames[idx] = std::move(str);
     }
     CCL_THROW_IF_NOT(!unique_hostnames.empty(), "empty unique_hostnames");
 
@@ -1389,9 +1410,9 @@ void topo_manager::build_host_info() {
         });
 }
 
-void topo_manager::base_init(std::shared_ptr<atl_base_comm> atl_comm,
-                             std::shared_ptr<ccl::device> device,
-                             std::shared_ptr<ccl::context> context) {
+void topo_manager::base_init(const std::shared_ptr<atl_base_comm>& atl_comm,
+                             const std::shared_ptr<ccl::device>& device,
+                             const std::shared_ptr<ccl::context>& context) {
     comm = atl_comm;
 
     int comm_rank = comm->get_rank();
@@ -1483,8 +1504,8 @@ void topo_manager::base_init(std::shared_ptr<atl_base_comm> atl_comm,
 }
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-void topo_manager::ze_base_init(std::shared_ptr<ccl::device> device,
-                                std::shared_ptr<ccl::context> context) {
+void topo_manager::ze_base_init(const std::shared_ptr<ccl::device>& device,
+                                const std::shared_ptr<ccl::context>& context) {
     CCL_THROW_IF_NOT(comm);
 
     int comm_rank = comm->get_rank();
@@ -1522,8 +1543,10 @@ void topo_manager::ze_base_init(std::shared_ptr<ccl::device> device,
 
     // build p2p connectivity info
     const auto& node_devices = global_data::get().ze_data->devices;
-    p2p_matrix = build_p2p_matrix(get_filtered_devices(node_devices));
-    are_all_vertices_connected = build_fabric_connectivity_matrix(comm);
+    const auto& node_devices_filtered = get_filtered_devices(node_devices);
+    p2p_matrix = build_p2p_matrix(node_devices_filtered);
+
+    are_all_vertices_connected = build_fabric_connectivity_matrix(comm, node_devices_filtered);
 
     is_p2p_access_enabled = check_p2p_access();
     LOG_DEBUG("p2p matrix: \n",

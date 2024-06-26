@@ -16,6 +16,7 @@
 #pragma once
 
 //#include <CL/sycl.hpp>
+#include "oneapi/ccl/string.hpp"
 #include <exception>
 #include <string>
 
@@ -24,24 +25,24 @@ namespace ccl {
 namespace v1 {
 
 class exception : public std::exception {
-    std::string msg;
+    ccl::string msg;
 
 public:
-    exception(const std::string &domain, const std::string &function, const std::string &info = "")
+    exception(const ccl::string &domain, const ccl::string &function, const ccl::string &info = "")
             : std::exception() {
-        msg = std::string("oneCCL: ") + domain +
+        msg = ccl::string("oneCCL: ") + domain +
               ((domain.length() != 0 && function.length() != 0) ? "/" : "") + function +
               ((info.length() != 0)
                    ? (((domain.length() + function.length() != 0) ? ": " : "") + info)
                    : "");
     }
 
-    exception(const std::string &info = "") : std::exception() {
-        msg = std::string("oneCCL: ") + info;
+    exception(const ccl::string &info = "") : std::exception() {
+        msg = ccl::string("oneCCL: ") + info;
     }
 
     exception(const char *info) : std::exception() {
-        msg = std::string("oneCCL: ") + std::string(info);
+        msg = ccl::string("oneCCL: ") + ccl::string(info);
     }
 
     const char *what() const noexcept override {
@@ -51,21 +52,21 @@ public:
 
 class invalid_argument : public exception {
 public:
-    invalid_argument(const std::string &domain,
-                     const std::string &function,
-                     const std::string &info = "")
+    invalid_argument(const ccl::string &domain,
+                     const ccl::string &function,
+                     const ccl::string &info = "")
             : exception(domain, function, "invalid argument " + info) {}
 };
 
 class host_bad_alloc : public exception {
 public:
-    host_bad_alloc(const std::string &domain, const std::string &function)
+    host_bad_alloc(const ccl::string &domain, const ccl::string &function)
             : exception(domain, function, "cannot allocate memory on host") {}
 };
 
 // class device_bad_alloc : public exception {
 // public:
-//     device_bad_alloc(const std::string &domain, const std::string &function,
+//     device_bad_alloc(const ccl::string &domain, const ccl::string &function,
 //                      const cl::sycl::device &device)
 //             : exception(
 //                   domain, function,
@@ -74,17 +75,17 @@ public:
 
 class unimplemented : public exception {
 public:
-    unimplemented(const std::string &domain,
-                  const std::string &function,
-                  const std::string &info = "")
+    unimplemented(const ccl::string &domain,
+                  const ccl::string &function,
+                  const ccl::string &info = "")
             : exception(domain, function, "function is not implemented " + info) {}
 };
 
 class unsupported : public exception {
 public:
-    unsupported(const std::string &domain,
-                const std::string &function,
-                const std::string &info = "")
+    unsupported(const ccl::string &domain,
+                const ccl::string &function,
+                const ccl::string &info = "")
             : exception(domain, function, "function is not supported " + info) {}
 };
 

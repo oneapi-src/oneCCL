@@ -21,19 +21,19 @@
 namespace ccl {
 namespace utils {
 
-bool allgather(std::shared_ptr<atl_base_comm> comm,
+bool allgather(const std::shared_ptr<atl_base_comm>& comm,
                const void* send_buf,
                void* recv_buf,
-               int bytes,
+               size_t bytes,
                bool sync) {
-    std::vector<int> recv_bytes(comm->get_size(), bytes);
+    std::vector<size_t> recv_bytes(comm->get_size(), bytes);
     return allgatherv(comm, send_buf, recv_buf, recv_bytes, sync);
 }
 
-bool allgatherv(std::shared_ptr<atl_base_comm> comm,
+bool allgatherv(const std::shared_ptr<atl_base_comm>& comm,
                 const void* send_buf,
                 void* recv_buf,
-                const std::vector<int>& recv_bytes,
+                const std::vector<size_t>& recv_bytes,
                 bool sync) {
     atl_req_t req{};
     bool ret = true;
@@ -46,7 +46,7 @@ bool allgatherv(std::shared_ptr<atl_base_comm> comm,
                      ", comm_size ",
                      comm_size);
 
-    std::vector<int> offsets(comm_size, 0);
+    std::vector<size_t> offsets(comm_size, 0);
     for (int i = 1; i < comm_size; i++) {
         offsets[i] = offsets[i - 1] + recv_bytes[i - 1];
     }
@@ -67,7 +67,7 @@ bool allgatherv(std::shared_ptr<atl_base_comm> comm,
     return ret;
 }
 
-void check(std::shared_ptr<atl_base_comm> comm, atl_req_t& req) {
+void check(const std::shared_ptr<atl_base_comm>& comm, atl_req_t& req) {
     atl_status_t atl_status = comm->check(0, req);
 
     if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
@@ -85,7 +85,7 @@ void check(std::shared_ptr<atl_base_comm> comm, atl_req_t& req) {
     }
 }
 
-void recv(std::shared_ptr<atl_base_comm> comm,
+void recv(const std::shared_ptr<atl_base_comm>& comm,
           void* buf,
           int count,
           int peer_rank,
@@ -102,7 +102,7 @@ void recv(std::shared_ptr<atl_base_comm> comm,
     }
 }
 
-void send(std::shared_ptr<atl_base_comm> comm,
+void send(const std::shared_ptr<atl_base_comm>& comm,
           void* buf,
           int count,
           int peer_rank,
@@ -119,14 +119,14 @@ void send(std::shared_ptr<atl_base_comm> comm,
     }
 }
 
-void send_ack_to_peer(std::shared_ptr<atl_base_comm> comm, uint64_t tag, int peer_rank) {
-    ccl::utils::send(std::move(comm), nullptr, 0, peer_rank, tag);
+void send_ack_to_peer(const std::shared_ptr<atl_base_comm>& comm, uint64_t tag, int peer_rank) {
+    ccl::utils::send(comm, nullptr, 0, peer_rank, tag);
     LOG_DEBUG("send ack msg with tag: ", tag);
 }
 
-void recv_ack_from_peer(std::shared_ptr<atl_base_comm> comm, uint64_t tag, int peer_rank) {
+void recv_ack_from_peer(const std::shared_ptr<atl_base_comm>& comm, uint64_t tag, int peer_rank) {
     char ack[1];
-    ccl::utils::recv(std::move(comm), ack, 0, peer_rank, tag);
+    ccl::utils::recv(comm, ack, 0, peer_rank, tag);
     LOG_DEBUG("recv ack msg with tag: ", tag);
 }
 

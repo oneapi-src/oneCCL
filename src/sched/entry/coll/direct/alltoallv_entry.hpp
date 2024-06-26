@@ -141,10 +141,10 @@ private:
     const ccl_comm* comm;
     atl_req_t req{};
 
-    std::vector<int> send_bytes;
-    std::vector<int> recv_bytes;
-    std::vector<int> send_offsets;
-    std::vector<int> recv_offsets;
+    std::vector<size_t> send_bytes;
+    std::vector<size_t> recv_bytes;
+    std::vector<size_t> send_offsets;
+    std::vector<size_t> recv_offsets;
     size_t sum_send_bytes;
     size_t sum_recv_bytes;
 };

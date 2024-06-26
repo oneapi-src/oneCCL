@@ -18,7 +18,6 @@
 #include "exec/exec.hpp"
 #include "coll/coll.hpp"
 #include "coll/attr/ccl_common_op_attrs.hpp"
-#include "coll/attr/ccl_allgather_op_attr.hpp"
 #include "comm/comm.hpp"
 #include "comm/comm_impl.hpp"
 #include "common/global/global.hpp"
@@ -89,7 +88,12 @@ ccl_internal_comm::ccl_internal_comm(int comm_id,
                                      int rank,
                                      int size,
                                      std::shared_ptr<atl_base_comm> comm)
-        : m_dtree(size, rank) {
+        : m_dtree(size, rank)
+#ifdef CCL_ENABLE_SYCL
+          ,
+          m_barrier_data(rank, size)
+#endif // CCL_ENABLE_SYCL
+{
     atl_comm = atl_comm_manager::create_with_id(comm, comm_id);
     reset(rank, size);
 
@@ -108,7 +112,7 @@ void ccl_internal_comm::reset(int rank, int size) {
 // ccl_comm
 
 void ccl_comm::init(int comm_id,
-                    std::shared_ptr<atl_base_comm> atl_comm,
+                    const std::shared_ptr<atl_base_comm>& atl_comm,
                     bool share_resources,
                     bool is_sub_communicator) {
     comm_rank = atl_comm->get_rank();
@@ -192,11 +196,11 @@ std::shared_ptr<ikvs_wrapper> ccl_comm::get_kvs_wrapper(std::shared_ptr<ccl::kvs
     ccl::shared_ptr_class<ikvs_wrapper> kvs_tmp;
     if (std::dynamic_pointer_cast<ccl::v1::kvs>(kvs) != nullptr) {
         kvs_tmp = ccl::get_kvs_impl_typed<ccl::native_kvs_impl>(
-                      std::dynamic_pointer_cast<ccl::v1::kvs>(kvs))
+                      std::dynamic_pointer_cast<ccl::v1::kvs>(std::move(kvs)))
                       ->get();
     }
     else {
-        kvs_tmp = std::shared_ptr<ikvs_wrapper>(new users_kvs(kvs));
+        kvs_tmp = std::shared_ptr<ikvs_wrapper>(new users_kvs(std::move(kvs)));
     }
 
     return kvs_tmp;
@@ -336,6 +340,7 @@ int ccl_comm::get_rank_from_global(int global_rank) const {
 
     int rank = ccl_comm::invalid_rank;
 
+    // TODO: Add reverse map to speed this up
     for (size_t i = 0; i < local2global_map.size(); ++i) {
         if (local2global_map[i] == global_rank) {
             rank = static_cast<int>(i);
@@ -362,6 +367,20 @@ bool ccl_comm::try_get_rank_from_global(int global_rank) const {
     }
 
     return ret;
+}
+
+int ccl_comm::get_node_rank(int rank) const {
+    if (this == get_node_comm().get()) {
+        CCL_THROW("untested get_node_rank() on node_comm");
+        // This is the node_comm, mapping is direct
+        return rank;
+    }
+
+    // First, get global_rank from rank
+    int global_rank = get_global_rank(rank);
+
+    // Then, map global_rank to node_comm's rank
+    return get_node_comm()->get_rank_from_global(global_rank);
 }
 
 ccl_sched_id_t ccl_comm::get_sched_id(bool use_internal_space, bool is_pt2pt) {
@@ -396,6 +415,45 @@ ccl_sched_id_t ccl_comm::get_sched_id(bool use_internal_space, bool is_pt2pt) {
     return id;
 }
 
+#ifdef CCL_ENABLE_SYCL
+void* ccl_scaleout_host_bufs::get_scaleout_host_buf() {
+    if (!host_bufs[index]) {
+        CCL_THROW_IF_NOT(get_scaleout_host_buf_size() > 0,
+                         "CCL_SCALEOUT_HOST_BUF_SIZE must be greater than zero");
+
+        int numa_node_os_idx = 0; // TODO: determine which hbm_node_os_idx to set;
+        host_bufs[index] = ccl::global_data::get().hwloc_wrapper->alloc_memory(
+            CCL_REG_MSG_ALIGNMENT, buf_size, numa_node_os_idx);
+
+        if (ccl::global_data::get().ze_data->external_pointer_registration_enabled) {
+            ccl::global_data::get().ze_data->import_external_pointer(host_bufs[index], buf_size);
+        }
+    }
+
+    auto old_index = index;
+    index = (index + 1) % 3;
+    return host_bufs[old_index];
+}
+
+size_t ccl_scaleout_host_bufs::get_scaleout_host_buf_size() {
+    if (buf_size == 0) {
+        buf_size = ccl::global_data::env().sycl_scaleout_host_buf_size;
+    }
+    return buf_size;
+}
+
+ccl_scaleout_host_bufs::~ccl_scaleout_host_bufs() {
+    for (int i = 0; i < buf_count; ++i) {
+        if (host_bufs[i] != nullptr) {
+            if (ccl::global_data::get().ze_data->external_pointer_registration_enabled) {
+                ccl::global_data::get().ze_data->release_imported_pointer(host_bufs[i]);
+            }
+            ccl::global_data::get().hwloc_wrapper->dealloc_memory(host_bufs[i]);
+        }
+    }
+}
+#endif // CCL_ENABLE_SYCL
+
 /* barrier */
 ccl::event ccl_comm::barrier(const ccl::stream::impl_value_t& stream,
                              const ccl::barrier_attr& attr,
@@ -407,6 +465,42 @@ ccl::event ccl_comm::barrier_impl(const ccl::stream::impl_value_t& stream,
                                   const ccl::barrier_attr& attr,
                                   const ccl::vector_class<ccl::event>& deps) {
     ccl_request* req = ccl_barrier_impl(this, stream.get(), deps);
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
+}
+
+/* allgather */
+ccl::event ccl_comm::allgather_impl(const void* send_buf,
+                                    void* recv_buf,
+                                    size_t count,
+                                    ccl::datatype dtype,
+                                    const ccl::stream::impl_value_t& stream,
+                                    const ccl::allgather_attr& attr,
+                                    const ccl::vector_class<ccl::event>& deps) {
+    ccl_request* req = ccl_allgather_impl(
+        send_buf, recv_buf, count, dtype, attr, this, get_stream_ptr(stream), deps);
+
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
+}
+
+ccl::event ccl_comm::allgather_impl(const void* send_buf,
+                                    const ccl::vector_class<void*>& recv_buf,
+                                    size_t count,
+                                    ccl::datatype dtype,
+                                    const ccl::stream::impl_value_t& stream,
+                                    const ccl::allgather_attr& attr,
+                                    const ccl::vector_class<ccl::event>& deps) {
+    ccl_coll_attr internal_attr(attr);
+    internal_attr.is_vector_buf = 1;
+
+    ccl_request* req = ccl_allgather_impl(reinterpret_cast<const void*>(send_buf),
+                                          (void*)(recv_buf.data()),
+                                          count,
+                                          dtype,
+                                          internal_attr,
+                                          this,
+                                          get_stream_ptr(stream),
+                                          deps);
+
     return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
 }
 
@@ -563,6 +657,21 @@ ccl::event ccl_comm::broadcast_impl(void* buf,
                                     const ccl::vector_class<ccl::event>& deps) {
     ccl_request* req =
         ccl_broadcast_impl(buf, count, dtype, root, attr, this, get_stream_ptr(stream), deps);
+
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
+}
+
+/* bcastExt */
+ccl::event ccl_comm::broadcastExt_impl(void* send_buf,
+                                       void* recv_buf,
+                                       size_t count,
+                                       ccl::datatype dtype,
+                                       int root,
+                                       const ccl::stream::impl_value_t& stream,
+                                       const ccl::broadcastExt_attr& attr,
+                                       const ccl::vector_class<ccl::event>& deps) {
+    ccl_request* req = ccl_broadcastExt_impl(
+        send_buf, recv_buf, count, dtype, root, attr, this, get_stream_ptr(stream), deps);
 
     return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
 }

@@ -18,16 +18,11 @@
 #include "sched/entry/entry.hpp"
 #include "sched/sched.hpp"
 
-sched_entry::sched_entry(ccl_sched* sched,
-                         bool is_barrier,
-                         bool is_urgent,
-                         bool is_nonblocking,
-                         bool is_coll)
+sched_entry::sched_entry(ccl_sched* sched, bool is_barrier, bool is_coll, bool is_deps)
         : sched(sched),
           barrier(is_barrier),
-          urgent(is_urgent),
-          nonblocking(is_nonblocking),
-          coll(is_coll) {
+          coll(is_coll),
+          deps(is_deps) {
     use_total_timer = ccl::global_data::env().sched_profile;
     detect_update_time_expiration =
         ccl::global_data::env().entry_max_update_time_sec != CCL_ENV_SIZET_NOT_SPECIFIED;
@@ -202,16 +197,12 @@ bool sched_entry::is_barrier() const {
     return barrier;
 }
 
-bool sched_entry::is_urgent() const {
-    return urgent;
-}
-
-bool sched_entry::is_nonblocking() const {
-    return nonblocking;
-}
-
 bool sched_entry::is_coll() const {
     return coll;
+}
+
+bool sched_entry::is_deps() const {
+    return deps;
 }
 
 ccl_sched_entry_status sched_entry::get_status() const {

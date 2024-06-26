@@ -35,7 +35,9 @@ public:
 
     void init(const ccl_stream* init_stream);
     void clear();
-
+    static void check_ipc_event_count(ccl_coll_type ctype,
+                                      const size_t& ipc_event_count,
+                                      const size_t& max_ipc_event_count);
     ze_event_pool_handle_t create(size_t event_count);
 
 private:

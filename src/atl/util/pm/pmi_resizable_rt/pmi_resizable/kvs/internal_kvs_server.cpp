@@ -31,8 +31,8 @@
 
 class server {
 public:
-    server() = default;
-    kvs_status_t run(void*);
+    server(server_args_t* server_args) : args(server_args) {}
+    kvs_status_t run();
     kvs_status_t check_finalize(size_t& to_finalize);
     kvs_status_t make_client_request(int& socket);
     kvs_status_t try_to_connect_new();
@@ -79,6 +79,7 @@ private:
     std::vector<struct pollfd> poll_fds;
 
     sa_family_t address_family{ AF_UNSPEC };
+    std::unique_ptr<server_args_t> args;
 };
 
 kvs_status_t server::try_to_connect_new() {
@@ -350,8 +351,9 @@ kvs_status_t server::check_finalize(size_t& to_finalize) {
     return KVS_STATUS_SUCCESS;
 }
 
-kvs_status_t server::run(void* args) {
+kvs_status_t server::run() {
     size_t should_stop = false;
+
     int so_reuse = 1;
 #ifdef SO_REUSEPORT
     int reuse_optname = SO_REUSEPORT;
@@ -364,8 +366,8 @@ kvs_status_t server::run(void* args) {
         it.fd = free_socket;
         it.events = POLLIN;
     }
-    poll_fds[FDI_LISTENER].fd = ((server_args_t*)args)->sock_listener;
-    address_family = ((server_args_t*)args)->args->sin_family();
+    poll_fds[FDI_LISTENER].fd = args->sock_listener;
+    address_family = args->args->sin_family();
 
     if (setsockopt(
             poll_fds[FDI_LISTENER].fd, SOL_SOCKET, reuse_optname, &so_reuse, sizeof(so_reuse))) {
@@ -383,9 +385,8 @@ kvs_status_t server::run(void* args) {
         return KVS_STATUS_FAILURE;
     }
 
-    while (connect(poll_fds[FDI_CONTROL].fd,
-                   ((server_args_t*)args)->args->get_sock_addr_ptr(),
-                   ((server_args_t*)args)->args->size()) < 0) {
+    while (connect(poll_fds[FDI_CONTROL].fd, args->args->get_sock_addr_ptr(), args->args->size()) <
+           0) {
     }
     while (!should_stop || client_count > 0) {
         if (poll(poll_fds.data(), poll_fds.size(), -1) < 0) {
@@ -431,11 +432,10 @@ kvs_status_t server::run(void* args) {
 }
 
 void* kvs_server_init(void* args) {
-    server s;
+    server s(reinterpret_cast<server_args_t*>(args));
 
-    if (s.run(args) != KVS_STATUS_SUCCESS) {
+    if (s.run() != KVS_STATUS_SUCCESS) {
         LOG_ERROR("failed");
     }
-
     return nullptr;
 }

@@ -23,7 +23,7 @@
                                    uint32_t rank_in, \
                                    uint32_t world_in); \
     ccl::event run_allgatherv_##MSGSIZE(ccl::datatype dtype, \
-                                        sycl::queue q, \
+                                        sycl::queue& q, \
                                         const void* send_buf, \
                                         size_t send_count, \
                                         void* rev_buf, \
@@ -33,20 +33,21 @@
 SYCL_ALLGATHERV_FUNCTIONS(small)
 SYCL_ALLGATHERV_FUNCTIONS(medium)
 
-ccl::event allgatherv_impl(const void* send_buf,
-                           size_t send_count,
-                           void* recv_buf,
-                           const ccl::vector_class<size_t>& recv_counts,
-                           ccl::datatype dtype,
-                           const ccl::communicator& comm,
-                           const ccl::stream& op_stream,
-                           const ccl::allgatherv_attr& attr,
-                           const ccl::vector_class<ccl::event>& deps);
-
 namespace ccl {
 namespace v1 {
 
-ccl::event allgather_sycl(sycl::queue q,
+ccl::event allgather_sycl_single_node(sycl::queue& q,
+                                      const void* send_buf,
+                                      size_t send_count,
+                                      void* recv_buf,
+                                      const ccl::vector_class<size_t>& recv_counts,
+                                      ccl::datatype dtype,
+                                      ccl_comm* comm,
+                                      ccl_stream* global_stream,
+                                      const vector_class<event>& deps,
+                                      bool& done);
+
+ccl::event allgather_sycl(sycl::queue& q,
                           const void* send_buf,
                           size_t send_count,
                           void* recv_buf,
@@ -59,3 +60,21 @@ ccl::event allgather_sycl(sycl::queue q,
                           bool& done);
 } // namespace v1
 } // namespace ccl
+
+ccl::event allgatherv_small(const void* send_buf,
+                            size_t send_count,
+                            void* recv_buf,
+                            const ccl::vector_class<size_t>& recv_counts,
+                            ccl::datatype dtype,
+                            ccl_comm* comm,
+                            ccl_stream* global_stream,
+                            const ccl::vector_class<ccl::event>& deps);
+
+ccl::event allgatherv_large(const void* send_buf,
+                            size_t send_count,
+                            void* recv_buf,
+                            const ccl::vector_class<size_t>& recv_counts,
+                            ccl::datatype dtype,
+                            ccl_comm* comm,
+                            ccl_stream* global_stream,
+                            const ccl::vector_class<ccl::event>& deps);

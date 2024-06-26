@@ -472,11 +472,11 @@ void print_timings(const ccl::communicator& comm,
         size_t bytes = elem_count * ccl::get_datatype_size(dtype) * buf_count;
         std::stringstream ss;
         ss << std::right << std::fixed << std::setw(COL_WIDTH) << bytes << std::setw(COL_WIDTH)
-           << iter_count << std::setw(COL_WIDTH) << std::setprecision(COL_PRECISION) << min_time
-           << std::setw(COL_WIDTH) << std::setprecision(COL_PRECISION) << max_time
-           << std::setw(COL_WIDTH) << std::setprecision(COL_PRECISION) << total_avg_time
-           << std::setw(COL_WIDTH - 3) << std::setprecision(COL_PRECISION) << stddev
-           << std::setw(COL_WIDTH + 3);
+           << elem_count * buf_count << std::setw(COL_WIDTH) << iter_count << std::setw(COL_WIDTH)
+           << std::setprecision(COL_PRECISION) << min_time << std::setw(COL_WIDTH)
+           << std::setprecision(COL_PRECISION) << max_time << std::setw(COL_WIDTH)
+           << std::setprecision(COL_PRECISION) << total_avg_time << std::setw(COL_WIDTH - 3)
+           << std::setprecision(COL_PRECISION) << stddev << std::setw(COL_WIDTH + 3);
 
         if (show_extened_info(options.show_additional_info)) {
             ss << std::right << std::fixed << std::setprecision(COL_PRECISION) << wait_avg_time;
@@ -757,11 +757,12 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
     }
 
     if (options.inplace) {
-        //TODO: "allgatherv", "reduce_scatter" it'd pass with sycl kernels
-        // they must be checked with schedule architicture
-        std::initializer_list<std::string> supported_colls = {
-            "allgatherv", "allreduce", "alltoall", "alltoallv", "reduce_scatter"
-        };
+        // TODO: "allgatherv", "reduce_scatter" it'd pass with sycl kernels
+        // they must be checked with schedule architicture.
+        std::initializer_list<std::string> supported_colls = { "allgather",     "allgatherv",
+                                                               "allreduce",     "alltoall",
+                                                               "alltoallv",     "bcastExt",
+                                                               "reduce_scatter" };
         for (auto name : options.coll_names) {
             if (!is_inplace_supported(name, supported_colls)) {
                 PRINT("inplace is not supported for %s yet", name.c_str());

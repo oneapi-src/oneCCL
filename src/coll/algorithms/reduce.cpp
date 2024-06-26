@@ -24,6 +24,9 @@
 #include "coll/coll_util.hpp"
 #include "comm/comm.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+#include "sched/entry/ze/ze_dummy_entry.hpp"
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
 using namespace ccl::utils;
 
@@ -387,7 +390,7 @@ ccl::status ccl_coll_build_ring_reduce(ccl_sched* sched,
                      " recv ",
                      recv_buf);
 
-    ccl_coll_build_ring_reduce_scatter(sched, send_buf, recv_buf, count, dtype, reduction, comm);
+    ccl_coll_build_reduce_scatter_block(sched, send_buf, recv_buf, count, dtype, reduction, comm);
     sched->add_barrier();
 
     size_t main_block_count = count / comm_size;
@@ -678,8 +681,24 @@ ccl::status ccl_coll_build_topo_reduce_fill(ccl_sched* sched,
                              ipc_event_pool,
                              ipc_event_count++);
 
+    sched->group->register_chunk_start(sched);
+
     CCL_THROW_IF_NOT(comm_size % 2 == 0, "unexpected comm_size ", comm_size);
     CCL_THROW_IF_NOT(node_comm_size % 2 == 0, "unexpected node_comm_size ", node_comm_size);
+
+    if (!sched->is_deps_barrier() && sched->has_deps_entry()) {
+        // Submit dummy ze_entry for earlier L0 submission of the workload
+        // This has to be done after handle exchange to ensure that the IPC handles are ready
+        entry_factory::create<ze_dummy_entry>(sched);
+
+        // Dependencies output signal event has to be among wait events for comm_barrier
+        wait_events.push_back(sched->get_related_deps_out_event());
+
+        // Submit comm_barrier to ensure synchronization for early submitted entries
+        ccl::add_comm_barrier(
+            sched, node_comm, wait_events, out_event, ipc_event_pool, ipc_event_count++);
+        clear_and_push_back(wait_events, out_event);
+    }
 
     if (is_single_card) {
         LOG_DEBUG("topo/scale_up/intra: use ze_onesided_reduce");
@@ -714,6 +733,12 @@ ccl::status ccl_coll_build_topo_reduce_fill(ccl_sched* sched,
 
         if (use_read_write_pipeline) {
             LOG_DEBUG("topo/scale_up/intra: use ze_a2a_pipeline_read_write_entry");
+
+            // Read block size used to offset send buffer.
+            const size_t read_block_count = count / pair_comm->size() / even_comm->size();
+            // Offset inside a read block.
+            const size_t read_block_inner_offset = 0;
+
             ze_a2a_pipeline_read_write_entry::attr attrs{ .use_continous_data = true,
                                                           .use_remote_target = true };
             auto reduce_entry =
@@ -723,6 +748,8 @@ ccl::status ccl_coll_build_topo_reduce_fill(ccl_sched* sched,
                                                                         tmp_bufs,
                                                                         tmp_buf_idx_start,
                                                                         count,
+                                                                        read_block_count,
+                                                                        read_block_inner_offset,
                                                                         dtype,
                                                                         op,
                                                                         wait_events,
@@ -784,7 +811,7 @@ ccl::status ccl_coll_build_topo_reduce_fill(ccl_sched* sched,
                 // copy using write
                 LOG_DEBUG("topo/scale_up/inter: use ze_a2a_reduce_scatter_write_copy_entry");
 
-                reduce_scatter_args rs_args = { even_comm, block_counts, dtype, op };
+                reduce_scatter_args rs_args = { even_comm, std::move(block_counts), dtype, op };
                 reduce_scatter_bufs rs_bufs = { tmp_buf,
                                                 even_comm_recv_buf,
                                                 tmp_write_buf,
@@ -865,12 +892,8 @@ ccl::status ccl_coll_build_topo_reduce_fill(ccl_sched* sched,
                 sched, node_comm, wait_events, out_event, ipc_event_pool, ipc_event_count++);
             clear_and_push_back(wait_events, out_event);
         }
-
-        CCL_THROW_IF_NOT(ipc_event_count <= max_ipc_event_count,
-                         "unexpected ipc_event_count ",
-                         ipc_event_count,
-                         ", expected max ",
-                         max_ipc_event_count);
+        ipc_event_pool_manager::check_ipc_event_count(
+            sched->coll_param.ctype, ipc_event_count, max_ipc_event_count);
     }
     else {
         LOG_DEBUG("topo reduce original");
@@ -964,6 +987,8 @@ ccl::status ccl_coll_build_topo_reduce_fill(ccl_sched* sched,
     CCL_ASSERT(wait_events.size() == 1 && wait_events.back() != nullptr,
                "wait_events should have a single, valid event");
 
+    sched->group->register_chunk_end(sched, wait_events.back());
+
     return ccl::status::success;
 }
 
@@ -984,13 +1009,18 @@ ccl::status ccl_coll_build_topo_reduce(ccl_sched* sched,
         ccl::global_data::env().reduce_pipe_chunk_count,
         "REDUCE",
         ccl::global_data::get().metrics_profiler->reduce_pipe,
+        comm,
         [dtype, op, root, comm](ccl_sched* sched,
                                 ccl_buffer send_buf,
                                 ccl_buffer recv_buf,
-                                size_t count) -> ccl::status {
+                                size_t count,
+                                size_t offset,
+                                size_t combined_count) -> ccl::status {
             return ccl_coll_build_topo_reduce_fill(
                 sched, send_buf, recv_buf, count, dtype, op, root, comm);
-        });
+        },
+        ccl_chunking_mode::ccl_buffer_implicit,
+        ccl_coll_type::ccl_coll_reduce);
 }
 
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE

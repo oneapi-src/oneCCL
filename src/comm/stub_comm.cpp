@@ -47,13 +47,34 @@ stub_comm* stub_comm::create(device_t device,
 
     auto kvs_impl = ccl::get_kvs_impl_typed<stub_kvs_impl>(kvs_inst);
 
-    return new stub_comm(device, context, rank, size, kvs_inst, kvs_impl);
+    return new stub_comm(device, context, rank, size, std::move(kvs_inst), kvs_impl);
 }
 
 /* barrier */
 ccl::event stub_comm::barrier_impl(const ccl::stream::impl_value_t& stream,
                                    const ccl::barrier_attr& attr,
                                    const ccl::vector_class<ccl::event>& deps) {
+    return process_stub_backend();
+}
+
+/* allgather */
+ccl::event stub_comm::allgather_impl(const void* send_buf,
+                                     void* recv_buf,
+                                     size_t count,
+                                     ccl::datatype dtype,
+                                     const ccl::stream::impl_value_t& stream,
+                                     const ccl::allgather_attr& attr,
+                                     const ccl::vector_class<ccl::event>& deps) {
+    return process_stub_backend();
+}
+
+ccl::event stub_comm::allgather_impl(const void* send_buf,
+                                     const ccl::vector_class<void*>& recv_buf,
+                                     size_t count,
+                                     ccl::datatype dtype,
+                                     const ccl::stream::impl_value_t& stream,
+                                     const ccl::allgather_attr& attr,
+                                     const ccl::vector_class<ccl::event>& deps) {
     return process_stub_backend();
 }
 
@@ -123,6 +144,18 @@ ccl::event stub_comm::broadcast_impl(void* buf,
                                      const ccl::stream::impl_value_t& stream,
                                      const ccl::broadcast_attr& attr,
                                      const ccl::vector_class<ccl::event>& deps) {
+    return process_stub_backend();
+}
+
+/* bcastExt */
+ccl::event stub_comm::broadcastExt_impl(void* send_buf,
+                                        void* recv_buf,
+                                        size_t count,
+                                        ccl::datatype dtype,
+                                        int root,
+                                        const ccl::stream::impl_value_t& stream,
+                                        const ccl::broadcastExt_attr& attr,
+                                        const ccl::vector_class<ccl::event>& deps) {
     return process_stub_backend();
 }
 

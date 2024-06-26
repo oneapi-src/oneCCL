@@ -126,7 +126,7 @@ public:
         int wg_size = 1;
         //dummy kernel to avoid hang. The hang happens when there is no dummy kernel and allreduce() is called right after init().
         e = queue.submit([&](sycl::handler &cgh) {
-            cgh.parallel_for(sycl::nd_range<1>({ 1 }, wg_size), [=](sycl::item<1> idx) SYCL_ESIMD_KERNEL {
+            cgh.parallel_for(sycl::nd_range<1>({ 1 }, wg_size), [=](sycl::nd_item<1> idx) SYCL_ESIMD_KERNEL {
 
             });
         });

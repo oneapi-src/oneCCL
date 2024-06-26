@@ -120,6 +120,25 @@ constexpr const char* CCL_WORKER_MEM_AFFINITY = "CCL_WORKER_MEM_AFFINITY";
 constexpr const char* I_MPI_AVAILABLE_CORES_ENV = "I_MPI_PIN_INFO";
 constexpr const char* I_MPI_AVAILABLE_CORES_DELIMS = ",x";
 
+/**
+ * @addtogroup OneCCLvars
+ * @{
+ */
+/**
+ * @brief Select the mechanism to collect ranks while creating a communicator.
+ * 
+ * @details 
+ * "<value>": \n
+ * "0" - use default implementation using sockets \n
+ * "1" - use mpi \n
+ * KVS implemention with sockets is used to collect the rank information
+ * while creating communicator by default. \n
+ * 
+ * By-default: "0"
+ */
+constexpr const char* CCL_KVS_MODE = "CCL_KVS_MODE";
+/** @} */
+
 constexpr const char* CCL_ATL_TRANSPORT = "CCL_ATL_TRANSPORT";
 /**
  * @addtogroup OneCCLvars
@@ -151,8 +170,6 @@ constexpr const char* CCL_ATL_SEND_PROXY = "CCL_ATL_SEND_PROXY";
 constexpr const char* CCL_ATL_SYNC_COLL = "CCL_ATL_SYNC_COLL";
 constexpr const char* CCL_ATL_EXTRA_EP = "CCL_ATL_EXTRA_EP";
 constexpr const char* CCL_ATL_CACHE = "CCL_ATL_CACHE";
-constexpr const char* CCL_ENABLE_RUN_ID_DETECTION = "CCL_ENABLE_RUN_ID_DETECTION";
-constexpr const char* CCL_ENABLE_RUN_ID_WITH_PPID = "CCL_ENABLE_RUN_ID_WITH_PPID";
 
 constexpr const char* CCL_MNIC = "CCL_MNIC";
 constexpr const char* CCL_MNIC_NAME = "CCL_MNIC_NAME";
@@ -164,6 +181,23 @@ constexpr const char* CCL_ALGO_FALLBACK = "CCL_ALGO_FALLBACK";
  * @addtogroup OneCCLvars
  * @{
  */
+/**
+ * @brief Set allgather algorithm
+ *
+ * @details
+ * ALLGATHER algorithms
+ *  - direct    Based on MPI_Iallgather
+ *  - naive     Send to all, receive from all
+ *  - ring      Alltoall-based algorithm
+ *  - flat      Alltoall-based algorithm
+ *  - multi_bcast   Series of broadcast operations with different root ranks
+ *  - topo	     Topo scaleup algorithm
+ *
+ *
+ * By-default: "topo", if sycl and l0 are enabled,
+ *      otherwise "naive" for ofi or "direct" for mpi; "ring" used as fallback
+ */
+constexpr const char* CCL_ALLGATHER = "CCL_ALLGATHER";
 /**
  * @brief Set allgatherv algorithm
  *
@@ -245,7 +279,7 @@ constexpr const char* CCL_BARRIER = "CCL_BARRIER";
  *
  * @details
  * BCAST algorithms
- *  - direc         Based on MPI_Ibcast
+ *  - direct        Based on MPI_Ibcast
  *  - ring          Ring
  *  - double_tree   Double-tree algorithm
  *  - naive         Send to all from root rank
@@ -256,6 +290,22 @@ constexpr const char* CCL_BARRIER = "CCL_BARRIER";
  * By-default: "direct"
  */
 constexpr const char* CCL_BCAST = "CCL_BCAST";
+/**
+ * @brief Set broadcastExt algorithm (send_buf, recv_buf)
+ *
+ * @details
+ * BCAST algorithms
+ *  - direct        Based on MPI_Ibcast
+ *  - ring          Ring
+ *  - double_tree   Double-tree algorithm
+ *  - naive         Send to all from root rank
+ *
+ *  Note: BCAST algorithm does not support yet the  CCL_BCAST_SCALEOUT
+ * environment variable. To change the algorithm for BCAST, use CCL_BCAST.
+ *
+ * By-default: "direct"
+ */
+constexpr const char* CCL_BCASTEXT = "CCL_BCASTEXT";
 /**
  * @brief Set reduce algorithm
  *
@@ -278,14 +328,12 @@ constexpr const char* CCL_REDUCE = "CCL_REDUCE";
  * @details
  * REDUCE_SCATTER algorithms
  *  - direct    Based on MPI_Ireduce_scatter_block
- *  - ring      Use CCL_RS_CHUNK_COUNT and CCL_RS_MIN_CHUNK_SIZE to control pipelining.
+ *  - naive     Send to all, receive and reduce from all
+ *  - ring      Ring-based algorithm. Use CCL_RS_CHUNK_COUNT and CCL_RS_MIN_CHUNK_SIZE to control pipelining.
  *  - topo      Topo algorithm (available if sycl and l0 are enabled, scaleup only)
  *
- *  Note: REDUCE_SCATTER algorithm does not support yet
- * the CCL_REDUCE_SCATTER_SCALEOUT environment variable. To change
- * the algorithm for REDUCE_SCATTER scaleout, use CCL_REDUCE_SCATTER.
- *
- * By-default: "direct"
+ * By-default: "topo" if sycl and l0 are enabled,
+ *      otherwise naive for ofi transport or direct for mpi
  */
 constexpr const char* CCL_REDUCE_SCATTER = "CCL_REDUCE_SCATTER";
 
@@ -357,6 +405,21 @@ constexpr const char* CCL_UNORDERED_COLL = "CCL_UNORDERED_COLL";
  * @addtogroup OneCCLvars
  * @{
  */
+/**
+ * @brief Set scaleout allgather algorithm
+ *
+ * @details
+ * ALLGATHER algorithms
+ * - direct        Based on MPI_Iallgather
+ * - naive         Send to all, receive from all
+ * - ring          Alltoall-based algorithm
+ * - flat          Alltoall-based algorithm
+ * - multi_bcast   Series of broadcast operations with different root ranks
+ * 
+ *
+ * By-default: "naive" for ofi or "direct" for mpi; "ring" used as fallback
+ */
+constexpr const char* CCL_ALLGATHER_SCALEOUT = "CCL_ALLGATHER_SCALEOUT";
 /**
  * @brief Set scaleout allgatherv algorithm
  *
@@ -430,6 +493,18 @@ constexpr const char* CCL_ALLTOALLV_SCALEOUT = "CCL_ALLTOALLV_SCALEOUT";
  * By-default: "double_tree"
  */
 constexpr const char* CCL_REDUCE_SCALEOUT = "CCL_REDUCE_SCALEOUT";
+/**
+ * @brief Set reduce-scatter scaleout algorithm
+ *
+ * @details
+ * REDUCE_SCATTER algorithms
+ * - direct    Based on MPI_Ireduce_scatter_block
+ * - naive     Send to all, receive and reduce from all
+ * - ring      Ring-based algorithm. Use CCL_RS_CHUNK_COUNT and CCL_RS_MIN_CHUNK_SIZE to control pipelining.
+ *
+ * By-default: "naive"
+ */
+constexpr const char* CCL_REDUCE_SCATTER_SCALEOUT = "CCL_REDUCE_SCATTER_SCALEOUT";
 /** @} */
 
 constexpr const char* CCL_FUSION = "CCL_FUSION";
@@ -452,6 +527,32 @@ constexpr const char* CCL_OP_SYNC = "CCL_OP_SYNC";
 
 constexpr const char* CCL_CHUNK_COUNT = "CCL_CHUNK_COUNT";
 constexpr const char* CCL_MIN_CHUNK_SIZE = "CCL_MIN_CHUNK_SIZE";
+
+/**
+ * @addtogroup OneCCLvars
+ * @{
+ */
+/**
+ * @brief Specifies the size of the intermediate buffer used by oneCCL for collective operations.
+ *
+ * @details The CCL_ZE_TMP_BUF_SIZE environment variable controls the size of the buffer that is used 
+ * for temporary buffers of collective operations in 'topo' algorithms. It has no effect on other 
+ * algorithms. Smaller values can reduce memory usage at the 
+ * expense of performance for 'topo' algorithms.
+ *
+ * Syntax
+ *
+ * CCL_ZE_TMP_BUF_SIZE="<value>"
+ *
+ * Arguments
+ *
+ * "<value>"    Description
+ *  	- SIZE	The size of the buffer in bytes.
+ * 
+ * By-default: "536870912"
+ */
+constexpr const char* CCL_ZE_TMP_BUF_SIZE = "CCL_ZE_TMP_BUF_SIZE";
+
 /**
  * @addtogroup OneCCLvars
  * @{
@@ -512,11 +613,29 @@ constexpr const char* CCL_ALLTOALLV_TOPO_READ = "CCL_ALLTOALLV_TOPO_READ";
  * By-default: "1"
  */
 constexpr const char* CCL_REDUCE_SCATTER_TOPO_READ = "CCL_REDUCE_SCATTER_TOPO_READ";
-/** @} */
+
 /**
- * @addtogroup OneCCLvars
- * @{
+ * @brief Set this environment variable to 1 to enable synchronous dependencies processing for oneCCL operations.
+ *
+ * @details
+ *
+ * Syntax
+ * CCL_ZE_DEPS_SYNC="<value>"
+ *
+ * Arguments
+ *
+ * "<value>"	Description
+ * 	- 1	Dependencies of oneCCL operations are processed synchronously.
+ * 	- 0	Dependencies of oneCCL operations are processed asynchronously (default), meaning that further L0 submissions are being done while dependencies are in progress. Dependencies are signaling when processed.
+ *
+ * Description
+ *
+ * Set this environment variable to 1 to make oneCCL block the thread while previous sycl/L0 submissions are not finished.
+ *
+ * By-default: "0"
  */
+constexpr const char* CCL_ZE_DEPS_SYNC = "CCL_ZE_DEPS_SYNC";
+
 /**
  * @brief Set this environment variable to enable compute kernels for Allreduce, Reduce, and Reduce-Scatter collectives using device (GPU) buffers
  *
@@ -555,12 +674,12 @@ constexpr const char* CCL_ALLGATHERV_MONOLITHIC_KERNEL = "CCL_ALLGATHERV_MONOLIT
  * Arguments
  *
  * "<value>"	Description
- * 	- 1	Uses compute kernels to transfer data across GPUs for Allgather collective
- * 	- 0	Uses copy engines to transfer data across GPUs for Allgather collectives (default)
+ * 	- 1	Uses compute kernels to transfer data across GPUs for Allgatherv collectives
+ * 	- 0	Uses copy engines to transfer data across GPUs for Allgatherv collectives (default)
  *
  * Description
  *
- * Set this environment variable to enable compute kernels for Allgather collectives using device (GPU) buffers
+ * Set this environment variable to enable compute kernels for Allgatherv collectives using device (GPU) buffers
  *
  * By-default: "0"
  */
@@ -730,6 +849,8 @@ constexpr const char* CCL_ALLREDUCE_2D_CHUNK_COUNT = "CCL_ALLREDUCE_2D_CHUNK_COU
 constexpr const char* CCL_ALLREDUCE_2D_MIN_CHUNK_SIZE = "CCL_ALLREDUCE_2D_MIN_CHUNK_SIZE";
 constexpr const char* CCL_ALLREDUCE_2D_SWITCH_DIMS = "CCL_ALLREDUCE_2D_SWITCH_DIMS";
 
+constexpr const char* CCL_CHECK_INPLACE_ALIASING = "CCL_CHECK_INPLACE_ALIASING";
+
 constexpr const char* CCL_ALLTOALL_SCATTER_MAX_OPS = "CCL_ALLTOALL_SCATTER_MAX_OPS";
 
 constexpr const char* CCL_BACKEND = "CCL_BACKEND";
@@ -829,6 +950,8 @@ constexpr const char* CCL_TOPO_FABRIC_VERTEX_CONNECTION_CHECK = "CCL_TOPO_FABRIC
 
 #ifdef CCL_ENABLE_MPI
 constexpr const char* CCL_MPI_LIBRARY_PATH = "CCL_MPI_LIBRARY_PATH";
+constexpr const char* CCL_ATL_MPI_BF16 = "CCL_ATL_MPI_BF16";
+constexpr const char* CCL_ATL_MPI_FP16 = "CCL_ATL_MPI_FP16";
 #endif // CCL_ENABLE_MPI
 constexpr const char* CCL_OFI_LIBRARY_PATH = "CCL_OFI_LIBRARY_PATH";
 
@@ -846,13 +969,78 @@ constexpr const char* CCL_ZE_DEVICE_CACHE_POLICY = "CCL_ZE_DEVICE_CACHE_POLICY";
 constexpr const char* CCL_ZE_DEVICE_MEM_DISABLE_CLEAR = "CCL_ZE_DEVICE_MEM_DISABLE_CLEAR";
 constexpr const char* CCL_ZE_DEVICE_MEM_ALLOC_SIZE = "CCL_ZE_DEVICE_MEM_ALLOC_SIZE";
 constexpr const char* CCL_ZE_DEVICE_MEM_ENABLE = "CCL_ZE_DEVICE_MEM_ENABLE";
-constexpr const char* CCL_ZE_CACHE_OPEN_IPC_HANDLES = "CCL_ZE_CACHE_OPEN_IPC_HANDLES";
-constexpr const char* CCL_ZE_CACHE_OPEN_IPC_HANDLES_THRESHOLD = "CCL_ZE_CACHE_OPEN_IPC_HANDLES_THRESHOLD";
-constexpr const char* CCL_ZE_CACHE_GET_IPC_HANDLES = "CCL_ZE_CACHE_GET_IPC_HANDLES";
+constexpr const char* CCL_ZE_PTR_REGISTER_THRESHOLD = "CCL_ZE_PTR_REGISTER_THRESHOLD";
 /**
  * @addtogroup OneCCLvars
  * @{
  */
+
+/**
+ * @brief Set this environment variable to enable or disable the caching of IPC handles opened with
+ * zeMemOpenIpcHandle().
+ *
+ * @details This controls whether it caches IPC handles opened with zeMemOpenIpcHandle() on receiver's side.
+ * When enabled, it caches opened IPC handles, which can improve performance in certain scenarios.
+ * See https://spec.oneapi.io/level-zero/latest/core/PROG.html#memory-1
+ * 
+ *  CCL_ZE_CACHE_OPEN_IPC_HANDLES="<value>"
+ *
+ *  "<value>"
+ *  	- 0	Disables the caching of opened IPC handles.
+ *  	- 1	Enables the caching of opened IPC handles (default).
+ *
+ * By-default: "1"
+ */
+constexpr const char* CCL_ZE_CACHE_OPEN_IPC_HANDLES = "CCL_ZE_CACHE_OPEN_IPC_HANDLES";
+
+/**
+ * @brief Set this environment variable to specify the per process threshold for caching IPC handles opened with zeMemOpenIpcHandle().
+ *
+ * @details  This specifies the threshold for caching open IPC handles on receiver's side. When the number
+ * of open IPC handles exceeds this threshold, the cache will start evicting handles via LRU from the cache.
+ *
+ *  CCL_ZE_CACHE_OPEN_IPC_HANDLES_THRESHOLD="<value>"
+ *
+ *  "<value>"
+ *  	- SIZE	The threshold value for caching open IPC handles.
+ *
+ * By-default: "1000"
+ */
+constexpr const char* CCL_ZE_CACHE_OPEN_IPC_HANDLES_THRESHOLD = "CCL_ZE_CACHE_OPEN_IPC_HANDLES_THRESHOLD";
+
+/**
+ * @brief Set this environment variable to enable or disable the caching of IPC handles obtained with zeMemGetIpcHandle(). 
+ *
+ * @details This environment variable specifies the threshold for caching get IPC handles on sender's side.
+ * When the number of IPC handles obtained with zeMemGetIpcHandle() exceeds this threshold, the cache will start evicting 
+ * handles via LRU from the cache.
+ * 
+ *  CCL_ZE_CACHE_GET_IPC_HANDLES_THRESHOLD="<value>"
+ *
+ *  "<value>"
+ *  	- SIZE	The threshold value for caching get IPC handles.
+ *
+ * By-default: "1000"
+ */
+constexpr const char* CCL_ZE_CACHE_GET_IPC_HANDLES_THRESHOLD = "CCL_ZE_CACHE_GET_IPC_HANDLES_THRESHOLD";
+
+/**
+ * @brief Set this environment variable to specify the per process threshold for caching IPC handles obtained with zeMemGetIpcHandle().
+ *
+ * @details This controls whether it caches IPC handles obtained with zeMemGetIpcHandle() on sender's side. When enabled, it caches IPC handles,
+ * which can improve performance in certain scenarios. By default, the caching of get IPC handles is enabled.
+ * See https://spec.oneapi.io/level-zero/latest/core/PROG.html#memory-1
+ *
+ *  CCL_ZE_CACHE_GET_IPC_HANDLES="<value>"
+ *
+ *  "<value>"
+ *  	- 0	Disables the caching of get IPC handles.
+ *  	- 1	Enables the caching of get IPC handles (default).
+ * 
+ * By-default: "1"
+ */
+constexpr const char* CCL_ZE_CACHE_GET_IPC_HANDLES = "CCL_ZE_CACHE_GET_IPC_HANDLES";
+
 /**
  * @brief Set to enable oversubscription in topo fallback stage for
  * all collectives.
@@ -897,7 +1085,6 @@ constexpr const char* CCL_ZE_LIBRARY_PATH = "CCL_ZE_LIBRARY_PATH";
 constexpr const char* CCL_ZE_ENABLE = "CCL_ZE_ENABLE";
 constexpr const char* CCL_ZE_FINI_WA = "CCL_ZE_FINI_WA";
 constexpr const char* CCL_ZE_MULTI_WORKERS = "CCL_ZE_MULTI_WORKERS";
-constexpr const char* CCL_ZE_ENABLE_DRMFD_MULTI_INSTANCE = "CCL_ZE_ENABLE_DRMFD_MULTI_INSTANCE";
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_PMIX
@@ -907,6 +1094,7 @@ constexpr const char* CCL_PMIX_LIBRARY_PATH = "CCL_PMIX_LIBRARY_PATH";
 #ifdef CCL_ENABLE_ITT
 constexpr const char* CCL_ITT_LEVEL = "CCL_ITT_LEVEL";
 #endif // CCL_ENABLE_ITT
+constexpr const char* CCL_DEBUG_TIMESTAMPS_LEVEL = "CCL_DEBUG_TIMESTAMPS_LEVEL";
 
 constexpr const char* CCL_BF16 = "CCL_BF16";
 constexpr const char* CCL_FP16 = "CCL_FP16";

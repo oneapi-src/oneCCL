@@ -50,8 +50,15 @@ struct reduce_scatter_strategy_impl {
             return;
         }
 
+        auto recv_buf_adjusted = recv_buf;
+        if (recv_buf == nullptr) {
+            // In-place operation
+            size_t offset_count = recv_count * comm.rank();
+            recv_buf_adjusted = send_buf + offset_count;
+        }
+
         reqs.push_back(ccl::reduce_scatter(send_buf,
-                                           recv_buf,
+                                           recv_buf_adjusted,
                                            recv_count,
                                            get_ccl_dtype<Dtype>(),
                                            bench_attr.reduction,

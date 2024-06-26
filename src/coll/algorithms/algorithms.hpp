@@ -23,7 +23,19 @@
 
 #define CCL_UNDEFINED_ALGO_ID (-1)
 
-// allgatherv
+// allgather(v)
+ccl::status ccl_coll_build_direct_allgather(ccl_sched* sched,
+                                            ccl_buffer send_buf,
+                                            ccl_buffer recv_buf,
+                                            size_t count,
+                                            const ccl_datatype& dtype,
+                                            ccl_comm* comm);
+ccl::status ccl_coll_build_naive_allgather(ccl_sched* sched,
+                                           ccl_buffer send_buf,
+                                           ccl_buffer recv_buf,
+                                           size_t count,
+                                           const ccl_datatype& dtype,
+                                           ccl_comm* comm);
 ccl::status ccl_coll_build_direct_allgatherv(ccl_sched* sched,
                                              ccl_buffer send_buf,
                                              size_t send_count,
@@ -36,8 +48,10 @@ ccl::status ccl_coll_build_naive_allgatherv(ccl_sched* sched,
                                             size_t send_count,
                                             ccl_buffer recv_buf,
                                             const size_t* recv_counts,
+                                            const std::vector<ccl_buffer>& recv_device_bufs,
                                             const ccl_datatype& dtype,
-                                            ccl_comm* comm);
+                                            ccl_comm* comm,
+                                            bool is_scaleout = false);
 ccl::status ccl_coll_build_ring_allgatherv(ccl_sched* main_sched,
                                            std::vector<ccl_sched*>& scheds,
                                            ccl_buffer send_buf,
@@ -46,7 +60,8 @@ ccl::status ccl_coll_build_ring_allgatherv(ccl_sched* main_sched,
                                            const size_t* recv_counts,
                                            const std::vector<ccl_buffer>& recv_device_bufs,
                                            const ccl_datatype& dtype,
-                                           ccl_comm* comm);
+                                           ccl_comm* comm,
+                                           bool is_scaleout = false);
 ccl::status ccl_coll_build_flat_allgatherv(ccl_sched* main_sched,
                                            std::vector<ccl_sched*>& scheds,
                                            const ccl_coll_param& coll_param);
@@ -180,6 +195,38 @@ ccl::status ccl_coll_build_topo_bcast(ccl_sched* sched,
                                       ccl_comm* comm);
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
+// bcastExt
+ccl::status ccl_coll_build_direct_bcastExt(ccl_sched* sched,
+                                           ccl_buffer send_buf,
+                                           ccl_buffer recv_buf,
+                                           size_t count,
+                                           const ccl_datatype& dtype,
+                                           int root,
+                                           ccl_comm* comm);
+ccl::status ccl_coll_build_scatter_ring_allgather_bcastExt(ccl_sched* sched,
+                                                           ccl_buffer send_buf,
+                                                           ccl_buffer recv_buf,
+                                                           size_t count,
+                                                           const ccl_datatype& dtype,
+                                                           int root,
+                                                           ccl_comm* comm);
+ccl::status ccl_coll_build_naive_bcastExt(ccl_sched* sched,
+                                          ccl_buffer send_buf,
+                                          ccl_buffer recv_buf,
+                                          size_t count,
+                                          const ccl_datatype& dtype,
+                                          int root,
+                                          ccl_comm* comm);
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+ccl::status ccl_coll_build_topo_bcastExt(ccl_sched* sched,
+                                         ccl_buffer send_buf,
+                                         ccl_buffer recv_buf,
+                                         size_t count,
+                                         const ccl_datatype& dtype,
+                                         int root,
+                                         ccl_comm* comm);
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+
 // recv
 ccl::status ccl_coll_build_direct_recv(ccl_sched* sched,
                                        ccl_buffer buf,
@@ -257,25 +304,34 @@ ccl::status ccl_coll_build_direct_reduce_scatter(ccl_sched* sched,
                                                  const ccl_datatype& dtype,
                                                  ccl::reduction reduction,
                                                  ccl_comm* comm);
+ccl::status ccl_coll_build_naive_reduce_scatter(ccl_sched* sched,
+                                                ccl_buffer send_buf,
+                                                ccl_buffer recv_buf,
+                                                size_t send_count,
+                                                const ccl_datatype& dtype,
+                                                ccl::reduction reduction,
+                                                ccl_comm* comm);
+ccl::status ccl_coll_build_reduce_scatter_block(ccl_sched* sched,
+                                                ccl_buffer send_buf,
+                                                ccl_buffer recv_buf,
+                                                size_t send_count,
+                                                const ccl_datatype& dtype,
+                                                ccl::reduction reduction,
+                                                ccl_comm* comm);
 ccl::status ccl_coll_build_ring_reduce_scatter(ccl_sched* sched,
                                                ccl_buffer send_buf,
                                                ccl_buffer recv_buf,
-                                               size_t send_count,
+                                               size_t recv_count,
                                                const ccl_datatype& dtype,
                                                ccl::reduction reduction,
                                                ccl_comm* comm);
-ccl::status ccl_coll_build_ring_reduce_scatter_block(ccl_sched* sched,
-                                                     ccl_buffer send_buf,
-                                                     ccl_buffer recv_buf,
-                                                     size_t recv_count,
-                                                     const ccl_datatype& dtype,
-                                                     ccl::reduction reduction,
-                                                     ccl_comm* comm);
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
 ccl::status ccl_coll_build_topo_reduce_scatter_fill(ccl_sched* sched,
                                                     ccl_buffer send_buf,
                                                     ccl_buffer recv_buf,
                                                     size_t send_count,
+                                                    size_t chunk_count,
+                                                    bool inplace,
                                                     const ccl_datatype& dtype,
                                                     ccl::reduction reduction,
                                                     ccl_comm* comm);

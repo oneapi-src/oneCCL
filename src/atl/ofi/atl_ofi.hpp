@@ -64,12 +64,20 @@ public:
                        int* found,
                        size_t* recv_len) override;
 
+    atl_status_t allgather(atl_ep_t& ep,
+                           const void* send_buf,
+                           void* recv_buf,
+                           size_t len,
+                           atl_req_t& req) override {
+        return ATL_STATUS_UNSUPPORTED;
+    }
+
     atl_status_t allgatherv(atl_ep_t& ep,
                             const void* send_buf,
                             size_t send_len,
                             void* recv_buf,
-                            const int* recv_lens,
-                            const int* offsets,
+                            const size_t* recv_lens,
+                            const size_t* offsets,
                             atl_req_t& req) override {
         return ATL_STATUS_UNSUPPORTED;
     }
@@ -94,11 +102,11 @@ public:
 
     atl_status_t alltoallv(atl_ep_t& ep,
                            const void* send_buf,
-                           const int* send_lens,
-                           const int* send_offsets,
+                           const size_t* send_lens,
+                           const size_t* send_offsets,
                            void* recv_buf,
-                           const int* recv_lens,
-                           const int* recv_offsets,
+                           const size_t* recv_lens,
+                           const size_t* recv_offsets,
                            atl_req_t& req) override {
         return ATL_STATUS_UNSUPPORTED;
     }
@@ -108,6 +116,15 @@ public:
     }
 
     atl_status_t bcast(atl_ep_t& ep, void* buf, size_t len, int root, atl_req_t& req) override {
+        return ATL_STATUS_UNSUPPORTED;
+    }
+
+    atl_status_t bcastExt(atl_ep_t& ep,
+                          void* send_buf,
+                          void* recv_buf,
+                          size_t len,
+                          int root,
+                          atl_req_t& req) override {
         return ATL_STATUS_UNSUPPORTED;
     }
 
