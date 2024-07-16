@@ -16,6 +16,11 @@ For BF16 <-> FP32 conversion |product_short| provides ``AVX512F`` and ``AVX512_B
 ``AVX512_BF16``-based implementation may provide less accuracy loss after multiple up-down conversions.
 
 For FP16 <-> FP32 conversion |product_short| provides ``F16C`` and ``AVX512F``-based implementations.
-Both implementations require GCC 4.9 or higher.
+Both implementations require GCC 4.9, Clang 9.0 or higher.
+
+|product short| utilizes CPU vector instructions for LP numeric operations.
+
+For FP16 numeric operations (arithmetic, load, store) |product short| provides ``AVX512FP16``-based implementation.
+This implementation requires GCC 12.0, Clang 14.0, Intel 2021.4.0 or higher.
 
 Refer to :ref:`Low-precision datatypes <low-precision-datatypes>` for details about relevant environment variables.
