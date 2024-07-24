@@ -16,7 +16,7 @@ Pygments==2.15.1
 pyparsing==3.1.0
 pytz==2023.3
 PyYAML==6.0
-requests>=2.31.0
+requests>=2.32.0
 snowballstemmer==2.2.0
 soupsieve==2.4.1
 Sphinx==4.5.0
@@ -29,5 +29,5 @@ sphinxcontrib-htmlhelp==2.0.1
 sphinxcontrib-jsmath==1.0.1
 sphinxcontrib-qthelp==1.0.3
 sphinxcontrib-serializinghtml==1.1.5
-urllib3>=2.0.6
+urllib3>=2.2.2
 zipp==3.19.1
