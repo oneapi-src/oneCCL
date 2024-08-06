@@ -1,186 +1,57 @@
-# oneAPI Collective Communications Library (oneCCL) <!-- omit in toc --> <img align="right" width="200" height="100" src="https://raw.githubusercontent.com/uxlfoundation/artwork/e98f1a7a3d305c582d02c5f532e41487b710d470/foundation/uxl-foundation-logo-horizontal-color.svg">
+# oneCCL Design Documents / RFCs
 
-[Installation](#installation)&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;[Usage](#usage)&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;[Release Notes](https://www.intel.com/content/www/us/en/developer/articles/release-notes/oneapi-collective-communication-library-ccl-release-notes.html)&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;[Documentation](https://oneapi-src.github.io/oneCCL/)&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;[How to Contribute](CONTRIBUTING.md)&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;[License](LICENSE)
+The purpose of the RFC process is to communicate the intent to make
+library-wide changes, get the feedback prior to the actual implementation,
+increase the transparency on why and how the decisions are made, and improve
+the alignment between different teams involved in oneDNN development.
 
-oneAPI Collective Communications Library (oneCCL) provides an efficient implementation of communication patterns used in deep learning.
+This branch contains design documents (RFCs) that are approved for
+implementation in oneCCL.
 
-oneCCL is integrated into:
-* [Horovod\*](https://github.com/horovod/horovod) (distributed training framework). Refer to [Horovod with oneCCL](https://github.com/horovod/horovod/blob/master/docs/oneccl.rst) for details.
-* [PyTorch\*](https://github.com/pytorch/pytorch) (machine learning framework). Refer to [PyTorch bindings for oneCCL](https://github.com/intel/torch-ccl) for details.
+## Document Style
 
-oneCCL is governed by the [UXL Foundation](http://www.uxlfoundation.org) and is an implementation of the [oneAPI specification](https://spec.oneapi.io).
+The design documents are stored in the `rfcs` directory.
 
+- Each RFC is stored in a separate subdirectory
+  `rfcs/<YYYMMDD>-descriptive-but-short-name`.
 
-## Table of Contents <!-- omit in toc -->
+  - There must be a `README.md` file that contains the main RFC itself.
 
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Usage](#usage)
-  - [Launching Example Application](#launching-example-application)
-    - [Using external MPI](#using-external-mpi)
-  - [Setting workers affinity](#setting-workers-affinity)
-    - [Automatic setup](#automatic-setup)
-    - [Explicit setup](#explicit-setup)
-  - [Using oneCCL package from CMake](#using-oneccl-package-from-cmake)
-    - [oneCCLConfig files generation](#onecclconfig-files-generation)
-- [Additional Resources](#additional-resources)
-  - [Blog Posts](#blog-posts)
-  - [Workshop Materials](#workshop-materials)
+  - The directory can contain other supporting files, such as images,
+    tex formulas, and sub-proposals / sub-RFCs.
 
-## Prerequisites 
+- The RFC is written in markdown. The width of the text should be limited by
+  80 symbols, unless there is a need to violate this rule, e.g. because of
+  long links or wide tables.
 
-- Ubuntu* 18
-- GNU*: C, C++ 4.8.5 or higher.
+- The document structure should follow the [RFC template](rfcs/template.md).
 
-Refer to [System Requirements](https://www.intel.com/content/www/us/en/developer/articles/system-requirements/oneapi-collective-communication-library-system-requirements.html) for more details.
+  - It is also recommended to read through existing RFCs to better understand
+    the general writing style and required elements.
 
-### SYCL support <!-- omit in toc -->
-Intel(R) oneAPI DPC++/C++ Compiler with Level Zero v1.0 support.
+## RFC Ratification Process
 
-To install Level Zero, refer to the instructions in [Intel(R) Graphics Compute Runtime repository](https://github.com/intel/compute-runtime/releases) or to the [installation guide](https://dgpu-docs.intel.com/installation-guides/index.html) for oneAPI users.
+Before submitting an RFC, it might be helpful to have a preliminary discussion
+on the idea with oneCCL contributors. Regular GitHub issues could be used for
+the discussion.
 
-### BF16 support <!-- omit in toc -->
+The RFC life-cycle is:
 
-- AVX512F-based implementation requires GCC 4.9 or higher.
-- AVX512_BF16-based implementation requires GCC 10.0 or higher and GNU binutils 2.33 or higher.
+1. A design author writes up a design and opens a PR to the
+   [`rfcs`](https://github.com/oneapi-src/oneCCL/tree/rfcs) branch. The PR
+   should be labeled as an
+   [`RFC`](https://github.com/oneapi-src/oneCCL/labels/RFC) and contain the
+   short description of the objective.
+   It is quite handy if the PR description contains a link to the RFC
+   directory that will automatically render the RFC's `README.md`.
 
+2. RFCs from external parties require a sponsor from oneCCL maintainers to
+   guide them to completion (either approval or rejection). The sponsor will be
+   assigned to the PR.
 
-## Installation
+3. RFC discussions take place in comments sections in the PRs. RFC owners
+   continuously update the design until all the issues are resolved.
 
-General installation scenario:
-
-```
-cd oneccl
-mkdir build
-cd build
-cmake ..
-make -j install
-```
-
-If you need a clean build, create a new build directory and invoke `cmake` within it.
-
-You can also do the following during installation:
-- [Specify installation directory](INSTALL.md#specify-installation-directory)
-- [Specify the compiler](INSTALL.md#specify-the-compiler)
-- [Specify `SYCL` cross-platform abstraction level](INSTALL.md#specify-sycl-cross-platform-abstraction-level)
-- [Specify the build type](INSTALL.md#specify-the-build-type)
-- [Enable `make` verbose output](INSTALL.md#enable-make-verbose-output)
-
-## Usage
-
-### Launching Example Application
-
-Use the command:
-```bash
-$ source <install_dir>/env/setvars.sh
-$ mpirun -n 2 <install_dir>/examples/benchmark/benchmark
-```
-
-#### Using external mpi
-
-The ccl-bundled-mpi flag in vars.sh can take values "yes" or "no" to control if bundled Intel MPI should be used or not. Current default is "yes", which means that oneCCL temporarily overrides the mpi implementation in use.
-
-In order to suppress the behavior and use user-supplied or system-default mpi use the following command *instead* of sourcing `setvars.sh`:
-
-```bash
-$ source <install_dir>/env/vars.sh --ccl-bundled-mpi=no
-```
-
-The mpi implementation will not be overridden. Please note that, in this case, user needs to assure the system finds all required mpi-related binaries.
-
-### Setting workers affinity
-
-There are two ways to set worker threads (workers) affinity: [automatically](#setting-affinity-automatically) and [explicitly](#setting-affinity-explicitly).
-
-#### Automatic setup
-
-1. Set the `CCL_WORKER_COUNT` environment variable with the desired number of workers per process.
-2. Set the `CCL_WORKER_AFFINITY` environment variable with the value `auto`.
-
-Example:
-```
-export CCL_WORKER_COUNT=4
-export CCL_WORKER_AFFINITY=auto
-```
-With the variables above, oneCCL will create four workers per process and the pinning will depend from process launcher.
-
-If an application has been launched using `mpirun` that is provided by oneCCL distribution package then workers will be automatically pinned to the last four cores available for the launched process. The exact IDs of CPU cores can be controlled by `mpirun` parameters.
-
-Otherwise, workers will be automatically pinned to the last four cores available on the node.
-
----
-
-#### Explicit setup
-
-1. Set the `CCL_WORKER_COUNT` environment variable with the desired number of workers per process.
-2. Set the `CCL_WORKER_AFFINITY` environment variable with the IDs of cores to pin local workers.
-
-Example:
-```
-export CCL_WORKER_COUNT=4
-export CCL_WORKER_AFFINITY=3,4,5,6
-```
-With the variables above, oneCCL will create four workers per process and pin them to the cores with the IDs of 3, 4, 5, and 6 respectively.
-
-### Using oneCCL package from CMake
-
-`oneCCLConfig.cmake` and `oneCCLConfigVersion.cmake` are included into oneCCL distribution.
-
-With these files, you can integrate oneCCL into a user project with the [find_package](https://cmake.org/cmake/help/latest/command/find_package.html) command. Successful invocation of `find_package(oneCCL <options>)` creates imported target `oneCCL` that can be passed to the [target_link_libraries](https://cmake.org/cmake/help/latest/command/target_link_libraries.html) command.
-
-For example:
-
-```cmake
-project(Foo)
-add_executable(foo foo.cpp)
-
-# Search for oneCCL
-find_package(oneCCL REQUIRED)
-
-# Connect oneCCL to foo
-target_link_libraries(foo oneCCL)
-```
-#### oneCCLConfig files generation
-
-To generate oneCCLConfig files for oneCCL package, use the provided [`cmake/scripts/config_generation.cmake`](/cmake/scripts/config_generation.cmake) file:
-
-```
-cmake [-DOUTPUT_DIR=<output_dir>] -P cmake/script/config_generation.cmake
-```
-
-### OS File Descriptors 
-
-oneCCL uses [Level Zero IPC handles](https://spec.oneapi.io/level-zero/latest/core/PROG.html#memory-1) so that a process can access a memory allocation done by a different process. 
-However, these IPC handles consume OS File Descriptors (FDs). As a result, to avoid running out of OS FDs, we recommend to increase the default limit of FDs in the system for applications running with oneCCL and GPU buffers. 
-
-The number of FDs required is application-dependent, but the recommended limit is ``1048575``. This value can be modified with the ulimit command.  
-
-## Governance
-
-The oneCCL project is governed by the UXL Foundation and you can get involved in this project in multiple ways. It is possible to join the [Special Interest Groups (SIG)](https://github.com/uxlfoundation/foundation) meetings where the group discuss and demonstrates work using the foundation projects. Members can also join the Open Source and Specification Working Group meetings.
-
-You can also join the mailing lists for the [UXL Foundation](https://lists.uxlfoundation.org/g/main/subgroups) to be informed of when meetings are happening and receive the latest information and discussions.
-
-## Additional Resources
-
-### Blog Posts
-
-- [Optimizing DLRM by using PyTorch with oneCCL Backend](https://pytorch.medium.com/optimizing-dlrm-by-using-pytorch-with-oneccl-backend-9f85b8ef6929)
-- [Intel MLSL Makes Distributed Training with MXNet Faster](https://medium.com/apache-mxnet/intel-mlsl-makes-distributed-training-with-mxnet-faster-7186ad245e81)
-
-### Workshop Materials
-
-- oneAPI, oneCCL and OFI: Path to Heterogeneous Architecure Programming with Scalable Collective Communications: [recording](https://www.youtube.com/watch?v=ksiZ90EtP98&feature=youtu.be) and [slides](https://www.openfabrics.org/wp-content/uploads/2020-workshop-presentations/502.-OFA-Virtual-Workshop-2020-oneCCL-v5.pdf)
-
-## Contribute <!-- omit in toc -->
-
-See [CONTRIBUTING](CONTRIBUTING.md) for more information.
-
-## License <!-- omit in toc -->
-
-Distributed under the Apache License 2.0 license. See [LICENSE](LICENSE) for more
-information.
-
-## Security Policy <!-- omit in toc -->
-
-See [SECURITY](SECURITY.md) for more information.
+4. To accept the RFC, at least two approvals from oneCCL maintainers (excluding
+   the author of the proposal) are required. Once general consensus is reached
+   and the approvals are in place, the RFC is merged to the branch.
