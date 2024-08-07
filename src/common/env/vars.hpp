@@ -137,6 +137,14 @@ constexpr const char* I_MPI_AVAILABLE_CORES_DELIMS = ",x";
  * By-default: "0"
  */
 constexpr const char* CCL_KVS_MODE = "CCL_KVS_MODE";
+/**
+ * @brief Set the timeout for setting up connections during kvs initialization
+ *
+ * @details "<timeout>" - Timeout in seconds to use for setting up sockets during kvs initialization
+ *
+ * By-default: "120"
+ */
+constexpr const char* CCL_KVS_CONNECTION_TIMEOUT = "CCL_KVS_CONNECTION_TIMEOUT";
 /** @} */
 
 constexpr const char* CCL_ATL_TRANSPORT = "CCL_ATL_TRANSPORT";
@@ -554,10 +562,6 @@ constexpr const char* CCL_MIN_CHUNK_SIZE = "CCL_MIN_CHUNK_SIZE";
 constexpr const char* CCL_ZE_TMP_BUF_SIZE = "CCL_ZE_TMP_BUF_SIZE";
 
 /**
- * @addtogroup OneCCLvars
- * @{
- */
-/**
  * @brief Set to specify maximum number
  * of chunks for reduce_scatter phase in ring allreduce
  *
@@ -730,7 +734,7 @@ constexpr const char* CCL_REDUCE_MONOLITHIC_KERNEL = "CCL_REDUCE_MONOLITHIC_KERN
  * 	- 1:    Calls the pipelining code with a single chunk. Effectively, it has
  *          identical behavior and performance as with "0", but exercises the
  *          chunking code path with a single chunk.
- *  - 2 or higher:  Divides the message into as many logical parts, or chunks,
+ * 	- 2 or higher:  Divides the message into as many logical parts, or chunks,
  *          as specified. Then, it executes the collective with each logical
  *          chunk. This should allow for several phases of the algorithm to
  *          run in parallel, as long as they don't use the same physical
@@ -761,7 +765,7 @@ constexpr const char* CCL_ALLGATHERV_PIPE_CHUNK_COUNT = "CCL_ALLGATHERV_PIPE_CHU
  * 	- 1:    Calls the pipelining code with a single chunk. Effectively, it has
  *          identical behavior and performance as with "0", but exercises the
  *          chunking code path with a single chunk.
- *  - 2 or higher:  Divides the message into as many logical parts, or chunks,
+ * 	- 2 or higher:  Divides the message into as many logical parts, or chunks,
  *          as specified. Then, it executes the collective with each logical
  *          chunk. This should allow for several phases of the algorithm to
  *          run in parallel, as long as they don't use the same physical
@@ -792,7 +796,7 @@ constexpr const char* CCL_ALLREDUCE_PIPE_CHUNK_COUNT = "CCL_ALLREDUCE_PIPE_CHUNK
  * 	- 1:    Calls the pipelining code with a single chunk. Effectively, it has
  *          identical behavior and performance as with "0", but exercises the
  *          chunking code path with a single chunk.
- *  - 2 or higher:  Divides the message into as many logical parts, or chunks,
+ * 	- 2 or higher:  Divides the message into as many logical parts, or chunks,
  *          as specified. Then, it executes the collective with each logical
  *          chunk. This should allow for several phases of the algorithm to
  *          run in parallel, as long as they don't use the same physical
@@ -823,7 +827,7 @@ constexpr const char* CCL_REDUCE_SCATTER_PIPE_CHUNK_COUNT = "CCL_REDUCE_SCATTER_
  * 	- 1:    Calls the pipelining code with a single chunk. Effectively, it has
  *          identical behavior and performance as with "0", but exercises the
  *          chunking code path with a single chunk.
- *  - 2 or higher:  Divides the message into as many logical parts, or chunks,
+ * 	- 2 or higher:  Divides the message into as many logical parts, or chunks,
  *          as specified. Then, it executes the collective with each logical
  *          chunk. This should allow for several phases of the algorithm to
  *          run in parallel, as long as they don't use the same physical
@@ -1085,6 +1089,34 @@ constexpr const char* CCL_ZE_LIBRARY_PATH = "CCL_ZE_LIBRARY_PATH";
 constexpr const char* CCL_ZE_ENABLE = "CCL_ZE_ENABLE";
 constexpr const char* CCL_ZE_FINI_WA = "CCL_ZE_FINI_WA";
 constexpr const char* CCL_ZE_MULTI_WORKERS = "CCL_ZE_MULTI_WORKERS";
+#ifdef CCL_ENABLE_DRM
+/**
+ * @addtogroup OneCCLvars
+ * @{
+ */
+
+/**
+ * @brief Set the directory path for DRM render devices.
+ *
+ * @details This environment variable specifies the directory path where DRM render devices are located.
+ *
+ * Example value: "/custom/path/to/devices/"
+ *
+ * By-default: "/dev/dri/by-path/"
+ */
+constexpr const char* CCL_DRMFD_DEV_RENDER_DIR_PATH = "CCL_DRMFD_DEV_RENDER_DIR_PATH";
+/**
+ * @brief Set the suffix for DRM render device names.
+ *
+ * @details This environment variable specifies the suffix to be used when searching for DRM render device names.
+ *
+ * Example value: "-customsuffix"
+ *
+ * By-default: "-render"
+ */
+constexpr const char* CCL_DRMFD_DEV_RENDER_SUFFIX = "CCL_DRMFD_DEV_RENDER_SUFFIX";
+/** @} */
+#endif // CCL_ENABLE_DRM
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_PMIX

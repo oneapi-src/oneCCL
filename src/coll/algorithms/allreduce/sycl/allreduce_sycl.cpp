@@ -47,8 +47,15 @@ ccl::event allreduce_sycl_single_node(sycl::queue& q,
 
     if (world == 1) {
         sycl::event sycl_e;
+        std::vector<sycl::event> dep_events = get_sycl_events(deps);
         if (send_buf != recv_buf) {
-            sycl_e = q.memcpy(recv_buf, send_buf, count * ccl_dtype.size());
+            sycl_e = q.submit([=](sycl::handler& h) {
+                h.depends_on(dep_events);
+                h.memcpy(recv_buf, send_buf, count * ccl_dtype.size());
+            });
+        }
+        else {
+            sycl_e = submit_wait_on_events(q, dep_events);
         }
         return ccl::event::create_from_native(sycl_e);
     }
@@ -61,7 +68,7 @@ ccl::event allreduce_sycl_single_node(sycl::queue& q,
               ", has_all_vertices_connected: ",
               has_all_vertices_connected);
 
-    if (!ccl::global_data::env().sycl_esimd) {
+    if (!sycl_use_esimd(global_comm)) {
         if (count * ccl_dtype.size() <= ccl::global_data::env().sycl_allreduce_small_threshold) {
 #ifdef CCL_ENABLE_ITT
             __itt_event coll_create_itt_event = ccl::profile::itt::event_get("CCL_ALLREDUCE_SMALL");
@@ -94,6 +101,7 @@ ccl::event allreduce_sycl_single_node(sycl::queue& q,
         return e;
     }
 
+    // ESIMD
     if (count * ccl_dtype.size() <= ccl::global_data::env().sycl_allreduce_small_threshold &&
         has_all_vertices_connected) {
         init_allreduce_small(dtype, q, global_comm, global_stream, rank, world);
@@ -103,7 +111,7 @@ ccl::event allreduce_sycl_single_node(sycl::queue& q,
         ccl::profile::itt::event_start(coll_create_itt_event);
 #endif // CCL_ENABLE_ITT
         LOG_DEBUG("|CCL_SYCL| allreduce selects small kernel, count:", count, " datatype: ", dtype);
-        e = run_allreduce_small(dtype, q, send_buf, recv_buf, count);
+        e = run_allreduce_small(dtype, q, send_buf, recv_buf, count, done);
         LOG_DEBUG("|CCL_SYCL| allreduce selects small kernel, count:",
                   count,
                   " datatype: ",
@@ -112,10 +120,13 @@ ccl::event allreduce_sycl_single_node(sycl::queue& q,
 #ifdef CCL_ENABLE_ITT
         ccl::profile::itt::event_end(coll_create_itt_event);
 #endif // CCL_ENABLE_ITT
+        if (done)
+            return e;
+        // continue to medium kernel if not done
     }
-    else if ((count * ccl_dtype.size() <= ccl::global_data::env().sycl_allreduce_medium_threshold ||
-              (global_comm->size() == 2 && !ccl::global_data::env().sycl_allreduce_tmp_buf)) &&
-             !is_single_tile) { // medium message sizes
+    if ((count * ccl_dtype.size() <= ccl::global_data::env().sycl_allreduce_medium_threshold ||
+         (global_comm->size() == 2 && !ccl::global_data::env().sycl_allreduce_tmp_buf)) &&
+        !is_single_tile) { // medium message sizes
         init_allreduce_medium(dtype, q, global_comm, global_stream, rank, world);
 
 #ifdef CCL_ENABLE_ITT
@@ -124,7 +135,7 @@ ccl::event allreduce_sycl_single_node(sycl::queue& q,
 #endif // CCL_ENABLE_ITT
         LOG_DEBUG(
             "|CCL_SYCL| allreduce selects medium kernel, count:", count, " datatype: ", dtype);
-        e = run_allreduce_medium(dtype, q, send_buf, recv_buf, count);
+        e = run_allreduce_medium(dtype, q, send_buf, recv_buf, count, done);
         LOG_DEBUG("|CCL_SYCL| allreduce selects medium kernel, count:",
                   count,
                   " datatype: ",
@@ -142,7 +153,7 @@ ccl::event allreduce_sycl_single_node(sycl::queue& q,
         ccl::profile::itt::event_start(coll_create_itt_event);
 #endif // CCL_ENABLE_ITT
         LOG_DEBUG("|CCL_SYCL| allreduce selects large kernel, count:", count, " datatype: ", dtype);
-        e = run_allreduce_large(dtype, q, send_buf, recv_buf, count);
+        e = run_allreduce_large(dtype, q, send_buf, recv_buf, count, done);
         LOG_DEBUG("|CCL_SYCL| allreduce selects large kernel, count:",
                   count,
                   " datatype: ",

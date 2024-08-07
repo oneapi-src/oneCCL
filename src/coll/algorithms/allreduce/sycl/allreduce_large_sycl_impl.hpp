@@ -22,7 +22,7 @@
 
 // NE is the number of ranks in even_comm and
 // NP is the number of ranks in pair_comm
-template <typename T, int NE, int NP>
+template <typename T, int NE, int NP, bool use_full_vector>
 ccl::event allreduce_large_impl(const void *send_buf,
                                 void *recv_buf,
                                 size_t count,
@@ -50,7 +50,7 @@ ccl::event allreduce_large_impl(const void *send_buf,
 
     constexpr int pipeline_size = 2;
     constexpr bool subgroup_api = false;
-    constexpr int vec_size = 8 / (sizeof(T) / sizeof(char));
+    constexpr int vec_size = (use_full_vector ? 8 : 4) / (sizeof(T) / sizeof(char));
     const size_t work_group_size = 16;
 
     std::array<void *, MAX_GPUS> l_mdfi_send_ptrs, l_xelink_work_wr_ptrs, l_send_ptrs,

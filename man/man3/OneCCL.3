@@ -1,8 +1,8 @@
-.TH "OneCCLvars" 3 "Tue May 28 2024" "Version 2021.14.0" "Intel® oneAPI Collective Communications Library" \" -*- nroff -*-
+.TH "OneCCLvars" 3 "Tue Jun 25 2024" "Version 2021.13.1" "Intel® oneAPI Collective Communications Library" \" -*- nroff -*-
 .ad l
 .nh
 .SH NAME
-OneCCLvars
+OneCCLvars \- OneCCL Environment Variables
 .SH SYNOPSIS
 .br
 .PP
@@ -114,7 +114,7 @@ OneCCLvars
 .br
 .RI "Set reduce-scatter scaleout algorithm\&. "
 .ti -1c
-.RI "\CCL_ZE_TMP_BUF_SIZE\fP"
+.RI "\fBCCL_ZE_TMP_BUF_SIZE\fP"
 .br
 .RI "Specifies the size of the intermediate buffer used by oneCCL for collective operations\&. "
 .ti -1c
@@ -125,15 +125,6 @@ OneCCLvars
 .RI "\fBCCL_RS_MIN_CHUNK_SIZE\fP"
 .br
 .RI "Set to specify minimum number of bytes in chunk for reduce_scatter phase in ring allreduce\&. "
-.ti -1c
-.RI "\fBCCL_ALLGATHERV_TOPO_LARGE_SCALE\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ALLGATHERV_TOPO_READ\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ALLTOALLV_TOPO_READ\fP"
-.br
 .ti -1c
 .RI "\fBCCL_REDUCE_SCATTER_TOPO_READ\fP"
 .br
@@ -147,9 +138,6 @@ OneCCLvars
 .br
 .RI "Set this environment variable to enable compute kernels for Allreduce, Reduce, and Reduce-Scatter collectives using device (GPU) buffers\&. "
 .ti -1c
-.RI "\fBCCL_ALLGATHERV_MONOLITHIC_KERNEL\fP"
-.br
-.ti -1c
 .RI "\fBCCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL\fP"
 .br
 .RI "Set this environment variable to enable compute kernels for Allgather collectives using device (GPU) buffers\&. "
@@ -157,12 +145,6 @@ OneCCLvars
 .RI "\fBCCL_ALLTOALLV_MONOLITHIC_KERNEL\fP"
 .br
 .RI "Set this environment variable to enable compute kernels for Alltoall and Alltoallv collectives using device (GPU) buffers\&. "
-.ti -1c
-.RI "\fBCCL_ALLTOALLV_MONOLITHIC_READ_KERNEL\fP"
-.br
-.ti -1c
-.RI "\fBCCL_REDUCE_MONOLITHIC_KERNEL\fP"
-.br
 .ti -1c
 .RI "\fBCCL_ALLGATHERV_PIPE_CHUNK_COUNT\fP"
 .br
@@ -180,66 +162,6 @@ OneCCLvars
 .br
 .RI "Set this environment variable to enable pipelining implementation for Reduce collectives using device (GPU) buffers\&. "
 .ti -1c
-.RI "\fBCCL_ALLREDUCE_NREDUCE_BUFFERING\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ALLREDUCE_NREDUCE_SEGMENT_SIZE\fP"
-.br
-.ti -1c
-.RI "constexpr const char * \fBCCL_ALLREDUCE_2D_CHUNK_COUNT\fP = 'CCL_ALLREDUCE_2D_CHUNK_COUNT'"
-.br
-.ti -1c
-.RI "constexpr const char * \fBCCL_ALLREDUCE_2D_MIN_CHUNK_SIZE\fP = 'CCL_ALLREDUCE_2D_MIN_CHUNK_SIZE'"
-.br
-.ti -1c
-.RI "constexpr const char * \fBCCL_ALLREDUCE_2D_SWITCH_DIMS\fP = 'CCL_ALLREDUCE_2D_SWITCH_DIMS'"
-.br
-.ti -1c
-.RI "\fBCCL_CHECK_INPLACE_ALIASING\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ALLTOALL_SCATTER_MAX_OPS\fP"
-.br
-.ti -1c
-.RI "\fBCCL_BACKEND\fP"
-.br
-.ti -1c
-.RI "\fBCCL_KERNEL_PATH\fP"
-.br
-.ti -1c
-.RI "\fBCCL_KERNEL_MODULE_CACHE\fP"
-.br
-.ti -1c
-.RI "\fBCCL_KERNEL_DEBUG\fP"
-.br
-.ti -1c
-.RI "\fBCCL_KERNEL_GROUP_SIZE\fP"
-.br
-.ti -1c
-.RI "\fBCCL_KERNEL_GROUP_COUNT\fP"
-.br
-.ti -1c
-.RI "\fBCCL_KERNEL_MEM_ALIGN\fP"
-.br
-.ti -1c
-.RI "\fBCCL_KERNEL_SYNC\fP"
-.br
-.ti -1c
-.RI "constexpr const char * \fBCCL_KERNEL_1S_LEAD\fP = 'CCL_KERNEL_1S_LEAD'"
-.br
-.ti -1c
-.RI "constexpr const char * \fBCCL_KERNEL_1S_USE_COPY_OPS\fP = 'CCL_KERNEL_1S_USE_COPY_OPS'"
-.br
-.ti -1c
-.RI "constexpr const char * \fBCCL_KERNEL_1S_IPC_WA\fP = 'CCL_KERNEL_1S_IPC_WA'"
-.br
-.ti -1c
-.RI "\fBCCL_KERNEL_SINGLE_REDUCE_PEERS\fP"
-.br
-.ti -1c
-.RI "\fBCCL_KERNEL_CLOSE_FD_WA\fP"
-.br
-.ti -1c
 .RI "\fBCCL_LOCAL_RANK\fP"
 .br
 .RI "Set this environment variable to specify the rank number of the current process in the local host\&. "
@@ -251,57 +173,6 @@ OneCCLvars
 .RI "\fBCCL_PROCESS_LAUNCHER\fP"
 .br
 .RI "Set this environment variable to specify the job launcher to use\&. "
-.ti -1c
-.RI "\fBCCL_TOPO_ALGO\fP"
-.br
-.ti -1c
-.RI "\fBCCL_TOPO_COLOR\fP"
-.br
-.ti -1c
-.RI "constexpr const char * \fBCCL_TOPO_P2P_ACCESS\fP = 'CCL_TOPO_P2P_ACCESS'"
-.br
-.ti -1c
-.RI "\fBCCL_TOPO_FABRIC_VERTEX_CONNECTION_CHECK\fP"
-.br
-.ti -1c
-.RI "\fBCCL_OFI_LIBRARY_PATH\fP"
-.br
-.ti -1c
-.RI "\fBCCL_SYCL_OUTPUT_EVENT\fP"
-.br
-.ti -1c
-.RI "\fBCCL_USE_HMEM\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ZE_BARRIER\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ZE_BIDIR_ALGO\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ZE_CACHE\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ZE_DEVICE_CACHE_EVICT_SMALLEST\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ZE_DEVICE_CACHE_UPPER_LIMIT\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ZE_DEVICE_CACHE_NUM_BLOCKS_IN_CHUNK\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ZE_DEVICE_CACHE_POLICY\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ZE_DEVICE_MEM_DISABLE_CLEAR\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ZE_DEVICE_MEM_ALLOC_SIZE\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ZE_DEVICE_MEM_ENABLE\fP"
-.br
 .ti -1c
 .RI "\fBCCL_ZE_CACHE_OPEN_IPC_HANDLES\fP"
 .br
@@ -327,65 +198,13 @@ OneCCLvars
 .br
 .RI "Set to enable oversubscription throw for all collectives\&. "
 .ti -1c
-.RI "\fBCCL_ZE_SERIALIZE\fP"
+.RI "\fBCCL_DRMFD_DEV_RENDER_DIR_PATH\fP"
 .br
+.RI "Set the directory path for DRM render devices\&. "
 .ti -1c
-.RI "\fBCCL_ZE_COPY_ENGINE\fP"
+.RI "\fBCCL_DRMFD_DEV_RENDER_SUFFIX\fP"
 .br
-.ti -1c
-.RI "constexpr const char * \fBCCL_ZE_H2D_COPY_ENGINE\fP = 'CCL_ZE_H2D_COPY_ENGINE'"
-.br
-.ti -1c
-.RI "constexpr const char * \fBCCL_ZE_D2D_COPY_ENGINE\fP = 'CCL_ZE_D2D_COPY_ENGINE'"
-.br
-.ti -1c
-.RI "\fBCCL_ZE_MAX_COMPUTE_QUEUES\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ZE_MAX_COPY_QUEUES\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ZE_ENABLE_CCS_FALLBACK_FOR_COPY\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ZE_LIST_DUMP\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ZE_QUEUE_INDEX_OFFSET\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ZE_CLOSE_IPC_WA\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ZE_SINGLE_LIST\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ZE_DISABLE_FAMILY_CHECK\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ZE_DISABLE_PORT_CHECK\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ZE_LIBRARY_PATH\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ZE_ENABLE\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ZE_FINI_WA\fP"
-.br
-.ti -1c
-.RI "\fBCCL_ZE_MULTI_WORKERS\fP"
-.br
-.ti -1c
-.RI "\fBCCL_DEBUG_TIMESTAMPS_LEVEL\fP"
-.br
-.ti -1c
-.RI "constexpr const char * \fBCCL_BF16\fP = 'CCL_BF16'"
-.br
-.ti -1c
-.RI "constexpr const char * \fBCCL_FP16\fP = 'CCL_FP16'"
-.br
+.RI "Set the suffix for DRM render device names\&. "
 .in -1c
 .SH "Detailed Description"
 .PP 
@@ -478,9 +297,9 @@ CCL_ALLGATHERV_PIPE_CHUNK_COUNT='<value>' Arguments
 0: (default) Bypasses the chunking/pipelining code and directly calls the topology-aware code
 .IP "\(bu" 2
 1: Calls the pipelining code with a single chunk\&. Effectively, it has identical behavior and performance as with '0', but exercises the chunking code path with a single chunk\&.
-.PP
-.PP
+.IP "\(bu" 2
 2 or higher: Divides the message into as many logical parts, or chunks, as specified\&. Then, it executes the collective with each logical chunk\&. This should allow for several phases of the algorithm to run in parallel, as long as they don't use the same physical resource\&. Effectively, this should increase performance\&.
+.PP
 .PP
 Description
 .PP
@@ -539,9 +358,9 @@ CCL_ALLREDUCE_PIPE_CHUNK_COUNT='<value>' Arguments
 0: (default) Bypasses the chunking/pipelining code and directly calls the topology-aware code
 .IP "\(bu" 2
 1: Calls the pipelining code with a single chunk\&. Effectively, it has identical behavior and performance as with '0', but exercises the chunking code path with a single chunk\&.
-.PP
-.PP
+.IP "\(bu" 2
 2 or higher: Divides the message into as many logical parts, or chunks, as specified\&. Then, it executes the collective with each logical chunk\&. This should allow for several phases of the algorithm to run in parallel, as long as they don't use the same physical resource\&. Effectively, this should increase performance\&.
+.PP
 .PP
 Description
 .PP
@@ -721,6 +540,22 @@ naive Send to all from root rank
 Note: BCAST algorithm does not support yet the CCL_BCAST_SCALEOUT environment variable\&. To change the algorithm for BCAST, use CCL_BCAST\&.
 .PP
 By-default: 'direct' 
+.SS "CCL_DRMFD_DEV_RENDER_DIR_PATH"
+
+.PP
+Set the directory path for DRM render devices\&. This environment variable specifies the directory path where DRM render devices are located\&.
+.PP
+Example value: '/custom/path/to/devices/'
+.PP
+By-default: '/dev/dri/by-path/' 
+.SS "CCL_DRMFD_DEV_RENDER_SUFFIX"
+
+.PP
+Set the suffix for DRM render device names\&. This environment variable specifies the suffix to be used when searching for DRM render device names\&.
+.PP
+Example value: '-customsuffix'
+.PP
+By-default: '-render' 
 .SS "CCL_KVS_MODE"
 
 .PP
@@ -848,9 +683,9 @@ CCL_REDUCE_PIPE_CHUNK_COUNT='<value>' Arguments
 0: (default) Bypasses the chunking/pipelining code and directly calls the topology-aware code
 .IP "\(bu" 2
 1: Calls the pipelining code with a single chunk\&. Effectively, it has identical behavior and performance as with '0', but exercises the chunking code path with a single chunk\&.
-.PP
-.PP
+.IP "\(bu" 2
 2 or higher: Divides the message into as many logical parts, or chunks, as specified\&. Then, it executes the collective with each logical chunk\&. This should allow for several phases of the algorithm to run in parallel, as long as they don't use the same physical resource\&. Effectively, this should increase performance\&.
+.PP
 .PP
 Description
 .PP
@@ -920,9 +755,9 @@ CCL_REDUCE_SCATTER_PIPE_CHUNK_COUNT='<value>' Arguments
 0: (default) Bypasses the chunking/pipelining code and directly calls the topology-aware code
 .IP "\(bu" 2
 1: Calls the pipelining code with a single chunk\&. Effectively, it has identical behavior and performance as with '0', but exercises the chunking code path with a single chunk\&.
-.PP
-.PP
+.IP "\(bu" 2
 2 or higher: Divides the message into as many logical parts, or chunks, as specified\&. Then, it executes the collective with each logical chunk\&. This should allow for several phases of the algorithm to run in parallel, as long as they don't use the same physical resource\&. Effectively, this should increase performance\&.
+.PP
 .PP
 Description
 .PP
@@ -986,23 +821,6 @@ offload Using device buffers directly into mpi/ofi layer skipping prepost copies
 .PP
 .PP
 By-default: 'topo' if sycl and l0 are enabled, otherwise offload for ofi/mpi transport 
-.SS "CCL_ZE_TMP_BUF_SIZE"
-
-.PP
-Specifies the size of the intermediate buffer used by oneCCL for collective operations\&. The CCL_ZE_TMP_BUF_SIZE environment variable controls the size of the buffer that is used for temporary buffers of collective operations in 'topo' algorithms\&. It has no effect on other algorithms or\&. Smaller values can reduce memory usage at the expense of performance for 'topo' algorithms\&.
-.PP
-Syntax
-.PP
-CCL_ZE_TMP_BUF_SIZE='<value>'
-.PP
-Arguments
-.PP
-'<value>' Description
-.IP "\(bu" 2
-SIZE The size of the buffer in bytes\&.
-.PP
-.PP
-By-default: '536870912' 
 .SS "CCL_WORKER_AFFINITY"
 
 .PP
@@ -1122,14 +940,33 @@ Set to enable oversubscription throw for all collectives\&. This enviroment vari
 '<value>' : '0', '1'
 .PP
 By-default: '1' 
+.SS "CCL_ZE_TMP_BUF_SIZE"
+
+.PP
+Specifies the size of the intermediate buffer used by oneCCL for collective operations\&. The CCL_ZE_TMP_BUF_SIZE environment variable controls the size of the buffer that is used for temporary buffers of collective operations in 'topo' algorithms\&. It has no effect on other algorithms\&. Smaller values can reduce memory usage at the expense of performance for 'topo' algorithms\&.
+.PP
+Syntax
+.PP
+CCL_ZE_TMP_BUF_SIZE='<value>'
+.PP
+Arguments
+.PP
+'<value>' Description
+.IP "\(bu" 2
+SIZE The size of the buffer in bytes\&.
+.PP
+.PP
+By-default: '536870912' 
 .SH "Author"
 .PP 
 Generated automatically by Doxygen for Intel® oneAPI Collective Communications Library from the source code\&.
-.TH "ExpOneCCLvars" 3 "Tue May 28 2024" "Version 2021.14.0" "Intel® oneAPI Collective Communications Library" \" -*- nroff -*-
+.TH "ExpOneCCLvars" 3 "Tue Jun 25 2024" "Version 2021.13.1" "Intel® oneAPI Collective Communications Library" \" -*- nroff -*-
 .ad l
 .nh
 .SH NAME
-ExpOneCCLvars \- Experimental OneCCL Environment Variables Functionality of these variables has not been (fully) tested and, therefore, cannot be supported nor guaranteed\&.  
+ExpOneCCLvars \- Experimental OneCCL Environment Variables
+.PP
+ \- Experimental OneCCL Environment Variables Functionality of these variables has not been (fully) tested and, therefore, cannot be supported nor guaranteed\&.  
 
 .SH SYNOPSIS
 .br

@@ -139,6 +139,8 @@ public:
         return level;
     }
 
+    static bool is_root();
+
     template <typename T, typename... Tpackage>
     void error(T&& first, Tpackage&&... others) {
         std::lock_guard<ccl_logger_lock_t> lock{ guard };
@@ -264,6 +266,29 @@ extern ccl_logger logger;
     { \
         if (logger.get_log_level() >= ccl_log_level::warn) { \
             logger.warn("|CCL_WARN| ", ##__VA_ARGS__); \
+        } \
+    }
+
+// This could be a function which could then store
+// rank in static variable.
+#define LOG_WARN_ROOT(...) \
+    { \
+        if (logger.is_root()) { \
+            if (logger.get_log_level() >= ccl_log_level::warn) { \
+                logger.warn("|CCL_WARN| ", ##__VA_ARGS__); \
+            } \
+        } \
+        else { \
+            if (logger.get_log_level() >= ccl_log_level::debug) { \
+                logger.debug("|CCL_DEBUG| ", \
+                             basedir_static(__FILE__), \
+                             ":", \
+                             __LINE__, \
+                             " ", \
+                             __FUNCTION__, \
+                             ": ", \
+                             ##__VA_ARGS__); \
+            } \
         } \
     }
 

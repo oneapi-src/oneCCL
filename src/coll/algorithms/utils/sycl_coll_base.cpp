@@ -347,3 +347,34 @@ void copy_data(const int dsize,
         out.push_back(e);
     }
 }
+
+bool sycl_use_esimd(ccl_comm *comm) {
+    // TODO: (see MLSL-3179) change the default value of CCL_SYCL_ESIMD to "auto", instead of 0 or 1.
+
+    static bool is_initialized{ false };
+    static bool use_esimd{};
+
+    // The use of ESIMD and sycl::vec algorithms within the same execution
+    // has not been tested, and both algorithms are known to use the same
+    // resources, in some cases (i.e., temporary buffers). Therefore, we
+    // always want to use the same algorithm within an execution.
+    // So, we calculate which algorithm to use once, and afterwards, use the
+    // cached value
+
+    if (!is_initialized) {
+        if (ccl::global_data::env().sycl_esimd) {
+            use_esimd = true;
+        }
+        else {
+            // Fallback to ESIMD for 2-ranks (specifically, 2 PPNs)
+            // Remove this condition when MLSL-2964 is implemented and
+            // sycl::vec performs similarly as esimd for two ranks.
+            int node_size = comm->get_node_comm()->size();
+            use_esimd = (node_size == 2);
+        }
+
+        is_initialized = true;
+    }
+
+    return use_esimd;
+}

@@ -42,8 +42,15 @@ ccl::event reduce_scatter_sycl_single_node(sycl::queue& q,
 
     if (world == 1) {
         sycl::event sycl_e;
+        std::vector<sycl::event> dep_events = get_sycl_events(deps);
         if (send_buf != recv_buf) {
-            sycl_e = q.memcpy(recv_buf, send_buf, recv_count * ccl_dtype.size());
+            sycl_e = q.submit([=](sycl::handler& h) {
+                h.depends_on(dep_events);
+                h.memcpy(recv_buf, send_buf, recv_count * ccl_dtype.size());
+            });
+        }
+        else {
+            sycl_e = submit_wait_on_events(q, dep_events);
         }
         return ccl::event::create_from_native(sycl_e);
     }
@@ -52,7 +59,7 @@ ccl::event reduce_scatter_sycl_single_node(sycl::queue& q,
     const bool has_all_vertices_connected = comm->get_topo_manager().has_all_vertices_connected();
     LOG_DEBUG("|CCL_SYCL| has_all_vertices_connected", has_all_vertices_connected);
 
-    if (!ccl::global_data::env().sycl_esimd) {
+    if (!sycl_use_esimd(comm)) {
         if (recv_count * world * ccl_dtype.size() <= ccl::global_data::env().sycl_reduce_scatter_small_threshold) {
 #ifdef CCL_ENABLE_ITT
             __itt_event coll_create_itt_event = ccl::profile::itt::event_get("CCL_REDUCE_SCATTER_SMALL");
@@ -79,68 +86,54 @@ ccl::event reduce_scatter_sycl_single_node(sycl::queue& q,
         return e;
     }
 
+    // ESIMD
     if (recv_count * world * ccl_dtype.size() <= ccl::global_data::env().sycl_reduce_scatter_small_threshold &&
         has_all_vertices_connected) {
-        if ((recv_count * ccl_dtype.size()) % 4 == 0 || recv_count * ccl_dtype.size() == 2) {
-            init_reduce_scatter_small(dtype, q, comm, global_stream, rank, world);
+        init_reduce_scatter_small(dtype, q, comm, global_stream, rank, world);
 
 #ifdef CCL_ENABLE_ITT
-            __itt_event coll_create_itt_event = ccl::profile::itt::event_get("CCL_REDUCE_SCATTER_SMALL");
-            ccl::profile::itt::event_start(coll_create_itt_event);
+        __itt_event coll_create_itt_event = ccl::profile::itt::event_get("CCL_REDUCE_SCATTER_SMALL");
+        ccl::profile::itt::event_start(coll_create_itt_event);
 #endif // CCL_ENABLE_ITT
-            LOG_DEBUG(
-                "|CCL_SYCL| reduce_scatter selects small kernel, recv_count:", recv_count, " datatype: ", dtype);
-            e = run_reduce_scatter_small(dtype, q, send_buf, recv_buf, recv_count, done);
-            LOG_DEBUG("|CCL_SYCL| reduce_scatter selects small kernel, recv_count:",
-                      recv_count,
-                      " datatype: ",
-                      dtype,
-                      "done");
+        LOG_DEBUG("|CCL_SYCL| reduce_scatter selects small kernel, recv_count:", recv_count, " datatype: ", dtype);
+        e = run_reduce_scatter_small(dtype, q, send_buf, recv_buf, recv_count, done);
+        LOG_DEBUG("|CCL_SYCL| reduce_scatter selects small kernel, recv_count:",
+                  recv_count,
+                  " datatype: ",
+                  dtype,
+                  "done");
 #ifdef CCL_ENABLE_ITT
-            ccl::profile::itt::event_end(coll_create_itt_event);
+        ccl::profile::itt::event_end(coll_create_itt_event);
 #endif // CCL_ENABLE_ITT
-        }
-        else {
-            done = false;
-        }
+        if (done)
+            return e;
     }
-    else if (recv_count * world * ccl_dtype.size() <=
-                 ccl::global_data::env().sycl_reduce_scatter_medium_threshold &&
-             !is_single_tile) {
-        if ((recv_count * ccl_dtype.size()) % 4 == 0) {
-            init_reduce_scatter_medium(dtype, q, comm, global_stream, rank, world);
+    if (recv_count * world * ccl_dtype.size() <= ccl::global_data::env().sycl_reduce_scatter_medium_threshold &&
+        !is_single_tile) {
+        init_reduce_scatter_medium(dtype, q, comm, global_stream, rank, world);
 
 #ifdef CCL_ENABLE_ITT
-            __itt_event coll_create_itt_event = ccl::profile::itt::event_get("CCL_REDUCE_SCATTER_MEDIUM");
-            ccl::profile::itt::event_start(coll_create_itt_event);
+        __itt_event coll_create_itt_event = ccl::profile::itt::event_get("CCL_REDUCE_SCATTER_MEDIUM");
+        ccl::profile::itt::event_start(coll_create_itt_event);
 #endif // CCL_ENABLE_ITT
-            LOG_DEBUG("|CCL_SYCL| reduce_scatter selects medium kernel: count:", recv_count, " datatype: ", dtype);
-            e = run_reduce_scatter_medium(dtype, q, send_buf, recv_buf, recv_count, done);
+        LOG_DEBUG("|CCL_SYCL| reduce_scatter selects medium kernel: count:", recv_count, " datatype: ", dtype);
+        e = run_reduce_scatter_medium(dtype, q, send_buf, recv_buf, recv_count, done);
 #ifdef CCL_ENABLE_ITT
-            ccl::profile::itt::event_end(coll_create_itt_event);
+        ccl::profile::itt::event_end(coll_create_itt_event);
 #endif // CCL_ENABLE_ITT
-        }
-        else {
-            done = false;
-        }
     }
     else if (!is_single_tile) {
-        if ((recv_count * ccl_dtype.size()) % 4 == 0) {
-            init_reduce_scatter_large(dtype, q, comm, global_stream, rank, world);
+        init_reduce_scatter_large(dtype, q, comm, global_stream, rank, world);
 
 #ifdef CCL_ENABLE_ITT
-            __itt_event coll_create_itt_event = ccl::profile::itt::event_get("CCL_REDUCE_SCATTER_LARGE");
-            ccl::profile::itt::event_start(coll_create_itt_event);
+        __itt_event coll_create_itt_event = ccl::profile::itt::event_get("CCL_REDUCE_SCATTER_LARGE");
+        ccl::profile::itt::event_start(coll_create_itt_event);
 #endif // CCL_ENABLE_ITT
-            LOG_DEBUG("|CCL_SYCL| reduce_scatter selects large kernel: count:", recv_count, " datatype: ", dtype);
-            e = run_reduce_scatter_large(dtype, q, send_buf, recv_buf, recv_count, done);
+        LOG_DEBUG("|CCL_SYCL| reduce_scatter selects large kernel: count:", recv_count, " datatype: ", dtype);
+        e = run_reduce_scatter_large(dtype, q, send_buf, recv_buf, recv_count, done);
 #ifdef CCL_ENABLE_ITT
-            ccl::profile::itt::event_end(coll_create_itt_event);
+        ccl::profile::itt::event_end(coll_create_itt_event);
 #endif // CCL_ENABLE_ITT
-        }
-        else {
-            done = false;
-        }
     }
     else {
         done = false;

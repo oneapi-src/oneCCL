@@ -716,7 +716,7 @@ ccl::status ccl_coll_build_topo_reduce_fill(ccl_sched* sched,
         ccl_buffer pair_comm_recv_buf = tmp_buf;
         ccl_buffer even_comm_recv_buf = tmp_buf + even_comm_offset_bytes;
 
-        LOG_DEBUG("rank: ",
+        LOG_DEBUG("pair rank: ",
                   pair_comm->rank(),
                   ", count: ",
                   count,
@@ -759,7 +759,10 @@ ccl::status ccl_coll_build_topo_reduce_fill(ccl_sched* sched,
             clear_and_push_back(wait_events, out_event);
 
             LOG_DEBUG("topo/scale_up/intra: use ze_a2a_pipeline_reduce_entry");
-            even_comm_recv_buf = recv_buf + pair_comm_offset_bytes + even_comm_offset_bytes;
+            // Local reduction of tmp_bufs array starts with the first index ([0] + [1]),
+            // so it is safe to use the first tmp_bufs[0] as an accumulating storage
+            // for reduction
+            even_comm_recv_buf = tmp_bufs.front();
 
             auto scatter_entry = entry_factory::create<ze_a2a_pipeline_reduce_entry>(
                 sched, comm, even_comm_recv_buf, tmp_bufs, count, dtype, op, wait_events);
@@ -841,7 +844,6 @@ ccl::status ccl_coll_build_topo_reduce_fill(ccl_sched* sched,
         size_t offset = (pair_comm_offset_bytes + even_comm_offset_bytes) / dtype.size();
 
         if (!is_single_node) {
-            bool one_tmp_buf = use_tmp_buf && !use_read_write_pipeline;
             ccl_coll_param coll_param{ false };
             coll_param.ctype = ccl_coll_reduce;
             coll_param.send_buf = even_comm_recv_buf;
@@ -858,9 +860,9 @@ ccl::status ccl_coll_build_topo_reduce_fill(ccl_sched* sched,
                               is_single_node,
                               wait_events,
                               out_event,
-                              copy_attr(copy_direction::h2d, 0, one_tmp_buf ? 0 : offset),
+                              copy_attr(copy_direction::h2d, 0, 0),
                               r2r_comm,
-                              one_tmp_buf ? even_comm_recv_buf : recv_buf,
+                              even_comm_recv_buf,
                               root_node_idx);
             if (out_event) {
                 clear_and_push_back(wait_events, out_event);

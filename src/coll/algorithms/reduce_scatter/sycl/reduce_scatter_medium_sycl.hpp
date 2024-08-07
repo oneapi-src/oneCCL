@@ -117,7 +117,7 @@ void nocopy_reduce_read_write(int *even_ranks,
     }
 }
 
-template <uint32_t TEMP_WORLD, typename data_type>
+template <uint32_t TEMP_WORLD, typename data_type, size_t align>
 void local_copy(int *even_ranks,
                 int idx,
                 const void *in_buffer,
@@ -144,12 +144,9 @@ void local_copy(int *even_ranks,
 #pragma unroll
         for (uint32_t i = 0; i < UNROLL_SIZE; i++) {
             buffer.template select<SIMD_COMPUTE, 1>(r * SIMD_COMPUTE * UNROLL_SIZE + SIMD_COMPUTE * i) =
-                lsc_block_load<data_type,
-                               SIMD_COMPUTE,
-                               lsc_data_size::default_size,
-                               cache_hint::uncached,
-                               cache_hint::uncached>((data_type *)in_buffer + rr * recv_size + read_offset +
-                                                     i * SIMD_COMPUTE);
+                block_load<data_type, SIMD_COMPUTE>(
+                    (data_type *)in_buffer + rr * recv_size + read_offset + i * SIMD_COMPUTE,
+                    properties{ alignment<align> });
         }
     }
 
@@ -160,19 +157,16 @@ void local_copy(int *even_ranks,
     for (uint32_t r = 0; r < TEMP_WORLD / 2; r++) {
 #pragma unroll
         for (uint32_t i = 0; i < UNROLL_SIZE; i++) {
-            lsc_block_store<data_type,
-                            SIMD_COMPUTE,
-                            lsc_data_size::default_size,
-                            cache_hint::uncached,
-                            cache_hint::write_back>(
+            block_store<data_type, SIMD_COMPUTE>(
                 ptr + i * SIMD_COMPUTE,
-                buffer.template select<SIMD_COMPUTE, 1>(r * SIMD_COMPUTE * UNROLL_SIZE + i * SIMD_COMPUTE));
+                buffer.template select<SIMD_COMPUTE, 1>(r * SIMD_COMPUTE * UNROLL_SIZE + i * SIMD_COMPUTE),
+                properties{ alignment<align> });
         }
         ptr += chunk_size;
     }
 }
 
-template <uint32_t TEMP_WORLD, typename data_type>
+template <uint32_t TEMP_WORLD, typename data_type, size_t align>
 void reduce_read_write(int *even_ranks,
                        int my_rank_index,
                        int idx,
@@ -201,11 +195,8 @@ void reduce_read_write(int *even_ranks,
 #pragma unroll
         for (uint32_t i = 0; i < UNROLL_SIZE; i++) {
             mdfi_buffer.template select<SIMD_COMPUTE, 1>(r * SIMD_COMPUTE * UNROLL_SIZE + SIMD_COMPUTE * i) =
-                lsc_block_load<data_type,
-                               SIMD_COMPUTE,
-                               lsc_data_size::default_size,
-                               cache_hint::uncached,
-                               cache_hint::uncached>((data_type *)mdfi_ptr + mdfi_offset + i * SIMD_COMPUTE);
+                block_load<data_type, SIMD_COMPUTE>((data_type *)mdfi_ptr + mdfi_offset + i * SIMD_COMPUTE,
+                                                    properties{ alignment<align> });
         }
         mdfi_ptr += chunk_size;
     }
@@ -219,12 +210,9 @@ void reduce_read_write(int *even_ranks,
 #pragma unroll
         for (uint32_t i = 0; i < UNROLL_SIZE; i++) {
             local_buffer.template select<SIMD_COMPUTE, 1>(r * SIMD_COMPUTE * UNROLL_SIZE + SIMD_COMPUTE * i) =
-                lsc_block_load<data_type,
-                               SIMD_COMPUTE,
-                               lsc_data_size::default_size,
-                               cache_hint::uncached,
-                               cache_hint::uncached>((data_type *)in_buffer + rr * recv_size + read_offset +
-                                                     i * SIMD_COMPUTE);
+                block_load<data_type, SIMD_COMPUTE>(
+                    (data_type *)in_buffer + rr * recv_size + read_offset + i * SIMD_COMPUTE,
+                    properties{ alignment<align> });
         }
     }
 
@@ -256,13 +244,11 @@ void reduce_read_write(int *even_ranks,
             int out_offset = (temp_rank / 2) * chunk_size + idx * SIMD_COMPUTE * UNROLL_SIZE;
 #pragma unroll
             for (uint32_t i = 0; i < UNROLL_SIZE; i++) {
-                lsc_block_store<data_type,
-                                SIMD_COMPUTE,
-                                lsc_data_size::default_size,
-                                cache_hint::uncached,
-                                cache_hint::write_back> //save the all sum in the second half of the temp slot.
-                    (write_ptr + out_offset + i * SIMD_COMPUTE,
-                     sum.template select<SIMD_COMPUTE, 1>(r * SIMD_COMPUTE * UNROLL_SIZE + SIMD_COMPUTE * i));
+                // save the all sum in the second half of the temp slot
+                block_store<data_type, SIMD_COMPUTE>(
+                    write_ptr + out_offset + i * SIMD_COMPUTE,
+                    sum.template select<SIMD_COMPUTE, 1>(r * SIMD_COMPUTE * UNROLL_SIZE + SIMD_COMPUTE * i),
+                    properties{ alignment<align> });
             }
         }
     }
@@ -272,17 +258,15 @@ void reduce_read_write(int *even_ranks,
         write_ptr += (idx + threads_already_processed) * SIMD_COMPUTE * UNROLL_SIZE;
 #pragma unroll
         for (uint32_t i = 0; i < UNROLL_SIZE; i++) {
-            lsc_block_store<data_type,
-                            SIMD_COMPUTE,
-                            lsc_data_size::default_size,
-                            cache_hint::uncached,
-                            cache_hint::write_back> //save the all sum in the second half of the temp slot.
-                (write_ptr + i * SIMD_COMPUTE, sum.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i));
+            //save the all sum in the second half of the temp slot
+            block_store<data_type, SIMD_COMPUTE>(write_ptr + i * SIMD_COMPUTE,
+                                                 sum.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i),
+                                                 properties{ alignment<align> });
         }
     }
 }
 
-template <uint32_t TEMP_WORLD, typename data_type>
+template <uint32_t TEMP_WORLD, typename data_type, size_t align>
 void all_sum(int idx,
              const void *in_buffer,
              void *out_buffer,
@@ -308,11 +292,8 @@ void all_sum(int idx,
 #pragma unroll
         for (uint32_t i = 0; i < UNROLL_SIZE; i++) {
             buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * UNROLL_SIZE * r + i * SIMD_COMPUTE) =
-                lsc_block_load<data_type,
-                               SIMD_COMPUTE,
-                               lsc_data_size::default_size,
-                               cache_hint::uncached,
-                               cache_hint::cached>(ptr + read_offset + i * SIMD_COMPUTE);
+                block_load<data_type, SIMD_COMPUTE>(ptr + read_offset + i * SIMD_COMPUTE,
+                                                    properties{ alignment<align> });
         }
         ptr += chunk_size;
     }
@@ -329,12 +310,10 @@ void all_sum(int idx,
         write_ptr += write_offset;
 #pragma unroll
         for (uint32_t i = 0; i < UNROLL_SIZE; i++) {
-            lsc_block_store<data_type,
-                            SIMD_COMPUTE,
-                            lsc_data_size::default_size,
-                            cache_hint::uncached,
-                            cache_hint::write_back> //save the all sum in the second half of the temp slot.
-                (write_ptr + i * SIMD_COMPUTE, sum.template select<SIMD_COMPUTE, 1>(i * SIMD_COMPUTE));
+            //save the all sum in the second half of the temp slot
+            block_store<data_type, SIMD_COMPUTE>(write_ptr + i * SIMD_COMPUTE,
+                                                 sum.template select<SIMD_COMPUTE, 1>(i * SIMD_COMPUTE),
+                                                 properties{ alignment<align> });
         }
     }
     else {
@@ -343,11 +322,11 @@ void all_sum(int idx,
     }
 }
 
-template <typename dtype>
+template <typename dtype, size_t align>
 class ReduceScatterMediumKernel_local_copy;
-template <typename dtype>
+template <typename dtype, size_t align>
 class ReduceScatterMediumKernel_reduce_read_write;
-template <typename dtype>
+template <typename dtype, size_t align>
 class ReduceScatterMediumKernel_local_all_sum;
 
 template <typename dtype>
@@ -414,18 +393,31 @@ public:
     ccl::event reduce_scatter(sycl::queue &queue,
                               const void *send_buf,
                               void *out_buffer,
-                              uint32_t recv_size,
+                              size_t recv_size,
                               int repetition,
                               bool print_en,
                               bool &done) {
-        return reduce_scatter_copy(queue, send_buf, out_buffer, recv_size, repetition, print_en, done);
+        sycl::event e;
+        // check local alignment
+        if ((recv_size * sizeof(data_type)) % 4) {
+            done = false;
+            return ccl::event::create_from_native(e);
+        }
+        bool is_aligned =
+            (size_t)send_buf % 4 == 0 && (size_t)out_buffer % 4 == 0 && (recv_size * sizeof(data_type)) % 4 == 0;
+
+        if (is_aligned)
+            return reduce_scatter_copy<4>(queue, send_buf, out_buffer, recv_size, repetition, print_en, done);
+        else
+            return reduce_scatter_copy<2>(queue, send_buf, out_buffer, recv_size, repetition, print_en, done);
     }
 
 private:
+    template <size_t align>
     ccl::event reduce_scatter_copy(sycl::queue &queue,
                                    const void *send_buf,
                                    void *out_buffer,
-                                   uint32_t recv_size,
+                                   size_t recv_size,
                                    int repetition,
                                    bool print_en,
                                    bool &done) {
@@ -511,7 +503,7 @@ private:
 #if KERNEL_EXEC_MAP & 1
             // local copy half of the data to tmp buffer
             queue.submit([&](sycl::handler &cgh) {
-                    cgh.parallel_for<class ReduceScatterMediumKernel_local_copy<data_type>>(
+                    cgh.parallel_for<class ReduceScatterMediumKernel_local_copy<data_type, align>>(
                         sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::nd_item<1> idx2) SYCL_ESIMD_KERNEL
                         {
                         //ESIMD kernel
@@ -521,113 +513,20 @@ private:
                             if ((uint32_t)index >= total_threads_needed)
                                 break;
 
-                            switch (temp_world) {
-                                case 2:
-                                    local_copy<2, data_type>((int *)even_ranks,
-                                                             index,
-                                                             send_buf,
-                                                             recv_size,
-                                                             threads_already_processed,
-                                                             (void **)temp_buffer,
-                                                             temp_rank,
-                                                             outer_iter,
-                                                             size_per_buffer_kernel,
-                                                             buffer_index_kernel,
-                                                             threads_needed_per_chunk);
-                                    break;
-                                case 4:
-                                    local_copy<4, data_type>((int *)even_ranks,
-                                                             index,
-                                                             send_buf,
-                                                             recv_size,
-                                                             threads_already_processed,
-                                                             (void **)temp_buffer,
-                                                             temp_rank,
-                                                             outer_iter,
-                                                             size_per_buffer_kernel,
-                                                             buffer_index_kernel,
-                                                             threads_needed_per_chunk);
-                                    break;
-                                case 6:
-                                    local_copy<6, data_type>((int *)even_ranks,
-                                                             index,
-                                                             send_buf,
-                                                             recv_size,
-                                                             threads_already_processed,
-                                                             (void **)temp_buffer,
-                                                             temp_rank,
-                                                             outer_iter,
-                                                             size_per_buffer_kernel,
-                                                             buffer_index_kernel,
-                                                             threads_needed_per_chunk);
-                                    break;
-                                case 8:
-                                    local_copy<8, data_type>((int *)even_ranks,
-                                                             index,
-                                                             send_buf,
-                                                             recv_size,
-                                                             threads_already_processed,
-                                                             (void **)temp_buffer,
-                                                             temp_rank,
-                                                             outer_iter,
-                                                             size_per_buffer_kernel,
-                                                             buffer_index_kernel,
-                                                             threads_needed_per_chunk);
-                                    break;
-                                case 10:
-                                    local_copy<10, data_type>((int *)even_ranks,
-                                                              index,
-                                                              send_buf,
-                                                              recv_size,
-                                                              threads_already_processed,
-                                                              (void **)temp_buffer,
-                                                              temp_rank,
-                                                              outer_iter,
-                                                              size_per_buffer_kernel,
-                                                              buffer_index_kernel,
-                                                              threads_needed_per_chunk);
-                                    break;
-                                case 12:
-                                    local_copy<12, data_type>((int *)even_ranks,
-                                                              index,
-                                                              send_buf,
-                                                              recv_size,
-                                                              threads_already_processed,
-                                                              (void **)temp_buffer,
-                                                              temp_rank,
-                                                              outer_iter,
-                                                              size_per_buffer_kernel,
-                                                              buffer_index_kernel,
-                                                              threads_needed_per_chunk);
-                                    break;
-                                case 14:
-                                    local_copy<14, data_type>((int *)even_ranks,
-                                                              index,
-                                                              send_buf,
-                                                              recv_size,
-                                                              threads_already_processed,
-                                                              (void **)temp_buffer,
-                                                              temp_rank,
-                                                              outer_iter,
-                                                              size_per_buffer_kernel,
-                                                              buffer_index_kernel,
-                                                              threads_needed_per_chunk);
-                                    break;
-                                case 16:
-                                    local_copy<16, data_type>((int *)even_ranks,
-                                                              index,
-                                                              send_buf,
-                                                              recv_size,
-                                                              threads_already_processed,
-                                                              (void **)temp_buffer,
-                                                              temp_rank,
-                                                              outer_iter,
-                                                              size_per_buffer_kernel,
-                                                              buffer_index_kernel,
-                                                              threads_needed_per_chunk);
-                                    break;
-                                default: break;
-                            }
+                            auto local_copy_lambda = [&]<int w, size_t a>() SYCL_ESIMD_KERNEL {
+                                local_copy<w, data_type, a>((int *)even_ranks,
+                                                            index,
+                                                            send_buf,
+                                                            recv_size,
+                                                            threads_already_processed,
+                                                            (void **)temp_buffer,
+                                                            temp_rank,
+                                                            outer_iter,
+                                                            size_per_buffer_kernel,
+                                                            buffer_index_kernel,
+                                                            threads_needed_per_chunk);
+                            };
+                            invoke_esimd_function<align>(local_copy_lambda, temp_world);
                         }
                         });//parallel_for
             }); //submit()
@@ -641,7 +540,7 @@ private:
 #if KERNEL_EXEC_MAP & 4
             //local reduction kernel
             e = queue.submit([&](sycl::handler &cgh) {
-                    cgh.parallel_for<class ReduceScatterMediumKernel_reduce_read_write<data_type>>(
+                    cgh.parallel_for<class ReduceScatterMediumKernel_reduce_read_write<data_type, align>>(
                         sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::nd_item<1> idx2) SYCL_ESIMD_KERNEL
                         {
                         //ESIMD kernel
@@ -654,137 +553,23 @@ private:
                                 break;
                             //                                int index = idx;
 
-                            switch (temp_world) {
-                                case 2:
-                                    reduce_read_write<2, data_type>((int *)even_ranks,
-                                                                    my_rank_index,
-                                                                    index,
-                                                                    send_buf,
-                                                                    out_buffer,
-                                                                    recv_size,
-                                                                    threads_already_processed,
-                                                                    (void **)temp_buffer,
-                                                                    temp_rank,
-                                                                    outer_iter,
-                                                                    size_per_buffer_kernel,
-                                                                    buffer_index_kernel,
-                                                                    threads_needed_per_chunk,
-                                                                    in_place);
-                                    break;
-                                case 4:
-                                    reduce_read_write<4, data_type>((int *)even_ranks,
-                                                                    my_rank_index,
-                                                                    index,
-                                                                    send_buf,
-                                                                    out_buffer,
-                                                                    recv_size,
-                                                                    threads_already_processed,
-                                                                    (void **)temp_buffer,
-                                                                    temp_rank,
-                                                                    outer_iter,
-                                                                    size_per_buffer_kernel,
-                                                                    buffer_index_kernel,
-                                                                    threads_needed_per_chunk,
-                                                                    in_place);
-                                    break;
-                                case 6:
-                                    reduce_read_write<6, data_type>((int *)even_ranks,
-                                                                    my_rank_index,
-                                                                    index,
-                                                                    send_buf,
-                                                                    out_buffer,
-                                                                    recv_size,
-                                                                    threads_already_processed,
-                                                                    (void **)temp_buffer,
-                                                                    temp_rank,
-                                                                    outer_iter,
-                                                                    size_per_buffer_kernel,
-                                                                    buffer_index_kernel,
-                                                                    threads_needed_per_chunk,
-                                                                    in_place);
-                                    break;
-                                case 8:
-                                    reduce_read_write<8, data_type>((int *)even_ranks,
-                                                                    my_rank_index,
-                                                                    index,
-                                                                    send_buf,
-                                                                    out_buffer,
-                                                                    recv_size,
-                                                                    threads_already_processed,
-                                                                    (void **)temp_buffer,
-                                                                    temp_rank,
-                                                                    outer_iter,
-                                                                    size_per_buffer_kernel,
-                                                                    buffer_index_kernel,
-                                                                    threads_needed_per_chunk,
-                                                                    in_place);
-                                    break;
-                                case 10:
-                                    reduce_read_write<10, data_type>((int *)even_ranks,
-                                                                     my_rank_index,
-                                                                     index,
-                                                                     send_buf,
-                                                                     out_buffer,
-                                                                     recv_size,
-                                                                     threads_already_processed,
-                                                                     (void **)temp_buffer,
-                                                                     temp_rank,
-                                                                     outer_iter,
-                                                                     size_per_buffer_kernel,
-                                                                     buffer_index_kernel,
-                                                                     threads_needed_per_chunk,
-                                                                     in_place);
-                                    break;
-                                case 12:
-                                    reduce_read_write<12, data_type>((int *)even_ranks,
-                                                                     my_rank_index,
-                                                                     index,
-                                                                     send_buf,
-                                                                     out_buffer,
-                                                                     recv_size,
-                                                                     threads_already_processed,
-                                                                     (void **)temp_buffer,
-                                                                     temp_rank,
-                                                                     outer_iter,
-                                                                     size_per_buffer_kernel,
-                                                                     buffer_index_kernel,
-                                                                     threads_needed_per_chunk,
-                                                                     in_place);
-                                    break;
-                                case 14:
-                                    reduce_read_write<14, data_type>((int *)even_ranks,
-                                                                     my_rank_index,
-                                                                     index,
-                                                                     send_buf,
-                                                                     out_buffer,
-                                                                     recv_size,
-                                                                     threads_already_processed,
-                                                                     (void **)temp_buffer,
-                                                                     temp_rank,
-                                                                     outer_iter,
-                                                                     size_per_buffer_kernel,
-                                                                     buffer_index_kernel,
-                                                                     threads_needed_per_chunk,
-                                                                     in_place);
-                                    break;
-                                case 16:
-                                    reduce_read_write<16, data_type>((int *)even_ranks,
-                                                                     my_rank_index,
-                                                                     index,
-                                                                     send_buf,
-                                                                     out_buffer,
-                                                                     recv_size,
-                                                                     threads_already_processed,
-                                                                     (void **)temp_buffer,
-                                                                     temp_rank,
-                                                                     outer_iter,
-                                                                     size_per_buffer_kernel,
-                                                                     buffer_index_kernel,
-                                                                     threads_needed_per_chunk,
-                                                                     in_place);
-                                    break;
-                                default: break;
-                            }
+                            auto reduce_read_write_lambda = [&]<int w, size_t a>() SYCL_ESIMD_KERNEL {
+                                reduce_read_write<w, data_type, a>((int *)even_ranks,
+                                                                   my_rank_index,
+                                                                   index,
+                                                                   send_buf,
+                                                                   out_buffer,
+                                                                   recv_size,
+                                                                   threads_already_processed,
+                                                                   (void **)temp_buffer,
+                                                                   temp_rank,
+                                                                   outer_iter,
+                                                                   size_per_buffer_kernel,
+                                                                   buffer_index_kernel,
+                                                                   threads_needed_per_chunk,
+                                                                   in_place);
+                            };
+                            invoke_esimd_function<align>(reduce_read_write_lambda, temp_world);
                         }
                         });//parallel_for
             }); //submit()
@@ -804,7 +589,7 @@ private:
                     persist_local_sum_threads_needed = HW_THREAD_COUNT;
                 //local reduction kernel
                 e = queue.submit([&](sycl::handler &cgh) {
-                    cgh.parallel_for<class ReduceScatterMediumKernel_local_all_sum<data_type>>(
+                    cgh.parallel_for<class ReduceScatterMediumKernel_local_all_sum<data_type, align>>(
                         sycl::nd_range<1>({ persist_local_sum_threads_needed }, wg_size), [=](sycl::nd_item<1> idx2) SYCL_ESIMD_KERNEL
                         {
                         //ESIMD kernel
@@ -814,113 +599,20 @@ private:
                             if ((uint32_t)index >= threads_needed_per_chunk)
                                 break;
 
-                            switch (temp_world) {
-                                case 2:
-                                    all_sum<2, data_type>(index,
-                                                          send_buf,
-                                                          out_buffer,
-                                                          recv_size,
-                                                          threads_already_processed,
-                                                          (void **)temp_buffer,
-                                                          temp_rank,
-                                                          outer_iter,
-                                                          size_per_buffer_kernel,
-                                                          buffer_index_kernel,
-                                                          threads_needed_per_chunk);
-                                    break;
-                                case 4:
-                                    all_sum<4, data_type>(index,
-                                                          send_buf,
-                                                          out_buffer,
-                                                          recv_size,
-                                                          threads_already_processed,
-                                                          (void **)temp_buffer,
-                                                          temp_rank,
-                                                          outer_iter,
-                                                          size_per_buffer_kernel,
-                                                          buffer_index_kernel,
-                                                          threads_needed_per_chunk);
-                                    break;
-                                case 6:
-                                    all_sum<6, data_type>(index,
-                                                          send_buf,
-                                                          out_buffer,
-                                                          recv_size,
-                                                          threads_already_processed,
-                                                          (void **)temp_buffer,
-                                                          temp_rank,
-                                                          outer_iter,
-                                                          size_per_buffer_kernel,
-                                                          buffer_index_kernel,
-                                                          threads_needed_per_chunk);
-                                    break;
-                                case 8:
-                                    all_sum<8, data_type>(index,
-                                                          send_buf,
-                                                          out_buffer,
-                                                          recv_size,
-                                                          threads_already_processed,
-                                                          (void **)temp_buffer,
-                                                          temp_rank,
-                                                          outer_iter,
-                                                          size_per_buffer_kernel,
-                                                          buffer_index_kernel,
-                                                          threads_needed_per_chunk);
-                                    break;
-                                case 10:
-                                    all_sum<10, data_type>(index,
-                                                           send_buf,
-                                                           out_buffer,
-                                                           recv_size,
-                                                           threads_already_processed,
-                                                           (void **)temp_buffer,
-                                                           temp_rank,
-                                                           outer_iter,
-                                                           size_per_buffer_kernel,
-                                                           buffer_index_kernel,
-                                                           threads_needed_per_chunk);
-                                    break;
-                                case 12:
-                                    all_sum<12, data_type>(index,
-                                                           send_buf,
-                                                           out_buffer,
-                                                           recv_size,
-                                                           threads_already_processed,
-                                                           (void **)temp_buffer,
-                                                           temp_rank,
-                                                           outer_iter,
-                                                           size_per_buffer_kernel,
-                                                           buffer_index_kernel,
-                                                           threads_needed_per_chunk);
-                                    break;
-                                case 14:
-                                    all_sum<14, data_type>(index,
-                                                           send_buf,
-                                                           out_buffer,
-                                                           recv_size,
-                                                           threads_already_processed,
-                                                           (void **)temp_buffer,
-                                                           temp_rank,
-                                                           outer_iter,
-                                                           size_per_buffer_kernel,
-                                                           buffer_index_kernel,
-                                                           threads_needed_per_chunk);
-                                    break;
-                                case 16:
-                                    all_sum<16, data_type>(index,
-                                                           send_buf,
-                                                           out_buffer,
-                                                           recv_size,
-                                                           threads_already_processed,
-                                                           (void **)temp_buffer,
-                                                           temp_rank,
-                                                           outer_iter,
-                                                           size_per_buffer_kernel,
-                                                           buffer_index_kernel,
-                                                           threads_needed_per_chunk);
-                                    break;
-                                default: break;
-                            }
+                            auto all_sum_lambda = [&]<int w, size_t a>() SYCL_ESIMD_KERNEL {
+                                all_sum<w, data_type, a>(index,
+                                                         send_buf,
+                                                         out_buffer,
+                                                         recv_size,
+                                                         threads_already_processed,
+                                                         (void **)temp_buffer,
+                                                         temp_rank,
+                                                         outer_iter,
+                                                         size_per_buffer_kernel,
+                                                         buffer_index_kernel,
+                                                         threads_needed_per_chunk);
+                            };
+                            invoke_esimd_function<align>(all_sum_lambda, temp_world);
                         }
                         });//parallel_for
                 }); //submit()
@@ -939,7 +631,7 @@ private:
     ccl::event reduce_scatter_nocopy(sycl::queue &queue,
                                      const void *send_buf,
                                      void *out_buffer,
-                                     uint32_t recv_size,
+                                     size_t recv_size,
                                      int repetition,
                                      bool print_en,
                                      bool &done) {

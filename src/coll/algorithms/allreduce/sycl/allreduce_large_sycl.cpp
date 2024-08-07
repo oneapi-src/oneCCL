@@ -31,8 +31,12 @@ int allreduce_large_buffer_index = 0;
                                      ccl_stream *stream, \
                                      uint32_t rank_in, \
                                      uint32_t world_in); \
-    ccl::event run_allreduce_large_##TYPE( \
-        ccl::datatype dtype, sycl::queue &queue, const void *in_buf, void *out_buf, size_t count)
+    ccl::event run_allreduce_large_##TYPE(ccl::datatype dtype, \
+                                          sycl::queue &queue, \
+                                          const void *in_buf, \
+                                          void *out_buf, \
+                                          size_t count, \
+                                          bool &done)
 
 ALLREDUCE_LARGE_API_DECL(fp16);
 ALLREDUCE_LARGE_API_DECL(bf16);
@@ -60,13 +64,16 @@ void init_allreduce_large(ccl::datatype dtype,
 }
 
 #define SWITCH_RUN_TYPE(TYPE, ccl_type) \
-    case ccl_type: e = run_allreduce_large_##TYPE(dtype, queue, in_buf, out_buf, count); break;
+    case ccl_type: \
+        e = run_allreduce_large_##TYPE(dtype, queue, in_buf, out_buf, count, done); \
+        break;
 
 ccl::event run_allreduce_large(ccl::datatype dtype,
                                sycl::queue &queue,
                                const void *in_buf,
                                void *out_buf,
-                               size_t count) {
+                               size_t count,
+                               bool &done) {
     ccl::event e;
     switch (dtype) {
         SWITCH_RUN_TYPE(fp16, ccl::datatype::float16)
@@ -130,9 +137,19 @@ ccl::event allreduce_large(const void *send_buf,
         }
     }
 
+    // we dont have to take into account of the count while calculating alignment,
+    // since we divide count such that all ranks have aligned addresses
+    const bool use_full_vector = can_use_full_vector(send_buf, recv_buf, 0);
+
     auto lambda = [&]<typename T, int NE, int NP>() {
-        return allreduce_large_impl<T, NE, NP>(
-            send_buf, recv_buf, count, dtype, reduction, comm, global_stream, deps);
+        if (use_full_vector) {
+            return allreduce_large_impl<T, NE, NP, true>(
+                send_buf, recv_buf, count, dtype, reduction, comm, global_stream, deps);
+        }
+        else {
+            return allreduce_large_impl<T, NE, NP, false>(
+                send_buf, recv_buf, count, dtype, reduction, comm, global_stream, deps);
+        }
     };
 
     return invoke_collective(lambda, comm, dtype);

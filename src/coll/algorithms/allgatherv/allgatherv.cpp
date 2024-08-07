@@ -787,7 +787,7 @@ ccl::status ccl_coll_build_topo_allgatherv_fill(ccl_sched* sched,
         /* copy data from my send_buf to my recv_buf */
         copy_attr attr{};
         attr.hint_queue_index = parallel_copy_events.size();
-        attr.direction = copy_direction::t2t;
+        attr.direction = copy_direction::d2d;
         auto entry = entry_factory::create<ze_copy_entry>(sched,
                                                           send_buf,
                                                           recv_bufs[comm->rank()],

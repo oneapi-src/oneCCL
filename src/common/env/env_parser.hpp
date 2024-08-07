@@ -120,7 +120,7 @@ private:
     void set_value(const std::string& env_name, T& value, T const& new_value) {
         unused_check_skip.insert(env_name);
         if (value != new_value) { // warn if reset to a different value
-            LOG_WARN("value of ", env_name, " changed to be ", new_value, " (default:", value, ")");
+            LOG_WARN_ROOT("value of ", env_name, " changed to be ", new_value, " (default:", value, ")");
         }
         value = new_value;
     }
@@ -133,13 +133,13 @@ private:
                   std::map<T, std::string> const& value2name) {
         unused_check_skip.insert(env_name);
         if (value != new_value) {
-            LOG_WARN("value of ",
-                     env_name,
-                     " changed to be ",
-                     value2name.at(new_value),
-                     " (default:",
-                     value2name.at(value),
-                     ")");
+            LOG_WARN_ROOT("value of ",
+                          env_name,
+                          " changed to be ",
+                          value2name.at(new_value),
+                          " (default:",
+                          value2name.at(value),
+                          ")");
         }
         value = new_value;
     }

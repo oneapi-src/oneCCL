@@ -14,6 +14,7 @@
  limitations under the License.
 */
 #include <execinfo.h>
+#include <optional>
 #include <sys/syscall.h>
 #include <unistd.h>
 
@@ -36,6 +37,67 @@ std::ostream& operator<<(std::ostream& os, ccl_streambuf& buf) {
     os << buf.buffer.get();
     buf.reset();
     return os;
+}
+
+// Try to fetch int from an environment variable `env_var_name`.
+// If It is not present or getenv/stoi calls threw an exception
+// returns nullopt.
+static int get_int_from_env(const char* env_var_name) {
+    try {
+        const char* var_str = std::getenv(env_var_name);
+
+        if (var_str) {
+            return std::stoi(var_str);
+        }
+    }
+    catch (...) {
+    }
+
+    return ccl::utils::invalid_err_code;
+}
+
+// Try to fetch rank based on current process environment.
+// Returns nullopt in case the rank could not be deduced.
+static int get_rank_from_env() {
+    int rank = ccl::utils::invalid_rank;
+
+    // Check IMPI
+    if ((rank = get_int_from_env("PMI_RANK")) != ccl::utils::invalid_rank) {
+        return rank;
+    }
+
+    // Check MPICH
+    if ((rank = get_int_from_env("PMIX_RANK")) != ccl::utils::invalid_rank) {
+        return rank;
+    }
+
+    // Check torch
+    if ((rank = get_int_from_env("RANK")) != ccl::utils::invalid_rank) {
+        return rank;
+    }
+
+    // Check rank set manually by the user
+    if ((rank = get_int_from_env("CCL_LOCAL_RANK")) != ccl::utils::invalid_rank) {
+        return rank;
+    }
+
+    return ccl::utils::invalid_rank;
+}
+
+bool ccl_logger::is_root() {
+    static thread_local bool rank_read = false;
+    static thread_local int rank = ccl::utils::invalid_rank;
+
+    if (!rank_read) {
+        rank = get_rank_from_env();
+        rank_read = true;
+    }
+
+    if (rank == ccl::utils::invalid_rank || rank == 0) {
+        // The rank is root or we could not detect rank properly
+        return true;
+    }
+    return false;
 }
 
 void ccl_logger::write_prefix(std::ostream& str) {

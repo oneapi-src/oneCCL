@@ -148,8 +148,9 @@ int fd_manager::get_physical_device_idx(std::vector<device_bdf_info> devs,
 
 // init functions impl
 std::vector<int> fd_manager::init_device_fds() {
-    const char *device_dir = "/dev/dri/by-path/";
-    const char *suffix = "-render";
+    const auto device_dir = ccl::global_data::env().drmfd_dev_render_dir_path.c_str();
+    const auto suffix = ccl::global_data::env().drmfd_dev_render_suffix.c_str();
+
     char device_name[NAME_MAX];
     struct dirent *ent = nullptr;
     std::vector<std::string> device_names;
@@ -175,8 +176,9 @@ std::vector<int> fd_manager::init_device_fds() {
 std::vector<bdf_info> fd_manager::init_device_bdfs(const size_t size) {
     std::vector<bdf_info> bdfs(0);
 #ifdef ZE_PCI_PROPERTIES_EXT_NAME
-    const char *device_dir = "/dev/dri/by-path/";
-    const char *suffix = "-render";
+    const auto device_dir = ccl::global_data::env().drmfd_dev_render_dir_path.c_str();
+    const auto suffix = ccl::global_data::env().drmfd_dev_render_suffix.c_str();
+
     char device_name[NAME_MAX];
     struct dirent *ent = nullptr;
     int idx = 0;

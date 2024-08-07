@@ -1,5 +1,4 @@
-.. _`oneCCL specification`: https://spec.oneapi.com/versions/latest/elements/oneCCL/source/index.html
-
+.. _`oneCCL specification`: https://uxlfoundation.github.io/oneAPI-spec/spec/elements/oneCCL/source/index.html
 Programming Model
 =================
 

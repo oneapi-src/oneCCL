@@ -34,7 +34,7 @@ int allreduce_small_buffer_index = 0;
 
 #define SWITCH_RUN_TYPE(TYPE, ccl_type) \
     case ccl_type: \
-        e = ar_small_##TYPE.allreduce(queue, in_buf, out_buf, dtype, count); \
+        e = ar_small_##TYPE.allreduce(queue, in_buf, out_buf, dtype, count, done); \
         break;
 
 #define SWITCH_TYPE_UNSUPPORTED(TYPE, ccl_type) \
@@ -69,7 +69,8 @@ ccl::event run_allreduce_small(ccl::datatype dtype,
                                sycl::queue &queue,
                                const void *in_buf,
                                void *out_buf,
-                               size_t count) {
+                               size_t count,
+                               bool &done) {
     ccl::event e;
     switch (dtype) {
         SWITCH_RUN_TYPE(fp16, ccl::datatype::float16)

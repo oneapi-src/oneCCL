@@ -31,8 +31,12 @@ int allreduce_medium_buffer_index = 0;
                                       ccl_stream *stream, \
                                       uint32_t rank_in, \
                                       uint32_t world_in); \
-    ccl::event run_allreduce_medium_##TYPE( \
-        ccl::datatype dtype, sycl::queue &queue, const void *in_buf, void *out_buf, size_t count)
+    ccl::event run_allreduce_medium_##TYPE(ccl::datatype dtype, \
+                                           sycl::queue &queue, \
+                                           const void *in_buf, \
+                                           void *out_buf, \
+                                           size_t count, \
+                                           bool &done)
 
 ALLREDUCE_MEDIUM_API_DECL(fp16);
 ALLREDUCE_MEDIUM_API_DECL(bf16);
@@ -60,13 +64,16 @@ void init_allreduce_medium(ccl::datatype dtype,
 }
 
 #define SWITCH_RUN_TYPE(TYPE, ccl_type) \
-    case ccl_type: e = run_allreduce_medium_##TYPE(dtype, queue, in_buf, out_buf, count); break;
+    case ccl_type: \
+        e = run_allreduce_medium_##TYPE(dtype, queue, in_buf, out_buf, count, done); \
+        break;
 
 ccl::event run_allreduce_medium(ccl::datatype dtype,
                                 sycl::queue &queue,
                                 const void *in_buf,
                                 void *out_buf,
-                                size_t count) {
+                                size_t count,
+                                bool &done) {
     ccl::event e;
     switch (dtype) {
         SWITCH_RUN_TYPE(fp16, ccl::datatype::float16)

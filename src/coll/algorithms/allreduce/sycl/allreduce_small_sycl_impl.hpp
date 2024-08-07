@@ -167,9 +167,17 @@ ccl::event allreduce_small_impl(const void *send_buf,
             return local_event;
         };
 
+    // for non 32 bit aligned data, use a vector size of 32 bits.
+    // we dont have to take into account of the count while calculating alignment,
+    // since we are not dividing the data among ranks
+    const bool use_full_vector = can_use_full_vector(send_buf, recv_buf, 0);
     constexpr int vec_size = 8 / (sizeof(T) / sizeof(char));
+    constexpr int vec_size_half = 4 / (sizeof(T) / sizeof(char));
 
-    if (ccl::global_data::env().sycl_ccl_barrier) {
+    if (count == 0) {
+        kernel_event = submit_wait_on_events(q, dep_events);
+    }
+    else if (ccl::global_data::env().sycl_ccl_barrier) {
         // TODO: use ccl_barrier option with read_write kernel
         sycl::event memcpy_event = q.submit([=](sycl::handler &h) {
             h.depends_on(dep_events);
@@ -177,8 +185,25 @@ ccl::event allreduce_small_impl(const void *send_buf,
         });
         // invoke cpu barrier instead of kernel comm_barrier
         kernel_event = invoke_barrier(node_comm, q, { memcpy_event }, true);
+
         // <vec_size, sub_group_size, use_local_barrier, use_global_barrier>
-        kernel_event = reduce_sum_invoke.template operator()<vec_size, 16, 0, 0>({ kernel_event });
+        if (use_full_vector) {
+            kernel_event =
+                reduce_sum_invoke.template operator()<vec_size, 16, 0, 0>({ kernel_event });
+        }
+        else {
+            kernel_event =
+                reduce_sum_invoke.template operator()<vec_size_half, 16, 0, 0>({ kernel_event });
+        }
+    }
+    else if (!use_full_vector) {
+        // TODO: use half vector with read_write kernel
+        sycl::event memcpy_event = q.submit([=](sycl::handler &h) {
+            h.depends_on(dep_events);
+            h.memcpy(local_tmp_buf, send_buf, dsize * count);
+        });
+        // <vec_size, sub_group_size, use_local_barrier, use_global_barrier>
+        kernel_event = reduce_sum_invoke.template operator()<vec_size_half, 16, 0, 1>(dep_events);
     }
     else if (count * dsize < sec_1) {
         // <vec_size, sub_group_size, use_local_barrier, use_global_barrier>

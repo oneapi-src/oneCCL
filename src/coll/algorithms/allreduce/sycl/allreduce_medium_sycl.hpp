@@ -43,7 +43,7 @@ extern ze_ipc_mem_handle_t allreduce_medium_ipc_handle[MAX_RANK];
 extern int allreduce_medium_buffer_index;
 
 // kernels for use_tmp_buf == 1
-template <uint32_t TEMP_WORLD, typename data_type>
+template <uint32_t TEMP_WORLD, typename data_type, size_t align>
 void load_input_to_temp_buffer(int idx,
                                const void *in_buffer,
                                uint32_t size,
@@ -64,24 +64,18 @@ void load_input_to_temp_buffer(int idx,
         int count = (size - read_offset + SIMD_COMPUTE - 1) / SIMD_COMPUTE;
         for (int i = 0; i < count; i++) {
             buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i) =
-                lsc_block_load<data_type,
-                               SIMD_COMPUTE,
-                               lsc_data_size::default_size,
-                               cache_hint::uncached,
-                               cache_hint::uncached>((data_type *)in_buffer + read_offset +
-                                                     i * SIMD_COMPUTE);
+                block_load<data_type, SIMD_COMPUTE>(
+                    (data_type *)in_buffer + read_offset + i * SIMD_COMPUTE,
+                    properties{ alignment<align> });
         }
     }
     else {
 #pragma unroll
         for (uint32_t i = 0; i < TEMP_WORLD; i++) {
             buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i) =
-                lsc_block_load<data_type,
-                               SIMD_COMPUTE,
-                               lsc_data_size::default_size,
-                               cache_hint::uncached,
-                               cache_hint::uncached>((data_type *)in_buffer + read_offset +
-                                                     i * SIMD_COMPUTE);
+                block_load<data_type, SIMD_COMPUTE>(
+                    (data_type *)in_buffer + read_offset + i * SIMD_COMPUTE,
+                    properties{ alignment<align> });
         }
     }
 
@@ -90,16 +84,14 @@ void load_input_to_temp_buffer(int idx,
     ptr += idx * SIMD_COMPUTE * TEMP_WORLD * 3 / 2;
 #pragma unroll
     for (uint32_t i = 0; i < TEMP_WORLD; i++) {
-        lsc_block_store<data_type,
-                        SIMD_COMPUTE,
-                        lsc_data_size::default_size,
-                        cache_hint::uncached,
-                        cache_hint::write_back>(
-            ptr + i * SIMD_COMPUTE, buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i));
+        block_store<data_type, SIMD_COMPUTE>(
+            ptr + i * SIMD_COMPUTE,
+            buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i),
+            properties{ alignment<align> });
     }
 }
 
-template <uint32_t TEMP_WORLD, typename data_type>
+template <uint32_t TEMP_WORLD, typename data_type, size_t align>
 void local_sum_and_distribute_to_remote_ranks(int *even_ranks,
                                               int myrank,
                                               int idx,
@@ -128,21 +120,15 @@ void local_sum_and_distribute_to_remote_ranks(int *even_ranks,
 #pragma unroll
     for (i = 0; i < TEMP_WORLD / 2; i++) {
         buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i) =
-            lsc_block_load<data_type,
-                           SIMD_COMPUTE,
-                           lsc_data_size::default_size,
-                           cache_hint::uncached,
-                           cache_hint::cached>((data_type *)ptr_even + i * SIMD_COMPUTE);
+            block_load<data_type, SIMD_COMPUTE>((data_type *)ptr_even + i * SIMD_COMPUTE,
+                                                properties{ alignment<align> });
     }
 #pragma unroll
     for (i = TEMP_WORLD / 2; i < TEMP_WORLD; i++) {
         buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i) =
-            lsc_block_load<data_type,
-                           SIMD_COMPUTE,
-                           lsc_data_size::default_size,
-                           cache_hint::uncached,
-                           cache_hint::cached>((data_type *)ptr_odd +
-                                               (i - TEMP_WORLD / 2) * SIMD_COMPUTE);
+            block_load<data_type, SIMD_COMPUTE>(
+                (data_type *)ptr_odd + (i - TEMP_WORLD / 2) * SIMD_COMPUTE,
+                properties{ alignment<align> });
     }
     simd<data_type, SIMD_COMPUTE * TEMP_WORLD / 2> sum;
     sum = buffer.template select<SIMD_COMPUTE * TEMP_WORLD / 2, 1>(0) +
@@ -155,17 +141,13 @@ void local_sum_and_distribute_to_remote_ranks(int *even_ranks,
         data_type *ptr = (data_type *)temp_buffer[even_ranks[i]];
         ptr += idx * SIMD_COMPUTE * TEMP_WORLD * 3 / 2 +
                size_per_buffer_kernel * buffer_index_kernel + TEMP_WORLD * SIMD_COMPUTE;
-        lsc_block_store<data_type,
-                        SIMD_COMPUTE,
-                        lsc_data_size::default_size,
-                        cache_hint::uncached,
-                        cache_hint::write_back>(
-            ptr + (temp_rank / 2) * SIMD_COMPUTE,
-            sum.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i));
+        block_store<data_type, SIMD_COMPUTE>(ptr + (temp_rank / 2) * SIMD_COMPUTE,
+                                             sum.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i),
+                                             properties{ alignment<align> });
     }
 }
 
-template <uint32_t TEMP_WORLD, typename data_type>
+template <uint32_t TEMP_WORLD, typename data_type, size_t align>
 void all_sum(int idx,
              const void *in_buffer,
              uint32_t size,
@@ -188,27 +170,19 @@ void all_sum(int idx,
 #pragma unroll
     for (uint32_t i = 0; i < TEMP_WORLD / 2; i++) {
         buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i) =
-            lsc_block_load<data_type,
-                           SIMD_COMPUTE,
-                           lsc_data_size::default_size,
-                           cache_hint::uncached,
-                           cache_hint::cached>((data_type *)ptr + i * SIMD_COMPUTE);
+            block_load<data_type, SIMD_COMPUTE>((data_type *)ptr + i * SIMD_COMPUTE,
+                                                properties{ alignment<align> });
     }
     simd<data_type, SIMD_COMPUTE> sum = 0;
 #pragma unroll
     for (uint32_t i = 0; i < TEMP_WORLD / 2; i++) {
         sum = sum + buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i);
     }
-    //store the result
-    lsc_block_store<data_type,
-                    SIMD_COMPUTE,
-                    lsc_data_size::default_size,
-                    cache_hint::uncached,
-                    cache_hint::write_back> //save the all sum in the second half of the temp slot.
-        (ptr, sum);
+    //store the result in the second half of the temp slot.
+    block_store<data_type, SIMD_COMPUTE>(ptr, sum, properties{ alignment<align> });
 }
 
-template <uint32_t TEMP_WORLD, typename data_type>
+template <uint32_t TEMP_WORLD, typename data_type, size_t align>
 void gather_from_remote_and_dist_to_rank_pair(int *even_ranks,
                                               int idx,
                                               void *out_buffer,
@@ -233,11 +207,7 @@ void gather_from_remote_and_dist_to_rank_pair(int *even_ranks,
         read_ptr += idx * SIMD_COMPUTE * TEMP_WORLD * 3 / 2 +
                     SIMD_COMPUTE * TEMP_WORLD; //get the sum from the second half of temp slot
         buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i) =
-            lsc_block_load<data_type,
-                           SIMD_COMPUTE,
-                           lsc_data_size::default_size,
-                           cache_hint::uncached,
-                           cache_hint::cached>(read_ptr);
+            block_load<data_type, SIMD_COMPUTE>(read_ptr, properties{ alignment<align> });
     }
 
     //write the data to the pair of ranks within the same gpu
@@ -247,14 +217,11 @@ void gather_from_remote_and_dist_to_rank_pair(int *even_ranks,
     mdfi_ptr += idx * SIMD_COMPUTE * TEMP_WORLD * 3 / 2;
 #pragma unroll
     for (uint32_t i = 0; i < TEMP_WORLD / 2; i++) {
-        lsc_block_store<data_type,
-                        SIMD_COMPUTE,
-                        lsc_data_size::default_size,
-                        cache_hint::uncached,
-                        cache_hint::write_back>(
+        block_store<data_type, SIMD_COMPUTE>(
             mdfi_ptr + i * SIMD_COMPUTE,
             buffer.template select<SIMD_COMPUTE, 1>(
-                SIMD_COMPUTE * i)); //save the results in the first half of temp slot
+                SIMD_COMPUTE * i), //save the results in the first half of temp slot
+            properties{ alignment<align> });
     }
 
     int is_odd = (even_ranks[0] == 1);
@@ -264,25 +231,19 @@ void gather_from_remote_and_dist_to_rank_pair(int *even_ranks,
     if (write_offset + SIMD_COMPUTE * TEMP_WORLD / 2 <= size) {
 #pragma unroll
         for (uint32_t i = 0; i < TEMP_WORLD / 2; i++) {
-            lsc_block_store<data_type,
-                            SIMD_COMPUTE,
-                            lsc_data_size::default_size,
-                            cache_hint::uncached,
-                            cache_hint::uncached>(
+            block_store<data_type, SIMD_COMPUTE>(
                 out_ptr + write_offset + i * SIMD_COMPUTE,
-                buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i));
+                buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i),
+                properties{ alignment<align> });
         }
     }
     else if (write_offset < size) {
         int vec_count = (size - write_offset) / SIMD_COMPUTE;
         for (int i = 0; i < vec_count; i++) {
-            lsc_block_store<data_type,
-                            SIMD_COMPUTE,
-                            lsc_data_size::default_size,
-                            cache_hint::uncached,
-                            cache_hint::uncached>(
+            block_store<data_type, SIMD_COMPUTE>(
                 out_ptr + write_offset + i * SIMD_COMPUTE,
-                buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i));
+                buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i),
+                properties{ alignment<align> });
         }
         int count = size - write_offset - vec_count * SIMD_COMPUTE;
         for (int i = 0; i < count; i++) {
@@ -292,7 +253,7 @@ void gather_from_remote_and_dist_to_rank_pair(int *even_ranks,
     }
 }
 
-template <uint32_t TEMP_WORLD, typename data_type>
+template <uint32_t TEMP_WORLD, typename data_type, size_t align>
 void write_output(int *even_ranks,
                   int idx,
                   void *out_buffer,
@@ -315,11 +276,8 @@ void write_output(int *even_ranks,
     for (uint32_t i = 0; i < TEMP_WORLD / 2; i++) {
         //read the values
         buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i) =
-            lsc_block_load<data_type,
-                           SIMD_COMPUTE,
-                           lsc_data_size::default_size,
-                           cache_hint::uncached,
-                           cache_hint::cached>(read_ptr + i * SIMD_COMPUTE);
+            block_load<data_type, SIMD_COMPUTE>(read_ptr + i * SIMD_COMPUTE,
+                                                properties{ alignment<align> });
     }
 
     int is_odd = (even_ranks[0] == 1);
@@ -330,25 +288,19 @@ void write_output(int *even_ranks,
     if (write_offset + SIMD_COMPUTE * TEMP_WORLD / 2 <= size) {
 #pragma unroll
         for (uint32_t i = 0; i < TEMP_WORLD / 2; i++) {
-            lsc_block_store<data_type,
-                            SIMD_COMPUTE,
-                            lsc_data_size::default_size,
-                            cache_hint::uncached,
-                            cache_hint::uncached>(
+            block_store<data_type, SIMD_COMPUTE>(
                 write_ptr + write_offset + i * SIMD_COMPUTE,
-                buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i));
+                buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i),
+                properties{ alignment<align> });
         }
     }
     else if (write_offset < size) {
         int vec_count = (size - write_offset) / SIMD_COMPUTE;
         for (int i = 0; i < vec_count; i++) {
-            lsc_block_store<data_type,
-                            SIMD_COMPUTE,
-                            lsc_data_size::default_size,
-                            cache_hint::uncached,
-                            cache_hint::uncached>(
+            block_store<data_type, SIMD_COMPUTE>(
                 write_ptr + write_offset + i * SIMD_COMPUTE,
-                buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i));
+                buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i),
+                properties{ alignment<align> });
         }
         int count = size - write_offset - vec_count * SIMD_COMPUTE;
         for (int i = 0; i < count; i++) {
@@ -360,7 +312,7 @@ void write_output(int *even_ranks,
 
 // kernels for use_tmp_buf == 0
 // tmp buffer is used for size: SIMD_COMPUTE * TEMP_WORLD / 2
-template <uint32_t TEMP_WORLD, typename data_type>
+template <uint32_t TEMP_WORLD, typename data_type, int align>
 void nocopy_sum_and_distribute_to_remote_ranks(int *even_ranks,
                                                int myrank,
                                                int idx,
@@ -388,22 +340,16 @@ void nocopy_sum_and_distribute_to_remote_ranks(int *even_ranks,
 #pragma unroll
     for (i = 0; i < TEMP_WORLD / 2; i++) {
         buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i) =
-            lsc_block_load<data_type,
-                           SIMD_COMPUTE,
-                           lsc_data_size::default_size,
-                           cache_hint::uncached,
-                           cache_hint::cached>((data_type *)ptr_even + read_offset +
-                                               i * SIMD_COMPUTE);
+            block_load<data_type, SIMD_COMPUTE>(
+                (data_type *)ptr_even + read_offset + i * SIMD_COMPUTE,
+                properties{ alignment<align> });
     }
 #pragma unroll
     for (i = TEMP_WORLD / 2; i < TEMP_WORLD; i++) {
         buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i) =
-            lsc_block_load<data_type,
-                           SIMD_COMPUTE,
-                           lsc_data_size::default_size,
-                           cache_hint::uncached,
-                           cache_hint::cached>((data_type *)ptr_odd + read_offset +
-                                               (i - TEMP_WORLD / 2) * SIMD_COMPUTE);
+            block_load<data_type, SIMD_COMPUTE>(
+                (data_type *)ptr_odd + read_offset + (i - TEMP_WORLD / 2) * SIMD_COMPUTE,
+                properties{ alignment<align> });
     }
     sum = buffer.template select<SIMD_COMPUTE * TEMP_WORLD / 2, 1>(0) +
           buffer.template select<SIMD_COMPUTE * TEMP_WORLD / 2, 1>(SIMD_COMPUTE * TEMP_WORLD / 2);
@@ -414,17 +360,13 @@ void nocopy_sum_and_distribute_to_remote_ranks(int *even_ranks,
     for (i = 0; i < TEMP_WORLD / 2; i++) {
         data_type *ptr = (data_type *)temp_buffer[even_ranks[i]];
         ptr += idx * SIMD_COMPUTE * TEMP_WORLD + size_per_buffer_kernel * buffer_index_kernel2;
-        lsc_block_store<data_type,
-                        SIMD_COMPUTE,
-                        lsc_data_size::default_size,
-                        cache_hint::uncached,
-                        cache_hint::write_back>(
-            ptr + (temp_rank / 2) * SIMD_COMPUTE,
-            sum.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i));
+        block_store<data_type, SIMD_COMPUTE>(ptr + (temp_rank / 2) * SIMD_COMPUTE,
+                                             sum.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i),
+                                             properties{ alignment<align> });
     }
 }
 
-template <uint32_t TEMP_WORLD, typename data_type>
+template <uint32_t TEMP_WORLD, typename data_type, size_t align>
 void nocopy_all_sum(int idx,
                     const void *in_buffer,
                     uint32_t size,
@@ -447,27 +389,19 @@ void nocopy_all_sum(int idx,
 #pragma unroll
     for (uint32_t i = 0; i < TEMP_WORLD / 2; i++) {
         buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i) =
-            lsc_block_load<data_type,
-                           SIMD_COMPUTE,
-                           lsc_data_size::default_size,
-                           cache_hint::uncached,
-                           cache_hint::cached>((data_type *)ptr + i * SIMD_COMPUTE);
+            block_load<data_type, SIMD_COMPUTE>((data_type *)ptr + i * SIMD_COMPUTE,
+                                                properties{ alignment<align> });
     }
     simd<data_type, SIMD_COMPUTE> sum = 0;
 #pragma unroll
     for (uint32_t i = 0; i < TEMP_WORLD / 2; i++) {
         sum = sum + buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i);
     }
-    //store the result
-    lsc_block_store<data_type,
-                    SIMD_COMPUTE,
-                    lsc_data_size::default_size,
-                    cache_hint::uncached,
-                    cache_hint::write_back> //save the all sum in the second half of the temp slot.
-        (ptr, sum);
+    //store the result in the second half of the temp slot
+    block_store<data_type, SIMD_COMPUTE>(ptr, sum, properties{ alignment<align> });
 }
 
-template <uint32_t TEMP_WORLD, typename data_type>
+template <uint32_t TEMP_WORLD, typename data_type, size_t align>
 void nocopy_gather_from_remote_and_dist_to_rank_pair(int *even_ranks,
                                                      int idx,
                                                      void **out_buffers,
@@ -491,11 +425,7 @@ void nocopy_gather_from_remote_and_dist_to_rank_pair(int *even_ranks,
         read_ptr_int += size_per_buffer_kernel * buffer_index_kernel;
         read_ptr_int += idx * SIMD_COMPUTE * TEMP_WORLD;
         buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i) =
-            lsc_block_load<data_type,
-                           SIMD_COMPUTE,
-                           lsc_data_size::default_size,
-                           cache_hint::uncached,
-                           cache_hint::cached>(read_ptr_int);
+            block_load<data_type, SIMD_COMPUTE>(read_ptr_int, properties{ alignment<align> });
     }
 
     //write the data to the pair of ranks within the same gpu
@@ -507,41 +437,29 @@ void nocopy_gather_from_remote_and_dist_to_rank_pair(int *even_ranks,
     if (write_offset + SIMD_COMPUTE * TEMP_WORLD / 2 <= size) {
 #pragma unroll
         for (i = 0; i < TEMP_WORLD / 2; i++) {
-            lsc_block_store<data_type,
-                            SIMD_COMPUTE,
-                            lsc_data_size::default_size,
-                            cache_hint::uncached,
-                            cache_hint::uncached>(
+            // save the results in the first half of temp slot
+            block_store<data_type, SIMD_COMPUTE>(
                 ptr_even + write_offset + i * SIMD_COMPUTE,
-                buffer.template select<SIMD_COMPUTE, 1>(
-                    SIMD_COMPUTE * i)); //save the results in the first half of temp slot
-            lsc_block_store<data_type,
-                            SIMD_COMPUTE,
-                            lsc_data_size::default_size,
-                            cache_hint::uncached,
-                            cache_hint::uncached>(
+                buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i),
+                properties{ alignment<align> });
+            // save the results in the first half of temp slot
+            block_store<data_type, SIMD_COMPUTE>(
                 ptr_odd + write_offset + i * SIMD_COMPUTE,
-                buffer.template select<SIMD_COMPUTE, 1>(
-                    SIMD_COMPUTE * i)); //save the results in the first half of temp slot
+                buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i),
+                properties{ alignment<align> });
         }
     }
     else if (write_offset < size) {
         uint32_t vec_count = (size - write_offset) / SIMD_COMPUTE;
         for (i = 0; i < vec_count; i++) {
-            lsc_block_store<data_type,
-                            SIMD_COMPUTE,
-                            lsc_data_size::default_size,
-                            cache_hint::uncached,
-                            cache_hint::uncached>(
+            block_store<data_type, SIMD_COMPUTE>(
                 ptr_even + write_offset + i * SIMD_COMPUTE,
-                buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i));
-            lsc_block_store<data_type,
-                            SIMD_COMPUTE,
-                            lsc_data_size::default_size,
-                            cache_hint::uncached,
-                            cache_hint::uncached>(
+                buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i),
+                properties{ alignment<align> });
+            block_store<data_type, SIMD_COMPUTE>(
                 ptr_odd + write_offset + i * SIMD_COMPUTE,
-                buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i));
+                buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i),
+                properties{ alignment<align> });
         }
         uint32_t count = size - write_offset - vec_count * SIMD_COMPUTE;
         for (i = 0; i < count; i++) {
@@ -553,7 +471,7 @@ void nocopy_gather_from_remote_and_dist_to_rank_pair(int *even_ranks,
     }
 }
 
-template <typename data_type>
+template <typename data_type, size_t align>
 void nocopy_2rank(int idx,
                   void **in_buffers,
                   uint32_t size,
@@ -573,21 +491,15 @@ void nocopy_2rank(int idx,
 #pragma unroll
     for (i = 0; i < TEMP_WORLD / 2; i++) {
         buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i) =
-            lsc_block_load<data_type,
-                           SIMD_COMPUTE,
-                           lsc_data_size::default_size,
-                           cache_hint::uncached,
-                           cache_hint::cached>(ptr_even + read_offset + i * SIMD_COMPUTE);
+            block_load<data_type, SIMD_COMPUTE>(ptr_even + read_offset + i * SIMD_COMPUTE,
+                                                properties{ alignment<align> });
     }
 #pragma unroll
     for (i = TEMP_WORLD / 2; i < TEMP_WORLD; i++) {
         buffer.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i) =
-            lsc_block_load<data_type,
-                           SIMD_COMPUTE,
-                           lsc_data_size::default_size,
-                           cache_hint::uncached,
-                           cache_hint::cached>(ptr_odd + read_offset +
-                                               (i - TEMP_WORLD / 2) * SIMD_COMPUTE);
+            block_load<data_type, SIMD_COMPUTE>(
+                ptr_odd + read_offset + (i - TEMP_WORLD / 2) * SIMD_COMPUTE,
+                properties{ alignment<align> });
     }
     simd<data_type, SIMD_COMPUTE * TEMP_WORLD / 2> sum;
     sum = buffer.template select<SIMD_COMPUTE * TEMP_WORLD / 2, 1>(0) +
@@ -601,41 +513,29 @@ void nocopy_2rank(int idx,
     if (write_offset + SIMD_COMPUTE * TEMP_WORLD / 2 <= size) {
 #pragma unroll
         for (i = 0; i < TEMP_WORLD / 2; i++) {
-            lsc_block_store<data_type,
-                            SIMD_COMPUTE,
-                            lsc_data_size::default_size,
-                            cache_hint::uncached,
-                            cache_hint::uncached>(
+            //save the results in the first half of temp slot
+            block_store<data_type, SIMD_COMPUTE>(
                 ptr_even + write_offset + i * SIMD_COMPUTE,
-                sum.template select<SIMD_COMPUTE, 1>(
-                    SIMD_COMPUTE * i)); //save the results in the first half of temp slot
-            lsc_block_store<data_type,
-                            SIMD_COMPUTE,
-                            lsc_data_size::default_size,
-                            cache_hint::uncached,
-                            cache_hint::uncached>(
+                sum.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i),
+                properties{ alignment<align> });
+            //save the results in the first half of temp slot
+            block_store<data_type, SIMD_COMPUTE>(
                 ptr_odd + write_offset + i * SIMD_COMPUTE,
-                sum.template select<SIMD_COMPUTE, 1>(
-                    SIMD_COMPUTE * i)); //save the results in the first half of temp slot
+                sum.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i),
+                properties{ alignment<align> });
         }
     }
     else if (write_offset < size) {
         uint32_t vec_count = (size - write_offset) / SIMD_COMPUTE;
         for (i = 0; i < vec_count; i++) {
-            lsc_block_store<data_type,
-                            SIMD_COMPUTE,
-                            lsc_data_size::default_size,
-                            cache_hint::uncached,
-                            cache_hint::uncached>(
+            block_store<data_type, SIMD_COMPUTE>(
                 ptr_even + write_offset + i * SIMD_COMPUTE,
-                sum.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i));
-            lsc_block_store<data_type,
-                            SIMD_COMPUTE,
-                            lsc_data_size::default_size,
-                            cache_hint::uncached,
-                            cache_hint::uncached>(
+                sum.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i),
+                properties{ alignment<align> });
+            block_store<data_type, SIMD_COMPUTE>(
                 ptr_odd + write_offset + i * SIMD_COMPUTE,
-                sum.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i));
+                sum.template select<SIMD_COMPUTE, 1>(SIMD_COMPUTE * i),
+                properties{ alignment<align> });
         }
         uint32_t count = size - write_offset - vec_count * SIMD_COMPUTE;
         for (i = 0; i < count; i++) {
@@ -710,15 +610,15 @@ void write_output_2rank(int idx,
     }
 }
 
-template <typename dtype>
+template <typename dtype, size_t align>
 class Kernel_load_input_to_temp_buffer;
-template <typename dtype>
+template <typename dtype, size_t align>
 class Kernel_local_sum_and_distribute_to_remote_ranks;
-template <typename dtype>
+template <typename dtype, size_t align>
 class Kernel_all_sum;
-template <typename dtype>
+template <typename dtype, size_t align>
 class Kernel_gather_from_remote_and_dist_to_rank_pair;
-template <typename dtype>
+template <typename dtype, size_t align>
 class Kernel_write_output;
 
 template <typename dtype>
@@ -795,9 +695,19 @@ public:
     ccl::event allreduce(sycl::queue &queue,
                          const void *in_buffer,
                          void *out_buffer,
-                         uint32_t size) {
+                         size_t size,
+                         bool &done) {
+        done = true;
+
+        // check local alignment
+        size_t is_aligned = (size_t)in_buffer % 4 == 0 && (size_t)out_buffer % 4 == 0 &&
+                            (size * sizeof(data_type)) % 4 == 0;
+
         if (ccl::global_data::env().sycl_allreduce_tmp_buf) {
-            return allreduce_copy(queue, in_buffer, out_buffer, size);
+            if (is_aligned)
+                return allreduce_copy<4>(queue, in_buffer, out_buffer, size);
+            else
+                return allreduce_copy<2>(queue, in_buffer, out_buffer, size);
         }
         else {
             if (world == 2) {
@@ -810,10 +720,11 @@ public:
     }
 
 private:
+    template <size_t align>
     ccl::event allreduce_copy(sycl::queue &queue,
                               const void *in_buffer,
                               void *out_buffer,
-                              uint32_t size) {
+                              size_t size) {
         using namespace __ESIMD_NS;
         using namespace __ESIMD_ENS;
 
@@ -885,7 +796,7 @@ private:
 #if KERNEL_EXEC_MAP & 1
             //Data is sent to other tile within the same gpu via MDFI
             queue.submit([&](sycl::handler &cgh) {
-                cgh.parallel_for<class Kernel_load_input_to_temp_buffer<data_type>>(
+                cgh.parallel_for<class Kernel_load_input_to_temp_buffer<data_type, align>>(
                     sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::nd_item<1> idx2) SYCL_ESIMD_KERNEL
                     {
                     uint32_t idx = idx2.get_global_id();
@@ -895,97 +806,20 @@ private:
                         if ((uint32_t)index >= total_threads_needed)
                             break;
 
-                        switch (temp_world) {
-                            case 2:
-                                load_input_to_temp_buffer<2, data_type>(index,
-                                                                        in_buffer,
-                                                                        size,
-                                                                        threads_already_processed,
-                                                                        (void **)temp_buffer,
-                                                                        temp_rank,
-                                                                        outer_iter,
-                                                                        size_per_buffer_kernel,
-                                                                        buffer_index_kernel);
-                                break;
-                            case 4:
-                                load_input_to_temp_buffer<4, data_type>(index,
-                                                                        in_buffer,
-                                                                        size,
-                                                                        threads_already_processed,
-                                                                        (void **)temp_buffer,
-                                                                        temp_rank,
-                                                                        outer_iter,
-                                                                        size_per_buffer_kernel,
-                                                                        buffer_index_kernel);
-                                break;
-                            case 6:
-                                load_input_to_temp_buffer<6, data_type>(index,
-                                                                        in_buffer,
-                                                                        size,
-                                                                        threads_already_processed,
-                                                                        (void **)temp_buffer,
-                                                                        temp_rank,
-                                                                        outer_iter,
-                                                                        size_per_buffer_kernel,
-                                                                        buffer_index_kernel);
-                                break;
-                            case 8:
-                                load_input_to_temp_buffer<8, data_type>(index,
-                                                                        in_buffer,
-                                                                        size,
-                                                                        threads_already_processed,
-                                                                        (void **)temp_buffer,
-                                                                        temp_rank,
-                                                                        outer_iter,
-                                                                        size_per_buffer_kernel,
-                                                                        buffer_index_kernel);
-                                break;
-                            case 10:
-                                load_input_to_temp_buffer<10, data_type>(index,
-                                                                         in_buffer,
-                                                                         size,
-                                                                         threads_already_processed,
-                                                                         (void **)temp_buffer,
-                                                                         temp_rank,
-                                                                         outer_iter,
-                                                                         size_per_buffer_kernel,
-                                                                         buffer_index_kernel);
-                                break;
-                            case 12:
-                                load_input_to_temp_buffer<12, data_type>(index,
-                                                                         in_buffer,
-                                                                         size,
-                                                                         threads_already_processed,
-                                                                         (void **)temp_buffer,
-                                                                         temp_rank,
-                                                                         outer_iter,
-                                                                         size_per_buffer_kernel,
-                                                                         buffer_index_kernel);
-                                break;
-                            case 14:
-                                load_input_to_temp_buffer<14, data_type>(index,
-                                                                         in_buffer,
-                                                                         size,
-                                                                         threads_already_processed,
-                                                                         (void **)temp_buffer,
-                                                                         temp_rank,
-                                                                         outer_iter,
-                                                                         size_per_buffer_kernel,
-                                                                         buffer_index_kernel);
-                                break;
-                            case 16:
-                                load_input_to_temp_buffer<16, data_type>(index,
-                                                                         in_buffer,
-                                                                         size,
-                                                                         threads_already_processed,
-                                                                         (void **)temp_buffer,
-                                                                         temp_rank,
-                                                                         outer_iter,
-                                                                         size_per_buffer_kernel,
-                                                                         buffer_index_kernel);
-                                break;
-                            default: break;
-                        }
+                        auto load_input_to_temp_buffer_lambda =
+                            [&]<int w, size_t a>() SYCL_ESIMD_KERNEL {
+                                load_input_to_temp_buffer<w, data_type, a>(
+                                    index,
+                                    in_buffer,
+                                    size,
+                                    threads_already_processed,
+                                    (void **)temp_buffer,
+                                    temp_rank,
+                                    outer_iter,
+                                    size_per_buffer_kernel,
+                                    buffer_index_kernel);
+                            };
+                        invoke_esimd_function<align>(load_input_to_temp_buffer_lambda, temp_world);
                     }
 
                     });//parallel_for
@@ -1004,7 +838,7 @@ private:
 #if KERNEL_EXEC_MAP & 4
             //local reduction kernel
             queue.submit([&](sycl::handler &cgh) {
-                    cgh.parallel_for<class Kernel_local_sum_and_distribute_to_remote_ranks<data_type>>(
+                    cgh.parallel_for<class Kernel_local_sum_and_distribute_to_remote_ranks<data_type, align>>(
                         sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::nd_item<1> idx2) SYCL_ESIMD_KERNEL
                         {
                         uint32_t idx = idx2.get_global_id();
@@ -1014,9 +848,9 @@ private:
                             if ((uint32_t)index >= total_threads_needed)
                                 break;
 
-                            switch (temp_world) {
-                                case 2:
-                                    local_sum_and_distribute_to_remote_ranks<2, data_type>(
+                            auto local_sum_and_distribute_to_remote_ranks_lambda =
+                                [&]<int w, size_t a>() SYCL_ESIMD_KERNEL {
+                                    local_sum_and_distribute_to_remote_ranks<w, data_type, a>(
                                         (int *)even_ranks,
                                         myrank,
                                         index,
@@ -1027,102 +861,10 @@ private:
                                         temp_rank,
                                         size_per_buffer_kernel,
                                         buffer_index_kernel);
-                                    break;
-                                case 4:
-                                    local_sum_and_distribute_to_remote_ranks<4, data_type>(
-                                        (int *)even_ranks,
-                                        myrank,
-                                        index,
-                                        in_buffer,
-                                        size,
-                                        threads_already_processed,
-                                        (void **)temp_buffer,
-                                        temp_rank,
-                                        size_per_buffer_kernel,
-                                        buffer_index_kernel);
-                                    break;
-                                case 6:
-                                    local_sum_and_distribute_to_remote_ranks<6, data_type>(
-                                        (int *)even_ranks,
-                                        myrank,
-                                        index,
-                                        in_buffer,
-                                        size,
-                                        threads_already_processed,
-                                        (void **)temp_buffer,
-                                        temp_rank,
-                                        size_per_buffer_kernel,
-                                        buffer_index_kernel);
-                                    break;
-                                case 8:
-                                    local_sum_and_distribute_to_remote_ranks<8, data_type>(
-                                        (int *)even_ranks,
-                                        myrank,
-                                        index,
-                                        in_buffer,
-                                        size,
-                                        threads_already_processed,
-                                        (void **)temp_buffer,
-                                        temp_rank,
-                                        size_per_buffer_kernel,
-                                        buffer_index_kernel);
-                                    break;
-                                case 10:
-                                    local_sum_and_distribute_to_remote_ranks<10, data_type>(
-                                        (int *)even_ranks,
-                                        myrank,
-                                        index,
-                                        in_buffer,
-                                        size,
-                                        threads_already_processed,
-                                        (void **)temp_buffer,
-                                        temp_rank,
-                                        size_per_buffer_kernel,
-                                        buffer_index_kernel);
-                                    break;
-                                case 12:
-                                    local_sum_and_distribute_to_remote_ranks<12, data_type>(
-                                        (int *)even_ranks,
-                                        myrank,
-                                        index,
-                                        in_buffer,
-                                        size,
-                                        threads_already_processed,
-                                        (void **)temp_buffer,
-                                        temp_rank,
-                                        size_per_buffer_kernel,
-                                        buffer_index_kernel);
-                                    break;
-                                case 14:
-                                    local_sum_and_distribute_to_remote_ranks<14, data_type>(
-                                        (int *)even_ranks,
-                                        myrank,
-                                        index,
-                                        in_buffer,
-                                        size,
-                                        threads_already_processed,
-                                        (void **)temp_buffer,
-                                        temp_rank,
-                                        size_per_buffer_kernel,
-                                        buffer_index_kernel);
-                                    break;
-                                case 16:
-                                    local_sum_and_distribute_to_remote_ranks<16, data_type>(
-                                        (int *)even_ranks,
-                                        myrank,
-                                        index,
-                                        in_buffer,
-                                        size,
-                                        threads_already_processed,
-                                        (void **)temp_buffer,
-                                        temp_rank,
-                                        size_per_buffer_kernel,
-                                        buffer_index_kernel);
-                                    break;
-                                default: break;
-                            }
+                                };
+                            invoke_esimd_function<align>(
+                                local_sum_and_distribute_to_remote_ranks_lambda, temp_world);
                         }
-
                         });//parallel_for
             }); //submit()
 #endif
@@ -1138,7 +880,7 @@ private:
 #if KERNEL_EXEC_MAP & 16
             //local reduction kernel
             queue.submit([&](sycl::handler &cgh) {
-                    cgh.parallel_for<class Kernel_all_sum<data_type>>(
+                    cgh.parallel_for<class Kernel_all_sum<data_type, align>>(
                         sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::nd_item<1> idx2) SYCL_ESIMD_KERNEL
                         {
                         uint32_t idx = idx2.get_global_id();
@@ -1148,89 +890,17 @@ private:
                             if ((uint32_t)index >= total_threads_needed)
                                 break;
 
-                            switch (temp_world) {
-                                case 2:
-                                    all_sum<2, data_type>(index,
-                                                          in_buffer,
-                                                          size,
-                                                          threads_already_processed,
-                                                          (void **)temp_buffer,
-                                                          temp_rank,
-                                                          size_per_buffer_kernel,
-                                                          buffer_index_kernel);
-                                    break;
-                                case 4:
-                                    all_sum<4, data_type>(index,
-                                                          in_buffer,
-                                                          size,
-                                                          threads_already_processed,
-                                                          (void **)temp_buffer,
-                                                          temp_rank,
-                                                          size_per_buffer_kernel,
-                                                          buffer_index_kernel);
-                                    break;
-                                case 6:
-                                    all_sum<6, data_type>(index,
-                                                          in_buffer,
-                                                          size,
-                                                          threads_already_processed,
-                                                          (void **)temp_buffer,
-                                                          temp_rank,
-                                                          size_per_buffer_kernel,
-                                                          buffer_index_kernel);
-                                    break;
-                                case 8:
-                                    all_sum<8, data_type>(index,
-                                                          in_buffer,
-                                                          size,
-                                                          threads_already_processed,
-                                                          (void **)temp_buffer,
-                                                          temp_rank,
-                                                          size_per_buffer_kernel,
-                                                          buffer_index_kernel);
-                                    break;
-                                case 10:
-                                    all_sum<10, data_type>(index,
-                                                           in_buffer,
-                                                           size,
-                                                           threads_already_processed,
-                                                           (void **)temp_buffer,
-                                                           temp_rank,
-                                                           size_per_buffer_kernel,
-                                                           buffer_index_kernel);
-                                    break;
-                                case 12:
-                                    all_sum<12, data_type>(index,
-                                                           in_buffer,
-                                                           size,
-                                                           threads_already_processed,
-                                                           (void **)temp_buffer,
-                                                           temp_rank,
-                                                           size_per_buffer_kernel,
-                                                           buffer_index_kernel);
-                                    break;
-                                case 14:
-                                    all_sum<14, data_type>(index,
-                                                           in_buffer,
-                                                           size,
-                                                           threads_already_processed,
-                                                           (void **)temp_buffer,
-                                                           temp_rank,
-                                                           size_per_buffer_kernel,
-                                                           buffer_index_kernel);
-                                    break;
-                                case 16:
-                                    all_sum<16, data_type>(index,
-                                                           in_buffer,
-                                                           size,
-                                                           threads_already_processed,
-                                                           (void **)temp_buffer,
-                                                           temp_rank,
-                                                           size_per_buffer_kernel,
-                                                           buffer_index_kernel);
-                                    break;
-                                default: break;
-                            }
+                            auto all_sum_lambda = [&]<int w, size_t a>() SYCL_ESIMD_KERNEL {
+                                all_sum<w, data_type, a>(index,
+                                                         in_buffer,
+                                                         size,
+                                                         threads_already_processed,
+                                                         (void **)temp_buffer,
+                                                         temp_rank,
+                                                         size_per_buffer_kernel,
+                                                         buffer_index_kernel);
+                            };
+                            invoke_esimd_function<align>(all_sum_lambda, temp_world);
                         }
 
                         });//parallel_for
@@ -1248,7 +918,7 @@ private:
 #if KERNEL_EXEC_MAP & 64
             //copy the results to all the ranks.
             queue.submit([&](sycl::handler &cgh) {
-                    cgh.parallel_for<class Kernel_gather_from_remote_and_dist_to_rank_pair<data_type>>(
+                    cgh.parallel_for<class Kernel_gather_from_remote_and_dist_to_rank_pair<data_type, align>>(
                         sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::nd_item<1> idx2) SYCL_ESIMD_KERNEL
                         {
                         uint32_t idx = idx2.get_global_id();
@@ -1258,9 +928,9 @@ private:
                             if ((uint32_t)index >= total_threads_needed)
                                 break;
 
-                            switch (temp_world) {
-                                case 2:
-                                    gather_from_remote_and_dist_to_rank_pair<2, data_type>(
+                            auto gather_from_remote_and_dist_to_rank_pair_lambda =
+                                [&]<int w, size_t a>() SYCL_ESIMD_KERNEL {
+                                    gather_from_remote_and_dist_to_rank_pair<w, data_type, a>(
                                         (int *)even_ranks,
                                         index,
                                         out_buffer,
@@ -1271,100 +941,9 @@ private:
                                         outer_iter,
                                         size_per_buffer_kernel,
                                         buffer_index_kernel);
-                                    break;
-                                case 4:
-                                    gather_from_remote_and_dist_to_rank_pair<4, data_type>(
-                                        (int *)even_ranks,
-                                        index,
-                                        out_buffer,
-                                        size,
-                                        threads_already_processed,
-                                        (void **)temp_buffer,
-                                        temp_rank,
-                                        outer_iter,
-                                        size_per_buffer_kernel,
-                                        buffer_index_kernel);
-                                    break;
-                                case 6:
-                                    gather_from_remote_and_dist_to_rank_pair<6, data_type>(
-                                        (int *)even_ranks,
-                                        index,
-                                        out_buffer,
-                                        size,
-                                        threads_already_processed,
-                                        (void **)temp_buffer,
-                                        temp_rank,
-                                        outer_iter,
-                                        size_per_buffer_kernel,
-                                        buffer_index_kernel);
-                                    break;
-                                case 8:
-                                    gather_from_remote_and_dist_to_rank_pair<8, data_type>(
-                                        (int *)even_ranks,
-                                        index,
-                                        out_buffer,
-                                        size,
-                                        threads_already_processed,
-                                        (void **)temp_buffer,
-                                        temp_rank,
-                                        outer_iter,
-                                        size_per_buffer_kernel,
-                                        buffer_index_kernel);
-                                    break;
-                                case 10:
-                                    gather_from_remote_and_dist_to_rank_pair<10, data_type>(
-                                        (int *)even_ranks,
-                                        index,
-                                        out_buffer,
-                                        size,
-                                        threads_already_processed,
-                                        (void **)temp_buffer,
-                                        temp_rank,
-                                        outer_iter,
-                                        size_per_buffer_kernel,
-                                        buffer_index_kernel);
-                                    break;
-                                case 12:
-                                    gather_from_remote_and_dist_to_rank_pair<12, data_type>(
-                                        (int *)even_ranks,
-                                        index,
-                                        out_buffer,
-                                        size,
-                                        threads_already_processed,
-                                        (void **)temp_buffer,
-                                        temp_rank,
-                                        outer_iter,
-                                        size_per_buffer_kernel,
-                                        buffer_index_kernel);
-                                    break;
-                                case 14:
-                                    gather_from_remote_and_dist_to_rank_pair<14, data_type>(
-                                        (int *)even_ranks,
-                                        index,
-                                        out_buffer,
-                                        size,
-                                        threads_already_processed,
-                                        (void **)temp_buffer,
-                                        temp_rank,
-                                        outer_iter,
-                                        size_per_buffer_kernel,
-                                        buffer_index_kernel);
-                                    break;
-                                case 16:
-                                    gather_from_remote_and_dist_to_rank_pair<16, data_type>(
-                                        (int *)even_ranks,
-                                        index,
-                                        out_buffer,
-                                        size,
-                                        threads_already_processed,
-                                        (void **)temp_buffer,
-                                        temp_rank,
-                                        outer_iter,
-                                        size_per_buffer_kernel,
-                                        buffer_index_kernel);
-                                    break;
-                                default: break;
-                            }
+                                };
+                            invoke_esimd_function<align>(
+                                gather_from_remote_and_dist_to_rank_pair_lambda, temp_world);
                         }
                         });//parallel_for
             }); //submit()
@@ -1381,7 +960,7 @@ private:
 #if KERNEL_EXEC_MAP & 256
             //copy the results to all the ranks.
             e = queue.submit([&](sycl::handler &cgh) {
-                    cgh.parallel_for<class Kernel_write_output<data_type>>(
+                    cgh.parallel_for<class Kernel_write_output<data_type, align>>(
                         sycl::nd_range<1>({ persist_threads_needed }, wg_size), [=](sycl::nd_item<1> idx2) SYCL_ESIMD_KERNEL
                         {
                         uint32_t idx = idx2.get_global_id();
@@ -1391,105 +970,19 @@ private:
                             if ((uint32_t)index >= total_threads_needed)
                                 break;
 
-                            switch (temp_world) {
-                                case 2:
-                                    write_output<2, data_type>((int *)even_ranks,
-                                                               index,
-                                                               out_buffer,
-                                                               size,
-                                                               threads_already_processed,
-                                                               (void **)temp_buffer,
-                                                               temp_rank,
-                                                               outer_iter,
-                                                               size_per_buffer_kernel,
-                                                               buffer_index_kernel);
-                                    break;
-                                case 4:
-                                    write_output<4, data_type>((int *)even_ranks,
-                                                               index,
-                                                               out_buffer,
-                                                               size,
-                                                               threads_already_processed,
-                                                               (void **)temp_buffer,
-                                                               temp_rank,
-                                                               outer_iter,
-                                                               size_per_buffer_kernel,
-                                                               buffer_index_kernel);
-                                    break;
-                                case 6:
-                                    write_output<6, data_type>((int *)even_ranks,
-                                                               index,
-                                                               out_buffer,
-                                                               size,
-                                                               threads_already_processed,
-                                                               (void **)temp_buffer,
-                                                               temp_rank,
-                                                               outer_iter,
-                                                               size_per_buffer_kernel,
-                                                               buffer_index_kernel);
-                                    break;
-                                case 8:
-                                    write_output<8, data_type>((int *)even_ranks,
-                                                               index,
-                                                               out_buffer,
-                                                               size,
-                                                               threads_already_processed,
-                                                               (void **)temp_buffer,
-                                                               temp_rank,
-                                                               outer_iter,
-                                                               size_per_buffer_kernel,
-                                                               buffer_index_kernel);
-                                    break;
-                                case 10:
-                                    write_output<10, data_type>((int *)even_ranks,
-                                                                index,
-                                                                out_buffer,
-                                                                size,
-                                                                threads_already_processed,
-                                                                (void **)temp_buffer,
-                                                                temp_rank,
-                                                                outer_iter,
-                                                                size_per_buffer_kernel,
-                                                                buffer_index_kernel);
-                                    break;
-                                case 12:
-                                    write_output<12, data_type>((int *)even_ranks,
-                                                                index,
-                                                                out_buffer,
-                                                                size,
-                                                                threads_already_processed,
-                                                                (void **)temp_buffer,
-                                                                temp_rank,
-                                                                outer_iter,
-                                                                size_per_buffer_kernel,
-                                                                buffer_index_kernel);
-                                    break;
-                                case 14:
-                                    write_output<14, data_type>((int *)even_ranks,
-                                                                index,
-                                                                out_buffer,
-                                                                size,
-                                                                threads_already_processed,
-                                                                (void **)temp_buffer,
-                                                                temp_rank,
-                                                                outer_iter,
-                                                                size_per_buffer_kernel,
-                                                                buffer_index_kernel);
-                                    break;
-                                case 16:
-                                    write_output<16, data_type>((int *)even_ranks,
-                                                                index,
-                                                                out_buffer,
-                                                                size,
-                                                                threads_already_processed,
-                                                                (void **)temp_buffer,
-                                                                temp_rank,
-                                                                outer_iter,
-                                                                size_per_buffer_kernel,
-                                                                buffer_index_kernel);
-                                    break;
-                                default: break;
-                            }
+                            auto write_output_lambda = [&]<int w, size_t a>() SYCL_ESIMD_KERNEL {
+                                write_output<w, data_type, a>((int *)even_ranks,
+                                                              index,
+                                                              out_buffer,
+                                                              size,
+                                                              threads_already_processed,
+                                                              (void **)temp_buffer,
+                                                              temp_rank,
+                                                              outer_iter,
+                                                              size_per_buffer_kernel,
+                                                              buffer_index_kernel);
+                            };
+                            invoke_esimd_function<align>(write_output_lambda, temp_world);
                         }
                         });//parallel_for
             }); //submit()
@@ -1510,7 +1003,7 @@ private:
     ccl::event allreduce_nocopy(sycl::queue &queue,
                                 const void *in_buffer,
                                 void *out_buffer,
-                                uint32_t size) {
+                                size_t size) {
         using namespace __ESIMD_NS;
         using namespace __ESIMD_ENS;
 
@@ -1547,6 +1040,8 @@ private:
                                     NULL,
                                     NULL,
                                     (void **)out_buffers);
+        int align4 = all_aligned((void **)in_buffers, temp_world, size * sizeof(data_type), 4) &&
+                     all_aligned((void **)out_buffers, temp_world, size * sizeof(data_type), 4);
 
         int size_per_buffer_kernel = size_per_buffer / sizeof(data_type);
         int size_per_buffer_for_sync_kernel =
@@ -1604,9 +1099,9 @@ private:
                         if ((uint32_t)index >= total_threads_needed)
                             break;
 
-                        switch (temp_world) {
-                            case 2:
-                                nocopy_sum_and_distribute_to_remote_ranks<2, data_type>(
+                        auto nocopy_sum_and_distribute_to_remote_ranks_lambda =
+                            [&]<int w, size_t a>() SYCL_ESIMD_KERNEL {
+                                nocopy_sum_and_distribute_to_remote_ranks<w, data_type, a>(
                                     (int *)even_ranks,
                                     myrank,
                                     index,
@@ -1617,100 +1112,13 @@ private:
                                     temp_rank,
                                     size_per_buffer_kernel,
                                     buffer_index_kernel);
-                                break;
-                            case 4:
-                                nocopy_sum_and_distribute_to_remote_ranks<4, data_type>(
-                                    (int *)even_ranks,
-                                    myrank,
-                                    index,
-                                    (void **)in_buffers,
-                                    size,
-                                    threads_already_processed,
-                                    (void **)temp_buffer,
-                                    temp_rank,
-                                    size_per_buffer_kernel,
-                                    buffer_index_kernel);
-                                break;
-                            case 6:
-                                nocopy_sum_and_distribute_to_remote_ranks<6, data_type>(
-                                    (int *)even_ranks,
-                                    myrank,
-                                    index,
-                                    (void **)in_buffers,
-                                    size,
-                                    threads_already_processed,
-                                    (void **)temp_buffer,
-                                    temp_rank,
-                                    size_per_buffer_kernel,
-                                    buffer_index_kernel);
-                                break;
-                            case 8:
-                                nocopy_sum_and_distribute_to_remote_ranks<8, data_type>(
-                                    (int *)even_ranks,
-                                    myrank,
-                                    index,
-                                    (void **)in_buffers,
-                                    size,
-                                    threads_already_processed,
-                                    (void **)temp_buffer,
-                                    temp_rank,
-                                    size_per_buffer_kernel,
-                                    buffer_index_kernel);
-                                break;
-                            case 10:
-                                nocopy_sum_and_distribute_to_remote_ranks<10, data_type>(
-                                    (int *)even_ranks,
-                                    myrank,
-                                    index,
-                                    (void **)in_buffers,
-                                    size,
-                                    threads_already_processed,
-                                    (void **)temp_buffer,
-                                    temp_rank,
-                                    size_per_buffer_kernel,
-                                    buffer_index_kernel);
-                                break;
-                            case 12:
-                                nocopy_sum_and_distribute_to_remote_ranks<12, data_type>(
-                                    (int *)even_ranks,
-                                    myrank,
-                                    index,
-                                    (void **)in_buffers,
-                                    size,
-                                    threads_already_processed,
-                                    (void **)temp_buffer,
-                                    temp_rank,
-                                    size_per_buffer_kernel,
-                                    buffer_index_kernel);
-                                break;
-                            case 14:
-                                nocopy_sum_and_distribute_to_remote_ranks<14, data_type>(
-                                    (int *)even_ranks,
-                                    myrank,
-                                    index,
-                                    (void **)in_buffers,
-                                    size,
-                                    threads_already_processed,
-                                    (void **)temp_buffer,
-                                    temp_rank,
-                                    size_per_buffer_kernel,
-                                    buffer_index_kernel);
-                                break;
-                            case 16:
-                                nocopy_sum_and_distribute_to_remote_ranks<16, data_type>(
-                                    (int *)even_ranks,
-                                    myrank,
-                                    index,
-                                    (void **)in_buffers,
-                                    size,
-                                    threads_already_processed,
-                                    (void **)temp_buffer,
-                                    temp_rank,
-                                    size_per_buffer_kernel,
-                                    buffer_index_kernel);
-                                break;
-                            default: break;
-                        }
+                            };
+                        if (align4)
+                            invoke_esimd_function<4>(
+                                nocopy_sum_and_distribute_to_remote_ranks_lambda, temp_world);
+                        else
+                            invoke_esimd_function<2>(
+                                nocopy_sum_and_distribute_to_remote_ranks_lambda, temp_world);
                     }
 
                     });//parallel_for
@@ -1737,89 +1145,20 @@ private:
                         if ((uint32_t)index >= total_threads_needed)
                             break;
 
-                        switch (temp_world) {
-                            case 2:
-                                nocopy_all_sum<2, data_type>(index,
-                                                             in_buffer,
-                                                             size,
-                                                             threads_already_processed,
-                                                             (void **)temp_buffer,
-                                                             temp_rank,
-                                                             size_per_buffer_kernel,
-                                                             buffer_index_kernel);
-                                break;
-                            case 4:
-                                nocopy_all_sum<4, data_type>(index,
-                                                             in_buffer,
-                                                             size,
-                                                             threads_already_processed,
-                                                             (void **)temp_buffer,
-                                                             temp_rank,
-                                                             size_per_buffer_kernel,
-                                                             buffer_index_kernel);
-                                break;
-                            case 6:
-                                nocopy_all_sum<6, data_type>(index,
-                                                             in_buffer,
-                                                             size,
-                                                             threads_already_processed,
-                                                             (void **)temp_buffer,
-                                                             temp_rank,
-                                                             size_per_buffer_kernel,
-                                                             buffer_index_kernel);
-                                break;
-                            case 8:
-                                nocopy_all_sum<8, data_type>(index,
-                                                             in_buffer,
-                                                             size,
-                                                             threads_already_processed,
-                                                             (void **)temp_buffer,
-                                                             temp_rank,
-                                                             size_per_buffer_kernel,
-                                                             buffer_index_kernel);
-                                break;
-                            case 10:
-                                nocopy_all_sum<10, data_type>(index,
-                                                              in_buffer,
-                                                              size,
-                                                              threads_already_processed,
-                                                              (void **)temp_buffer,
-                                                              temp_rank,
-                                                              size_per_buffer_kernel,
-                                                              buffer_index_kernel);
-                                break;
-                            case 12:
-                                nocopy_all_sum<12, data_type>(index,
-                                                              in_buffer,
-                                                              size,
-                                                              threads_already_processed,
-                                                              (void **)temp_buffer,
-                                                              temp_rank,
-                                                              size_per_buffer_kernel,
-                                                              buffer_index_kernel);
-                                break;
-                            case 14:
-                                nocopy_all_sum<14, data_type>(index,
-                                                              in_buffer,
-                                                              size,
-                                                              threads_already_processed,
-                                                              (void **)temp_buffer,
-                                                              temp_rank,
-                                                              size_per_buffer_kernel,
-                                                              buffer_index_kernel);
-                                break;
-                            case 16:
-                                nocopy_all_sum<16, data_type>(index,
-                                                              in_buffer,
-                                                              size,
-                                                              threads_already_processed,
-                                                              (void **)temp_buffer,
-                                                              temp_rank,
-                                                              size_per_buffer_kernel,
-                                                              buffer_index_kernel);
-                                break;
-                            default: break;
-                        }
+                        auto nocopy_all_sum_lambda = [&]<int w, size_t a>() SYCL_ESIMD_KERNEL {
+                            nocopy_all_sum<w, data_type, a>(index,
+                                                            in_buffer,
+                                                            size,
+                                                            threads_already_processed,
+                                                            (void **)temp_buffer,
+                                                            temp_rank,
+                                                            size_per_buffer_kernel,
+                                                            buffer_index_kernel);
+                        };
+                        if (align4)
+                            invoke_esimd_function<4>(nocopy_all_sum_lambda, temp_world);
+                        else
+                            invoke_esimd_function<2>(nocopy_all_sum_lambda, temp_world);
                     }
 
                     });//parallel_for
@@ -1848,9 +1187,11 @@ private:
                             if ((uint32_t)index >= total_threads_needed)
                                 break;
 
-                            switch (temp_world) {
-                                case 2:
-                                    nocopy_gather_from_remote_and_dist_to_rank_pair<2, data_type>(
+                            auto nocopy_gather_from_remote_and_dist_to_rank_pair_lambda =
+                                [&]<int w, size_t a>() SYCL_ESIMD_KERNEL {
+                                    nocopy_gather_from_remote_and_dist_to_rank_pair<w,
+                                                                                    data_type,
+                                                                                    a>(
                                         (int *)even_ranks,
                                         index,
                                         (void **)out_buffers,
@@ -1860,92 +1201,16 @@ private:
                                         temp_rank,
                                         size_per_buffer_kernel,
                                         buffer_index_kernel);
-                                    break;
-                                case 4:
-                                    nocopy_gather_from_remote_and_dist_to_rank_pair<4, data_type>(
-                                        (int *)even_ranks,
-                                        index,
-                                        (void **)out_buffers,
-                                        size,
-                                        threads_already_processed,
-                                        (void **)temp_buffer,
-                                        temp_rank,
-                                        size_per_buffer_kernel,
-                                        buffer_index_kernel);
-                                    break;
-                                case 6:
-                                    nocopy_gather_from_remote_and_dist_to_rank_pair<6, data_type>(
-                                        (int *)even_ranks,
-                                        index,
-                                        (void **)out_buffers,
-                                        size,
-                                        threads_already_processed,
-                                        (void **)temp_buffer,
-                                        temp_rank,
-                                        size_per_buffer_kernel,
-                                        buffer_index_kernel);
-                                    break;
-                                case 8:
-                                    nocopy_gather_from_remote_and_dist_to_rank_pair<8, data_type>(
-                                        (int *)even_ranks,
-                                        index,
-                                        (void **)out_buffers,
-                                        size,
-                                        threads_already_processed,
-                                        (void **)temp_buffer,
-                                        temp_rank,
-                                        size_per_buffer_kernel,
-                                        buffer_index_kernel);
-                                    break;
-                                case 10:
-                                    nocopy_gather_from_remote_and_dist_to_rank_pair<10, data_type>(
-                                        (int *)even_ranks,
-                                        index,
-                                        (void **)out_buffers,
-                                        size,
-                                        threads_already_processed,
-                                        (void **)temp_buffer,
-                                        temp_rank,
-                                        size_per_buffer_kernel,
-                                        buffer_index_kernel);
-                                    break;
-                                case 12:
-                                    nocopy_gather_from_remote_and_dist_to_rank_pair<12, data_type>(
-                                        (int *)even_ranks,
-                                        index,
-                                        (void **)out_buffers,
-                                        size,
-                                        threads_already_processed,
-                                        (void **)temp_buffer,
-                                        temp_rank,
-                                        size_per_buffer_kernel,
-                                        buffer_index_kernel);
-                                    break;
-                                case 14:
-                                    nocopy_gather_from_remote_and_dist_to_rank_pair<14, data_type>(
-                                        (int *)even_ranks,
-                                        index,
-                                        (void **)out_buffers,
-                                        size,
-                                        threads_already_processed,
-                                        (void **)temp_buffer,
-                                        temp_rank,
-                                        size_per_buffer_kernel,
-                                        buffer_index_kernel);
-                                    break;
-                                case 16:
-                                    nocopy_gather_from_remote_and_dist_to_rank_pair<16, data_type>(
-                                        (int *)even_ranks,
-                                        index,
-                                        (void **)out_buffers,
-                                        size,
-                                        threads_already_processed,
-                                        (void **)temp_buffer,
-                                        temp_rank,
-                                        size_per_buffer_kernel,
-                                        buffer_index_kernel);
-                                    break;
-                                default: break;
+                                };
+                            if (align4) {
+                                invoke_esimd_function<4>(
+                                    nocopy_gather_from_remote_and_dist_to_rank_pair_lambda,
+                                    temp_world);
+                            }
+                            else {
+                                invoke_esimd_function<2>(
+                                    nocopy_gather_from_remote_and_dist_to_rank_pair_lambda,
+                                    temp_world);
                             }
                         }
                         });//parallel_for
@@ -2003,6 +1268,8 @@ private:
                                     NULL,
                                     NULL,
                                     (void **)out_buffers);
+        int align4 = all_aligned((void **)in_buffers, temp_world, size * sizeof(data_type), 4) &&
+                     all_aligned((void **)out_buffers, temp_world, size * sizeof(data_type), 4);
 
         int size_per_buffer_kernel = size_per_buffer / sizeof(data_type);
         int size_per_buffer_for_sync_kernel =
@@ -2038,8 +1305,14 @@ private:
                     if ((uint32_t)index >= total_threads_needed)
                         break;
 
-                    nocopy_2rank<data_type>(
-                        index, (void **)in_buffers, size, (void **)out_buffers, temp_rank);
+                    if (align4) {
+                        nocopy_2rank<data_type, 4>(
+                            index, (void **)in_buffers, size, (void **)out_buffers, temp_rank);
+                    }
+                    else {
+                        nocopy_2rank<data_type, 2>(
+                            index, (void **)in_buffers, size, (void **)out_buffers, temp_rank);
+                    }
                 }
 
                 });//parallel_for
@@ -2266,6 +1539,7 @@ private:
                                            sycl::queue &queue, \
                                            const void *in_buf, \
                                            void *out_buf, \
-                                           size_t count) { \
-        return ar_medium_##TYPE.allreduce(queue, in_buf, out_buf, count); \
+                                           size_t count, \
+                                           bool &done) { \
+        return ar_medium_##TYPE.allreduce(queue, in_buf, out_buf, count, done); \
     }

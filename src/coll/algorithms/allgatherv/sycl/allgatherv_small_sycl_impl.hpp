@@ -146,7 +146,10 @@ ccl::event allgatherv_small_impl(const void* send_buf,
         return local_event;
     };
 
-    if (ccl::global_data::env().sycl_ccl_barrier) {
+    if (count == 0) {
+        kernel_event = submit_wait_on_events(q, dep_events);
+    }
+    else if (ccl::global_data::env().sycl_ccl_barrier) {
         // TODO: use 64 bit instead of 32 bit for larger data types
         constexpr int vec_size = 4 / (sizeof(T) / sizeof(char));
         sycl::event memcpy_event = q.submit([=](sycl::handler& h) {
@@ -159,12 +162,12 @@ ccl::event allgatherv_small_impl(const void* send_buf,
         // <vec_size, sub_group_size, use_local_barrier, use_global_barrier>
         kernel_event = gather_invoke.template operator()<vec_size, 32, 0, 0>(dep_events);
     }
-    else if (count % 2 == 0 || dsize >= sizeof(int)) {
+    else if (can_use_full_vector(send_buf, recv_buf, count * dsize)) {
         constexpr int vec_size = 8 / (sizeof(T) / sizeof(char));
         // <vec_size, sub_group_size, use_local_barrier, use_global_barrier>
         kernel_event = gather_invoke.template operator()<vec_size, 32, 1, 1>(dep_events);
     }
-    // for 16 bit types with odd count, use a vector size of 32 bits
+    // for 16 bit types with odd count or non 32 bit aligned data, use a vector size of 32 bits
     else {
         constexpr int vec_size = 4 / (sizeof(T) / sizeof(char));
 

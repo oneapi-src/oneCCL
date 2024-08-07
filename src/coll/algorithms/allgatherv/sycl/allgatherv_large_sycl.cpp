@@ -29,13 +29,13 @@ ccl::event allgatherv_large(const void* send_buf,
     std::shared_ptr<ccl_comm> even_comm = comm->get_even_comm();
 
     const size_t dsize = ccl::global_data::get().dtypes->get(dtype).size();
-    const bool is_odd = send_count % 2 != 0 && dsize < sizeof(int);
+    const bool use_full_vector = can_use_full_vector(send_buf, recv_buf, send_count * dsize);
     const bool is_aligned = (send_count * dsize) % ccl::global_data::env().kernel_mem_align == 0;
     // do not use tmp_buf when copy engines are used
-    // use tmp buf for 16 bit types with odd count with 32 bit vectors
+    // use tmp buf for 16 bit types with odd count or non 32 bit aligned data
     // use tmp buf when the count is not aligned
     const bool is_use_tmp = !ccl::global_data::env().sycl_copy_engine &&
-                            (ccl::global_data::env().sycl_allgatherv_tmp_buf || is_odd ||
+                            (ccl::global_data::env().sycl_allgatherv_tmp_buf || !use_full_vector ||
                              (!is_aligned && ccl::global_data::env().sycl_auto_use_tmp_buf));
 
     // if tmp buffer is not used, perform ipc exchange on send and recv buffer
@@ -68,7 +68,7 @@ ccl::event allgatherv_large(const void* send_buf,
     }
 
     auto lambda = [&]<typename T, int NE, int NP>() {
-        if (is_odd) {
+        if (use_full_vector) {
             return allgatherv_large_impl<T, NE, NP, true>(
                 send_buf, send_count, recv_buf, recv_counts, dtype, comm, global_stream, deps);
         }

@@ -34,6 +34,8 @@
 #include "common/global/global.hpp"
 #include "common/log/log.hpp"
 
+internal_kvs::internal_kvs() : CONNECTION_TIMEOUT(ccl::global_data::env().kvs_connection_timeout) {}
+
 kvs_status_t internal_kvs::kvs_set_value(const std::string& kvs_name,
                                          const std::string& kvs_key,
                                          const std::string& kvs_val) {

@@ -173,6 +173,13 @@ size_t get_ptr_diff(const void* ptr1, const void* ptr2);
 size_t pof2(size_t number);
 size_t aligned_sz(size_t size, size_t alignment);
 
+enum class alloc_mode : int { malloc, hwloc, memalign, none };
+static std::map<alloc_mode, std::string> alloc_mode_names = {
+    std::make_pair(alloc_mode::malloc, "malloc"),
+    std::make_pair(alloc_mode::hwloc, "hwloc"),
+    std::make_pair(alloc_mode::memalign, "memalign")
+};
+
 template <class container>
 container tokenize(const std::string& input, char delimeter) {
     std::istringstream ss(input);

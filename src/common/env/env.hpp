@@ -108,6 +108,7 @@ public:
 
     ccl_atl_transport atl_transport;
     kvs_mode kvs_init_mode;
+    int kvs_connection_timeout;
     bool enable_shm;
     bool enable_rma;
     bool enable_hmem;
@@ -218,9 +219,11 @@ public:
     bool sycl_copy_engine;
     bool sycl_kernel_copy;
     bool sycl_esimd;
+    bool sycl_full_vector;
     size_t sycl_tmp_buf_size;
     size_t sycl_scaleout_host_buf_size;
     size_t sycl_kernels_line_size;
+    ccl::utils::alloc_mode sycl_scaleout_buf_alloc_mode;
 #endif // CCL_ENABLE_SYCL
 
     bool allreduce_nreduce_buffering;
@@ -314,6 +317,10 @@ public:
     bool ze_drm_bdf_support;
     bool ze_pt2pt_read;
     type2_tune_mode type2_mode;
+#ifdef CCL_ENABLE_DRM
+    std::string drmfd_dev_render_dir_path;
+    std::string drmfd_dev_render_suffix;
+#endif // CCL_ENABLE_DRM
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_PMIX

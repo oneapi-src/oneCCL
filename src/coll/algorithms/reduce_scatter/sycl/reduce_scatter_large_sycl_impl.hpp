@@ -65,9 +65,15 @@ void inline read_reduce_write(std::array<void *, MAX_GPUS> pair_ptrs,
     }
 }
 
+//TODO : currently full vector size (8 bytes) is not used for non 32-bit aligned data,
+// instead we copy data to a tmp buffer and also use 4 byte vectors in reduce kernel.
+// for non-inplace : we can copy data to a tmp_buffer and use 8 byte vectors for reduce kernel.
+// for inplace : we cannot use 8 byte vectors in reduce kernel and therefore it may be better
+//               to remove the copy to tmp buffer and use 4 byte vectors everywhere.
+
 // NE is the number of ranks in even_comm and
 // NP is the number of ranks in pair_comm
-template <typename T, int NE, int NP, bool is_odd>
+template <typename T, int NE, int NP, bool use_full_vector>
 ccl::event reduce_scatter_large_impl(const void *send_buf,
                                      void *recv_buf,
                                      size_t recv_count,
@@ -93,7 +99,7 @@ ccl::event reduce_scatter_large_impl(const void *send_buf,
 
     const bool is_multi_tile = pair_comm_size > 1;
     const bool is_aligned = (recv_count * dsize) % ccl::global_data::env().kernel_mem_align == 0;
-    const bool is_use_tmp = ccl::global_data::env().sycl_reduce_scatter_tmp_buf || is_odd ||
+    const bool is_use_tmp = ccl::global_data::env().sycl_reduce_scatter_tmp_buf || !use_full_vector ||
                             (!is_aligned && ccl::global_data::env().sycl_auto_use_tmp_buf);
     const bool is_cpu_barrier = ccl::global_data::env().sycl_ccl_barrier;
 
@@ -164,7 +170,7 @@ ccl::event reduce_scatter_large_impl(const void *send_buf,
             l_mdfi_send_ptrs[i] = (char *)mdfi_ptr_rd + (is_use_tmp ? mdfi_offset_tmp : offset);
             l_send_ptrs_orig[i] = (char *)send_buf + offset;
             l_send_ptrs_use[i] = (char *)tmp_send_buf + offset_tmp;
-            l_send_ptrs[i] = is_odd ? l_send_ptrs_use[i] : l_send_ptrs_orig[i];
+            l_send_ptrs[i] = use_full_vector ? l_send_ptrs_orig[i] : l_send_ptrs_use[i];
             l_xelink_work_ptrs[i] = (char *)xelink_work_bufs[pipeline_index][i];
 
             l_work_ptrs[i] = (char *)work_bufs[pipeline_index][i];
@@ -172,14 +178,14 @@ ccl::event reduce_scatter_large_impl(const void *send_buf,
         l_recv_ptr = (char *)recv_buf + chunk_offset;
 
         constexpr bool subgroup_api = false;
-        // for 16 bit types with odd count, use 4 byte vectors instead of 8 bytes
-        constexpr int vec_size_tmp = is_odd ? 4 : 8;
-        constexpr int vec_size = vec_size_tmp / (sizeof(T) / sizeof(char));
-        constexpr int vec_size_cp = is_odd ? 1 : vec_size;
+
+        // for 16 bit types with odd count or non 32 bit aligned data, use 4 byte vectors instead of 8 bytes
+        constexpr int vec_size = (use_full_vector ? 8 : 4) / (sizeof(T) / sizeof(char));
+        constexpr int vec_size_cp = use_full_vector ? vec_size : 1;
         const size_t work_group_size = 16;
-        const size_t work_group_size_cp = is_odd ? 32 : work_group_size;
+        const size_t work_group_size_cp = use_full_vector ? work_group_size : 32;
         const size_t sub_group_size = 16;
-        const size_t sub_group_size_cp = is_odd ? 32 : sub_group_size;
+        const size_t sub_group_size_cp = use_full_vector ? sub_group_size : 32;
 
         // pipeline prologue
         // this data copy can also be done from the main kernel as first step with a guard of nc == 0
@@ -212,9 +218,9 @@ ccl::event reduce_scatter_large_impl(const void *send_buf,
             work_event = invoke_barrier(node_comm, q_use, barrier_deps, is_cpu_barrier);
         }
 
-        // for 16 bit types with odd count, copy data to a tmp buffer with
+        // for 16 bit types with odd count or non 32 bit aligned data, copy data to a tmp buffer with
         // good alignment so that read_reduce_write kernel can use the aligned data
-        if (is_odd) {
+        if (!use_full_vector) {
             work_event = q_use.submit([=](sycl::handler &h) {
                 const size_t kernel_threads = data_count / vec_size_cp + data_count % vec_size_cp;
                 const size_t kernel_size =
@@ -234,9 +240,10 @@ ccl::event reduce_scatter_large_impl(const void *send_buf,
             const size_t kernel_threads_curr = data_count / vec_size + data_count % vec_size;
             const size_t kernel_threads_prev =
                 nc > 0 ? data_count_prev / vec_size + data_count_prev % vec_size : 0;
-            const size_t kernel_threads_next = is_use_tmp && nc < num_chunks - 1 && is_multi_tile && !is_odd
-                                                   ? data_count_next / vec_size + data_count_next % vec_size
-                                                   : 0;
+            const size_t kernel_threads_next =
+                is_use_tmp && nc < num_chunks - 1 && is_multi_tile && use_full_vector
+                    ? data_count_next / vec_size + data_count_next % vec_size
+                    : 0;
             const size_t kernel_threads =
                 std::max({ kernel_threads_curr, kernel_threads_prev, kernel_threads_next });
             const size_t kernel_size =
@@ -270,14 +277,14 @@ ccl::event reduce_scatter_large_impl(const void *send_buf,
                                                             it);
                     }
 
-                    if (is_use_tmp && nc < num_chunks - 1 && is_multi_tile && !is_odd) {
+                    if (is_use_tmp && nc < num_chunks - 1 && is_multi_tile && use_full_vector) {
                         copy_data<T, N, vec_size, subgroup_api>(
                             l_cp_dst_ptrs_next, l_cp_src_ptrs_next, data_count_next, it);
                     }
                 });
         });
 
-        if (is_use_tmp && nc < num_chunks - 1 && is_multi_tile && is_odd) {
+        if (is_use_tmp && nc < num_chunks - 1 && is_multi_tile && !use_full_vector) {
             work_event = q_use.submit([=](sycl::handler &h) {
                 const size_t kernel_threads = data_count_next / vec_size_cp + data_count_next % vec_size_cp;
                 const size_t kernel_size =
