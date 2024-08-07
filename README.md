@@ -3,7 +3,7 @@
 The purpose of the RFC process is to communicate the intent to make
 library-wide changes, get the feedback prior to the actual implementation,
 increase the transparency on why and how the decisions are made, and improve
-the alignment between different teams involved in oneDNN development.
+the alignment between different teams involved in oneCCL development.
 
 This branch contains design documents (RFCs) that are approved for
 implementation in oneCCL.
