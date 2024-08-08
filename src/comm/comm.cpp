@@ -421,9 +421,20 @@ void* ccl_scaleout_host_bufs::get_scaleout_host_buf() {
         CCL_THROW_IF_NOT(get_scaleout_host_buf_size() > 0,
                          "CCL_SCALEOUT_HOST_BUF_SIZE must be greater than zero");
 
-        int numa_node_os_idx = 0; // TODO: determine which hbm_node_os_idx to set;
-        host_bufs[index] = ccl::global_data::get().hwloc_wrapper->alloc_memory(
-            CCL_REG_MSG_ALIGNMENT, buf_size, numa_node_os_idx);
+        switch (ccl::global_data::env().sycl_scaleout_buf_alloc_mode) {
+            case ccl::utils::alloc_mode::hwloc: {
+                int numa_node_os_idx = 0; // TODO: determine which hbm_node_os_idx to set;
+                host_bufs[index] = ccl::global_data::get().hwloc_wrapper->alloc_memory(
+                    CCL_REG_MSG_ALIGNMENT, buf_size, numa_node_os_idx);
+            } break;
+            case ccl::utils::alloc_mode::malloc: host_bufs[index] = malloc(buf_size); break;
+            case ccl::utils::alloc_mode::memalign:
+                // internally, CCL_MALLOC calls posix_memalign
+                host_bufs[index] = CCL_MALLOC(buf_size, "scaleout_host_buf");
+                break;
+            default: CCL_THROW("unexpected alloc_mode");
+        }
+        CCL_THROW_IF_NOT(host_bufs[index] != nullptr, "Cannot allocate host buffer");
 
         if (ccl::global_data::get().ze_data->external_pointer_registration_enabled) {
             ccl::global_data::get().ze_data->import_external_pointer(host_bufs[index], buf_size);
@@ -448,7 +459,17 @@ ccl_scaleout_host_bufs::~ccl_scaleout_host_bufs() {
             if (ccl::global_data::get().ze_data->external_pointer_registration_enabled) {
                 ccl::global_data::get().ze_data->release_imported_pointer(host_bufs[i]);
             }
-            ccl::global_data::get().hwloc_wrapper->dealloc_memory(host_bufs[i]);
+
+            switch (ccl::global_data::env().sycl_scaleout_buf_alloc_mode) {
+                case ccl::utils::alloc_mode::hwloc:
+                    ccl::global_data::get().hwloc_wrapper->dealloc_memory(host_bufs[i]);
+                    break;
+                case ccl::utils::alloc_mode::malloc: free(host_bufs[i]); break;
+                case ccl::utils::alloc_mode::memalign: CCL_FREE(host_bufs[i]); break;
+                default:
+                    // destructors cannot throw exceptions
+                    LOG_ERROR("unexpected alloc_mode");
+            }
         }
     }
 }

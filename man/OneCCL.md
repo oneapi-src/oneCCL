@@ -64,6 +64,19 @@ KVS implemention with sockets is used to collect the rank information while crea
  By-default: &quot;0&quot; 
         
 
+## CCL_KVS_CONNECTION_TIMEOUT
+
+
+Set the timeout for setting up connections during kvs initialization
+        
+
+
+&quot;&lt;timeout&gt;&quot; - Timeout in seconds to use for setting up sockets during kvs initialization
+
+
+By-default: &quot;120&quot;
+        
+
 ## CCL_ATL_SHM
 
 
@@ -550,30 +563,6 @@ Set to specify minimum number of bytes in chunk for reduce_scatter phase in ring
 By-default: &quot;65536&quot; 
         
 
-## CCL_ALLGATHERV_TOPO_LARGE_SCALE
-
-
-        
-
-
-        
-
-## CCL_ALLGATHERV_TOPO_READ
-
-
-        
-
-
-        
-
-## CCL_ALLTOALLV_TOPO_READ
-
-
-        
-
-
-        
-
 ## CCL_REDUCE_SCATTER_TOPO_READ
 
 
@@ -637,14 +626,6 @@ Set this environment variable to enable compute kernels for Allreduce, Reduce, a
 By-default: &quot;0&quot; 
         
 
-## CCL_ALLGATHERV_MONOLITHIC_KERNEL
-
-
-        
-
-
-        
-
 ## CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL
 
 
@@ -688,22 +669,6 @@ Set this environment variable to enable compute kernels for Alltoall and Alltoal
 By-default: &quot;1&quot; 
         
 
-## CCL_ALLTOALLV_MONOLITHIC_READ_KERNEL
-
-
-        
-
-
-        
-
-## CCL_REDUCE_MONOLITHIC_KERNEL
-
-
-        
-
-
-        
-
 ## CCL_ALLGATHERV_PIPE_CHUNK_COUNT
 
 
@@ -718,9 +683,10 @@ CCL_ALLGATHERV_PIPE_CHUNK_COUNT=&quot;&lt;value&gt;&quot; Arguments
 
  - 1: Calls the pipelining code with a single chunk. Effectively, it has identical behavior and performance as with &quot;0&quot;, but exercises the chunking code path with a single chunk.
 
+ - 2 or higher: Divides the message into as many logical parts, or chunks, as specified. Then, it executes the collective with each logical chunk. This should allow for several phases of the algorithm to run in parallel, as long as they don't use the same physical resource. Effectively, this should increase performance.
 
 
-2 or higher: Divides the message into as many logical parts, or chunks, as specified. Then, it executes the collective with each logical chunk. This should allow for several phases of the algorithm to run in parallel, as long as they don't use the same physical resource. Effectively, this should increase performance.
+
 Description
 Set this environment variable to enable control how many chunks are used for Allgatherv, pipeline-based collectives using device (GPU) buffers.
 By-default: &quot;0&quot; 
@@ -740,9 +706,10 @@ CCL_ALLREDUCE_PIPE_CHUNK_COUNT=&quot;&lt;value&gt;&quot; Arguments
 
  - 1: Calls the pipelining code with a single chunk. Effectively, it has identical behavior and performance as with &quot;0&quot;, but exercises the chunking code path with a single chunk.
 
+ - 2 or higher: Divides the message into as many logical parts, or chunks, as specified. Then, it executes the collective with each logical chunk. This should allow for several phases of the algorithm to run in parallel, as long as they don't use the same physical resource. Effectively, this should increase performance.
 
 
-2 or higher: Divides the message into as many logical parts, or chunks, as specified. Then, it executes the collective with each logical chunk. This should allow for several phases of the algorithm to run in parallel, as long as they don't use the same physical resource. Effectively, this should increase performance.
+
 Description
 Set this environment variable to enable control how many chunks are used for Allreduce pipeline-based collectives using device (GPU) buffers.
 By-default: &quot;0&quot; 
@@ -762,9 +729,10 @@ CCL_REDUCE_SCATTER_PIPE_CHUNK_COUNT=&quot;&lt;value&gt;&quot; Arguments
 
  - 1: Calls the pipelining code with a single chunk. Effectively, it has identical behavior and performance as with &quot;0&quot;, but exercises the chunking code path with a single chunk.
 
+ - 2 or higher: Divides the message into as many logical parts, or chunks, as specified. Then, it executes the collective with each logical chunk. This should allow for several phases of the algorithm to run in parallel, as long as they don't use the same physical resource. Effectively, this should increase performance.
 
 
-2 or higher: Divides the message into as many logical parts, or chunks, as specified. Then, it executes the collective with each logical chunk. This should allow for several phases of the algorithm to run in parallel, as long as they don't use the same physical resource. Effectively, this should increase performance.
+
 Description
 Set this environment variable to enable control how many chunks are used for Reduce_Scatter pipeline-based collectives using device (GPU) buffers.
 By-default: &quot;0&quot; 
@@ -784,172 +752,13 @@ CCL_REDUCE_PIPE_CHUNK_COUNT=&quot;&lt;value&gt;&quot; Arguments
 
  - 1: Calls the pipelining code with a single chunk. Effectively, it has identical behavior and performance as with &quot;0&quot;, but exercises the chunking code path with a single chunk.
 
+ - 2 or higher: Divides the message into as many logical parts, or chunks, as specified. Then, it executes the collective with each logical chunk. This should allow for several phases of the algorithm to run in parallel, as long as they don't use the same physical resource. Effectively, this should increase performance.
 
 
-2 or higher: Divides the message into as many logical parts, or chunks, as specified. Then, it executes the collective with each logical chunk. This should allow for several phases of the algorithm to run in parallel, as long as they don't use the same physical resource. Effectively, this should increase performance.
+
 Description
 Set this environment variable to enable control how many chunks are used for Reduce pipeline-based collectives using device (GPU) buffers.
 By-default: &quot;0&quot; 
-        
-
-## CCL_ALLREDUCE_NREDUCE_BUFFERING
-
-
-        
-
-
-        
-
-## CCL_ALLREDUCE_NREDUCE_SEGMENT_SIZE
-
-
-        
-
-
-        
-
-## CCL_ALLREDUCE_2D_CHUNK_COUNT
-
-
-        
-
-
-        
-
-## CCL_ALLREDUCE_2D_MIN_CHUNK_SIZE
-
-
-        
-
-
-        
-
-## CCL_ALLREDUCE_2D_SWITCH_DIMS
-
-
-        
-
-
-        
-
-## CCL_CHECK_INPLACE_ALIASING
-
-
-        
-
-
-        
-
-## CCL_ALLTOALL_SCATTER_MAX_OPS
-
-
-        
-
-
-        
-
-## CCL_BACKEND
-
-
-        
-
-
-        
-
-## CCL_KERNEL_PATH
-
-
-        
-
-
-        
-
-## CCL_KERNEL_MODULE_CACHE
-
-
-        
-
-
-        
-
-## CCL_KERNEL_DEBUG
-
-
-        
-
-
-        
-
-## CCL_KERNEL_GROUP_SIZE
-
-
-        
-
-
-        
-
-## CCL_KERNEL_GROUP_COUNT
-
-
-        
-
-
-        
-
-## CCL_KERNEL_MEM_ALIGN
-
-
-        
-
-
-        
-
-## CCL_KERNEL_SYNC
-
-
-        
-
-
-        
-
-## CCL_KERNEL_1S_LEAD
-
-
-        
-
-
-        
-
-## CCL_KERNEL_1S_USE_COPY_OPS
-
-
-        
-
-
-        
-
-## CCL_KERNEL_1S_IPC_WA
-
-
-        
-
-
-        
-
-## CCL_KERNEL_SINGLE_REDUCE_PEERS
-
-
-        
-
-
-        
-
-## CCL_KERNEL_CLOSE_FD_WA
-
-
-        
-
-
         
 
 ## CCL_LOCAL_RANK
@@ -1016,142 +825,6 @@ Arguments
 Description
 Set this environment variable to specify the job launcher to use.
 By-default: &quot;hydra&quot; 
-        
-
-## CCL_TOPO_ALGO
-
-
-        
-
-
-        
-
-## CCL_TOPO_COLOR
-
-
-        
-
-
-        
-
-## CCL_TOPO_P2P_ACCESS
-
-
-        
-
-
-        
-
-## CCL_TOPO_FABRIC_VERTEX_CONNECTION_CHECK
-
-
-        
-
-
-        
-
-## CCL_OFI_LIBRARY_PATH
-
-
-        
-
-
-        
-
-## CCL_SYCL_OUTPUT_EVENT
-
-
-        
-
-
-        
-
-## CCL_USE_HMEM
-
-
-        
-
-
-        
-
-## CCL_ZE_BARRIER
-
-
-        
-
-
-        
-
-## CCL_ZE_BIDIR_ALGO
-
-
-        
-
-
-        
-
-## CCL_ZE_CACHE
-
-
-        
-
-
-        
-
-## CCL_ZE_DEVICE_CACHE_EVICT_SMALLEST
-
-
-        
-
-
-        
-
-## CCL_ZE_DEVICE_CACHE_UPPER_LIMIT
-
-
-        
-
-
-        
-
-## CCL_ZE_DEVICE_CACHE_NUM_BLOCKS_IN_CHUNK
-
-
-        
-
-
-        
-
-## CCL_ZE_DEVICE_CACHE_POLICY
-
-
-        
-
-
-        
-
-## CCL_ZE_DEVICE_MEM_DISABLE_CLEAR
-
-
-        
-
-
-        
-
-## CCL_ZE_DEVICE_MEM_ALLOC_SIZE
-
-
-        
-
-
-        
-
-## CCL_ZE_DEVICE_MEM_ENABLE
-
-
-        
-
-
         
 
 ## CCL_ZE_CACHE_OPEN_IPC_HANDLES
@@ -1250,164 +923,28 @@ This enviroment variable enables or disables the oversubscription throw check
 By-default: &quot;1&quot; 
         
 
-## CCL_ZE_SERIALIZE
+## CCL_DRMFD_DEV_RENDER_DIR_PATH
 
 
+Set the directory path for DRM render devices. 
         
 
 
+This environment variable specifies the directory path where DRM render devices are located.
+Example value: &quot;/custom/path/to/devices/&quot;
+By-default: &quot;/dev/dri/by-path/&quot; 
         
 
-## CCL_ZE_COPY_ENGINE
+## CCL_DRMFD_DEV_RENDER_SUFFIX
 
 
-        
-
-
-        
-
-## CCL_ZE_H2D_COPY_ENGINE
-
-
+Set the suffix for DRM render device names. 
         
 
 
-        
-
-## CCL_ZE_D2D_COPY_ENGINE
-
-
-        
-
-
-        
-
-## CCL_ZE_MAX_COMPUTE_QUEUES
-
-
-        
-
-
-        
-
-## CCL_ZE_MAX_COPY_QUEUES
-
-
-        
-
-
-        
-
-## CCL_ZE_ENABLE_CCS_FALLBACK_FOR_COPY
-
-
-        
-
-
-        
-
-## CCL_ZE_LIST_DUMP
-
-
-        
-
-
-        
-
-## CCL_ZE_QUEUE_INDEX_OFFSET
-
-
-        
-
-
-        
-
-## CCL_ZE_CLOSE_IPC_WA
-
-
-        
-
-
-        
-
-## CCL_ZE_SINGLE_LIST
-
-
-        
-
-
-        
-
-## CCL_ZE_DISABLE_FAMILY_CHECK
-
-
-        
-
-
-        
-
-## CCL_ZE_DISABLE_PORT_CHECK
-
-
-        
-
-
-        
-
-## CCL_ZE_LIBRARY_PATH
-
-
-        
-
-
-        
-
-## CCL_ZE_ENABLE
-
-
-        
-
-
-        
-
-## CCL_ZE_FINI_WA
-
-
-        
-
-
-        
-
-## CCL_ZE_MULTI_WORKERS
-
-
-        
-
-
-        
-
-## CCL_DEBUG_TIMESTAMPS_LEVEL
-
-
-        
-
-
-        
-
-## CCL_BF16
-
-
-        
-
-
-        
-
-## CCL_FP16
-
-
-        
-
-
+This environment variable specifies the suffix to be used when searching for DRM render device names.
+Example value: &quot;-customsuffix&quot;
+By-default: &quot;-render&quot; 
         
 
 

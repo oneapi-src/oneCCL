@@ -22,8 +22,12 @@
                                   ccl_stream* stream, \
                                   uint32_t rank_in, \
                                   uint32_t world_in); \
-    ccl::event run_allreduce_##MSGSIZE( \
-        ccl::datatype dtype, sycl::queue& q, const void* in_buf, void* out_buf, size_t count);
+    ccl::event run_allreduce_##MSGSIZE(ccl::datatype dtype, \
+                                       sycl::queue& q, \
+                                       const void* in_buf, \
+                                       void* out_buf, \
+                                       size_t count, \
+                                       bool& done);
 
 SYCL_ALLREDUCE_FUNCTIONS(small)
 SYCL_ALLREDUCE_FUNCTIONS(medium)

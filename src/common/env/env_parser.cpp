@@ -32,8 +32,10 @@ static bool is_run_with_mpi() {
 
 env_parser::env_parser()
         : // skip variables not parsed_internally
-          unused_check_skip({ "CCL_ROOT",
-                              "CCL_CONFIGURATION",
+          unused_check_skip({ "CCL_ROOT", // set by vars.sh
+                              "CCL_CONFIGURATION", // set by vars.sh
+                              "CCL_CONFIGURATION_PATH", // set by vars.sh
+                              "CCL_PLATFORM_INFO_HIDE", // used to hide platform info in benchmarks
                               CCL_WORKER_OFFLOAD,
                               CCL_WORKER_AFFINITY,
                               CCL_WORKER_MEM_AFFINITY }) {}
@@ -58,7 +60,7 @@ void env_parser::warn_about_unused_var() const {
         auto const env_key_and_value = std::string(*s);
         if (env_key_and_value.substr(0, 4) == "CCL_" &&
             unused_check_skip.count(env_key_and_value.substr(0, env_key_and_value.find('='))) == 0) {
-            LOG_WARN(
+            LOG_WARN_ROOT(
                 env_key_and_value,
                 " is unknown to and unused by oneCCL code but is present"
                 " in the environment, check if it is not mistyped.");

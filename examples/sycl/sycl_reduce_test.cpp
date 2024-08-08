@@ -88,7 +88,8 @@ int main(int argc, char *argv[]) {
     /* invoke reduce */
     ccl::reduce(send_buf, recv_buf, count, ccl::reduction::sum, root_rank, comm, stream).wait();
 
-    /* open recv_buf and check its correctness on the device side */
+    /* open recv_buf and check its correctness on the device side
+       recv_bufer must not be modified on non-root ranks */
     q.submit([&](auto &h) {
         accessor recv_buf_acc(recv_buf, h, write_only);
         h.parallel_for(count, [=](auto id) {
@@ -110,18 +111,16 @@ int main(int argc, char *argv[]) {
 
     /* print out the result of the test on the host side */
     {
-        if (rank == root_rank) {
-            host_accessor recv_buf_acc(recv_buf, read_only);
-            size_t i;
-            for (i = 0; i < count; i++) {
-                if (recv_buf_acc[i] == -1) {
-                    cout << "FAILED for rank: " << rank << "\n";
-                    break;
-                }
+        host_accessor recv_buf_acc(recv_buf, read_only);
+        size_t i;
+        for (i = 0; i < count; i++) {
+            if (recv_buf_acc[i] == -1) {
+                cout << "FAILED for rank: " << rank << "\n";
+                break;
             }
-            if (i == count) {
-                cout << "PASSED\n";
-            }
+        }
+        if (i == count) {
+            cout << "PASSED\n";
         }
     }
 

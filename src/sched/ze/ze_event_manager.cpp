@@ -194,23 +194,25 @@ ze_event_handle_t dynamic_event_pool::get_event() {
 
     event_info slot = {};
 
-    //TODO: figure out the issue in GSD-5806 and return this optimization
-    // if (find_free_slot(slot)) {
-    //     return create_event(slot);
-    // }
+    // try to use next event slot from current event pool
+    if (find_free_slot(slot)) {
+        return create_event(slot);
+    }
 
     event_pool_info pool_info = {};
 
-    // no free slot, need to allocate a new pool and create event from it
-    // TODO: move to a separate function
+    // no free slot, need to get the free pool from cache (or allocate a new one)
     ccl::global_data::get().ze_data->cache->get(
         worker_idx, context, common_pool_desc, &pool_info.pool);
     pool_info.event_alloc_status.resize(event_pool_size, false);
     pool_info.num_alloc_events = 0;
+    // reset event index for the new pool
+    event_pool_request_idx = 0;
 
     slot.pool = event_pools.insert(event_pools.end(), pool_info);
-    slot.pool_idx = event_pool_request_idx++;
-    event_pool_request_idx %= event_pool_size;
+    slot.pool_idx = event_pool_request_idx;
+
+    current_pool = slot.pool;
 
     return create_event(slot);
 }
@@ -251,23 +253,19 @@ void dynamic_event_pool::put_event(ze_event_handle_t event) {
 }
 
 bool dynamic_event_pool::find_free_slot(event_info& slot) {
-    for (auto it = event_pools.begin(); it != event_pools.end(); ++it) {
-        if (it->num_alloc_events < event_pool_size) {
-            slot.pool = it;
-            auto status_it =
-                // TODO: we can potentially improve this by introducing a circular queue on
-                // top of buffer of event_pool_size elements and store available indexes there
-                // check whether this make sense to implement
-                std::find(it->event_alloc_status.begin(), it->event_alloc_status.end(), false);
-            CCL_THROW_IF_NOT(status_it != it->event_alloc_status.end(),
-                             "status vector must have free slots");
-            slot.pool_idx = (status_it - it->event_alloc_status.begin());
-
-            return true;
-        }
+    // check if current pool exists and next event is available
+    if (current_pool == event_pools.end() ||
+        current_pool->event_alloc_status[++event_pool_request_idx]) {
+        return false;
     }
 
-    return false;
+    // use next available event from the current pool
+    slot.pool = current_pool;
+    slot.pool_idx = event_pool_request_idx;
+
+    // apply round-robin to update the event index
+    event_pool_request_idx %= event_pool_size - 1;
+    return true;
 }
 
 ze_event_handle_t dynamic_event_pool::create_event(const event_info& slot) {

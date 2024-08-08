@@ -88,9 +88,9 @@ ccl::event reduce_scatter_large(const void *send_buf,
     std::shared_ptr<ccl_comm> even_comm = comm->get_even_comm();
 
     const size_t dsize = ccl::global_data::get().dtypes->get(dtype).size();
-    const bool is_odd = recv_count % 2 != 0 && dsize < sizeof(int);
+    const bool use_full_vector = can_use_full_vector(send_buf, recv_buf, recv_count * dsize);
     const bool is_aligned = (recv_count * dsize) % ccl::global_data::env().kernel_mem_align == 0;
-    const bool is_use_tmp = ccl::global_data::env().sycl_reduce_scatter_tmp_buf || is_odd ||
+    const bool is_use_tmp = ccl::global_data::env().sycl_reduce_scatter_tmp_buf || !use_full_vector ||
                             (!is_aligned && ccl::global_data::env().sycl_auto_use_tmp_buf);
 
     if (!is_use_tmp) {
@@ -122,7 +122,7 @@ ccl::event reduce_scatter_large(const void *send_buf,
     }
 
     auto lambda = [&]<typename T, int NE, int NP>() {
-        if (is_odd) {
+        if (use_full_vector) {
             return reduce_scatter_large_impl<T, NE, NP, true>(
                 send_buf, recv_buf, recv_count, dtype, reduction, comm, global_stream, deps);
         }

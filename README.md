@@ -10,7 +10,6 @@ oneCCL is integrated into:
 
 oneCCL is governed by the [UXL Foundation](http://www.uxlfoundation.org) and is an implementation of the [oneAPI specification](https://spec.oneapi.io).
 
-
 ## Table of Contents <!-- omit in toc -->
 
 - [Prerequisites](#prerequisites)

@@ -51,14 +51,21 @@ ccl::event allgather_sycl_single_node(sycl::queue& q,
     }
 
     if (world == 1) {
-        sycl::event e_cp;
+        sycl::event sycl_e;
+        std::vector<sycl::event> dep_events = get_sycl_events(deps);
         if (send_buf != recv_buf) {
-            e_cp = q.memcpy(recv_buf, send_buf, send_count * ccl_dtype.size());
+            sycl_e = q.submit([=](sycl::handler& h) {
+                h.depends_on(dep_events);
+                h.memcpy(recv_buf, send_buf, send_count * ccl_dtype.size());
+            });
         }
-        return ccl::event::create_from_native(e_cp);
+        else {
+            sycl_e = submit_wait_on_events(q, dep_events);
+        }
+        return ccl::event::create_from_native(sycl_e);
     }
 
-    if (!ccl::global_data::env().sycl_esimd) {
+    if (!sycl_use_esimd(comm)) {
         if (send_count * ccl_dtype.size() <= ccl::global_data::env().sycl_allgatherv_small_threshold) {
 #ifdef CCL_ENABLE_ITT
             __itt_event coll_create_itt_event = ccl::profile::itt::event_get("CCL_ALLGATHERV_SMALL");
@@ -89,6 +96,7 @@ ccl::event allgather_sycl_single_node(sycl::queue& q,
         return e;
     }
 
+    // ESIMD
     if (send_count * ccl_dtype.size() <= ccl::global_data::env().sycl_allgatherv_small_threshold &&
         has_all_vertices_connected) {
         init_allgatherv_small(dtype, q, comm, global_stream, rank, world);
@@ -104,9 +112,11 @@ ccl::event allgather_sycl_single_node(sycl::queue& q,
 #ifdef CCL_ENABLE_ITT
         ccl::profile::itt::event_end(coll_create_itt_event);
 #endif // CCL_ENABLE_ITT
+        if (done)
+            return e;
     }
-    else if (send_count * ccl_dtype.size() <= ccl::global_data::env().sycl_allgatherv_medium_threshold &&
-             !is_single_tile) {
+    if (send_count * ccl_dtype.size() <= ccl::global_data::env().sycl_allgatherv_medium_threshold &&
+        !is_single_tile) {
         init_allgatherv_medium(dtype, q, comm, global_stream, rank, world);
 
 #ifdef CCL_ENABLE_ITT
@@ -121,29 +131,18 @@ ccl::event allgather_sycl_single_node(sycl::queue& q,
         ccl::profile::itt::event_end(coll_create_itt_event);
 #endif // CCL_ENABLE_ITT
     }
-    else if (!is_single_tile) {
-        if (send_count % 2 == 0 || ccl_dtype.size() >= 4) {
-            // TODO: rewrite comments in way small
-            LOG_DEBUG("|CCL_SYCL| invoking large allgatherv: count: ", send_count, " datatype: ", dtype);
-            if (send_count * ccl_dtype.size() <= ccl::global_data::env().sycl_allgatherv_small_threshold) {
-                // TODO: implement
-                CCL_THROW("Not implemented");
-            }
-            else {
-                e = allgatherv_large(
-                    send_buf, send_count, recv_buf, recv_counts, dtype, comm, global_stream, deps);
-            }
-            LOG_DEBUG(
-                "|CCL_SYCL| allgatherv selects large kernel: count: ", send_count, " datatype: ", dtype, " done");
-        }
-        else {
-            LOG_DEBUG(
-                "[", rank, "] allgatherv selects ccl scheduler send_count: ", send_count, ", datatype: ", dtype);
-            done = false;
-        }
-    }
     else {
-        done = false;
+#ifdef CCL_ENABLE_ITT
+        __itt_event coll_create_itt_event = ccl::profile::itt::event_get("CCL_ALLGATHERV_LARGE");
+        ccl::profile::itt::event_start(coll_create_itt_event);
+#endif // CCL_ENABLE_ITT
+        LOG_DEBUG("|CCL_SYCL| invoking large allgatherv: count: ", send_count, " datatype: ", dtype);
+        e = allgatherv_large(send_buf, send_count, recv_buf, recv_counts, dtype, comm, global_stream, deps);
+        LOG_DEBUG(
+            "|CCL_SYCL| allgatherv selects large kernel: count: ", send_count, " datatype: ", dtype, " done");
+#ifdef CCL_ENABLE_ITT
+        ccl::profile::itt::event_end(coll_create_itt_event);
+#endif // CCL_ENABLE_ITT
     }
 
     return e;

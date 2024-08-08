@@ -154,6 +154,8 @@ private:
     std::unordered_map<ze_event_handle_t, event_info> event_alloc_info;
     // list of all allocated event pools
     std::list<event_pool_info> event_pools;
+    // store currently used event pool to avoid searching
+    std::list<event_pool_info>::iterator current_pool{ event_pools.end() };
 };
 
 } // namespace ze

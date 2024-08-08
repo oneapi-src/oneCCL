@@ -228,6 +228,8 @@ std::pair<ccl_sched *, ze_handle_exchange_entry *> do_ipc_exchange(ccl_comm *com
 
 void coll_init(ccl_comm *comm, ccl_stream *stream);
 
+bool sycl_use_esimd(ccl_comm *comm);
+
 size_t *get_sync_ptr(bool is_next);
 
 void *get_tmp_buf(int index);
@@ -357,4 +359,67 @@ T *ptr_offset(T *ptr, size_t offset) {
 template <typename T>
 const T *ptr_offset(const T *ptr, size_t offset) {
     return static_cast<const char *>(ptr) + offset;
+}
+
+inline bool is_aligned(const void *send_buf,
+                       const void *recv_buf,
+                       const size_t size,
+                       const int alignment) {
+    return (size_t)send_buf % alignment == 0 && (size_t)recv_buf % alignment == 0 &&
+           size % alignment == 0;
+}
+
+inline bool all_aligned(std::vector<void *> ptrs, size_t size, size_t alignment) {
+    if (size % alignment) {
+        return false;
+    }
+    for (const void *ptr : ptrs) {
+        if ((size_t)ptr % alignment) {
+            return false;
+        }
+    }
+    return true;
+}
+
+inline bool all_aligned(void **ptrs, int count, size_t size, size_t alignment) {
+    if (size % alignment) {
+        return false;
+    }
+    for (int i = 0; i < count; i++) {
+        if ((size_t)ptrs[i] % alignment) {
+            return false;
+        }
+    }
+    return true;
+}
+
+inline bool can_use_full_vector(const void *send_buf,
+                                const void *recv_buf,
+                                const size_t size,
+                                const int alignment = 4) {
+    return is_aligned(send_buf, recv_buf, size, alignment) &&
+           ccl::global_data::env().sycl_full_vector;
+}
+
+inline sycl::event submit_wait_on_events(sycl::queue q, const std::vector<sycl::event> &deps) {
+    return q.submit([=](sycl::handler &h) {
+        h.depends_on(deps);
+        h.single_task([]() {});
+    });
+}
+
+// call by ESIMD kernel
+template <size_t align, typename L>
+auto invoke_esimd_function(L lambda, int world) {
+    switch (world) {
+        case 2: lambda.template operator()<2, align>(); break;
+        case 4: lambda.template operator()<4, align>(); break;
+        case 6: lambda.template operator()<6, align>(); break;
+        case 8: lambda.template operator()<8, align>(); break;
+        case 10: lambda.template operator()<10, align>(); break;
+        case 12: lambda.template operator()<12, align>(); break;
+        case 14: lambda.template operator()<14, align>(); break;
+        case 16: lambda.template operator()<16, align>(); break;
+        default: break;
+    }
 }

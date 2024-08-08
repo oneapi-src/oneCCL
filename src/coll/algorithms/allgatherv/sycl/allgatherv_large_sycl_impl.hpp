@@ -494,17 +494,11 @@ ccl::event allgatherv_large_impl_tmp(const void* send_buf,
                     });
                     work_events.push_back(e);
                 }
-                output_event = q.submit([=](sycl::handler& h) {
-                    h.depends_on(work_events);
-                    h.single_task([]() {});
-                });
+                output_event = submit_wait_on_events(q, work_events);
             }
         }
         else {
-            output_event = q.submit([=](sycl::handler& h) {
-                h.depends_on(work_events);
-                h.single_task([]() {});
-            });
+            output_event = submit_wait_on_events(q, work_events);
         }
     } // nc
 
@@ -513,7 +507,7 @@ ccl::event allgatherv_large_impl_tmp(const void* send_buf,
 
 // NE is the number of ranks in even_comm and
 // NP is the number of ranks in pair_comm
-template <typename T, int NE, int NP, bool is_odd>
+template <typename T, int NE, int NP, bool use_full_vector>
 ccl::event allgatherv_large_impl(const void* send_buf,
                                  size_t send_count,
                                  void* recv_buf,
@@ -524,17 +518,17 @@ ccl::event allgatherv_large_impl(const void* send_buf,
                                  const ccl::vector_class<ccl::event>& deps) {
     constexpr int N = NE;
     // for 16 bit types with odd count, use 4 byte vectors instead of 8 bytes
-    constexpr int vec_size_use = is_odd ? 4 : 8;
+    constexpr int vec_size_use = use_full_vector ? 8 : 4;
 
     auto ccl_dtype = ccl::global_data::get().dtypes->get(dtype);
     const size_t dsize = ccl_dtype.size();
     const bool is_aligned = (send_count * dsize) % ccl::global_data::env().kernel_mem_align == 0;
 
     // do not use tmp_buf when copy engines are used
-    // use tmp buf for 16 bit types with odd count with 32 bit vectors
+    // use tmp buf for 16 bit types with odd count or non 32 bit aligned data
     // use tmp buf when the count is not aligned
     const bool use_tmp_buf = !ccl::global_data::env().sycl_copy_engine &&
-                             (ccl::global_data::env().sycl_allgatherv_tmp_buf || is_odd ||
+                             (ccl::global_data::env().sycl_allgatherv_tmp_buf || !use_full_vector ||
                               (!is_aligned && ccl::global_data::env().sycl_auto_use_tmp_buf));
 
     ccl::event e;

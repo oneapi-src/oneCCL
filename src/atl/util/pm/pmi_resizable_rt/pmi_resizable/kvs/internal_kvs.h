@@ -82,7 +82,7 @@ public:
 
     kvs_status_t kvs_get_replica_size(size_t& replica_size) override;
 
-    internal_kvs() = default;
+    internal_kvs();
 
     ~internal_kvs() override;
 

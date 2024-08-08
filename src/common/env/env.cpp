@@ -93,6 +93,7 @@ env_data::env_data()
           atl_transport(ccl_atl_ofi),
 #endif // CCL_ENABLE_MPI
           kvs_init_mode(kvs_mode::pmi),
+          kvs_connection_timeout(120),
           enable_shm(0),
           enable_rma(0),
           enable_hmem(0),
@@ -183,9 +184,12 @@ env_data::env_data()
           sycl_copy_engine(0),
           sycl_kernel_copy(1),
           sycl_esimd(0),
+          sycl_full_vector(1),
           sycl_tmp_buf_size(3 * 128 * 1024 * 1024),
           sycl_scaleout_host_buf_size(1024 * 1024 * 1024),
           sycl_kernels_line_size(128),
+          sycl_scaleout_buf_alloc_mode(ccl::utils::alloc_mode::memalign),
+
 #endif // CCL_ENABLE_SYCL
 
           allreduce_nreduce_buffering(0),
@@ -300,6 +304,10 @@ env_data::env_data()
 #endif // ZE_PCI_PROPERTIES_EXT_NAME
           ze_pt2pt_read(1),
           type2_mode(type2_tune_mode::undetected),
+#ifdef CCL_ENABLE_DRM
+          drmfd_dev_render_dir_path("/dev/dri/by-path/"),
+          drmfd_dev_render_suffix("-render"),
+#endif // CCL_ENABLE_DRM
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_PMIX
@@ -362,6 +370,7 @@ void env_data::parse() {
 
     p.env_2_atl_transport(atl_transport_names, atl_transport);
     p.env_2_enum(CCL_KVS_MODE, kvs_mode_names, kvs_init_mode);
+    p.env_2_type(CCL_KVS_CONNECTION_TIMEOUT, kvs_connection_timeout);
     p.env_2_type(CCL_ATL_SHM, enable_shm);
     p.env_2_type(CCL_ATL_RMA, enable_rma);
     p.env_2_type(CCL_ATL_HMEM, enable_hmem);
@@ -502,9 +511,11 @@ void env_data::parse() {
     p.env_2_type(CCL_SYCL_COPY_ENGINE, sycl_copy_engine);
     p.env_2_type(CCL_SYCL_KERNEL_COPY, sycl_kernel_copy);
     p.env_2_type(CCL_SYCL_ESIMD, sycl_esimd);
+    p.env_2_type(CCL_SYCL_FULL_VECTOR, sycl_full_vector);
     p.env_2_type(CCL_SYCL_TMP_BUF_SIZE, sycl_tmp_buf_size);
     p.env_2_type(CCL_SYCL_SCALEOUT_HOST_BUF_SIZE, sycl_scaleout_host_buf_size);
     p.env_2_type(CCL_SYCL_KERNELS_LINE_SIZE, sycl_kernels_line_size);
+    p.env_2_enum(CCL_SYCL_SCALEOUT_BUF_ALLOC_MODE, ccl::utils::alloc_mode_names, sycl_scaleout_buf_alloc_mode);
 #endif // CCL_ENABLE_SYCL
 
     p.env_2_type(CCL_ALLREDUCE_NREDUCE_BUFFERING, allreduce_nreduce_buffering);
@@ -650,6 +661,10 @@ void env_data::parse() {
     p.env_2_type(CCL_ZE_DRM_BDF_SUPPORT, ze_drm_bdf_support);
     p.env_2_type(CCL_ZE_PT2PT_READ, ze_pt2pt_read);
     p.env_2_enum(CCL_ZE_TYPE2_TUNE_PORTS, type2_tune_mode_names, type2_mode);
+#ifdef CCL_ENABLE_DRM
+    p.env_2_type(CCL_DRMFD_DEV_RENDER_DIR_PATH, drmfd_dev_render_dir_path);
+    p.env_2_type(CCL_DRMFD_DEV_RENDER_SUFFIX, drmfd_dev_render_suffix);
+#endif // CCL_ENABLE_DRM
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_PMIX
@@ -744,6 +759,7 @@ void env_data::print(int rank) {
 
     LOG_INFO(CCL_ATL_TRANSPORT, ": ", str_by_enum(atl_transport_names, atl_transport));
     LOG_INFO(CCL_KVS_MODE, ": ", str_by_enum(kvs_mode_names, kvs_init_mode));
+    LOG_INFO(CCL_KVS_CONNECTION_TIMEOUT, ": ", kvs_connection_timeout);
     LOG_INFO(CCL_ATL_SHM, ": ", enable_shm);
     LOG_INFO(CCL_ATL_RMA, ": ", enable_rma);
     LOG_INFO(CCL_ATL_HMEM, ": ", enable_hmem);
@@ -900,9 +916,11 @@ void env_data::print(int rank) {
     LOG_INFO(CCL_SYCL_COPY_ENGINE, ": ", sycl_copy_engine);
     LOG_INFO(CCL_SYCL_KERNEL_COPY, ": ", sycl_kernel_copy);
     LOG_INFO(CCL_SYCL_ESIMD, ": ", sycl_esimd);
+    LOG_INFO(CCL_SYCL_FULL_VECTOR, ": ", sycl_full_vector);
     LOG_INFO(CCL_SYCL_TMP_BUF_SIZE, ": ", sycl_tmp_buf_size);
     LOG_INFO(CCL_SYCL_SCALEOUT_HOST_BUF_SIZE, ": ", sycl_scaleout_host_buf_size);
     LOG_INFO(CCL_SYCL_KERNELS_LINE_SIZE, ": ", sycl_kernels_line_size);
+    LOG_INFO(CCL_SYCL_SCALEOUT_BUF_ALLOC_MODE, ": ", str_by_enum(ccl::utils::alloc_mode_names, sycl_scaleout_buf_alloc_mode));
 #endif // CCL_ENABLE_SYCL
 
     LOG_INFO(CCL_ALLREDUCE_NREDUCE_BUFFERING, ": ", allreduce_nreduce_buffering);
@@ -1030,6 +1048,10 @@ void env_data::print(int rank) {
     LOG_INFO(CCL_ZE_DRM_BDF_SUPPORT, ": ", ze_drm_bdf_support);
     LOG_INFO(CCL_ZE_PT2PT_READ, ": ", ze_pt2pt_read);
     LOG_INFO(CCL_ZE_TYPE2_TUNE_PORTS, ": ", str_by_enum(type2_tune_mode_names, type2_mode));
+#ifdef CCL_ENABLE_DRM
+    LOG_INFO(CCL_DRMFD_DEV_RENDER_DIR_PATH, ": ", drmfd_dev_render_dir_path);
+    LOG_INFO(CCL_DRMFD_DEV_RENDER_SUFFIX, ": ", drmfd_dev_render_suffix);
+#endif // CCL_ENABLE_DRM
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_PMIX

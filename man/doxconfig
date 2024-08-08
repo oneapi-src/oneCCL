@@ -1,12 +1,13 @@
 PROJECT_NAME           = "Intel® oneAPI Collective Communications Library"
-PROJECT_NUMBER         = "2021.13"
+PROJECT_NUMBER         = "2021.13.1"
 
 INPUT = ../src/common/env/vars.hpp ../src/common/env/vars_experimental.hpp
 
 GENERATE_MAN = YES
 MAN_OUTPUT=../man
 
-PREDEFINED = "CCL_ENABLE_SYCL"
+PREDEFINED = "CCL_ENABLE_SYCL" \
+             "CCL_ENABLE_DRM"
 
 GENERATE_HTML = NO
 GENERATE_LATEX = NO

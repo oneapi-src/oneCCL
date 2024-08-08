@@ -49,9 +49,8 @@ extern ze_ipc_mem_handle_t allreduce_small_ipc_handle[MAX_RANK];
 extern int allreduce_small_buffer_index;
 
 const int kernel_inner_loop = 1;
-const int kernel_inner_loop_scalar = 4;
 
-template <typename data_type, uint32_t N>
+template <typename data_type, uint32_t N, int kernel_inner_loop_scalar>
 ESIMD_INLINE void reduce_kernel(void **temp_buffer,
                                 int buf_offset,
                                 int offset,
@@ -72,9 +71,9 @@ ESIMD_INLINE void reduce_kernel(void **temp_buffer,
     }
 }
 
-template <typename dtype>
+template <typename dtype, size_t align>
 class Allreduce_small_kernel;
-template <typename dtype>
+template <typename dtype, int kernel_inner_loop_scalar>
 class Allreduce_small_kernel_scalar;
 
 template <typename data_type, uint32_t max_rank = MAX_RANK, uint32_t max_buffer = 1024 /*KB*/>
@@ -147,20 +146,42 @@ public:
                          const void *in_buffer,
                          void *out_buffer,
                          ccl::datatype dtype,
-                         uint32_t size) {
+                         size_t size,
+                         bool &done) {
+        sycl::event e;
+        assert(this->initialized == true);
+
+        // check local alignment
+        bool is_aligned = (size_t)in_buffer % 4 == 0 && (size_t)out_buffer % 4 == 0;
+
+        done = true;
+        //if (size * sizeof(data_type) <= 4096) {
+        if (size * sizeof(data_type) <= 65536) {
+            e = allreduce_scalar<4>(queue, in_buffer, out_buffer, size, done);
+        }
+        else {
+            if (is_aligned) {
+                e = allreduce_esimd<4>(queue, in_buffer, out_buffer, size, done);
+            }
+            else {
+                e = allreduce_esimd<2>(queue, in_buffer, out_buffer, size, done);
+            }
+        }
+        return ccl::event::create_from_native(e);
+    }
+
+    template <size_t align>
+    sycl::event allreduce_esimd(sycl::queue &queue,
+                                const void *in_buffer,
+                                void *out_buffer,
+                                size_t size,
+                                bool &done) {
         using namespace __ESIMD_NS;
         using namespace __ESIMD_ENS;
 
         sycl::event e;
         uint32_t temp_rank = rank;
         uint32_t temp_world = world;
-        assert(this->initialized == true);
-
-        //if (size * sizeof(data_type) <= 4096) {
-        if (size * sizeof(data_type) <= 65536) {
-            e = allreduce_scalar(queue, in_buffer, out_buffer, size);
-            return ccl::event::create_from_native(e);
-        }
 
         void *temp_buffer[max_rank];
         for (int i = 0; i < world; i++) {
@@ -178,12 +199,26 @@ public:
             (total_threads_needed + wg_size - 1) / wg_size * wg_size;
         uint32_t __attribute__((unused)) total_wg_count = total_threads_dispatched / wg_size;
 
+        done = true;
+        // checking oversubscription of hardware threads
+        ze_device_handle_t ze_dev =
+            sycl::get_native<sycl::backend::ext_oneapi_level_zero>(queue.get_device());
+        ssize_t dev_id{ ccl::utils::invalid_device_id };
+        if (!ccl::ze::get_device_global_id(ze_dev, &dev_id)) {
+            CCL_THROW("unable to get global id for device\n");
+        }
+        if (total_threads_dispatched >
+            ccl::global_data::get().ze_data->devices[dev_id].total_threads) {
+            done = false;
+            return e;
+        }
+
         int buffer_index_kernel = allreduce_small_buffer_index;
         allreduce_small_buffer_index++;
         allreduce_small_buffer_index %= TRIPLE_BUFFER;
 
         e = queue.submit([&](sycl::handler &cgh) {
-            cgh.parallel_for<class Allreduce_small_kernel<data_type>>(
+            cgh.parallel_for<class Allreduce_small_kernel<data_type, align>>(
                 sycl::nd_range<1>({ total_threads_dispatched }, wg_size), [=](sycl::nd_item<1> idx2) SYCL_ESIMD_KERNEL{
                 uint32_t idx = idx2.get_global_id();
 
@@ -215,13 +250,10 @@ public:
 #pragma unroll
                         for (int unroll_i = 0; unroll_i < UNROLL_SIZE; unroll_i++) {
                             buffer_small.template select<SIMD, 1>(unroll_i * SIMD) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::cached,
-                                               cache_hint::cached>((data_type *)in_buffer + offset +
-                                                                   unroll_i * SIMD +
-                                                                   i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)in_buffer + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                         }
 
                         //use the temp buffer for the current rank to copy the data to.
@@ -233,14 +265,11 @@ public:
 
 #pragma unroll
                         for (int unroll_i = 0; unroll_i < UNROLL_SIZE; unroll_i++) {
-                            lsc_block_store<data_type,
-                                            SIMD,
-                                            lsc_data_size::default_size,
-                                            cache_hint::uncached,
-                                            cache_hint::uncached>(
+                            block_store<data_type, SIMD>(
                                 (data_type *)local_temp_ptr + offset + unroll_i * SIMD +
                                     i * SIMD * UNROLL_SIZE,
-                                buffer_small.template select<SIMD, 1>(unroll_i * SIMD));
+                                buffer_small.template select<SIMD, 1>(unroll_i * SIMD),
+                                properties{ alignment<align> });
                         }
                     }
                     //lsc_fence<lsc_memory_kind::untyped_global, lsc_fence_op::none, lsc_scope::gpus>();
@@ -377,22 +406,16 @@ public:
                         for (int unroll_i = 0; unroll_i < UNROLL_SIZE; unroll_i++) {
                             buffer2.template select<SIMD, 1>(unroll_i * SIMD +
                                                              0 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr0 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr0 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer2.template select<SIMD, 1>(unroll_i * SIMD +
                                                              1 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr1 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr1 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                         }
                         //do the actual reduction
                         result = buffer2.template select<SIMD * UNROLL_SIZE, 1>(0);
@@ -417,40 +440,28 @@ public:
                         for (int unroll_i = 0; unroll_i < UNROLL_SIZE; unroll_i++) {
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             0 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr0 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr0 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             1 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr1 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr1 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             2 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr2 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr2 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             3 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr3 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr3 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                         }
                         //do the actual reduction
                         result = 0;
@@ -491,76 +502,52 @@ public:
                         for (int unroll_i = 0; unroll_i < UNROLL_SIZE; unroll_i++) {
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             0 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr0 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr0 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             1 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr1 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr1 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             2 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr2 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr2 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             3 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr3 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr3 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             4 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr4 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr4 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             5 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr5 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr5 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             6 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr6 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr6 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             7 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr7 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr7 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                         }
                         //do the actual reduction
                         result = 0;
@@ -613,112 +600,76 @@ public:
                         for (int unroll_i = 0; unroll_i < UNROLL_SIZE; unroll_i++) {
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             0 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr0 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr0 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             1 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr1 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr1 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             2 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr2 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr2 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             3 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr3 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr3 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             4 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr4 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr4 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             5 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr5 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr5 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             6 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr6 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr6 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             7 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr7 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr7 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             8 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr8 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr8 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             9 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr9 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr9 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             10 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr10 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr10 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             11 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr11 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr11 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                         }
                         //do the actual reduction
                         result = 0;
@@ -785,148 +736,100 @@ public:
                         for (int unroll_i = 0; unroll_i < UNROLL_SIZE; unroll_i++) {
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             0 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr0 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr0 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             1 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr1 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr1 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             2 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr2 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr2 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             3 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr3 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr3 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             4 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr4 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr4 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             5 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr5 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr5 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             6 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr6 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr6 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             7 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr7 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr7 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             8 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr8 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr8 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             9 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr9 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr9 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             10 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr10 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr10 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             11 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr11 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr11 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             12 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr12 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr12 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             13 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr13 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr13 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             14 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr14 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr14 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                             buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                             15 * SIMD * UNROLL_SIZE) =
-                                lsc_block_load<data_type,
-                                               SIMD,
-                                               lsc_data_size::default_size,
-                                               cache_hint::uncached,
-                                               cache_hint::uncached>((data_type *)peer_ptr15 +
-                                                                     offset + unroll_i * SIMD +
-                                                                     i * SIMD * UNROLL_SIZE);
+                                block_load<data_type, SIMD>((data_type *)peer_ptr15 + offset +
+                                                                unroll_i * SIMD +
+                                                                i * SIMD * UNROLL_SIZE,
+                                                            properties{ alignment<align> });
                         }
                         //do the actual reduction
                         result = 0;
@@ -937,7 +840,7 @@ public:
                                                   r * SIMD * UNROLL_SIZE);
                         }
                     }
-                    else //this is for 2,4,6 ranks. So there is no problem of overflowing the buffer.
+                    else //this is for 6,10,14 ranks. So there is no problem of overflowing the buffer.
                     {
                         for (uint32_t r = 0; r < temp_world; r++) {
                             int *peer_ptr =
@@ -947,13 +850,10 @@ public:
                             for (int unroll_i = 0; unroll_i < UNROLL_SIZE; unroll_i++) {
                                 buffer.template select<SIMD, 1>(unroll_i * SIMD +
                                                                 r * SIMD * UNROLL_SIZE) =
-                                    lsc_block_load<data_type,
-                                                   SIMD,
-                                                   lsc_data_size::default_size,
-                                                   cache_hint::uncached,
-                                                   cache_hint::uncached>((data_type *)peer_ptr +
-                                                                         offset + unroll_i * SIMD +
-                                                                         i * SIMD * UNROLL_SIZE);
+                                    block_load<data_type, SIMD>((data_type *)peer_ptr + offset +
+                                                                    unroll_i * SIMD +
+                                                                    i * SIMD * UNROLL_SIZE,
+                                                                properties{ alignment<align> });
                             }
                         }
                         //do the actual reduction
@@ -968,14 +868,11 @@ public:
                     //write out the results
 #pragma unroll
                     for (int unroll_i = 0; unroll_i < UNROLL_SIZE; unroll_i++) {
-                        lsc_block_store<data_type,
-                                        SIMD,
-                                        lsc_data_size::default_size,
-                                        cache_hint::write_back,
-                                        cache_hint::write_back>(
+                        block_store<data_type, SIMD>(
                             (data_type *)out_buffer + offset + unroll_i * SIMD +
                                 i * SIMD * UNROLL_SIZE,
-                            result.template select<SIMD, 1>(unroll_i * SIMD));
+                            result.template select<SIMD, 1>(unroll_i * SIMD),
+                            properties{ alignment<align> });
                     }
                 }
 
@@ -983,19 +880,21 @@ public:
         });
         //e.wait();
 
-        return ccl::event::create_from_native(e);
+        return e;
     }
 
 private:
+    template <int kernel_inner_loop_scalar>
     sycl::event allreduce_scalar(sycl::queue &queue,
                                  const void *in_buffer,
                                  void *out_buffer,
-                                 uint32_t size) {
+                                 size_t size,
+                                 bool &done) {
         sycl::event e;
 
         uint32_t temp_rank = rank;
         uint32_t temp_world = world;
-        assert(this->initialized == true);
+
         void *temp_buffer[max_rank];
         for (int i = 0; i < world; i++) {
             temp_buffer[i] = allreduce_small_buffers[i];
@@ -1019,13 +918,27 @@ private:
             (total_threads_needed + wg_size - 1) / wg_size * wg_size;
         uint32_t total_wg_count = total_threads_dispatched / wg_size;
 
+        done = true;
+        // checking oversubscription of hardware threads
+        ze_device_handle_t ze_dev =
+            sycl::get_native<sycl::backend::ext_oneapi_level_zero>(queue.get_device());
+        ssize_t dev_id{ ccl::utils::invalid_device_id };
+        if (!ccl::ze::get_device_global_id(ze_dev, &dev_id)) {
+            CCL_THROW("unable to get global id for device\n");
+        }
+        if (total_threads_dispatched >
+            ccl::global_data::get().ze_data->devices[dev_id].total_threads * 8) {
+            done = false;
+            return e;
+        }
+
         int buffer_index_kernel = allreduce_small_buffer_index;
         allreduce_small_buffer_index++;
         allreduce_small_buffer_index %= TRIPLE_BUFFER;
 
         // pure scalar kernel
         e = queue.submit([&](sycl::handler &cgh) {
-                cgh.parallel_for<class Allreduce_small_kernel_scalar<data_type>>(
+                cgh.parallel_for<class Allreduce_small_kernel_scalar<data_type, kernel_inner_loop_scalar>>(
                     sycl::nd_range<1>( total_threads_dispatched, wg_size), [=](sycl::nd_item<1> idx2) [[intel::reqd_sub_group_size(wg_size)]] {
                     uint32_t idx = idx2.get_global_id();
                     uint32_t offset __attribute__((unused)) = idx * kernel_inner_loop_scalar;
@@ -1140,56 +1053,56 @@ private:
                     //at this point, all the threads are done copying data from input buffer to temp buffer, do All reduce
                     switch (temp_world) {
                         case 2:
-                            reduce_kernel<data_type, 2>(
+                            reduce_kernel<data_type, 2, kernel_inner_loop_scalar>(
                                 (void **)temp_buffer,
                                 buffer_index_kernel * size_per_buffer_kernel,
                                 offset,
                                 (data_type *)out_buffer + offset);
                             break;
                         case 4:
-                            reduce_kernel<data_type, 4>(
+                            reduce_kernel<data_type, 4, kernel_inner_loop_scalar>(
                                 (void **)temp_buffer,
                                 buffer_index_kernel * size_per_buffer_kernel,
                                 offset,
                                 (data_type *)out_buffer + offset);
                             break;
                         case 6:
-                            reduce_kernel<data_type, 6>(
+                            reduce_kernel<data_type, 6, kernel_inner_loop_scalar>(
                                 (void **)temp_buffer,
                                 buffer_index_kernel * size_per_buffer_kernel,
                                 offset,
                                 (data_type *)out_buffer + offset);
                             break;
                         case 8:
-                            reduce_kernel<data_type, 8>(
+                            reduce_kernel<data_type, 8, kernel_inner_loop_scalar>(
                                 (void **)temp_buffer,
                                 buffer_index_kernel * size_per_buffer_kernel,
                                 offset,
                                 (data_type *)out_buffer + offset);
                             break;
                         case 10:
-                            reduce_kernel<data_type, 10>(
+                            reduce_kernel<data_type, 10, kernel_inner_loop_scalar>(
                                 (void **)temp_buffer,
                                 buffer_index_kernel * size_per_buffer_kernel,
                                 offset,
                                 (data_type *)out_buffer + offset);
                             break;
                         case 12:
-                            reduce_kernel<data_type, 12>(
+                            reduce_kernel<data_type, 12, kernel_inner_loop_scalar>(
                                 (void **)temp_buffer,
                                 buffer_index_kernel * size_per_buffer_kernel,
                                 offset,
                                 (data_type *)out_buffer + offset);
                             break;
                         case 14:
-                            reduce_kernel<data_type, 14>(
+                            reduce_kernel<data_type, 14, kernel_inner_loop_scalar>(
                                 (void **)temp_buffer,
                                 buffer_index_kernel * size_per_buffer_kernel,
                                 offset,
                                 (data_type *)out_buffer + offset);
                             break;
                         case 16:
-                            reduce_kernel<data_type, 16>(
+                            reduce_kernel<data_type, 16, kernel_inner_loop_scalar>(
                                 (void **)temp_buffer,
                                 buffer_index_kernel * size_per_buffer_kernel,
                                 offset,
