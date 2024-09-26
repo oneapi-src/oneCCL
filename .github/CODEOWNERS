@@ -1,5 +1,5 @@
 # Documentation owners and reviewers
-doc/        @Maria1Petrova @bdmoore1 @ranukund
+doc/        @Maria1Petrova @ranukund
 *.md        @Maria1Petrova
 man/        @nikitaxgusev @srirajpaul
 
@@ -7,14 +7,14 @@ man/        @nikitaxgusev @srirajpaul
 third-party*    @Maria1Petrova
 
 # Tests & examples
-tests/    @nikitaxgusev @srirajpaul 
-examples/    @nikitaxgusev @srirajpaul 
+tests/    @nikitaxgusev @srirajpaul
+examples/    @nikitaxgusev @srirajpaul
 
 # Infrastructure and tools
 .github/    @Maria1Petrova @nikitaxgusev
 
 # Build & dev infrastructure
-cmake/    @nikitaxgusev @srirajpaul 
+cmake/    @nikitaxgusev @srirajpaul
 
 # C++ code
-src/    @nikitaxgusev @srirajpaul 
+src/    @nikitaxgusev @srirajpaul
