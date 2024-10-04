@@ -32,12 +32,16 @@ communication libraries, while introducing a few changes, as described next:
    structures are hidden behind handles returned to the user, such as
    `ccl::stream` and `ccl::comm`. 
 
-2. The API is extended with two C++ API functions to support `sycl::queue`:
+2. The API is extended to support different types of streams or queues:
 
-   - `onecclResult_t  onecclCreateStream(sycl::queue, &oneccl_stream)`
-   - `onecclResult_t onecclReleaseStream(oneccl_stream)`
+   - `onecclResult_t  onecclCreateStreamXPU(onecclStream_t* oneccl_stream, void *args)`
+      the args is a pointer to the stream or queue that is vendor specific.
+   - `onecclResult_t  onecclStreamCreateCPU(onecclStream_t* oneccl_stream, void* args)`
+      this API is explicit for CPU. 
 
-   Once the sycl::queue is registered, it is hidden behind the ccl stream
+   - `onecclResult_t onecclStreamDestroy(onecclStream_t oneccl_stream)`
+
+   Once the sycl::queue is registered, it is hidden behind the `onecclStream_t`
    handle
 
 3. Add functions to allow users to explicitly control the lifetime of objects,
@@ -67,18 +71,15 @@ API, and the current oneCCL API.
 
 | NCCL              | oneCCL (proposed C)          | oneCCL (current, C++)   |
 |-------------------|------------------------------|-------------------------|
-|`cudaError_t`      |`onecclResult_t cudaSetDevice(device)(1)`| N/A          |
 |`ncclResult_t ncclGetUniqueId (id)`|	`onecclResult_t onecclGetUniqueId (id)`| `ccl::create_main_kvs(); ccl::create_kvs(main_addr);`|
-|`ncclResult_t ncclCommInitRank(comm, size, id, rank)`|`onecclResult_t onecclCommInitRank(comm, size, id, rank)`|`comm cl::create_communicator(size, rank, device, context, kvs) comms ccl:create_communicators(size, rank, device, context, kvs)`|
+|`ncclResult_t ncclCommInitRank(comm, size, id, rank)`|`onecclResult_t onecclCommInitRank(comm, size, id, rank)(1)`|`comm cl::create_communicator(size, rank, device, context, kvs) comms ccl:create_communicators(size, rank, device, context, kvs)`|
 |`ncclResult_t ncclCommInitRankConfig(comm, size, id, rank, attr)`|`onecclResult_t onecclCommInitRankConfig(comm, size, id, rank, attr)`|`comm ccl:create_communicator(size, rank, device, context, kvs, attr)`|
 |`ncclResult_t ncclCommInitAll (comms, ndev, dev_list)`|`onecclResult_t onecclCommInitAll(comms,ndev,dev_list)`| Not currently available.Working on adding support.|
 |`ncclCommSplit`    |	Not implemented	              | Not implemented        |
 |`nccltResult ncclCommFinalize(comm)`|`onecclResult_t onecclCommFinalize(comm)`| N/A |
 |`ncclResult_t ncclCommDestroy(comm)`|`onecclResult_t onecclCommDestroy(comm)`|	Destructor |
 
-Notice that cudaSetDevice(device) is a CUDA call, not a NCCL call. If an
-equivalent call is available in SYCL (or calling language), the proposed
-onecclSetDevice(device) will not be needed.     
+This assumes that each rank is associated with a device, which has been set before calling this function (ncclCommInitRank).
 
 #### APIs related with Collective Communication operations
 
@@ -120,7 +121,7 @@ communicator::allreduce(sendbuff, recvbuff, count, datatype, op, comm, oneccl_st
 |`ncclResult_t ncclCommCuDevice(comm, device)`|`onecclResult_t onecclCommGetDevice(comm, device)`|`device communicator::get_device()`|
 |`ncclResult_t ncclCommUserRank(comm, rank)`|`onecclResult_t onecclCommUserRank(comm, rank)`|`rank communicator::rank()`|
 |`ncclResult_t ncclGetVersion(version)`|`onecclResult_t onecclGetVersion(version)`|`version ccl:get_library_version()`|
-|`ncclCommAbort`    |	Not implemented              | N/A                     |
-|`ncclCommGetAsyncError`|	Not implemented	         | N/A                     |
-|`ncclGetLastError` |	Not implemented              | N/A                     |
-|`ncclGetErrorString`| Not implemented             | N/A                     |
+|`ncclCommAbort`    |	`onecclCommAbort`              | N/A                     |
+|`ncclCommGetAsyncError`|	`onecclCommGetAsyncError`	         | N/A                     |
+|`ncclGetLastError` |	`onecclGetLastError`              | N/A                     |
+|`ncclGetErrorString`| `onecclGetErrorString`             | N/A                     |
