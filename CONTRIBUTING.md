@@ -21,7 +21,7 @@ Use [GitHub issues]((https://github.com/oneapi-src/oneCCL/issues)) to:
 Before you submit a pull request, make sure that:
 
 - You follow our [code contribution guidelines](#code-contribution-guidelines) and our [coding style](#coding-style).
-- You provided the [requested details](#rfc-pull-requests) for new primitives or extended the existing [unit tests](#unit-tests) when fixing an issue.
+- You provided the [requested details](#rfc-pull-requests) for new primitives or extended the existing [functional tests](#functional-tests) when fixing an issue.
 
 **Note**: This project follows the
 [GitHub flow](https://guides.github.com/introduction/flow/index.html). To get started with pull requests, see [GitHub howto](https://help.github.com/en/articles/about-pull-requests).
@@ -52,6 +52,14 @@ The code must be:
 
 The general principle is to follow the style of existing or surrounding code.
 
-### Unit tests
+### Functional tests
 
-Be sure to extend the existing tests when fixing an issue.
+How to run functional testing:
+
+1. [Build and install oneCCL](README.md#Installation)
+2. Make sure you are located in `<oneCCL directory>/<build directory>`
+3. Source oneCCL: `source <oneCCL install directory>/env/setvars.sh`
+4. Enter the test directory: `cd tests/functional`
+5. Run tests: `ctest -VV -C default`
+
+The results of the tests, including the pass rate, should be printed on the screen.
