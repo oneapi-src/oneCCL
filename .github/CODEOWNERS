@@ -1,7 +1,7 @@
 # Documentation owners and reviewers
-doc/        @Maria1Petrova @ranukund
-*.md        @Maria1Petrova
-man/        @nikitaxgusev @srirajpaul
+doc/        @Maria1Petrova @ranukund @maciekpac
+*.md        @Maria1Petrova @maciekpac
+man/        @nikitaxgusev @srirajpaul @maciekpac
 
 # TTP files
 third-party*    @Maria1Petrova
