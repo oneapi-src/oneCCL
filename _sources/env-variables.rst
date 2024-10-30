@@ -1191,8 +1191,8 @@ CCL_PROCESS_LAUNCHER
      - Description
    * - ``hydra``
      - Uses the MPI hydra job launcher. The default value.
-   * - ``torch``
-     - Uses a torch job launcher.
+   * - ``torchrun``
+     - Uses `torchrun <https://pytorch.org/docs/stable/elastic/run.html>` as a job launcher.
    * - ``pmix``
      - Is used with the PALS job launcher that uses the pmix API. The ``mpiexec`` command should be similar to:
 

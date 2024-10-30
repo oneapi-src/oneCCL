@@ -1,12 +1,13 @@
 
+
 <!DOCTYPE html>
 
 
-<html lang="en" >
+<html >
 
   <head>
     <meta charset="ascii" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
     <title>Use oneCCL package from CMake &#8212; oneCCL  documentation</title>
   
@@ -28,19 +29,20 @@
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
 
-    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=362ab14a" />
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" href="../_static/styles/sphinx-book-theme.css?digest=14f4ca6b54d191a8c7657f6c759bf11a5fb86285" type="text/css" />
-    <link rel="stylesheet" type="text/css" href="../_static/tabs.css?v=a5c4661c" />
+    <link rel="stylesheet" type="text/css" href="../_static/tabs.css" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=c73c0f3e"></script>
-    <script src="../_static/doctools.js?v=9a2dae69"></script>
-    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?digest=5a5c038af52cf7bc1a1ec88eea08e6366ee68824"></script>
-    <link rel="icon" href="../_static/favicons.png"/>
+    <link rel="shortcut icon" href="../_static/favicons.png"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Programming Model" href="../programming-model.html" />
@@ -185,12 +187,14 @@
 <li class="toctree-l2 has-children"><a class="reference internal" href="../api/operations.html">Communication Operations</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../api/operations/datatypes.html">Datatypes</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../api/operations/collective-operations.html">Collective Operations</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-7"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/allgather.html">Allgather</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/allgatherv.html">Allgatherv</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/allreduce.html">Allreduce</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/alltoall.html">Alltoall</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/alltoallv.html">Alltoallv</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/barrier.html">Barrier</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/broadcast.html">Broadcast</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/group-call.html">Group Calls</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/reduce.html">Reduce</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/reduce-scatter.html">ReduceScatter</a></li>
 </ul>
@@ -201,6 +205,11 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../env-variables.html">Environment Variables</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Benchmark User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../benchmark-guide/benchmark.html">oneCCL Benchmark Collective User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../benchmark-guide/benchmark-point-to-point.html">oneCCL Benchmark Point-to-Point User Guide</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Notices and Disclaimers</span></p>
 <ul class="nav bd-sidenav">
@@ -411,7 +420,7 @@ document.write(`
                 <article class="bd-article" role="main">
                   
   <section id="use-oneccl-package-from-cmake">
-<h1>Use oneCCL package from CMake<a class="headerlink" href="#use-oneccl-package-from-cmake" title="Link to this heading">#</a></h1>
+<h1>Use oneCCL package from CMake<a class="headerlink" href="#use-oneccl-package-from-cmake" title="Permalink to this headline">#</a></h1>
 <p><code class="docutils literal notranslate"><span class="pre">oneCCLConfig.cmake</span></code> and <code class="docutils literal notranslate"><span class="pre">oneCCLConfigVersion.cmake</span></code> are included into oneCCL distribution.</p>
 <p>With these files, you can integrate oneCCL into a user project with the
 <a class="reference external" href="https://cmake.org/cmake/help/latest/command/find_package.html">find_package</a> command.
@@ -430,7 +439,7 @@ that can be passed to the
 </pre></div>
 </div>
 <section id="onecclconfig-files-generation">
-<h2>oneCCLConfig files generation<a class="headerlink" href="#onecclconfig-files-generation" title="Link to this heading">#</a></h2>
+<h2>oneCCLConfig files generation<a class="headerlink" href="#onecclconfig-files-generation" title="Permalink to this headline">#</a></h2>
 <p>To generate oneCCLConfig files for oneCCL package,
 use the provided <code class="docutils literal notranslate"><span class="pre">cmake/scripts/config_generation.cmake</span></code> file:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake<span class="w"> </span><span class="o">[</span>-DOUTPUT_DIR<span class="o">=</span>&lt;output_dir&gt;<span class="o">]</span><span class="w"> </span>-P<span class="w"> </span>cmake/script/config_generation.cmake

@@ -9,7 +9,7 @@
     <meta charset="ascii" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
-    <title>Reduce &#8212; oneCCL  documentation</title>
+    <title>Allgather &#8212; oneCCL  documentation</title>
   
   
   
@@ -45,8 +45,8 @@
     <link rel="shortcut icon" href="../../../_static/favicons.png"/>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
-    <link rel="next" title="ReduceScatter" href="reduce-scatter.html" />
-    <link rel="prev" title="Group Calls" href="group-call.html" />
+    <link rel="next" title="Allgatherv" href="allgatherv.html" />
+    <link rel="prev" title="Collective Operations" href="../collective-operations.html" />
     <script defer type="text/javascript" src="https://www.intel.com/content/dam/www/global/wap/performance-config.js" ></script>
     <script type="text/javascript">
         // Configure TMS settings
@@ -187,7 +187,7 @@
 <li class="toctree-l2 current active has-children"><a class="reference internal" href="../../operations.html">Communication Operations</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="../datatypes.html">Datatypes</a></li>
 <li class="toctree-l3 current active has-children"><a class="reference internal" href="../collective-operations.html">Collective Operations</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-7"><i class="fa-solid fa-chevron-down"></i></label><ul class="current">
-<li class="toctree-l4"><a class="reference internal" href="allgather.html">Allgather</a></li>
+<li class="toctree-l4 current active"><a class="current reference internal" href="#">Allgather</a></li>
 <li class="toctree-l4"><a class="reference internal" href="allgatherv.html">Allgatherv</a></li>
 <li class="toctree-l4"><a class="reference internal" href="allreduce.html">Allreduce</a></li>
 <li class="toctree-l4"><a class="reference internal" href="alltoall.html">Alltoall</a></li>
@@ -195,7 +195,7 @@
 <li class="toctree-l4"><a class="reference internal" href="barrier.html">Barrier</a></li>
 <li class="toctree-l4"><a class="reference internal" href="broadcast.html">Broadcast</a></li>
 <li class="toctree-l4"><a class="reference internal" href="group-call.html">Group Calls</a></li>
-<li class="toctree-l4 current active"><a class="current reference internal" href="#">Reduce</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reduce.html">Reduce</a></li>
 <li class="toctree-l4"><a class="reference internal" href="reduce-scatter.html">ReduceScatter</a></li>
 </ul>
 </li>
@@ -268,7 +268,7 @@
       
       
       
-      <li><a href="https://github.com/oneapi-src/oneCCL/edit/master/doc/rst/source/api/operations/collective-operations/reduce.rst" target="_blank"
+      <li><a href="https://github.com/oneapi-src/oneCCL/edit/master/doc/rst/source/api/operations/collective-operations/allgather.rst" target="_blank"
    class="btn btn-sm btn-source-edit-button dropdown-item"
    title="Suggest edit"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -285,7 +285,7 @@
       
       
       
-      <li><a href="https://github.com/oneapi-src/oneCCL/issues/new?title=Issue%20on%20page%20%2Fapi/operations/collective-operations/reduce.html&body=Your%20issue%20content%20here." target="_blank"
+      <li><a href="https://github.com/oneapi-src/oneCCL/issues/new?title=Issue%20on%20page%20%2Fapi/operations/collective-operations/allgather.html&body=Your%20issue%20content%20here." target="_blank"
    class="btn btn-sm btn-source-issues-button dropdown-item"
    title="Open an issue"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -315,7 +315,7 @@
       
       
       
-      <li><a href="../../../_sources/api/operations/collective-operations/reduce.rst" target="_blank"
+      <li><a href="../../../_sources/api/operations/collective-operations/allgather.rst" target="_blank"
    class="btn btn-sm btn-download-source-button dropdown-item"
    title="Download source file"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -395,7 +395,7 @@ document.write(`
               
 
 <div id="jb-print-docs-body" class="onlyprint">
-    <h1>Reduce</h1>
+    <h1>Allgather</h1>
     <!-- Table of contents -->
     <div id="print-main-content">
         <div id="jb-print-toc">
@@ -409,21 +409,19 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article" role="main">
                   
-  <section id="reduce">
-<h1>Reduce<a class="headerlink" href="#reduce" title="Permalink to this headline">#</a></h1>
+  <section id="allgather">
+<h1>Allgather<a class="headerlink" href="#allgather" title="Permalink to this headline">#</a></h1>
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
-<span class="sig-name descname"><span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">reduce</span> <span class="pre">(const</span> <span class="pre">void</span> <span class="pre">*send_buf,</span> <span class="pre">void</span> <span class="pre">*recv_buf,</span> <span class="pre">size_t</span> <span class="pre">count,</span> <span class="pre">datatype</span> <span class="pre">dtype,</span> <span class="pre">reduction</span> <span class="pre">rtype,</span> <span class="pre">int</span> <span class="pre">root,</span> <span class="pre">const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">stream</span> <span class="pre">&amp;stream,</span> <span class="pre">const</span> <span class="pre">reduce_attr</span> <span class="pre">&amp;attr=default_reduce_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
-<dd><p>Reduce is a collective communication operation that performs the global reduction operation on values from all ranks of the communicator and returns the result to the root rank. </p>
+<span class="sig-name descname"><span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">allgather</span> <span class="pre">(const</span> <span class="pre">void</span> <span class="pre">*send_buf,</span> <span class="pre">void</span> <span class="pre">*recv_buf,</span> <span class="pre">size_t</span> <span class="pre">send_count,</span> <span class="pre">datatype</span> <span class="pre">dtype,</span> <span class="pre">const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">stream</span> <span class="pre">&amp;stream,</span> <span class="pre">const</span> <span class="pre">allgather_attr</span> <span class="pre">&amp;attr=default_allgather_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
+<dd><p>Allgather is a collective communication operation that collects send_count elements from all the ranks within the communicator and places the results into recv_buf, in such a way that data from rank i can be found at offset rank i * send_count. The resulting data in the output recv_buf buffer is the same for each rank. </p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>send_buf</strong> &#8211; the buffer with <code class="docutils literal notranslate"><span class="pre">count</span></code> elements of <code class="docutils literal notranslate"><span class="pre">dtype</span></code> that stores local data to be reduced </p></li>
-<li><p><strong>recv_buf</strong> &#8211; [out] the buffer to store reduced result, must have the same dimension as <code class="docutils literal notranslate"><span class="pre">send_buf</span></code>. Used by the <code class="docutils literal notranslate"><span class="pre">root</span></code> rank only, ignored by other ranks. </p></li>
-<li><p><strong>count</strong> &#8211; the number of elements of type <code class="docutils literal notranslate"><span class="pre">dtype</span></code> in <code class="docutils literal notranslate"><span class="pre">send_buf</span></code> and <code class="docutils literal notranslate"><span class="pre">recv_buf</span></code></p></li>
+<li><p><strong>send_buf</strong> &#8211; the buffer with <code class="docutils literal notranslate"><span class="pre">send_count</span></code> elements of <code class="docutils literal notranslate"><span class="pre">dtype</span></code> that stores local data to be gathered </p></li>
+<li><p><strong>recv_buf</strong> &#8211; [out] the buffer to store gathered result of <code class="docutils literal notranslate"><span class="pre">dtype</span></code>, must be large enough to hold values from all ranks, i.e. size should be equal to <code class="docutils literal notranslate"><span class="pre">dtype</span></code> size in bytes * <code class="docutils literal notranslate"><span class="pre">send_count</span></code></p></li>
+<li><p><strong>send_count</strong> &#8211; the number of elements of type <code class="docutils literal notranslate"><span class="pre">dtype</span></code> to be sent to or to received from each rank </p></li>
 <li><p><strong>dtype</strong> &#8211; the datatype of elements in <code class="docutils literal notranslate"><span class="pre">send_buf</span></code> and <code class="docutils literal notranslate"><span class="pre">recv_buf</span></code></p></li>
-<li><p><strong>rtype</strong> &#8211; the type of the reduction operation to be applied </p></li>
-<li><p><strong>root</strong> &#8211; the rank that gets the result of reduction </p></li>
 <li><p><strong>comm</strong> &#8211; the communicator for which the operation will be performed </p></li>
 <li><p><strong>stream</strong> &#8211; abstraction over a device queue constructed via ccl::create_stream </p></li>
 <li><p><strong>attr</strong> &#8211; optional attributes to customize operation </p></li>
@@ -438,34 +436,114 @@ document.write(`
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
-<span class="sig-name descname"><span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">reduce</span> <span class="pre">(const</span> <span class="pre">void</span> <span class="pre">*send_buf,</span> <span class="pre">void</span> <span class="pre">*recv_buf,</span> <span class="pre">size_t</span> <span class="pre">count,</span> <span class="pre">datatype</span> <span class="pre">dtype,</span> <span class="pre">reduction</span> <span class="pre">rtype,</span> <span class="pre">int</span> <span class="pre">root,</span> <span class="pre">const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">reduce_attr</span> <span class="pre">&amp;attr=default_reduce_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
+<span class="sig-name descname"><span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">allgather</span> <span class="pre">(const</span> <span class="pre">void</span> <span class="pre">*send_buf,</span> <span class="pre">void</span> <span class="pre">*recv_buf,</span> <span class="pre">size_t</span> <span class="pre">send_count,</span> <span class="pre">datatype</span> <span class="pre">dtype,</span> <span class="pre">const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">allgather_attr</span> <span class="pre">&amp;attr=default_allgather_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
 <dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
-<span class="sig-name descname"><span class="pre">template&lt;class</span> <span class="pre">BufferType,</span> <span class="pre">class</span> <span class="pre">=</span> <span class="pre">typename</span> <span class="pre">std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(),</span> <span class="pre">event&gt;::type&gt;</span> <span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">reduce</span> <span class="pre">(const</span> <span class="pre">BufferType</span> <span class="pre">*send_buf,</span> <span class="pre">BufferType</span> <span class="pre">*recv_buf,</span> <span class="pre">size_t</span> <span class="pre">count,</span> <span class="pre">reduction</span> <span class="pre">rtype,</span> <span class="pre">int</span> <span class="pre">root,</span> <span class="pre">const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">stream</span> <span class="pre">&amp;stream,</span> <span class="pre">const</span> <span class="pre">reduce_attr</span> <span class="pre">&amp;attr=default_reduce_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
+<span class="sig-name descname"><span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">allgather</span> <span class="pre">(const</span> <span class="pre">void</span> <span class="pre">*send_buf,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">&gt;</span> <span class="pre">&amp;recv_bufs,</span> <span class="pre">size_t</span> <span class="pre">send_count,</span> <span class="pre">datatype</span> <span class="pre">dtype,</span> <span class="pre">const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">stream</span> <span class="pre">&amp;stream,</span> <span class="pre">const</span> <span class="pre">allgather_attr</span> <span class="pre">&amp;attr=default_allgather_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>send_buf</strong> &#8211; the buffer of <code class="docutils literal notranslate"><span class="pre">dtype</span></code> with <code class="docutils literal notranslate"><span class="pre">send_count</span></code> elements that stores local data to be gathered </p></li>
+<li><p><strong>recv_bufs</strong> &#8211; [out] array of buffers to store gathered result, one buffer per rank; each buffer must be large enough to keep <code class="docutils literal notranslate"><span class="pre">send_count</span></code> elements of <code class="docutils literal notranslate"><span class="pre">dtype</span></code> size </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="sig-name descname"><span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">allgather</span> <span class="pre">(const</span> <span class="pre">void</span> <span class="pre">*send_buf,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">&gt;</span> <span class="pre">&amp;recv_bufs,</span> <span class="pre">size_t</span> <span class="pre">send_count,</span> <span class="pre">datatype</span> <span class="pre">dtype,</span> <span class="pre">const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">allgather_attr</span> <span class="pre">&amp;attr=default_allgather_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="sig-name descname"><span class="pre">template&lt;class</span> <span class="pre">BufferType,</span> <span class="pre">class</span> <span class="pre">=</span> <span class="pre">typename</span> <span class="pre">std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(),</span> <span class="pre">event&gt;::type&gt;</span> <span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">allgather</span> <span class="pre">(const</span> <span class="pre">BufferType</span> <span class="pre">*send_buf,</span> <span class="pre">BufferType</span> <span class="pre">*recv_buf,</span> <span class="pre">size_t</span> <span class="pre">send_count,</span> <span class="pre">const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">stream</span> <span class="pre">&amp;stream,</span> <span class="pre">const</span> <span class="pre">allgather_attr</span> <span class="pre">&amp;attr=default_allgather_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p>Type-safe version.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>send_buf</strong> &#8211; the buffer with <code class="docutils literal notranslate"><span class="pre">send_count</span></code> elements of <code class="docutils literal notranslate"><span class="pre">BufferType</span></code> that stores local data to be gathered </p></li>
+<li><p><strong>recv_buf</strong> &#8211; [out] the buffer to store gathered result of <code class="docutils literal notranslate"><span class="pre">BufferType</span></code>. It must be large enough to hold values from all ranks, i.e. size should be equal to <code class="docutils literal notranslate"><span class="pre">BufferType</span></code> size in bytes * <code class="docutils literal notranslate"><span class="pre">send_count</span></code></p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="sig-name descname"><span class="pre">template&lt;class</span> <span class="pre">BufferType,</span> <span class="pre">class</span> <span class="pre">=</span> <span class="pre">typename</span> <span class="pre">std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(),</span> <span class="pre">event&gt;::type&gt;</span> <span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">allgather</span> <span class="pre">(const</span> <span class="pre">BufferType</span> <span class="pre">*send_buf,</span> <span class="pre">BufferType</span> <span class="pre">*recv_buf,</span> <span class="pre">size_t</span> <span class="pre">send_count,</span> <span class="pre">const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">allgather_attr</span> <span class="pre">&amp;attr=default_allgather_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
 <dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
 <p>Type-safe version. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
-<span class="sig-name descname"><span class="pre">template&lt;class</span> <span class="pre">BufferType,</span> <span class="pre">class</span> <span class="pre">=</span> <span class="pre">typename</span> <span class="pre">std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(),</span> <span class="pre">event&gt;::type&gt;</span> <span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">reduce</span> <span class="pre">(const</span> <span class="pre">BufferType</span> <span class="pre">*send_buf,</span> <span class="pre">BufferType</span> <span class="pre">*recv_buf,</span> <span class="pre">size_t</span> <span class="pre">count,</span> <span class="pre">reduction</span> <span class="pre">rtype,</span> <span class="pre">int</span> <span class="pre">root,</span> <span class="pre">const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">reduce_attr</span> <span class="pre">&amp;attr=default_reduce_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
+<span class="sig-name descname"><span class="pre">template&lt;class</span> <span class="pre">BufferType,</span> <span class="pre">class</span> <span class="pre">=</span> <span class="pre">typename</span> <span class="pre">std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(),</span> <span class="pre">event&gt;::type&gt;</span> <span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">allgather</span> <span class="pre">(const</span> <span class="pre">BufferType</span> <span class="pre">*send_buf,</span> <span class="pre">vector_class&lt;</span> <span class="pre">BufferType</span> <span class="pre">*</span> <span class="pre">&gt;</span> <span class="pre">&amp;recv_bufs,</span> <span class="pre">size_t</span> <span class="pre">send_count,</span> <span class="pre">const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">stream</span> <span class="pre">&amp;stream,</span> <span class="pre">const</span> <span class="pre">allgather_attr</span> <span class="pre">&amp;attr=default_allgather_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p>Type-safe version.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>send_buf</strong> &#8211; the buffer with <code class="docutils literal notranslate"><span class="pre">send_count</span></code> elements of <code class="docutils literal notranslate"><span class="pre">BufferType</span></code> that stores local data to be gathered </p></li>
+<li><p><strong>recv_bufs</strong> &#8211; [out] array of buffers to store gathered result, one buffer per rank; each buffer must be large enough to keep <code class="docutils literal notranslate"><span class="pre">send_count</span></code> elements of <code class="docutils literal notranslate"><span class="pre">BufferType</span></code> size </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="sig-name descname"><span class="pre">template&lt;class</span> <span class="pre">BufferType,</span> <span class="pre">class</span> <span class="pre">=</span> <span class="pre">typename</span> <span class="pre">std::enable_if&lt;is_native_type_supported&lt;BufferType&gt;(),</span> <span class="pre">event&gt;::type&gt;</span> <span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">allgather</span> <span class="pre">(const</span> <span class="pre">BufferType</span> <span class="pre">*send_buf,</span> <span class="pre">vector_class&lt;</span> <span class="pre">BufferType</span> <span class="pre">*</span> <span class="pre">&gt;</span> <span class="pre">&amp;recv_bufs,</span> <span class="pre">size_t</span> <span class="pre">send_count,</span> <span class="pre">const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">allgather_attr</span> <span class="pre">&amp;attr=default_allgather_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
 <dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
 <p>Type-safe version. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
-<span class="sig-name descname"><span class="pre">template&lt;class</span> <span class="pre">BufferObjectType,</span> <span class="pre">class</span> <span class="pre">=</span> <span class="pre">typename</span> <span class="pre">std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(),</span> <span class="pre">event&gt;::type&gt;</span> <span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">reduce</span> <span class="pre">(const</span> <span class="pre">BufferObjectType</span> <span class="pre">&amp;send_buf,</span> <span class="pre">BufferObjectType</span> <span class="pre">&amp;recv_buf,</span> <span class="pre">size_t</span> <span class="pre">count,</span> <span class="pre">reduction</span> <span class="pre">rtype,</span> <span class="pre">int</span> <span class="pre">root,</span> <span class="pre">const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">stream</span> <span class="pre">&amp;stream,</span> <span class="pre">const</span> <span class="pre">reduce_attr</span> <span class="pre">&amp;attr=default_reduce_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
+<span class="sig-name descname"><span class="pre">template&lt;class</span> <span class="pre">BufferObjectType,</span> <span class="pre">class</span> <span class="pre">=</span> <span class="pre">typename</span> <span class="pre">std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(),</span> <span class="pre">event&gt;::type&gt;</span> <span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">allgather</span> <span class="pre">(const</span> <span class="pre">BufferObjectType</span> <span class="pre">&amp;send_buf,</span> <span class="pre">BufferObjectType</span> <span class="pre">&amp;recv_buf,</span> <span class="pre">size_t</span> <span class="pre">send_count,</span> <span class="pre">const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">stream</span> <span class="pre">&amp;stream,</span> <span class="pre">const</span> <span class="pre">allgather_attr</span> <span class="pre">&amp;attr=default_allgather_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p>Type-safe version.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>send_buf</strong> &#8211; the buffer of <code class="docutils literal notranslate"><span class="pre">BufferObjectType</span></code> with <code class="docutils literal notranslate"><span class="pre">send_count</span></code> elements that stores local data to be gathered </p></li>
+<li><p><strong>recv_buf</strong> &#8211; [out] the buffer to store gathered result of <code class="docutils literal notranslate"><span class="pre">BufferObjectType</span></code>. It must be large enough to hold values from all ranks, i.e. size should be equal to <code class="docutils literal notranslate"><span class="pre">BufferObjectType</span></code> size in bytes * <code class="docutils literal notranslate"><span class="pre">send_count</span></code></p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="sig-name descname"><span class="pre">template&lt;class</span> <span class="pre">BufferObjectType,</span> <span class="pre">class</span> <span class="pre">=</span> <span class="pre">typename</span> <span class="pre">std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(),</span> <span class="pre">event&gt;::type&gt;</span> <span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">allgather</span> <span class="pre">(const</span> <span class="pre">BufferObjectType</span> <span class="pre">&amp;send_buf,</span> <span class="pre">BufferObjectType</span> <span class="pre">&amp;recv_buf,</span> <span class="pre">size_t</span> <span class="pre">send_count,</span> <span class="pre">const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">allgather_attr</span> <span class="pre">&amp;attr=default_allgather_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
 <dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
 <p>Type-safe version. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
-<span class="sig-name descname"><span class="pre">template&lt;class</span> <span class="pre">BufferObjectType,</span> <span class="pre">class</span> <span class="pre">=</span> <span class="pre">typename</span> <span class="pre">std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(),</span> <span class="pre">event&gt;::type&gt;</span> <span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">reduce</span> <span class="pre">(const</span> <span class="pre">BufferObjectType</span> <span class="pre">&amp;send_buf,</span> <span class="pre">BufferObjectType</span> <span class="pre">&amp;recv_buf,</span> <span class="pre">size_t</span> <span class="pre">count,</span> <span class="pre">reduction</span> <span class="pre">rtype,</span> <span class="pre">int</span> <span class="pre">root,</span> <span class="pre">const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">reduce_attr</span> <span class="pre">&amp;attr=default_reduce_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
+<span class="sig-name descname"><span class="pre">template&lt;class</span> <span class="pre">BufferObjectType,</span> <span class="pre">class</span> <span class="pre">=</span> <span class="pre">typename</span> <span class="pre">std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(),</span> <span class="pre">event&gt;::type&gt;</span> <span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">allgather</span> <span class="pre">(const</span> <span class="pre">BufferObjectType</span> <span class="pre">&amp;send_buf,</span> <span class="pre">vector_class&lt;</span> <span class="pre">reference_wrapper_class&lt;</span> <span class="pre">BufferObjectType</span> <span class="pre">&gt;&gt;</span> <span class="pre">&amp;recv_bufs,</span> <span class="pre">size_t</span> <span class="pre">send_count,</span> <span class="pre">const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">stream</span> <span class="pre">&amp;stream,</span> <span class="pre">const</span> <span class="pre">allgather_attr</span> <span class="pre">&amp;attr=default_allgather_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
+<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
+<p>Type-safe version.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>send_buf</strong> &#8211; the buffer of <code class="docutils literal notranslate"><span class="pre">BufferObjectType</span></code> with <code class="docutils literal notranslate"><span class="pre">send_count</span></code> elements that stores local data to be gathered </p></li>
+<li><p><strong>recv_bufs</strong> &#8211; [out] array of buffers to store gathered result, one buffer per rank; each buffer must be large enough to keep send_count elements of <code class="docutils literal notranslate"><span class="pre">BufferObjectType</span></code> size </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="sig-name descname"><span class="pre">template&lt;class</span> <span class="pre">BufferObjectType,</span> <span class="pre">class</span> <span class="pre">=</span> <span class="pre">typename</span> <span class="pre">std::enable_if&lt;is_class_supported&lt;BufferObjectType&gt;(),</span> <span class="pre">event&gt;::type&gt;</span> <span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">allgather</span> <span class="pre">(const</span> <span class="pre">BufferObjectType</span> <span class="pre">&amp;send_buf,</span> <span class="pre">vector_class&lt;</span> <span class="pre">reference_wrapper_class&lt;</span> <span class="pre">BufferObjectType</span> <span class="pre">&gt;&gt;</span> <span class="pre">&amp;recv_bufs,</span> <span class="pre">size_t</span> <span class="pre">send_count,</span> <span class="pre">const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">allgather_attr</span> <span class="pre">&amp;attr=default_allgather_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
 <dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
 <p>Type-safe version. </p>
 </dd></dl>
@@ -485,20 +563,20 @@ document.write(`
     <div class="footer-article-item"><!-- Previous / next buttons -->
 <div class="prev-next-area">
     <a class="left-prev"
-       href="group-call.html"
+       href="../collective-operations.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Group Calls</p>
+        <p class="prev-next-title">Collective Operations</p>
       </div>
     </a>
     <a class="right-next"
-       href="reduce-scatter.html"
+       href="allgatherv.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">ReduceScatter</p>
+        <p class="prev-next-title">Allgatherv</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

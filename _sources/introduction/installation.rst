@@ -8,24 +8,30 @@
 Installation Guide
 ==================
 
-This page explains how to install and configure the |product_full| (|product_short|).
-|product_short| supports different installation scenarios using command line interface.
+Install and configure the |product_full| (|product_short|) on your system.
+|product_short| supports different installation scenarios using command line interface (CLI).
 
 System Requirements
 *******************
 
-Visit |sys_req|_ to learn about hardware and software requirements for |product_short|.
+Ensure your system meets the hardware and software requirements before starting with installing oneCCL. See |sys_req|_ to learn about hardware and software requirements for |product_short|.
 
 Installation using Command Line Interface
 *****************************************
 
 To install |product_short| using command line interface (CLI), follow these steps:
 
-#. Go to the ``ccl`` folder:
+#. Clone the OneCCL git repository:
 
    ::
 
-      cd ccl
+      git clone https://github.com/oneapi-src/oneCCL.git
+
+#. Navigate to the oneCCL folder:
+
+   ::
+
+      cd oneCCL
 
 #. Create a new folder:
 
@@ -51,22 +57,22 @@ To install |product_short| using command line interface (CLI), follow these step
 
       make -j install
 
-In order to have a clear build, create a new ``build`` directory and invoke ``cmake`` within the directory.
+If you need a clean build, create a new ``build`` directory and invoke ``cmake`` within the directory.
 
 Custom Installation
 ^^^^^^^^^^^^^^^^^^^
 
-You can customize CLI-based installation (for example, specify directory, compiler, and build type):
+You can customize CLI-based installation (for example, you can specify the directory, compiler, and build type):
 
-* To specify **installation directory**, modify the ``cmake`` command:
+* To specify the **installation directory**, modify the ``cmake`` command:
 
   ::
 
     cmake .. -DCMAKE_INSTALL_PREFIX=</path/to/installation/directory>
 
-  If no ``-DCMAKE_INSTALL_PREFIX`` is specified, |product_short| is installed into the ``_install`` subdirectory of the current build directory. For example, ``ccl/build/_install``.
+  If no ``-DCMAKE_INSTALL_PREFIX`` is specified, |product_short| is installed into the ``_install`` subdirectory of the current build directory (the default installation path will be ``oneCCL/build/_install``).
 
-* To specify **compiler**, modify the ``cmake`` command:
+* To specify the **compiler**, modify the ``cmake`` command:
 
   ::
 
@@ -74,7 +80,7 @@ You can customize CLI-based installation (for example, specify directory, compil
 
 .. _enable_sycl:
 
-*  To enable ``SYCL`` devices communication support, specify ``SYCL`` compiler (only Intel\ |reg|\  oneAPI DPC++/C++ Compiler is supported):
+* To enable ``SYCL`` devices communication support, specify ``SYCL`` compiler (only Intel\ |reg|\  oneAPI DPC++/C++ Compiler is supported):
 
   ::
 
@@ -92,8 +98,8 @@ You can customize CLI-based installation (for example, specify directory, compil
 
      make -j VERBOSE=1 install
 
-Find More
-*********
+Learn More
+***********
 - `oneCCL Get Started Guide <https://www.intel.com/content/www/us/en/docs/oneccl/get-started-guide/current/overview.html>`_
 - `oneCCL GitHub Source Code Repository <https://github.com/oneapi-src/oneCCL>`_
 - `oneCCL Documentation <https://oneapi-src.github.io/oneCCL/>`_

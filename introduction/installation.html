@@ -1,12 +1,13 @@
 
+
 <!DOCTYPE html>
 
 
-<html lang="en" >
+<html >
 
   <head>
     <meta charset="ascii" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
     <title>Installation Guide &#8212; oneCCL  documentation</title>
   
@@ -28,19 +29,20 @@
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
 
-    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=362ab14a" />
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" href="../_static/styles/sphinx-book-theme.css?digest=14f4ca6b54d191a8c7657f6c759bf11a5fb86285" type="text/css" />
-    <link rel="stylesheet" type="text/css" href="../_static/tabs.css?v=a5c4661c" />
+    <link rel="stylesheet" type="text/css" href="../_static/tabs.css" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=c73c0f3e"></script>
-    <script src="../_static/doctools.js?v=9a2dae69"></script>
-    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?digest=5a5c038af52cf7bc1a1ec88eea08e6366ee68824"></script>
-    <link rel="icon" href="../_static/favicons.png"/>
+    <link rel="shortcut icon" href="../_static/favicons.png"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Sample Application" href="sample.html" />
@@ -185,12 +187,14 @@
 <li class="toctree-l2 has-children"><a class="reference internal" href="../api/operations.html">Communication Operations</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../api/operations/datatypes.html">Datatypes</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../api/operations/collective-operations.html">Collective Operations</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-7"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/allgather.html">Allgather</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/allgatherv.html">Allgatherv</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/allreduce.html">Allreduce</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/alltoall.html">Alltoall</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/alltoallv.html">Alltoallv</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/barrier.html">Barrier</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/broadcast.html">Broadcast</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/group-call.html">Group Calls</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/reduce.html">Reduce</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/reduce-scatter.html">ReduceScatter</a></li>
 </ul>
@@ -201,6 +205,11 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../env-variables.html">Environment Variables</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Benchmark User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../benchmark-guide/benchmark.html">oneCCL Benchmark Collective User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../benchmark-guide/benchmark-point-to-point.html">oneCCL Benchmark Point-to-Point User Guide</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Notices and Disclaimers</span></p>
 <ul class="nav bd-sidenav">
@@ -403,7 +412,7 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#custom-installation">Custom Installation</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#find-more">Find More</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#learn-more">Learn More</a></li>
 </ul>
             </nav>
         </div>
@@ -416,19 +425,24 @@ document.write(`
                 <article class="bd-article" role="main">
                   
   <section id="installation-guide">
-<h1>Installation Guide<a class="headerlink" href="#installation-guide" title="Link to this heading">#</a></h1>
-<p>This page explains how to install and configure the Intel&#174; oneAPI Collective Communications Library (oneCCL).
-oneCCL supports different installation scenarios using command line interface.</p>
+<h1>Installation Guide<a class="headerlink" href="#installation-guide" title="Permalink to this headline">#</a></h1>
+<p>Install and configure the Intel&#174; oneAPI Collective Communications Library (oneCCL) on your system.
+oneCCL supports different installation scenarios using command line interface (CLI).</p>
 <section id="system-requirements">
-<h2>System Requirements<a class="headerlink" href="#system-requirements" title="Link to this heading">#</a></h2>
-<p>Visit <a class="reference external" href="https://www.intel.com/content/www/us/en/developer/articles/system-requirements/oneapi-collective-communication-library-system-requirements.html">Intel&#174; oneAPI Collective Communications Library System Requirements</a> to learn about hardware and software requirements for oneCCL.</p>
+<h2>System Requirements<a class="headerlink" href="#system-requirements" title="Permalink to this headline">#</a></h2>
+<p>Ensure your system meets the hardware and software requirements before starting with installing oneCCL. See <a class="reference external" href="https://www.intel.com/content/www/us/en/developer/articles/system-requirements/oneapi-collective-communication-library-system-requirements.html">Intel&#174; oneAPI Collective Communications Library System Requirements</a> to learn about hardware and software requirements for oneCCL.</p>
 </section>
 <section id="installation-using-command-line-interface">
-<h2>Installation using Command Line Interface<a class="headerlink" href="#installation-using-command-line-interface" title="Link to this heading">#</a></h2>
+<h2>Installation using Command Line Interface<a class="headerlink" href="#installation-using-command-line-interface" title="Permalink to this headline">#</a></h2>
 <p>To install oneCCL using command line interface (CLI), follow these steps:</p>
 <ol class="arabic">
-<li><p>Go to the <code class="docutils literal notranslate"><span class="pre">ccl</span></code> folder:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>ccl
+<li><p>Clone the OneCCL git repository:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/oneapi-src/oneCCL.git
+</pre></div>
+</div>
+</li>
+<li><p>Navigate to the oneCCL folder:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>oneCCL
 </pre></div>
 </div>
 </li>
@@ -453,32 +467,29 @@ oneCCL supports different installation scenarios using command line interface.</
 </div>
 </li>
 </ol>
-<p>In order to have a clear build, create a new <code class="docutils literal notranslate"><span class="pre">build</span></code> directory and invoke <code class="docutils literal notranslate"><span class="pre">cmake</span></code> within the directory.</p>
+<p>If you need a clean build, create a new <code class="docutils literal notranslate"><span class="pre">build</span></code> directory and invoke <code class="docutils literal notranslate"><span class="pre">cmake</span></code> within the directory.</p>
 <section id="custom-installation">
-<h3>Custom Installation<a class="headerlink" href="#custom-installation" title="Link to this heading">#</a></h3>
-<p>You can customize CLI-based installation (for example, specify directory, compiler, and build type):</p>
+<h3>Custom Installation<a class="headerlink" href="#custom-installation" title="Permalink to this headline">#</a></h3>
+<p>You can customize CLI-based installation (for example, you can specify the directory, compiler, and build type):</p>
 <ul>
-<li><p>To specify <strong>installation directory</strong>, modify the <code class="docutils literal notranslate"><span class="pre">cmake</span></code> command:</p>
+<li><p>To specify the <strong>installation directory</strong>, modify the <code class="docutils literal notranslate"><span class="pre">cmake</span></code> command:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake<span class="w"> </span>..<span class="w"> </span>-DCMAKE_INSTALL_PREFIX<span class="o">=</span>&lt;/path/to/installation/directory&gt;
 </pre></div>
 </div>
-<p>If no <code class="docutils literal notranslate"><span class="pre">-DCMAKE_INSTALL_PREFIX</span></code> is specified, oneCCL is installed into the <code class="docutils literal notranslate"><span class="pre">_install</span></code> subdirectory of the current build directory. For example, <code class="docutils literal notranslate"><span class="pre">ccl/build/_install</span></code>.</p>
+<p>If no <code class="docutils literal notranslate"><span class="pre">-DCMAKE_INSTALL_PREFIX</span></code> is specified, oneCCL is installed into the <code class="docutils literal notranslate"><span class="pre">_install</span></code> subdirectory of the current build directory (the default installation path will be <code class="docutils literal notranslate"><span class="pre">oneCCL/build/_install</span></code>).</p>
 </li>
-<li><p>To specify <strong>compiler</strong>, modify the <code class="docutils literal notranslate"><span class="pre">cmake</span></code> command:</p>
+<li><p>To specify the <strong>compiler</strong>, modify the <code class="docutils literal notranslate"><span class="pre">cmake</span></code> command:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake<span class="w"> </span>..<span class="w"> </span>-DCMAKE_C_COMPILER<span class="o">=</span>&lt;c_compiler&gt;<span class="w"> </span>-DCMAKE_CXX_COMPILER<span class="o">=</span>&lt;cxx_compiler&gt;
 </pre></div>
 </div>
 </li>
 </ul>
-<ul class="simple" id="enable-sycl">
-<li><p>To enable <code class="docutils literal notranslate"><span class="pre">SYCL</span></code> devices communication support, specify <code class="docutils literal notranslate"><span class="pre">SYCL</span></code> compiler (only Intel&#174; oneAPI DPC++/C++ Compiler is supported):</p></li>
-</ul>
-<blockquote>
-<div><div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake<span class="w"> </span>..<span class="w"> </span>-DCMAKE_C_COMPILER<span class="o">=</span>icx<span class="w"> </span>-DCMAKE_CXX_COMPILER<span class="o">=</span>icpx<span class="w"> </span>-DCOMPUTE_BACKEND<span class="o">=</span>dpcpp
+<ul id="enable-sycl">
+<li><p>To enable <code class="docutils literal notranslate"><span class="pre">SYCL</span></code> devices communication support, specify <code class="docutils literal notranslate"><span class="pre">SYCL</span></code> compiler (only Intel&#174; oneAPI DPC++/C++ Compiler is supported):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake<span class="w"> </span>..<span class="w"> </span>-DCMAKE_C_COMPILER<span class="o">=</span>icx<span class="w"> </span>-DCMAKE_CXX_COMPILER<span class="o">=</span>icpx<span class="w"> </span>-DCOMPUTE_BACKEND<span class="o">=</span>dpcpp
 </pre></div>
 </div>
-</div></blockquote>
-<ul>
+</li>
 <li><p>To specify the <strong>build type</strong>, modify the <code class="docutils literal notranslate"><span class="pre">cmake</span></code> command:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake<span class="w"> </span>..<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=[</span>Debug<span class="p">|</span>Release<span class="o">]</span>
 </pre></div>
@@ -492,8 +503,8 @@ oneCCL supports different installation scenarios using command line interface.</
 </ul>
 </section>
 </section>
-<section id="find-more">
-<h2>Find More<a class="headerlink" href="#find-more" title="Link to this heading">#</a></h2>
+<section id="learn-more">
+<h2>Learn More<a class="headerlink" href="#learn-more" title="Permalink to this headline">#</a></h2>
 <ul class="simple">
 <li><p><a class="reference external" href="https://www.intel.com/content/www/us/en/docs/oneccl/get-started-guide/current/overview.html">oneCCL Get Started Guide</a></p></li>
 <li><p><a class="reference external" href="https://github.com/oneapi-src/oneCCL">oneCCL GitHub Source Code Repository</a></p></li>
@@ -555,7 +566,7 @@ oneCCL supports different installation scenarios using command line interface.</
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#custom-installation">Custom Installation</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#find-more">Find More</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#learn-more">Learn More</a></li>
 </ul>
   </nav></div>
 
