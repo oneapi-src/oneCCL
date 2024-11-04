@@ -75,8 +75,8 @@ API, and the current oneCCL API.
 |`ncclResult_t ncclCommInitRank(comm, size, id, rank)`|`onecclResult_t onecclCommInitRank(comm, size, id, rank)(1)`|`comm cl::create_communicator(size, rank, device, context, kvs) comms ccl:create_communicators(size, rank, device, context, kvs)`|
 |`ncclResult_t ncclCommInitRankConfig(comm, size, id, rank, attr)`|`onecclResult_t onecclCommInitRankConfig(comm, size, id, rank, attr)`|`comm ccl:create_communicator(size, rank, device, context, kvs, attr)`|
 |`ncclResult_t ncclCommInitAll (comms, ndev, dev_list)`|`onecclResult_t onecclCommInitAll(comms,ndev,dev_list)`| Not currently available.Working on adding support.|
-|`ncclCommSplit`    |	Not implemented	              | Not implemented        |
-|`nccltResult ncclCommFinalize(comm)`|`onecclResult_t onecclCommFinalize(comm)`| N/A |
+|`ncclResult_t ncclCommSplit (comm, color, key, newcomm, config`    |	onecclCommSplit(comm, color, key, newcomm, config)	              | Not implemented        |
+|`ncclResult_t ncclCommFinalize(comm)`|`onecclResult_t onecclCommFinalize(comm)`| N/A |
 |`ncclResult_t ncclCommDestroy(comm)`|`onecclResult_t onecclCommDestroy(comm)`|	Destructor |
 
 This assumes that each rank is associated with a device, which has been set before calling this function (ncclCommInitRank).
@@ -85,13 +85,12 @@ This assumes that each rank is associated with a device, which has been set befo
 
 | NCCL              | oneCCL (proposed C)          | oneCCL (current, C++)   |
 |-------------------|------------------------------|-------------------------|
-|`ncclResult_t ncclAllgather (sendbuff,recvbuff,count, datatype, op, comm, stream)`|`onecclResult_t onecclAllgather(sendbuff, recvbuff, count, datatype, op, comm, oneccl_stream)`|`ccl::event communicator::allgather (2) (sendbuff, recvbuff, count, datatype, op, comm, oneccl_stream, deps)`|
-|`ncclResult_t ncclAllreduce(sendbuff,recvbuff, count, datatype, op, comm, stream)`|`onecclResult_t onecclAllreduce(sendbuff, recvbuff, count, datatype, op, comm, oneccl_stream)`|`ccl::event 
-communicator::allreduce(sendbuff, recvbuff, count, datatype, op, comm, oneccl_stream, deps)`|
-|`ncclResult_t ncclBroadcast(sendbuff,recvbuff,count, datatype, op, comm, stream)`|`onecclResult_t onecclBroadcast(sendbuff, recvbuff, count, datatype, op, comm, oneccl_stream)`|`ccl::event communicator::broadcast (3) (sendbuff, recvbuff, count, datatype, op, comm, oneccl_stream, deps)`|
-|`ncclResult_t ncclReduce(sendbuff,recvbuff,count, datatype, op, comm, stream)`|`onecclResult_t onecclReduce(sendbuff, recvbuff, count, datatype, op, comm, oneccl_stream)`|`ccl::event communicator::reduce(sendbuff, recvbuff, count, datatype, op, comm, oneccl_stream, deps)`|
-|`ncclResult_t ncclReduceScatter(sendbuff,recvbuff, count, datatype, op, comm, stream)`|`onecclResult_t onecclReduceScatter(sendbuff, recvbuff, count, datatype, op, comm, oneccl_stream)`|`ccl::event communicator::reduce_scatter(sendbuff, recvbuff, count, datatype, op, comm, oneccl_stream, deps)`|
-| N/A	               |`onecclAlltoall onecclAlltoallv` We could deprecate|`communicator::alltoall communicator::alltoallv`|
+|`ncclResult_t ncclAllgather(sendbuff, recvbuff, count, datatype, comm, stream)`|`onecclResult_t onecclAllgather(sendbuff, recvbuff, count, datatype, comm, oneccl_stream)`|`ccl::event communicator::allgather (2) (sendbuff, recvbuff, count, datatype, comm, oneccl_stream, deps)`|
+|`ncclResult_t ncclAllreduce(sendbuff, recvbuff, count, datatype, op, comm, stream)`|`onecclResult_t onecclAllreduce(sendbuff, recvbuff, count, datatype, op, comm, oneccl_stream)`|`ccl::event communicator::allreduce(sendbuff, recvbuff, count, datatype, op, comm, oneccl_stream, deps)`|
+|`ncclResult_t ncclBroadcast(sendbuff, recvbuff, count, datatype, op, comm, stream)`|`onecclResult_t onecclBroadcast(sendbuff, recvbuff, count, datatype, op, comm, oneccl_stream)`|`ccl::event communicator::broadcast (3) (sendbuff, recvbuff, count, datatype, op, comm, oneccl_stream, deps)`|
+|`ncclResult_t ncclReduce(sendbuff, recvbuff, count, datatype, op, comm, stream)`|`onecclResult_t onecclReduce(sendbuff, recvbuff, count, datatype, op, comm, oneccl_stream)`|`ccl::event communicator::reduce(sendbuff, recvbuff, count, datatype, op, comm, oneccl_stream, deps)`|
+|`ncclResult_t ncclReduceScatter(sendbuff, recvbuff, count, datatype, op, comm, stream)`|`onecclResult_t onecclReduceScatter(sendbuff, recvbuff, count, datatype, op, comm, oneccl_stream)`|`ccl::event communicator::reduce_scatter(sendbuff, recvbuff, count, datatype, op, comm, oneccl_stream, deps)`|
+| N/A	             |`onecclAlltoall onecclAlltoallv` We could deprecate|`communicator::alltoall communicator::alltoallv`|
 | N/A                |`onecclBarrier` We could deprecate and use Allreduce with 1 Byte|`ccl::event communicator::barrier`|
 
 - Currently oneCCL contains Allgatherv, but this will be deprecated in the
@@ -111,7 +110,7 @@ communicator::allreduce(sendbuff, recvbuff, count, datatype, op, comm, oneccl_st
 | NCCL              | oneCCL (proposed C)          | oneCCL (current, C++)   |
 |-------------------|------------------------------|-------------------------|
 |`ncclResult_t ncclSend(sendbuf, count, datatype, peer, comm, stream)`|`onecclResult_t onecclSend(sendbuf, count, datatype, peer, comm, oneccl_stream)`|`ccl::event communicator::send(sendbuf, count,datatype, peer, comm, oneccl_stream)`|
-|`ncclResult_t ncclRecv(…)`|`onecclResult_t onecclRecv(…)`|`communicator::recv`|
+|`ncclResult_t ncclRecv(recvbuf, count, datatype, peer, comm, stream)`|`onecclResult_t onecclRecv(recvbuf, count, datatype, peer, comm, oneccl_stream)`|`ccl::event communicator::recv(recvbuf, count,datatype, peer, comm, oneccl_stream)`|
 
 #### Other APIs
 
