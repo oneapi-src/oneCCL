@@ -14,7 +14,10 @@
  limitations under the License.
 */
 template <typename T, int N, int read_all>
-inline void reduce_kernel(void *recv, std::array<void *, MAX_NODE_RANKS> in, size_t idx);
+inline void reduce_kernel(void *recv,
+                          std::array<void *, MAX_NODE_RANKS> in,
+                          std::array<void *, MAX_NODE_RANKS> out,
+                          size_t idx);
 
 // copy data from src to dst
 template <typename T, int vec_size, int M>
@@ -49,8 +52,9 @@ void inline reduce_sum_general(const void *send,
                                void *recv,
                                void *tmp,
                                std::array<void *, MAX_NODE_RANKS> in,
-                               size_t *sync_ptr,
-                               const ccl_barrier_data barrier_data,
+                               std::array<void *, MAX_NODE_RANKS> out,
+                               ccl_kernel_barrier_data kernel_barrier_data,
+                               const ccl_comm_barrier_data comm_barrier_data,
                                const size_t count_cp,
                                const size_t count_red,
                                const sycl::nd_item<1> it) {
@@ -62,29 +66,29 @@ void inline reduce_sum_general(const void *send,
         copy_data<T, vec_size, M>(tmp, send, count_cp, it);
 
         // local barrier within gpu
-        kernel_barrier(sync_ptr, it);
+        kernel_barrier(kernel_barrier_data.get_sync_ptr(), it);
     }
 
     if (use_global_barrier) {
         // global communication barrier across ranks
-        comm_barrier(barrier_data, it);
+        comm_barrier(comm_barrier_data, it);
     }
 
     // reset local barrier counter
     if (use_local_barrier && idx == 0) {
-        *sync_ptr = 0;
+        kernel_barrier_data.reset_sync_data();
     }
 
     const size_t packed_count = count_red / vec_size;
 
     // reduce data from all ranks
     if (idx < packed_count) {
-        reduce_kernel<AT, N, read_all>(recv, in, idx);
+        reduce_kernel<AT, N, read_all>(recv, in, out, idx);
     }
     else {
         const size_t new_idx = idx + (vec_size - 1) * packed_count;
         if (new_idx < count_red) {
-            reduce_kernel<T, N, read_all>(recv, in, new_idx);
+            reduce_kernel<T, N, read_all>(recv, in, out, new_idx);
         }
     }
 }

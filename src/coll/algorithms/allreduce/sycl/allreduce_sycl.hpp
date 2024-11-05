@@ -27,6 +27,7 @@
                                        const void* in_buf, \
                                        void* out_buf, \
                                        size_t count, \
+                                       const ccl::vector_class<ccl::event>& deps, \
                                        bool& done);
 
 SYCL_ALLREDUCE_FUNCTIONS(small)
@@ -43,8 +44,8 @@ event allreduce_sycl(sycl::queue& q,
                      size_t count,
                      datatype dtype,
                      reduction reduction,
-                     const communicator& comm,
-                     const stream& op_stream,
+                     ccl_comm* comm,
+                     ccl_stream* op_stream,
                      const allreduce_attr& attr,
                      const vector_class<event>& deps,
                      bool& done);
@@ -78,7 +79,7 @@ ccl::event allreduce_scaleout_sycl(sycl::queue& q,
                                    ccl::datatype dtype,
                                    ccl::reduction reduction,
                                    ccl_comm* comm,
-                                   ccl::vector_class<ccl::event>& deps,
+                                   const ccl::vector_class<ccl::event>& deps,
                                    bool& done,
-                                   bool copy_to_host = true,
+                                   bool direct,
                                    bool is_cpu_buffers = false);

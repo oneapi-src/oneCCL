@@ -48,15 +48,27 @@ ccl::event reduce_scatter_sycl(sycl::queue& q,
                                void* recv_buf,
                                size_t recv_count,
                                datatype dtype,
-                               reduction reduction,
-                               const ccl::communicator& comm,
-                               const stream& op_stream,
+                               ccl::reduction reduction,
+                               ccl_comm* comm,
+                               ccl_stream* global_stream,
                                const reduce_scatter_attr& attr,
                                const vector_class<event>& deps,
                                bool& done);
 
 } // namespace v1
 } // namespace ccl
+
+ccl::event reduce_scatter_scaleout_sycl(sycl::queue& q,
+                                        const void* send_buf,
+                                        void* recv_buf,
+                                        size_t recv_count,
+                                        ccl::datatype dtype,
+                                        ccl::reduction reduction,
+                                        ccl_comm* comm,
+                                        const ccl::vector_class<ccl::event>& deps,
+                                        bool& done,
+                                        bool direct = false,
+                                        bool is_cpu_buffers = false);
 
 ccl::event reduce_scatter_small(const void* send_buf,
                                 void* recv_buf,

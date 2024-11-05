@@ -15,6 +15,7 @@
 */
 #include "atl/mpi/atl_mpi_ctx.hpp"
 #include "coll/selection/selection.hpp"
+#include "coll/group/group.hpp"
 #include "comm/comm.hpp"
 #include "common/global/global.hpp"
 
@@ -91,8 +92,8 @@ bool ccl_is_direct_algo(const ccl_selector_param& param) {
     else if (param.ctype == ccl_coll_bcast) {
         res = (selector->get<ccl_coll_bcast>(param) == ccl_coll_bcast_direct);
     }
-    else if (param.ctype == ccl_coll_bcastExt) {
-        res = (selector->get<ccl_coll_bcastExt>(param) == ccl_coll_bcastExt_direct);
+    else if (param.ctype == ccl_coll_broadcast) {
+        res = (selector->get<ccl_coll_broadcast>(param) == ccl_coll_broadcast_direct);
     }
     else if (param.ctype == ccl_coll_recv) {
         res = (selector->get<ccl_coll_recv>(param) == ccl_coll_recv_direct);
@@ -189,14 +190,6 @@ bool is_single_card(const ccl_selector_param& param) {
 
 } // namespace checkers
 
-#define RETURN_FALSE_IF(cond, ...) \
-    do { \
-        if (cond) { \
-            LOG_DEBUG("selection checker: ", ##__VA_ARGS__); \
-            return false; \
-        } \
-    } while (0)
-
 static bool ccl_is_device_side_algo(ccl_coll_algo algo, const ccl_selector_param& param) {
     CCL_THROW_IF_NOT(algo.has_value(), "empty algo value");
 
@@ -218,8 +211,8 @@ static bool ccl_is_device_side_algo(ccl_coll_algo algo, const ccl_selector_param
     else if (param.ctype == ccl_coll_bcast) {
         return algo.bcast == ccl_coll_bcast_topo;
     }
-    else if (param.ctype == ccl_coll_bcastExt) {
-        return algo.bcastExt == ccl_coll_bcastExt_topo;
+    else if (param.ctype == ccl_coll_broadcast) {
+        return algo.broadcast == ccl_coll_broadcast_topo;
     }
     else if (param.ctype == ccl_coll_recv) {
         return algo.recv == ccl_coll_recv_topo;
@@ -250,7 +243,7 @@ bool ccl_is_device_side_algo(const ccl_selector_param& param) {
 
     auto supported_colls = { ccl_coll_allgather,      ccl_coll_allgatherv, ccl_coll_allreduce,
                              ccl_coll_alltoall,       ccl_coll_alltoallv,  ccl_coll_bcast,
-                             ccl_coll_bcastExt,       ccl_coll_recv,       ccl_coll_reduce,
+                             ccl_coll_broadcast,      ccl_coll_recv,       ccl_coll_reduce,
                              ccl_coll_reduce_scatter, ccl_coll_send };
     RETURN_FALSE_IF(!checkers::is_coll_supported(supported_colls, param.ctype),
                     "coll ",
@@ -278,8 +271,8 @@ bool ccl_is_device_side_algo(const ccl_selector_param& param) {
     else if (param.ctype == ccl_coll_bcast) {
         algo.bcast = selector->get<ccl_coll_bcast>(param);
     }
-    else if (param.ctype == ccl_coll_bcastExt) {
-        algo.bcastExt = selector->get<ccl_coll_bcastExt>(param);
+    else if (param.ctype == ccl_coll_broadcast) {
+        algo.broadcast = selector->get<ccl_coll_broadcast>(param);
     }
     else if (param.ctype == ccl_coll_recv) {
         algo.recv = selector->get<ccl_coll_recv>(param);
@@ -306,7 +299,7 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
 
     auto supported_colls = { ccl_coll_allgather,      ccl_coll_allgatherv, ccl_coll_allreduce,
                              ccl_coll_alltoall,       ccl_coll_alltoallv,  ccl_coll_bcast,
-                             ccl_coll_bcastExt,       ccl_coll_recv,       ccl_coll_reduce,
+                             ccl_coll_broadcast,      ccl_coll_recv,       ccl_coll_reduce,
                              ccl_coll_reduce_scatter, ccl_coll_send };
     RETURN_FALSE_IF(!checkers::is_coll_supported(supported_colls, param.ctype),
                     "coll is not supported");
@@ -344,9 +337,11 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
 #ifdef CCL_ENABLE_SYCL
     RETURN_FALSE_IF(!param.comm->get_topo_manager().has_p2p_access(),
                     "no p2p access between devices");
-
-    RETURN_FALSE_IF(!param.comm->get_topo_manager().has_all_vertices_connected(),
-                    "no connection between vertices");
+    // WA
+    if (!ccl::global_data::env().enable_wa_fabric_vertex_connection_check) {
+        RETURN_FALSE_IF(!param.comm->get_topo_manager().has_all_vertices_connected(),
+                        "no connection between vertices");
+    }
 
     RETURN_FALSE_IF(!param.comm->get_topo_manager().has_same_ppn(),
                     "ppn is not the same among the nodes");
@@ -411,7 +406,7 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
     }
 #endif // CCL_ENABLE_SYCL
 
-    RETURN_FALSE_IF((param.ctype == ccl_coll_bcast || param.ctype == ccl_coll_bcastExt) &&
+    RETURN_FALSE_IF((param.ctype == ccl_coll_bcast || param.ctype == ccl_coll_broadcast) &&
                         !checkers::is_single_node(param),
                     "multi-node for ",
                     ccl_coll_type_to_str(param.ctype),
@@ -468,6 +463,7 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
         auto peer_rank_color = param.comm->get_topo_manager().get_intra_card_color(param.peer_rank);
 
         if (rank_color == peer_rank_color && !ccl::global_data::env().ze_pt2pt_read) {
+            // TODO: store this and then load back
             ccl::global_data::env().ze_pt2pt_read = 1;
             LOG_DEBUG("pt2pt: force read algo for within card execution case:"
                       " { color: ",
@@ -482,6 +478,10 @@ bool ccl_can_use_topo_algo(const ccl_selector_param& param) {
                       " }");
         }
 #endif // CCL_ENABLE_SYCL
+
+        RETURN_FALSE_IF(
+            group_impl::is_group_active && ccl::global_data::env().atl_transport == ccl_atl_ofi,
+            "ofi transport is not supported for group API");
     }
 
     return true;
@@ -526,14 +526,24 @@ bool ccl_can_use_datatype(ccl_coll_algo algo, const ccl_selector_param& param) {
 void set_offload_pt2pt_mpi_env() {
     auto lib_attr = atl_mpi_ctx::get_lib_attr();
     if (lib_attr.type == atl_mpi_ctx::ATL_MPI_LIB_IMPI && lib_attr.hmem == 1) {
-        setenv("I_MPI_OFFLOAD", "2", 0);
-        LOG_DEBUG("IMPI case: I_MPI_OFFLOAD is set");
+        if (ccl::global_data::get().ze_data != nullptr) {
+            setenv("I_MPI_OFFLOAD", "2", 0);
+            LOG_DEBUG("IMPI case: I_MPI_OFFLOAD is set");
+        }
+        else {
+            // Even though the library was compiled using SYCL, we could not initialze
+            // level-zero API. This means that we should not enable GPU offload
+            // inside IMPI.
+            setenv("I_MPI_OFFLOAD", "0", 0);
+            LOG_DEBUG("IMPI case: I_MPI_OFFLOAD is disenabled, could not initialize level-zero");
+        }
     }
     else if (lib_attr.type == atl_mpi_ctx::ATL_MPI_LIB_MPICH && lib_attr.hmem == 1) {
         setenv("MPIR_CVAR_CH4_OFI_ENABLE_GPU_PIPELINE", "1", 0);
-        setenv("MPIR_CVAR_CH4_OFI_GPU_PIPELINE_MAX_NUM_BUFFERS", "8", 0);
+        setenv("MPIR_CVAR_CH4_OFI_GPU_PIPELINE_THRESHOLD", "2048", 0);
+        setenv("MPIR_CVAR_CH4_OFI_GPU_PIPELINE_MAX_NUM_BUFFERS", "4", 0);
         setenv("MPIR_CVAR_CH4_OFI_GPU_PIPELINE_NUM_BUFFERS_PER_CHUNK", "4", 0);
-        setenv("MPIR_CVAR_CH4_OFI_GPU_PIPELINE_BUFFER_SZ", "524288", 0);
+        setenv("MPIR_CVAR_CH4_OFI_GPU_PIPELINE_BUFFER_SZ", "4194304", 0);
         setenv("MPIR_CVAR_CH4_OFI_GPU_PIPELINE_H2D_ENGINE_TYPE", "1", 0);
         setenv("MPIR_CVAR_CH4_OFI_GPU_PIPELINE_D2H_ENGINE_TYPE", "1", 0);
         LOG_DEBUG("MPIR case: MPIR_CVAR_ENABLE_GPU is set in MPICH internally");
@@ -543,6 +553,11 @@ void set_offload_pt2pt_mpi_env() {
 
 bool use_pt2pt_offload_algo() {
     bool res = true;
+
+    if (group_impl::is_group_active) {
+        return false;
+    }
+
     const char* env_value = std::getenv("PSM3_GPUDIRECT");
     if ((env_value == nullptr || std::strcmp(env_value, "0") == 0) &&
         ccl::global_data::env().atl_transport == ccl_atl_ofi) {

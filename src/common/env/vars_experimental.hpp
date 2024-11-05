@@ -72,7 +72,7 @@ constexpr const char* CCL_REDUCE_SCATTER_MONOLITHIC_PIPELINE_KERNEL = "CCL_REDUC
  * 
  * "<value>": "drmfd", "pidfd", "sockets"
  * 
- * By-default: "drmfd"
+ * By-default: "pidfd"
  */
 constexpr const char* CCL_ZE_IPC_EXCHANGE = "CCL_ZE_IPC_EXCHANGE";
 
@@ -215,6 +215,15 @@ constexpr const char* CCL_SYCL_ALLGATHERV_SMALL_THRESHOLD = "CCL_SYCL_ALLGATHERV
 constexpr const char* CCL_SYCL_ALLGATHERV_MEDIUM_THRESHOLD = "CCL_SYCL_ALLGATHERV_MEDIUM_THRESHOLD";
 
 /**
+ * @brief Specify the threshold for the scaleout algorithm in allgatherv
+ *
+ * @details Set the threshold in bytes to specify the scaleout algorithm in the allgatherv
+ * collective. Default value is 1048576. "<value>"" : ">=0"
+ *
+ */
+constexpr const char* CCL_SYCL_ALLGATHERV_SCALEOUT_THRESHOLD = "CCL_SYCL_ALLGATHERV_SCALEOUT_THRESHOLD";
+
+/**
  * @brief Enable the use of persistent temporary buffer in allreduce
  *
  * @details Setting this environment variable to 1 enables the use of a persistent temporary
@@ -248,6 +257,24 @@ constexpr const char* CCL_SYCL_ALLREDUCE_SMALL_THRESHOLD = "CCL_SYCL_ALLREDUCE_S
 constexpr const char* CCL_SYCL_ALLREDUCE_MEDIUM_THRESHOLD = "CCL_SYCL_ALLREDUCE_MEDIUM_THRESHOLD";
 
 /**
+ * @brief Specify the maximum threshold for the Allreduce Sycl scale-out algorithm
+ *
+ * @details Set the threshold in bytes to specify the Sycl scaleout algorithm in the allreduce
+ * collective. Default value is 1048576. "<value>"" : ">=0"
+ *
+ */
+constexpr const char* CCL_SYCL_ALLREDUCE_SCALEOUT_THRESHOLD = "CCL_SYCL_ALLREDUCE_SCALEOUT_THRESHOLD";
+
+/**
+ * @brief Specify the maximum threshold for the Allreduce Sycl scale-out direct algorithm
+ *
+ * @details Set the threshold in bytes to specify the Sycl scaleout direct algorithm (call MPI_allreduce
+ * directly) in the allreduce collective. Default value is 1048576. "<value>"" : ">=0"
+ *
+ */
+constexpr const char* CCL_SYCL_ALLREDUCE_SCALEOUT_DIRECT_THRESHOLD = "CCL_SYCL_ALLREDUCE_SCALEOUT_DIRECT_THRESHOLD";
+
+/**
  * @brief Enable the use of persistent temporary buffer in reduce_scatter
  *
  * @details Setting this environment variable to 1 enables the use of a persistent temporary
@@ -278,19 +305,64 @@ constexpr const char* CCL_SYCL_REDUCE_SCATTER_SMALL_THRESHOLD = "CCL_SYCL_REDUCE
  * 
  */
 constexpr const char* CCL_SYCL_REDUCE_SCATTER_MEDIUM_THRESHOLD = "CCL_SYCL_REDUCE_SCATTER_MEDIUM_THRESHOLD";
+
+/**
+ * @brief Specify the threshold for the Sycl scaleout algorithm in reduce-scatter
+ *
+ * @details Set the threshold in bytes to specify the Sycl scaleout algorithm in the reduce-scatter
+ * collective. Default value is 4294967296. "<value>"" : ">=0"
+ *
+ */
+constexpr const char* CCL_SYCL_REDUCE_SCATTER_SCALEOUT_THRESHOLD = "CCL_SYCL_REDUCE_SCATTER_SCALEOUT_THRESHOLD";
 /** @} */
 /** @} */
 
 constexpr const char* CCL_SYCL_CCL_BARRIER = "CCL_SYCL_CCL_BARRIER";
+/**
+ * @brief Specify whether to disable single-kernel mode.
+ *
+ * @details single-kernel mode includes local synchronization of all threads.
+ * We can disable this and split the single kernel into multiple kernels.
+ *
+ * "<value>" : "0", "1"
+ *
+ * By-default: "1 (enabled)"
+ */
+constexpr const char* CCL_SYCL_KERNEL_SYNC = "CCL_SYCL_KERNEL_SYNC";
 constexpr const char* CCL_SYCL_SINGLE_NODE_ALGORITHM = "CCL_SYCL_SINGLE_NODE_ALGORITHM";
 constexpr const char* CCL_SYCL_AUTO_USE_TMP_BUF = "CCL_SYCL_AUTO_USE_TMP_BUF";
 constexpr const char* CCL_SYCL_COPY_ENGINE = "CCL_SYCL_COPY_ENGINE";
 constexpr const char* CCL_SYCL_KERNEL_COPY = "CCL_SYCL_KERNEL_COPY";
 constexpr const char* CCL_SYCL_ESIMD = "CCL_SYCL_ESIMD";
+/*
+ * @brief Specify whether to disable use of full vectors (>= 8 bytes)
+ *
+ * @details When data and count are 4 byte aligned, full vectors are used.
+ * We can disable that and just use vectors that are <= 4 bytes if possible.
+ *
+ * "<value>" : "0", "1"
+ *
+ * By-default: "1 (enabled)"
+ */
 constexpr const char* CCL_SYCL_FULL_VECTOR = "CCL_SYCL_FULL_VECTOR";
 constexpr const char* CCL_SYCL_TMP_BUF_SIZE = "CCL_SYCL_TMP_BUF_SIZE";
 constexpr const char* CCL_SYCL_SCALEOUT_HOST_BUF_SIZE = "CCL_SYCL_SCALEOUT_HOST_BUF_SIZE";
+constexpr const char* CCL_SYCL_SCALEOUT_DEVICE_BUF_SIZE = "CCL_SYCL_SCALEOUT_DEVICE_BUF_SIZE";
+constexpr const char* CCL_SYCL_REDUCE_SCATTER_SCALEOUT_DIRECT_THRESHOLD = "CCL_SYCL_REDUCE_SCATTER_SCALEOUT_DIRECT_THRESHOLD";
 constexpr const char* CCL_SYCL_KERNELS_LINE_SIZE = "CCL_SYCL_KERNELS_LINE_SIZE";
 constexpr const char* CCL_SYCL_SCALEOUT_BUF_ALLOC_MODE = "CCL_SYCL_SCALEOUT_BUF_ALLOC_MODE";
+constexpr const char* CCL_SYCL_PIPELINE_CHUNK_SIZE = "CCL_SYCL_PIPELINE_CHUNK_SIZE";
+constexpr const char* CCL_SYCL_ENABLE_PIPELINE_GPU_RDMA = "CCL_SYCL_ENABLE_PIPELINE_GPU_RDMA";
+constexpr const char* CCL_SYCL_ENABLE_DIRECT_GPU_RDMA = "CCL_SYCL_ENABLE_DIRECT_GPU_RDMA";
+/*
+ * @brief Specify whether to enable sycl kenels with sub-communicators
+ *
+ * @details While using sub-communicators provide an option to disable sycl kernels
+ *
+ * "<value>" : "0", "1"
+ *
+ * By-default: "1 (enabled)"
+ */
+constexpr const char* CCL_SYCL_SUB_COMMUICATOR = "CCL_SYCL_SUB_COMMUICATOR";
 
 #endif // CCL_ENABLE_SYCL

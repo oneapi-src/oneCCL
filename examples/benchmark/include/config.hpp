@@ -20,7 +20,7 @@
 #define LARGE_MSG_THRESHOLD (1 * 1024 * 1024)
 
 #define ALL_COLLS_LIST \
-    "allgather,allgatherv,allreduce,alltoall,alltoallv,bcast,bcastExt,reduce,reduce_scatter"
+    "allgather,allgatherv,allreduce,alltoall,alltoallv,bcast,broadcast,reduce,reduce_scatter"
 
 #define ALL_DTYPES_LIST "int8,int32,int64,uint64,float16,float32,float64,bfloat16"
 
@@ -52,7 +52,7 @@
 #define DEFAULT_SYCL_ROOT_DEV   (0)
 #define DEFAULT_SYCL_MEM_TYPE   SYCL_MEM_USM
 #define DEFAULT_SYCL_USM_TYPE   SYCL_USM_DEVICE
-#define DEFAULT_SYCL_QUEUE_TYPE SYCL_QUEUE_OUT_ORDER
+#define DEFAULT_SYCL_QUEUE_TYPE SYCL_QUEUE_IN_ORDER
 
 #define DEFAULT_COLL_LIST       "allreduce"
 #define DEFAULT_DTYPES_LIST     "float32"

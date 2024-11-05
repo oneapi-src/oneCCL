@@ -20,6 +20,215 @@
 #include "coll/algorithms/reduce_scatter/sycl/reduce_scatter_large_sycl_impl.hpp"
 #include "coll/algorithms/allgatherv/sycl/allgatherv_large_sycl_impl.hpp"
 
+template <typename T, int N, int vec_size>
+ccl::event allreduce_large_read_write_ipc(const void *send_buf,
+                                          void *recv_buf,
+                                          size_t count,
+                                          ccl::datatype dtype,
+                                          ccl::reduction reduction,
+                                          ccl_comm *comm,
+                                          ccl_stream *global_stream,
+                                          const ccl::vector_class<ccl::event> &deps,
+                                          const bool is_single_plane) {
+    auto ccl_dtype = ccl::global_data::get().dtypes->get(dtype);
+    const int dsize = ccl_dtype.size();
+    sycl::queue q = global_stream->get_native_stream();
+    const bool is_cpu_barrier = ccl::global_data::env().sycl_ccl_barrier;
+    const bool is_use_tmp = ccl::global_data::env().sycl_allreduce_tmp_buf;
+    std::shared_ptr<ccl_comm> node_comm = comm->get_node_comm();
+
+    CCL_THROW_IF_NOT(
+        node_comm->size() == N,
+        "SYCL allreduce read write algo implemented for single plane or single GPU cases");
+
+    // align kernel iteration count on kernel_mem_align
+    const int rank_align_count = ccl::global_data::env().kernel_mem_align / dsize;
+    const size_t align_count = N * rank_align_count;
+    const size_t rem_count = count % align_count;
+    const size_t pack_count = count - rem_count;
+
+    // algorithm chunk calculation
+    // the last rank also calculates the unaligned remaining counts
+    const int rank = node_comm->rank();
+    const size_t count_rank = pack_count / N;
+    const size_t offset_rank = rank * count_rank * dsize;
+    const size_t count_use = rank == N - 1 ? count_rank + rem_count : count_rank;
+
+    std::array<void *, MAX_NODE_RANKS> src_ptrs, dst_ptrs;
+
+    std::vector<sycl::event> dep_events = get_sycl_events(deps);
+    sycl::event work_event, barrier_event;
+
+    for (int idx = 0; idx < N; idx++) {
+        if (idx == rank) {
+            src_ptrs[idx] = (char *)send_buf + offset_rank;
+            dst_ptrs[idx] = (char *)recv_buf + offset_rank;
+        }
+        else {
+            src_ptrs[idx] =
+                (is_single_plane ? (char *)xelink_ptrs_rd[idx] : (char *)mdfi_ptr_rd) + offset_rank;
+            dst_ptrs[idx] =
+                (is_single_plane ? (char *)xelink_ptrs_wr[idx] : (char *)mdfi_ptr_wr) + offset_rank;
+        }
+    }
+
+    barrier_event = invoke_barrier(node_comm, q, dep_events, is_cpu_barrier);
+    work_event = q.submit([=](sycl::handler &h) {
+        h.depends_on(barrier_event);
+
+        const int work_group_size = 16;
+        const int sub_group_size = 16;
+
+        ccl_kernel_barrier_data dummy_kbd;
+        ccl_comm_barrier_data dummy_cbd = node_comm->barrier_data();
+        const size_t kernel_threads = count_use / vec_size + count_use % vec_size;
+        const size_t kernel_size =
+            ((kernel_threads + work_group_size - 1) / work_group_size) * work_group_size;
+
+        h.parallel_for(
+            sycl::nd_range<1>(kernel_size, work_group_size),
+            [=](sycl::nd_item<1> it) [[intel::reqd_sub_group_size(sub_group_size)]] {
+                reduce_sum<T, N, vec_size, 1, 0, 0, 0>(nullptr,
+                                                       nullptr,
+                                                       nullptr,
+                                                       src_ptrs,
+                                                       dst_ptrs,
+                                                       dummy_kbd,
+                                                       dummy_cbd,
+                                                       count_use,
+                                                       it);
+            });
+    });
+    barrier_event = invoke_barrier(node_comm, q, { work_event }, is_cpu_barrier);
+    return ccl::event::create_from_native(barrier_event);
+}
+
+template <typename T, int N, int vec_size>
+ccl::event allreduce_large_read_write_tmp(const void *send_buf,
+                                          void *recv_buf,
+                                          size_t count,
+                                          ccl::datatype dtype,
+                                          ccl::reduction reduction,
+                                          ccl_comm *comm,
+                                          ccl_stream *global_stream,
+                                          const ccl::vector_class<ccl::event> &deps,
+                                          const bool is_single_plane) {
+    auto ccl_dtype = ccl::global_data::get().dtypes->get(dtype);
+    const int dsize = ccl_dtype.size();
+    sycl::queue q = global_stream->get_native_stream();
+    const bool is_cpu_barrier = ccl::global_data::env().sycl_ccl_barrier;
+
+    std::shared_ptr<ccl_comm> node_comm = comm->get_node_comm();
+    const int node_comm_size = node_comm->size();
+    CCL_THROW_IF_NOT(
+        node_comm->size() == N,
+        "SYCL allreduce read write algo implemented for single plane or single GPU cases");
+    const int rank = node_comm->rank();
+
+    std::array<void *, MAX_NODE_RANKS> l_src_ptrs, l_dst_ptrs;
+    void *src_tmp_ptr = get_tmp_buf(1);
+    void *dst_tmp_ptr = get_tmp_buf(2);
+
+    std::vector<sycl::event> dep_events = get_sycl_events(deps);
+    std::vector<sycl::event> memcpy_events;
+    sycl::event work_event, barrier_event, memcpy_event;
+
+    // chunk size is calculated originally as a tmp buffer divided by the number of ranks
+    // aligned on the kernel_mem_align, here compute the full buffer size for the algo
+    const size_t chunk_size = get_tmp_buf_size_per_rank() * node_comm_size;
+    const size_t count_bytes = count * dsize;
+    const size_t rem_chunk_size = count_bytes % chunk_size;
+    const size_t num_chunks = count_bytes / chunk_size + (rem_chunk_size != 0);
+
+    for (size_t nc = 0; nc < num_chunks; nc++) {
+        // chunking calculation
+        const size_t chunk_offset = nc * chunk_size;
+        const size_t data_count =
+            ((nc < count_bytes / chunk_size) ? chunk_size : rem_chunk_size) / dsize;
+
+        // align kernel iteration count on kernel_mem_align
+        const int rank_align_count = ccl::global_data::env().kernel_mem_align / dsize;
+        const size_t align_count = N * rank_align_count;
+        const size_t rem_count = data_count % align_count;
+        const size_t pack_count = data_count - rem_count;
+
+        // kernel working data size and buffers offset calculation
+        const size_t count_rank = pack_count / N;
+        const size_t offset_rank = rank * count_rank * dsize;
+        // current iteration read/reduce/write data size
+        const size_t count_use = rank == N - 1 ? count_rank + rem_count : count_rank;
+
+        for (int idx = 0; idx < N; idx++) {
+            if (idx == rank) {
+                l_src_ptrs[idx] = (char *)src_tmp_ptr + offset_rank;
+                l_dst_ptrs[idx] = (char *)dst_tmp_ptr + offset_rank;
+            }
+            else {
+                l_src_ptrs[idx] =
+                    (is_single_plane ? (char *)xelink_ptrs_rd[idx] : (char *)mdfi_ptr_rd) +
+                    offset_rank;
+                l_dst_ptrs[idx] =
+                    (is_single_plane ? (char *)xelink_ptrs_wr[idx] : (char *)mdfi_ptr_wr) +
+                    offset_rank;
+            }
+        }
+
+        // copy from send_buf to the temp buffer
+        memcpy_event = q.submit([=](sycl::handler &h) {
+            if (nc == 0) {
+                h.depends_on(dep_events);
+            }
+            else {
+                h.depends_on(barrier_event);
+            }
+            h.memcpy(src_tmp_ptr, (char *)send_buf + chunk_offset, data_count * dsize);
+        });
+        memcpy_events.push_back(memcpy_event);
+
+        barrier_event = invoke_barrier(node_comm, q, memcpy_events, is_cpu_barrier);
+        memcpy_events.clear();
+
+        work_event = q.submit([=](sycl::handler &h) {
+            h.depends_on(barrier_event);
+
+            const int work_group_size = 16;
+            const int sub_group_size = 16;
+
+            ccl_kernel_barrier_data dummy_kbd;
+            ccl_comm_barrier_data dummy_cbd = node_comm->barrier_data();
+            const size_t kernel_threads = count_use / vec_size + count_use % vec_size;
+            const size_t kernel_size =
+                ((kernel_threads + work_group_size - 1) / work_group_size) * work_group_size;
+
+            h.parallel_for(
+                sycl::nd_range<1>(kernel_size, work_group_size),
+                [=](sycl::nd_item<1> it) [[intel::reqd_sub_group_size(sub_group_size)]] {
+                    reduce_sum<T, N, vec_size, 1, 0, 0, 0>(nullptr,
+                                                           nullptr,
+                                                           nullptr,
+                                                           l_src_ptrs,
+                                                           l_dst_ptrs,
+                                                           dummy_kbd,
+                                                           dummy_cbd,
+                                                           count_use,
+                                                           it);
+                });
+        });
+        barrier_event = invoke_barrier(node_comm, q, { work_event }, is_cpu_barrier);
+
+        // copy reduction result from temp buffer to recv_buffer
+        memcpy_event = q.submit([=](sycl::handler &h) {
+            h.depends_on(barrier_event);
+            h.memcpy((char *)recv_buf + chunk_offset, dst_tmp_ptr, data_count * dsize);
+        });
+        if (nc < num_chunks - 1) {
+            memcpy_events.push_back(memcpy_event);
+        }
+    }
+
+    return ccl::event::create_from_native(memcpy_event);
+}
+
 // NE is the number of ranks in even_comm and
 // NP is the number of ranks in pair_comm
 template <typename T, int NE, int NP, bool use_full_vector>
@@ -48,10 +257,42 @@ ccl::event allreduce_large_impl(const void *send_buf,
     const int even_comm_size = even_comm->size();
     const int node_comm_size = node_comm->size();
 
+    const bool is_multi_tile = pair_comm_size > 1;
+    const bool is_multi_gpu = even_comm_size > 1;
+    const bool is_single_plane = !is_multi_tile && is_multi_gpu;
+    const bool is_single_gpu = is_multi_tile && !is_multi_gpu;
+    const bool is_use_rw_opt = is_single_gpu || is_single_plane;
+
     constexpr int pipeline_size = 2;
     constexpr bool subgroup_api = false;
-    constexpr int vec_size = (use_full_vector ? 8 : 4) / (sizeof(T) / sizeof(char));
+    constexpr int vec_size = get_num_elements<T, 8, use_full_vector>();
     const size_t work_group_size = 16;
+
+    // single plane/gpu case optimizations
+    if (is_use_rw_opt) {
+        if (is_use_tmp && node_comm_size == 2) {
+            // For more than 2 ranks, the performance of RW algo with TMP buffer
+            // is slightly worse than pipelined implementation
+            if (is_single_gpu) {
+                return allreduce_large_read_write_tmp<T, NP, vec_size>(
+                    send_buf, recv_buf, count, dtype, reduction, comm, global_stream, deps, false);
+            }
+            if (is_single_plane) {
+                return allreduce_large_read_write_tmp<T, NE, vec_size>(
+                    send_buf, recv_buf, count, dtype, reduction, comm, global_stream, deps, true);
+            }
+        }
+        if (!is_use_tmp) {
+            if (is_single_gpu) {
+                return allreduce_large_read_write_ipc<T, NP, vec_size>(
+                    send_buf, recv_buf, count, dtype, reduction, comm, global_stream, deps, false);
+            }
+            if (is_single_plane) {
+                return allreduce_large_read_write_ipc<T, NE, vec_size>(
+                    send_buf, recv_buf, count, dtype, reduction, comm, global_stream, deps, true);
+            }
+        }
+    }
 
     std::array<void *, MAX_GPUS> l_mdfi_send_ptrs, l_xelink_work_wr_ptrs, l_send_ptrs,
         l_send_ptrs_rem;
@@ -65,7 +306,6 @@ ccl::event allreduce_large_impl(const void *send_buf,
     std::array<void *, MAX_NODE_RANKS> l_work_ptrs, l_work_ptrs_prev, l_node_send_ptrs;
     void *l_recv_ptr = nullptr, *l_reduce_sum_dst = nullptr, *l_reduce_sum_dst_prev = nullptr;
 
-    const bool is_multi_tile = pair_comm_size > 1;
     const int rank_align_count = ccl::global_data::env().kernel_mem_align / dsize;
     const size_t align_count = node_comm_size * rank_align_count;
     const size_t rem_count = count % align_count;
@@ -197,17 +437,15 @@ ccl::event allreduce_large_impl(const void *send_buf,
             });
         }
 
-        if (is_cpu_barrier) {
-            std::vector<sycl::event> barrier_deps;
-            if (nc == 0 && !is_deps_added) {
-                is_deps_added = true;
-                barrier_deps = dep_events;
-            }
-            else {
-                barrier_deps.push_back(work_event);
-            }
-            work_event = invoke_barrier(node_comm, q_use, barrier_deps, is_cpu_barrier);
+        std::vector<sycl::event> barrier_deps;
+        if (nc == 0 && !is_deps_added) {
+            is_deps_added = true;
+            barrier_deps = dep_events;
         }
+        else {
+            barrier_deps.push_back(work_event);
+        }
+        work_event = invoke_barrier(node_comm, q_use, barrier_deps, is_cpu_barrier);
 
         work_event = q_use.submit([=](sycl::handler &h) {
             const size_t kernel_threads_curr = data_count / vec_size + data_count % vec_size;
@@ -226,20 +464,14 @@ ccl::event allreduce_large_impl(const void *send_buf,
             const size_t kernel_size =
                 ((kernel_threads + work_group_size - 1) / work_group_size) * work_group_size;
 
-            if (nc == 0 && !is_deps_added) {
-                h.depends_on(dep_events);
-            }
-            else {
-                h.depends_on(work_event);
-            }
+            h.depends_on(work_event);
 
-            ccl_barrier_data barrier_data = node_comm->barrier_inc(!is_cpu_barrier);
+            ccl_kernel_barrier_data dummy_kbd;
+            ccl_comm_barrier_data dummy_cbd = node_comm->barrier_data();
 
             h.parallel_for(
                 sycl::nd_range<1>(kernel_size, work_group_size),
                 [=](sycl::nd_item<1> it) [[intel::reqd_sub_group_size(work_group_size)]] {
-                    comm_barrier(barrier_data, it, !is_cpu_barrier);
-
                     read_reduce_write<T, N, vec_size>(l_mdfi_send_ptrs,
                                                       l_send_ptrs,
                                                       l_xelink_work_wr_ptrs,
@@ -253,8 +485,9 @@ ccl::event allreduce_large_impl(const void *send_buf,
                                                             l_reduce_sum_dst_prev,
                                                             nullptr,
                                                             l_work_ptrs_prev,
-                                                            nullptr,
-                                                            barrier_data,
+                                                            l_work_ptrs_prev,
+                                                            dummy_kbd,
+                                                            dummy_cbd,
                                                             data_count_prev,
                                                             it);
                     }
@@ -272,8 +505,9 @@ ccl::event allreduce_large_impl(const void *send_buf,
                                                                  l_recv_ptr,
                                                                  nullptr,
                                                                  l_node_send_ptrs,
-                                                                 nullptr,
-                                                                 barrier_data,
+                                                                 l_node_send_ptrs,
+                                                                 dummy_kbd,
+                                                                 dummy_cbd,
                                                                  rem_count,
                                                                  it);
                     }
@@ -292,20 +526,14 @@ ccl::event allreduce_large_impl(const void *send_buf,
             const size_t kernel_size =
                 ((kernel_threads + work_group_size - 1) / work_group_size) * work_group_size;
 
-            if (is_cpu_barrier) {
-                work_event = invoke_barrier(node_comm, q_use, { work_event }, is_cpu_barrier);
-            }
+            work_event = invoke_barrier(node_comm, q_use, { work_event }, is_cpu_barrier);
 
             work_event = q_use.submit([=](sycl::handler &h) {
                 h.depends_on(work_event);
 
-                ccl_barrier_data barrier_data = node_comm->barrier_inc(!is_cpu_barrier);
-
                 h.parallel_for(
                     sycl::nd_range<1>(kernel_size, work_group_size),
                     [=](sycl::nd_item<1> it) [[intel::reqd_sub_group_size(work_group_size)]] {
-                        comm_barrier(barrier_data, it, !is_cpu_barrier);
-
                         read_write<T, N, vec_size, subgroup_api>(l_xelink_work_rd_ptrs_prev,
                                                                  l_recv_ptrs_prev,
                                                                  l_mdfi_recv_ptrs_prev,
@@ -355,7 +583,8 @@ ccl::event allreduce_large_impl(const void *send_buf,
             const size_t kernel_size_rw =
                 ((kernel_threads_rw + work_group_size - 1) / work_group_size) * work_group_size;
 
-            ccl_barrier_data barrier_data = node_comm->barrier_data();
+            ccl_kernel_barrier_data dummy_kbd;
+            ccl_comm_barrier_data dummy_cbd = node_comm->barrier_data();
 
             work_event = q_use.submit([=](sycl::handler &h) {
                 h.depends_on(work_event);
@@ -367,8 +596,9 @@ ccl::event allreduce_large_impl(const void *send_buf,
                                                             l_reduce_sum_dst,
                                                             nullptr,
                                                             l_work_ptrs,
-                                                            nullptr,
-                                                            barrier_data,
+                                                            l_work_ptrs,
+                                                            dummy_kbd,
+                                                            dummy_cbd,
                                                             data_count,
                                                             it);
                     });

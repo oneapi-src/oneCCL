@@ -85,8 +85,7 @@ public:
         v_end[i] = std::chrono::steady_clock::now();
     }
     double get_us(uint32_t i) const {
-        using namespace std::chrono;
-        return duration_cast<microseconds>(v_end[i] - v_start[i]).count();
+        return std::chrono::duration_cast<std::chrono::microseconds>(v_end[i] - v_start[i]).count();
     }
     int size() const {
         return steps_per_instance;
@@ -122,7 +121,6 @@ struct sycl_coll_base {
 public:
     sycl_coll_base() {
         initialized = false;
-        sched = NULL;
     }
 
     inline int inited() {
@@ -161,13 +159,11 @@ protected:
             in_buffers.push_back({ recv_ptr, ccl::ze::ipc_mem_type::memory });
         }
 
-        if (!sched) {
-            ccl_coll_param param{};
-            param.comm = comm;
-            param.stream = stream;
-            ccl_coll_attr attr{};
-            sched = ccl_sched::create(param, attr);
-        }
+        ccl_coll_param param{};
+        param.comm = comm;
+        param.stream = stream;
+        ccl_coll_attr attr{};
+        ccl_sched *sched = ccl_sched::create(param, attr);
 
         ccl::utils::pt2pt_handle_exchange_info info = {};
         int skip_rank = ccl_comm::invalid_rank;
@@ -215,11 +211,62 @@ protected:
             recv_buffers[rank] = recv_ptr;
         }
         delete exchange_entry;
-        sched->clear_memory();
+        delete sched;
     }
 
     bool initialized;
-    ccl_sched *sched;
+};
+
+void pipe_prep(size_t min_msg_count, size_t max_msg_count, int dsize, size_t &nchunks);
+
+sycl::event pipe_sendrecv(sycl::queue &q,
+                          const void *send_buf,
+                          size_t send_count,
+                          int dest,
+                          int sendtag,
+                          void *recv_buf,
+                          size_t recv_count,
+                          int src,
+                          int recvtag,
+                          ccl::datatype dtype,
+                          size_t nchunks,
+                          ccl_comm *comm,
+                          const ccl::vector_class<sycl::event> &deps,
+                          bool use_rdma = false);
+
+class ccl_kernel_barrier_data {
+public:
+    static constexpr int slots = 3;
+
+    ccl_kernel_barrier_data() = default;
+    ccl_kernel_barrier_data(const ccl_kernel_barrier_data &) = default;
+    ccl_kernel_barrier_data &operator=(const ccl_kernel_barrier_data &) = default;
+
+    void set_sync_ptrs(size_t *ptrs) {
+        m_sync_ptrs = ptrs;
+    }
+
+    // advance to the next slot
+    ccl_kernel_barrier_data inc_slot(int count = 1) {
+        m_count += count;
+        return *this;
+    }
+
+    // get current slot pointer
+    size_t *get_sync_ptr() const {
+        size_t curr_slot = m_count % slots;
+        return m_sync_ptrs + curr_slot;
+    }
+
+    // reset data in the farthest slot
+    void reset_sync_data() {
+        size_t reset_slot = (m_count + (slots - 1)) % slots;
+        m_sync_ptrs[reset_slot] = 0;
+    }
+
+private:
+    size_t *m_sync_ptrs;
+    size_t m_count = 0;
 };
 
 std::pair<ccl_sched *, ze_handle_exchange_entry *> do_ipc_exchange(ccl_comm *comm,
@@ -228,9 +275,7 @@ std::pair<ccl_sched *, ze_handle_exchange_entry *> do_ipc_exchange(ccl_comm *com
 
 void coll_init(ccl_comm *comm, ccl_stream *stream);
 
-bool sycl_use_esimd(ccl_comm *comm);
-
-size_t *get_sync_ptr(bool is_next);
+ccl_kernel_barrier_data &get_kernel_barrier_data();
 
 void *get_tmp_buf(int index);
 
@@ -255,6 +300,8 @@ sycl::queue get_mce_queue(sycl::queue q);
 
 sycl::queue get_lce_queue(sycl::queue q, int index);
 
+sycl::queue &get_default_queue();
+
 void copy_data(const int dsize,
                const int N,
                std::array<void *, MAX_GPUS> dst,
@@ -264,14 +311,12 @@ void copy_data(const int dsize,
                std::vector<sycl::event> deps,
                std::vector<sycl::event> &out);
 
-static sycl::queue q_use_default;
-
 template <typename T, int N>
 std::array<T *, N> get_ipc_ptrs(std::shared_ptr<ccl_comm> comm,
                                 const int handle_index,
                                 void *local_ptr,
                                 ccl_sched *sched,
-                                sycl::queue q = q_use_default,
+                                sycl::queue q,
                                 bool dummy_copy = false) {
     std::array<T *, N> remote_ptrs;
 
@@ -290,6 +335,17 @@ std::array<T *, N> get_ipc_ptrs(std::shared_ptr<ccl_comm> comm,
         }
     }
     return remote_ptrs;
+}
+
+template <typename T, int N>
+std::array<T *, N> get_ipc_ptrs(std::shared_ptr<ccl_comm> comm,
+                                const int handle_index,
+                                void *local_ptr,
+                                ccl_sched *sched,
+                                bool dummy_copy = false) {
+    auto q = get_default_queue();
+
+    return get_ipc_ptrs<T, N>(std::move(comm), handle_index, local_ptr, sched, q, dummy_copy);
 }
 
 template <int NE, int NP, typename L>
@@ -351,6 +407,34 @@ ccl::event invoke_collective(L lambda, ccl_comm *global_comm, ccl::datatype dtyp
     return e;
 }
 
+template <typename L>
+sycl::event invoke_scaleout(L lambda, ccl::datatype dtype) {
+    sycl::event e;
+    switch (dtype) {
+        case ccl::datatype::int16: e = lambda.template operator()<short>(); break;
+        case ccl::datatype::float16:
+#ifdef CCL_SYCL_VEC_SUPPORT_FP16
+            e = lambda.template operator()<sycl::half>();
+#else
+            CCL_THROW(
+                "The Sycl compilers do not support Sycl::vec kernels with float16, please switch to ESIMD kernels, or build oneCCL with the latest version of cmake and oneAPI compiler");
+#endif
+            break;
+        case ccl::datatype::bfloat16:
+#ifdef CCL_SYCL_VEC_SUPPORT_BF16
+            e = lambda.template operator()<sycl::ext::oneapi::bfloat16>();
+#else
+            CCL_THROW(
+                "The Sycl compilers do not support Sycl::vec kernels with bfloat16, please switch to ESIMD kernels, or build oneCCL with oneAPI compiler that is newer than 2024.2.0");
+#endif
+            break;
+        case ccl::datatype::float32: e = lambda.template operator()<float>(); break;
+        case ccl::datatype::int32: e = lambda.template operator()<int>(); break;
+        default: CCL_THROW("unsupported datatype ", dtype); break;
+    }
+    return e;
+}
+
 template <typename T>
 T *ptr_offset(T *ptr, size_t offset) {
     return static_cast<char *>(ptr) + offset;
@@ -359,6 +443,10 @@ T *ptr_offset(T *ptr, size_t offset) {
 template <typename T>
 const T *ptr_offset(const T *ptr, size_t offset) {
     return static_cast<const char *>(ptr) + offset;
+}
+
+inline bool is_aligned(const void *buf, const size_t size, const int alignment) {
+    return (size_t)buf % alignment == 0 && size % alignment == 0;
 }
 
 inline bool is_aligned(const void *send_buf,
@@ -421,5 +509,65 @@ auto invoke_esimd_function(L lambda, int world) {
         case 14: lambda.template operator()<14, align>(); break;
         case 16: lambda.template operator()<16, align>(); break;
         default: break;
+    }
+}
+
+// helper function to check NAN or INF numbers in the input buffer
+template <typename data_type>
+sycl::event sycl_check_nan(sycl::queue &queue,
+                           int rank,
+                           const data_type *in_buffer,
+                           size_t count,
+                           const char *str,
+                           const std::vector<sycl::event> &deps) {
+    int wg_size = 16;
+    int nthreads = (count + wg_size - 1) / wg_size * wg_size;
+    auto e = queue.submit([&](sycl::handler &cgh) {
+        cgh.depends_on(deps);
+        cgh.parallel_for(sycl::nd_range<1>(nthreads, wg_size), [=](sycl::nd_item<1> idx2) {
+            uint32_t idx = idx2.get_global_id();
+            if (idx >= count)
+                return;
+            data_type *in = (data_type *)in_buffer;
+            bool has_inf = false;
+            if (std::numeric_limits<data_type>::has_infinity) {
+                has_inf = in[idx] == std::numeric_limits<data_type>::infinity() ||
+                          -in[idx] == std::numeric_limits<data_type>::infinity();
+            }
+            if (in[idx] != in[idx] || has_inf) {
+                sycl::_V1::ext::oneapi::experimental::printf(
+                    "[%d] NAN error %s: idx:%d count: %d val: %f \n",
+                    rank,
+                    str,
+                    idx,
+                    count,
+                    in[idx]);
+            }
+        });
+    });
+    return e;
+}
+
+inline uint32_t get_total_threads(sycl::queue q) {
+    ze_device_handle_t ze_dev =
+        sycl::get_native<sycl::backend::ext_oneapi_level_zero>(q.get_device());
+    ssize_t dev_id{ ccl::utils::invalid_device_id };
+    if (!ccl::ze::get_device_global_id(ze_dev, &dev_id)) {
+        CCL_THROW("unable to get global id for device\n");
+    }
+    return ccl::global_data::get().ze_data->devices[dev_id].total_threads;
+}
+
+template <typename T, size_t bytes, bool use_full_vector = true>
+constexpr inline size_t get_num_elements() {
+    // TODO: should use_full_vector be int instead of bool
+    // to enable various levels of vectorization
+    if (use_full_vector == true) {
+        CCL_ASSERT(bytes >= 8);
+        return bytes / sizeof(T);
+    }
+    else {
+        // use 4 bytes when full vector cannot be used
+        return 4 / sizeof(T);
     }
 }

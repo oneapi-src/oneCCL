@@ -25,7 +25,8 @@
 
 namespace ccl {
 
-host_event_impl::host_event_impl(ccl_request* r) : req(r) {
+host_event_impl::host_event_impl(ccl_request* r, bool in_is_group_activated) : req(r) {
+    is_group_activated = in_is_group_activated;
     if (!req) {
         completed = true;
         return;
@@ -80,7 +81,9 @@ host_event_impl::~host_event_impl() {
         || (native_event && native_event_completed)
 #endif // CCL_ENABLE_SYCL
     ) {
-        wait();
+        if (!is_group_activated) {
+            wait();
+        }
     }
 
 #ifdef CCL_ENABLE_SYCL
@@ -98,6 +101,10 @@ host_event_impl::~host_event_impl() {
 }
 
 void host_event_impl::wait() {
+    if (is_group_activated) {
+        LOG_WARN("ccl::event::wait() is not supported for collectives within group API");
+    }
+
     if (!completed) {
         auto* exec = ccl::global_data::get().executor.get();
         auto wait_result = ccl_wait_impl(exec, req);
@@ -114,6 +121,9 @@ void host_event_impl::wait() {
 }
 
 bool host_event_impl::test() {
+    if (is_group_activated) {
+        LOG_WARN("ccl::event::test is not supported for collectives within group API");
+    }
     if (!completed) {
         completed = ccl_test_impl(ccl::global_data::get().executor.get(), req);
     }
@@ -126,6 +136,10 @@ bool host_event_impl::cancel() {
 
 event::native_t& host_event_impl::get_native() {
 #ifdef CCL_ENABLE_SYCL
+    if (is_group_activated) {
+        LOG_WARN("ccl::event::get_native is not supported for collectives within group API");
+    }
+
     if (ccl::global_data::env().enable_sycl_output_event) {
         return *native_event;
     }

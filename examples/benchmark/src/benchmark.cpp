@@ -38,8 +38,10 @@ inline void prepare_coll(const user_options_t& options,
 }
 
 inline void finalize_coll(const user_options_t& options,
+                          ccl::communicator& service_comm,
                           std::shared_ptr<base_coll> coll,
                           const size_t elem_count) {
+    ccl::barrier(service_comm);
     coll->finalize(elem_count);
 }
 
@@ -164,7 +166,7 @@ void run(ccl::communicator& service_comm,
                             }
 
                             if (options.check_values == CHECK_ALL_ITERS) {
-                                finalize_coll(options, coll, count);
+                                finalize_coll(options, service_comm, coll, count);
                             }
                         }
 
@@ -191,7 +193,7 @@ void run(ccl::communicator& service_comm,
                             }
                             reqs.clear();
 
-                            finalize_coll(options, coll, count);
+                            finalize_coll(options, service_comm, coll, count);
                         }
                     }
 
@@ -240,8 +242,8 @@ void create_cpu_colls(bench_init_attr& init_attr, user_options_t& options, coll_
         else if (name == bcast_strategy_impl::class_name()) {
             colls.emplace_back(new cpu_bcast_coll<Dtype>(init_attr));
         }
-        else if (name == bcastExt_strategy_impl::class_name()) {
-            colls.emplace_back(new cpu_bcastExt_coll<Dtype>(init_attr));
+        else if (name == broadcast_strategy_impl::class_name()) {
+            colls.emplace_back(new cpu_broadcast_coll<Dtype>(init_attr));
         }
         else if (name == reduce_strategy_impl::class_name()) {
             colls.emplace_back(new cpu_reduce_coll<Dtype>(init_attr));
@@ -291,8 +293,8 @@ void create_sycl_colls(bench_init_attr& init_attr, user_options_t& options, coll
         else if (name == bcast_strategy_impl::class_name()) {
             colls.emplace_back(new sycl_bcast_coll<Dtype>(init_attr));
         }
-        else if (name == bcastExt_strategy_impl::class_name()) {
-            colls.emplace_back(new sycl_bcastExt_coll<Dtype>(init_attr));
+        else if (name == broadcast_strategy_impl::class_name()) {
+            colls.emplace_back(new sycl_broadcast_coll<Dtype>(init_attr));
         }
         else if (name == reduce_strategy_impl::class_name()) {
             colls.emplace_back(new sycl_reduce_coll<Dtype>(init_attr));

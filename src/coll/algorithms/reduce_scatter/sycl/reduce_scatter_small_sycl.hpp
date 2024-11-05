@@ -131,11 +131,10 @@ public:
         }
 
         // check local alignment
-        bool is_aligned =
-            (size_t)send_buf % 4 == 0 && (size_t)out_buffer % 4 == 0 && (recv_size * sizeof(data_type)) % 4 == 0;
+        int align4 = is_aligned(send_buf, out_buffer, recv_size * sizeof(data_type), 4);
 
         auto esimd_lambda = [&]<int kernel_inner_loop>() {
-            if (is_aligned) {
+            if (align4) {
                 return reduce_scatter_esimd<kernel_inner_loop, 4>(
                     queue, send_buf, out_buffer, dtype, recv_size, done);
             }

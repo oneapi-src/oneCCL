@@ -41,14 +41,14 @@ based on the code path (Level Zero or SYCL), the collective being called, and
 the type of buffer (GPU or CPU).
 
 
-Level Zero Path (Default)
-*************************
+Level Zero Path 
+****************
 
-ALLGATHERV
-==========
+ALLGATHER/ALLGATHERV
+====================
 
-CCL_ALLGATHERV
---------------
+CCL_ALLGATHER/CCL_ALLGATHERV
+----------------------------
 
 **Syntax**
 
@@ -56,13 +56,15 @@ For the whole message size:
 
 ::
 
+  CCL_ALLGATHER=<algo_name> 
   CCL_ALLGATHERV=<algo_name>
 
 For a specific message size range:
 
 ::
 
-  CCL_ALLGATHERV="<algo_name_1>[:<size_range_1>][;<algo_name_2>:<size_range_2>][;...]"
+  CCL_ALLGATHER="<algo_name_1>[:<size_range_1>][;<algo_name_2>:<size_range_2>][;...]" 
+  CCL_ALLGATHERV="<algo_name_1>[:<size_range_1>][;<algo_name_2>:<size_range_2>][;...]" 
 
 Where:
 
@@ -76,7 +78,8 @@ Where:
 
 ::
 
-  CCL_ALLGATHERV="direct:0-8192;ring:8193-max"
+  CCL_ALLGATHER="direct:0-8192;ring:8193-max" 
+  CCL_ALLGATHERV="direct:0-8192;ring:8193-max" 
 
 **Arguments**
 
@@ -88,9 +91,9 @@ Where:
    * - <algo_name>
      - Description
    * - ``topo``
-     - topology-aware algorithm for scale-up. The default for GPU buffers. Not available for CPU buffers.
+     - Topology-aware algorithm for scale-up. The default for GPU buffers. Not available for CPU buffers.
    * - ``direct``
-     - Based on ``MPI_Iallgatherv``.
+     - Based on ``MPI_Iallgather``/ ``MPI_Iallgatherv``.
    * - ``naive``
      - Send to all, receive from all.
    * - ``flat``
@@ -103,9 +106,9 @@ Where:
 
 **Description**
 
-Use this environment variable to specify the algorithm for ALLGATHERV.
+Use this environment variable to specify the algorithm for ``ALLGATHER``/ ``ALLGATERV``.
 
-If using GPU buffers, select ``CCL_ALLGATHER=topo`` (the default) to use a hierarchical algorithm for scale-up data transfer across GPUs in the same node.
+If using GPU buffers, select ``CCL_ALLGATHER=topo`` or ``CCL_ALLGATHERV=topo`` (the default) to use a hierarchical algorithm for scale-up data transfer across GPUs in the same node.
 For GPU buffers, when selecting an algorithm different from ``topo``, oneCCL copies the data to the host and follows the specified CPU algorithm.
 
 
@@ -128,21 +131,21 @@ CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL
    * - <value>
      - Description
    * - ``1``
-     - Uses compute kernels to transfer data across GPUs for the allgather phase of ``ALLGATHERV``. The default value.
+     - Uses compute kernels to transfer data across GPUs for the allgather phase of ``ALLGATHER`` / ``ALLGATHERV``. The default value.
    * - ``0``
-     - Uses copy engines to transfer data across GPUs for the allgather phase of the ``ALLGATHERV`` collective.
+     - Uses copy engines to transfer data across GPUs for the allgather phase of the ``ALLGATHER`` / ``ALLGATHERV`` collectives.
 
 **Description**
 
-Set this environment variable to use GPU buffers to specify the scale-up phase of the algorithm for ALLGATHERV.
+Set this environment variable to use GPU buffers to specify the scale-up phase of the algorithm for ``ALLGATHER``/ ``ALLGATHERV``.
 This environment variable allows the user to choose between using compute kernels or copy engines.
 
-This option is only available if ``CCL_ALLGATHERV=topo`` (the default for GPU buffers).
+This option is only available if ``CCL_ALLGATHER = topo`` or ``CCL_ALLGATHERV=topo`` (the default for GPU buffers).
 
+.. note:: This environment variable applies to both ``ALLGATHER`` and ``ALLGATHERV``.  
 
-
-CCL_ALLGATHERV_SCALEOUT
------------------------
+CCL_ALLGATHER_SCALEOUT/CCL_ALLGATHERV_SCALEOUT
+----------------------------------------------
 
 **Syntax**
 
@@ -150,13 +153,15 @@ For the whole message size:
 
 ::
 
-  CCL_ALLGATHER_SCALEOUT
+  CCL_ALLGATHER_SCALEOUT=<algo_name> 
+  CCL_ALLGATHERV_SCALEOUT=<algo_name> 
 
 
 For a specific message size range:
 ::
 
-  CCL_ALLGATHERV_SCALEOUT="<algo_name_1>[:<size_range_1>][;<algo_name_2>:<size_range_2>][;...]"
+  CCL_ALLGATHER_SCALEOUT="<algo_name_1>[:<size_range_1>][;<algo_name_2>:<size_range_2>][;...]" 
+  CCL_ALLGATHERV_SCALEOUT="<algo_name_1>[:<size_range_1>][;<algo_name_2>:<size_range_2>][;...]" 
 
 Where:
 
@@ -170,7 +175,8 @@ Where:
 
 ::
 
-  CCL_ALLGATHERV_SCALEOUT="direct:0-8192;ring:8193-max"
+  CCL_ALLGATHER_SCALEOUT="direct:0-8192;ring:8193-max"  
+  CCL_ALLGATHERV_SCALEOUT="direct:0-8192;ring:8193-max" 
 
 **Arguments**
 
@@ -182,7 +188,7 @@ Where:
    * - <algo_name>
      - Description
    * - ``direct``
-     - Based on ``MPI_Iallgatherv``.
+     - Based on ``MPI_Iallgather``/ ``MPI_Iallgatherv``.
    * - ``naive``
      - Send to all, receive from all.
    * - ``flat``
@@ -194,8 +200,8 @@ Where:
 
 **Description**
 
-Set this environment variable to use GPU buffers to specify the scaleout phase of the algorithm for ALLGATHERV.
-This option is only available if ``CCL_ALLGATHERV = topo`` (the default for GPU buffers).
+Set this environment variable to use GPU buffers to specify the scaleout phase of the algorithm for ``ALLGATHER`` / ``ALLGATHERV``.
+This option is only available if ``CCL_ALLGATHERV = topo`` or ``CCL_ALLGATHER = topo`` (the default for GPU buffers).
 
 oneCCL internally fills the algorithm selection table with appropriate defaults. Your input complements the selection table.
 
@@ -203,6 +209,8 @@ To see the actual table values, set ``CCL_LOG_LEVEL=info``.
 
 ALLREDUCE
 =========
+
+
 
 CCL_ALLREDUCE
 -------------
@@ -226,7 +234,7 @@ Where:
 * ``<algo_name>`` is selected from the list of available collective algorithms.
 * ``<size_range>`` is described by the left and the right size
   borders in the ``<left>-<right>`` format. The size is specified in bytes. To
-  specify the maximum message size, use the reserved word max.
+  specify the maximum message size, use the reserved word  ``max``.
 
 **Example**
 
@@ -243,7 +251,7 @@ Where:
    * - <algo_name>
      - Description
    * - ``topo``
-     - topology-aware algorithm for scale-up. The default for GPU buffers. Not available for CPU buffers.
+     - Topology-aware algorithm for scale-up. The default for GPU buffers. Not available for CPU buffers.
    * - ``direct``
      - Based on ``MPI_Iallreduce``.
    * - ``rabenseifner``
@@ -251,7 +259,7 @@ Where:
    * - ``nreduce``
      - May be beneficial for imbalanced workloads.
    * - ``ring``
-     - reduce_scatter + allgather ring. Use CCL_RS_CHUNK_COUNT and CCL_RS_MIN_CHUNK_SIZE to control pipelining on reduce_scatter phase.
+     - reduce_scatter + allgather ring. Use ``CCL_RS_CHUNK_COUNT`` and ``CCL_RS_MIN_CHUNK_SIZE`` to control pipelining on reduce_scatter phase.
    * - ``double_tree``
      - double-tree algorithm.
    * - ``recursive_doubling``
@@ -261,7 +269,7 @@ Where:
 
 **Description**
 
-Use this environment variable to specify the algorithm for ALLREDUCE.
+Use this environment variable to specify the algorithm for ``ALLREDUCE``.
 
 If using GPU buffers, select ``CCL_ALLREDUCE=topo`` (the default) to use a hierarchical algorithm for scale-up data transfer across GPUs in the same node.
 For GPU buffers, when selecting an algorithm different from ``topo``, oneCCL copies the data to the host and follows the specified CPU algorithm.
@@ -290,7 +298,7 @@ CCL_REDUCE_SCATTER_MONOLITHIC_PIPELINE_KERNEL (GPU buffers only)
    * - <value>
      - Description
    * - ``1``
-     - Uses compute kernels to transfer data across GPUs for the reduce-scatter phase of the  ``ALLREDUCE`` collectives. The default value.
+     - Uses compute kernels to transfer data across GPUs for the reduce-scatter phase of the ``ALLREDUCE`` collectives. The default value.
    * - ``0``
      - Uses copy engines to transfer data across GPUs for the reduce-scatter phase of the ``ALLREDUCE``.
 
@@ -328,7 +336,7 @@ CCL_ALLGATHERV_MONOLITHIC_PIPELINE_KERNEL (GPU buffers only)
 
 **Description**
 
-ALLREDUCE is implemented as a reduce-scatter phase followed by an allgather phase.
+``ALLREDUCE`` is implemented as a reduce-scatter phase followed by an allgather phase.
 
 Set this environment variable to use GPU buffers to specify how to perform the
 allgather portion of the scale-up ``ALLREDUCE`` collective. This environment
@@ -394,6 +402,8 @@ oneCCL internally fills the algorithm selection table with appropriate defaults.
 
 To see the actual table values, set ``CCL_LOG_LEVEL=info``.
 
+
+
 ALLTOALL, ALLTOALLV
 ===================
 
@@ -446,7 +456,7 @@ or
    :align: left
 
    * - ``topo``
-     - topology-aware algorithm. The default for GPU buffers. Not available for CPU buffers.
+     - Topology-aware algorithm. The default for GPU buffers. Not available for CPU buffers.
    * - ``direct``
      - Based on ``MPI_Ialltoall``
    * - ``naive``
@@ -513,7 +523,7 @@ Where:
 
 * ``<algo_name>`` is selected from the list of available collective algorithms.
 * ``<size_range>`` is described by the left and the right size borders in a
-  format ``<left>-<right>``. The size is specified in bytes. To specify the maximum message size, use the reserved word max.
+  format ``<left>-<right>``. The size is specified in bytes. To specify the maximum message size, use the reserved word ``max``.
 
 **Example**
 
@@ -601,7 +611,7 @@ CCL_BCAST
    * - <algo_name>
      - Description
    * - ``topo``
-     - topology-aware algorithm. The default for GPU buffers. Not available for CPU buffers.
+     - Topology-aware algorithm. The default for GPU buffers. Not available for CPU buffers.
    * - ``direct``
      - Based on MPI_Ibcast.
    * - ``ring``
@@ -662,7 +672,7 @@ Where:
    * - <algo_name>
      - Description
    * - ``topo``
-     - topology-aware algorithm for scale-up. The default for GPU buffers. Not available for CPU buffers.
+     - Topology-aware algorithm for scale-up. The default for GPU buffers. Not available for CPU buffers.
    * - ``direct``
      - Based on ``MPI_Ireduce``.
    * - ``rabenseifner``
@@ -709,7 +719,7 @@ CCL_REDUCE_SCATTER_MONOLITHIC_PIPELINE_KERNEL (GPU buffers only)
 
 **Description**
 
-Set this environment variable to use GPU buffers to specify the scale-up algorithm for ALLREDUCE.
+Set this environment variable to use GPU buffers to specify the scale-up algorithm for ``ALLREDUCE``.
 This environment variable allows the user to choose between using compute kernels or using copy engines.
 
 This option is only available if ``CCL_REDUCE=topo`` (the default for GPU buffers).
@@ -735,7 +745,7 @@ Where:
 
 * ``<algo_name>`` is selected from the list of available collective algorithms.
 * ``<size_range>`` is described by the left and the right size borders in
-  a format ``<left>-<right>``. The size is specified in bytes. To specify the maximum message size, use the reserved word max.
+  a format ``<left>-<right>``. The size is specified in bytes. To specify the maximum message size, use the reserved word ``max``.
 
 **Example**
 
@@ -773,6 +783,8 @@ To see the actual table values, set ``CCL_LOG_LEVEL=info``.
 REDUCE_SCATTER
 ==============
 
+
+
 CCL_REDUCE_SCATTER
 ------------------
 
@@ -794,7 +806,7 @@ Where:
 
 * ``<algo_name>`` is selected from the list of available collective algorithms.
 * ``<size_range>`` is described by the left and the right size borders in a
-  format ``<left>-<right>``. The size is specified in bytes. To specify the maximum message size, use the reserved word max.
+  format ``<left>-<right>``. The size is specified in bytes. To specify the maximum message size, use the reserved word ``max``.
 
 
 **Example**
@@ -812,7 +824,7 @@ Where:
    * - <algo_name>
      - Description
    * - ``topo``
-     - topology-aware algorithm for scale-up. The default for GPU buffers. Not available for CPU buffers.
+     - Topology-aware algorithm for scale-up. The default for GPU buffers. Not available for CPU buffers.
    * - ``direct``
      - Based on ``MPI_Ireduce_scatter_block``.
    * - ``naive``
@@ -884,7 +896,7 @@ Where:
 
 * ``<algo_name>`` is selected from the list of available collective algorithms.
 * ``<size_range>`` is described by the left and the right size borders in a
-  format ``<left>-<right>``. The size is specified in bytes. To specify the maximum message size, use the reserved word max.
+  format ``<left>-<right>``. The size is specified in bytes. To specify the maximum message size, use the reserved word ``max``.
 
 **Example**
 
@@ -910,15 +922,15 @@ Where:
 
 **Description**
 
-Set this environment variable to use GPU buffers to specify the scaleout algorithm for ALLREDUCE.
+Set this environment variable to use GPU buffers to specify the scaleout algorithm for ``ALLREDUCE``.
 This option is only available if ``CCL_REDUCE_SCATTER = topo`` (the default for GPU buffers).
 
 oneCCL internally fills the algorithm selection table with appropriate defaults. Your input complements the selection table.
 
 To see the actual table values, set ``CCL_LOG_LEVEL=info``.
 
-SYCL PATH
-*********
+SYCL PATH (Default with 2021.14)
+********************************
 
 All collectives
 ===============
@@ -942,13 +954,13 @@ CCL_ENABLE_SYCL_KERNELS
    * - <value>
      - Description
    * - ``1``
-     - Enable SYCL kernels.
+     - Enable SYCL kernels. The default value.
    * - ``0``
-     - Disable SYCL kernels. The default value.
+     - Disable SYCL kernels. 
 
 **Description**
 
-Setting this environment variable to 1 enables SYCL kernel-based implementations for ``ALLGATHERV``, ``ALLREDUCE``, and ``REDUCE_SCATTER``.
+Setting this environment variable to ``1`` enables SYCL kernel-based implementations for ``ALLGATHERV``, ``ALLREDUCE``, and ``REDUCE_SCATTER``.
 
 This new optimization optimizes all message sizes and supports the following data types:
 
@@ -957,13 +969,299 @@ This new optimization optimizes all message sizes and supports the following dat
 * fp16
 * bf16
 * sum operations
-* single nodes
+
 
 oneCCL falls back to other implementations when the support is unavailable with SYCL kernels, so that you can set up this environment variable safely.
 
-.. note::
+.. note:: The name of this variable in 2021.12 was ``CCL_SKIP_SCHEDULER``. Starting with 2021.13, the variable has been renamed to ``CCL_ENABLE_SYCL_KERNELS``.
 
-  The name of this variable in 2021.12 was ``CCL_SKIP_SCHEDULER``. Starting with 2021.13, the variable has been renamed to ``CCL_ENABLE_SYCL_KERNELS``.
+ALLGATHER/ALLGATHERV
+====================
+
+CCL_SYCL_ALLGATHERV_TMP_BUF
+---------------------------
+
+**Syntax**
+
+::
+
+  CCL_SYCL_ALLGATHERV_TMP_BUF=<value>  
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``1``
+     - Uses a persistent temporary buffer to perform the ``ALLGATHER``/ ``ALLGATHERV``.
+   * - ``0``
+     - Performs an IPC handle exchange, avoiding copies to temporary buffers. Default value.
+
+**Description** 
+
+Specifies if the ``ALLGATHER``/ ``ALLGATHERV`` implementation should use a persistent temporary buffer or not. The implementation with temporary buffers makes the collective fully asynchronous, but adds some additional overhead due to the extra copy of the user buffer to a (persistent) temporary buffer. The current default uses Level Zero IPC to avoid the copies to the temporary buffer. 
+
+CCL_SYCL_ALLGATHERV_SMALL_THRESHOLD 
+-----------------------------------
+
+**Syntax**
+
+::
+
+  CCL_SYCL_ALLGATHERV_SMALL_THRESHOLD=<value> 
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``>=0``
+     - Threshold in bytes to specify the small size algorithm. Default value ``131072``.
+
+**Description** 
+
+``ALLGATHER``/ ``ALLGATHERV`` collectives with message sizes smaller than the specified threshold will use an algorithm specialized for small-sized messages. 
+
+CCL_SYCL_ALLGATHERV_SCALEOUT_THRESHOLD 
+--------------------------------------
+
+**Syntax**
+
+::
+
+  CCL_SYCL_ALLGATHERV_SCALEOUT_THRESHOLD=<value>  
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``>=0``
+     - Threshold in bytes to specify when scale-out ``ALLGATHER``/ ``ALLGATHERV`` uses SYCL kernel-based implementation. Default value is ``1048576``. 
+
+**Description** 
+
+For ``ALLGATHER``/ ``ALLGATHERV`` collectives, with the total message sizes below this threshold in bytes, the SYCL path is chosen to execute the collective operation. For message sizes exceeding this threshold, the implementation will switch to the Level Zero Path. The total message size is the number of bytes received from all participating processes. 
+
+
+ALLREDUCE
+=========
+
+CCL_SYCL_ALLREDUCE_TMP_BUF
+--------------------------
+
+**Syntax**
+
+::
+
+  CCL_SYCL_ALLREDUCE_TMP_BUF=<value>
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``1``
+     - Uses a persistent temporary buffer to perform the ``ALLREDUCE`` operation.
+   * - ``0``
+     - Performs an IPC handle exchange, avoiding copies to temporary buffers. Default value.
+
+**Description** 
+
+Specifies whether the ``ALLREDUCE`` implementation should use a persistent temporary buffer. The implementation with temporary buffers makes the collective fully asynchronous, but adds some additional overhead due to the extra copy of the user buffer to a (persistent) temporary buffer. The current default uses Level Zero IPC support to avoid the copies to the temporary buffer. 
+
+
+CCL_SYCL_ALLREDUCE_SMALL_THRESHOLD  
+-----------------------------------
+
+**Syntax**
+
+::
+
+  CCL_ALLREDUCE_SMALL_THRESHOLD=<value> 
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``>=0``
+     - Threshold in bytes to specify the small size algorithm. Default value is ``524288``.
+
+**Description** 
+
+``ALLREDUCE`` collective with message sizes smaller than the specified threshold will use an algorithm specialized for small-sized messages. 
+
+
+CCL_SYCL_ALLREDUCE_SCALEOUT_THRESHOLD   
+-------------------------------------
+
+**Syntax**
+
+::
+
+  CCL_SYCL_ALLREDUCE_SCALEOUT_THRESHOLD=<value> 
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``>=0``
+     - Threshold in bytes to specify when scale-out allreduce uses SYCL kernel-based implementation. Default value is ``1048576``. 
+
+**Description** 
+
+For ``ALLREDUCE`` collectives, with message sizes below this threshold in bytes, the SYCL path is chosen to execute the collective operation. For message sizes exceeding this threshold, the implementation will switch to the Level Zero Path. 
+
+
+CCL_SYCL_ALLREDUCE_SCALEOUT_DIRECT_THRESHOLD   
+--------------------------------------------
+
+**Syntax**
+
+::
+
+  CCL_SYCL_ALLREDUCE_SCALEOUT_DIRECT_THRESHOLD=<value>  
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``>=0``
+     - Threshold in bytes to specify when allreduce collective selects direct ``MPI_Iallreduce`` for the scale-out phase of the collective. Default value is ``1048576``. 
+
+**Description** 
+
+For allreduce collectives with message sizes below this threshold in bytes, ``MPI_Iallreduce`` direct algorithm is selected as scale-out phase of the colllective. For message sizes above this threshold and under the ``CCL_SYCL_ALLREDUCE_SCALEOUT_THRESHOLD``, the default algorithm (ring) is selected.
+
+REDUCE_SCATTER
+==============
+
+CCL_SYCL_REDUCE_SCATTER_TMP_BUF
+-------------------------------
+
+**Syntax**
+
+::
+
+  CCL_SYCL_REDUCE_SCATTER_TMP_BUF=<value>
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``1``
+     - Uses a persistent temporary buffer to perform the ``REDUCE_SCATTER`` operation.
+   * - ``0``
+     - Performs an IPC handle exchange, avoiding copies to temporary buffers. Default value.
+
+**Description** 
+
+Specifies if the ``REDUCE_SCATTER`` implementation should use a persistent temporary buffer or not. The implementation with temporary buffers makes the collective fully asynchronous, but adds some additional overhead due to the extra copy of the user buffer to a (persistent) temporary buffer. The current default uses Level Zero IPC support to avoid the copies to the temporary buffer. 
+
+
+CCL_SYCL_REDUCE_SCATTER_SCALEOUT_DIRECT_THRESHOLD  
+-------------------------------------------------
+
+**Syntax**
+
+::
+
+  CCL_SYCL_REDUCE_SCATTER_SCALEOUT_DIRECT_THRESHOLD=<value> 
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``>=0``
+     - Threshold in bytes to specify when reduce-scatter collective selects direct ``MPI_Ireduce_scatter`` as scale-out phase algorithm. Default value is ``1048576``.  
+ 
+
+**Description** 
+
+For reduce-scatter collectives with message sizes below this threshold in bytes, ``MPI_Ireduce_scatter`` direct algorithm is selected for the scale-out phase of the collective. For message sizes above this threshold and under the ``CCL_SYCL_REDUCE_SCATTER_SCALEOUT_THRESHOLD``, the default algorithm (ring) is selected. 
+
+
+CCL_SYCL_REDUCE_SCATTER_SCALEOUT_THRESHOLD  
+------------------------------------------
+
+**Syntax**
+
+::
+
+  CCL_SYCL_REDUCE_SCATTER_SCALEOUT_THRESHOLD=<value> 
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``>=0``
+     - Threshold in bytes to specify when scale-out ``REDUCE_SCATTER`` uses SYCL kernel-based implementation. Default value is ``4294967296``. 
+ 
+
+**Description** 
+
+For ``REDUCE_SCATTER`` collectives with message sizes below this threshold in bytes, the SYCL path is chosen to execute the collective operation. For message sizes exceeding this threshold, the implementation will switch to the Level Zero Path. 
+
+CCL_SYCL_REDUCE_SCATTER_SMALL_THRESHOLD 
+---------------------------------------
+
+**Syntax**
+
+::
+
+  CCL_SYCL_REDUCE_SCATTER_SMALL_THRESHOLD=<value>  
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``>=0``
+     - Threshold in bytes to specify the small-size algorithm. Default value ``2097152``.
+
+**Description** 
+
+``REDUCE_SCATTER`` collectives with message sizes smaller than the specified threshold will use an algorithm specialized for small-sized messages. 
+
 
 Workers
 #######
@@ -995,7 +1293,7 @@ CCL_WORKER_COUNT
 
 **Description**
 
-Set this environment variable to specify the number of |product_short| worker threads.
+Set this environment variable to specify the number of |product_short| worker threads. For GPU buffers, currently we do not recommend setting this variable to values larger than ``1``.  
 
 .. _CCL_WORKER_AFFINITY:
 
@@ -1034,6 +1332,7 @@ CCL_WORKER_AFFINITY
 Set this environment variable to specify cpu affinity for |product_short| worker threads.
 
 
+ 
 CCL_WORKER_MEM_AFFINITY
 ***********************
 
@@ -1063,6 +1362,37 @@ CCL_WORKER_MEM_AFFINITY
 
 Set this environment variable to specify memory affinity for |product_short| worker threads.
 
+
+KVS
+###
+
+CCL_KVS_MODE 
+************
+
+**Syntax**
+
+::
+
+  CCL_KVS_MODE=<value> 
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+
+   * - <cpulist>
+     - Description
+   * - ``pmi``
+     - PMI transport (default) 
+       
+   * - ``mpi``
+     - MPI transport  
+
+**Description**
+
+Set the environment variable to specify the transport used to establish a connection between ranks during the oneCCL communicator creation. Currently, the ``mpi`` value is only supported when the MPI transport is used (see ``CCL_ATL_TRANSPORT``). For large scale runs, we recommend setting ``KVS_MODE`` to ``mpi``.
 
 ATL
 ###
@@ -1191,8 +1521,8 @@ CCL_PROCESS_LAUNCHER
      - Description
    * - ``hydra``
      - Uses the MPI hydra job launcher. The default value.
-   * - ``torch``
-     - Uses a torch job launcher.
+   * - ``torchrun``
+     - Uses `torchrun <https://pytorch.org/docs/stable/elastic/run.html>` as a job launcher.
    * - ``pmix``
      - Is used with the PALS job launcher that uses the pmix API. The ``mpiexec`` command should be similar to:
 
@@ -1385,6 +1715,39 @@ specified threshold, the cache will evict a handle using a LRU (Last Recently
 Used) policy. Starting with version 2021.10, the default value is 1000.
 
 
+
+CCL_ZE_IPC_EXCHANGE 
+*******************
+**Syntax**
+
+::
+
+  CCL_ZE_IPC_EXCHANGE=<value> 
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``drmfd``
+     - Uses the DRM mechanism for Level Zero IPC exchange. This is an experimental mechanism that is used with OS kernels previous to SP4. Default value for 2021.13 and before. To use the DRM mechanism, the ``libdrm`` and ``drm`` headers must be available on the system.
+   * - ``pidfd``
+     - Uses ``pidfd`` mechanism for Level Zero IPC exchange. It requires OS kernel SP4 or above as it requires Linux 5.6 kernel or above. Default with 2021.14. 
+   * - ``sockets``
+     - Uses socket mechanism for Level Zero IPC exchange.
+   * - ``none``
+     - This mode is used by oneCCL when built on a system without ``drmfd`` support.
+
+**Description**
+
+Set this environment variable to specify the mechanism to use for Level Zero IPC exchange. 
+
+
+
 CCL_ZE_CACHE_GET_IPC_HANDLES_THRESHOLD
 **************************************
 
@@ -1418,11 +1781,11 @@ policy. The default value is 1000.
 
 .. _low-precision-datatypes:
 
-Low-precision datatypes
+Low-precision Data Types
 #######################
 
 
-The group of environment variables to control processing of low-precision datatypes.
+The group of environment variables to control processing of low-precision data types.
 
 
 CCL_BF16
@@ -1486,6 +1849,62 @@ Set this environment variable to select implementation for on reduction phase of
 ``AVX512F`` and ``F16C`` use FP16 <-> FP32 conversion operations to perform the reduction.
 The default value depends on instruction set support on specific CPU.
 ``AVX512FP16``-based implementation has precedence over ``AVX512F`` and ``F16C``-based one.
+
+
+CCL_ATL_MPI_FP16 
+****************
+**Syntax**
+
+::
+
+  CCL_ATL_MPI_FP16=<value> 
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``0``
+     - Disables the Intel MPI native FP16 support. 
+   * - ``1``
+     - Enables the Intel MPI native FP16 support (default for version 2021.14).
+
+**Description**
+
+Set this environment variable to enable or disable Intel MPI native FP16 support. Requires Intel MPI newer than 2021.13. This variable can be enabled with MPI implementation that is not Intel MPI, such as ``MPICH``, but it will have no impact.  
+
+
+CCL_ATL_MPI_BF16 
+****************
+**Syntax**
+
+::
+
+  CCL_ATL_MPI_BF16=<value> 
+
+**Arguments**
+
+.. list-table::
+   :widths: 25 50
+   :header-rows: 1
+   :align: left
+
+   * - <value>
+     - Description
+   * - ``0``
+     - Disables the Intel MPI native BF16 support.  
+   * - ``1``
+     - Enables the Intel MPI native BF16 support (default for version 2021.14). 
+
+**Description**
+
+Set this environment variable to enable or disable Intel MPI native BF16 support. Requires Intel MPI newer than 2021.13. This variable can be enabled with MPI implementation that is not Intel MPI, such as ``MPICH``, but it will have no impact.  
+
+
 
 
 CCL_LOG_LEVEL
@@ -1688,7 +2107,7 @@ CCL_PRIORITY
    * - <value>
      - Description
    * - ``direct``
-     - You have to explicitly specify priority using ``priority``.
+     - You have to explicitly specify the priority using ``priority``.
    * - ``lifo``
      - Priority is implicitly increased on each collective call. You do not have to specify priority.
    * - ``none``
@@ -1784,7 +2203,7 @@ CCL_ZE_LIBRARY_PATH
 Set this environment variable to specify the name and full path to
 ``Level-Zero`` library. The path should be absolute and validated. Set this
 variable if ``Level-Zero`` is not located in the default path. By default
-|product_short| uses ``libze_loader.so`` name for dynamic loading.
+|product_short| uses the ``libze_loader.so`` name for dynamic loading.
 
 
 Point-To-Point Operations
@@ -1864,14 +2283,14 @@ CCL_ZE_TMP_BUF_SIZE
      - Description
    * - ``N``
      - Size of the temporary buffer (in bytes) oneCCL uses to perform
-       collective operations with topo algorithm and Level Zero path. Default is 536870912, that is, 512 MBs.
+       collective operations with topo algorithm and Level Zero path. Default is ``536870912``, that is, ``512 MBs``.
 
 
 **Description**
 
 Set this environment variable to change the size of the temporary buffer used
 by the topo algorithm in the Level Zero path. The value is specified in bytes.
-The default value is 536870912.
+The default value is ``536870912``.
 
 You can tune the value of this variable depending on the system memory
 available, the memory the application requires, and the message size of the

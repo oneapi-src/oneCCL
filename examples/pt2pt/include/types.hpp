@@ -16,12 +16,12 @@
 #pragma once
 
 // enums
-typedef enum { VALIDATE_OFF, VALIDATE_LAST_ITER, VALIDATE_ALL_ITERS } validate_values_t;
+typedef enum { CHECK_OFF, CHECK_LAST_ITER, CHECK_ALL_ITERS } check_values_t;
 
-std::map<validate_values_t, std::string> validate_values_names = {
-    std::make_pair(VALIDATE_OFF, "off"),
-    std::make_pair(VALIDATE_LAST_ITER, "last"),
-    std::make_pair(VALIDATE_ALL_ITERS, "all")
+std::map<check_values_t, std::string> check_values_names = {
+    std::make_pair(CHECK_OFF, "off"),
+    std::make_pair(CHECK_LAST_ITER, "last"),
+    std::make_pair(CHECK_ALL_ITERS, "all")
 };
 
 typedef enum { BACKEND_CPU, BACKEND_GPU } backend_type_t;
@@ -47,30 +47,30 @@ std::map<backend_type_t, std::string> backend_names = { std::make_pair(BACKEND_C
 
 #define DEFAULT_MIN_ELEM_COUNT (1)
 #define DEFAULT_MAX_ELEM_COUNT (33554432) // till 128 MBytes
-#define DEFAULT_VALIDATE       (VALIDATE_LAST_ITER)
+#define DEFAULT_CHECK          (CHECK_LAST_ITER)
 
 #define INVALID_VALUE  (-1)
 #define INVALID_RETURN (-1)
 
-int set_validate_values(const std::string& option_value, validate_values_t& validate) {
-    std::string option_name = "validate";
+int set_check_values(const std::string& option_value, check_values_t& check) {
+    std::string option_name = "check";
 
-    std::set<std::string> supported_option_values{ validate_values_names[VALIDATE_OFF],
-                                                   validate_values_names[VALIDATE_LAST_ITER],
-                                                   validate_values_names[VALIDATE_ALL_ITERS] };
+    std::set<std::string> supported_option_values{ check_values_names[CHECK_OFF],
+                                                   check_values_names[CHECK_LAST_ITER],
+                                                   check_values_names[CHECK_ALL_ITERS] };
 
     if (check_supported_options(option_name, option_value, supported_option_values)) {
         return INVALID_RETURN;
     }
 
-    if (option_value == validate_values_names[VALIDATE_OFF]) {
-        validate = VALIDATE_OFF;
+    if (option_value == check_values_names[CHECK_OFF]) {
+        check = CHECK_OFF;
     }
-    else if (option_value == validate_values_names[VALIDATE_LAST_ITER]) {
-        validate = VALIDATE_LAST_ITER;
+    else if (option_value == check_values_names[CHECK_LAST_ITER]) {
+        check = CHECK_LAST_ITER;
     }
-    else if (option_value == validate_values_names[VALIDATE_ALL_ITERS]) {
-        validate = VALIDATE_ALL_ITERS;
+    else if (option_value == check_values_names[CHECK_ALL_ITERS]) {
+        check = CHECK_ALL_ITERS;
     }
 
     return 0;

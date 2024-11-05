@@ -40,28 +40,30 @@ struct sycl_alltoallv_coll : sycl_base_coll<Dtype, alltoallv_strategy_impl> {
         size_t send_bytes = comm_size * elem_count * base_coll::get_dtype_size();
         size_t recv_bytes = comm_size * elem_count * base_coll::get_dtype_size();
 
+        auto event = submit_barrier(stream.get_native());
+
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
             if (base_coll::get_sycl_mem_type() == SYCL_MEM_USM) {
                 stream.get_native()
-                    .memcpy(host_send_buf.data(), send_bufs[b_idx][rank_idx], send_bytes)
+                    .memcpy(host_send_buf.data(), send_bufs[b_idx][rank_idx], send_bytes, event)
                     .wait();
 
                 stream.get_native()
-                    .memcpy(host_recv_buf.data(), recv_bufs[b_idx][rank_idx], recv_bytes)
+                    .memcpy(host_recv_buf.data(), recv_bufs[b_idx][rank_idx], recv_bytes, event)
                     .wait();
             }
             else {
                 auto send_buf = (static_cast<sycl_buffer_t<Dtype>*>(send_bufs[b_idx][rank_idx]));
                 auto recv_buf = (static_cast<sycl_buffer_t<Dtype>*>(recv_bufs[b_idx][rank_idx]));
-                auto send_buf_acc = send_buf->template get_host_access(sycl::read_only);
-                auto recv_buf_acc = recv_buf->template get_host_access(sycl::read_only);
+                auto send_buf_acc = send_buf->get_host_access(sycl::read_only);
+                auto recv_buf_acc = recv_buf->get_host_access(sycl::read_only);
 
                 stream.get_native()
-                    .memcpy(host_send_buf.data(), send_buf_acc.get_pointer(), send_bytes)
+                    .memcpy(host_send_buf.data(), send_buf_acc.get_pointer(), send_bytes, event)
                     .wait();
 
                 stream.get_native()
-                    .memcpy(host_recv_buf.data(), recv_buf_acc.get_pointer(), recv_bytes)
+                    .memcpy(host_recv_buf.data(), recv_buf_acc.get_pointer(), recv_bytes, event)
                     .wait();
             }
 

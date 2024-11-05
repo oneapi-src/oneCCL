@@ -20,7 +20,7 @@
 #endif // CCL_ENABLE_ZE
 
 #ifdef CCL_ENABLE_SYCL
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #endif // CCL_ENABLE_SYCL
 
 #include "oneapi/ccl/type_traits.hpp"

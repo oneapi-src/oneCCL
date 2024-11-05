@@ -19,8 +19,7 @@
 #include "coll/algorithms/utils/sycl_coll_base.hpp"
 
 // sync_ptrs is used for counting in local kernel_barrier
-static size_t *sync_ptrs = nullptr;
-constexpr int sync_ptrs_count = 2;
+static ccl_kernel_barrier_data kernel_barrier_data;
 
 // three tmp buffers - 1: work_buf, 2: tmp_send_buf, 3: tmp_recv_buf
 constexpr int tmp_bufs_count = 3;
@@ -61,7 +60,38 @@ std::pair<ccl_sched *, ze_handle_exchange_entry *> do_ipc_exchange(ccl_comm *com
     return { sched, exchange_entry };
 }
 
-static sycl::queue create_sycl_queue(sycl::queue q, int ordinal, int index) {
+static int get_num_queues(sycl::queue q, int ordinal) {
+    sycl::device dev = q.get_device();
+    ze_device_handle_t ze_dev = sycl::get_native<sycl::backend::ext_oneapi_level_zero>(dev);
+
+    uint32_t queue_group_count = 0;
+    ze_result_t result =
+        zeDeviceGetCommandQueueGroupProperties(ze_dev, &queue_group_count, nullptr);
+    if (result != ZE_RESULT_SUCCESS) {
+        LOG_WARN("zeDeviceGetCommandQueueGroupProperties failed");
+        return 0;
+    }
+
+    if (ordinal < queue_group_count) {
+        ze_command_queue_group_properties_t *queueProperties =
+            (ze_command_queue_group_properties_t *)malloc(
+                sizeof(ze_command_queue_group_properties_t) * queue_group_count);
+        result =
+            zeDeviceGetCommandQueueGroupProperties(ze_dev, &queue_group_count, queueProperties);
+        if (result != ZE_RESULT_SUCCESS) {
+            LOG_WARN("zeDeviceGetCommandQueueGroupProperties failed");
+            return 0;
+        }
+        int n = queueProperties[ordinal].numQueues;
+        free(queueProperties);
+        return n;
+    }
+    else {
+        return 0;
+    }
+}
+
+static sycl::queue create_sycl_queue(sycl::queue &q, int ordinal, int index) {
     // TODO: should we use the parameter q or a new queue?
     sycl::device dev = q.get_device();
     sycl::context ctx = q.get_context();
@@ -71,6 +101,7 @@ static sycl::queue create_sycl_queue(sycl::queue q, int ordinal, int index) {
     // Create Command Queue
     ze_command_queue_desc_t Qdescriptor = {};
     Qdescriptor.stype = ZE_STRUCTURE_TYPE_COMMAND_QUEUE_DESC;
+    Qdescriptor.pNext = NULL;
     Qdescriptor.mode = ZE_COMMAND_QUEUE_MODE_ASYNCHRONOUS;
     Qdescriptor.ordinal = ordinal;
     Qdescriptor.index = index;
@@ -84,20 +115,20 @@ static sycl::queue create_sycl_queue(sycl::queue q, int ordinal, int index) {
     ze_result_t result =
         zeCommandListCreateImmediate(ze_ctx, ze_dev, &Qdescriptor, &ze_imm_cmd_list);
     if (result != ZE_RESULT_SUCCESS) {
-        std::cerr << "zeCommandQueueCreate failed\n";
+        LOG_WARN("zeCommandQueueCreate (", ordinal, ",", index, ") failed, returning same queue");
         return q;
     }
 
+#if 0
     sycl::backend_input_t<sycl::backend::ext_oneapi_level_zero, sycl::device> InteropDeviceInput{
         ze_dev
     };
     sycl::device InteropDevice =
         sycl::make_device<sycl::backend::ext_oneapi_level_zero>(InteropDeviceInput);
+#endif
 
     sycl::backend_input_t<sycl::backend::ext_oneapi_level_zero, sycl::context> InteropContextInput{
-        ze_ctx,
-        std::vector<sycl::device>(1, InteropDevice),
-        sycl::ext::oneapi::level_zero::ownership::keep
+        ze_ctx, std::vector<sycl::device>(1, dev), sycl::ext::oneapi::level_zero::ownership::keep
     };
     sycl::context InteropContext =
         sycl::make_context<sycl::backend::ext_oneapi_level_zero>(InteropContextInput);
@@ -106,7 +137,7 @@ static sycl::queue create_sycl_queue(sycl::queue q, int ordinal, int index) {
     //  ze_cmd_queue, InteropDevice, sycl::ext::oneapi::level_zero::ownership::keep};
 
     sycl::backend_input_t<sycl::backend::ext_oneapi_level_zero, sycl::queue> InteropQueueInputCL{
-        ze_imm_cmd_list, InteropDevice, sycl::ext::oneapi::level_zero::ownership::keep
+        ze_imm_cmd_list, dev, sycl::ext::oneapi::level_zero::ownership::keep
     };
 
     //return sycl::make_queue<sycl::backend::ext_oneapi_level_zero>(InteropQueueInputCQ, InteropContext);
@@ -114,16 +145,30 @@ static sycl::queue create_sycl_queue(sycl::queue q, int ordinal, int index) {
                                                                   InteropContext);
 }
 
-// TODO: find the number of link copy engines using L0 APIs
-static constexpr int num_lce = 7;
+// number of link copy engines
+static int num_lce;
+
 // main copy engine
-static sycl::queue q_me;
-// linke copy engine
-static sycl::queue q_le[num_lce];
+static sycl::queue &get_q_me() {
+    static sycl::queue q_me;
+    return q_me;
+}
+
+// link copy engine
+static std::vector<sycl::queue> &get_q_le() {
+    static std::vector<sycl::queue> q_le;
+    return q_le;
+}
 
 static void create_copy_engine_queues(sycl::queue q) {
+    auto q_me = get_q_me();
+    auto q_le = get_q_le();
+
+    num_lce = get_num_queues(q, 2);
+    LOG_DEBUG("number of link engines : ", num_lce);
+
     for (int i = 0; i < num_lce; i++) {
-        q_le[i] = create_sycl_queue(q, 2, i);
+        q_le.push_back(create_sycl_queue(q, 2, i));
     }
     q_me = create_sycl_queue(q, 1, 0);
 }
@@ -156,7 +201,7 @@ void coll_init(ccl_comm *comm, ccl_stream *global_stream) {
     static bool is_initial_invocation = true;
 
     std::shared_ptr<ccl_comm> node_comm = comm->get_node_comm();
-    ccl_barrier_data bd = node_comm->barrier_data();
+    ccl_comm_barrier_data bd = node_comm->barrier_data();
 
     // if communicator is used for first time then do ipc exchage
     // to get remote ptrs used for barrier counting and remote tmp bufs
@@ -169,7 +214,7 @@ void coll_init(ccl_comm *comm, ccl_stream *global_stream) {
         sycl::queue q_worker(q.get_device());
 
         // alloc sync pointers to be used for global comm_barrier across ranks
-        constexpr int num_slots = ccl_barrier_data::slots;
+        constexpr int num_slots = ccl_comm_barrier_data::slots;
         const size_t ptr_count = num_slots * sub_comms.size();
         size_t *ptrs = sycl::malloc_device<size_t>(ptr_count, q);
         q.memset(ptrs, 0, ptr_count * sizeof(size_t)).wait();
@@ -183,8 +228,9 @@ void coll_init(ccl_comm *comm, ccl_stream *global_stream) {
             create_copy_engine_queues(q);
 
             // allocate sync_ptrs for local kernel barrier
-            sync_ptrs = sycl::malloc_device<size_t>(sync_ptrs_count, q);
-            q.memset(sync_ptrs, 0, sync_ptrs_count * sizeof(size_t)).wait();
+            size_t *sync_ptrs = sycl::malloc_device<size_t>(ccl_kernel_barrier_data::slots, q);
+            q.memset(sync_ptrs, 0, ccl_kernel_barrier_data::slots * sizeof(size_t)).wait();
+            get_kernel_barrier_data().set_sync_ptrs(sync_ptrs);
 
             //set up temp buf to be used for large collectives
             const size_t tmp_buf_size = ccl::global_data::env().sycl_tmp_buf_size / tmp_bufs_count;
@@ -255,11 +301,8 @@ void coll_init(ccl_comm *comm, ccl_stream *global_stream) {
     }
 }
 
-size_t *get_sync_ptr(bool is_next) {
-    assert(sync_ptrs != nullptr);
-    static size_t count = 0;
-    size_t index = (is_next ? ++count : count) % sync_ptrs_count;
-    return sync_ptrs + index;
+ccl_kernel_barrier_data &get_kernel_barrier_data() {
+    return kernel_barrier_data;
 }
 
 void *get_tmp_buf(int index) {
@@ -305,7 +348,7 @@ sycl::event invoke_barrier(const std::shared_ptr<ccl_comm> comm,
         });
     }
     else {
-        ccl_barrier_data barrier_data = comm->barrier_inc();
+        ccl_comm_barrier_data barrier_data = comm->barrier_inc();
         e = q.submit([=](sycl::handler &h) {
             h.depends_on(dep_events);
             h.parallel_for(
@@ -323,12 +366,21 @@ int get_num_lce() {
 
 // get main copy engine
 sycl::queue get_mce_queue(sycl::queue q) {
+    auto q_me = get_q_me();
+
     return q_me;
 }
 
 // get link copy engine
 sycl::queue get_lce_queue(sycl::queue q, int index) {
+    auto q_le = get_q_le();
+
     return q_le[index];
+}
+
+sycl::queue &get_default_queue() {
+    static sycl::queue default_queue;
+    return default_queue;
 }
 
 void copy_data(const int dsize,
@@ -346,35 +398,4 @@ void copy_data(const int dsize,
         });
         out.push_back(e);
     }
-}
-
-bool sycl_use_esimd(ccl_comm *comm) {
-    // TODO: (see MLSL-3179) change the default value of CCL_SYCL_ESIMD to "auto", instead of 0 or 1.
-
-    static bool is_initialized{ false };
-    static bool use_esimd{};
-
-    // The use of ESIMD and sycl::vec algorithms within the same execution
-    // has not been tested, and both algorithms are known to use the same
-    // resources, in some cases (i.e., temporary buffers). Therefore, we
-    // always want to use the same algorithm within an execution.
-    // So, we calculate which algorithm to use once, and afterwards, use the
-    // cached value
-
-    if (!is_initialized) {
-        if (ccl::global_data::env().sycl_esimd) {
-            use_esimd = true;
-        }
-        else {
-            // Fallback to ESIMD for 2-ranks (specifically, 2 PPNs)
-            // Remove this condition when MLSL-2964 is implemented and
-            // sycl::vec performs similarly as esimd for two ranks.
-            int node_size = comm->get_node_comm()->size();
-            use_esimd = (node_size == 2);
-        }
-
-        is_initialized = true;
-    }
-
-    return use_esimd;
 }

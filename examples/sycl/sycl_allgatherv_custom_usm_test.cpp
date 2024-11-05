@@ -94,11 +94,11 @@ int main(int argc, char *argv[]) {
     buffer<native_dtype> expected_buf(send_count * size);
     buffer<native_dtype> check_buf(send_count * size);
 
-    vector<size_t> recv_counts(size, send_count);
+    std::vector<size_t> recv_counts(size, send_count);
 
     /* open buffers and modify them on the device side */
     auto e = q.submit([&](auto &h) {
-        accessor expected_buf_acc(expected_buf, h, write_only);
+        sycl::accessor expected_buf_acc(expected_buf, h, sycl::write_only);
         h.parallel_for(send_count, [=](auto id) {
             static_cast<native_dtype *>(send_buf)[id] = rank + 1;
             for (int i = 0; i < size; i++) {
@@ -120,8 +120,8 @@ int main(int argc, char *argv[]) {
 
     /* open recv_buf and check its correctness on the device side */
     q.submit([&](auto &h) {
-        accessor expected_buf_acc(expected_buf, h, read_only);
-        accessor check_buf_acc(check_buf, h, write_only);
+        sycl::accessor expected_buf_acc(expected_buf, h, sycl::read_only);
+        sycl::accessor check_buf_acc(check_buf, h, sycl::write_only);
         h.parallel_for(size * send_count, [=](auto id) {
             if (static_cast<native_dtype *>(recv_buf)[id] != expected_buf_acc[id]) {
                 check_buf_acc[id] = -1;
@@ -137,16 +137,16 @@ int main(int argc, char *argv[]) {
 
     /* print out the result of the test on the host side */
     {
-        host_accessor check_buf_acc(check_buf, read_only);
+        sycl::host_accessor check_buf_acc(check_buf, sycl::read_only);
         size_t i;
         for (i = 0; i < size * send_count; i++) {
             if (check_buf_acc[i] == -1) {
-                cout << "FAILED\n";
+                std::cout << "FAILED\n";
                 break;
             }
         }
         if (i == size * send_count) {
-            cout << "PASSED\n";
+            std::cout << "PASSED\n";
         }
     }
 

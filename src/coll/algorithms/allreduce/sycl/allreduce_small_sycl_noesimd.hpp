@@ -116,7 +116,7 @@ public:
         int size_per_buffer_kernel = size_per_buffer;
 
         int max_wg_size __attribute__((unused)) =
-            queue.get_device().get_info<cl::sycl::info::device::max_work_group_size>(); // 1024
+            queue.get_device().get_info<sycl::info::device::max_work_group_size>(); // 1024
         const int wg_size = 32;
         // assert(wg_size <= max_wg_size); TODO
 

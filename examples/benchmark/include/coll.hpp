@@ -21,7 +21,7 @@
 
 #ifdef CCL_ENABLE_SYCL
 template <typename Dtype>
-using sycl_buffer_t = cl::sycl::buffer<Dtype, 1>;
+using sycl_buffer_t = sycl::buffer<Dtype, 1>;
 #endif
 
 #define COLL_ROOT (0)
@@ -59,7 +59,6 @@ typedef struct bench_exec_attr {
                                            ccl::shared_ptr_class<ccl::alltoallv_attr>,
                                            ccl::shared_ptr_class<ccl::reduce_attr>,
                                            ccl::shared_ptr_class<ccl::broadcast_attr>,
-                                           ccl::shared_ptr_class<ccl::broadcastExt_attr>,
                                            ccl::shared_ptr_class<ccl::reduce_scatter_attr>>;
 
     template <class attr_t>

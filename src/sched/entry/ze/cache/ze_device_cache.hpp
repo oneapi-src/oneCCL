@@ -160,34 +160,5 @@ private:
     std::mutex mutex;
 };
 
-class device_memory_manager {
-public:
-    device_memory_manager() = default;
-    device_memory_manager(const device_memory_manager&) = delete;
-    device_memory_manager& operator=(const device_memory_manager&) = delete;
-    ~device_memory_manager() {
-        cache.clear();
-    }
-
-    void get_global_ptr(ze_context_handle_t context,
-                        ze_device_handle_t device,
-                        const ze_device_mem_alloc_desc_t& device_mem_alloc_desc,
-                        size_t size_need,
-                        size_t alignment,
-                        void** pptr);
-
-    void clear();
-
-private:
-    using key_t = std::tuple<ze_context_handle_t,
-                             ze_device_handle_t,
-                             size_t,
-                             ze_device_mem_alloc_flags_t,
-                             uint32_t>;
-    using value_t = void*;
-    std::unordered_map<key_t, value_t, utils::tuple_hash> cache;
-    std::mutex mutex;
-};
-
 } // namespace ze
 } // namespace ccl

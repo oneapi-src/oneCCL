@@ -145,6 +145,33 @@ constexpr const char* CCL_KVS_MODE = "CCL_KVS_MODE";
  * By-default: "120"
  */
 constexpr const char* CCL_KVS_CONNECTION_TIMEOUT = "CCL_KVS_CONNECTION_TIMEOUT";
+/**
+ * @brief Set whether to use MPI_Allgather or custom implementation while creating a communicator.
+ *
+ * @details
+ * "<value>": \n
+ * "0" - use only custom implementation of allgather \n
+ * "1" - use MPI_Allgather whenever possible \n
+ *
+ * By-default: "1"
+ */
+constexpr const char* CCL_KVS_MPI_ALLGATHER = "CCL_KVS_MPI_ALLGATHER";
+/**
+ * @brief Set whether to use mpi ranks directly while creating a communicator.
+ * In general, MPI_COMM_WORLD rank does not have to be the same as CCL communicator rank.
+ * Therefore, we need to gather MPI rank of all participants while creating a communicator.
+ * If user decide to use MPI rank and CCL rank as same, then they can set this CVAR to 1,
+ * and CCL can skip gathering MPI rank of all participants and use the information that
+ * CCL rank is same as MPI rank while creating communicator.
+ *
+ * @details
+ * "<value>": \n
+ * "0" - collect mpi ranks from everyone \n
+ * "1" - use mpi ranks directly without collecting \n
+ *
+ * By-default: "0"
+ */
+constexpr const char* CCL_KVS_USE_MPI_RANKS = "CCL_KVS_USE_MPI_RANKS";
 /** @} */
 
 constexpr const char* CCL_ATL_TRANSPORT = "CCL_ATL_TRANSPORT";
@@ -178,7 +205,27 @@ constexpr const char* CCL_ATL_SEND_PROXY = "CCL_ATL_SEND_PROXY";
 constexpr const char* CCL_ATL_SYNC_COLL = "CCL_ATL_SYNC_COLL";
 constexpr const char* CCL_ATL_EXTRA_EP = "CCL_ATL_EXTRA_EP";
 constexpr const char* CCL_ATL_CACHE = "CCL_ATL_CACHE";
-
+/**
+ * @addtogroup OneCCLvars
+ * @{
+ */
+/**
+ * @brief Set this environment variable to enable cache model automatically for synchronous collectives with direct algorithms.
+ * @details
+ * Syntax \n
+ * CCL_ENABLE_AUTO_CACHE="<value>"\n
+ * \n
+ * Arguments\n
+ * "<value>"	Description\n
+ * 	- 0	Does not allow enabling cache model automatically.\n
+ * 	- 1	Allows enabling cache model automatically (default).\n
+ * \n
+ *
+ *
+ * By-default: "1"
+ */
+constexpr const char* CCL_ENABLE_AUTO_CACHE = "CCL_ENABLE_AUTO_CACHE";
+/**  @} */
 constexpr const char* CCL_MNIC = "CCL_MNIC";
 constexpr const char* CCL_MNIC_NAME = "CCL_MNIC_NAME";
 constexpr const char* CCL_MNIC_COUNT = "CCL_MNIC_COUNT";
@@ -299,7 +346,7 @@ constexpr const char* CCL_BARRIER = "CCL_BARRIER";
  */
 constexpr const char* CCL_BCAST = "CCL_BCAST";
 /**
- * @brief Set broadcastExt algorithm (send_buf, recv_buf)
+ * @brief Set broadcast algorithm (send_buf, recv_buf)
  *
  * @details
  * BCAST algorithms
@@ -313,7 +360,7 @@ constexpr const char* CCL_BCAST = "CCL_BCAST";
  *
  * By-default: "direct"
  */
-constexpr const char* CCL_BCASTEXT = "CCL_BCASTEXT";
+constexpr const char* CCL_BROADCAST = "CCL_BROADCAST";
 /**
  * @brief Set reduce algorithm
  *
@@ -853,6 +900,8 @@ constexpr const char* CCL_ALLREDUCE_2D_CHUNK_COUNT = "CCL_ALLREDUCE_2D_CHUNK_COU
 constexpr const char* CCL_ALLREDUCE_2D_MIN_CHUNK_SIZE = "CCL_ALLREDUCE_2D_MIN_CHUNK_SIZE";
 constexpr const char* CCL_ALLREDUCE_2D_SWITCH_DIMS = "CCL_ALLREDUCE_2D_SWITCH_DIMS";
 
+constexpr const char* CCL_DTREE_PARTITION_COUNT = "CCL_DTREE_PARTITION_COUNT";
+
 constexpr const char* CCL_CHECK_INPLACE_ALIASING = "CCL_CHECK_INPLACE_ALIASING";
 
 constexpr const char* CCL_ALLTOALL_SCATTER_MAX_OPS = "CCL_ALLTOALL_SCATTER_MAX_OPS";
@@ -869,7 +918,6 @@ constexpr const char* CCL_KERNEL_SYNC = "CCL_KERNEL_SYNC";
 constexpr const char* CCL_KERNEL_1S_LEAD = "CCL_KERNEL_1S_LEAD";
 constexpr const char* CCL_KERNEL_1S_USE_COPY_OPS = "CCL_KERNEL_1S_USE_COPY_OPS";
 constexpr const char* CCL_KERNEL_1S_IPC_WA = "CCL_KERNEL_1S_IPC_WA";
-constexpr const char* CCL_KERNEL_SINGLE_REDUCE_PEERS = "CCL_KERNEL_SINGLE_REDUCE_PEERS";
 constexpr const char* CCL_KERNEL_CLOSE_FD_WA = "CCL_KERNEL_CLOSE_FD_WA";
 
 /**
@@ -932,7 +980,7 @@ constexpr const char* CCL_LOCAL_SIZE = "CCL_LOCAL_SIZE";
  *
  *  "<value>"	Description
  *  	- hydra	Uses the MPI hydra job launcher (default)
- *  	- torch	Uses torch job launcher
+ *  	- torchrun	Uses torchrun job launcher
  *  	- pmix	It is used with the PALS job launcher which uses the pmix API,
  *  		so your mpiexec command should look something like this:
  *  		CCL_PROCESS_LAUNCHER=pmix CCL_ATL_TRANSPORT=mpi mpiexec -np 2 -ppn 2 --pmi=pmix ...
@@ -951,6 +999,7 @@ constexpr const char* CCL_TOPO_ALGO = "CCL_TOPO_ALGO";
 constexpr const char* CCL_TOPO_COLOR = "CCL_TOPO_COLOR";
 constexpr const char* CCL_TOPO_P2P_ACCESS = "CCL_TOPO_P2P_ACCESS";
 constexpr const char* CCL_TOPO_FABRIC_VERTEX_CONNECTION_CHECK = "CCL_TOPO_FABRIC_VERTEX_CONNECTION_CHECK";
+constexpr const char* CCL_TOPO_WA_FABRIC_VERTEX_CONNECTION_CHECK = "CCL_TOPO_WA_FABRIC_VERTEX_CONNECTION_CHECK";
 
 #ifdef CCL_ENABLE_MPI
 constexpr const char* CCL_MPI_LIBRARY_PATH = "CCL_MPI_LIBRARY_PATH";
@@ -970,9 +1019,6 @@ constexpr const char* CCL_ZE_DEVICE_CACHE_EVICT_SMALLEST = "CCL_ZE_DEVICE_CACHE_
 constexpr const char* CCL_ZE_DEVICE_CACHE_UPPER_LIMIT = "CCL_ZE_DEVICE_CACHE_UPPER_LIMIT";
 constexpr const char* CCL_ZE_DEVICE_CACHE_NUM_BLOCKS_IN_CHUNK = "CCL_ZE_DEVICE_CACHE_NUM_BLOCKS_IN_CHUNK";
 constexpr const char* CCL_ZE_DEVICE_CACHE_POLICY = "CCL_ZE_DEVICE_CACHE_POLICY";
-constexpr const char* CCL_ZE_DEVICE_MEM_DISABLE_CLEAR = "CCL_ZE_DEVICE_MEM_DISABLE_CLEAR";
-constexpr const char* CCL_ZE_DEVICE_MEM_ALLOC_SIZE = "CCL_ZE_DEVICE_MEM_ALLOC_SIZE";
-constexpr const char* CCL_ZE_DEVICE_MEM_ENABLE = "CCL_ZE_DEVICE_MEM_ENABLE";
 constexpr const char* CCL_ZE_PTR_REGISTER_THRESHOLD = "CCL_ZE_PTR_REGISTER_THRESHOLD";
 /**
  * @addtogroup OneCCLvars
@@ -1089,7 +1135,6 @@ constexpr const char* CCL_ZE_LIBRARY_PATH = "CCL_ZE_LIBRARY_PATH";
 constexpr const char* CCL_ZE_ENABLE = "CCL_ZE_ENABLE";
 constexpr const char* CCL_ZE_FINI_WA = "CCL_ZE_FINI_WA";
 constexpr const char* CCL_ZE_MULTI_WORKERS = "CCL_ZE_MULTI_WORKERS";
-#ifdef CCL_ENABLE_DRM
 /**
  * @addtogroup OneCCLvars
  * @{
@@ -1116,7 +1161,6 @@ constexpr const char* CCL_DRMFD_DEV_RENDER_DIR_PATH = "CCL_DRMFD_DEV_RENDER_DIR_
  */
 constexpr const char* CCL_DRMFD_DEV_RENDER_SUFFIX = "CCL_DRMFD_DEV_RENDER_SUFFIX";
 /** @} */
-#endif // CCL_ENABLE_DRM
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_PMIX

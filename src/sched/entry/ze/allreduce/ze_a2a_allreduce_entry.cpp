@@ -124,12 +124,9 @@ void ze_a2a_allreduce_entry::init_ze_hook() {
         // two kernels. one leftover kernel and an aligned kernel
         kernel_events.resize((int)ccl::utils::align_kernels::count);
     }
-    else if (ccl::global_data::env().enable_kernel_single_reduce_peers) {
+    else {
         // when kernel merge is used only one kernel is required
         kernel_events.resize(1);
-    }
-    else {
-        kernel_events.resize(peer_count);
     }
 
     for (auto& event : kernel_events) {
@@ -138,7 +135,7 @@ void ze_a2a_allreduce_entry::init_ze_hook() {
 
     barrier_event = ze_base_entry::create_event();
     bool is_monolithic = ccl::global_data::env().reduce_scatter_monolithic_kernel;
-    bool is_single_kernel = ccl::global_data::env().enable_kernel_single_reduce_peers;
+
     ze_a2a_reduce_scatter_entry::fill_list(this,
                                            send_buf.get_ptr(),
                                            tmp_buf.get_ptr(),
@@ -160,8 +157,7 @@ void ze_a2a_allreduce_entry::init_ze_hook() {
                                            op,
                                            worker_idx,
                                            peer_buf_offset,
-                                           is_monolithic,
-                                           is_single_kernel);
+                                           is_monolithic);
 
     CCL_THROW_IF_NOT(!ccl::global_data::env().allgatherv_topo_read,
                      "ze_a2a_allreduce_entry with allgatherv_read not implemented for scaleup");

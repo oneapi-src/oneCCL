@@ -145,13 +145,13 @@ public:
         return transport->bcast(eps[ep_idx], buf, len, root, req);
     }
 
-    virtual atl_status_t bcastExt(size_t ep_idx,
-                                  void* send_buf,
-                                  void* recv_buf,
-                                  size_t len,
-                                  int root,
-                                  atl_req_t& req) {
-        return transport->bcastExt(eps[ep_idx], send_buf, recv_buf, len, root, req);
+    virtual atl_status_t broadcast(size_t ep_idx,
+                                   void* send_buf,
+                                   void* recv_buf,
+                                   size_t len,
+                                   int root,
+                                   atl_req_t& req) {
+        return transport->broadcast(eps[ep_idx], send_buf, recv_buf, len, root, req);
     }
 
     virtual atl_status_t reduce(size_t ep_idx,

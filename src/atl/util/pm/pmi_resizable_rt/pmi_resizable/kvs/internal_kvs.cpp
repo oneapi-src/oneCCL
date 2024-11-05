@@ -34,11 +34,23 @@
 #include "common/global/global.hpp"
 #include "common/log/log.hpp"
 
+bool can_use_internal_kvs() {
+    return ccl::global_data::env().kvs_init_mode == ccl::kvs_mode::pmi ||
+           ccl::global_data::env().atl_transport == ccl_atl_ofi;
+}
+
+#define assert_throw_can_use_internal_kvs() \
+    do { \
+        CCL_THROW_IF_NOT(can_use_internal_kvs(), \
+                         "internal kvs should be used with pmi kvs mode or ofi transport"); \
+    } while (0)
+
 internal_kvs::internal_kvs() : CONNECTION_TIMEOUT(ccl::global_data::env().kvs_connection_timeout) {}
 
 kvs_status_t internal_kvs::kvs_set_value(const std::string& kvs_name,
                                          const std::string& kvs_key,
                                          const std::string& kvs_val) {
+    assert_throw_can_use_internal_kvs();
     kvs_request_t request;
     KVS_CHECK_STATUS(
         request.put(client_op_sock, AM_PUT, client_memory_mutex, kvs_name, kvs_key, kvs_val),
@@ -50,6 +62,7 @@ kvs_status_t internal_kvs::kvs_set_value(const std::string& kvs_name,
 kvs_status_t internal_kvs::kvs_set_size(const std::string& kvs_name,
                                         const std::string& kvs_key,
                                         const std::string& kvs_val) {
+    assert_throw_can_use_internal_kvs();
     kvs_request_t request;
     KVS_CHECK_STATUS(
         request.put(client_op_sock, AM_SET_SIZE, client_memory_mutex, kvs_name, kvs_key, kvs_val),
@@ -60,6 +73,7 @@ kvs_status_t internal_kvs::kvs_set_size(const std::string& kvs_name,
 kvs_status_t internal_kvs::kvs_barrier_register(const std::string& kvs_name,
                                                 const std::string& kvs_key,
                                                 const std::string& kvs_val) {
+    assert_throw_can_use_internal_kvs();
     kvs_request_t request;
     KVS_CHECK_STATUS(
         request.put(
@@ -71,6 +85,7 @@ kvs_status_t internal_kvs::kvs_barrier_register(const std::string& kvs_name,
 kvs_status_t internal_kvs::kvs_barrier(const std::string& kvs_name,
                                        const std::string& kvs_key,
                                        const std::string& kvs_val) {
+    assert_throw_can_use_internal_kvs();
     kvs_request_t request;
     size_t is_done;
     KVS_CHECK_STATUS(
@@ -84,6 +99,7 @@ kvs_status_t internal_kvs::kvs_barrier(const std::string& kvs_name,
 
 kvs_status_t internal_kvs::kvs_remove_name_key(const std::string& kvs_name,
                                                const std::string& kvs_key) {
+    assert_throw_can_use_internal_kvs();
     kvs_request_t request;
     KVS_CHECK_STATUS(request.put(client_op_sock, AM_REMOVE, client_memory_mutex, kvs_name, kvs_key),
                      "client: remove_key");
@@ -93,6 +109,7 @@ kvs_status_t internal_kvs::kvs_remove_name_key(const std::string& kvs_name,
 kvs_status_t internal_kvs::kvs_register(const std::string& kvs_name,
                                         const std::string& kvs_key,
                                         std::string& kvs_val) {
+    assert_throw_can_use_internal_kvs();
     kvs_request_t request;
     KVS_CHECK_STATUS(
         request.put(
@@ -107,6 +124,7 @@ kvs_status_t internal_kvs::kvs_register(const std::string& kvs_name,
 kvs_status_t internal_kvs::kvs_get_value_by_name_key(const std::string& kvs_name,
                                                      const std::string& kvs_key,
                                                      std::string& kvs_val) {
+    assert_throw_can_use_internal_kvs();
     kvs_request_t request;
     size_t is_exist = 0;
     KVS_CHECK_STATUS(
@@ -124,6 +142,7 @@ kvs_status_t internal_kvs::kvs_get_value_by_name_key(const std::string& kvs_name
 }
 
 kvs_status_t internal_kvs::kvs_get_count_names(const std::string& kvs_name, size_t& count_names) {
+    assert_throw_can_use_internal_kvs();
     count_names = 0;
     kvs_request_t request;
     KVS_CHECK_STATUS(request.put(client_op_sock, AM_GET_COUNT, client_memory_mutex, kvs_name),
@@ -138,6 +157,7 @@ kvs_status_t internal_kvs::kvs_get_keys_values_by_name(const std::string& kvs_na
                                                        std::vector<std::string>& kvs_keys,
                                                        std::vector<std::string>& kvs_values,
                                                        size_t& count) {
+    assert_throw_can_use_internal_kvs();
     count = 0;
     kvs_request_t request;
     KVS_CHECK_STATUS(request.put(client_op_sock, AM_GET_KEYS_VALUES, client_memory_mutex, kvs_name),
@@ -154,6 +174,7 @@ kvs_status_t internal_kvs::kvs_get_keys_values_by_name(const std::string& kvs_na
 }
 
 kvs_status_t internal_kvs::kvs_get_replica_size(size_t& replica_size) {
+    assert_throw_can_use_internal_kvs();
     replica_size = 0;
     kvs_request_t request;
     KVS_CHECK_STATUS(request.put(client_op_sock, AM_GET_REPLICA, client_memory_mutex),
@@ -224,8 +245,7 @@ kvs_status_t internal_kvs::init_main_server_by_string(const char* main_addr) {
     port++;
 
     // check if main_addr has root rank
-    if (ccl::global_data::env().atl_transport == ccl_atl_mpi &&
-        ccl::global_data::env().kvs_init_mode == ccl::kvs_mode::mpi) {
+    if (!can_use_internal_kvs()) {
         // main_addr format : ip_port_root
         char* root_rank_str = nullptr;
         if ((root_rank_str = strstr(port, "_")) == nullptr) {
@@ -375,9 +395,8 @@ kvs_status_t internal_kvs::kvs_main_server_address_reserve(char* main_address) {
              INT_STR_SIZE + 1,
              "_%d",
              main_server_address->get_sin_port());
-    // Add rank to main_address
-    if (ccl::global_data::env().atl_transport == ccl_atl_mpi &&
-        ccl::global_data::env().kvs_init_mode == ccl::kvs_mode::mpi) {
+    // add rank to main_address
+    if (!can_use_internal_kvs()) {
         int rank;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         int str_len = strnlen(main_address, ccl::v1::kvs::address_max_size);
@@ -406,9 +425,8 @@ kvs_status_t internal_kvs::init_main_server_address(const char* main_addr) {
 
     if (server_address.empty()) {
         if (main_addr != NULL) {
-            // Get root_rank from main_addr
-            if (ccl::global_data::env().atl_transport == ccl_atl_mpi &&
-                ccl::global_data::env().kvs_init_mode == ccl::kvs_mode::mpi) {
+            // get root_rank from main_addr
+            if (!can_use_internal_kvs()) {
                 // main_addr format : ip_port_root
                 std::string main_addr_str(main_addr);
                 size_t pos_1 = std::string::npos;
@@ -572,17 +590,23 @@ kvs_status_t internal_kvs::kvs_init(const char* main_addr) {
         return KVS_STATUS_FAILURE;
     }
 
-    /* Wait connection to master */
-    start_time = time(nullptr);
-    do {
-        err = connect(
-            client_op_sock, main_server_address->get_sock_addr_ptr(), main_server_address->size());
-        connection_time = time(nullptr) - start_time;
-    } while ((err < 0) && (connection_time < CONNECTION_TIMEOUT));
+    // socket connection is only used with internal kvs and not with other modes
+    // say for example with mpi kvs mode, mpi calls are used for communication.
+    if (can_use_internal_kvs()) {
+        /* Wait connection to master */
+        start_time = time(nullptr);
+        do {
+            err = connect(client_op_sock,
+                          main_server_address->get_sock_addr_ptr(),
+                          main_server_address->size());
+            connection_time = time(nullptr) - start_time;
+        } while ((err < 0) && (connection_time < CONNECTION_TIMEOUT));
 
-    if (connection_time >= CONNECTION_TIMEOUT) {
-        LOG_ERROR("connection time (", connection_time, ") >= limit (", CONNECTION_TIMEOUT, ")");
-        return KVS_STATUS_FAILURE;
+        if (connection_time >= CONNECTION_TIMEOUT) {
+            LOG_ERROR(
+                "connection time (", connection_time, ") >= limit (", CONNECTION_TIMEOUT, ")");
+            return KVS_STATUS_FAILURE;
+        }
     }
 
     if (strstr(main_host_ip, local_host_ip) && local_port == main_port) {

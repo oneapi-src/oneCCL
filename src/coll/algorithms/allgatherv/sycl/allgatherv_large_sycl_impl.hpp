@@ -236,7 +236,7 @@ ccl::event allgatherv_large_impl_ipc(const void* send_buf,
     constexpr bool subgroup_api = false;
     constexpr int work_group_size = subgroup_api ? 32 : 16;
 
-    constexpr int vec_size = subgroup_api ? 1 : vec_size_use / ((sizeof(T) / sizeof(char)));
+    constexpr int vec_size = subgroup_api ? 1 : vec_size_use;
     const bool is_multi_tile = pair_comm->size() > 1;
     const size_t kernel_threads = send_count / vec_size + send_count % vec_size;
     const size_t kernel_size = ((kernel_threads + work_group_size - 1) / work_group_size) * work_group_size;
@@ -383,7 +383,7 @@ ccl::event allgatherv_large_impl_tmp(const void* send_buf,
         constexpr bool subgroup_api = false;
         constexpr int work_group_size = subgroup_api ? 32 : 16;
 
-        constexpr int vec_size = subgroup_api ? 1 : vec_size_use / ((sizeof(T) / sizeof(char)));
+        constexpr int vec_size = subgroup_api ? 1 : vec_size_use;
         const size_t kernel_threads_curr = data_count / vec_size + data_count % vec_size;
         const size_t kernel_threads_next =
             use_kernel_copy && nc < num_chunks - 1 ? data_count_next / vec_size + data_count_next % vec_size : 0;
@@ -473,7 +473,7 @@ ccl::event allgatherv_large_impl_tmp(const void* send_buf,
                     h.depends_on(barrier_event2);
 
                     // vec_size of 1 is too slow for local copy
-                    constexpr int vec_size = vec_size_use / ((sizeof(T) / sizeof(char)));
+                    constexpr int vec_size = vec_size_use;
                     const size_t kernel_threads = data_count / vec_size + data_count % vec_size;
                     const size_t kernel_size =
                         ((kernel_threads + work_group_size - 1) / work_group_size) * work_group_size;
@@ -517,19 +517,21 @@ ccl::event allgatherv_large_impl(const void* send_buf,
                                  ccl_stream* global_stream,
                                  const ccl::vector_class<ccl::event>& deps) {
     constexpr int N = NE;
-    // for 16 bit types with odd count, use 4 byte vectors instead of 8 bytes
-    constexpr int vec_size_use = use_full_vector ? 8 : 4;
+    // for 2 byte types with odd count, use 4 byte vectors instead of 8 bytes
+    constexpr int vec_size_use = get_num_elements<T, 8, use_full_vector>();
 
     auto ccl_dtype = ccl::global_data::get().dtypes->get(dtype);
     const size_t dsize = ccl_dtype.size();
-    const bool is_aligned = (send_count * dsize) % ccl::global_data::env().kernel_mem_align == 0;
 
-    // do not use tmp_buf when copy engines are used
-    // use tmp buf for 16 bit types with odd count or non 32 bit aligned data
-    // use tmp buf when the count is not aligned
-    const bool use_tmp_buf = !ccl::global_data::env().sycl_copy_engine &&
-                             (ccl::global_data::env().sycl_allgatherv_tmp_buf || !use_full_vector ||
-                              (!is_aligned && ccl::global_data::env().sycl_auto_use_tmp_buf));
+    // TODO : generalize constraints for different hardware.
+    // kernels with remote access is best performant at 64 bytes alignment (sycl_kernels_line_size/2) on PVC
+    const size_t align_size = ccl::global_data::env().sycl_kernels_line_size / 2;
+    const bool is_aligned = (send_count * dsize) % align_size == 0;
+    // use tmp buf for types < 4 byte size with odd count or non 4 byte aligned data
+    // use tmp buf when data count bytes is not 64 byte aligned
+    // since tmp buf version performs better in that case
+    const bool is_tmp_used = ccl::global_data::env().sycl_allgatherv_tmp_buf ||
+                             ((!use_full_vector || !is_aligned) && ccl::global_data::env().sycl_auto_use_tmp_buf);
 
     ccl::event e;
     // TODO: copy engines currently does not support tmp buf
@@ -537,7 +539,7 @@ ccl::event allgatherv_large_impl(const void* send_buf,
         e = allgatherv_large_impl_ipc_ce<T>(
             send_buf, send_count, recv_buf, recv_counts, dtype, comm, global_stream, deps);
     }
-    else if (!use_tmp_buf) {
+    else if (!is_tmp_used) {
         e = allgatherv_large_impl_ipc<T, N, vec_size_use>(
             send_buf, send_count, recv_buf, recv_counts, dtype, comm, global_stream, deps);
     }

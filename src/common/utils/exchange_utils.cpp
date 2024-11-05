@@ -76,7 +76,7 @@ void check(const std::shared_ptr<atl_base_comm>& comm, atl_req_t& req) {
 
     while (!req.is_completed) {
         atl_status_t status = comm->check(0, req);
-        if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
+        if (unlikely(status != ATL_STATUS_SUCCESS)) {
             CCL_THROW("check failed: atl_status: ", atl_status_to_str(status));
         }
         if (req.is_completed) {
@@ -85,49 +85,65 @@ void check(const std::shared_ptr<atl_base_comm>& comm, atl_req_t& req) {
     }
 }
 
-void recv(const std::shared_ptr<atl_base_comm>& comm,
-          void* buf,
-          int count,
-          int peer_rank,
-          uint64_t tag,
-          bool sync) {
+bool check_async(const std::shared_ptr<atl_base_comm>& comm, atl_req_t& req) {
+    atl_status_t atl_status = comm->check(0, req);
+
+    if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
+        CCL_THROW("check failed: atl_status: ", atl_status_to_str(atl_status));
+    }
+
+    return req.is_completed;
+}
+
+atl_req_t recv(const std::shared_ptr<atl_base_comm>& comm,
+               void* buf,
+               int count,
+               int peer_rank,
+               uint64_t tag,
+               bool sync) {
     atl_req_t req{};
     comm->recv(0 /* ep_idx */, buf, count, peer_rank /*src rank*/, tag, req);
 
     if (sync) {
         check(comm, req);
     }
-    else {
-        CCL_THROW("unexpected sync parameter");
-    }
+
+    return req;
 }
 
-void send(const std::shared_ptr<atl_base_comm>& comm,
-          void* buf,
-          int count,
-          int peer_rank,
-          uint64_t tag,
-          bool sync) {
+atl_req_t send(const std::shared_ptr<atl_base_comm>& comm,
+               void* buf,
+               int count,
+               int peer_rank,
+               uint64_t tag,
+               bool sync) {
     atl_req_t req{};
     comm->send(0 /* ep_idx */, buf, count, peer_rank /*dst rank*/, tag, req);
 
     if (sync) {
         check(comm, req);
     }
-    else {
-        CCL_THROW("unexpected sync parameter");
-    }
+
+    return req;
 }
 
-void send_ack_to_peer(const std::shared_ptr<atl_base_comm>& comm, uint64_t tag, int peer_rank) {
-    ccl::utils::send(comm, nullptr, 0, peer_rank, tag);
+atl_req_t send_ack_to_peer(const std::shared_ptr<atl_base_comm>& comm,
+                           uint64_t tag,
+                           int peer_rank,
+                           bool sync) {
+    auto req = ccl::utils::send(comm, nullptr, 0, peer_rank, tag, sync);
     LOG_DEBUG("send ack msg with tag: ", tag);
+    return req;
 }
 
-void recv_ack_from_peer(const std::shared_ptr<atl_base_comm>& comm, uint64_t tag, int peer_rank) {
+atl_req_t recv_ack_from_peer(const std::shared_ptr<atl_base_comm>& comm,
+                             uint64_t tag,
+                             int peer_rank,
+                             bool sync) {
     char ack[1];
-    ccl::utils::recv(comm, ack, 0, peer_rank, tag);
+    auto req = ccl::utils::recv(comm, ack, 0, peer_rank, tag, sync);
     LOG_DEBUG("recv ack msg with tag: ", tag);
+    return req;
 }
 
 int check_msg_retval(std::string operation_name,

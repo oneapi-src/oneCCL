@@ -100,7 +100,7 @@ inline void kernel_barrier(size_t *sync_ptr, const sycl::nd_item<1> it) {
 }
 
 // communication barrier across ranks (gpus)
-inline void comm_barrier(ccl_barrier_data barrier_data,
+inline void comm_barrier(ccl_comm_barrier_data barrier_data,
                          const sycl::nd_item<1> it,
                          const bool use_gpu = true) {
     if (!use_gpu)
@@ -126,6 +126,8 @@ inline void comm_barrier(ccl_barrier_data barrier_data,
             atomic_p(sync_remote_ptrs[i][buffer_idx]);
         atomic_p += 1;
     }
+
+    sycl::atomic_fence(sycl::memory_order::acq_rel, sycl::memory_scope::device);
 
     // wait for all remote ranks to update the local count
     if (sidx == 0) {

@@ -15,7 +15,7 @@
 */
 #pragma once
 
-//#include <CL/sycl.hpp>
+//#include <sycl/sycl.hpp>
 #include "oneapi/ccl/string.hpp"
 #include <exception>
 #include <string>
@@ -67,10 +67,10 @@ public:
 // class device_bad_alloc : public exception {
 // public:
 //     device_bad_alloc(const ccl::string &domain, const ccl::string &function,
-//                      const cl::sycl::device &device)
+//                      const sycl::device &device)
 //             : exception(
 //                   domain, function,
-//                   "cannot allocate memory on " + device.get_info<cl::sycl::info::device::name>()) {}
+//                   "cannot allocate memory on " + device.get_info<sycl::info::device::name>()) {}
 // };
 
 class unimplemented : public exception {

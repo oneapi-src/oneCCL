@@ -71,8 +71,8 @@ int main(int argc, char *argv[]) {
     auto stream = ccl::create_stream(q);
 
     /* create buffers */
-    auto send_buf = allocator.allocate(count, usm_alloc_type);
-    auto recv_buf = allocator.allocate(count, usm_alloc_type);
+    auto buf = allocator.allocate(count, usm_alloc_type);
+
     /* do not wait completion of kernel and provide it as dependency for operation */
     vector<ccl::event> deps;
 
@@ -80,23 +80,22 @@ int main(int argc, char *argv[]) {
         /* open buffers and modify them on the device side */
         auto e = q.submit([&](auto &h) {
             h.parallel_for(count, [=](auto id) {
-                send_buf[id] = 10;
-                recv_buf[id] = -1;
+                buf[id] = 10;
             });
         });
         deps.push_back(ccl::create_event(e));
     }
 
     /* invoke broadcast */
-    auto attr = ccl::create_operation_attr<ccl::broadcastExt_attr>();
-    ccl::broadcastExt(send_buf, recv_buf, count, root_rank, comm, stream, attr, deps).wait();
+    auto attr = ccl::create_operation_attr<ccl::broadcast_attr>();
+    ccl::broadcast(buf, count, root_rank, comm, stream, attr, deps).wait();
 
     /* open buf and check its correctness on the device side */
-    buffer<int> check_buf(count * size);
+    sycl::buffer<int> check_buf(count * size);
     q.submit([&](auto &h) {
-        accessor check_buf_acc(check_buf, h, write_only);
+        sycl::accessor check_buf_acc(check_buf, h, sycl::write_only);
         h.parallel_for(count, [=](auto id) {
-            if (recv_buf[id] != 10) {
+            if (buf[id] != 10) {
                 check_buf_acc[id] = -1;
             }
             else {
@@ -109,16 +108,16 @@ int main(int argc, char *argv[]) {
         return -1;
 
     /* print out the result of the test on the host side */
-    host_accessor check_buf_acc(check_buf, read_only);
+    sycl::host_accessor check_buf_acc(check_buf, sycl::read_only);
     size_t i;
     for (i = 0; i < count; i++) {
         if (check_buf_acc[i] == -1) {
-            cout << "FAILED\n";
+            std::cout << "FAILED\n";
             break;
         }
     }
     if (i == count) {
-        cout << "PASSED\n";
+        std::cout << "PASSED\n";
     }
 
     return 0;

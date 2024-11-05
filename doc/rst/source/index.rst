@@ -41,6 +41,13 @@
    env-variables.rst
 
 .. toctree::
+   :maxdepth: 2
+   :caption: Benchmark User Guide
+
+   benchmark-guide/benchmark.rst
+   benchmark-guide/benchmark-point-to-point.rst
+
+.. toctree::
    :hidden: 
    :caption: Notices and Disclaimers
 

@@ -21,7 +21,7 @@
 #include "common/utils/utils.hpp"
 
 #ifdef CCL_ENABLE_SYCL
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #endif // CCL_ENABLE_SYCL
 
 class ccl_sched;

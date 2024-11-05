@@ -48,6 +48,7 @@ ccl_algorithm_selector<ccl_coll_recv>::ccl_algorithm_selector() {
     // recv currently does not support scale-out selection, but the table
     // has to be defined, therefore duplicating main table
     scaleout_table = main_table;
+    insert(fallback_table, 0, CCL_SELECTION_MAX_COLL_SIZE, ccl_coll_recv_direct);
 }
 
 template <>

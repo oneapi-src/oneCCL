@@ -18,6 +18,7 @@
 #include "exec/exec.hpp"
 #include "coll/coll.hpp"
 #include "coll/attr/ccl_common_op_attrs.hpp"
+#include "coll/group/group.hpp"
 #include "comm/comm.hpp"
 #include "comm/comm_impl.hpp"
 #include "common/global/global.hpp"
@@ -272,12 +273,21 @@ ccl::comm_interface_ptr ccl_comm::split(const ccl::comm_split_attr& attr) {
 void ccl_comm::init_ipc_exchange_mode(std::shared_ptr<ccl_comm> comm) {
     if (device_ptr && context_ptr) {
         LOG_DEBUG("initialize ipc_exchange_mode");
-        if (ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::pidfd &&
-            ccl::ze::fd_manager::is_pidfd_supported()) {
+        // if pidfd is supported and env var is set, then use pidfd
+        // else if drmfd is set explicitly or if pidfd is not supported - use drmfd
+        // else otherwise use sockets mode
+        if (ccl::ze::fd_manager::is_pidfd_supported() &&
+            ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::pidfd) {
             LOG_DEBUG("pidfd exchange mode is verified successfully");
         }
 #ifdef CCL_ENABLE_DRM
-        else if (ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::drmfd) {
+        else if (ccl::global_data::env().ze_ipc_exchange == ccl::ze::ipc_exchange_mode::drmfd ||
+                 !ccl::ze::fd_manager::is_pidfd_supported()) {
+            if (!ccl::ze::fd_manager::is_pidfd_supported()) {
+                LOG_WARN("pidfd is not supported, fallbacks to drmfd exchange mode");
+                ccl::global_data::env().ze_ipc_exchange = ccl::ze::ipc_exchange_mode::drmfd;
+            }
+
             fd_manager = std::make_shared<ccl::ze::fd_manager>(comm->get_atl_comm());
             // update physical_idx for each logical device, by default it is invalid
 #ifdef ZE_PCI_PROPERTIES_EXT_NAME
@@ -290,6 +300,10 @@ void ccl_comm::init_ipc_exchange_mode(std::shared_ptr<ccl_comm> comm) {
             LOG_DEBUG("drmfd exchange mode is verified successfully");
         }
 #endif // CCL_ENABLE_DRM
+        else {
+            ccl::global_data::env().ze_ipc_exchange = ccl::ze::ipc_exchange_mode::sockets;
+            LOG_DEBUG("sockets mode is selected");
+        }
     }
 }
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
@@ -421,23 +435,31 @@ void* ccl_scaleout_host_bufs::get_scaleout_host_buf() {
         CCL_THROW_IF_NOT(get_scaleout_host_buf_size() > 0,
                          "CCL_SCALEOUT_HOST_BUF_SIZE must be greater than zero");
 
+        auto& global_data = ccl::global_data::get();
         switch (ccl::global_data::env().sycl_scaleout_buf_alloc_mode) {
             case ccl::utils::alloc_mode::hwloc: {
-                int numa_node_os_idx = 0; // TODO: determine which hbm_node_os_idx to set;
-                host_bufs[index] = ccl::global_data::get().hwloc_wrapper->alloc_memory(
-                    CCL_REG_MSG_ALIGNMENT, buf_size, numa_node_os_idx);
-            } break;
-            case ccl::utils::alloc_mode::malloc: host_bufs[index] = malloc(buf_size); break;
+                auto& env = ccl::global_data::env();
+                // fallback to memalign if worker_affinity is not set by user
+                if (env.worker_affinity_set) {
+                    auto worker_count = env.worker_count;
+                    int numa_node_os_idx =
+                        env.worker_mem_affinity[global_data.get_local_proc_idx() * worker_count];
+                    host_bufs[index] = global_data.hwloc_wrapper->alloc_memory(
+                        CCL_REG_MSG_ALIGNMENT, buf_size, numa_node_os_idx);
+                    break;
+                }
+            }
             case ccl::utils::alloc_mode::memalign:
                 // internally, CCL_MALLOC calls posix_memalign
                 host_bufs[index] = CCL_MALLOC(buf_size, "scaleout_host_buf");
                 break;
+            case ccl::utils::alloc_mode::malloc: host_bufs[index] = malloc(buf_size); break;
             default: CCL_THROW("unexpected alloc_mode");
         }
         CCL_THROW_IF_NOT(host_bufs[index] != nullptr, "Cannot allocate host buffer");
 
-        if (ccl::global_data::get().ze_data->external_pointer_registration_enabled) {
-            ccl::global_data::get().ze_data->import_external_pointer(host_bufs[index], buf_size);
+        if (global_data.ze_data->external_pointer_registration_enabled) {
+            global_data.ze_data->import_external_pointer(host_bufs[index], buf_size);
         }
     }
 
@@ -454,25 +476,299 @@ size_t ccl_scaleout_host_bufs::get_scaleout_host_buf_size() {
 }
 
 ccl_scaleout_host_bufs::~ccl_scaleout_host_bufs() {
-    for (int i = 0; i < buf_count; ++i) {
-        if (host_bufs[i] != nullptr) {
-            if (ccl::global_data::get().ze_data->external_pointer_registration_enabled) {
-                ccl::global_data::get().ze_data->release_imported_pointer(host_bufs[i]);
-            }
+    try {
+        for (int i = 0; i < buf_count; ++i) {
+            if (host_bufs[i] != nullptr) {
+                if (ccl::global_data::get().ze_data->external_pointer_registration_enabled) {
+                    ccl::global_data::get().ze_data->release_imported_pointer(host_bufs[i]);
+                }
 
-            switch (ccl::global_data::env().sycl_scaleout_buf_alloc_mode) {
-                case ccl::utils::alloc_mode::hwloc:
-                    ccl::global_data::get().hwloc_wrapper->dealloc_memory(host_bufs[i]);
-                    break;
-                case ccl::utils::alloc_mode::malloc: free(host_bufs[i]); break;
-                case ccl::utils::alloc_mode::memalign: CCL_FREE(host_bufs[i]); break;
-                default:
-                    // destructors cannot throw exceptions
-                    LOG_ERROR("unexpected alloc_mode");
+                switch (ccl::global_data::env().sycl_scaleout_buf_alloc_mode) {
+                    case ccl::utils::alloc_mode::hwloc:
+                        if (ccl::global_data::env().worker_affinity_set) {
+                            ccl::global_data::get().hwloc_wrapper->dealloc_memory(host_bufs[i]);
+                            break;
+                        }
+                    case ccl::utils::alloc_mode::memalign: CCL_FREE(host_bufs[i]); break;
+                    case ccl::utils::alloc_mode::malloc: free(host_bufs[i]); break;
+                    default:
+                        // destructors cannot throw exceptions
+                        LOG_ERROR("unexpected alloc_mode");
+                }
             }
         }
     }
+    catch (const std::exception& e) {
+        // printing warning since we are towards the end of execution
+        LOG_WARN("exception caught in the destructor of scaleout host buffers: ", e.what());
+    }
 }
+
+sycl::device& ccl_scaleout_device_bufs::get_device() const {
+    static sycl::device device;
+    return device;
+}
+
+void* ccl_scaleout_device_bufs::get_scaleout_device_buf(sycl::queue& q) {
+    auto& device = get_device();
+    if (!device_bufs[index]) {
+        CCL_THROW_IF_NOT(get_scaleout_device_buf_size() > 0,
+                         "CCL_SCALEOUT_HOST_BUF_SIZE must be greater than zero");
+
+        device_bufs[index] = sycl::malloc_device(buf_size, q);
+        CCL_THROW_IF_NOT(device_bufs[index], "malloc scaleout_device_buf failed");
+        device = q.get_device();
+    }
+    // current assumption is that we expect same sycl::queue every time
+    CCL_ASSERT(device == q.get_device());
+    auto old_index = index;
+    index = (index + 1) % buf_count;
+    return device_bufs[old_index];
+}
+
+void ccl_scaleout_device_bufs::put_scaleout_device_buf(void* buf) {
+    int old_index = (index - 1 + buf_count) % buf_count;
+    CCL_THROW_IF_NOT(device_bufs[old_index] == buf, "put_scaleout_device_buf in wrong order");
+    index = old_index;
+}
+
+size_t ccl_scaleout_device_bufs::get_scaleout_device_buf_size() {
+    if (buf_size == 0) {
+        buf_size = ccl::global_data::env().sycl_scaleout_device_buf_size;
+    }
+    return buf_size;
+}
+
+ccl_scaleout_device_bufs::~ccl_scaleout_device_bufs() {
+    std::vector<void*> sycl_bufs{};
+
+    for (int i = 0; i < buf_count; ++i) {
+        if (device_bufs[i] != nullptr) {
+            sycl_bufs.push_back(device_bufs[i]);
+        }
+    }
+
+    if (sycl_bufs.empty()) {
+        return;
+    }
+
+    auto& device = get_device();
+    sycl::queue q(device);
+    for (void* sycl_buf : sycl_bufs) {
+        sycl::free(sycl_buf, q);
+    }
+}
+
+ccl_scaleout_device_bufs::ccl_scaleout_device_bufs(const ccl_scaleout_device_bufs& other)
+        : buf_size(other.buf_size),
+          index(other.index) {
+    auto& device = get_device();
+    device = other.get_device();
+
+    sycl::queue q(other.get_device());
+
+    for (int i = 0; i < buf_count; ++i) {
+        if (other.device_bufs[i] != nullptr) {
+            device_bufs[i] = sycl::malloc_device(buf_size, q);
+            q.memcpy(device_bufs[i], other.device_bufs[i], buf_size).wait();
+        }
+        else {
+            device_bufs[i] = nullptr;
+        }
+    }
+}
+
+ccl_scaleout_device_bufs& ccl_scaleout_device_bufs::operator=(
+    const ccl_scaleout_device_bufs& other) {
+    if (this == &other) {
+        return *this;
+    }
+
+    std::vector<void*> sycl_bufs{};
+    for (int i = 0; i < buf_count; ++i) {
+        if (device_bufs[i] != nullptr) {
+            sycl_bufs.push_back(device_bufs[i]);
+        }
+    }
+
+    auto& device = get_device();
+    sycl::queue previous_device_queue(device);
+    for (void* sycl_buf : sycl_bufs) {
+        sycl::free(sycl_buf, previous_device_queue);
+    }
+
+    buf_size = other.buf_size;
+    index = other.index;
+    device = other.get_device();
+
+    sycl::queue other_device_queue(device);
+
+    for (int i = 0; i < buf_count; ++i) {
+        if (other.device_bufs[i] != nullptr) {
+            device_bufs[i] = sycl::malloc_device(buf_size, other_device_queue);
+            other_device_queue.memcpy(device_bufs[i], other.device_bufs[i], buf_size).wait();
+        }
+        else {
+            device_bufs[i] = nullptr;
+        }
+    }
+
+    return *this;
+}
+
+void ccl_scaleout_pipeline_bufs::allocate_pipe_chunks(int num_bufs) {
+    assert(num_chunk_buffs == num_bufs);
+    if (send_pipe_buffer)
+        return;
+
+    auto& env = ccl::global_data::env();
+    auto& global_data = ccl::global_data::get();
+    size_t chunk_size = ccl::global_data::env().sycl_pipeline_chunk_size;
+    switch (env.sycl_scaleout_buf_alloc_mode) {
+        case ccl::utils::alloc_mode::hwloc: {
+            // fallback to memalign if worker_affinity is not set by user
+            if (env.worker_affinity_set) {
+                auto worker_count = env.worker_count;
+                int numa_node_os_idx =
+                    env.worker_mem_affinity[global_data.get_local_proc_idx() * worker_count];
+                send_pipe_buffer = global_data.hwloc_wrapper->alloc_memory(
+                    CCL_REG_MSG_ALIGNMENT, num_chunk_buffs * chunk_size, numa_node_os_idx);
+                recv_pipe_buffer = global_data.hwloc_wrapper->alloc_memory(
+                    CCL_REG_MSG_ALIGNMENT, num_chunk_buffs * chunk_size, numa_node_os_idx);
+                break;
+            }
+        }
+        case ccl::utils::alloc_mode::memalign: {
+            // internally, CCL_MALLOC calls posix_memalign
+            send_pipe_buffer =
+                CCL_MALLOC(num_chunk_buffs * chunk_size, "ccl_scaleout_pipeline_bufs");
+            recv_pipe_buffer =
+                CCL_MALLOC(num_chunk_buffs * chunk_size, "ccl_scaleout_pipeline_bufs");
+        } break;
+        case ccl::utils::alloc_mode::malloc: {
+            send_pipe_buffer = malloc(num_chunk_buffs * chunk_size);
+            recv_pipe_buffer = malloc(num_chunk_buffs * chunk_size);
+        } break;
+        default: CCL_THROW("unexpected alloc_mode");
+    }
+    CCL_THROW_IF_NOT(send_pipe_buffer, "malloc send_pipe_buffer failed");
+    CCL_THROW_IF_NOT(recv_pipe_buffer, "malloc recv_pipe_buffer failed");
+    if (global_data.ze_data->external_pointer_registration_enabled) {
+        global_data.ze_data->import_external_pointer(send_pipe_buffer,
+                                                     num_chunk_buffs * chunk_size);
+        global_data.ze_data->import_external_pointer(recv_pipe_buffer,
+                                                     num_chunk_buffs * chunk_size);
+    }
+    for (int i = 0; i < num_chunk_buffs; i++) {
+        send_pipe_chunks[i] = (char*)send_pipe_buffer + i * chunk_size;
+        recv_pipe_chunks[i] = (char*)recv_pipe_buffer + i * chunk_size;
+    }
+}
+
+ccl_scaleout_pipeline_bufs::~ccl_scaleout_pipeline_bufs() {
+    if (send_pipe_buffer) {
+        auto& global_data = ccl::global_data::get();
+        if (global_data.ze_data->external_pointer_registration_enabled) {
+            global_data.ze_data->release_imported_pointer(send_pipe_buffer);
+            global_data.ze_data->release_imported_pointer(recv_pipe_buffer);
+        }
+        switch (ccl::global_data::env().sycl_scaleout_buf_alloc_mode) {
+            case ccl::utils::alloc_mode::hwloc: {
+                // fallback to memalign if worker_affinity is not set by user
+                if (ccl::global_data::env().worker_affinity_set) {
+                    global_data.hwloc_wrapper->dealloc_memory(send_pipe_buffer);
+                    global_data.hwloc_wrapper->dealloc_memory(recv_pipe_buffer);
+                    break;
+                }
+            };
+            case ccl::utils::alloc_mode::memalign: {
+                CCL_FREE(send_pipe_buffer);
+                CCL_FREE(recv_pipe_buffer);
+            } break;
+            case ccl::utils::alloc_mode::malloc: {
+                free(send_pipe_buffer);
+                free(recv_pipe_buffer);
+            } break;
+            default:
+                // destructors cannot throw exceptions
+                LOG_ERROR("unexpected alloc_mode");
+        }
+    }
+}
+
+ccl_scaleout_pipeline_bufs::ccl_scaleout_pipeline_bufs(const ccl_scaleout_pipeline_bufs& other) {
+    size_t chunk_size = ccl::global_data::env().sycl_pipeline_chunk_size;
+    if (other.send_pipe_buffer) {
+        send_pipe_buffer = CCL_MALLOC(num_chunk_buffs * chunk_size, "ccl_scaleout_pipeline_bufs");
+        CCL_THROW_IF_NOT(send_pipe_buffer, "malloc scaleout_device_buf failed");
+        std::memcpy(send_pipe_buffer, other.send_pipe_buffer, num_chunk_buffs * chunk_size);
+        ccl::global_data::get().ze_data->import_external_pointer(send_pipe_buffer,
+                                                                 num_chunk_buffs * chunk_size);
+
+        for (int i = 0; i < num_chunk_buffs; i++) {
+            send_pipe_chunks[i] = (char*)send_pipe_buffer + i * chunk_size;
+        }
+    }
+
+    if (other.recv_pipe_buffer) {
+        recv_pipe_buffer = CCL_MALLOC(num_chunk_buffs * chunk_size, "ccl_scaleout_pipeline_bufs");
+        if (!recv_pipe_buffer) {
+            CCL_THROW_IF_NOT(recv_pipe_buffer, "malloc scaleout_device_buf failed");
+        }
+        std::memcpy(recv_pipe_buffer, other.recv_pipe_buffer, num_chunk_buffs * chunk_size);
+        ccl::global_data::get().ze_data->import_external_pointer(recv_pipe_buffer,
+                                                                 num_chunk_buffs * chunk_size);
+
+        for (int i = 0; i < num_chunk_buffs; i++) {
+            recv_pipe_chunks[i] = (char*)recv_pipe_buffer + i * chunk_size;
+        }
+    }
+}
+
+ccl_scaleout_pipeline_bufs& ccl_scaleout_pipeline_bufs::operator=(
+    const ccl_scaleout_pipeline_bufs& other) {
+    if (this == &other) {
+        return *this;
+    }
+
+    if (send_pipe_buffer) {
+        CCL_FREE(send_pipe_buffer);
+        send_pipe_buffer = nullptr;
+    }
+    if (recv_pipe_buffer) {
+        CCL_FREE(recv_pipe_buffer);
+        recv_pipe_buffer = nullptr;
+    }
+
+    size_t chunk_size = ccl::global_data::env().sycl_pipeline_chunk_size;
+
+    if (other.send_pipe_buffer) {
+        send_pipe_buffer = CCL_MALLOC(num_chunk_buffs * chunk_size, "ccl_scaleout_pipeline_bufs");
+        CCL_THROW_IF_NOT(send_pipe_buffer, "malloc scaleout_device_buf failed");
+        std::memcpy(send_pipe_buffer, other.send_pipe_buffer, num_chunk_buffs * chunk_size);
+        ccl::global_data::get().ze_data->import_external_pointer(send_pipe_buffer,
+                                                                 num_chunk_buffs * chunk_size);
+
+        for (int i = 0; i < num_chunk_buffs; i++) {
+            send_pipe_chunks[i] = (char*)send_pipe_buffer + i * chunk_size;
+        }
+    }
+
+    if (other.recv_pipe_buffer) {
+        recv_pipe_buffer = CCL_MALLOC(num_chunk_buffs * chunk_size, "ccl_scaleout_pipeline_bufs");
+        CCL_THROW_IF_NOT(recv_pipe_buffer, "malloc scaleout_device_buf failed");
+        std::memcpy(recv_pipe_buffer, other.recv_pipe_buffer, num_chunk_buffs * chunk_size);
+        ccl::global_data::get().ze_data->import_external_pointer(recv_pipe_buffer,
+                                                                 num_chunk_buffs * chunk_size);
+
+        for (int i = 0; i < num_chunk_buffs; i++) {
+            recv_pipe_chunks[i] = (char*)recv_pipe_buffer + i * chunk_size;
+        }
+    }
+
+    return *this;
+}
+
 #endif // CCL_ENABLE_SYCL
 
 /* barrier */
@@ -534,17 +830,15 @@ ccl::event ccl_comm::allgatherv_impl(const void* send_buf,
                                      const ccl::stream::impl_value_t& stream,
                                      const ccl::allgatherv_attr& attr,
                                      const ccl::vector_class<ccl::event>& deps) {
-    ccl_request* req = ccl_allgatherv_impl(send_buf,
-                                           send_count,
-                                           recv_buf,
-                                           recv_counts.data(),
-                                           dtype,
-                                           attr,
-                                           this,
-                                           get_stream_ptr(stream),
-                                           deps);
-
-    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
+    return ccl_allgatherv(send_buf,
+                          send_count,
+                          recv_buf,
+                          recv_counts,
+                          dtype,
+                          attr,
+                          this,
+                          get_stream_ptr(stream),
+                          deps);
 }
 
 ccl::event ccl_comm::allgatherv_impl(const void* send_buf,
@@ -558,17 +852,15 @@ ccl::event ccl_comm::allgatherv_impl(const void* send_buf,
     ccl_coll_attr internal_attr(attr);
     internal_attr.is_vector_buf = 1;
 
-    ccl_request* req = ccl_allgatherv_impl(reinterpret_cast<const void*>(send_buf),
-                                           send_count,
-                                           (void*)(recv_bufs.data()),
-                                           recv_counts.data(),
-                                           dtype,
-                                           internal_attr,
-                                           this,
-                                           get_stream_ptr(stream),
-                                           deps);
-
-    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
+    return ccl_allgatherv(reinterpret_cast<const void*>(send_buf),
+                          send_count,
+                          (void*)(recv_bufs.data()),
+                          recv_counts,
+                          dtype,
+                          internal_attr,
+                          this,
+                          get_stream_ptr(stream),
+                          deps);
 }
 
 /* allreduce */
@@ -580,10 +872,8 @@ ccl::event ccl_comm::allreduce_impl(const void* send_buf,
                                     const ccl::stream::impl_value_t& stream,
                                     const ccl::allreduce_attr& attr,
                                     const ccl::vector_class<ccl::event>& deps) {
-    ccl_request* req = ccl_allreduce_impl(
+    return ccl_allreduce(
         send_buf, recv_buf, count, dtype, reduction, attr, this, get_stream_ptr(stream), deps);
-
-    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
 }
 
 /* alltoall */
@@ -682,16 +972,16 @@ ccl::event ccl_comm::broadcast_impl(void* buf,
     return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
 }
 
-/* bcastExt */
-ccl::event ccl_comm::broadcastExt_impl(void* send_buf,
-                                       void* recv_buf,
-                                       size_t count,
-                                       ccl::datatype dtype,
-                                       int root,
-                                       const ccl::stream::impl_value_t& stream,
-                                       const ccl::broadcastExt_attr& attr,
-                                       const ccl::vector_class<ccl::event>& deps) {
-    ccl_request* req = ccl_broadcastExt_impl(
+/* broadcast */
+ccl::event ccl_comm::broadcast_impl(void* send_buf,
+                                    void* recv_buf,
+                                    size_t count,
+                                    ccl::datatype dtype,
+                                    int root,
+                                    const ccl::stream::impl_value_t& stream,
+                                    const ccl::broadcast_attr& attr,
+                                    const ccl::vector_class<ccl::event>& deps) {
+    ccl_request* req = ccl_broadcast_impl(
         send_buf, recv_buf, count, dtype, root, attr, this, get_stream_ptr(stream), deps);
 
     return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
@@ -730,10 +1020,8 @@ ccl::event ccl_comm::reduce_scatter_impl(const void* send_buf,
                                          const ccl::stream::impl_value_t& stream,
                                          const ccl::reduce_scatter_attr& attr,
                                          const ccl::vector_class<ccl::event>& deps) {
-    ccl_request* req = ccl_reduce_scatter_impl(
+    return ccl_reduce_scatter(
         send_buf, recv_buf, recv_count, dtype, reduction, attr, this, get_stream_ptr(stream), deps);
-
-    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
 }
 
 /* recv */
@@ -744,10 +1032,7 @@ ccl::event ccl_comm::recv_impl(void* recv_buf,
                                const ccl::stream::impl_value_t& stream,
                                const ccl::pt2pt_attr& attr,
                                const ccl::vector_class<ccl::event>& deps) {
-    ccl_request* req =
-        ccl_recv_impl(recv_buf, recv_count, dtype, peer, attr, this, get_stream_ptr(stream), deps);
-
-    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
+    return ccl_recv(recv_buf, recv_count, dtype, peer, attr, this, get_stream_ptr(stream), deps);
 }
 
 /* send */
@@ -758,10 +1043,7 @@ ccl::event ccl_comm::send_impl(void* send_buf,
                                const ccl::stream::impl_value_t& stream,
                                const ccl::pt2pt_attr& attr,
                                const ccl::vector_class<ccl::event>& deps) {
-    ccl_request* req =
-        ccl_send_impl(send_buf, send_count, dtype, peer, attr, this, get_stream_ptr(stream), deps);
-
-    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
+    return ccl_send(send_buf, send_count, dtype, peer, attr, this, get_stream_ptr(stream), deps);
 }
 
 COMM_INTERFACE_COLL_INSTANTIATION(ccl_comm);

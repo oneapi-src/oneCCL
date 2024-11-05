@@ -195,36 +195,36 @@ ccl::status ccl_coll_build_topo_bcast(ccl_sched* sched,
                                       ccl_comm* comm);
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
-// bcastExt
-ccl::status ccl_coll_build_direct_bcastExt(ccl_sched* sched,
+// broadcast
+ccl::status ccl_coll_build_direct_broadcast(ccl_sched* sched,
+                                            ccl_buffer send_buf,
+                                            ccl_buffer recv_buf,
+                                            size_t count,
+                                            const ccl_datatype& dtype,
+                                            int root,
+                                            ccl_comm* comm);
+ccl::status ccl_coll_build_scatter_ring_allgather_broadcast(ccl_sched* sched,
+                                                            ccl_buffer send_buf,
+                                                            ccl_buffer recv_buf,
+                                                            size_t count,
+                                                            const ccl_datatype& dtype,
+                                                            int root,
+                                                            ccl_comm* comm);
+ccl::status ccl_coll_build_naive_broadcast(ccl_sched* sched,
                                            ccl_buffer send_buf,
                                            ccl_buffer recv_buf,
                                            size_t count,
                                            const ccl_datatype& dtype,
                                            int root,
                                            ccl_comm* comm);
-ccl::status ccl_coll_build_scatter_ring_allgather_bcastExt(ccl_sched* sched,
-                                                           ccl_buffer send_buf,
-                                                           ccl_buffer recv_buf,
-                                                           size_t count,
-                                                           const ccl_datatype& dtype,
-                                                           int root,
-                                                           ccl_comm* comm);
-ccl::status ccl_coll_build_naive_bcastExt(ccl_sched* sched,
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+ccl::status ccl_coll_build_topo_broadcast(ccl_sched* sched,
                                           ccl_buffer send_buf,
                                           ccl_buffer recv_buf,
                                           size_t count,
                                           const ccl_datatype& dtype,
                                           int root,
                                           ccl_comm* comm);
-#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-ccl::status ccl_coll_build_topo_bcastExt(ccl_sched* sched,
-                                         ccl_buffer send_buf,
-                                         ccl_buffer recv_buf,
-                                         size_t count,
-                                         const ccl_datatype& dtype,
-                                         int root,
-                                         ccl_comm* comm);
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
 // recv

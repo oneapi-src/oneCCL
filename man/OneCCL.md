@@ -67,14 +67,38 @@ KVS implemention with sockets is used to collect the rank information while crea
 ## CCL_KVS_CONNECTION_TIMEOUT
 
 
-Set the timeout for setting up connections during kvs initialization
+Set the timeout for setting up connections during kvs initialization. 
         
 
 
 &quot;&lt;timeout&gt;&quot; - Timeout in seconds to use for setting up sockets during kvs initialization
+By-default: &quot;120&quot; 
+        
+
+## CCL_KVS_MPI_ALLGATHER
 
 
-By-default: &quot;120&quot;
+Set whether to use MPI_Allgather or custom implementation while creating a communicator. 
+        
+
+
+&quot;&lt;value&gt;&quot;: <br />
+&quot;0&quot; - use only custom implementation of allgather <br />
+&quot;1&quot; - use MPI_Allgather whenever possible <br />
+ By-default: &quot;1&quot; 
+        
+
+## CCL_KVS_USE_MPI_RANKS
+
+
+Set whether to use mpi ranks directly while creating a communicator. In general, MPI_COMM_WORLD rank does not have to be the same as CCL communicator rank. Therefore, we need to gather MPI rank of all participants while creating a communicator. If user decide to use MPI rank and CCL rank as same, then they can set this CVAR to 1, and CCL can skip gathering MPI rank of all participants and use the information that CCL rank is same as MPI rank while creating communicator. 
+        
+
+
+&quot;&lt;value&gt;&quot;: <br />
+&quot;0&quot; - collect mpi ranks from everyone <br />
+&quot;1&quot; - use mpi ranks directly without collecting <br />
+ By-default: &quot;0&quot; 
         
 
 ## CCL_ATL_SHM
@@ -102,6 +126,31 @@ Description<br />
 
 
 By-default: &quot;0&quot; 
+        
+
+## CCL_ENABLE_AUTO_CACHE
+
+
+Set this environment variable to enable cache model automatically for synchronous collectives with direct algorithms. 
+        
+
+
+Syntax <br />
+CCL_ENABLE_AUTO_CACHE=&quot;&lt;value&gt;&quot;<br />
+<br />
+Arguments<br />
+&quot;&lt;value&gt;&quot; Description<br />
+
+ - 0 Does not allow enabling cache model automatically.<br />
+
+
+ - 1 Allows enabling cache model automatically (default).<br />
+<br />
+
+
+
+
+By-default: &quot;1&quot; 
         
 
 ## CCL_ALLGATHER
@@ -263,10 +312,10 @@ Note: BCAST algorithm does not support yet the CCL_BCAST_SCALEOUT environment va
 By-default: &quot;direct&quot; 
         
 
-## CCL_BCASTEXT
+## CCL_BROADCAST
 
 
-Set broadcastExt algorithm (send_buf, recv_buf) 
+Set broadcast algorithm (send_buf, recv_buf) 
         
 
 
@@ -814,7 +863,7 @@ Arguments
 &quot;&lt;value&gt;&quot; Description
  - hydra Uses the MPI hydra job launcher (default)
 
- - torch Uses torch job launcher
+ - torchrun Uses torchrun job launcher
 
  - pmix It is used with the PALS job launcher which uses the pmix API, so your mpiexec command should look something like this: CCL_PROCESS_LAUNCHER=pmix CCL_ATL_TRANSPORT=mpi mpiexec -np 2 -ppn 2 &lt;ndash /&gt;pmi=pmix ...
 
@@ -978,7 +1027,7 @@ Set to specify the mechanism to use for Level Zero IPC exchange.
  &quot;pidfd&quot; - Uses pidfd mechanism for Level Zero IPC exchange. It requires OS kernel SP4 or above as it requires Linux 5.6 kernel or above <br />
  &quot;sockets&quot; - Uses socket mechanism for Level Zero IPC exchange. It is usually slower than the other two mechanisms, but can be used for debugging as it is usually available on most systems
 &quot;&lt;value&gt;&quot;: &quot;drmfd&quot;, &quot;pidfd&quot;, &quot;sockets&quot;
-By-default: &quot;drmfd&quot; 
+By-default: &quot;pidfd&quot; 
         
 
 ## CCL_ZE_DRM_BDF_SUPPORT
@@ -1099,6 +1148,16 @@ Specify the threshold for the medium size algorithm in allgatherv.
 Set the threshold in bytes to specify the medium size algorithm in the allgatherv collective. Default value is 2097152. &quot;&lt;value&gt;&quot;&quot; : &quot;&gt;=0&quot; 
         
 
+## CCL_SYCL_ALLGATHERV_SCALEOUT_THRESHOLD
+
+
+Specify the threshold for the scaleout algorithm in allgatherv.
+
+
+
+Set the threshold in bytes to specify the max message size for the sycl scaleout phase of the allgatherv collective. Default value is 1048576. 
+
+
 ## CCL_SYCL_ALLREDUCE_TMP_BUF
 
 
@@ -1131,6 +1190,26 @@ Specify the threshold for the medium size algorithm in allreduce.
 Set the threshold in bytes to specify the medium size algorithm in the allreduce collective. Default value is 16777216. &quot;&lt;value&gt;&quot;&quot; : &quot;&gt;=0&quot; 
         
 
+## CCL_SYCL_ALLREDUCE_SCALEOUT_THRESHOLD
+
+
+Specify the maximum threshold for the Allreduce Sycl scale-out algorithm. 
+        
+
+
+Set the threshold in bytes to specify the Sycl scaleout algorithm in the allreduce collective. Default value is 1048576. &quot;&lt;value&gt;&quot;&quot; : &quot;&gt;=0&quot; 
+        
+
+## CCL_SYCL_ALLREDUCE_SCALEOUT_DIRECT_THRESHOLD
+
+
+Specify the maximum threshold for the Allreduce Sycl scale-out direct algorithm. 
+        
+
+
+Set the threshold in bytes to specify the Sycl scaleout direct algorithm (call MPI_allreduce directly) in the allreduce collective. Default value is 1048576. &quot;&lt;value&gt;&quot;&quot; : &quot;&gt;=0&quot; 
+        
+
 ## CCL_SYCL_REDUCE_SCATTER_TMP_BUF
 
 
@@ -1161,6 +1240,16 @@ Specify the threshold for the medium size algorithm in reduce_scatter.
 
 
 Set the threshold in bytes to specify the medium size algorithm in the reduce_scatter collective. Default value is 67108864. &quot;&lt;value&gt;&quot;&quot; : &quot;&gt;=0&quot; 
+        
+
+## CCL_SYCL_REDUCE_SCATTER_SCALEOUT_THRESHOLD
+
+
+Specify the threshold for the Sycl scaleout algorithm in reduce-scatter. 
+        
+
+
+Set the threshold in bytes to specify the Sycl scaleout algorithm in the reduce-scatter collective. Default value is 4294967296. &quot;&lt;value&gt;&quot;&quot; : &quot;&gt;=0&quot; 
         
 
 
