@@ -39,7 +39,7 @@
 #include "internal_types.hpp"
 
 #ifdef CCL_ENABLE_SYCL
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #endif
 
 #define CCL_CHECK_AND_THROW(result, diagnostic) \

@@ -26,9 +26,9 @@ int main() {
     const size_t count = 128;
 
     size_t i = 0;
-    vector<int> send_buf;
-    vector<int> recv_buf;
-    vector<size_t> recv_counts;
+    std::vector<int> send_buf;
+    std::vector<int> recv_buf;
+    std::vector<size_t> recv_counts;
 
     ccl::init();
 
@@ -65,8 +65,8 @@ int main() {
         send_buf[i] = 10;
     }
 
-    /* invoke broadcastExt */
-    ccl::broadcastExt(send_buf.data(), recv_buf.data(), count, 0, comm).wait();
+    /* invoke broadcast */
+    ccl::broadcast(send_buf.data(), recv_buf.data(), count, 0, comm).wait();
 
     /* check correctness of recv_buf */
     for (i = 0; i < count; i++) {
@@ -78,12 +78,12 @@ int main() {
     /* print out the result of the test */
     for (i = 0; i < count; i++) {
         if (recv_buf[i] == -1) {
-            cout << "FAILED\n";
+            std::cout << "FAILED\n";
             break;
         }
     }
     if (i == count) {
-        cout << "PASSED\n";
+        std::cout << "PASSED\n";
     }
 
     return 0;

@@ -20,7 +20,7 @@ ze_cmdlist_timestamp::ze_cmdlist_timestamp(ccl_sched* sched,
                                            std::string text,
                                            const std::vector<ze_event_handle_t>& wait_events)
         : ze_base_entry(sched, wait_events, comm, 0 /* request additional events */),
-          text(text) {
+          text(std::move(text)) {
     CCL_THROW_IF_NOT(sched, "no sched");
     CCL_THROW_IF_NOT(comm, "no comm");
 }

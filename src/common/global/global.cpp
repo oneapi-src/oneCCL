@@ -185,7 +185,7 @@ void global_data::set_local_coord() {
     if (env.process_launcher == process_launcher_mode::hydra) {
         getenv_local_coord("MPI_LOCALRANKID", "MPI_LOCALNRANKS");
     }
-    else if (env.process_launcher == process_launcher_mode::torch) {
+    else if (env.process_launcher == process_launcher_mode::torchrun) {
         getenv_local_coord("LOCAL_RANK", "LOCAL_WORLD_SIZE");
     }
 #ifdef CCL_ENABLE_PMIX

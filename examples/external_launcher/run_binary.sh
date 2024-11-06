@@ -47,7 +47,7 @@ print_help()
 parse_arguments()
 {
     #NOTE: by condition below we can check case when w/ and w/o -cv option
-    if [ $# -ne 18 || $# -ne 20 ]
+    if [ $# -ne 18 -a $# -ne 20 ]
     then
         print_help
         exit 1

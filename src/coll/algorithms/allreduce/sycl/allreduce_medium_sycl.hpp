@@ -696,12 +696,12 @@ public:
                          const void *in_buffer,
                          void *out_buffer,
                          size_t size,
+                         const ccl::vector_class<ccl::event> &deps,
                          bool &done) {
         done = true;
 
         // check local alignment
-        size_t is_aligned = (size_t)in_buffer % 4 == 0 && (size_t)out_buffer % 4 == 0 &&
-                            (size * sizeof(data_type)) % 4 == 0;
+        size_t is_aligned = (size_t)in_buffer % 4 == 0 && (size_t)out_buffer % 4 == 0;
 
         if (ccl::global_data::env().sycl_allreduce_tmp_buf) {
             if (is_aligned)
@@ -1540,6 +1540,7 @@ private:
                                            const void *in_buf, \
                                            void *out_buf, \
                                            size_t count, \
+                                           const ccl::vector_class<ccl::event> &deps, \
                                            bool &done) { \
-        return ar_medium_##TYPE.allreduce(queue, in_buf, out_buf, count, done); \
+        return ar_medium_##TYPE.allreduce(queue, in_buf, out_buf, count, deps, done); \
     }

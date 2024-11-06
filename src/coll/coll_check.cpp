@@ -105,7 +105,7 @@ void ccl_coll_validate_user_input(const ccl_coll_param& param, const ccl_coll_at
                      "vector buffer is not supported for ",
                      ccl_coll_type_to_str(param.ctype));
 
-    if (param.ctype == ccl_coll_bcast || param.ctype == ccl_coll_bcastExt ||
+    if (param.ctype == ccl_coll_bcast || param.ctype == ccl_coll_broadcast ||
         param.ctype == ccl_coll_reduce) {
         CCL_THROW_IF_NOT(param.root < param.comm->size(),
                          "unexpected root ",

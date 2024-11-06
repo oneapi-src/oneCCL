@@ -24,6 +24,8 @@
 #include "coll/coll_util.hpp"
 #include "common/utils/utils.hpp"
 #include "sched/entry/factory/entry_factory.hpp"
+#include "sched/entry/ack_accept_entry.hpp"
+#include "sched/entry/ack_report_entry.hpp"
 
 ccl::status ccl_coll_build_direct_send(ccl_sched* sched,
                                        ccl_buffer buf,
@@ -98,22 +100,16 @@ ccl::status ccl_coll_build_topo_send(ccl_sched* sched,
             count,
             dtype,
             copy_attr(node_peer_rank, 0, copy_direction::d2d, true /*pt2pt_op*/));
-        LOG_DEBUG("build SEND: copy_entry is done");
+        LOG_DEBUG("build SEND: copy_entry is created");
 
-        uint64_t ack_tag = node_comm->get_atl_comm()->tag_creator->create(
-            node_curr_rank, node_comm->get_comm_id(), pt2pt_ack_tag, sched->get_op_id());
-        ccl::utils::send_ack_to_peer(node_comm->get_atl_comm(), ack_tag, node_peer_rank);
+        entry_factory::create<ack_report_entry>(
+            sched, pt2pt_ack_tag, node_peer_rank, node_curr_rank, node_comm);
+        LOG_DEBUG("build SEND: ack_report_entry is created");
     }
     else {
-        uint64_t ack_tag = node_comm->get_atl_comm()->tag_creator->create(
-            node_peer_rank, node_comm->get_comm_id(), pt2pt_ack_tag, sched->get_op_id());
-        ccl::utils::recv_ack_from_peer(node_comm->get_atl_comm(), ack_tag, node_peer_rank);
-        LOG_DEBUG("build SEND: recv_ack_from_peer is done with tag: ",
-                  ack_tag,
-                  ", comm_rank: ",
-                  comm->rank(),
-                  ", peer_rank: ",
-                  node_peer_rank);
+        LOG_DEBUG("build SEND: read mode is enabled");
+        entry_factory::create<ack_accept_entry>(sched, pt2pt_ack_tag, node_peer_rank, node_comm);
+        LOG_DEBUG("build SEND: ack_accept_entry is created");
     }
 
     entry_factory::create<ze_execute_cmdlists_on_init_entry>(sched);

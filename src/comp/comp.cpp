@@ -25,7 +25,7 @@
 
 #ifdef CCL_ENABLE_SYCL
 #include "common/utils/sycl_utils.hpp"
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #endif // CCL_ENABLE_SYCL
 
 #define CCL_REDUCE(type) \
@@ -87,6 +87,11 @@ ccl::status ccl_comp_reduce_regular(const void* in_buf,
         return ccl::status::success;
     }
 
+#ifdef CCL_ENABLE_ITT
+    __itt_event comp_reduce_itt_event = ccl::profile::itt::event_get("comp_reduce_regular");
+    ccl::profile::itt::event_start(comp_reduce_itt_event);
+#endif // CCL_ENABLE_ITT
+
     size_t i;
     switch (dtype.idx()) {
         case ccl::datatype::int8: CCL_REDUCE(int8_t); break;
@@ -107,6 +112,11 @@ ccl::status ccl_comp_reduce_regular(const void* in_buf,
             break;
         default: CCL_FATAL("unexpected value ", dtype.idx()); break;
     }
+
+#ifdef CCL_ENABLE_ITT
+    ccl::profile::itt::event_end(comp_reduce_itt_event);
+#endif // CCL_ENABLE_ITT
+
     return ccl::status::success;
 }
 

@@ -131,7 +131,7 @@ LDFLAGS="-ldl"
 MPILIBNAME="mpi"
 
 # MPIVERSION is the version of the MPICH2 library that mpicc is intended for
-MPIVERSION="@IMPI_OFFICIALVERSION@"
+MPIVERSION="2021.14"
 #
 # Internal variables
 # Show is set to echo to cause the compilation command to be echoed instead

@@ -87,7 +87,6 @@ global_data_desc::global_data_desc() {
     LOG_DEBUG("found devices: ", devices.size());
 
     cache = std::make_unique<ze::cache>(global_data::env().worker_count);
-    dev_memory_manager = std::make_unique<ze::device_memory_manager>();
 
     topo_manager::detect_tune_port_count(devices);
 

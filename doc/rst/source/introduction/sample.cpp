@@ -40,9 +40,44 @@ int main(int argc, char* argv[]) {
 
     atexit(mpi_finalize);
 
-    auto device_selector = sycl::default_selector_v;
-    sycl::queue q(device_selector);
-    std::cout << "Running on " << q.get_device().get_info<sycl::info::device::name>() << "\n";
+    /* find and initialize Level-Zero devices and queues */
+    std::vector<sycl::device> devices;
+    std::vector<sycl::queue> queues;
+    auto platform_list = sycl::platform::get_platforms();
+    for (const auto &platform : platform_list) {
+        auto platform_name = platform.get_info<sycl::info::platform::name>();
+        bool is_level_zero = platform_name.find("Level-Zero") != std::string::npos;
+        if (is_level_zero) {
+            std::cout << "Platform_name is:  " << platform_name << std::endl;
+            auto device_list = platform.get_devices();
+            for (const auto &device : device_list) {
+                if (device.is_gpu()) {
+                    devices.push_back(device);
+                }
+            }
+        }
+    }
+
+    if (devices.size() < size) {
+        std::cerr << "Not enough devices for all ranks" << std::endl;
+        exit(-1);
+    }
+
+    sycl::context context(devices);
+    for (size_t i = 0; i < devices.size(); ++i) {
+        if (i == rank) { /* Only create a queue for the current rank's device */
+            queues.push_back(sycl::queue(context, devices[i], {sycl::property::queue::in_order()}));
+            break;
+        }
+    }
+
+    if (queues.empty()) {
+        std::cerr << "No queue created for rank " << rank << std::endl;
+        exit(-1);
+    }
+
+    /* Use the only queue in the queues vector for the current rank */
+    sycl::queue& q = queues[0];
 
     /* create kvs */
     ccl::shared_ptr_class<ccl::kvs> kvs;

@@ -34,9 +34,7 @@
 #include <unistd.h>
 
 #ifdef CCL_ENABLE_SYCL
-#include <CL/sycl.hpp>
-using namespace cl::sycl;
-using namespace cl::sycl::access;
+#include <sycl/sycl.hpp>
 #endif // CCL_ENABLE_SYCL
 
 #define GETTID() syscall(SYS_gettid)

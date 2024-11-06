@@ -97,7 +97,7 @@ public:
         CCL_THROW_IF_NOT(entries.empty());
         CCL_THROW_IF_NOT(subscheds.empty());
         CCL_THROW_IF_NOT(new_group.get() != nullptr);
-        group = new_group;
+        group = std::move(new_group);
     }
 
     std::shared_ptr<sched_group> get_group() {

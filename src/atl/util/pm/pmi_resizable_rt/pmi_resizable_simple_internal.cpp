@@ -62,68 +62,89 @@ atl_status_t pmi_resizable_simple_internal::pmrt_init() {
         LOG_ERROR("mem alloc failed");
         return ATL_STATUS_FAILURE;
     }
-    ATL_CHECK_STATUS(get_local_kvs_id(local_id), "failed to get local id");
-    ATL_CHECK_STATUS(barrier_full_reg(), "failed to full_barrier info register");
 
-    ATL_CHECK_STATUS(registration(), "registration failed");
-
-    if (ranks[0] == 0) {
-        size_t tmp_local_id;
-        ATL_CHECK_STATUS(get_local_kvs_id(tmp_local_id), "failed to get local id");
-        tmp_local_id++;
-        ATL_CHECK_STATUS(set_local_kvs_id(tmp_local_id), "failed to set local id");
+    if (!can_use_internal_kvs()) {
+        local_id = k->get_local_id();
+        ATL_CHECK_STATUS(registration(), "registration failed");
+        // update local_id for the next comm create
+        k->set_local_id(local_id + 1);
     }
-    if (thread_num == 0) {
-        ATL_CHECK_STATUS(barrier_reg(), "failed to barrier info register");
+    else {
+        ATL_CHECK_STATUS(get_local_kvs_id(local_id), "failed to get local id");
+        ATL_CHECK_STATUS(barrier_full_reg(), "failed to full_barrier info register");
+
+        ATL_CHECK_STATUS(registration(), "registration failed");
+
+        if (ranks[0] == 0) {
+            size_t tmp_local_id;
+            ATL_CHECK_STATUS(get_local_kvs_id(tmp_local_id), "failed to get local id");
+            tmp_local_id++;
+            ATL_CHECK_STATUS(set_local_kvs_id(tmp_local_id), "failed to set local id");
+        }
+        if (thread_num == 0) {
+            ATL_CHECK_STATUS(barrier_reg(), "failed to barrier info register");
+        }
     }
 
     return ATL_STATUS_SUCCESS;
 }
 
 atl_status_t pmi_resizable_simple_internal::registration() {
-    std::string total_local_rank_count_str = std::to_string(comm_size);
-    std::string result_kvs_name = std::string(INTERNAL_REGISTRATION) + std::to_string(local_id);
-    std::string val_storage_vec(max_vallen, 0);
-    char my_hostname[ATL_MAX_HOSTNAME_LEN]{};
-    gethostname(my_hostname, ATL_MAX_HOSTNAME_LEN - 1);
-    snprintf(const_cast<char*>(val_storage_vec.data()),
-             max_vallen,
-             RANKCOUNT_RANK_PROCID_THREADID_FORMAT,
-             ranks.size(),
-             ranks[0],
-             getpid(),
-             my_hostname, // consider pid+hostname pair as proc_id
-             gettid());
-    KVS_2_ATL_CHECK_STATUS(
-        k->kvs_set_size(result_kvs_name, result_kvs_name, total_local_rank_count_str),
-        "failed to set total rank count");
-    /*return string: %PROC_COUNT%_%RANK_NUM%_%PROCESS_RANK_COUNT%_%THREADS_COUNT%_%THREAD_NUM% */
-    KVS_2_ATL_CHECK_STATUS(k->kvs_register(result_kvs_name, result_kvs_name, val_storage_vec),
-                           "failed to register");
+    // mpi based kvs
+    if (!can_use_internal_kvs()) {
+        CCL_THROW_IF_NOT(ranks.size() == 1, "mpi kvs requires ranks to be of size 1");
+        proc_count = comm_size;
+        rank = ranks[0];
+        proc_rank_count = 1;
+        threads_count = 1;
+        thread_num = 0;
+    }
+    // original code path with internal kvs
+    else {
+        std::string total_local_rank_count_str = std::to_string(comm_size);
+        std::string result_kvs_name = std::string(INTERNAL_REGISTRATION) + std::to_string(local_id);
+        std::string val_storage_vec(max_vallen, 0);
+        char my_hostname[ATL_MAX_HOSTNAME_LEN]{};
+        gethostname(my_hostname, ATL_MAX_HOSTNAME_LEN - 1);
+        snprintf(const_cast<char*>(val_storage_vec.data()),
+                 max_vallen,
+                 RANKCOUNT_RANK_PROCID_THREADID_FORMAT,
+                 ranks.size(),
+                 ranks[0],
+                 getpid(),
+                 my_hostname, // consider pid+hostname pair as proc_id
+                 gettid());
+        KVS_2_ATL_CHECK_STATUS(
+            k->kvs_set_size(result_kvs_name, result_kvs_name, total_local_rank_count_str),
+            "failed to set total rank count");
+        /*return string: %PROC_COUNT%_%RANK_NUM%_%PROCESS_RANK_COUNT%_%THREADS_COUNT%_%THREAD_NUM% */
+        KVS_2_ATL_CHECK_STATUS(k->kvs_register(result_kvs_name, result_kvs_name, val_storage_vec),
+                               "failed to register");
 
-    char* proc_count_str = const_cast<char*>(val_storage_vec.data());
-    char* rank_str = strstr(proc_count_str, "_");
-    ATL_CHECK_PTR(rank_str, "proc_count_str contains corrupted data");
-    rank_str[0] = '\0';
-    rank_str++;
-    char* proc_rank_count_str = strstr(rank_str, "_");
-    ATL_CHECK_PTR(proc_rank_count_str, "proc_count_str contains corrupted data");
-    proc_rank_count_str[0] = '\0';
-    proc_rank_count_str++;
-    char* threads_count_str = strstr(proc_rank_count_str, "_");
-    ATL_CHECK_PTR(threads_count_str, "proc_count_str contains corrupted data");
-    threads_count_str[0] = '\0';
-    threads_count_str++;
-    char* thread_num_str = strstr(threads_count_str, "_");
-    ATL_CHECK_PTR(thread_num_str, "proc_count_str contains corrupted data");
-    thread_num_str[0] = '\0';
-    thread_num_str++;
+        char* proc_count_str = const_cast<char*>(val_storage_vec.data());
+        char* rank_str = strstr(proc_count_str, "_");
+        ATL_CHECK_PTR(rank_str, "proc_count_str contains corrupted data");
+        rank_str[0] = '\0';
+        rank_str++;
+        char* proc_rank_count_str = strstr(rank_str, "_");
+        ATL_CHECK_PTR(proc_rank_count_str, "proc_count_str contains corrupted data");
+        proc_rank_count_str[0] = '\0';
+        proc_rank_count_str++;
+        char* threads_count_str = strstr(proc_rank_count_str, "_");
+        ATL_CHECK_PTR(threads_count_str, "proc_count_str contains corrupted data");
+        threads_count_str[0] = '\0';
+        threads_count_str++;
+        char* thread_num_str = strstr(threads_count_str, "_");
+        ATL_CHECK_PTR(thread_num_str, "proc_count_str contains corrupted data");
+        thread_num_str[0] = '\0';
+        thread_num_str++;
 
-    proc_count = std::stoi(proc_count_str);
-    rank = std::stoi(rank_str);
-    proc_rank_count = std::stoi(proc_rank_count_str);
-    threads_count = std::stoi(threads_count_str);
-    thread_num = std::stoi(thread_num_str);
+        proc_count = std::stoi(proc_count_str);
+        rank = std::stoi(rank_str);
+        proc_rank_count = std::stoi(proc_rank_count_str);
+        threads_count = std::stoi(threads_count_str);
+        thread_num = std::stoi(thread_num_str);
+    }
     return ATL_STATUS_SUCCESS;
 }
 

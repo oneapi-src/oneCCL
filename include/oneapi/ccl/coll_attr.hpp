@@ -31,7 +31,6 @@ class ccl_alltoall_attr_impl_t;
 class ccl_alltoallv_attr_impl_t;
 class ccl_barrier_attr_impl_t;
 class ccl_broadcast_attr_impl_t;
-class ccl_broadcastExt_attr_impl_t;
 class ccl_pt2pt_attr_impl_t;
 class ccl_reduce_attr_impl_t;
 class ccl_reduce_scatter_attr_impl_t;
@@ -458,66 +457,6 @@ private:
 };
 
 /**
- * BroadcastExt coll attributes
- */
-class broadcastExt_attr : public ccl_api_base_copyable<broadcastExt_attr,
-                                                       copy_on_write_access_policy,
-                                                       ccl_broadcastExt_attr_impl_t> {
-public:
-    using base_t = ccl_api_base_copyable<broadcastExt_attr,
-                                         copy_on_write_access_policy,
-                                         ccl_broadcastExt_attr_impl_t>;
-
-    /**
-     * Declare PIMPL type
-     */
-    using impl_value_t = typename base_t::impl_value_t;
-
-    /**
-     * Declare implementation type
-     */
-    using impl_t = typename impl_value_t::element_type;
-
-    broadcastExt_attr(broadcastExt_attr&& src);
-    broadcastExt_attr(const broadcastExt_attr& src);
-    broadcastExt_attr& operator=(broadcastExt_attr&& src) noexcept;
-    broadcastExt_attr& operator=(const broadcastExt_attr& src);
-    ~broadcastExt_attr();
-
-    /**
-     * Set specific value for attribute by @attrId.
-     * Previous attibute value would be returned
-     */
-    template <broadcastExt_attr_id attrId,
-              class Value/*,
-              class = typename std::enable_if<is_attribute_value_supported<attrId, Value>()>::type*/>
-    typename detail::ccl_api_type_attr_traits<broadcastExt_attr_id, attrId>::return_type set(const Value& v);
-
-    template <operation_attr_id attrId,
-              class Value/*,
-              class = typename std::enable_if<is_attribute_value_supported<attrId, Value>()>::type*/>
-    typename detail::ccl_api_type_attr_traits<operation_attr_id, attrId>::return_type set(const Value& v);
-
-    /**
-     * Get specific attribute value by @attrId
-     */
-    template <broadcastExt_attr_id attrId>
-    const typename detail::ccl_api_type_attr_traits<broadcastExt_attr_id, attrId>::return_type&
-    get() const;
-
-    template <operation_attr_id attrId>
-    const typename detail::ccl_api_type_attr_traits<operation_attr_id, attrId>::return_type& get()
-        const;
-
-private:
-    friend class ccl::detail::environment;
-    friend struct ccl::ccl_empty_attr;
-    broadcastExt_attr(
-        const typename detail::ccl_api_type_attr_traits<operation_attr_id,
-                                                        operation_attr_id::version>::type& version);
-};
-
-/**
  * Reduce coll attributes
  */
 class reduce_attr : public ccl_api_base_copyable<reduce_attr,
@@ -705,7 +644,6 @@ extern alltoall_attr default_alltoall_attr;
 extern alltoallv_attr default_alltoallv_attr;
 extern barrier_attr default_barrier_attr;
 extern broadcast_attr default_broadcast_attr;
-extern broadcastExt_attr default_broadcastExt_attr;
 extern pt2pt_attr default_pt2pt_attr;
 extern reduce_attr default_reduce_attr;
 extern reduce_scatter_attr default_reduce_scatter_attr;
@@ -755,12 +693,6 @@ constexpr auto attr_val(value_type v)
     return detail::attr_value_triple<broadcast_attr_id, t, value_type>(v);
 }
 
-template <broadcastExt_attr_id t, class value_type>
-constexpr auto attr_val(value_type v)
-    -> detail::attr_value_triple<broadcastExt_attr_id, t, value_type> {
-    return detail::attr_value_triple<broadcastExt_attr_id, t, value_type>(v);
-}
-
 template <pt2pt_attr_id t, class value_type>
 constexpr auto attr_val(value_type v) -> detail::attr_value_triple<pt2pt_attr_id, t, value_type> {
     return detail::attr_value_triple<pt2pt_attr_id, t, value_type>(v);
@@ -798,7 +730,6 @@ using v1::alltoall_attr;
 using v1::alltoallv_attr;
 using v1::barrier_attr;
 using v1::broadcast_attr;
-using v1::broadcastExt_attr;
 using v1::pt2pt_attr;
 using v1::reduce_attr;
 using v1::reduce_scatter_attr;
@@ -810,7 +741,6 @@ using v1::default_alltoall_attr;
 using v1::default_alltoallv_attr;
 using v1::default_barrier_attr;
 using v1::default_broadcast_attr;
-using v1::default_broadcastExt_attr;
 using v1::default_pt2pt_attr;
 using v1::default_reduce_attr;
 using v1::default_reduce_scatter_attr;

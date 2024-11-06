@@ -316,7 +316,7 @@ int atl_mpi_ctx::bf16_init() {
     bool env_mpi_bf16_native = (bool)(ccl::global_data::env().mpi_bf16_native);
 #ifdef MPIX_C_BF16
     if (mpi_lib_attr.type == atl_mpi_lib_type_t::ATL_MPI_LIB_IMPI &&
-        mpi_lib_attr.version_value >= 2021 && mpi_lib_attr.sub_version_value >= 13 &&
+        mpi_lib_attr.version_value >= 2021 && mpi_lib_attr.sub_version_value >= 14 &&
         env_mpi_bf16_native) {
         is_bf16_native = true;
         bf16.dtype = MPIX_C_BF16;
@@ -332,7 +332,7 @@ int atl_mpi_ctx::bf16_init() {
     is_bf16_native = false;
 #endif /* MPIX_C_BF16 */
     if (env_mpi_bf16_native && !is_bf16_native) {
-        LOG_WARN("native Intel MPI BF16 is not available");
+        LOG_INFO("native Intel MPI BF16 is not available");
     }
     if (is_bf16_native) {
         LOG_INFO("native Intel MPI BF16 is enabled");
@@ -425,7 +425,7 @@ int atl_mpi_ctx::fp16_init() {
     bool env_mpi_fp16_native = (bool)(ccl::global_data::env().mpi_fp16_native);
 #ifdef MPIX_C_FLOAT16
     if (mpi_lib_attr.type == atl_mpi_lib_type_t::ATL_MPI_LIB_IMPI &&
-        mpi_lib_attr.version_value >= 2021 && mpi_lib_attr.sub_version_value >= 13 &&
+        mpi_lib_attr.version_value >= 2021 && mpi_lib_attr.sub_version_value >= 14 &&
         env_mpi_fp16_native) {
         is_fp16_native = true;
         fp16.dtype = MPIX_C_FLOAT16;
@@ -441,7 +441,7 @@ int atl_mpi_ctx::fp16_init() {
     is_fp16_native = false;
 #endif /* MPIX_C_FLOAT16 */
     if (env_mpi_fp16_native && !is_fp16_native) {
-        LOG_WARN("native Intel MPI FP16 is not available");
+        LOG_INFO("native Intel MPI FP16 is not available");
     }
     if (is_fp16_native) {
         LOG_INFO("native Intel MPI FP16 is enabled");

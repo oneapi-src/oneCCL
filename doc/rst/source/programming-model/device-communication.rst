@@ -1,4 +1,4 @@
-.. _`Communicator`: https://spec.oneapi.com/versions/latest/elements/oneCCL/source/spec/main_objects.html#communicator
+.. _`Communicator`: https://oneapi-spec.uxlfoundation.org/specifications/oneapi/latest/elements/oneccl/source/spec/main_objects#communicator
 
 ====================
 Device Communication
@@ -55,7 +55,7 @@ Consider a simple oneCCL ``allreduce`` example for GPU:
    .. code:: cpp
 
       /* using SYCL buffer and accessor */
-      sycl_queue.submit([&](cl::sycl::handler& h) {
+      sycl_queue.submit([&](sycl::handler& h) {
          auto send_buf_dev_acc = send_buf.get_access<mode::write>(h);
          h.parallel_for(range<1>{elem_count}, [=](item<1> idx) {
                send_buf_dev_acc[idx] += 1;

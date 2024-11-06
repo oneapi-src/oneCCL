@@ -37,24 +37,26 @@ struct sycl_bcast_coll : sycl_base_coll<Dtype, bcast_strategy_impl> {
         size_t count = elem_count;
         size_t bytes = count * base_coll::get_dtype_size();
 
+        auto event = submit_barrier(stream.get_native());
+
         for (size_t b_idx = 0; b_idx < base_coll::get_buf_count(); b_idx++) {
             host_recv_buf = base_coll::get_initial_values<Dtype>(count, static_cast<int>(b_idx));
 
             if (base_coll::get_sycl_mem_type() == SYCL_MEM_USM) {
                 if (comm_rank == COLL_ROOT)
                     stream.get_native()
-                        .memcpy(recv_bufs[b_idx][rank_idx], host_recv_buf.data(), bytes)
+                        .memcpy(recv_bufs[b_idx][rank_idx], host_recv_buf.data(), bytes, event)
                         .wait();
                 else
-                    stream.get_native().memset(recv_bufs[b_idx][rank_idx], 0, bytes).wait();
+                    stream.get_native().memset(recv_bufs[b_idx][rank_idx], 0, bytes, event).wait();
             }
             else {
                 stream.get_native()
-                    .submit([&](handler& h) {
+                    .submit([&](sycl::handler& h) {
                         auto recv_buf =
                             (static_cast<sycl_buffer_t<Dtype>*>(recv_bufs[b_idx][rank_idx]));
-                        auto recv_buf_acc = recv_buf->template get_host_access(h, sycl::write_only);
-                        h.parallel_for(range<1>{ elem_count }, [=](item<1> e_idx) {
+                        auto recv_buf_acc = recv_buf->get_host_access(h, sycl::write_only);
+                        h.parallel_for(sycl::range<1>{ elem_count }, [=](sycl::item<1> e_idx) {
                             if (comm_rank == COLL_ROOT)
                                 recv_buf_acc[e_idx] = e_idx.get_id(0);
                             else
@@ -80,7 +82,7 @@ struct sycl_bcast_coll : sycl_base_coll<Dtype, bcast_strategy_impl> {
             }
             else {
                 auto recv_buf = (static_cast<sycl_buffer_t<Dtype>*>(recv_bufs[b_idx][rank_idx]));
-                auto recv_buf_acc = recv_buf->template get_host_access(sycl::read_only);
+                auto recv_buf_acc = recv_buf->get_host_access(sycl::read_only);
 
                 stream.get_native()
                     .memcpy(host_recv_buf.data(), recv_buf_acc.get_pointer(), bytes)
@@ -102,16 +104,16 @@ struct sycl_bcast_coll : sycl_base_coll<Dtype, bcast_strategy_impl> {
     }
 };
 
-// BcastExt
+// broadcast
 template <class Dtype>
-struct sycl_bcastExt_coll : sycl_base_coll<Dtype, bcastExt_strategy_impl> {
-    using coll_base = sycl_base_coll<Dtype, bcastExt_strategy_impl>;
+struct sycl_broadcast_coll : sycl_base_coll<Dtype, broadcast_strategy_impl> {
+    using coll_base = sycl_base_coll<Dtype, broadcast_strategy_impl>;
     using coll_base::send_bufs;
     using coll_base::recv_bufs;
     using coll_base::host_send_buf;
     using coll_base::host_recv_buf;
 
-    sycl_bcastExt_coll(bench_init_attr init_attr) : coll_base(init_attr) {}
+    sycl_broadcast_coll(bench_init_attr init_attr) : coll_base(init_attr) {}
 
     virtual void prepare_internal(size_t elem_count,
                                   ccl::communicator& comm,
@@ -137,11 +139,11 @@ struct sycl_bcastExt_coll : sycl_base_coll<Dtype, bcastExt_strategy_impl> {
             }
             else {
                 stream.get_native()
-                    .submit([&](handler& h) {
+                    .submit([&](sycl::handler& h) {
                         auto recv_buf =
                             (static_cast<sycl_buffer_t<Dtype>*>(send_bufs[b_idx][rank_idx]));
-                        auto recv_buf_acc = recv_buf->template get_host_access(h, sycl::write_only);
-                        h.parallel_for(range<1>{ elem_count }, [=](item<1> e_idx) {
+                        auto recv_buf_acc = recv_buf->get_host_access(h, sycl::write_only);
+                        h.parallel_for(sycl::range<1>{ elem_count }, [=](sycl::item<1> e_idx) {
                             if (comm_rank == COLL_ROOT)
                                 recv_buf_acc[e_idx] = e_idx.get_id(0);
                             else
@@ -171,8 +173,8 @@ struct sycl_bcastExt_coll : sycl_base_coll<Dtype, bcastExt_strategy_impl> {
             else {
                 auto send_buf = (static_cast<sycl_buffer_t<Dtype>*>(send_bufs[b_idx][rank_idx]));
                 auto recv_buf = (static_cast<sycl_buffer_t<Dtype>*>(recv_bufs[b_idx][rank_idx]));
-                auto send_buf_acc = send_buf->template get_host_access(sycl::read_only);
-                auto recv_buf_acc = recv_buf->template get_host_access(sycl::read_only);
+                auto send_buf_acc = send_buf->get_host_access(sycl::read_only);
+                auto recv_buf_acc = recv_buf->get_host_access(sycl::read_only);
 
                 stream.get_native()
                     .memcpy(host_send_buf.data(), send_buf_acc.get_pointer(), bytes)

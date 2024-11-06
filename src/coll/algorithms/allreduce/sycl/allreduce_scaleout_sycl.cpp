@@ -17,24 +17,28 @@
 
 #if defined(CCL_ENABLE_ZE) || defined(CCL_ENABLE_SYCL)
 #include "coll/algorithms/allreduce/sycl/allreduce_sycl.hpp"
+#include "coll/algorithms/allreduce/sycl/allreduce_ring.hpp"
 #endif // defined(CCL_ENABLE_ZE) || defined(CCL_ENABLE_SYCL)
 
-ccl::event allreduce_scaleout_sycl(sycl::queue& q,
-                                   const void* send_buf,
-                                   void* recv_buf,
-                                   size_t count,
-                                   ccl::datatype dtype,
-                                   ccl::reduction reduction,
-                                   ccl_comm* comm,
-                                   ccl::vector_class<ccl::event>& deps,
-                                   bool& done,
-                                   bool copy_to_host,
-                                   bool is_cpu_buffers) {
+ccl::event allreduce_scaleout_sycl_simple(sycl::queue& q,
+                                          const void* send_buf,
+                                          void* recv_buf,
+                                          size_t count,
+                                          ccl::datatype dtype,
+                                          ccl::reduction reduction,
+                                          ccl_comm* comm,
+                                          const ccl::vector_class<ccl::event>& deps,
+                                          bool& done,
+                                          bool copy_to_host,
+                                          bool is_cpu_buffers) {
+    sycl::event op_end, copy_e;
     std::shared_ptr<atl_base_comm> atl_comm = comm->get_atl_comm();
     auto ccl_dtype = ccl::global_data::get().dtypes->get(dtype);
 
     const void* scaleout_send_buf = send_buf;
     void* scaleout_recv_buf = recv_buf;
+
+    std::vector<sycl::event> dep_events = get_sycl_events(deps);
 
     if (copy_to_host) {
         if (comm->get_scaleout_host_buf_size() < count * ccl_dtype.size()) {
@@ -48,9 +52,14 @@ ccl::event allreduce_scaleout_sycl(sycl::queue& q,
 
         scaleout_send_buf = MPI_IN_PLACE;
         scaleout_recv_buf = comm->get_scaleout_host_buf();
-        auto ev = q.memcpy(scaleout_recv_buf,
-                           send_buf == MPI_IN_PLACE ? recv_buf : send_buf,
-                           count * ccl_dtype.size());
+        copy_e = q.submit([=](sycl::handler& h) {
+            h.depends_on(dep_events);
+            h.memcpy(scaleout_recv_buf,
+                     send_buf == MPI_IN_PLACE ? recv_buf : send_buf,
+                     count * ccl_dtype.size());
+        });
+        dep_events.clear();
+        dep_events.push_back(std::move(copy_e));
     }
     else if (!is_cpu_buffers) {
         // TODO: check if I_MPI_OFFLOAD is set, then let the scaleout allreduce go through.
@@ -62,7 +71,8 @@ ccl::event allreduce_scaleout_sycl(sycl::queue& q,
         // return e;
     }
 
-    auto op_end = q.submit([=](sycl::handler& h) {
+    op_end = q.submit([=](sycl::handler& h) {
+        h.depends_on(dep_events);
         h.host_task([=]() {
             // call ccl::wrapper for MPI/OFI.
             int ep_idx = 0; // TODO: instead of "0", use atl_ep->idx, or sched->bin->get_atl_ep()
@@ -92,9 +102,44 @@ ccl::event allreduce_scaleout_sycl(sycl::queue& q,
     });
 
     if (copy_to_host) {
-        op_end = q.memcpy(recv_buf, scaleout_recv_buf, count * ccl_dtype.size());
+        op_end = q.submit([=](sycl::handler& h) {
+            h.depends_on(op_end);
+            h.memcpy(recv_buf, scaleout_recv_buf, count * ccl_dtype.size());
+        });
     }
 
     done = true;
     return ccl::event::create_from_native(op_end);
+}
+
+ccl::event allreduce_scaleout_sycl(sycl::queue& q,
+                                   const void* send_buf,
+                                   void* recv_buf,
+                                   size_t count,
+                                   ccl::datatype dtype,
+                                   ccl::reduction reduction,
+                                   ccl_comm* comm,
+                                   const ccl::vector_class<ccl::event>& deps,
+                                   bool& done,
+                                   bool direct,
+                                   bool is_cpu_buffers) {
+    if (direct) {
+        bool copy_to_host = ccl::global_data::env().sycl_enable_direct_gpu_rdma ? false : true;
+        return allreduce_scaleout_sycl_simple(q,
+                                              send_buf,
+                                              recv_buf,
+                                              count,
+                                              dtype,
+                                              reduction,
+                                              comm,
+                                              deps,
+                                              done,
+                                              copy_to_host,
+                                              is_cpu_buffers);
+    }
+    else {
+        sycl::event e = allreduce_scaleout_sycl_ring(
+            q, send_buf, recv_buf, count, dtype, reduction, comm, deps, done);
+        return ccl::event::create_from_native(e);
+    }
 }

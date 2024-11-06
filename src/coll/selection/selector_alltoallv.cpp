@@ -69,5 +69,5 @@ bool ccl_algorithm_selector_helper<ccl_coll_alltoallv_algo>::can_use(
 CCL_SELECTION_DEFINE_HELPER_METHODS(ccl_coll_alltoallv_algo,
                                     ccl_coll_alltoallv,
                                     ccl::global_data::env().alltoallv_algo_raw,
-                                    0,
+                                    param.count,
                                     ccl::global_data::env().alltoallv_scaleout_algo_raw);

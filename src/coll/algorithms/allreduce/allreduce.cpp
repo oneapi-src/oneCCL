@@ -1038,7 +1038,12 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
         LOG_DEBUG("topo/scale_up/intra: use ze_a2a_pipeline_read_write_entry");
 
         // Read block size used to offset send buffer.
-        const size_t read_block_count = count / pair_comm->size() / even_comm->size();
+        size_t read_block_count = count / pair_comm->size();
+        if (pair_comm->rank() == pair_comm->size() - 1) {
+            read_block_count += count % pair_comm->size();
+        }
+        read_block_count = read_block_count / even_comm->size();
+
         // Offset inside a read block.
         const size_t read_block_inner_offset = 0;
 
@@ -1057,8 +1062,7 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
                                                                     op,
                                                                     wait_events,
                                                                     attrs);
-        wait_events.clear();
-        wait_events.push_back(reduce_entry->entry_event);
+        clear_and_push_back(wait_events, reduce_entry->entry_event);
 
         ccl::add_comm_barrier(
             sched, node_comm, wait_events, out_event, ipc_event_pool, ipc_event_count++);
@@ -1069,8 +1073,7 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
         pair_comm_recv_buf = recv_buf + pair_comm_offset_bytes;
         auto scatter_entry = entry_factory::create<ze_a2a_pipeline_reduce_entry>(
             sched, comm, even_comm_recv_buf, tmp_bufs, count, dtype, op, wait_events);
-        wait_events.clear();
-        wait_events.push_back(scatter_entry->entry_event);
+        clear_and_push_back(wait_events, scatter_entry->entry_event);
 
         ccl::add_comm_barrier(
             sched, node_comm, wait_events, out_event, ipc_event_pool, ipc_event_count++);
@@ -1102,8 +1105,7 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
                                                                              pair_comm,
                                                                              wait_events,
                                                                              pair_comm_offset);
-                wait_events.clear();
-                wait_events.push_back(entry->entry_event);
+                clear_and_push_back(wait_events, entry->entry_event);
                 int peer_rank = (pair_comm->rank() + 1) % pair_comm->size();
                 auto copy_entry =
                     entry_factory::create<ze_copy_entry>(sched,
@@ -1310,7 +1312,6 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
             auto entry_pair = entry_factory::create<ze_copy_entry>(
                 sched, recv_buf, ccl_buffer(), block_count, dtype, attr, wait_events);
             clear_and_push_back(wait_events, entry_pair->entry_event);
-            wait_events.push_back(entry_pair->entry_event);
         }
 
         ccl::add_comm_barrier(
@@ -1344,6 +1345,9 @@ ccl::status ccl_coll_build_topo_allreduce_fill(ccl_sched* sched,
 
     ccl::add_comm_barrier(
         sched, pair_comm, wait_events, out_event, ipc_event_pool, ipc_event_count++);
+    clear_and_push_back(wait_events, out_event);
+    CCL_ASSERT(wait_events.size() == 1 && wait_events.back() != nullptr,
+               "wait_events should have a single, valid event");
 
     sched->group->register_chunk_end(sched, out_event);
     ipc_event_pool_manager::check_ipc_event_count(

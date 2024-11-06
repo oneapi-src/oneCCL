@@ -145,9 +145,16 @@ ccl::status ccl_coll_build_double_tree_op(ccl_sched* sched,
 
     //todo: evaluate/configure k param;
     size_t parts = 1;
+    if (ccl::global_data::env().dtree_partition_count != CCL_ENV_SIZET_NOT_SPECIFIED) {
+        parts = ccl::global_data::env().dtree_partition_count;
+    }
+    LOG_DEBUG("double tree partition (k) count: ", parts);
 
     size_t t1_part_count = t1_count / parts;
     size_t t2_part_count = t2_count / parts;
+
+    size_t t1_part_remainder = t1_count % parts;
+    size_t t2_part_remainder = t2_count % parts;
 
     LOG_DEBUG("t1: start ",
               t1_start,
@@ -156,7 +163,9 @@ ccl::status ccl_coll_build_double_tree_op(ccl_sched* sched,
               ", count ",
               t1_count,
               ", part size ",
-              t1_part_count);
+              t1_part_count,
+              ", part remainder ",
+              t1_part_remainder);
 
     LOG_DEBUG("t2: start ",
               t2_start,
@@ -165,44 +174,28 @@ ccl::status ccl_coll_build_double_tree_op(ccl_sched* sched,
               ", count ",
               t2_count,
               ", part size ",
-              t2_part_count);
+              t2_part_count,
+              ", part remainder ",
+              t2_part_remainder);
 
     ccl_op_id_t t1_op_id = 0;
     ccl_op_id_t t2_op_id = t1_op_id + static_cast<ccl_op_id_t>(parts);
 
+    ccl_buffer t1_work_buf = t1_start;
+    ccl_buffer t2_work_buf = t2_start;
+
     for (size_t iter = 0; iter < parts; ++iter) {
+        /* first t1_part_remainder partitions are slightly larger */
         size_t t1_work_count = t1_part_count;
-        if (t1_start + t1_work_count * iter > t1_end) {
-            LOG_DEBUG("iter ",
-                      iter,
-                      ", t1 size ",
-                      t1_work_count,
-                      " exceeds ",
-                      t1_end,
-                      ", align to ",
-                      t1_end.get_difference(t1_start + t1_work_count * iter));
-            t1_work_count = t1_end.get_difference(t1_start + t1_work_count * iter);
+        if (iter < t1_part_remainder) {
+            t1_work_count++;
         }
 
-        ccl_buffer t1_work_buf = t1_start + t1_work_count * dtype.size() * iter;
-
+        /* first t2_part_remainder partitions are slightly larger */
         size_t t2_work_count = t2_part_count;
-        if (t2_start + t2_work_count * iter > t2_end) {
-            LOG_DEBUG("iter ",
-                      iter,
-                      ", t2 size ",
-                      t2_work_count,
-                      " exceeds ",
-                      t2_end,
-                      ", align to ",
-                      t2_end.get_difference(t2_start + t2_work_count * iter));
-            t2_work_count = t2_end.get_difference(t2_start + t2_work_count * iter);
+        if (iter < t2_part_remainder) {
+            t2_work_count++;
         }
-
-        ccl_buffer t2_work_buf = t2_start + t2_work_count * dtype.size() * iter;
-
-        std::function<void(ccl_sched*)> funcT1;
-        std::function<void(ccl_sched*)> funcT2;
 
         const auto& t1 = dtree.T1();
         const auto& t2 = dtree.T2();
@@ -226,7 +219,7 @@ ccl::status ccl_coll_build_double_tree_op(ccl_sched* sched,
                     "bcast_t2");
 
                 break;
-            case ccl_coll_bcastExt:
+            case ccl_coll_broadcast:
                 entry_factory::create<subsched_entry>(
                     sched,
                     t1_op_id,
@@ -323,6 +316,10 @@ ccl::status ccl_coll_build_double_tree_op(ccl_sched* sched,
             }
             default: CCL_FATAL("unsupported double tree op ", ccl_coll_type_to_str(coll_type));
         }
+
+        /* calculate buffer for next iteration */
+        t1_work_buf += t1_work_count * dtype.size();
+        t2_work_buf += t2_work_count * dtype.size();
 
         ++t1_op_id;
         ++t2_op_id;

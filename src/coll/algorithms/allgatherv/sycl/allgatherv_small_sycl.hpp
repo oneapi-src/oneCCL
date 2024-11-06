@@ -92,13 +92,6 @@ public:
         sycl::event e;
         assert(this->initialized == true);
 
-        for (uint32_t i = 0; i < recv_counts.size(); i++) {
-            if (recv_counts[i] != send_count) {
-                fprintf(stderr, "not all recv_counts are the same as send_count\n");
-                abort();
-            }
-        }
-
         // check local alignment
         size_t is_aligned =
             (size_t)send_buf % 4 == 0 && (size_t)recv_buf % 4 == 0 && (send_count * sizeof(data_type)) % 4 == 0;

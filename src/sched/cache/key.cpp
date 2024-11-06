@@ -60,7 +60,7 @@ void ccl_sched_key::set(const ccl_coll_param& param, const ccl_coll_attr& attr) 
             break;
         case ccl_coll_barrier: break;
         case ccl_coll_bcast:
-        case ccl_coll_bcastExt:
+        case ccl_coll_broadcast:
             f.count1 = param.get_send_count();
             f.root = param.root;
             break;
@@ -107,7 +107,7 @@ bool ccl_sched_key::check(const ccl_coll_param& param, const ccl_coll_attr& attr
             break;
         case ccl_coll_barrier: break;
         case ccl_coll_bcast:
-        case ccl_coll_bcastExt:
+        case ccl_coll_broadcast:
             result &= (param.get_send_count() == f.count1 && param.root == f.root);
             break;
         case ccl_coll_reduce:

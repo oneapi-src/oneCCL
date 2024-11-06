@@ -59,13 +59,13 @@ int main(int argc, char *argv[]) {
     auto stream = ccl::create_stream(q);
 
     /* create buffers */
-    buffer<int> send_buf(count * size);
-    buffer<int> recv_buf(count * size);
+    sycl::buffer<int> send_buf(count * size);
+    sycl::buffer<int> recv_buf(count * size);
 
     {
         /* open buffers and initialize them on the host side */
-        host_accessor send_buf_acc(send_buf, write_only);
-        host_accessor recv_buf_acc(recv_buf, write_only);
+        sycl::host_accessor send_buf_acc(send_buf, sycl::write_only);
+        sycl::host_accessor recv_buf_acc(recv_buf, sycl::write_only);
 
         for (int i = 0; i < size; i++) {
             for (size_t j = 0; j < count; j++) {
@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
 
     /* open send_buf and modify it on the device side */
     q.submit([&](auto &h) {
-        accessor send_buf_acc(send_buf, h, write_only);
+        sycl::accessor send_buf_acc(send_buf, h, sycl::write_only);
         h.parallel_for(count * size, [=](auto id) {
             send_buf_acc[id] += 1;
         });
@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
 
     /* open recv_buf and check its correctness on the device side */
     q.submit([&](auto &h) {
-        accessor recv_buf_acc(recv_buf, h, write_only);
+        sycl::accessor recv_buf_acc(recv_buf, h, sycl::write_only);
         h.parallel_for(count * size, [=](auto id) {
             if (recv_buf_acc[id] != rank + 1) {
                 recv_buf_acc[id] = -1;
@@ -104,16 +104,16 @@ int main(int argc, char *argv[]) {
 
     /* print out the result of the test on the host side */
     {
-        host_accessor recv_buf_acc(recv_buf, read_only);
+        sycl::host_accessor recv_buf_acc(recv_buf, sycl::read_only);
         size_t i;
         for (i = 0; i < count * size; i++) {
             if (recv_buf_acc[i] == -1) {
-                cout << "FAILED\n";
+                std::cout << "FAILED\n";
                 break;
             }
         }
         if (i == count * size) {
-            cout << "PASSED\n";
+            std::cout << "PASSED\n";
         }
     }
 

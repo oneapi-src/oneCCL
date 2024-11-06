@@ -42,8 +42,15 @@ sched_group::sched_group(ccl_sched* sched,
           memory_context_base(memory_context),
           memory_context_size(memory_context_size) {}
 
+// Creates new instance of `sched_group` using the same
+// `memory_context` as `other` with clean state of allocator.
+// New instance will not account for previous allocations done
+// in `other` schedule group.
 sched_group::sched_group(const sched_group& other)
-        : sched_group(other.sched, other.comm, other.memory_context, other.memory_context_size) {}
+        : sched_group(other.sched,
+                      other.comm,
+                      other.memory_context_base,
+                      other.memory_context_size) {}
 
 bool sched_group::operator==(const sched_group& other) const {
     return (id == other.id);
@@ -100,7 +107,7 @@ bool sched_group::is_pointer_within_memory_context(void* ptr) const {
 }
 
 void sched_group::set_sync_obj(std::shared_ptr<sync_object> new_sync) {
-    sync = new_sync;
+    sync = std::move(new_sync);
 }
 
 void sched_group::disable_parallel_execution() {

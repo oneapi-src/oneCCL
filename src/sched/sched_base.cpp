@@ -285,8 +285,6 @@ void ccl_sched_base::clear_memory() {
         memory.handle_manager.clear();
         memory.ipc_event_pool_manager.clear();
 
-        ccl::global_data::get().ze_data->dev_memory_manager->clear();
-
         // Since list_manager is a shared_ptr, call clear only for the last
         //  reference (when use_count() is 1).
         // In all other cases, it is correct to simply skip calling clear since
@@ -403,7 +401,7 @@ void ccl_sched_base::get_pre_post_copy_counts(std::vector<size_t>& d2h_counts,
             }
             break;
         case ccl_coll_bcast:
-        case ccl_coll_bcastExt:
+        case ccl_coll_broadcast:
             if (param.comm->rank() == param.root)
                 d2h_counts.push_back(param.get_send_count());
             h2d_counts.push_back(param.get_recv_count());

@@ -13,8 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-#include <iomanip>
-#include <numeric>
 #include <sstream>
 #include <unordered_map>
 
@@ -24,8 +22,6 @@
 
 #ifdef CCL_ENABLE_ITT
 #include "ittnotify.h"
-#include <map>
-#include <stack>
 #endif // CCL_ENABLE_ITT
 
 namespace ccl {
@@ -69,6 +65,64 @@ namespace profile {
 namespace itt {
 
 static constexpr unsigned max_entry_name_length = 64;
+
+/* -------------------------------- Task API -------------------------------- */
+
+__itt_domain* domain = __itt_domain_create("oneCCL::API");
+thread_local std::unordered_map<const char*, __itt_string_handle*> string_cache;
+
+// Start `itt_task` with specified name. The `name` argument should be a static string literal
+// for performance reasons.
+void task_begin(const char* name) {
+    auto it = string_cache.find(name);
+    if (it == string_cache.end()) {
+        string_cache[name] = __itt_string_handle_create(name);
+    }
+    __itt_task_begin(domain, __itt_null, __itt_null, string_cache[name]);
+}
+
+// Start `itt_task` with specified name and metadata field containing `uint64_t` value.
+// The `name` argument should be a static string literal for performance reasons.
+void task_begin(const char* name, const char* meta_name, uint64_t value) {
+    auto it = string_cache.find(name);
+    if (it == string_cache.end()) {
+        string_cache[name] = __itt_string_handle_create(name);
+    }
+    __itt_task_begin(domain, __itt_null, __itt_null, string_cache[name]);
+
+    it = string_cache.find(meta_name);
+    if (it == string_cache.end()) {
+        string_cache[meta_name] = __itt_string_handle_create(meta_name);
+    }
+
+    __itt_metadata_add(domain, __itt_null, string_cache[meta_name], __itt_metadata_u64, 1, &value);
+}
+
+void task_end() {
+    __itt_task_end(domain);
+}
+
+// TODO: We should implement more generic version of `task_begin` which
+// could use any metadata type. Implementation use something like:
+//void task_begin_meta_integer(const char* name, std::string meta_name, T value) {
+// use typedef enum {
+//     __itt_metadata_unknown = 0,
+//     __itt_metadata_u64,     /**< Unsigned 64-bit integer */
+//     __itt_metadata_s64,     /**< Signed 64-bit integer */
+//     __itt_metadata_u32,     /**< Unsigned 32-bit integer */
+//     __itt_metadata_s32,     /**< Signed 32-bit integer */
+//     __itt_metadata_u16,     /**< Unsigned 16-bit integer */
+//     __itt_metadata_s16,     /**< Signed 16-bit integer */
+//     __itt_metadata_float,   /**< Signed 32-bit floating-point */
+//     __itt_metadata_double   /**< SIgned 64-bit floating-point */
+//  __itt_metadata_type;
+// }
+
+// Then use void __itt_metadata_add(const __itt_domain *domain, __itt_id id, __itt_string_handle *key, __itt_metadata_type type, size_t count, void *data)
+//}
+
+/* -------------------------------- Event API ------------------------------- */
+
 // Map of vectors of events that allows us to avoid multiple
 // expensive calls to `__itt_event_create`.
 thread_local std::unordered_map<const char*, std::vector<__itt_event>> event_cache;
@@ -82,6 +136,8 @@ void set_thread_name(const std::string& name) {
     __itt_thread_set_name(name.c_str());
 }
 
+// Fetch or create a new `__itt_event` object for tracing events in code.
+// The `name` argument should be a static string literal for performance reasons.
 __itt_event event_get(const char* name) {
     if (ccl::global_data::env().itt_level == 0) {
         return invalid_event;

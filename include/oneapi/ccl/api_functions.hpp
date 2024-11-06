@@ -382,23 +382,24 @@ namespace v1 {
 
 /****************** GROUP CALLS ********************/
 
-/** @defgroup Group Calls
+/** @defgroup group_calls
  * @{
  */
-/** @} */ // end of Group Calls
-
 /**
- * \ingroup Group Calls
- * \brief group_start() initiates a group call of all
- *        ccl collective operations
+ * \ingroup group_calls
+ * \brief group_start() starts a group call. You can use the group_start() function 
+ * to initiate a group call operation which indicates that 
+ * successive operations should not get blocked due to CPU synchronization.
  */
 void CCL_API group_start();
 /**
- * \ingroup Group Calls
- * \brief group_end() finalize a group call of all submitted
- *        ccl collective operations
+ * \ingroup group_calls
+ * \brief group_end() ends a group call. The group_end() call returns when all the operations 
+ * between group_start() and group_end() have been enqueued for execution, 
+ * but not necessarily completed.
  */
 void CCL_API group_end();
+/** @} */ // end of group_calls
 
 /******************** OPERATION ********************/
 
@@ -424,13 +425,15 @@ coll_attribute_type CCL_API create_operation_attr(attr_val_type&&... avs) {
  */
 
 /**
- * \brief Allgather is a collective communication operation that collects data
- *        from all the ranks within a communicator into a single buffer.
+ * \brief Allgather is a collective communication operation that collects
+ *        send_count elements from all the ranks within the communicator and places the results
+ *        into recv_buf, in such a way that data from rank i can be found at offset rank i * send_count.
+ *        The resulting data in the output recv_buf buffer is the same for each rank.
  *
- * @param send_buf the buffer with @c count elements of @c dtype that stores local data to be sent
- * @param recv_buf [out] the buffer to store received result, must be large enough
- *        to hold values from all ranks, i.e. at least @c comm_size * @c count
- * @param count the number of elements of type @c dtype to be send to or to received from each rank
+ * @param send_buf the buffer with @c send_count elements of @c dtype that stores local data to be gathered
+ * @param recv_buf [out] the buffer to store gathered result of @c dtype, must be large enough
+ *        to hold values from all ranks, i.e. size should be equal to @c dtype size in bytes * @c send_count
+ * @param send_count the number of elements of type @c dtype to be sent to or to received from each rank
  * @param dtype the datatype of elements in @c send_buf and @c recv_buf
  * @param comm the communicator for which the operation will be performed
  * @param stream abstraction over a device queue constructed via ccl::create_stream
@@ -440,7 +443,7 @@ coll_attribute_type CCL_API create_operation_attr(attr_val_type&&... avs) {
  */
 event CCL_API allgather(const void* send_buf,
                         void* recv_buf,
-                        size_t count,
+                        size_t send_count,
                         datatype dtype,
                         const communicator& comm,
                         const stream& stream,
@@ -452,7 +455,7 @@ event CCL_API allgather(const void* send_buf,
  */
 event CCL_API allgather(const void* send_buf,
                         void* recv_buf,
-                        size_t count,
+                        size_t send_count,
                         datatype dtype,
                         const communicator& comm,
                         const allgather_attr& attr = default_allgather_attr,
@@ -461,12 +464,13 @@ event CCL_API allgather(const void* send_buf,
 /*!
  * \overload
  *
- * @param send_bufs array of buffers with local data to be sent, one buffer per rank
- * @param recv_bufs [out] array of buffers to store received result, one buffer per rank
+ * @param send_buf  the buffer of @c dtype  with @c send_count elements that stores local data to be gathered
+ * @param recv_bufs [out] array of buffers to store gathered result, one buffer per rank;
+ *                   each buffer must be large enough to keep @c send_count elements of @c dtype size
  */
 event CCL_API allgather(const void* send_buf,
-                        const vector_class<void*>& recv_buf,
-                        size_t count,
+                        const vector_class<void*>& recv_bufs,
+                        size_t send_count,
                         datatype dtype,
                         const communicator& comm,
                         const stream& stream,
@@ -476,14 +480,32 @@ event CCL_API allgather(const void* send_buf,
 /*!
  * \overload
  *
- * @param send_bufs array of buffers with local data to be sent, one buffer per rank
- * @param recv_bufs [out] array of buffers to store received result, one buffer per rank
  */
 event CCL_API allgather(const void* send_buf,
-                        const vector_class<void*>& recv_buf,
-                        size_t count,
+                        const vector_class<void*>& recv_bufs,
+                        size_t send_count,
                         datatype dtype,
                         const communicator& comm,
+                        const allgather_attr& attr = default_allgather_attr,
+                        const vector_class<event>& deps = {});
+
+/*!
+ * \overload
+ *
+ * Type-safe version.
+ *
+ * @param send_buf the buffer with @c send_count elements of @c BufferType that stores local data to be gathered
+ * @param recv_buf [out] the buffer to store gathered result of @c BufferType.
+ * It must be large enough to hold values from all ranks,
+ * i.e. size should be equal to @c BufferType size in bytes * @c send_count
+ */
+template <class BufferType,
+          class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
+event CCL_API allgather(const BufferType* send_buf,
+                        BufferType* recv_buf,
+                        size_t send_count,
+                        const communicator& comm,
+                        const stream& stream,
                         const allgather_attr& attr = default_allgather_attr,
                         const vector_class<event>& deps = {});
 
@@ -496,22 +518,7 @@ template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API allgather(const BufferType* send_buf,
                         BufferType* recv_buf,
-                        size_t count,
-                        const communicator& comm,
-                        const stream& stream,
-                        const allgather_attr& attr = default_allgather_attr,
-                        const vector_class<event>& deps = {});
-
-/*!
- * \overload
- *
- * Type-safe version.
- */
-template <class BufferType,
-          class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
-event CCL_API allgather(const BufferType* send_buf,
-                        BufferType* recv_buf,
-                        size_t count,
+                        size_t send_count,
                         const communicator& comm,
                         const allgather_attr& attr = default_allgather_attr,
                         const vector_class<event>& deps = {});
@@ -521,14 +528,15 @@ event CCL_API allgather(const BufferType* send_buf,
  *
  * Type-safe version.
  *
- * @param send_bufs array of buffers with local data to be sent, one buffer per rank
- * @param recv_bufs [out] array of buffers to store received result, one buffer per rank
+ * @param send_buf  the buffer with @c send_count elements of @c BufferType that stores local data to be gathered
+ * @param recv_bufs [out] array of buffers to store gathered result, one buffer per rank;
+ *                   each buffer must be large enough to keep @c send_count elements of @c BufferType size
  */
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API allgather(const BufferType* send_buf,
-                        vector_class<BufferType*>& recv_buf,
-                        size_t count,
+                        vector_class<BufferType*>& recv_bufs,
+                        size_t send_count,
                         const communicator& comm,
                         const stream& stream,
                         const allgather_attr& attr = default_allgather_attr,
@@ -539,16 +547,33 @@ event CCL_API allgather(const BufferType* send_buf,
  *
  * Type-safe version.
  *
- *
- * @param send_bufs array of buffers with local data to be sent, one buffer per rank
- * @param recv_bufs [out] array of buffers to store received result, one buffer per rank
  */
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
 event CCL_API allgather(const BufferType* send_buf,
-                        vector_class<BufferType*>& recv_buf,
-                        size_t count,
+                        vector_class<BufferType*>& recv_bufs,
+                        size_t send_count,
                         const communicator& comm,
+                        const allgather_attr& attr = default_allgather_attr,
+                        const vector_class<event>& deps = {});
+
+/*!
+ * \overload
+ *
+ * Type-safe version.
+ *
+ * @param send_buf the buffer of @c BufferObjectType with @c send_count elements that stores local data to be gathered
+ * @param recv_buf [out] the buffer to store gathered result of @c BufferObjectType.
+ *                 It must be large enough to hold values from all ranks,
+ *                 i.e. size should be equal to @c BufferObjectType size in bytes * @c send_count
+ */
+template <class BufferObjectType,
+          class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
+event CCL_API allgather(const BufferObjectType& send_buf,
+                        BufferObjectType& recv_buf,
+                        size_t send_count,
+                        const communicator& comm,
+                        const stream& stream,
                         const allgather_attr& attr = default_allgather_attr,
                         const vector_class<event>& deps = {});
 
@@ -561,7 +586,25 @@ template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API allgather(const BufferObjectType& send_buf,
                         BufferObjectType& recv_buf,
-                        size_t count,
+                        size_t send_count,
+                        const communicator& comm,
+                        const allgather_attr& attr = default_allgather_attr,
+                        const vector_class<event>& deps = {});
+
+/*!
+ * \overload
+ *
+ * Type-safe version.
+ *
+ * @param send_buf the buffer of @c BufferObjectType with @c send_count elements that stores local data to be gathered
+ * @param recv_bufs [out] array of buffers to store gathered result, one buffer per rank;
+ *                   each buffer must be large enough to keep send_count elements of @c BufferObjectType size
+ */
+template <class BufferObjectType,
+          class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
+event CCL_API allgather(const BufferObjectType& send_buf,
+                        vector_class<reference_wrapper_class<BufferObjectType>>& recv_bufs,
+                        size_t send_count,
                         const communicator& comm,
                         const stream& stream,
                         const allgather_attr& attr = default_allgather_attr,
@@ -572,49 +615,12 @@ event CCL_API allgather(const BufferObjectType& send_buf,
  *
  * Type-safe version.
  *
- * @param send_bufs array of buffers with local data to be sent, one buffer per rank
- * @param recv_bufs [out] array of buffers to store received result, one buffer per rank
  */
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
 event CCL_API allgather(const BufferObjectType& send_buf,
-                        BufferObjectType& recv_buf,
-                        size_t count,
-                        const communicator& comm,
-                        const allgather_attr& attr = default_allgather_attr,
-                        const vector_class<event>& deps = {});
-
-/*!
- * \overload
- *
- * Type-safe version.
- *
- * @param send_bufs array of buffers with local data to be sent, one buffer per rank
- * @param recv_bufs [out] array of buffers to store received result, one buffer per rank
- */
-template <class BufferObjectType,
-          class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
-event CCL_API allgather(const BufferObjectType& send_buf,
-                        vector_class<reference_wrapper_class<BufferObjectType>>& recv_buf,
-                        size_t count,
-                        const communicator& comm,
-                        const stream& stream,
-                        const allgather_attr& attr = default_allgather_attr,
-                        const vector_class<event>& deps = {});
-
-/*!
- * \overload
- *
- * Type-safe version.
- *
- * @param send_bufs array of buffers with local data to be sent, one buffer per rank
- * @param recv_bufs [out] array of buffers to store received result, one buffer per rank
- */
-template <class BufferObjectType,
-          class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
-event CCL_API allgather(const BufferObjectType& send_buf,
-                        vector_class<reference_wrapper_class<BufferObjectType>>& recv_buf,
-                        size_t count,
+                        vector_class<reference_wrapper_class<BufferObjectType>>& recv_bufs,
+                        size_t send_count,
                         const communicator& comm,
                         const allgather_attr& attr = default_allgather_attr,
                         const vector_class<event>& deps = {});
@@ -1421,10 +1427,8 @@ event CCL_API barrier(const communicator& comm,
 /**
  * \brief Broadcast is a collective communication operation that broadcasts data
  *        from one rank of communicator (denoted as root) to all other ranks.
- * @param send_buf [in] the buffer with @c count elements of @c dtype
- *        serves as send buffer for root 
- * @param recv_buf [out] the buffer with @c count elements of @c dtype
- *        serves as receive buffer for all ranks
+ * @param buf [in/out] the buffer with @c count elements of @c dtype
+ *        serves as send buffer for root and as the output buffer for all other ranks
  * @param count the number of elements of type @c dtype in @c buf
  * @param dtype the datatype of elements in @c buf
  * @param root the rank that broadcasts @c buf
@@ -1445,6 +1449,8 @@ event CCL_API broadcast(void* buf,
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
 event CCL_API broadcast(void* buf,
                         size_t count,
@@ -1518,48 +1524,50 @@ event CCL_API broadcast(BufferObjectType& buf,
 
 /** @} */ // end of broadcast
 
-/** @defgroup broadcastExt
+/** @defgroup broadcast
  * \ingroup operation
  * @{
  */
 
 /**
- * \brief broadcastExt is a collective communication operation that broadcastExts data
+ * \brief Broadcast is a collective communication operation that broadcasts data
  *        from one rank of communicator (denoted as root) to all other ranks.
  * @param send_buf [in] the buffer with @c count elements of @c dtype
- *        serves as send buffer for root 
+ *        serves as send buffer for root. The send_buf is only used by the root rank (and ignored by all the other ranks).
  * @param recv_buf [out] the buffer with @c count elements of @c dtype
- *        serves as receive buffer for all ranks
+ *        serves as receive buffer for all ranks, including the root.
  * @param count the number of elements of type @c dtype in @c send_buf
  * @param dtype the datatype of elements in @c send_buf
- * @param root the rank that broadcastExts @c send_buf
+ * @param root the rank that broadcasts @c send_buf
  * @param comm the communicator for which the operation will be performed
  * @param stream abstraction over a device queue constructed via ccl::create_stream
  * @param attr optional attributes to customize operation
  * @param deps an optional vector of the events that the operation should depend on
  * @return @ref ccl::event an object to track the progress of the operation
  */
-event CCL_API broadcastExt(void* send_buf,
-                           void* recv_buf,
-                           size_t count,
-                           datatype dtype,
-                           int root,
-                           const communicator& comm,
-                           const stream& stream,
-                           const broadcastExt_attr& attr = default_broadcastExt_attr,
-                           const vector_class<event>& deps = {});
+event CCL_API broadcast(void* send_buf,
+                        void* recv_buf,
+                        size_t count,
+                        datatype dtype,
+                        int root,
+                        const communicator& comm,
+                        const stream& stream,
+                        const broadcast_attr& attr = default_broadcast_attr,
+                        const vector_class<event>& deps = {});
 
 /*!
  * \overload
+ *
+ * Type-safe version.
  */
-event CCL_API broadcastExt(void* send_buf,
-                           void* recv_buf,
-                           size_t count,
-                           datatype dtype,
-                           int root,
-                           const communicator& comm,
-                           const broadcastExt_attr& attr = default_broadcastExt_attr,
-                           const vector_class<event>& deps = {});
+event CCL_API broadcast(void* send_buf,
+                        void* recv_buf,
+                        size_t count,
+                        datatype dtype,
+                        int root,
+                        const communicator& comm,
+                        const broadcast_attr& attr = default_broadcast_attr,
+                        const vector_class<event>& deps = {});
 
 /*!
  * \overload
@@ -1569,14 +1577,14 @@ event CCL_API broadcastExt(void* send_buf,
 
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
-event CCL_API broadcastExt(BufferType* send_buf,
-                           BufferType* recv_buf,
-                           size_t count,
-                           int root,
-                           const communicator& comm,
-                           const stream& stream,
-                           const broadcastExt_attr& attr = default_broadcastExt_attr,
-                           const vector_class<event>& deps = {});
+event CCL_API broadcast(BufferType* send_buf,
+                        BufferType* recv_buf,
+                        size_t count,
+                        int root,
+                        const communicator& comm,
+                        const stream& stream,
+                        const broadcast_attr& attr = default_broadcast_attr,
+                        const vector_class<event>& deps = {});
 
 /*!
  * \overload
@@ -1586,13 +1594,13 @@ event CCL_API broadcastExt(BufferType* send_buf,
 
 template <class BufferType,
           class = typename std::enable_if<is_native_type_supported<BufferType>(), event>::type>
-event CCL_API broadcastExt(BufferType* send_buf,
-                           BufferType* recv_buf,
-                           size_t count,
-                           int root,
-                           const communicator& comm,
-                           const broadcastExt_attr& attr = default_broadcastExt_attr,
-                           const vector_class<event>& deps = {});
+event CCL_API broadcast(BufferType* send_buf,
+                        BufferType* recv_buf,
+                        size_t count,
+                        int root,
+                        const communicator& comm,
+                        const broadcast_attr& attr = default_broadcast_attr,
+                        const vector_class<event>& deps = {});
 
 /*!
  * \overload
@@ -1602,14 +1610,14 @@ event CCL_API broadcastExt(BufferType* send_buf,
 
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
-event CCL_API broadcastExt(BufferObjectType& send_buf,
-                           BufferObjectType& recv_buf,
-                           size_t count,
-                           int root,
-                           const communicator& comm,
-                           const stream& stream,
-                           const broadcastExt_attr& attr = default_broadcastExt_attr,
-                           const vector_class<event>& deps = {});
+event CCL_API broadcast(BufferObjectType& send_buf,
+                        BufferObjectType& recv_buf,
+                        size_t count,
+                        int root,
+                        const communicator& comm,
+                        const stream& stream,
+                        const broadcast_attr& attr = default_broadcast_attr,
+                        const vector_class<event>& deps = {});
 
 /*!
  * \overload
@@ -1619,15 +1627,15 @@ event CCL_API broadcastExt(BufferObjectType& send_buf,
 
 template <class BufferObjectType,
           class = typename std::enable_if<is_class_supported<BufferObjectType>(), event>::type>
-event CCL_API broadcastExt(BufferObjectType& send_buf,
-                           BufferObjectType& recv_buf,
-                           size_t count,
-                           int root,
-                           const communicator& comm,
-                           const broadcastExt_attr& attr = default_broadcastExt_attr,
-                           const vector_class<event>& deps = {});
+event CCL_API broadcast(BufferObjectType& send_buf,
+                        BufferObjectType& recv_buf,
+                        size_t count,
+                        int root,
+                        const communicator& comm,
+                        const broadcast_attr& attr = default_broadcast_attr,
+                        const vector_class<event>& deps = {});
 
-/** @} */ // end of broadcastExt
+/** @} */ // end of broadcast
 
 /** @defgroup recv
  * \ingroup operation

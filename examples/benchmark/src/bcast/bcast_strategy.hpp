@@ -46,9 +46,9 @@ struct bcast_strategy_impl {
     }
 };
 
-struct bcastExt_strategy_impl {
+struct broadcast_strategy_impl {
     static constexpr const char* class_name() {
-        return "bcastExt";
+        return "broadcast";
     }
 
     size_t get_send_multiplier() {
@@ -59,8 +59,8 @@ struct bcastExt_strategy_impl {
         return 1;
     }
 
-    static const ccl::broadcastExt_attr& get_op_attr(const bench_exec_attr& bench_attr) {
-        return bench_attr.get_attr<ccl::broadcastExt_attr>();
+    static const ccl::broadcast_attr& get_op_attr(const bench_exec_attr& bench_attr) {
+        return bench_attr.get_attr<ccl::broadcast_attr>();
     }
 
     template <class Dtype, class... Args>
@@ -71,12 +71,12 @@ struct bcastExt_strategy_impl {
                         const bench_exec_attr& bench_attr,
                         req_list_t& reqs,
                         Args&&... args) {
-        reqs.push_back(ccl::broadcastExt(send_buf,
-                                         recv_buf,
-                                         count,
-                                         get_ccl_dtype<Dtype>(),
-                                         COLL_ROOT,
-                                         comm,
-                                         std::forward<Args>(args)...));
+        reqs.push_back(ccl::broadcast(send_buf,
+                                      recv_buf,
+                                      count,
+                                      get_ccl_dtype<Dtype>(),
+                                      COLL_ROOT,
+                                      comm,
+                                      std::forward<Args>(args)...));
     }
 };

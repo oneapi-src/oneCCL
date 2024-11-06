@@ -39,7 +39,7 @@ private:
 
     size_t alloc_count = 0;
     void* memory_context = nullptr;
-    void* memory_context_base = nullptr;
+    void* const memory_context_base;
     size_t memory_context_size = 0;
 
     std::shared_ptr<sync_object> sync{};
@@ -54,6 +54,7 @@ public:
     sched_group(ccl_sched* sched, ccl_comm* comm, void* memory_context, size_t memory_context_size);
 
     // Delete copy assignment operator
+    sched_group operator=(const sched_group) = delete;
     sched_group& operator=(const sched_group&) = delete;
 
     // Delete move copy constructor and move assignment operator
@@ -61,6 +62,8 @@ public:
     sched_group& operator=(sched_group&&) = delete;
 
     bool operator==(const sched_group& other) const;
+
+    ~sched_group() {}
 
     size_t get_id() const;
     void* allocate(size_t bytes, size_t alignment);

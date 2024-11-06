@@ -205,7 +205,7 @@ CCL_API barrier_attr& barrier_attr::operator=(const barrier_attr& src) {
 CCL_API barrier_attr::~barrier_attr() {}
 
 /**
- * bcast coll attributes
+ * broadcast coll attributes
  */
 CCL_API broadcast_attr::broadcast_attr(broadcast_attr&& src) : base_t(std::move(src)) {}
 
@@ -227,30 +227,6 @@ CCL_API broadcast_attr& broadcast_attr::operator=(const broadcast_attr& src) {
 }
 
 CCL_API broadcast_attr::~broadcast_attr() {}
-
-/**
- * bcastExt coll attributes
- */
-CCL_API broadcastExt_attr::broadcastExt_attr(broadcastExt_attr&& src) : base_t(std::move(src)) {}
-
-CCL_API broadcastExt_attr::broadcastExt_attr(const broadcastExt_attr& src) : base_t(src) {}
-
-CCL_API broadcastExt_attr::broadcastExt_attr(
-    const typename detail::ccl_api_type_attr_traits<operation_attr_id,
-                                                    operation_attr_id::version>::type& version)
-        : base_t(impl_value_t(new impl_t(version))) {}
-
-CCL_API broadcastExt_attr& broadcastExt_attr::operator=(broadcastExt_attr&& src) noexcept {
-    this->acc_policy_t::create(this, std::move(src));
-    return *this;
-}
-
-CCL_API broadcastExt_attr& broadcastExt_attr::operator=(const broadcastExt_attr& src) {
-    this->acc_policy_t::create(this, src);
-    return *this;
-}
-
-CCL_API broadcastExt_attr::~broadcastExt_attr() {}
 
 /**
  * point to point operation attributes
@@ -335,7 +311,6 @@ COMMON_API_FORCE_INSTANTIATION(alltoall_attr)
 COMMON_API_FORCE_INSTANTIATION(alltoallv_attr)
 COMMON_API_FORCE_INSTANTIATION(barrier_attr)
 COMMON_API_FORCE_INSTANTIATION(broadcast_attr)
-COMMON_API_FORCE_INSTANTIATION(broadcastExt_attr)
 COMMON_API_FORCE_INSTANTIATION(pt2pt_attr)
 COMMON_API_FORCE_INSTANTIATION(reduce_attr)
 COMMON_API_FORCE_INSTANTIATION(reduce_scatter_attr)

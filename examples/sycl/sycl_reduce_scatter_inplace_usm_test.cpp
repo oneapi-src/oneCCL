@@ -83,8 +83,8 @@ int main(int argc, char *argv[]) {
     auto send_buf = allocator.allocate(count * size, usm_alloc_type);
     auto recv_buf = send_buf + rank * count;
     /* create validation buffers */
-    buffer<int> expected_buf(count);
-    buffer<int> check_buf(count);
+    sycl::buffer<int> expected_buf(count);
+    sycl::buffer<int> check_buf(count);
 
     /* open buffers and modify them on the device side */
     /* Example of send/recv/expected reduce_scatter initial data and results.
@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
      * * SEND -> (3) (4) (5) (6) - initial data
      * * RECV/EXPECTED -> (18) - pointed to 3 block */
     auto e = q.submit([&](auto &h) {
-        accessor expected_buf_acc(expected_buf, h, write_only);
+        sycl::accessor expected_buf_acc(expected_buf, h, sycl::write_only);
         h.parallel_for(count, [=](auto id) {
             recv_buf[id] = -1;
             expected_buf_acc[id] = (size * (rank + (rank + size - 1))) / 2;
@@ -132,8 +132,8 @@ int main(int argc, char *argv[]) {
 
     /* open recv_buf and check its correctness on the device side */
     q.submit([&](auto &h) {
-        accessor expected_buf_acc(expected_buf, h, read_only);
-        accessor check_buf_acc(check_buf, h, write_only);
+        sycl::accessor expected_buf_acc(expected_buf, h, sycl::read_only);
+        sycl::accessor check_buf_acc(check_buf, h, sycl::write_only);
         h.parallel_for(count, [=](auto id) {
             if (recv_buf[id] != expected_buf_acc[id]) {
                 check_buf_acc[id] = -1;
@@ -149,16 +149,16 @@ int main(int argc, char *argv[]) {
 
     /* print out the result of the test on the host side */
     {
-        host_accessor check_buf_acc(check_buf, read_only);
+        sycl::host_accessor check_buf_acc(check_buf, sycl::read_only);
         size_t i;
         for (i = 0; i < count; i++) {
             if (check_buf_acc[i] == -1) {
-                cout << "FAILED\n";
+                std::cout << "FAILED\n";
                 break;
             }
         }
         if (i == count) {
-            cout << "PASSED\n";
+            std::cout << "PASSED\n";
         }
     }
 

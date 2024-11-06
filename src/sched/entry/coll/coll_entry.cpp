@@ -92,14 +92,14 @@ ccl::status coll_entry::build_sched(ccl_sched* sched, const ccl_coll_param& para
                 sched, param.recv_buf, param.count, param.dtype, param.root, param.comm);
             break;
         }
-        case ccl_coll_bcastExt: {
-            res = ccl_coll_build_bcastExt(sched,
-                                          param.send_buf,
-                                          param.recv_buf,
-                                          param.count,
-                                          param.dtype,
-                                          param.root,
-                                          param.comm);
+        case ccl_coll_broadcast: {
+            res = ccl_coll_build_broadcast(sched,
+                                           param.send_buf,
+                                           param.recv_buf,
+                                           param.count,
+                                           param.dtype,
+                                           param.root,
+                                           param.comm);
             break;
         }
         case ccl_coll_reduce: {

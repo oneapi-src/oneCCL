@@ -19,7 +19,7 @@
 #include <vector>
 
 #ifdef CCL_ENABLE_SYCL
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #include "common/utils/hash.hpp"
 #endif // CCL_ENABLE_SYCL
 

@@ -88,6 +88,7 @@ typedef struct mpi_lib_ops {
     decltype(MPI_Query_thread) *MPI_Query_thread_ptr;
     decltype(MPI_Reduce) *MPI_Reduce_ptr;
     decltype(MPI_Reduce_c) *MPI_Reduce_c_ptr;
+    decltype(MPI_Reduce_local) *MPI_Reduce_local_ptr;
     decltype(MPI_Reduce_scatter) *MPI_Reduce_scatter_ptr;
     decltype(MPI_Reduce_scatter_block) *MPI_Reduce_scatter_block_ptr;
     decltype(MPI_Reduce_scatter_block_c) *MPI_Reduce_scatter_block_c_ptr;
@@ -164,6 +165,7 @@ static std::vector<std::string> mpi_fn_names = {
     "MPI_Query_thread",
     "MPI_Reduce",
     "MPI_Reduce_c",
+    "MPI_Reduce_local",
     "MPI_Reduce_scatter",
     "MPI_Reduce_scatter_block",
     "MPI_Reduce_scatter_block_c",
@@ -321,6 +323,7 @@ extern ccl::mpi_lib_ops_t mpi_lib_ops;
 #else // MPI_Reduce_c
 #define MPI_Reduce_c ccl::mpi_lib_ops.MPI_Reduce_ptr
 #endif // MPI_Reduce_c
+#define MPI_Reduce_local         ccl::mpi_lib_ops.MPI_Reduce_local_ptr
 #define MPI_Reduce_scatter       ccl::mpi_lib_ops.MPI_Reduce_scatter_ptr
 #define MPI_Reduce_scatter_block ccl::mpi_lib_ops.MPI_Reduce_scatter_block_ptr
 #if ENABLE_LARGE_COUNT_SUPPORT

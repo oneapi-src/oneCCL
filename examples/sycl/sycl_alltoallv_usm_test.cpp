@@ -73,8 +73,8 @@ int main(int argc, char *argv[]) {
     auto send_buf = allocator.allocate(count * size, usm_alloc_type);
     auto recv_buf = allocator.allocate(count * size, usm_alloc_type);
 
-    vector<size_t> send_counts(size, count);
-    vector<size_t> recv_counts(size, count);
+    std::vector<size_t> send_counts(size, count);
+    std::vector<size_t> recv_counts(size, count);
 
     /* open buffers and modify them on the device side */
     auto e = q.submit([&](auto &h) {
@@ -93,9 +93,9 @@ int main(int argc, char *argv[]) {
     ccl::alltoallv(send_buf, send_counts, recv_buf, recv_counts, comm, stream, attr, deps).wait();
 
     /* open recv_buf and check its correctness on the device side */
-    buffer<int> check_buf(count * size);
+    sycl::buffer<int> check_buf(count * size);
     q.submit([&](auto &h) {
-        accessor check_buf_acc(check_buf, h, write_only);
+        sycl::accessor check_buf_acc(check_buf, h, sycl::write_only);
         h.parallel_for(count * size, [=](auto id) {
             if (recv_buf[id] != rank + 1) {
                 check_buf_acc[id] = -1;
@@ -111,16 +111,16 @@ int main(int argc, char *argv[]) {
 
     /* print out the result of the test on the host side */
     {
-        host_accessor check_buf_acc(check_buf, read_only);
+        sycl::host_accessor check_buf_acc(check_buf, sycl::read_only);
         size_t i;
         for (i = 0; i < count * size; i++) {
             if (check_buf_acc[i] == -1) {
-                cout << "FAILED\n";
+                std::cout << "FAILED\n";
                 break;
             }
         }
         if (i == count * size) {
-            cout << "PASSED\n";
+            std::cout << "PASSED\n";
         }
     }
 

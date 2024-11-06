@@ -32,6 +32,7 @@
 #include "oneapi/ccl/stream.hpp"
 
 #include "common/request/request.hpp"
+#include "common/event/impls/host_event.hpp"
 
 #include "comm/comm.hpp"
 #include "coll/coll.hpp"
@@ -60,6 +61,13 @@
 #include "sched/entry/factory/entry_factory.hpp"
 #include "sched/sched_timer.hpp"
 #include "unordered_coll/unordered_coll.hpp"
+
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+#include "coll/algorithms/utils/sycl_selection.hpp"
+#include "coll/algorithms/allreduce/sycl/allreduce_sycl.hpp"
+#include "coll/algorithms/reduce_scatter/sycl/reduce_scatter_sycl.hpp"
+#include "coll/algorithms/allgatherv/sycl/allgatherv_sycl.hpp"
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
 ccl_request* exec_single_rank_inplace_coll(const ccl_coll_param& param) {
@@ -126,9 +134,19 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
     ccl_coll_attr& attr = const_cast<ccl_coll_attr&>(in_attr);
 
 #ifdef CCL_ENABLE_ITT
-    __itt_event coll_create_itt_event =
-        ccl::profile::itt::event_get(ccl_coll_type_to_str(param.ctype));
-    ccl::profile::itt::event_start(coll_create_itt_event);
+    // Tracing API calls uses `task` API in order to use additional metadata such
+    // as `send_size`. We don't have to use `event` API because calls to oneCCL API
+    // will never overlap in the scope of a single thread.
+    if (!param.send_counts.empty()) {
+        auto send_size = std::accumulate(param.send_counts.begin(),
+                                         param.send_counts.end(),
+                                         decltype(param.send_counts)::value_type(0)) *
+                         param.dtype.size();
+        ccl::profile::itt::task_begin(ccl_coll_type_to_str(param.ctype), "send_size", send_size);
+    }
+    else {
+        ccl::profile::itt::task_begin(ccl_coll_type_to_str(param.ctype));
+    }
 #endif // CCL_ENABLE_ITT
 
 #ifdef CCL_ENABLE_SYCL
@@ -141,7 +159,9 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
     // there is no ordering requirement unless dependencies are explicitly provided and which we
     // handle as well.
     bool is_queue_in_order = ccl::is_queue_in_order(param.stream);
-    if (is_queue_in_order) {
+    // We don't need a barrier for the recieve operation inside a group unless it is the 1st operation in the group
+    if (is_queue_in_order && (!group_impl::is_group_active || group_impl::first_group_op ||
+                              param.ctype != ccl_coll_recv)) {
         // TODO: it would be nice to pass here all the dependencies as parameters to submit_barrier
         // and get a single event to use later.
         try {
@@ -155,6 +175,16 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
         catch (ccl::exception&) {
             LOG_WARN("Failed to submit sycl barrier in front of CCL collectives."
                      "This might lead to the incorrect results");
+        }
+    }
+
+    const char* ze_serialize_str = std::getenv("ZE_SERIALIZE");
+    if (ze_serialize_str != nullptr) {
+        int ze_serialize_value = std::stoi(ze_serialize_str);
+        if (is_queue_in_order && ze_serialize_value == 2) {
+            CCL_THROW("in-order SYCL queue hangs with ZE_SERIALIZE: ",
+                      ze_serialize_value,
+                      " mode. Blocking ZE calls, where in enqueue commands are supported");
         }
     }
 
@@ -180,6 +210,10 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
 
     ccl::global_data& data = ccl::global_data::get();
 
+    if (group_impl::is_group_active && param.is_pt2pt) {
+        LOG_DEBUG("group API is applied for: ", ccl_coll_type_to_str(param.ctype));
+    }
+
     ccl_selector_param selector_param{};
     selector_param.ctype = param.ctype;
     selector_param.count = param.count;
@@ -203,6 +237,38 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
     if ((param.ctype == ccl_coll_send || param.ctype == ccl_coll_recv) && attr.to_cache) {
         // cache mode is disabled for point-to-point operations
         attr.to_cache = 0;
+    }
+
+    // observe a large overhead when invoking direct algorithms with cache mode disabled
+    // enable cache mode for direct algorithms (all the collectives) to reduce the overhead
+    if (ccl::global_data::env().atl_transport == ccl_atl_mpi &&
+        ccl_is_direct_algo(selector_param) && attr.to_cache == 0 &&
+        ccl::global_data::env().enable_sync_coll && ccl::global_data::env().enable_auto_cache
+#ifdef CCL_ENABLE_SYCL
+        && !attr.is_sycl_buf
+#endif // CCL_ENABLE_SYCL
+    ) {
+        if (param.ctype != ccl_coll_send && param.ctype != ccl_coll_recv) {
+            // need to set up match_id if match_id is used for caching and it is empty
+            // set up the match_id similarly as in ccl_sched_key_hasher
+            if (ccl::global_data::env().cache_key_type == ccl_cache_key_match_id &&
+                attr.match_id.empty()) {
+                size_t send_counts_sum =
+                    std::accumulate(param.send_counts.begin(), param.send_counts.end(), size_t(0));
+                size_t recv_counts_sum =
+                    std::accumulate(param.recv_counts.begin(), param.recv_counts.end(), size_t(0));
+                std::stringstream match_id_stream;
+                match_id_stream << param.ctype << "_"
+                                << ccl::utils::enum_to_underlying(param.dtype.idx()) << "_"
+                                << ccl::utils::enum_to_underlying(param.reduction) << "_"
+                                << param.send_count << "_" << param.count << "_" << param.root
+                                << "_" << param.send_bufs[0] << "_" << param.recv_bufs[0] << "_"
+                                << param.comm << "_" << attr.reduction_fn << "_" << send_counts_sum
+                                << "_" << recv_counts_sum;
+                attr.match_id = match_id_stream.str();
+            }
+            attr.to_cache = 1;
+        }
     }
 
     if (!(param.ctype == ccl_coll_barrier || param.ctype == ccl_coll_send ||
@@ -280,13 +346,15 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
         CCL_THROW_IF_NOT(wait_result != ccl_wait_result_completed_released,
                          "internal error, valid request was released");
 #ifdef CCL_ENABLE_SYCL
-        if (ccl::utils::should_use_sycl_output_event(param.stream) || is_queue_in_order) {
+        if ((ccl::utils::should_use_sycl_output_event(param.stream) || is_queue_in_order) &&
+            sched->coll_param.comm->get_env()->get_enable_topo_algo()) {
             request->set_native_event(request->get_sync_event());
         }
 #endif // CCL_ENABLE_SYCL
     }
 #ifdef CCL_ENABLE_SYCL
-    else if (ccl::utils::should_use_sycl_output_event(param.stream) || is_queue_in_order) {
+    else if ((ccl::utils::should_use_sycl_output_event(param.stream) || is_queue_in_order) &&
+             sched->coll_param.comm->get_env()->get_enable_topo_algo()) {
         LOG_DEBUG("waiting for sched ", sched, " to be submitted_to_gpu");
         while (!sched->is_submitted_to_gpu() && !request->is_completed()) {
             data.executor.get()->do_work();
@@ -303,7 +371,7 @@ static ccl_request* ccl_coll_create(ccl_coll_param& param, const ccl_coll_attr& 
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_ITT
-    ccl::profile::itt::event_end(coll_create_itt_event);
+    ccl::profile::itt::task_end();
 #endif // CCL_ENABLE_ITT
 
     return request;
@@ -679,17 +747,17 @@ ccl::status ccl_coll_build_bcast(ccl_sched* sched,
     return status;
 }
 
-ccl::status ccl_coll_build_bcastExt(ccl_sched* sched,
-                                    ccl_buffer send_buf,
-                                    ccl_buffer recv_buf,
-                                    size_t count,
-                                    const ccl_datatype& dtype,
-                                    int root,
-                                    ccl_comm* comm) {
+ccl::status ccl_coll_build_broadcast(ccl_sched* sched,
+                                     ccl_buffer send_buf,
+                                     ccl_buffer recv_buf,
+                                     size_t count,
+                                     const ccl_datatype& dtype,
+                                     int root,
+                                     ccl_comm* comm) {
     ccl::status status = ccl::status::success;
 
     ccl_selector_param param;
-    param.ctype = ccl_coll_bcastExt;
+    param.ctype = ccl_coll_broadcast;
     param.count = count;
     param.dtype = dtype;
     param.comm = comm;
@@ -700,21 +768,21 @@ ccl::status ccl_coll_build_bcastExt(ccl_sched* sched,
 #endif // CCL_ENABLE_SYCL
     param.hint_algo = sched->hint_algo;
 
-    auto algo = ccl::global_data::get().algorithm_selector->get<ccl_coll_bcastExt>(param);
+    auto algo = ccl::global_data::get().algorithm_selector->get<ccl_coll_broadcast>(param);
 
     switch (algo) {
-        case ccl_coll_bcastExt_direct:
-            CCL_CALL(ccl_coll_build_direct_bcastExt(
+        case ccl_coll_broadcast_direct:
+            CCL_CALL(ccl_coll_build_direct_broadcast(
                 sched, send_buf, recv_buf, count, dtype, root, comm));
             break;
-        case ccl_coll_bcastExt_ring:
-            CCL_CALL(ccl_coll_build_scatter_ring_allgather_bcastExt(
+        case ccl_coll_broadcast_ring:
+            CCL_CALL(ccl_coll_build_scatter_ring_allgather_broadcast(
                 sched, send_buf, recv_buf, count, dtype, root, comm));
             break;
-        case ccl_coll_bcastExt_double_tree:
+        case ccl_coll_broadcast_double_tree:
             CCL_CALL(ccl_coll_build_double_tree_op(
                 sched,
-                ccl_coll_bcastExt,
+                ccl_coll_broadcast,
                 send_buf,
                 recv_buf,
                 count,
@@ -723,18 +791,18 @@ ccl::status ccl_coll_build_bcastExt(ccl_sched* sched,
                 root == 0 ? comm->dtree() : comm->dtree().copy_with_new_root(root),
                 comm));
             break;
-        case ccl_coll_bcastExt_naive:
-            CCL_CALL(
-                ccl_coll_build_naive_bcastExt(sched, send_buf, recv_buf, count, dtype, root, comm));
+        case ccl_coll_broadcast_naive:
+            CCL_CALL(ccl_coll_build_naive_broadcast(
+                sched, send_buf, recv_buf, count, dtype, root, comm));
             break;
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-        case ccl_coll_bcastExt_topo:
+        case ccl_coll_broadcast_topo:
             CCL_CALL(
-                ccl_coll_build_topo_bcastExt(sched, send_buf, recv_buf, count, dtype, root, comm));
+                ccl_coll_build_topo_broadcast(sched, send_buf, recv_buf, count, dtype, root, comm));
             break;
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
         default:
-            CCL_FATAL("unexpected bcastExt_algo ", ccl_coll_algorithm_to_str(algo));
+            CCL_FATAL("unexpected broadcast_algo ", ccl_coll_algorithm_to_str(algo));
             return ccl::status::invalid_arguments;
     }
     return status;
@@ -975,6 +1043,63 @@ ccl_request* ccl_allgather_impl(const void* send_buf,
     return req;
 }
 
+ccl::event ccl_allgatherv(const void* send_buf,
+                          size_t send_count,
+                          void* recv_buf,
+                          const ccl::vector_class<size_t>& recv_counts,
+                          ccl::datatype dtype,
+                          const ccl_coll_attr& attr,
+                          ccl_comm* comm,
+                          const ccl_stream* stream,
+                          const std::vector<ccl::event>& deps) {
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    ccl_selector_param param = ccl_selector_param::create(ccl_coll_allgatherv,
+                                                          send_count,
+                                                          dtype,
+                                                          comm,
+                                                          const_cast<ccl_stream*>(stream),
+                                                          recv_buf,
+                                                          ccl::reduction::custom,
+                                                          false, // is_vector_buf
+                                                          false, // is_sycl_buf
+                                                          CCL_INVALID_PEER_RANK_IDX, // peer_rank
+                                                          {}, // hint_algo
+                                                          false); // is_scaleout
+
+    if (can_use_sycl_kernels(param)) {
+        LOG_DEBUG("|CCL_SYCL| allgatherv selects sycl-kernels send_count: ",
+                  send_count,
+                  ", datatype: ",
+                  dtype);
+
+        bool done = false;
+        ccl_stream* op_stream = const_cast<ccl_stream*>(stream);
+        auto q = op_stream->get_native_stream();
+        auto dummy_unused_attr = ccl::create_operation_attr<ccl::allgatherv_attr>();
+        ccl::event ccl_event = ccl::allgather_sycl(q,
+                                                   send_buf,
+                                                   send_count,
+                                                   recv_buf,
+                                                   recv_counts,
+                                                   dtype,
+                                                   comm,
+                                                   op_stream,
+                                                   dummy_unused_attr,
+                                                   deps,
+                                                   done);
+        if (done) {
+            if (ccl::global_data::env().enable_op_sync) {
+                ccl_event.wait();
+            }
+            return ccl_event;
+        }
+    }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+    ccl_request* req = ccl_allgatherv_impl(
+        send_buf, send_count, recv_buf, recv_counts.data(), dtype, attr, comm, stream, deps);
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
+}
+
 ccl_request* ccl_allgatherv_impl(const void* send_buf,
                                  size_t send_count,
                                  void* recv_buf,
@@ -992,6 +1117,61 @@ ccl_request* ccl_allgatherv_impl(const void* send_buf,
     return req;
 }
 
+ccl::event ccl_allreduce(const void* send_buf,
+                         void* recv_buf,
+                         size_t count,
+                         ccl::datatype dtype,
+                         ccl::reduction reduction,
+                         const ccl_coll_attr& attr,
+                         ccl_comm* comm,
+                         const ccl_stream* stream,
+                         const std::vector<ccl::event>& deps) {
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    ccl_selector_param param = ccl_selector_param::create(ccl_coll_allreduce,
+                                                          count,
+                                                          dtype,
+                                                          comm,
+                                                          const_cast<ccl_stream*>(stream),
+                                                          recv_buf,
+                                                          reduction,
+                                                          false, // is_vector_buf
+                                                          false, // is_sycl_buf
+                                                          CCL_INVALID_PEER_RANK_IDX, // peer_rank
+                                                          {}, // hint_algo
+                                                          false); // is_scaleout
+
+    if (can_use_sycl_kernels(param)) {
+        LOG_DEBUG(
+            "|CCL_SYCL| allreduce selects sycl-kernels count: ", count, ", datatype: ", dtype);
+
+        bool done = false;
+        ccl_stream* op_stream = const_cast<ccl_stream*>(stream);
+        auto q = op_stream->get_native_stream();
+        auto dummy_unused_attr = ccl::create_operation_attr<ccl::allreduce_attr>();
+        ccl::event ccl_event = allreduce_sycl(q,
+                                              send_buf,
+                                              recv_buf,
+                                              count,
+                                              dtype,
+                                              reduction,
+                                              comm,
+                                              const_cast<ccl_stream*>(stream),
+                                              dummy_unused_attr,
+                                              deps,
+                                              done);
+        if (done) {
+            if (ccl::global_data::env().enable_op_sync) {
+                ccl_event.wait();
+            }
+            return ccl_event;
+        }
+    }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+    ccl_request* req =
+        ccl_allreduce_impl(send_buf, recv_buf, count, dtype, reduction, attr, comm, stream, deps);
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
+}
+
 ccl_request* ccl_allreduce_impl(const void* send_buf,
                                 void* recv_buf,
                                 size_t count,
@@ -1004,10 +1184,9 @@ ccl_request* ccl_allreduce_impl(const void* send_buf,
     ccl_coll_param param = ccl_coll_param::create_allreduce_param(
         send_buf, recv_buf, count, dtype, reduction, attr, comm, stream, deps);
 
-    // TODO: skip_scheduler code should go here...
-
     auto req = ccl_coll_create(param, attr);
-    LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req, " count ", count);
+    LOG_DEBUG(
+        "coll ", ccl_coll_type_to_str(param.ctype), " created, req ", stream, " count ", count);
     return req;
 }
 
@@ -1023,7 +1202,8 @@ ccl_request* ccl_alltoall_impl(const void* send_buf,
         send_buf, recv_buf, count, dtype, attr, comm, stream, deps);
 
     auto req = ccl_coll_create(param, attr);
-    LOG_DEBUG("coll ", ccl_coll_type_to_str(param.ctype), " created, req ", req, " count ", count);
+    LOG_DEBUG(
+        "coll ", ccl_coll_type_to_str(param.ctype), " created, req ", stream, " count ", count);
     return req;
 }
 
@@ -1088,16 +1268,16 @@ ccl_request* ccl_broadcast_impl(void* buf,
     return req;
 }
 
-ccl_request* ccl_broadcastExt_impl(void* send_buf,
-                                   void* recv_buf,
-                                   size_t count,
-                                   ccl::datatype dtype,
-                                   int root,
-                                   const ccl_coll_attr& attr,
-                                   ccl_comm* comm,
-                                   const ccl_stream* stream,
-                                   const std::vector<ccl::event>& deps) {
-    ccl_coll_param param = ccl_coll_param::create_broadcastExt_param(
+ccl_request* ccl_broadcast_impl(void* send_buf,
+                                void* recv_buf,
+                                size_t count,
+                                ccl::datatype dtype,
+                                int root,
+                                const ccl_coll_attr& attr,
+                                ccl_comm* comm,
+                                const ccl_stream* stream,
+                                const std::vector<ccl::event>& deps) {
+    ccl_coll_param param = ccl_coll_param::create_broadcast_param(
         send_buf, recv_buf, count, dtype, root, attr, comm, stream, deps);
 
     auto req = ccl_coll_create(param, attr);
@@ -1123,6 +1303,63 @@ ccl_request* ccl_reduce_impl(const void* send_buf,
     return req;
 }
 
+ccl::event ccl_reduce_scatter(const void* send_buf,
+                              void* recv_buf,
+                              size_t recv_count,
+                              ccl::datatype dtype,
+                              ccl::reduction reduction,
+                              const ccl_coll_attr& attr,
+                              ccl_comm* comm,
+                              const ccl_stream* stream,
+                              const std::vector<ccl::event>& deps) {
+#if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
+    ccl_selector_param param = ccl_selector_param::create(ccl_coll_reduce_scatter,
+                                                          recv_count,
+                                                          dtype,
+                                                          comm,
+                                                          const_cast<ccl_stream*>(stream),
+                                                          recv_buf,
+                                                          reduction,
+                                                          false, // is_vector_buf
+                                                          false, // is_sycl_buf
+                                                          CCL_INVALID_PEER_RANK_IDX, // peer_rank
+                                                          {}, // hint_algo
+                                                          false); // is_scaleout
+
+    if (can_use_sycl_kernels(param)) {
+        LOG_DEBUG("|CCL_SYCL| reduce_scatter selects sycl-kernels recv_count: ",
+                  recv_count,
+                  ", datatype: ",
+                  dtype)
+        bool done = false;
+        ccl_stream* op_stream = const_cast<ccl_stream*>(stream);
+        auto q = op_stream->get_native_stream();
+        auto dummy_unused_attr = ccl::create_operation_attr<ccl::reduce_scatter_attr>();
+        ccl::event ccl_event = reduce_scatter_sycl(q,
+                                                   send_buf,
+                                                   recv_buf,
+                                                   recv_count,
+                                                   dtype,
+                                                   reduction,
+                                                   comm,
+                                                   const_cast<ccl_stream*>(stream),
+                                                   dummy_unused_attr,
+                                                   deps,
+                                                   done);
+        if (done) {
+            if (ccl::global_data::env().enable_op_sync) {
+                ccl_event.wait();
+            }
+            return ccl_event;
+        }
+    }
+#endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
+    ccl_request* req = ccl_reduce_scatter_impl(
+        send_buf, recv_buf, recv_count, dtype, reduction, attr, comm, stream, deps);
+
+    return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
+}
+
 ccl_request* ccl_reduce_scatter_impl(const void* send_buf,
                                      void* recv_buf,
                                      size_t recv_count,
@@ -1140,6 +1377,36 @@ ccl_request* ccl_reduce_scatter_impl(const void* send_buf,
     return req;
 }
 
+// wrapper for ccl_recv_impl
+ccl::event ccl_recv(void* recv_buf,
+                    size_t count,
+                    ccl::datatype dtype,
+                    int peer,
+                    const ccl_coll_attr& attr,
+                    ccl_comm* comm,
+                    const ccl_stream* stream,
+                    const std::vector<ccl::event>& deps) {
+    auto recv_operation =
+        [recv_buf, count, dtype, peer, attr, comm, stream, &deps]() -> ccl::event {
+        auto req = ccl_recv_impl(recv_buf, count, dtype, peer, attr, comm, stream, deps);
+        return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
+    };
+    ccl_request* req{};
+    ccl::event event = std::unique_ptr<ccl::event_impl>(
+        new ccl::host_event_impl(req, group_impl::is_group_active));
+    if (group_impl::is_group_active) {
+        if (deps.size() != 0) {
+            LOG_WARN("ccl_recv doesn't expect deps with group calls");
+        }
+        group_impl::add_operation(ccl_coll_recv, std::move(recv_operation));
+        // async behavior is expected, no need to return event
+    }
+    else {
+        event = recv_operation();
+    }
+    return event;
+}
+
 ccl_request* ccl_recv_impl(void* recv_buf,
                            size_t recv_count,
                            ccl::datatype dtype,
@@ -1155,6 +1422,37 @@ ccl_request* ccl_recv_impl(void* recv_buf,
 
     LOG_DEBUG("op ", ccl_coll_type_to_str(param.ctype), " created, req ", req);
     return req;
+}
+
+// wrapper for ccl_send_impl
+ccl::event ccl_send(const void* send_buf,
+                    size_t send_count,
+                    ccl::datatype dtype,
+                    int peer_rank,
+                    const ccl_coll_attr& attr,
+                    ccl_comm* comm,
+                    const ccl_stream* stream,
+                    const std::vector<ccl::event>& deps) {
+    auto send_operation =
+        [send_buf, send_count, dtype, peer_rank, attr, comm, stream, &deps]() -> ccl::event {
+        auto req = ccl_send_impl(send_buf, send_count, dtype, peer_rank, attr, comm, stream, deps);
+        return std::unique_ptr<ccl::event_impl>(new ccl::host_event_impl(req));
+    };
+
+    ccl_request* req{};
+    ccl::event event = std::unique_ptr<ccl::event_impl>(
+        new ccl::host_event_impl(req, group_impl::is_group_active));
+    if (group_impl::is_group_active) {
+        if (deps.size() != 0) {
+            LOG_WARN("ccl_send doesn't expect deps with group calls");
+        }
+        group_impl::add_operation(ccl_coll_send, std::move(send_operation));
+        // async behavior is expected, no need to return event
+    }
+    else {
+        event = send_operation();
+    }
+    return event;
 }
 
 ccl_request* ccl_send_impl(const void* send_buf,

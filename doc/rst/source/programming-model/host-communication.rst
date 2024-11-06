@@ -1,4 +1,4 @@
-.. _`Communicator`: https://spec.oneapi.com/versions/latest/elements/oneCCL/source/spec/main_objects.html#communicator
+.. _`Communicator`: https://oneapi-spec.uxlfoundation.org/specifications/oneapi/latest/elements/oneccl/source/spec/main_objects#communicator
 
 ==================
 Host Communication

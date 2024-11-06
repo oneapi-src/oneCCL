@@ -33,7 +33,7 @@ typedef struct user_options_t {
     size_t min_elem_count;
     size_t max_elem_count;
     std::list<size_t> elem_counts;
-    validate_values_t validate;
+    check_values_t check;
     uint32_t warmup_iters;
     uint32_t wait;
     int window_size;
@@ -52,7 +52,7 @@ typedef struct user_options_t {
         min_elem_count = DEFAULT_MIN_ELEM_COUNT;
         max_elem_count = DEFAULT_MAX_ELEM_COUNT;
         fill_elem_counts(elem_counts, min_elem_count, max_elem_count);
-        validate = DEFAULT_VALIDATE;
+        check = DEFAULT_CHECK;
         // for bw benchmark
         window_size = DEFAULT_WINDOW_SIZE;
 
@@ -131,20 +131,20 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
     std::list<int> elem_counts_int;
 
     char short_options[1024] = { 0 };
-    const char* base_options = "b:i:w:c:q:s:f:t:y:v:m:h";
+    const char* base_options = "b:i:w:p:e:s:f:t:y:c:m:h";
     memcpy(short_options, base_options, strlen(base_options));
 
     struct option getopt_options[] = {
         { "backend", required_argument, nullptr, 'b' },
         { "iters", required_argument, nullptr, 'i' },
         { "warmup_iters", required_argument, nullptr, 'w' },
-        { "cache", required_argument, nullptr, 'c' },
-        { "queue", required_argument, nullptr, 'q' },
+        { "cache", required_argument, nullptr, 'p' },
+        { "sycl_queue_type", required_argument, nullptr, 'e' },
         { "wait", required_argument, nullptr, 's' },
         { "min_elem_count", required_argument, nullptr, 'f' },
         { "max_elem_count", required_argument, nullptr, 't' },
         { "elem_counts", required_argument, nullptr, 'y' },
-        { "validate", required_argument, nullptr, 'v' },
+        { "check", required_argument, nullptr, 'c' },
         { "window", required_argument, nullptr, 'm' },
         { "help", no_argument, nullptr, 'h' },
         //TODO: { "peers", required_argument, nullptr, 'p' },
@@ -173,7 +173,7 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
                 else
                     errors++;
                 break;
-            case 'c':
+            case 'p':
                 if (is_valid_integer_option(optarg)) {
                     options.cache = atoll(optarg);
                     if (options.cache) {
@@ -185,7 +185,7 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
                 else
                     errors++;
                 break;
-            case 'q':
+            case 'e':
                 if (is_valid_integer_option(optarg)) {
                     options.queue = atoll(optarg);
                 }
@@ -196,6 +196,12 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
                 if (is_valid_integer_option(optarg)) {
                     options.min_elem_count = atoll(optarg);
                     options.min_elem_count_set = true;
+                    if (options.min_elem_count == 0) {
+                        // bandwidth can only be tested for message sizes > 0
+                        options.min_elem_count = DEFAULT_MIN_ELEM_COUNT;
+                        PRINT(
+                            "Warning: Minimum element count for bandwidth test should be greater than 0");
+                    }
                 }
                 else
                     errors++;
@@ -211,7 +217,10 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
             case 'y':
                 elem_counts_int = tokenize<int>(optarg, ',');
                 elem_counts_int.remove_if([](const size_t& count) {
-                    return !is_valid_integer_option(count);
+                    if (count == 0) {
+                        PRINT("Warning: Element count for bandwidth test should be greater than 0");
+                    }
+                    return !(is_valid_integer_option(count) && count > 0);
                 });
                 options.elem_counts = tokenize<size_t>(optarg, ',');
                 if (elem_counts_int.size() == options.elem_counts.size())
@@ -231,8 +240,8 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
                 else
                     errors++;
                 break;
-            case 'v':
-                if (set_validate_values(optarg, options.validate)) {
+            case 'c':
+                if (set_check_values(optarg, options.check)) {
                     PRINT("failed to parse 'check' option");
                     errors++;
                 }
@@ -373,34 +382,35 @@ void check_gpu_buffers(sycl::queue q,
 #endif // CCL_ENABLE_SYCL
 
 void print_help_usage(const char* app) {
-    PRINT("\nUSAGE:\n"
-          "\t%s [OPTIONS]\n\n"
-          "OPTIONS:\n"
-          "\t[-b,--backend <backend>]: %s\n"
-          "\t[-i,--iters <iteration count>]: %d\n"
-          "\t[-w,--warmup_iters <warm up iteration count>]: %d\n"
-          "\t[-c,--cache <use persistent operations>]: %d\n"
-          "\t[-q,--queue <sycl queue mode in/out order>]: %d\n"
-          "\t[-s,--wait <enable synchronization on sycl and pt2pt level>]: %d\n"
-          "\t[-f,--min_elem_count <minimum element count>]: %d\n"
-          "\t[-t,--max_elem_count <maximum element count>]: %d\n"
-          "\t[-y,--elem_counts <list of element counts>]: [%d-%d]\n"
-          "\t[-v,--validate <validate result correctness>]: %s\n"
-          "\t[-h,--help]\n\n"
-          "example:\n\t--backend gpu --queue 1 --cache 0 --validate 1 --elem_counts 64,1024\n",
-          app,
-          backend_names[DEFAULT_BACKEND].c_str(),
-          DEFAULT_ITERS,
-          DEFAULT_WARMUP_ITERS,
-          DEFAULT_CACHE_OPS,
-          DEFAULT_QUEUE,
-          DEFAULT_WAIT,
-          DEFAULT_MIN_ELEM_COUNT,
-          DEFAULT_MAX_ELEM_COUNT,
-          // elem_counts requires 2 values, min and max
-          DEFAULT_MIN_ELEM_COUNT,
-          DEFAULT_MAX_ELEM_COUNT,
-          validate_values_names[DEFAULT_VALIDATE].c_str());
+    PRINT(
+        "\nUSAGE:\n"
+        "\t%s [OPTIONS]\n\n"
+        "OPTIONS:\n"
+        "\t[-b,--backend <backend>]: %s\n"
+        "\t[-i,--iters <iteration count>]: %d\n"
+        "\t[-w,--warmup_iters <warm up iteration count>]: %d\n"
+        "\t[-p,--cache <use persistent operations>]: %d\n"
+        "\t[-e,--sycl_queue_type <sycl queue mode in/out order>]: %d\n"
+        "\t[-s,--wait <enable synchronization on sycl and pt2pt level>]: %d\n"
+        "\t[-f,--min_elem_count <minimum element count>]: %d\n"
+        "\t[-t,--max_elem_count <maximum element count>]: %d\n"
+        "\t[-y,--elem_counts <list of element counts>]: [%d-%d]\n"
+        "\t[-c,--check <validate result correctness>]: %s\n"
+        "\t[-h,--help]\n\n"
+        "example:\n\t--backend gpu --sycl_queue_type 1 --cache 0 --check 1 --elem_counts 64,1024\n",
+        app,
+        backend_names[DEFAULT_BACKEND].c_str(),
+        DEFAULT_ITERS,
+        DEFAULT_WARMUP_ITERS,
+        DEFAULT_CACHE_OPS,
+        DEFAULT_QUEUE,
+        DEFAULT_WAIT,
+        DEFAULT_MIN_ELEM_COUNT,
+        DEFAULT_MAX_ELEM_COUNT,
+        // elem_counts requires 2 values, min and max
+        DEFAULT_MIN_ELEM_COUNT,
+        DEFAULT_MAX_ELEM_COUNT,
+        check_values_names[DEFAULT_CHECK].c_str());
 }
 
 template <class Dtype, class Iter>
@@ -431,20 +441,20 @@ void print_user_options(const std::string benchmark,
     std::string elem_counts_str = get_values_str<size_t>(
         options.elem_counts.begin(), options.elem_counts.end(), "[", "]", " ");
 
-    std::string validate_values_str = find_str_val(validate_values_names, options.validate);
+    std::string check_values_str = find_str_val(check_values_names, options.check);
 
     ss.str("");
     ss << "\noptions:"
        << "\n  backend:        " << backend_str << "\n  iters:          " << options.iters
        << "\n  warmup_iters:   " << options.warmup_iters << "\n  cache:          " << options.cache;
     if (options.backend == BACKEND_GPU) {
-        ss << "\n  queue:          " << options.queue << "\n  wait:           " << options.wait;
+        ss << "\n  sycl_queue_type:          " << options.queue
+           << "\n  wait:           " << options.wait;
     }
 
     ss << "\n  min_elem_count: " << options.min_elem_count
        << "\n  max_elem_count: " << options.max_elem_count
-       << "\n  elem_counts:    " << elem_counts_str
-       << "\n  validate:       " << validate_values_str;
+       << "\n  elem_counts:    " << elem_counts_str << "\n  check:       " << check_values_str;
 
     if (benchmark == "Bandwidth") {
         ss << "\n  window_size:    " << options.window_size;

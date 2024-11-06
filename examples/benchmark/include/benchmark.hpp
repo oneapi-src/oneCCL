@@ -34,9 +34,7 @@
 #include <vector>
 
 #ifdef CCL_ENABLE_SYCL
-#include <CL/sycl.hpp>
-using namespace cl::sycl;
-using namespace cl::sycl::access;
+#include <sycl/sycl.hpp>
 #endif // CCL_ENABLE_SYCL
 
 #include "base.hpp"
@@ -761,7 +759,7 @@ int parse_user_options(int& argc, char**(&argv), user_options_t& options) {
         // they must be checked with schedule architicture.
         std::initializer_list<std::string> supported_colls = { "allgather",     "allgatherv",
                                                                "allreduce",     "alltoall",
-                                                               "alltoallv",     "bcastExt",
+                                                               "alltoallv",     "broadcast",
                                                                "reduce_scatter" };
         for (auto name : options.coll_names) {
             if (!is_inplace_supported(name, supported_colls)) {

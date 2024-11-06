@@ -59,7 +59,7 @@ ccl_sched::ccl_sched(const ccl_sched_create_param& param, bool top_level_sched)
           subscheds(),
           req(new ccl_request(*this)),
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
-          use_output_event(top_level_sched &&
+          use_output_event(top_level_sched && coll_param.comm->get_env()->get_enable_topo_algo() &&
                            (ccl::utils::should_use_sycl_output_event(coll_param.stream) ||
                             ccl::is_queue_in_order(coll_param.stream))),
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE

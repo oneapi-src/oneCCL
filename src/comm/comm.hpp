@@ -102,18 +102,18 @@ private:
 #ifdef CCL_ENABLE_SYCL
 constexpr size_t MAX_NODE_RANKS =
     ccl::topo_manager::max_ranks_per_card * ccl::topo_manager::max_ranks_per_plane;
-class alignas(CACHELINE_SIZE) ccl_barrier_data {
+class alignas(CACHELINE_SIZE) ccl_comm_barrier_data {
 private:
     int m_rank;
     int m_size;
     size_t m_count = slots - 1;
     bool m_is_set = false;
-    std::array<size_t*, MAX_NODE_RANKS> m_remote_ptrs;
+    std::array<size_t*, MAX_NODE_RANKS> m_remote_ptrs{};
 
 public:
     static constexpr int slots = 3;
 
-    ccl_barrier_data(int rank, int size) : m_rank(rank), m_size(size) {}
+    ccl_comm_barrier_data(int rank, int size) : m_rank(rank), m_size(size) {}
 
     int rank() const {
         return m_rank;
@@ -203,6 +203,51 @@ private:
     void* host_bufs[buf_count] = { nullptr, nullptr, nullptr };
     int index = 0;
 };
+
+class alignas(CACHELINE_SIZE) ccl_scaleout_device_bufs {
+public:
+    ccl_scaleout_device_bufs() = default;
+    ~ccl_scaleout_device_bufs();
+    ccl_scaleout_device_bufs(const ccl_scaleout_device_bufs& other);
+    ccl_scaleout_device_bufs& operator=(const ccl_scaleout_device_bufs& other);
+    void* get_scaleout_device_buf(sycl::queue& q);
+    void put_scaleout_device_buf(void* buf);
+    size_t get_scaleout_device_buf_size();
+
+private:
+    sycl::device& get_device() const;
+
+    static constexpr int buf_count = 2;
+    size_t buf_size = 0;
+    void* device_bufs[buf_count] = { nullptr, nullptr };
+    int index = 0;
+};
+
+class alignas(CACHELINE_SIZE) ccl_scaleout_pipeline_bufs {
+public:
+    ccl_scaleout_pipeline_bufs() = default;
+    ~ccl_scaleout_pipeline_bufs();
+    ccl_scaleout_pipeline_bufs(const ccl_scaleout_pipeline_bufs& other);
+    ccl_scaleout_pipeline_bufs& operator=(const ccl_scaleout_pipeline_bufs& other);
+    void** get_scaleout_send_pipeline_bufs(int num_bufs) {
+        allocate_pipe_chunks(num_bufs);
+        return (void**)send_pipe_chunks;
+    }
+
+    void** get_scaleout_recv_pipeline_bufs(int num_bufs) {
+        allocate_pipe_chunks(num_bufs);
+        return (void**)recv_pipe_chunks;
+    }
+
+private:
+    void allocate_pipe_chunks(int num_bufs);
+
+    static constexpr int num_chunk_buffs = 3;
+    void* send_pipe_buffer = NULL;
+    void* send_pipe_chunks[num_chunk_buffs] = { NULL };
+    void* recv_pipe_buffer = NULL;
+    void* recv_pipe_chunks[num_chunk_buffs] = { NULL };
+};
 #endif // CCL_ENABLE_SYCL
 
 // the main purpose of internal comm is to hold
@@ -235,11 +280,11 @@ public:
     void reset(int rank, int size);
 
 #ifdef CCL_ENABLE_SYCL
-    ccl_barrier_data barrier_data() const {
+    ccl_comm_barrier_data barrier_data() const {
         return m_barrier_data;
     }
 
-    ccl_barrier_data barrier_inc(const size_t n) {
+    ccl_comm_barrier_data barrier_inc(const size_t n) {
         m_barrier_data.inc(n);
         return m_barrier_data;
     };
@@ -267,6 +312,35 @@ public:
     size_t get_scaleout_host_buf_size() {
         return m_scaleout_host_bufs.get_scaleout_host_buf_size();
     }
+
+    void* get_scaleout_device_buf(sycl::queue& q) {
+        return m_scaleout_device_bufs.get_scaleout_device_buf(q);
+    }
+
+    void put_scaleout_device_buf(void* buf) {
+        return m_scaleout_device_bufs.put_scaleout_device_buf(buf);
+    }
+
+    size_t get_scaleout_device_buf_size() {
+        return m_scaleout_device_bufs.get_scaleout_device_buf_size();
+    }
+
+    void** get_scaleout_send_pipeline_bufs(int num_bufs) {
+        return m_scaleout_pipeline_bufs.get_scaleout_send_pipeline_bufs(num_bufs);
+    }
+
+    void** get_scaleout_recv_pipeline_bufs(int num_bufs) {
+        return m_scaleout_pipeline_bufs.get_scaleout_recv_pipeline_bufs(num_bufs);
+    }
+
+    atl_req_t& get_pipeline_send_req() {
+        return pipeline_send_req;
+    }
+
+    atl_req_t& get_pipeline_recv_req() {
+        return pipeline_recv_req;
+    }
+
 #endif // CCL_ENABLE_SYCL
 
     std::shared_ptr<atl_base_comm> atl_comm;
@@ -279,9 +353,13 @@ private:
 
     ccl_double_tree m_dtree;
 #ifdef CCL_ENABLE_SYCL
-    ccl_barrier_data m_barrier_data;
+    ccl_comm_barrier_data m_barrier_data;
     ccl_tmp_bufs m_tmp_buf;
     ccl_scaleout_host_bufs m_scaleout_host_bufs;
+    ccl_scaleout_device_bufs m_scaleout_device_bufs;
+    // for sycl pipeline sendrecv
+    ccl_scaleout_pipeline_bufs m_scaleout_pipeline_bufs;
+    atl_req_t pipeline_send_req, pipeline_recv_req;
 #endif // CCL_ENABLE_SYCL
 };
 
@@ -472,11 +550,11 @@ public:
     }
 
 #ifdef CCL_ENABLE_SYCL
-    ccl_barrier_data barrier_data() const {
+    ccl_comm_barrier_data barrier_data() const {
         return comm_impl->barrier_data();
     }
 
-    ccl_barrier_data barrier_inc(const size_t n = 1) {
+    ccl_comm_barrier_data barrier_inc(const size_t n = 1) {
         return comm_impl->barrier_inc(n);
     }
 
@@ -502,6 +580,34 @@ public:
     size_t get_scaleout_host_buf_size() {
         return comm_impl->get_scaleout_host_buf_size();
     }
+
+    void* get_scaleout_device_buf(sycl::queue& q) {
+        return comm_impl->get_scaleout_device_buf(q);
+    }
+    void put_scaleout_device_buf(void* buf) {
+        return comm_impl->put_scaleout_device_buf(buf);
+    }
+    size_t get_scaleout_device_buf_size() {
+        return comm_impl->get_scaleout_device_buf_size();
+    }
+
+    // for sycl pipeline sendrecv
+    void** get_scaleout_send_pipeline_bufs(int num_bufs) {
+        return comm_impl->get_scaleout_send_pipeline_bufs(num_bufs);
+    }
+
+    void** get_scaleout_recv_pipeline_bufs(int num_bufs) {
+        return comm_impl->get_scaleout_recv_pipeline_bufs(num_bufs);
+    }
+
+    atl_req_t& get_pipeline_send_req() {
+        return comm_impl->get_pipeline_send_req();
+    }
+
+    atl_req_t& get_pipeline_recv_req() {
+        return comm_impl->get_pipeline_recv_req();
+    }
+
 #endif // CCL_ENABLE_SYCL
 
     // collectives operation declarations

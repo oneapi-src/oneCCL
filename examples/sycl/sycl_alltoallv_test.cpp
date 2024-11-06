@@ -22,16 +22,16 @@ int vectorized_counts(queue &q, ccl::communicator &comm, ccl::stream &stream, in
     const size_t count = 10 * 1024 * 1024;
 
     /* create buffers */
-    buffer<int> send_buf(count * size);
-    buffer<int> recv_buf(count * size);
+    sycl::buffer<int> send_buf(count * size);
+    sycl::buffer<int> recv_buf(count * size);
 
-    vector<size_t> send_counts(size, count);
-    vector<size_t> recv_counts(size, count);
+    std::vector<size_t> send_counts(size, count);
+    std::vector<size_t> recv_counts(size, count);
 
     {
         /* open buffers and initialize them on the host side */
-        host_accessor send_buf_acc(send_buf, write_only);
-        host_accessor recv_buf_acc(recv_buf, write_only);
+        sycl::host_accessor send_buf_acc(send_buf, sycl::write_only);
+        sycl::host_accessor recv_buf_acc(recv_buf, sycl::write_only);
 
         for (int i = 0; i < size; i++) {
             for (size_t j = 0; j < count; j++) {
@@ -43,7 +43,7 @@ int vectorized_counts(queue &q, ccl::communicator &comm, ccl::stream &stream, in
 
     /* open send_buf and modify it on the device side */
     q.submit([&](auto &h) {
-        accessor send_buf_acc(send_buf, h, write_only);
+        sycl::accessor send_buf_acc(send_buf, h, sycl::write_only);
         h.parallel_for(count * size, [=](auto id) {
             send_buf_acc[id] += 1;
         });
@@ -57,7 +57,7 @@ int vectorized_counts(queue &q, ccl::communicator &comm, ccl::stream &stream, in
 
     /* open recv_buf and check its correctness on the device side */
     q.submit([&](auto &h) {
-        accessor recv_buf_acc(recv_buf, h, write_only);
+        sycl::accessor recv_buf_acc(recv_buf, h, sycl::write_only);
         h.parallel_for(count * size, [=](auto id) {
             if (recv_buf_acc[id] != rank + 1) {
                 recv_buf_acc[id] = -1;
@@ -70,14 +70,14 @@ int vectorized_counts(queue &q, ccl::communicator &comm, ccl::stream &stream, in
 
     /* check the result of the test on the host side */
     {
-        host_accessor recv_buf_acc(recv_buf, read_only);
+        sycl::host_accessor recv_buf_acc(recv_buf, sycl::read_only);
         for (size_t i = 0; i < count * size; i++) {
             if (recv_buf_acc[i] == -1) {
-                cout << "FAILED\n";
+                std::cout << "FAILED\n";
                 return -1;
             }
         }
-        cout << "PASSED\n";
+        std::cout << "PASSED\n";
     }
 
     return 0;
@@ -106,10 +106,10 @@ int non_vectorized_counts(queue &q,
     const size_t recv_size = (size * (size + 1) / 2);
     const size_t send_size = count * size;
 
-    vector<int> send_buf_host(send_size);
-    vector<int> recv_buf_host(recv_size);
-    vector<size_t> send_counts(size, count);
-    vector<size_t> recv_counts(size);
+    std::vector<int> send_buf_host(send_size);
+    std::vector<int> recv_buf_host(recv_size);
+    std::vector<size_t> send_counts(size, count);
+    std::vector<size_t> recv_counts(size);
 
     // initialize host buffer
     for (int i = 0; i < size; i++) {
@@ -156,11 +156,11 @@ int non_vectorized_counts(queue &q,
 
     for (size_t i = 0; i < recv_size; i++) {
         if (recv_buf_host[i] != rank + 1) {
-            cout << "FAILED\n";
+            std::cout << "FAILED\n";
             return -1;
         }
     }
-    cout << "PASSED\n";
+    std::cout << "PASSED\n";
 
     sycl::free(send_buf_device, q);
     sycl::free(recv_buf_device, q);

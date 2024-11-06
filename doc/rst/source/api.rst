@@ -1,5 +1,5 @@
-.. _`error handling`: https://spec.oneapi.com/versions/latest/elements/oneCCL/source/spec/error_handling.html
-.. _`generic workflow`: https://spec.oneapi.com/versions/latest/elements/oneCCL/source/spec/generic_workflow.html
+.. _`error handling`: https://oneapi-spec.uxlfoundation.org/specifications/oneapi/latest/elements/oneccl/source/spec/error_handling
+.. _`generic workflow`: https://oneapi-spec.uxlfoundation.org/specifications/oneapi/latest/elements/oneccl/source/spec/generic_workflow
 
 oneCCL API
 ===========

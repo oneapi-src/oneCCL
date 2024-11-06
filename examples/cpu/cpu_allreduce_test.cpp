@@ -79,12 +79,12 @@ int main() {
     if (rank == 0) {
         for (i = 0; i < count; i++) {
             if (recv_buf[i] == -1) {
-                cout << "FAILED\n";
+                std::cout << "FAILED\n";
                 break;
             }
         }
         if (i == count) {
-            cout << "PASSED\n";
+            std::cout << "PASSED\n";
         }
     }
 

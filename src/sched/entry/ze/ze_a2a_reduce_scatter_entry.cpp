@@ -61,8 +61,7 @@ void ze_a2a_reduce_scatter_entry::kernel_init(size_t rank_buf_offset,
                                               ccl::reduction op,
                                               size_t worker_idx,
                                               size_t peer_buf_offset,
-                                              bool is_monolithic,
-                                              bool is_single_kernel) {
+                                              bool is_monolithic) {
     global_data::get().ze_data->cache->get(context, device, "kernels.spv", &module);
 
     unsigned long count = block_count;
@@ -116,7 +115,7 @@ void ze_a2a_reduce_scatter_entry::kernel_init(size_t rank_buf_offset,
                 module, monolithic_kernel_name, kernel_args, count_local, worker_idx);
         }
     }
-    else if (is_single_kernel || (is_monolithic && peer_count > (int)ccl::ze::max_peer_count)) {
+    else {
         // fallback path for monolithic kernel if peer_count > max_peer_count
         if (is_monolithic) {
             LOG_WARN("monolithic kernel not supported for peer_count ",
@@ -133,26 +132,6 @@ void ze_a2a_reduce_scatter_entry::kernel_init(size_t rank_buf_offset,
         void* input_buf1 = static_cast<char*>(send_buf) + rank_buf_offset * dtype.size();
         void* input_buf2 = base_ptr;
         ze_kernel_args_t kernel_args{ &count, &peer_count, &input_buf1, &input_buf2, &output_buf };
-        kernels.emplace_back(module, kernel_name, kernel_args, count, worker_idx);
-    }
-    else {
-        std::string kernel_name = "reduce_local_inplace_kernel_" + to_string(dtype.idx()) + "_" +
-                                  ccl_reduction_to_str(op);
-        LOG_DEBUG("get kernel_name: ", kernel_name);
-        // reduce peer values in tmp_buf only
-        kernels.reserve(peer_count);
-        for (int i = 1; i < peer_count; ++i) {
-            void* input_buf = static_cast<char*>(base_ptr) + i * block_count * dtype.size();
-            void* inoutput_buf = base_ptr;
-            ze_kernel_args_t kernel_args{ &count, &input_buf, &inoutput_buf };
-            kernels.emplace_back(module, kernel_name, kernel_args, count, worker_idx);
-        }
-
-        // reduce send_buf + tmp_buf
-        void* input_buf = static_cast<char*>(send_buf) + rank_buf_offset * dtype.size();
-        void* inoutput_buf = base_ptr;
-
-        ze_kernel_args_t kernel_args{ &count, &input_buf, &inoutput_buf };
         kernels.emplace_back(module, kernel_name, kernel_args, count, worker_idx);
     }
 }
@@ -178,8 +157,7 @@ void ze_a2a_reduce_scatter_entry::fill_list(const ze_base_entry* entry,
                                             ccl::reduction op,
                                             size_t worker_idx,
                                             size_t peer_buf_offset,
-                                            bool is_monolithic,
-                                            bool is_single_kernel) {
+                                            bool is_monolithic) {
     CCL_THROW_IF_NOT(peer_count > 0, "peer_count must be more than 0");
 
     kernel_init(rank_buf_offset,
@@ -198,8 +176,7 @@ void ze_a2a_reduce_scatter_entry::fill_list(const ze_base_entry* entry,
                 op,
                 worker_idx,
                 peer_buf_offset,
-                is_monolithic,
-                is_single_kernel);
+                is_monolithic);
 
     CCL_ASSERT(kernels.size(),
                "expecting to launch monolithic kernel(s), but no kernels were passed");
@@ -252,7 +229,7 @@ void ze_a2a_reduce_scatter_entry::fill_list(const ze_base_entry* entry,
         // when output_buf == tmp_buf, then fill_list is invoked from allreduce_entry
         // and in that case we cannot signal the entry since allreduce_entry has an
         // allgatherv to finish after this reduce_scatter
-        const bool is_signal_entry = (output_buf != tmp_buf) && is_single_kernel;
+        const bool is_signal_entry = (output_buf != tmp_buf);
 
         /* reduce stage */
         for (size_t i = 0; i < kernels.size(); ++i) {
@@ -271,7 +248,6 @@ void ze_a2a_reduce_scatter_entry::fill_list(const ze_base_entry* entry,
 void ze_a2a_reduce_scatter_entry::init_ze_hook() {
     /* get peer buffers */
     bool is_monolithic = ccl::global_data::env().reduce_scatter_monolithic_kernel;
-    bool is_single_kernel = ccl::global_data::env().enable_kernel_single_reduce_peers;
     std::vector<ccl_buffer> peer_send_bufs(peer_count);
 
     for (int i = 0; i < peer_count; ++i) {
@@ -323,13 +299,11 @@ void ze_a2a_reduce_scatter_entry::init_ze_hook() {
         // leftover kernel and aligned kernel
         kernel_events.resize((int)ccl::utils::align_kernels::count);
     }
-    else if (is_single_kernel) {
+    else {
         // when kernel merge is used only one kernel is required
         kernel_events.resize(1);
     }
-    else {
-        kernel_events.resize(peer_count);
-    }
+
     for (auto& event : kernel_events) {
         event = ze_base_entry::create_event();
     }
@@ -360,21 +334,9 @@ void ze_a2a_reduce_scatter_entry::init_ze_hook() {
               op,
               worker_idx,
               peer_buf_offset,
-              is_monolithic,
-              is_single_kernel);
+              is_monolithic);
 
-    if (!(is_monolithic && peer_count <= (int)ccl::ze::max_peer_count) && !is_single_kernel) {
-        // in case of non-monolithic and non-single kernel use case,
-        // we do the copy from tmp buf to recv buf
-        ZE_APPEND_CALL(ze_cmd_memory_copy,
-                       ze_base_entry::get_copy_list(),
-                       recv_buf.get_ptr(),
-                       output_buf,
-                       buf_bytes,
-                       ze_base_entry::entry_event,
-                       kernel_events);
-    }
-    else if (is_monolithic && peer_count <= (int)ccl::ze::max_peer_count) {
+    if (is_monolithic && peer_count <= (int)ccl::ze::max_peer_count) {
         // in case of monolithic kernel, use a barrier to combine the
         // events from unaligned and aligned kernels
         CCL_THROW_IF_NOT(kernel_events.size() == (int)ccl::utils::align_kernels::count,
@@ -386,11 +348,9 @@ void ze_a2a_reduce_scatter_entry::init_ze_hook() {
                        kernel_events);
     }
     else {
-        CCL_THROW_IF_NOT(kernel_events.size() == 1 && is_single_kernel,
+        CCL_THROW_IF_NOT(kernel_events.size() == 1,
                          "single kernel event expected, size: ",
-                         kernel_events.size(),
-                         " single kernel mode expected, mode: ",
-                         is_single_kernel);
+                         kernel_events.size());
     }
 }
 
@@ -547,49 +507,26 @@ void ze_a2a_reduce_scatter_write_kernel_entry::kernel_init(size_t rank_buf_offse
                                                            ze_module_handle_t module,
                                                            ze_device_handle_t device,
                                                            ze_context_handle_t context,
-                                                           size_t worker_idx,
-                                                           bool is_single_kernel) {
+                                                           size_t worker_idx) {
     global_data::get().ze_data->cache->get(context, device, "kernels.spv", &module);
 
     size_t block_count = rs_args.recv_counts[comm_rank];
     unsigned long count = block_count;
-    if (is_single_kernel) {
-        std::string kernel_name = "reduce_single_local_inplace_kernel_" +
-                                  to_string(rs_args.dtype.idx()) + "_" +
-                                  ccl_reduction_to_str(rs_args.op);
 
-        LOG_DEBUG("get kernel name: ", kernel_name);
-        // reduce peer values in tmp_buf and own values in send_buf into tmp_buf
-        kernels.reserve(1);
-        void* input_buf1 = static_cast<char*>(rs_bufs.send_buf.get_ptr()) +
-                           (rank_buf_offset + rs_bufs.send_buf_offset) * rs_args.dtype.size();
-        void* input_buf2 = rs_bufs.tmp_write_buf.get_ptr();
-        void* output_buf = rs_bufs.recv_buf.get_ptr();
+    std::string kernel_name = "reduce_single_local_inplace_kernel_" +
+                              to_string(rs_args.dtype.idx()) + "_" +
+                              ccl_reduction_to_str(rs_args.op);
 
-        ze_kernel_args_t kernel_args{ &count, &peer_count, &input_buf1, &input_buf2, &output_buf };
-        kernels.emplace_back(module, kernel_name, kernel_args, count, worker_idx);
-    }
-    else {
-        std::string kernel_name = "reduce_local_inplace_kernel_" + to_string(rs_args.dtype.idx()) +
-                                  "_" + ccl_reduction_to_str(rs_args.op);
-        LOG_DEBUG("get kernel name: ", kernel_name);
+    LOG_DEBUG("get kernel name: ", kernel_name);
+    // reduce peer values in tmp_buf and own values in send_buf into tmp_buf
+    kernels.reserve(1);
+    void* input_buf1 = static_cast<char*>(rs_bufs.send_buf.get_ptr()) +
+                       (rank_buf_offset + rs_bufs.send_buf_offset) * rs_args.dtype.size();
+    void* input_buf2 = rs_bufs.tmp_write_buf.get_ptr();
+    void* output_buf = rs_bufs.recv_buf.get_ptr();
 
-        kernels.reserve(peer_count);
-        for (int i = 1; i < peer_count; ++i) {
-            void* input_buf = static_cast<char*>(rs_bufs.send_buf.get_ptr()) +
-                              (i * block_count + rs_bufs.send_buf_offset) * rs_args.dtype.size();
-            void* inoutput_buf = rs_bufs.tmp_write_buf.get_ptr();
-            ze_kernel_args_t kernel_args{ &count, &input_buf, &inoutput_buf };
-            kernels.emplace_back(module, kernel_name, kernel_args, count, worker_idx);
-        }
-        void* input_buf =
-            static_cast<char*>(rs_bufs.send_buf.get_ptr()) + rank_buf_offset * rs_args.dtype.size();
-        void* inoutput_buf = static_cast<char*>(rs_bufs.send_buf.get_ptr()) +
-                             rs_bufs.send_buf_offset * rs_args.dtype.size();
-
-        ze_kernel_args_t kernel_args{ &count, &input_buf, &inoutput_buf };
-        kernels.emplace_back(module, kernel_name, kernel_args, count, worker_idx);
-    }
+    ze_kernel_args_t kernel_args{ &count, &peer_count, &input_buf1, &input_buf2, &output_buf };
+    kernels.emplace_back(module, kernel_name, kernel_args, count, worker_idx);
 }
 
 void ze_a2a_reduce_scatter_write_kernel_entry::fill_list_kernel(
@@ -606,7 +543,6 @@ void ze_a2a_reduce_scatter_write_kernel_entry::fill_list_kernel(
     ze_device_handle_t device,
     ze_context_handle_t context,
     size_t worker_idx,
-    bool is_single_kernel,
     const std::vector<ze_event_handle_t>& wait_events) {
     kernel_init(rank_buf_offset,
                 rs_args,
@@ -617,23 +553,22 @@ void ze_a2a_reduce_scatter_write_kernel_entry::fill_list_kernel(
                 module,
                 device,
                 context,
-                worker_idx,
-                is_single_kernel);
+                worker_idx);
     CCL_ASSERT(kernels.size(),
                "expecting to launch monolithic kernel(s), but no kernels were passed");
+
     for (size_t i = 0; i < kernels.size(); ++i) {
         ZE_APPEND_CALL_TO_ENTRY(entry,
                                 ze_cmd_launch_kernel,
                                 entry->get_comp_list(),
                                 std::move(kernels[i]),
-                                is_single_kernel ? entry->entry_event : kernel_events.at(i),
+                                entry->entry_event,
                                 (i == 0) ? wait_events : ze_events_t({ kernel_events.at(i - 1) }));
     }
 }
 
 void ze_a2a_reduce_scatter_write_kernel_entry::init_ze_hook() {
     size_t buf_bytes = rs_args.dtype.size() * rs_args.recv_counts[comm_rank];
-    bool is_single_kernel = ccl::global_data::env().enable_kernel_single_reduce_peers;
 
     if (!buf_bytes) {
         ZE_APPEND_CALL(ze_cmd_barrier,
@@ -643,12 +578,8 @@ void ze_a2a_reduce_scatter_write_kernel_entry::init_ze_hook() {
         return;
     }
 
-    if (is_single_kernel) {
-        kernel_events.resize(1);
-    }
-    else {
-        kernel_events.resize(peer_count);
-    }
+    kernel_events.resize(1);
+
     for (auto& event : kernel_events) {
         event = ze_base_entry::create_event();
     }
@@ -672,21 +603,7 @@ void ze_a2a_reduce_scatter_write_kernel_entry::init_ze_hook() {
                      device,
                      context,
                      worker_idx,
-                     is_single_kernel,
                      wait_events);
-
-    // single_kernel mode directly signals the entry,
-    // otherwise use a barrier that depends on
-    // all the kernels to signal the entry
-    if (!is_single_kernel) {
-        ZE_APPEND_CALL(ze_cmd_memory_copy,
-                       ze_base_entry::get_copy_list(),
-                       rs_bufs.recv_buf.get_ptr(),
-                       rs_bufs.tmp_write_buf.get_ptr(),
-                       buf_bytes,
-                       ze_base_entry::entry_event,
-                       kernel_events);
-    }
 }
 
 void ze_a2a_reduce_scatter_write_kernel_entry::update() {

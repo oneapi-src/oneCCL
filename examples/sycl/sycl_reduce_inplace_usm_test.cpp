@@ -100,10 +100,10 @@ int main(int argc, char* argv[]) {
     ccl::reduce(buf, buf, count, ccl::reduction::sum, root_rank, comm, stream, attr, deps).wait();
 
     /* open buf and check its correctness on the device side */
-    buffer<int> check_buf(count);
+    sycl::buffer<int> check_buf(count);
 
     q.submit([&](auto& h) {
-        accessor check_buf_acc(check_buf, h, write_only);
+        sycl::accessor check_buf_acc(check_buf, h, sycl::write_only);
         h.parallel_for(count, [=](auto id) {
             int expected = (rank == root_rank) ? (check_sum + size * id) : (rank + id + 1);
             if (buf[id] != expected) {
@@ -121,16 +121,16 @@ int main(int argc, char* argv[]) {
     /* print out the result of the test on the host side */
     {
         if (rank == root_rank) {
-            host_accessor check_buf_acc(check_buf, read_only);
+            sycl::host_accessor check_buf_acc(check_buf, sycl::read_only);
             size_t i;
             for (i = 0; i < count; i++) {
                 if (check_buf_acc[i] == -1) {
-                    cout << "FAILED\n";
+                    std::cout << "FAILED\n";
                     break;
                 }
             }
             if (i == count) {
-                cout << "PASSED\n";
+                std::cout << "PASSED\n";
             }
         }
     }
