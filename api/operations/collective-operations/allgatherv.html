@@ -1,12 +1,13 @@
 
+
 <!DOCTYPE html>
 
 
-<html lang="en" >
+<html >
 
   <head>
     <meta charset="ascii" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
     <title>Allgatherv &#8212; oneCCL  documentation</title>
   
@@ -28,23 +29,24 @@
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
 
-    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=362ab14a" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
     <link rel="stylesheet" href="../../../_static/styles/sphinx-book-theme.css?digest=14f4ca6b54d191a8c7657f6c759bf11a5fb86285" type="text/css" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/tabs.css?v=a5c4661c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/tabs.css" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../../../_static/documentation_options.js?v=c73c0f3e"></script>
-    <script src="../../../_static/doctools.js?v=9a2dae69"></script>
-    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
     <script src="../../../_static/scripts/sphinx-book-theme.js?digest=5a5c038af52cf7bc1a1ec88eea08e6366ee68824"></script>
-    <link rel="icon" href="../../../_static/favicons.png"/>
+    <link rel="shortcut icon" href="../../../_static/favicons.png"/>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
     <link rel="next" title="Allreduce" href="allreduce.html" />
-    <link rel="prev" title="Collective Operations" href="../collective-operations.html" />
+    <link rel="prev" title="Allgather" href="allgather.html" />
     <script defer type="text/javascript" src="https://www.intel.com/content/dam/www/global/wap/performance-config.js" ></script>
     <script type="text/javascript">
         // Configure TMS settings
@@ -185,12 +187,14 @@
 <li class="toctree-l2 current active has-children"><a class="reference internal" href="../../operations.html">Communication Operations</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="../datatypes.html">Datatypes</a></li>
 <li class="toctree-l3 current active has-children"><a class="reference internal" href="../collective-operations.html">Collective Operations</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-7"><i class="fa-solid fa-chevron-down"></i></label><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="allgather.html">Allgather</a></li>
 <li class="toctree-l4 current active"><a class="current reference internal" href="#">Allgatherv</a></li>
 <li class="toctree-l4"><a class="reference internal" href="allreduce.html">Allreduce</a></li>
 <li class="toctree-l4"><a class="reference internal" href="alltoall.html">Alltoall</a></li>
 <li class="toctree-l4"><a class="reference internal" href="alltoallv.html">Alltoallv</a></li>
 <li class="toctree-l4"><a class="reference internal" href="barrier.html">Barrier</a></li>
 <li class="toctree-l4"><a class="reference internal" href="broadcast.html">Broadcast</a></li>
+<li class="toctree-l4"><a class="reference internal" href="group-call.html">Group Calls</a></li>
 <li class="toctree-l4"><a class="reference internal" href="reduce.html">Reduce</a></li>
 <li class="toctree-l4"><a class="reference internal" href="reduce-scatter.html">ReduceScatter</a></li>
 </ul>
@@ -201,6 +205,11 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../../env-variables.html">Environment Variables</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Benchmark User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../../benchmark-guide/benchmark.html">oneCCL Benchmark Collective User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../benchmark-guide/benchmark-point-to-point.html">oneCCL Benchmark Point-to-Point User Guide</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Notices and Disclaimers</span></p>
 <ul class="nav bd-sidenav">
@@ -401,13 +410,13 @@ document.write(`
                 <article class="bd-article" role="main">
                   
   <section id="allgatherv">
-<h1>Allgatherv<a class="headerlink" href="#allgatherv" title="Link to this heading">#</a></h1>
+<h1>Allgatherv<a class="headerlink" href="#allgatherv" title="Permalink to this headline">#</a></h1>
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
 <span class="sig-name descname"><span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">allgatherv</span> <span class="pre">(const</span> <span class="pre">void</span> <span class="pre">*send_buf,</span> <span class="pre">size_t</span> <span class="pre">send_count,</span> <span class="pre">void</span> <span class="pre">*recv_buf,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">size_t</span> <span class="pre">&gt;</span> <span class="pre">&amp;recv_counts,</span> <span class="pre">datatype</span> <span class="pre">dtype,</span> <span class="pre">const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">stream</span> <span class="pre">&amp;stream,</span> <span class="pre">const</span> <span class="pre">allgatherv_attr</span> <span class="pre">&amp;attr=default_allgatherv_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
 <dd><p>Allgatherv is a collective communication operation that collects data from all the ranks within a communicator into a single buffer. Different ranks may contribute segments of different sizes. The resulting data in the output buffer is the same for each rank.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>send_buf</strong> &#8211; the buffer with <code class="docutils literal notranslate"><span class="pre">send_count</span></code> elements of <code class="docutils literal notranslate"><span class="pre">dtype</span></code> that stores local data to be gathered </p></li>
 <li><p><strong>send_count</strong> &#8211; the number of elements of type <code class="docutils literal notranslate"><span class="pre">dtype</span></code> in <code class="docutils literal notranslate"><span class="pre">send_buf</span></code></p></li>
@@ -420,7 +429,7 @@ document.write(`
 <li><p><strong>deps</strong> &#8211; an optional vector of the events that the operation should depend on </p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>ccl::event an object to track the progress of the operation </p>
 </dd>
 </dl>
@@ -438,7 +447,7 @@ document.write(`
 <dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
 <p>This overloaded function takes separate receive buffer per rank.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>recv_bufs</strong> &#8211; [out] array of buffers to store gathered result, one buffer per rank; each buffer must be large enough to keep the corresponding <code class="docutils literal notranslate"><span class="pre">recv_counts</span></code> elements of <code class="docutils literal notranslate"><span class="pre">dtype</span></code> size </p>
 </dd>
 </dl>
@@ -450,7 +459,7 @@ document.write(`
 <dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
 <p>This overloaded function takes separate receive buffer per rank.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>recv_bufs</strong> &#8211; [out] array of buffers to store gathered result, one buffer per rank; each buffer must be large enough to keep the corresponding <code class="docutils literal notranslate"><span class="pre">recv_counts</span></code> elements of <code class="docutils literal notranslate"><span class="pre">dtype</span></code> size </p>
 </dd>
 </dl>
@@ -462,7 +471,7 @@ document.write(`
 <dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
 <p>Type-safe version.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>send_buf</strong> &#8211; the buffer with <code class="docutils literal notranslate"><span class="pre">send_count</span></code> elements of <code class="docutils literal notranslate"><span class="pre">BufferType</span></code> that stores local data to be gathered </p></li>
 <li><p><strong>recv_buf</strong> &#8211; [out] the buffer to store gathered result of <code class="docutils literal notranslate"><span class="pre">BufferType</span></code>, must be large enough to hold values from all ranks, i.e. size should be equal to <code class="docutils literal notranslate"><span class="pre">BufferType</span></code> size in bytes * sum of all values in <code class="docutils literal notranslate"><span class="pre">recv_counts</span></code></p></li>
@@ -477,7 +486,7 @@ document.write(`
 <dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
 <p>Type-safe version.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>send_buf</strong> &#8211; the buffer with <code class="docutils literal notranslate"><span class="pre">send_count</span></code> elements of <code class="docutils literal notranslate"><span class="pre">BufferType</span></code> that stores local data to be gathered </p></li>
 <li><p><strong>recv_buf</strong> &#8211; [out] the buffer to store gathered result of <code class="docutils literal notranslate"><span class="pre">BufferType</span></code>, must be large enough to hold values from all ranks, i.e. size should be equal to <code class="docutils literal notranslate"><span class="pre">BufferType</span></code> size in bytes * sum of all values in <code class="docutils literal notranslate"><span class="pre">recv_counts</span></code></p></li>
@@ -492,7 +501,7 @@ document.write(`
 <dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
 <p>Type-safe version.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>send_buf</strong> &#8211; the buffer with <code class="docutils literal notranslate"><span class="pre">send_count</span></code> elements of <code class="docutils literal notranslate"><span class="pre">BufferType</span></code> that stores local data to be gathered </p></li>
 <li><p><strong>recv_bufs</strong> &#8211; [out] array of buffers to store gathered result, one buffer per rank; each buffer must be large enough to keep the corresponding <code class="docutils literal notranslate"><span class="pre">recv_counts</span></code> elements of <code class="docutils literal notranslate"><span class="pre">BufferType</span></code> size </p></li>
@@ -507,7 +516,7 @@ document.write(`
 <dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
 <p>Type-safe version.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>send_buf</strong> &#8211; the buffer with <code class="docutils literal notranslate"><span class="pre">send_count</span></code> elements of <code class="docutils literal notranslate"><span class="pre">BufferType</span></code> that stores local data to be gathered </p></li>
 <li><p><strong>recv_bufs</strong> &#8211; [out] array of buffers to store gathered result, one buffer per rank; each buffer must be large enough to keep the corresponding <code class="docutils literal notranslate"><span class="pre">recv_counts</span></code> elements of <code class="docutils literal notranslate"><span class="pre">BufferType</span></code> size </p></li>
@@ -522,7 +531,7 @@ document.write(`
 <dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
 <p>Type-safe version.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>send_buf</strong> &#8211; the buffer of <code class="docutils literal notranslate"><span class="pre">BufferObjectType</span></code> with <code class="docutils literal notranslate"><span class="pre">send_count</span></code> elements that stores local data to be gathered </p></li>
 <li><p><strong>recv_buf</strong> &#8211; [out] the buffer of <code class="docutils literal notranslate"><span class="pre">BufferObjectType</span></code> to store gathered result, must be large enough to hold values from all ranks, i.e. size should be equal to <code class="docutils literal notranslate"><span class="pre">BufferType</span></code> size in bytes * sum of all values in <code class="docutils literal notranslate"><span class="pre">recv_counts</span></code></p></li>
@@ -537,7 +546,7 @@ document.write(`
 <dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
 <p>Type-safe version.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>send_buf</strong> &#8211; the buffer of <code class="docutils literal notranslate"><span class="pre">BufferObjectType</span></code> with <code class="docutils literal notranslate"><span class="pre">send_count</span></code> elements that stores local data to be gathered </p></li>
 <li><p><strong>recv_buf</strong> &#8211; [out] the buffer of <code class="docutils literal notranslate"><span class="pre">BufferObjectType</span></code> to store gathered result, must be large enough to hold values from all ranks, i.e. size should be equal to <code class="docutils literal notranslate"><span class="pre">BufferType</span></code> size in bytes * sum of all values in <code class="docutils literal notranslate"><span class="pre">recv_counts</span></code></p></li>
@@ -552,7 +561,7 @@ document.write(`
 <dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
 <p>Type-safe version.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>send_buf</strong> &#8211; the buffer of <code class="docutils literal notranslate"><span class="pre">BufferObjectType</span></code> with <code class="docutils literal notranslate"><span class="pre">send_count</span></code> elements that stores local data to be gathered </p></li>
 <li><p><strong>recv_bufs</strong> &#8211; [out] array of buffers to store gathered result, one buffer per rank; each buffer must be large enough to keep the corresponding <code class="docutils literal notranslate"><span class="pre">recv_counts</span></code> elements of <code class="docutils literal notranslate"><span class="pre">BufferObjectType</span></code> size </p></li>
@@ -567,7 +576,7 @@ document.write(`
 <dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts.</p>
 <p>Type-safe version.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>send_buf</strong> &#8211; the buffer of <code class="docutils literal notranslate"><span class="pre">BufferObjectType</span></code> with <code class="docutils literal notranslate"><span class="pre">send_count</span></code> elements that stores local data to be gathered </p></li>
 <li><p><strong>recv_bufs</strong> &#8211; [out] array of buffers to store gathered result, one buffer per rank; each buffer must be large enough to keep the corresponding <code class="docutils literal notranslate"><span class="pre">recv_counts</span></code> elements of <code class="docutils literal notranslate"><span class="pre">BufferObjectType</span></code> size </p></li>
@@ -591,12 +600,12 @@ document.write(`
     <div class="footer-article-item"><!-- Previous / next buttons -->
 <div class="prev-next-area">
     <a class="left-prev"
-       href="../collective-operations.html"
+       href="allgather.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Collective Operations</p>
+        <p class="prev-next-title">Allgather</p>
       </div>
     </a>
     <a class="right-next"

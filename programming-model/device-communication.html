@@ -1,12 +1,13 @@
 
+
 <!DOCTYPE html>
 
 
-<html lang="en" >
+<html >
 
   <head>
     <meta charset="ascii" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
     <title>Device Communication &#8212; oneCCL  documentation</title>
   
@@ -28,20 +29,21 @@
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
 
-    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=362ab14a" />
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" href="../_static/styles/sphinx-book-theme.css?digest=14f4ca6b54d191a8c7657f6c759bf11a5fb86285" type="text/css" />
-    <link rel="stylesheet" type="text/css" href="../_static/tabs.css?v=a5c4661c" />
+    <link rel="stylesheet" type="text/css" href="../_static/tabs.css" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=c73c0f3e"></script>
-    <script src="../_static/doctools.js?v=9a2dae69"></script>
-    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?digest=5a5c038af52cf7bc1a1ec88eea08e6366ee68824"></script>
     <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <link rel="icon" href="../_static/favicons.png"/>
+    <link rel="shortcut icon" href="../_static/favicons.png"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Limitations" href="limitations.html" />
@@ -186,12 +188,14 @@
 <li class="toctree-l2 has-children"><a class="reference internal" href="../api/operations.html">Communication Operations</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../api/operations/datatypes.html">Datatypes</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../api/operations/collective-operations.html">Collective Operations</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-7"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/allgather.html">Allgather</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/allgatherv.html">Allgatherv</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/allreduce.html">Allreduce</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/alltoall.html">Alltoall</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/alltoallv.html">Alltoallv</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/barrier.html">Barrier</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/broadcast.html">Broadcast</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/group-call.html">Group Calls</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/reduce.html">Reduce</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/reduce-scatter.html">ReduceScatter</a></li>
 </ul>
@@ -202,6 +206,11 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../env-variables.html">Environment Variables</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Benchmark User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../benchmark-guide/benchmark.html">oneCCL Benchmark Collective User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../benchmark-guide/benchmark-point-to-point.html">oneCCL Benchmark Point-to-Point User Guide</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Notices and Disclaimers</span></p>
 <ul class="nav bd-sidenav">
@@ -402,8 +411,8 @@ document.write(`
                 <article class="bd-article" role="main">
                   
   <section id="device-communication">
-<h1>Device Communication<a class="headerlink" href="#device-communication" title="Link to this heading">#</a></h1>
-<p>The communication operations between devices are provided by <a class="reference external" href="https://spec.oneapi.com/versions/latest/elements/oneCCL/source/spec/main_objects.html#communicator">Communicator</a>.</p>
+<h1>Device Communication<a class="headerlink" href="#device-communication" title="Permalink to this headline">#</a></h1>
+<p>The communication operations between devices are provided by <a class="reference external" href="https://oneapi-spec.uxlfoundation.org/specifications/oneapi/latest/elements/oneccl/source/spec/main_objects#communicator">Communicator</a>.</p>
 <p>The example below demonstrates the main concepts of communication on device memory buffers.</p>
 <p class="rubric">Example</p>
 <p>Consider a simple oneCCL <code class="docutils literal notranslate"><span class="pre">allreduce</span></code> example for GPU:</p>
@@ -444,7 +453,7 @@ document.write(`
 </li>
 <li><p>For demonstration purposes, modify the <code class="docutils literal notranslate"><span class="pre">send_buf</span></code> on the GPU side:</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cm">/* using SYCL buffer and accessor */</span>
-<span class="n">sycl_queue</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="n">cl</span><span class="o">::</span><span class="n">sycl</span><span class="o">::</span><span class="n">handler</span><span class="o">&amp;</span><span class="w"> </span><span class="n">h</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="n">sycl_queue</span><span class="p">.</span><span class="n">submit</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="n">sycl</span><span class="o">::</span><span class="n">handler</span><span class="o">&amp;</span><span class="w"> </span><span class="n">h</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">   </span><span class="k">auto</span><span class="w"> </span><span class="n">send_buf_dev_acc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">send_buf</span><span class="p">.</span><span class="n">get_access</span><span class="o">&lt;</span><span class="n">mode</span><span class="o">::</span><span class="n">write</span><span class="o">&gt;</span><span class="p">(</span><span class="n">h</span><span class="p">);</span>
 <span class="w">   </span><span class="n">h</span><span class="p">.</span><span class="n">parallel_for</span><span class="p">(</span><span class="n">range</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="p">{</span><span class="n">elem_count</span><span class="p">},</span><span class="w"> </span><span class="p">[</span><span class="o">=</span><span class="p">](</span><span class="n">item</span><span class="o">&lt;</span><span class="mi">1</span><span class="o">&gt;</span><span class="w"> </span><span class="n">idx</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">         </span><span class="n">send_buf_dev_acc</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>

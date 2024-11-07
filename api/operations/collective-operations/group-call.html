@@ -9,7 +9,7 @@
     <meta charset="ascii" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
-    <title>Barrier &#8212; oneCCL  documentation</title>
+    <title>Group Calls &#8212; oneCCL  documentation</title>
   
   
   
@@ -45,8 +45,8 @@
     <link rel="shortcut icon" href="../../../_static/favicons.png"/>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
-    <link rel="next" title="Broadcast" href="broadcast.html" />
-    <link rel="prev" title="Alltoallv" href="alltoallv.html" />
+    <link rel="next" title="Reduce" href="reduce.html" />
+    <link rel="prev" title="Broadcast" href="broadcast.html" />
     <script defer type="text/javascript" src="https://www.intel.com/content/dam/www/global/wap/performance-config.js" ></script>
     <script type="text/javascript">
         // Configure TMS settings
@@ -192,9 +192,9 @@
 <li class="toctree-l4"><a class="reference internal" href="allreduce.html">Allreduce</a></li>
 <li class="toctree-l4"><a class="reference internal" href="alltoall.html">Alltoall</a></li>
 <li class="toctree-l4"><a class="reference internal" href="alltoallv.html">Alltoallv</a></li>
-<li class="toctree-l4 current active"><a class="current reference internal" href="#">Barrier</a></li>
+<li class="toctree-l4"><a class="reference internal" href="barrier.html">Barrier</a></li>
 <li class="toctree-l4"><a class="reference internal" href="broadcast.html">Broadcast</a></li>
-<li class="toctree-l4"><a class="reference internal" href="group-call.html">Group Calls</a></li>
+<li class="toctree-l4 current active"><a class="current reference internal" href="#">Group Calls</a></li>
 <li class="toctree-l4"><a class="reference internal" href="reduce.html">Reduce</a></li>
 <li class="toctree-l4"><a class="reference internal" href="reduce-scatter.html">ReduceScatter</a></li>
 </ul>
@@ -268,7 +268,7 @@
       
       
       
-      <li><a href="https://github.com/oneapi-src/oneCCL/edit/master/doc/rst/source/api/operations/collective-operations/barrier.rst" target="_blank"
+      <li><a href="https://github.com/oneapi-src/oneCCL/edit/master/doc/rst/source/api/operations/collective-operations/group-call.rst" target="_blank"
    class="btn btn-sm btn-source-edit-button dropdown-item"
    title="Suggest edit"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -285,7 +285,7 @@
       
       
       
-      <li><a href="https://github.com/oneapi-src/oneCCL/issues/new?title=Issue%20on%20page%20%2Fapi/operations/collective-operations/barrier.html&body=Your%20issue%20content%20here." target="_blank"
+      <li><a href="https://github.com/oneapi-src/oneCCL/issues/new?title=Issue%20on%20page%20%2Fapi/operations/collective-operations/group-call.html&body=Your%20issue%20content%20here." target="_blank"
    class="btn btn-sm btn-source-issues-button dropdown-item"
    title="Open an issue"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -315,7 +315,7 @@
       
       
       
-      <li><a href="../../../_sources/api/operations/collective-operations/barrier.rst" target="_blank"
+      <li><a href="../../../_sources/api/operations/collective-operations/group-call.rst" target="_blank"
    class="btn btn-sm btn-download-source-button dropdown-item"
    title="Download source file"
    data-bs-placement="left" data-bs-toggle="tooltip"
@@ -395,7 +395,7 @@ document.write(`
               
 
 <div id="jb-print-docs-body" class="onlyprint">
-    <h1>Barrier</h1>
+    <h1>Group Calls</h1>
     <!-- Table of contents -->
     <div id="print-main-content">
         <div id="jb-print-toc">
@@ -409,31 +409,18 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article" role="main">
                   
-  <section id="barrier">
-<h1>Barrier<a class="headerlink" href="#barrier" title="Permalink to this headline">#</a></h1>
+  <section id="group-calls">
+<h1>Group Calls<a class="headerlink" href="#group-calls" title="Permalink to this headline">#</a></h1>
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
-<span class="sig-name descname"><span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">barrier</span> <span class="pre">(const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">stream</span> <span class="pre">&amp;stream,</span> <span class="pre">const</span> <span class="pre">barrier_attr</span> <span class="pre">&amp;attr=default_barrier_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
-<dd><p>Barrier synchronization is performed across all ranks of the communicator and it is completed only after all the ranks in the communicator have called it. </p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>comm</strong> &#8211; the communicator for which the operation will be performed </p></li>
-<li><p><strong>stream</strong> &#8211; abstraction over a device queue constructed via ccl::create_stream </p></li>
-<li><p><strong>attr</strong> &#8211; optional attributes to customize operation </p></li>
-<li><p><strong>deps</strong> &#8211; an optional vector of the events that the operation should depend on </p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>ccl::event an object to track the progress of the operation </p>
-</dd>
-</dl>
+<span class="sig-name descname"><span class="pre">void</span> <span class="pre">CCL_API</span> <span class="pre">group_start</span> <span class="pre">()</span></span></dt>
+<dd><p>group_start() starts a group call. You can use the group_start() function to initiate a group call operation which indicates that successive operations should not get blocked due to CPU synchronization. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
-<span class="sig-name descname"><span class="pre">event</span> <span class="pre">CCL_API</span> <span class="pre">barrier</span> <span class="pre">(const</span> <span class="pre">communicator</span> <span class="pre">&amp;comm,</span> <span class="pre">const</span> <span class="pre">barrier_attr</span> <span class="pre">&amp;attr=default_barrier_attr,</span> <span class="pre">const</span> <span class="pre">vector_class&lt;</span> <span class="pre">event</span> <span class="pre">&gt;</span> <span class="pre">&amp;deps={})</span></span></dt>
-<dd><p>This is an overloaded member function, provided for convenience. It differs from the above function only in what argument(s) it accepts. </p>
+<span class="sig-name descname"><span class="pre">void</span> <span class="pre">CCL_API</span> <span class="pre">group_end</span> <span class="pre">()</span></span></dt>
+<dd><p>group_end() ends a group call. The group_end() call returns when all the operations between group_start() and group_end() have been enqueued for execution, but not necessarily completed. </p>
 </dd></dl>
 
 </section>
@@ -451,20 +438,20 @@ document.write(`
     <div class="footer-article-item"><!-- Previous / next buttons -->
 <div class="prev-next-area">
     <a class="left-prev"
-       href="alltoallv.html"
+       href="broadcast.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Alltoallv</p>
+        <p class="prev-next-title">Broadcast</p>
       </div>
     </a>
     <a class="right-next"
-       href="broadcast.html"
+       href="reduce.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Broadcast</p>
+        <p class="prev-next-title">Reduce</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

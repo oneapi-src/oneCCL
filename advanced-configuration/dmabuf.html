@@ -1,12 +1,13 @@
 
+
 <!DOCTYPE html>
 
 
-<html lang="en" >
+<html >
 
   <head>
     <meta charset="ascii" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
     <title>Enabling OFI/verbs/dmabuf Support &#8212; oneCCL  documentation</title>
   
@@ -28,19 +29,20 @@
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
 
-    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=362ab14a" />
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" href="../_static/styles/sphinx-book-theme.css?digest=14f4ca6b54d191a8c7657f6c759bf11a5fb86285" type="text/css" />
-    <link rel="stylesheet" type="text/css" href="../_static/tabs.css?v=a5c4661c" />
+    <link rel="stylesheet" type="text/css" href="../_static/tabs.css" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=c73c0f3e"></script>
-    <script src="../_static/doctools.js?v=9a2dae69"></script>
-    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?digest=5a5c038af52cf7bc1a1ec88eea08e6366ee68824"></script>
-    <link rel="icon" href="../_static/favicons.png"/>
+    <link rel="shortcut icon" href="../_static/favicons.png"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="oneCCL API" href="../api.html" />
@@ -185,12 +187,14 @@
 <li class="toctree-l2 has-children"><a class="reference internal" href="../api/operations.html">Communication Operations</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../api/operations/datatypes.html">Datatypes</a></li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../api/operations/collective-operations.html">Collective Operations</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-7"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/allgather.html">Allgather</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/allgatherv.html">Allgatherv</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/allreduce.html">Allreduce</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/alltoall.html">Alltoall</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/alltoallv.html">Alltoallv</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/barrier.html">Barrier</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/broadcast.html">Broadcast</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/group-call.html">Group Calls</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/reduce.html">Reduce</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../api/operations/collective-operations/reduce-scatter.html">ReduceScatter</a></li>
 </ul>
@@ -201,6 +205,11 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../env-variables.html">Environment Variables</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Benchmark User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../benchmark-guide/benchmark.html">oneCCL Benchmark Collective User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../benchmark-guide/benchmark-point-to-point.html">oneCCL Benchmark Point-to-Point User Guide</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Notices and Disclaimers</span></p>
 <ul class="nav bd-sidenav">
@@ -418,10 +427,10 @@ document.write(`
                 <article class="bd-article" role="main">
                   
   <section id="enabling-ofi-verbs-dmabuf-support">
-<h1>Enabling OFI/verbs/dmabuf Support<a class="headerlink" href="#enabling-ofi-verbs-dmabuf-support" title="Link to this heading">#</a></h1>
+<h1>Enabling OFI/verbs/dmabuf Support<a class="headerlink" href="#enabling-ofi-verbs-dmabuf-support" title="Permalink to this headline">#</a></h1>
 <p>oneCCL provides experimental support for data transfers between Intel GPU memory and NIC using Linux dmabuf, which is exposed through OFI API for verbs provider.</p>
 <section id="requirements">
-<h2>Requirements<a class="headerlink" href="#requirements" title="Link to this heading">#</a></h2>
+<h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">#</a></h2>
 <ul class="simple">
 <li><p>Linux kernel version &gt;= 5.12</p></li>
 <li><p>RDMA core version &gt;= 34.0</p></li>
@@ -429,14 +438,14 @@ document.write(`
 </ul>
 </section>
 <section id="usage">
-<h2>Usage<a class="headerlink" href="#usage" title="Link to this heading">#</a></h2>
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">#</a></h2>
 <p>oneCCL, OFI and OFI/verbs from Intel&#174; oneAPI Base Toolkit support device memory transfers. Refer to <a class="reference internal" href="#run-instructions">Run instructions</a> for usage.</p>
 <p>If you want to build software components from sources, refer to <a class="reference internal" href="#build-instructions">Build instructions</a>.</p>
 </section>
 <section id="build-instructions">
-<h2>Build instructions<a class="headerlink" href="#build-instructions" title="Link to this heading">#</a></h2>
+<h2>Build instructions<a class="headerlink" href="#build-instructions" title="Permalink to this headline">#</a></h2>
 <section id="ofi">
-<h3>OFI<a class="headerlink" href="#ofi" title="Link to this heading">#</a></h3>
+<h3>OFI<a class="headerlink" href="#ofi" title="Permalink to this headline">#</a></h3>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">git</span><span class="w"> </span><span class="n">clone</span><span class="w"> </span><span class="o">--</span><span class="n">single</span><span class="o">-</span><span class="n">branch</span><span class="w"> </span><span class="o">--</span><span class="n">branch</span><span class="w"> </span><span class="n">v1</span><span class="mf">.13.2</span><span class="w"> </span><span class="n">https</span><span class="o">:</span><span class="c1">//github.com/ofiwg/libfabric.git</span>
 <span class="n">cd</span><span class="w"> </span><span class="n">libfabric</span>
 <span class="p">.</span><span class="o">/</span><span class="n">autogen</span><span class="p">.</span><span class="n">sh</span>
@@ -451,7 +460,7 @@ No need to run autogen.sh if using the release package.</p>
 </div>
 </section>
 <section id="product-short">
-<h3>oneCCL<a class="headerlink" href="#product-short" title="Link to this heading">#</a></h3>
+<h3>oneCCL<a class="headerlink" href="#product-short" title="Permalink to this headline">#</a></h3>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">cmake</span><span class="w"> </span><span class="o">-</span><span class="n">DCMAKE_INSTALL_PREFIX</span><span class="o">=&lt;</span><span class="n">ccl_install_dir</span><span class="o">&gt;</span><span class="w"> </span><span class="o">-</span><span class="n">DLIBFABRIC_DIR</span><span class="o">=&lt;</span><span class="n">ofi_install_dir</span><span class="o">&gt;</span><span class="w"> </span><span class="o">-</span><span class="n">DCMAKE_C_COMPILER</span><span class="o">=</span><span class="n">icx</span><span class="w"> </span><span class="o">-</span><span class="n">DCMAKE_CXX_COMPILER</span><span class="o">=</span><span class="n">icpx</span><span class="w"> </span><span class="o">-</span><span class="n">DCOMPUTE_BACKEND</span><span class="o">=</span><span class="n">dpcpp</span><span class="w"> </span><span class="o">-</span><span class="n">DENABLE_OFI_HMEM</span><span class="o">=</span><span class="mi">1</span><span class="w"> </span><span class="p">..</span>
 <span class="n">make</span><span class="w"> </span><span class="o">-</span><span class="n">j</span><span class="w"> </span><span class="n">install</span>
 </pre></div>
@@ -459,7 +468,7 @@ No need to run autogen.sh if using the release package.</p>
 </section>
 </section>
 <section id="run-instructions">
-<h2>Run instructions<a class="headerlink" href="#run-instructions" title="Link to this heading">#</a></h2>
+<h2>Run instructions<a class="headerlink" href="#run-instructions" title="Permalink to this headline">#</a></h2>
 <ol class="arabic">
 <li><p>Set the environment. See <a class="reference external" href="https://www.intel.com/content/www/us/en/docs/oneccl/get-started-guide/2021-10/overview.html">Get Started Guide</a>.</p></li>
 <li><p>Run allreduce test with ring algorithm and SYCL USM device buffers:</p>
