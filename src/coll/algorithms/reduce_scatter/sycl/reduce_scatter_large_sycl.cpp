@@ -88,21 +88,44 @@ ccl::event reduce_scatter_large(const void *send_buf,
     std::shared_ptr<ccl_comm> even_comm = comm->get_even_comm();
 
     const size_t dsize = ccl::global_data::get().dtypes->get(dtype).size();
-    const bool use_full_vector = can_use_full_vector(send_buf, recv_buf, recv_count * dsize);
-    const bool is_aligned = (recv_count * dsize) % ccl::global_data::env().kernel_mem_align == 0;
-    const bool is_use_tmp = ccl::global_data::env().sycl_reduce_scatter_tmp_buf || !use_full_vector ||
-                            (!is_aligned && ccl::global_data::env().sycl_auto_use_tmp_buf);
+    // use full vector (>= 8 bytes) if buffers and data size are 4 byte aligned
+    bool use_full_vector = can_use_full_vector(send_buf, recv_buf, recv_count * dsize);
+    // TODO : generalize constraints for different hardware.
+    // kernels with remote access is best performant at 64 bytes alignment (sycl_kernels_line_size/2) on PVC
+    const size_t align_size = ccl::global_data::env().sycl_kernels_line_size / 2;
+    const bool is_aligned = (recv_count * dsize) % align_size == 0;
+    // use tmp buf for types < 4 byte size with odd count or non 4 byte aligned data
+    // use tmp buf when data count bytes is not 64 byte aligned
+    // since tmp buf version performs better in that case
+    const bool is_tmp_used = ccl::global_data::env().sycl_reduce_scatter_tmp_buf ||
+                             ((!use_full_vector || !is_aligned) && ccl::global_data::env().sycl_auto_use_tmp_buf);
 
-    if (!is_use_tmp) {
+    if (is_tmp_used) {
+        // global rank of pair_comm neighbors should be adjacent for using tmp buffer
+        // i.e. the ranks can be 2,3 or 3,2 but not 1,3
+        CCL_ASSERT(pair_comm->size() <= 2);
+        if (pair_comm->size() == 2) {
+            const int rank_diff = pair_comm->get_node_rank(0) - pair_comm->get_node_rank(1);
+            CCL_THROW_IF_NOT(
+                abs(rank_diff) == 1,
+                "communicator rank reordering not allowed with tmp buffer, set CCL_SYCL_REDUCE_SCATTER_TMP_BUF=0 and CCL_SYCL_AUTO_USE_TMP_BUF=0");
+        }
+    }
+
+    if (!is_tmp_used) {
         std::vector<void *> ptrs{ (void *)send_buf, recv_buf }; // index 0 and 1
         auto [sched, exchange_entry] = do_ipc_exchange(comm, global_stream, ptrs);
 
         xelink_ptrs_rd = get_ipc_ptrs<void, MAX_GPUS>(even_comm, 0, (void *)send_buf, sched);
+        // use full vector (>= 8 bytes) if remote buffers and data size are 4 byte aligned
+        use_full_vector =
+            use_full_vector && all_aligned(xelink_ptrs_rd.data(), even_comm->size(), recv_count * dsize, 4);
 
         if (pair_comm->size() > 1) {
             assert(pair_comm->size() == MAX_TILES);
             int peer_pair_rank = pair_comm->rank() ? 0 : 1;
             mdfi_ptr_rd = get_ipc_ptrs<void, MAX_TILES>(pair_comm, 0, (void *)send_buf, sched)[peer_pair_rank];
+            use_full_vector = use_full_vector && all_aligned(&mdfi_ptr_rd, 1, recv_count * dsize, 4);
         }
         delete exchange_entry;
         delete sched;

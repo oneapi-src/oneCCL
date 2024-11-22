@@ -129,12 +129,12 @@ public:
     virtual atl_status_t barrier(atl_ep_t& ep, atl_req_t& req) = 0;
 
     virtual atl_status_t bcast(atl_ep_t& ep, void* buf, size_t len, int root, atl_req_t& req) = 0;
-    virtual atl_status_t bcastExt(atl_ep_t& ep,
-                                  void* send_buf,
-                                  void* recv_buf,
-                                  size_t len,
-                                  int root,
-                                  atl_req_t& req) = 0;
+    virtual atl_status_t broadcast(atl_ep_t& ep,
+                                   void* send_buf,
+                                   void* recv_buf,
+                                   size_t len,
+                                   int root,
+                                   atl_req_t& req) = 0;
 
     virtual atl_status_t reduce(atl_ep_t& ep,
                                 const void* send_buf,

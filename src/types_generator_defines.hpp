@@ -112,14 +112,14 @@
                              const ccl::broadcast_attr& attr, \
                              const ccl::vector_class<ccl::event>& deps = {}) = 0; \
 \
-    virtual ccl::event bcastExt(void* send_buf, \
-                                void* recv_buf, \
-                                size_t count, \
-                                ccl::datatype dtype, \
-                                int root, \
-                                const ccl::stream::impl_value_t& stream, \
-                                const ccl::broadcastExt_attr& attr, \
-                                const ccl::vector_class<ccl::event>& deps = {}) = 0; \
+    virtual ccl::event broadcast(void* send_buf, \
+                                 void* recv_buf, \
+                                 size_t count, \
+                                 ccl::datatype dtype, \
+                                 int root, \
+                                 const ccl::stream::impl_value_t& stream, \
+                                 const ccl::broadcast_attr& attr, \
+                                 const ccl::vector_class<ccl::event>& deps = {}) = 0; \
 \
     virtual ccl::event reduce(const void* send_buf, \
                               void* recv_buf, \
@@ -253,13 +253,13 @@
         CCL_THROW(std::string(__FUNCTION__) + " - not implemented"); \
     }; \
 \
-    virtual ccl::event bcastExt(type* send_buf, \
-                                type* recv_buf, \
-                                size_t count, \
-                                int root, \
-                                const ccl::stream::impl_value_t& stream, \
-                                const ccl::broadcastExt_attr& attr, \
-                                const ccl::vector_class<ccl::event>& deps = {}) { \
+    virtual ccl::event broadcast(type* send_buf, \
+                                 type* recv_buf, \
+                                 size_t count, \
+                                 int root, \
+                                 const ccl::stream::impl_value_t& stream, \
+                                 const ccl::broadcast_attr& attr, \
+                                 const ccl::vector_class<ccl::event>& deps = {}) { \
         CCL_THROW(std::string(__FUNCTION__) + " - not implemented"); \
     }; \
 \
@@ -402,13 +402,13 @@
         CCL_THROW(std::string(__FUNCTION__) + " - not implemented"); \
     }; \
 \
-    virtual ccl::event bcastExt(type& send_buf, \
-                                type& recv_buf, \
-                                size_t count, \
-                                int root, \
-                                const ccl::stream::impl_value_t& stream, \
-                                const ccl::broadcastExt_attr& attr, \
-                                const ccl::vector_class<ccl::event>& deps = {}) { \
+    virtual ccl::event broadcast(type& send_buf, \
+                                 type& recv_buf, \
+                                 size_t count, \
+                                 int root, \
+                                 const ccl::stream::impl_value_t& stream, \
+                                 const ccl::broadcast_attr& attr, \
+                                 const ccl::vector_class<ccl::event>& deps = {}) { \
         CCL_THROW(std::string(__FUNCTION__) + " - not implemented"); \
     }; \
 \
@@ -544,15 +544,15 @@
         return get_impl()->broadcast_impl(buf, count, dtype, root, stream, attr, deps); \
     } \
 \
-    ccl::event bcastExt(void* send_buf, \
-                        void* recv_buf, \
-                        size_t count, \
-                        ccl::datatype dtype, \
-                        int root, \
-                        const ccl::stream::impl_value_t& stream, \
-                        const ccl::broadcastExt_attr& attr, \
-                        const ccl::vector_class<ccl::event>& deps = {}) override { \
-        return get_impl()->broadcastExt_impl( \
+    ccl::event broadcast(void* send_buf, \
+                         void* recv_buf, \
+                         size_t count, \
+                         ccl::datatype dtype, \
+                         int root, \
+                         const ccl::stream::impl_value_t& stream, \
+                         const ccl::broadcast_attr& attr, \
+                         const ccl::vector_class<ccl::event>& deps = {}) override { \
+        return get_impl()->broadcast_impl( \
             send_buf, recv_buf, count, dtype, root, stream, attr, deps); \
     } \
 \
@@ -729,14 +729,14 @@
         return get_impl()->broadcast_impl(buf, count, root, stream, attr, deps); \
     } \
 \
-    ccl::event bcastExt(type* send_buf, \
-                        type* recv_buf, \
-                        size_t count, \
-                        int root, \
-                        const ccl::stream::impl_value_t& stream, \
-                        const ccl::broadcastExt_attr& attr, \
-                        const ccl::vector_class<ccl::event>& deps) override { \
-        return get_impl()->broadcastExt_impl(send_buf, recv_buf, count, root, stream, attr, deps); \
+    ccl::event broadcast(type* send_buf, \
+                         type* recv_buf, \
+                         size_t count, \
+                         int root, \
+                         const ccl::stream::impl_value_t& stream, \
+                         const ccl::broadcast_attr& attr, \
+                         const ccl::vector_class<ccl::event>& deps) override { \
+        return get_impl()->broadcast_impl(send_buf, recv_buf, count, root, stream, attr, deps); \
     } \
 \
     ccl::event reduce(const type* send_buf, \
@@ -881,14 +881,14 @@
         return get_impl()->broadcast_impl(buf, count, root, stream, attr, deps); \
     } \
 \
-    ccl::event bcastExt(type& send_buf, \
-                        type& recv_buf, \
-                        size_t count, \
-                        int root, \
-                        const ccl::stream::impl_value_t& stream, \
-                        const ccl::broadcastExt_attr& attr, \
-                        const ccl::vector_class<ccl::event>& deps = {}) override { \
-        return get_impl()->broadcastExt_impl(send_buf, recv_buf, count, root, stream, attr, deps); \
+    ccl::event broadcast(type& send_buf, \
+                         type& recv_buf, \
+                         size_t count, \
+                         int root, \
+                         const ccl::stream::impl_value_t& stream, \
+                         const ccl::broadcast_attr& attr, \
+                         const ccl::vector_class<ccl::event>& deps = {}) override { \
+        return get_impl()->broadcast_impl(send_buf, recv_buf, count, root, stream, attr, deps); \
     } \
 \
     ccl::event reduce(const type& send_buf, \
@@ -1033,13 +1033,13 @@
                               const ccl::vector_class<ccl::event>& deps); \
 \
     template <class buffer_type> \
-    ccl::event broadcastExt_impl(buffer_type* send_buf, \
-                                 buffer_type* recv_buf, \
-                                 size_t count, \
-                                 int root, \
-                                 const ccl::stream::impl_value_t& stream, \
-                                 const ccl::broadcastExt_attr& attr, \
-                                 const ccl::vector_class<ccl::event>& deps); \
+    ccl::event broadcast_impl(buffer_type* send_buf, \
+                              buffer_type* recv_buf, \
+                              size_t count, \
+                              int root, \
+                              const ccl::stream::impl_value_t& stream, \
+                              const ccl::broadcast_attr& attr, \
+                              const ccl::vector_class<ccl::event>& deps); \
 \
     template <class buffer_type> \
     ccl::event reduce_impl(const buffer_type* send_buf, \
@@ -1158,14 +1158,14 @@
                               const ccl::broadcast_attr& attr, \
                               const ccl::vector_class<ccl::event>& deps); \
 \
-    ccl::event broadcastExt_impl(void* send_buf, \
-                                 void* recv_buf, \
-                                 size_t count, \
-                                 ccl::datatype dtype, \
-                                 int root, \
-                                 const ccl::stream::impl_value_t& stream, \
-                                 const ccl::broadcastExt_attr& attr, \
-                                 const ccl::vector_class<ccl::event>& deps); \
+    ccl::event broadcast_impl(void* send_buf, \
+                              void* recv_buf, \
+                              size_t count, \
+                              ccl::datatype dtype, \
+                              int root, \
+                              const ccl::stream::impl_value_t& stream, \
+                              const ccl::broadcast_attr& attr, \
+                              const ccl::vector_class<ccl::event>& deps); \
 \
     ccl::event reduce_impl(const void* send_buf, \
                            void* recv_buf, \
@@ -1316,13 +1316,13 @@
                               const ccl::vector_class<ccl::event>& deps); \
 \
     template <class buffer_type> \
-    ccl::event broadcastExt_impl(buffer_type& send_buf, \
-                                 buffer_type& recv_buf, \
-                                 size_t count, \
-                                 int root, \
-                                 const ccl::stream::impl_value_t& stream, \
-                                 const ccl::broadcastExt_attr& attr, \
-                                 const ccl::vector_class<ccl::event>& deps); \
+    ccl::event broadcast_impl(buffer_type& send_buf, \
+                              buffer_type& recv_buf, \
+                              size_t count, \
+                              int root, \
+                              const ccl::stream::impl_value_t& stream, \
+                              const ccl::broadcast_attr& attr, \
+                              const ccl::vector_class<ccl::event>& deps); \
 \
     template <class buffer_type> \
     ccl::event reduce_impl(const buffer_type& send_buf, \
@@ -1426,13 +1426,13 @@
                                                    const ccl::broadcast_attr& attr, \
                                                    const ccl::vector_class<ccl::event>& deps); \
 \
-    template ccl::event comm_class::broadcastExt_impl(type& send_buf, \
-                                                      type& recv_buf, \
-                                                      size_t count, \
-                                                      int root, \
-                                                      const ccl::stream::impl_value_t& stream, \
-                                                      const ccl::broadcastExt_attr& attr, \
-                                                      const ccl::vector_class<ccl::event>& deps); \
+    template ccl::event comm_class::broadcast_impl(type& send_buf, \
+                                                   type& recv_buf, \
+                                                   size_t count, \
+                                                   int root, \
+                                                   const ccl::stream::impl_value_t& stream, \
+                                                   const ccl::broadcast_attr& attr, \
+                                                   const ccl::vector_class<ccl::event>& deps); \
 \
     template ccl::event comm_class::reduce_impl(const type& send_buf, \
                                                 type& recv_buf, \
@@ -1533,13 +1533,13 @@
                                                    const ccl::broadcast_attr& attr, \
                                                    const ccl::vector_class<ccl::event>& deps); \
 \
-    template ccl::event comm_class::broadcastExt_impl(type* send_buf, \
-                                                      type* recv_buf, \
-                                                      size_t count, \
-                                                      int root, \
-                                                      const ccl::stream::impl_value_t& stream, \
-                                                      const ccl::broadcastExt_attr& attr, \
-                                                      const ccl::vector_class<ccl::event>& deps); \
+    template ccl::event comm_class::broadcast_impl(type* send_buf, \
+                                                   type* recv_buf, \
+                                                   size_t count, \
+                                                   int root, \
+                                                   const ccl::stream::impl_value_t& stream, \
+                                                   const ccl::broadcast_attr& attr, \
+                                                   const ccl::vector_class<ccl::event>& deps); \
 \
     template ccl::event comm_class::reduce_impl(const type* send_buf, \
                                                 type* recv_buf, \

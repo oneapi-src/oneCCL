@@ -119,12 +119,12 @@ public:
         return ATL_STATUS_UNSUPPORTED;
     }
 
-    atl_status_t bcastExt(atl_ep_t& ep,
-                          void* send_buf,
-                          void* recv_buf,
-                          size_t len,
-                          int root,
-                          atl_req_t& req) override {
+    atl_status_t broadcast(atl_ep_t& ep,
+                           void* send_buf,
+                           void* recv_buf,
+                           size_t len,
+                           int root,
+                           atl_req_t& req) override {
         return ATL_STATUS_UNSUPPORTED;
     }
 

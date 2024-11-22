@@ -82,8 +82,7 @@ public:
                           ccl::reduction op,
                           size_t worker_idx,
                           size_t peer_buf_offset,
-                          bool is_monolithic,
-                          bool is_single_kernel);
+                          bool is_monolithic);
 
 private:
     static constexpr size_t event_group_count{ 3 }; // copy + kernel + copy
@@ -119,8 +118,7 @@ private:
                             ccl::reduction op,
                             size_t worker_idx,
                             size_t peer_buf_offset,
-                            bool is_monolithic,
-                            bool is_single_kernel);
+                            bool is_monolithic);
 };
 
 class ze_a2a_reduce_scatter_write_copy_entry : public ze_base_entry {
@@ -204,7 +202,6 @@ public:
                                  ze_device_handle_t device,
                                  ze_context_handle_t context,
                                  size_t worker_idx,
-                                 bool is_single_kernel,
                                  const std::vector<ze_event_handle_t>& wait_events);
 
 private:
@@ -228,6 +225,5 @@ private:
                             ze_module_handle_t module,
                             ze_device_handle_t device,
                             ze_context_handle_t context,
-                            size_t worker_idx,
-                            bool is_single_kernel);
+                            size_t worker_idx);
 };

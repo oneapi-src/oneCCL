@@ -46,7 +46,6 @@ public:
     std::vector<ze_context_handle_t> contexts;
     std::vector<device_info> devices;
     std::unique_ptr<ze::cache> cache;
-    std::unique_ptr<ze::device_memory_manager> dev_memory_manager;
     std::unordered_map<ze_context_handle_t, ccl::ze::dynamic_event_pool> dynamic_event_pools;
 
     std::atomic<size_t> kernel_counter{};

@@ -25,7 +25,7 @@
 class ccl_comm;
 
 #ifdef CCL_ENABLE_SYCL
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 
 template <class native_type>
 using ccl_sycl_typed_buffer_t = sycl::buffer<native_type, 1>;
@@ -62,7 +62,6 @@ struct ccl_coll_attr {
     ccl_coll_attr(const ccl::alltoallv_attr& attr);
     ccl_coll_attr(const ccl::barrier_attr& attr);
     ccl_coll_attr(const ccl::broadcast_attr& attr);
-    ccl_coll_attr(const ccl::broadcastExt_attr& attr);
     ccl_coll_attr(const ccl::pt2pt_attr& attr);
     ccl_coll_attr(const ccl::reduce_attr& attr);
     ccl_coll_attr(const ccl::reduce_scatter_attr& attr);
@@ -231,15 +230,15 @@ struct ccl_coll_param {
                                                  const ccl_stream* stream,
                                                  const std::vector<ccl::event>& deps = {});
 
-    static ccl_coll_param create_broadcastExt_param(void* send_buf,
-                                                    void* recv_buf,
-                                                    size_t count,
-                                                    ccl::datatype dtype,
-                                                    int root,
-                                                    const ccl_coll_attr& attr,
-                                                    ccl_comm* comm,
-                                                    const ccl_stream* stream,
-                                                    const std::vector<ccl::event>& deps = {});
+    static ccl_coll_param create_broadcast_param(void* send_buf,
+                                                 void* recv_buf,
+                                                 size_t count,
+                                                 ccl::datatype dtype,
+                                                 int root,
+                                                 const ccl_coll_attr& attr,
+                                                 ccl_comm* comm,
+                                                 const ccl_stream* stream,
+                                                 const std::vector<ccl::event>& deps = {});
 
     static ccl_coll_param create_reduce_param(const void* send_buf,
                                               void* recv_buf,

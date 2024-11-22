@@ -21,7 +21,7 @@
 
 #define CL_BACKEND_TYPE ccl::cl_backend_type::dpcpp_sycl_l0
 
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 
 namespace ccl {
 template <>
@@ -36,24 +36,24 @@ struct backend_info<CL_BACKEND_TYPE> {
 
 template <>
 struct generic_device_type<CL_BACKEND_TYPE> {
-    using handle_t = cl_device_id; //cl::sycl::device;
-    using impl_t = cl::sycl::device;
+    using handle_t = cl_device_id; //sycl::device;
+    using impl_t = sycl::device;
     using ccl_native_t = impl_t;
 
     generic_device_type(device_index_type id,
-                        cl::sycl::info::device_type = cl::sycl::info::device_type::gpu);
-    generic_device_type(const cl::sycl::device& device);
+                        sycl::info::device_type = sycl::info::device_type::gpu);
+    generic_device_type(const sycl::device& device);
     device_index_type get_id() const;
     ccl_native_t& get() noexcept;
     const ccl_native_t& get() const noexcept;
 
-    cl::sycl::device device;
+    sycl::device device;
 };
 
 template <>
 struct generic_context_type<CL_BACKEND_TYPE> {
     using handle_t = cl_context;
-    using impl_t = cl::sycl::context;
+    using impl_t = sycl::context;
     using ccl_native_t = impl_t;
 
     generic_context_type();
@@ -66,7 +66,7 @@ struct generic_context_type<CL_BACKEND_TYPE> {
 
 template <>
 struct generic_platform_type<CL_BACKEND_TYPE> {
-    using handle_t = cl::sycl::platform;
+    using handle_t = sycl::platform;
     using impl_t = handle_t;
     using ccl_native_t = impl_t;
 
@@ -80,7 +80,7 @@ struct generic_platform_type<CL_BACKEND_TYPE> {
 template <>
 struct generic_stream_type<CL_BACKEND_TYPE> {
     using handle_t = cl_command_queue;
-    using impl_t = cl::sycl::queue;
+    using impl_t = sycl::queue;
     using ccl_native_t = impl_t;
 
     generic_stream_type(ccl_native_t q);
@@ -93,7 +93,7 @@ struct generic_stream_type<CL_BACKEND_TYPE> {
 template <>
 struct generic_event_type<CL_BACKEND_TYPE> {
     using handle_t = cl_event;
-    using impl_t = cl::sycl::event;
+    using impl_t = sycl::event;
     using ccl_native_t = impl_t;
 
     generic_event_type(ccl_native_t e);

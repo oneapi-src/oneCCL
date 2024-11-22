@@ -104,10 +104,10 @@ int main(int argc, char* argv[]) {
 
     /* open recv_buf and check its correctness on the device side
        recv_bufer must not be modified on non-root ranks */
-    buffer<int> check_buf(count);
+    sycl::buffer<int> check_buf(count);
 
     q.submit([&](auto& h) {
-        accessor check_buf_acc(check_buf, h, write_only);
+        sycl::accessor check_buf_acc(check_buf, h, sycl::write_only);
         h.parallel_for(count, [=](auto id) {
             int expected = (rank == root_rank) ? (check_sum + size * id) : -1;
             if (recv_buf[id] != expected) {
@@ -124,16 +124,16 @@ int main(int argc, char* argv[]) {
 
     /* print out the result of the test on the host side */
     {
-        host_accessor check_buf_acc(check_buf, read_only);
+        sycl::host_accessor check_buf_acc(check_buf, sycl::read_only);
         size_t i;
         for (i = 0; i < count; i++) {
             if (check_buf_acc[i] == -1) {
-                cout << "FAILED for rank: " << rank << "\n";
+                std::cout << "FAILED for rank: " << rank << "\n";
                 break;
             }
         }
         if (i == count) {
-            cout << "PASSED\n";
+            std::cout << "PASSED\n";
         }
     }
 

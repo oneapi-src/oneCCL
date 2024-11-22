@@ -42,7 +42,6 @@ for arg in "$@" ; do
 done
 
 compiler_short_name=`basename ${compiler_name:?}`
-compiler_short_name="${compiler_short_name##*-}"
 
 opt_args=""
 if [ $# -eq 1 -a "$1" = "-v" ] ; then

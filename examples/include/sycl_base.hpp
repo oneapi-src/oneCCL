@@ -18,8 +18,6 @@
 #include <algorithm>
 #if __has_include(<sycl/sycl.hpp>)
 #include <sycl/sycl.hpp>
-#elif __has_include(<CL/sycl.hpp>)
-#include <CL/sycl.hpp>
 #else
 #error "Unsupported compiler"
 #endif
@@ -58,9 +56,11 @@
 #error "Unsupported compiler"
 #endif
 
-using namespace std;
-using namespace sycl;
-using namespace sycl::access;
+#ifdef SYCL_LANGUAGE_VERSION
+#define ICPX_VERSION __clang_major__ * 10000 + __clang_minor__ * 100 + __clang_patchlevel__
+#else // SYCL_LANGUAGE_VERSION
+#define ICPX_VERSION 0
+#endif // SYCL_LANGUAGE_VERSION
 
 namespace ccl {
 #if CCL_USE_SYCL121_API
@@ -76,7 +76,7 @@ inline const auto& default_selector_v = ::sycl::default_selector_v;
 
 /* help functions for sycl-specific base implementation */
 inline bool has_gpu() {
-    vector<device> devices = device::get_devices();
+    std::vector<sycl::device> devices = sycl::device::get_devices();
     for (const auto& device : devices) {
         if (device.is_gpu()) {
             return true;
@@ -86,7 +86,7 @@ inline bool has_gpu() {
 }
 
 inline bool has_accelerator() {
-    vector<device> devices = device::get_devices();
+    std::vector<sycl::device> devices = sycl::device::get_devices();
     for (const auto& device : devices) {
         if (device.is_accelerator()) {
             return true;
@@ -95,19 +95,19 @@ inline bool has_accelerator() {
     return false;
 }
 
-inline bool check_sycl_usm(queue& q, usm::alloc alloc_type) {
+inline bool check_sycl_usm(sycl::queue& q, sycl::usm::alloc alloc_type) {
     bool ret = true;
 
-    device d = q.get_device();
+    sycl::device d = q.get_device();
 
-    if ((alloc_type == usm::alloc::host) && (d.is_gpu() || d.is_accelerator()))
+    if ((alloc_type == sycl::usm::alloc::host) && (d.is_gpu() || d.is_accelerator()))
         ret = false;
 
-    if ((alloc_type == usm::alloc::device) && !(d.is_gpu() || d.is_accelerator()))
+    if ((alloc_type == sycl::usm::alloc::device) && !(d.is_gpu() || d.is_accelerator()))
         ret = false;
 
     if (!ret) {
-        cout << "incompatible device type and USM type\n";
+        std::cout << "incompatible device type and USM type\n";
     }
 
     return ret;
@@ -157,7 +157,7 @@ inline std::string get_preferred_gpu_platform_name() {
         });
 
         if (gpu_dev == devices.end()) {
-            // cout << "platform [" << platform_name
+            // std::cout << "platform [" << platform_name
             //      << "] does not contain GPU devices, skipping\n";
             continue;
         }
@@ -170,7 +170,7 @@ inline std::string get_preferred_gpu_platform_name() {
             platform_name.begin(), platform_name.end(), platform_name_low_case.begin(), ::tolower);
 
         if (platform_name_low_case.find(filter) == std::string::npos) {
-            // cout << "platform [" << platform_name
+            // std::cout << "platform [" << platform_name
             //      << "] does not match with requested "
             //      << filter << ", skipping\n";
             continue;
@@ -203,7 +203,7 @@ inline std::vector<sycl::device> create_sycl_gpu_devices(bool select_root_device
 
         auto device_list = platform.get_devices();
         for (const auto& device : device_list) {
-            auto device_name = device.get_info<cl::sycl::info::device::name>();
+            auto device_name = device.get_info<sycl::info::device::name>();
 
             if (!device.is_gpu()) {
                 ss_warn << prefix << "device [" << device_name << "] is not GPU, skipping\n";
@@ -215,11 +215,11 @@ inline std::vector<sycl::device> create_sycl_gpu_devices(bool select_root_device
                 continue;
             }
 
-            auto part_props = device.get_info<info::device::partition_properties>();
+            auto part_props = device.get_info<sycl::info::device::partition_properties>();
 
             if (std::find(part_props.begin(),
                           part_props.end(),
-                          info::partition_property::partition_by_affinity_domain) ==
+                          sycl::info::partition_property::partition_by_affinity_domain) ==
                 part_props.end()) {
                 // ZE_FLAT_DEVICE_HIERARCHY=FLAT is by default now, meaning that
                 // tile is a root device, the warning is extra in this case
@@ -231,11 +231,11 @@ inline std::vector<sycl::device> create_sycl_gpu_devices(bool select_root_device
             }
 
             auto part_affinity_domains =
-                device.get_info<info::device::partition_affinity_domains>();
+                device.get_info<sycl::info::device::partition_affinity_domains>();
 
             if (std::find(part_affinity_domains.begin(),
                           part_affinity_domains.end(),
-                          info::partition_affinity_domain::next_partitionable) ==
+                          sycl::info::partition_affinity_domain::next_partitionable) ==
                 part_affinity_domains.end()) {
                 ss_warn << prefix << "device [" << device_name
                         << "] does not support next_partitionable affinity domain"
@@ -244,12 +244,12 @@ inline std::vector<sycl::device> create_sycl_gpu_devices(bool select_root_device
                 continue;
             }
 
-            auto sub_devices =
-                device.create_sub_devices<info::partition_property::partition_by_affinity_domain>(
-                    info::partition_affinity_domain::next_partitionable);
+            auto sub_devices = device.create_sub_devices<
+                sycl::info::partition_property::partition_by_affinity_domain>(
+                sycl::info::partition_affinity_domain::next_partitionable);
 
             size_t sub_devices_max =
-                device.template get_info<info::device::partition_max_sub_devices>();
+                device.template get_info<sycl::info::device::partition_max_sub_devices>();
             if (sub_devices.size() != sub_devices_max) {
                 ss_warn << prefix << "device [" << device_name << "] expected " << sub_devices_max
                         << " sub-devices, but got " << sub_devices.size();
@@ -297,15 +297,15 @@ inline std::vector<sycl::queue> create_sycl_queues(const std::string& device_typ
         }
         else {
             if (device_type.compare("cpu") == 0) {
-                devices.push_back(device(ccl::cpu_selector_v));
+                devices.push_back(sycl::device(ccl::cpu_selector_v));
             }
             else if (device_type.compare("default") == 0) {
                 if (!has_accelerator()) {
-                    devices.push_back(device(ccl::default_selector_v));
+                    devices.push_back(sycl::device(ccl::default_selector_v));
                 }
                 else {
-                    devices.push_back(device(ccl::cpu_selector_v));
-                    cout
+                    devices.push_back(sycl::device(ccl::cpu_selector_v));
+                    std::cout
                         << "Accelerator is the first in device list, but unavailable for multiprocessing "
                         << " cpu_selector has been created instead of default_selector.\n";
                 }
@@ -377,18 +377,18 @@ inline std::vector<sycl::queue> create_sycl_queues(const std::string& device_typ
     }
     catch (sycl::exception&) {
         size_t preferred_idx = (local_ranks.back() / local_ranks.size()) % devices.size();
-        cout << "Can not create context from all rank devices of type: " << device_type
-             << ", create context from single device, idx " << preferred_idx << "\n";
+        std::cout << "Can not create context from all rank devices of type: " << device_type
+                  << ", create context from single device, idx " << preferred_idx << "\n";
         ctx = sycl::context(devices[preferred_idx]);
     }
 
-    auto exception_handler = [&](exception_list elist) {
-        for (exception_ptr const& e : elist) {
+    auto exception_handler = [&](sycl::exception_list elist) {
+        for (std::exception_ptr const& e : elist) {
             try {
                 rethrow_exception(e);
             }
             catch (std::exception const& e) {
-                cout << "failure\n";
+                std::cout << "failure\n";
             }
         }
     };
@@ -402,14 +402,14 @@ inline std::vector<sycl::queue> create_sycl_queues(const std::string& device_typ
     std::vector<sycl::queue> queues;
 
     if (!hide_platform_info()) {
-        cout << "Created context from devices of type: " << device_type << "\n";
-        cout << "Devices [" << ctx_devices.size() << "]:\n";
+        std::cout << "Created context from devices of type: " << device_type << "\n";
+        std::cout << "Devices [" << ctx_devices.size() << "]:\n";
     }
 
     for (size_t idx = 0; idx < ctx_devices.size(); idx++) {
         if (!hide_platform_info()) {
-            cout << "[" << idx << "]: [" << ctx_devices[idx].get_info<info::device::name>()
-                 << "]\n";
+            std::cout << "[" << idx << "]: ["
+                      << ctx_devices[idx].get_info<sycl::info::device::name>() << "]\n";
         }
         queues.push_back(sycl::queue(ctx_devices[idx], exception_handler, queue_props));
     }
@@ -419,8 +419,8 @@ inline std::vector<sycl::queue> create_sycl_queues(const std::string& device_typ
 
 inline bool create_sycl_queue(const std::string& type,
                               int rank,
-                              queue& q,
-                              const property_list& queue_props = {}) {
+                              sycl::queue& q,
+                              const sycl::property_list& queue_props = {}) {
     if (type == "gpu" || type == "cpu" || type == "host" || type == "default") {
         try {
             std::vector<int> ranks = { rank };
@@ -428,12 +428,13 @@ inline bool create_sycl_queue(const std::string& type,
             return true;
         }
         catch (std::exception& e) {
-            cerr << e.what() << "\n";
+            std::cerr << e.what() << "\n";
             return false;
         }
     }
     else {
-        cerr << "Unknown device type: " << type << ", please provide: cpu | gpu | host | default\n";
+        std::cerr << "Unknown device type: " << type
+                  << ", please provide: cpu | gpu | host | default\n";
         return false;
     }
 }
@@ -441,32 +442,32 @@ inline bool create_sycl_queue(const std::string& type,
 inline bool create_sycl_queue(int argc,
                               char* argv[],
                               int rank,
-                              queue& q,
+                              sycl::queue& q,
                               const sycl::property_list& queue_props = {}) {
     return create_sycl_queue(((argc >= 2) ? argv[1] : "unknown"), rank, q, queue_props);
 }
 
-inline bool handle_exception(queue& q) {
+inline bool handle_exception(sycl::queue& q) {
     try {
         q.wait_and_throw();
     }
     catch (std::exception const& e) {
-        cout << "Caught synchronous SYCL exception:\n" << e.what() << "\n";
+        std::cout << "Caught synchronous SYCL exception:\n" << e.what() << "\n";
         return false;
     }
     return true;
 }
 
-inline usm::alloc usm_alloc_type_from_string(const string& str) {
-    const map<string, usm::alloc> names{ {
-        { "host", usm::alloc::host },
-        { "device", usm::alloc::device },
-        { "shared", usm::alloc::shared },
+inline sycl::usm::alloc usm_alloc_type_from_string(const std::string& str) {
+    const std::map<std::string, sycl::usm::alloc> names{ {
+        { "host", sycl::usm::alloc::host },
+        { "device", sycl::usm::alloc::device },
+        { "shared", sycl::usm::alloc::shared },
     } };
 
     auto it = names.find(str);
     if (it == names.end()) {
-        stringstream ss;
+        std::stringstream ss;
         ss << "Invalid USM type requested: " << str << "\nSupported types are:\n";
         for (const auto& v : names) {
             ss << v.first << ", ";
@@ -476,9 +477,9 @@ inline usm::alloc usm_alloc_type_from_string(const string& str) {
     return it->second;
 }
 
-inline std::pair<usm::alloc, std::string> take_usm_type(const int argc, char* str_type) {
-    std::map<usm::alloc, std::string> map_usm_type;
-    auto usm_alloc_type = usm::alloc::shared;
+inline std::pair<sycl::usm::alloc, std::string> take_usm_type(const int argc, char* str_type) {
+    std::map<sycl::usm::alloc, std::string> map_usm_type;
+    auto usm_alloc_type = sycl::usm::alloc::shared;
     auto str_usm_alloc_type = "shared";
     if (argc > 1) {
         str_usm_alloc_type = str_type;
@@ -492,7 +493,7 @@ template <typename T>
 struct buf_allocator {
     const size_t alignment = 64;
 
-    buf_allocator(queue& q) : q(q) {}
+    buf_allocator(sycl::queue& q) : q(q) {}
 
     buf_allocator& operator=(const buf_allocator&) = delete;
     buf_allocator(const buf_allocator&) = delete;
@@ -504,31 +505,32 @@ struct buf_allocator {
         }
     }
 
-    T* allocate(size_t count, usm::alloc alloc_type) {
+    T* allocate(size_t count, sycl::usm::alloc alloc_type) {
         T* ptr = nullptr;
-        if (alloc_type == usm::alloc::host)
-            ptr = aligned_alloc_host<T>(alignment, count, q);
-        else if (alloc_type == usm::alloc::device)
-            ptr = aligned_alloc_device<T>(alignment, count, q);
-        else if (alloc_type == usm::alloc::shared)
-            ptr = aligned_alloc_shared<T>(alignment, count, q);
+        if (alloc_type == sycl::usm::alloc::host)
+            ptr = sycl::aligned_alloc_host<T>(alignment, count, q);
+        else if (alloc_type == sycl::usm::alloc::device)
+            ptr = sycl::aligned_alloc_device<T>(alignment, count, q);
+        else if (alloc_type == sycl::usm::alloc::shared)
+            ptr = sycl::aligned_alloc_shared<T>(alignment, count, q);
         else
-            throw std::runtime_error(string(__PRETTY_FUNCTION__) + " - unexpected alloc_type");
+            throw std::runtime_error(std::string(__PRETTY_FUNCTION__) + " - unexpected alloc_type");
 
         if (!ptr) {
-            throw std::runtime_error(string(__PRETTY_FUNCTION__) + " - failed to allocate buffer");
+            throw std::runtime_error(std::string(__PRETTY_FUNCTION__) +
+                                     " - failed to allocate buffer");
         }
 
         auto it = memory_storage.find(ptr);
         if (it != memory_storage.end()) {
-            throw std::runtime_error(string(__PRETTY_FUNCTION__) +
+            throw std::runtime_error(std::string(__PRETTY_FUNCTION__) +
                                      " - allocator already owns this pointer");
         }
         memory_storage.insert(ptr);
 
         auto pointer_type = sycl::get_pointer_type(ptr, q.get_context());
         if (pointer_type != alloc_type)
-            throw std::runtime_error(string(__PRETTY_FUNCTION__) + " - pointer_type " +
+            throw std::runtime_error(std::string(__PRETTY_FUNCTION__) + " - pointer_type " +
                                      std::to_string((int)pointer_type) +
                                      " doesn't match with requested " +
                                      std::to_string((int)alloc_type));
@@ -539,13 +541,21 @@ struct buf_allocator {
     void deallocate(T* ptr) {
         auto it = memory_storage.find(ptr);
         if (it == memory_storage.end()) {
-            throw std::runtime_error(string(__PRETTY_FUNCTION__) +
+            throw std::runtime_error(std::string(__PRETTY_FUNCTION__) +
                                      " - allocator doesn't own this pointer");
         }
         free(ptr, q);
         memory_storage.erase(it);
     }
 
-    queue q;
-    set<T*> memory_storage;
+    sycl::queue q;
+    std::set<T*> memory_storage;
 };
+
+inline sycl::event submit_barrier(sycl::queue queue) {
+#if ICPX_VERSION >= 140000
+    return queue.ext_oneapi_submit_barrier();
+#elif ICPX_VERSION < 140000
+    return queue.submit_barrier();
+#endif // ICPX_VERSION
+}

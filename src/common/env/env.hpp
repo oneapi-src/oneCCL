@@ -64,7 +64,7 @@ enum class backend_mode {
 
 enum class process_launcher_mode {
     hydra,
-    torch,
+    torchrun,
 #ifdef CCL_ENABLE_PMIX
     pmix,
 #endif // CCL_ENABLE_PMIX
@@ -103,12 +103,15 @@ public:
     size_t worker_count;
     bool worker_offload;
     bool worker_wait;
+    bool worker_affinity_set;
     std::vector<ssize_t> worker_affinity;
     std::vector<ssize_t> worker_mem_affinity;
 
     ccl_atl_transport atl_transport;
     kvs_mode kvs_init_mode;
     int kvs_connection_timeout;
+    bool kvs_mpi_allgather;
+    bool kvs_use_mpi_ranks;
     bool enable_shm;
     bool enable_rma;
     bool enable_hmem;
@@ -116,6 +119,7 @@ public:
     bool enable_atl_cache;
     bool enable_sync_coll;
     bool enable_extra_ep;
+    bool enable_auto_cache;
 
     atl_mnic_t mnic_type;
     std::string mnic_name_raw;
@@ -136,7 +140,7 @@ public:
     std::string alltoallv_algo_raw;
     std::string barrier_algo_raw;
     std::string bcast_algo_raw;
-    std::string bcastExt_algo_raw;
+    std::string broadcast_algo_raw;
     std::string recv_algo_raw;
     std::string reduce_algo_raw;
     std::string reduce_scatter_algo_raw;
@@ -149,7 +153,7 @@ public:
     std::string alltoallv_scaleout_algo_raw;
     std::string barrier_scaleout_algo_raw;
     std::string bcast_scaleout_algo_raw;
-    std::string bcastExt_scaleout_algo_raw;
+    std::string broadcast_scaleout_algo_raw;
     std::string recv_scaleout_algo_raw;
     std::string reduce_scaleout_algo_raw;
     std::string reduce_scatter_scaleout_algo_raw;
@@ -201,19 +205,24 @@ public:
     bool sycl_allreduce_tmp_buf;
     size_t sycl_allreduce_small_threshold;
     size_t sycl_allreduce_medium_threshold;
+    size_t sycl_allreduce_scaleout_threshold;
+    size_t sycl_allreduce_scaleout_direct_threshold;
 
     bool sycl_reduce_scatter_tmp_buf;
     size_t sycl_reduce_scatter_small_threshold;
     size_t sycl_reduce_scatter_medium_threshold;
+    size_t sycl_reduce_scatter_scaleout_threshold;
+    size_t sycl_reduce_scatter_scaleout_direct_threshold;
 
     bool sycl_allgatherv_tmp_buf;
     size_t sycl_allgatherv_small_threshold;
     size_t sycl_allgatherv_medium_threshold;
+    size_t sycl_allgatherv_scaleout_threshold;
 
     bool enable_sycl_kernels;
 
     bool sycl_ccl_barrier;
-    bool sycl_sycl_barrier;
+    bool sycl_kernel_sync;
     bool sycl_single_node_algorithm;
     bool sycl_auto_use_tmp_buf;
     bool sycl_copy_engine;
@@ -222,7 +231,12 @@ public:
     bool sycl_full_vector;
     size_t sycl_tmp_buf_size;
     size_t sycl_scaleout_host_buf_size;
+    size_t sycl_scaleout_device_buf_size;
     size_t sycl_kernels_line_size;
+    size_t sycl_pipeline_chunk_size;
+    bool sycl_enable_pipeline_gpu_rdma;
+    bool sycl_enable_direct_gpu_rdma;
+    bool sycl_sub_communicator;
     ccl::utils::alloc_mode sycl_scaleout_buf_alloc_mode;
 #endif // CCL_ENABLE_SYCL
 
@@ -232,6 +246,8 @@ public:
     size_t allreduce_2d_chunk_count;
     size_t allreduce_2d_min_chunk_size;
     bool allreduce_2d_switch_dims;
+
+    ssize_t dtree_partition_count;
 
     bool check_inplace_aliasing;
 
@@ -247,6 +263,7 @@ public:
     topo_color_mode topo_color;
     int enable_p2p_access;
     bool enable_fabric_vertex_connection_check;
+    bool enable_wa_fabric_vertex_connection_check;
 
 #ifdef CCL_ENABLE_MPI
     std::string mpi_lib_path;
@@ -266,7 +283,6 @@ public:
     bool kernel_1s_lead;
     bool enable_kernel_1s_copy_ops;
     bool enable_kernel_1s_ipc_wa;
-    bool enable_kernel_single_reduce_peers;
     bool enable_close_fd_wa;
 
     bool enable_sycl_output_event;
@@ -282,9 +298,6 @@ public:
     long ze_device_cache_upper_limit;
     int ze_device_cache_num_blocks_in_chunk;
     ccl::ze::device_cache_policy_mode ze_device_cache_policy;
-    bool ze_device_mem_disable_clear;
-    long ze_device_mem_alloc_size;
-    size_t ze_device_mem_enable;
     size_t ze_pointer_registration_threshold;
     bool enable_ze_cache_cmdlists;
     bool enable_ze_cache_cmdqueues;
@@ -317,10 +330,8 @@ public:
     bool ze_drm_bdf_support;
     bool ze_pt2pt_read;
     type2_tune_mode type2_mode;
-#ifdef CCL_ENABLE_DRM
     std::string drmfd_dev_render_dir_path;
     std::string drmfd_dev_render_suffix;
-#endif // CCL_ENABLE_DRM
 #endif // CCL_ENABLE_SYCL
 
 #ifdef CCL_ENABLE_PMIX

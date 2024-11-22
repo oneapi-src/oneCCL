@@ -26,7 +26,7 @@ namespace ccl {
 // event returned by ccl_comm(i.e. native backend)
 class host_event_impl final : public event_impl {
 public:
-    explicit host_event_impl(ccl_request* r);
+    explicit host_event_impl(ccl_request* r, bool in_is_group_activated = false);
     ~host_event_impl() override;
 
     void wait() override;
@@ -39,7 +39,7 @@ public:
 private:
     ccl_request* req = nullptr;
     bool completed = false;
-
+    bool is_group_activated = false;
 #ifdef CCL_ENABLE_SYCL
     // the actual sycl::event returned to the user via ccl::event.get_native()
     std::shared_ptr<sycl::event> native_event;

@@ -160,11 +160,11 @@ protected:
     ~ccl_api_base_copyable() = default;
 
     impl_value_t& get_impl() {
-        return (access_policy_t<impl_t>::template get_access(pimpl));
+        return (access_policy_t<impl_t>::get_access(pimpl));
     }
 
     const impl_value_t& get_impl() const {
-        return (access_policy_t<impl_t>::template get_access(pimpl));
+        return (access_policy_t<impl_t>::get_access(pimpl));
     }
 
 private:
@@ -190,14 +190,16 @@ protected:
         access_policy_t<impl_t>::create(this, std::move(src));
     }
     ccl_api_base_movable& operator=(ccl_api_base_movable&& src) = delete;
+    ccl_api_base_movable(const ccl_api_base_movable& src) = delete;
+    ccl_api_base_movable& operator=(const ccl_api_base_movable& src) = delete;
     ~ccl_api_base_movable() = default;
 
     impl_value_t& get_impl() {
-        return (access_policy_t<impl_t>::template get_access(pimpl));
+        return (access_policy_t<impl_t>::get_access(pimpl));
     }
 
     const impl_value_t& get_impl() const {
-        return (access_policy_t<impl_t>::template get_access(pimpl));
+        return (access_policy_t<impl_t>::get_access(pimpl));
     }
 
 private:

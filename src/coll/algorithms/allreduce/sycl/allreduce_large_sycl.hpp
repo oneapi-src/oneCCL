@@ -644,10 +644,11 @@ public:
                          const void *in_buffer,
                          void *out_buffer,
                          size_t size,
+                         const ccl::vector_class<ccl::event> &deps,
                          bool &done) {
         done = true;
         // check local alignment
-        bool is_aligned = false && (size_t)in_buffer % 4 == 0 && (size_t)out_buffer % 4 == 0;
+        bool is_aligned = (size_t)in_buffer % 4 == 0 && (size_t)out_buffer % 4 == 0;
 
         if (ccl::global_data::env().sycl_allreduce_tmp_buf) {
             if (is_aligned)
@@ -1013,7 +1014,7 @@ private:
         int align4 = all_aligned((void **)in_buffers, temp_world, 4, 4) &&
                      all_aligned((void **)out_buffers, temp_world, 4, 4);
         if (!align4) {
-            // ESIMD performance on 2-byte alignment is not goodm fallback
+            // ESIMD performance on 2-byte alignment is not good, fallback
             done = false;
             return ccl::event::create_from_native(e);
         }
@@ -1024,14 +1025,8 @@ private:
             size_per_buffer_kernel / (sizeof(int) / sizeof(data_type));
         int buffer_index_kernel_for_sync = allreduce_large_buffer_index;
         int outer_iter;
-        //todo:
-        //1. shuffle the kernel# executions so that resource utilization can be smoothed out. DONE
-        //2. increase the simd size there are less number of innerloop iterations. This mgiht be useful in reducing hte load stalls since the number of loads-consume pair is less. DONE
-        //3. reduce gpu-cpu sync?? DONE
-        //5. prefetch in persistent threads? DONE
         int wg_size = 1;
         int start, end;
-
         int outerloop_iter_count;
         int sync_reset_counter = 0;
         int max_threads_per_MAX_COUNT = (NOCOPY_MAX_COUNT) / (SIMD_COMPUTE * temp_world);
@@ -1387,6 +1382,7 @@ private:
                                           const void *in_buf, \
                                           void *out_buf, \
                                           size_t count, \
+                                          const ccl::vector_class<ccl::event> &deps, \
                                           bool &done) { \
-        return ar_large_##TYPE.allreduce(queue, in_buf, out_buf, count, done); \
+        return ar_large_##TYPE.allreduce(queue, in_buf, out_buf, count, deps, done); \
     }

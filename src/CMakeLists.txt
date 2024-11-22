@@ -62,6 +62,7 @@ if (CCL_ENABLE_SYCL AND CCL_ENABLE_ZE)
         coll/algorithms/allgatherv/sycl/allgatherv_small_sycl.cpp
         coll/algorithms/allgatherv/sycl/allgatherv_medium_sycl.cpp
         coll/algorithms/allgatherv/sycl/allgatherv_large_sycl.cpp
+        coll/algorithms/allgatherv/sycl/allgatherv_scaleout_sycl.cpp
 
         coll/algorithms/allreduce/sycl/allreduce_small_sycl.cpp
         coll/algorithms/allreduce/sycl/allreduce_medium_sycl.cpp
@@ -85,8 +86,11 @@ if (CCL_ENABLE_SYCL AND CCL_ENABLE_ZE)
         coll/algorithms/reduce_scatter/sycl/reduce_scatter_large_sycl_fp32.cpp
         coll/algorithms/reduce_scatter/sycl/reduce_scatter_large_sycl_fp16.cpp
         coll/algorithms/reduce_scatter/sycl/reduce_scatter_large_sycl_bf16.cpp
+        coll/algorithms/reduce_scatter/sycl/reduce_scatter_scaleout_sycl.cpp
 
         coll/algorithms/utils/sycl_coll_base.cpp
+        coll/algorithms/utils/sycl_pipe_send.cpp
+        coll/algorithms/utils/sycl_selection.cpp
         )
 endif(CCL_ENABLE_SYCL AND CCL_ENABLE_ZE)
 
@@ -137,7 +141,7 @@ set(CCL_SRC
     coll/algorithms/alltoallv.cpp
     coll/algorithms/barrier/barrier.cpp
     coll/algorithms/bcast.cpp
-    coll/algorithms/bcastExt.cpp
+    coll/algorithms/broadcast.cpp
     coll/algorithms/double_tree_ops.cpp
     coll/algorithms/recv.cpp
     coll/algorithms/reduce.cpp
@@ -145,6 +149,7 @@ set(CCL_SRC
     coll/algorithms/send.cpp
     coll/coll.cpp
     coll/coll_check.cpp
+    coll/group/group.cpp
     coll/selection/selection.cpp
     coll/selection/selector_allgather.cpp
     coll/selection/selector_allgatherv.cpp

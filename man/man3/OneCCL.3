@@ -1,8 +1,8 @@
-.TH "OneCCLvars" 3 "Tue Jun 25 2024" "Version 2021.13.1" "Intel® oneAPI Collective Communications Library" \" -*- nroff -*-
+.TH "OneCCLvars" 3 "Tue Sep 17 2024" "Version 2021.14.0" "Intel® oneAPI Collective Communications Library" \" -*- nroff -*-
 .ad l
 .nh
 .SH NAME
-OneCCLvars \- OneCCL Environment Variables
+OneCCLvars
 .SH SYNOPSIS
 .br
 .PP
@@ -32,11 +32,27 @@ OneCCLvars \- OneCCL Environment Variables
 .br
 .RI "Select the mechanism to collect ranks while creating a communicator\&. "
 .ti -1c
+.RI "\fBCCL_KVS_CONNECTION_TIMEOUT\fP"
+.br
+.RI "Set the timeout for setting up connections during kvs initialization\&. "
+.ti -1c
+.RI "\fBCCL_KVS_MPI_ALLGATHER\fP"
+.br
+.RI "Set whether to use MPI_Allgather or custom implementation while creating a communicator\&. "
+.ti -1c
+.RI "\fBCCL_KVS_USE_MPI_RANKS\fP"
+.br
+.RI "Set whether to use mpi ranks directly while creating a communicator\&. In general, MPI_COMM_WORLD rank does not have to be the same as CCL communicator rank\&. Therefore, we need to gather MPI rank of all participants while creating a communicator\&. If user decide to use MPI rank and CCL rank as same, then they can set this CVAR to 1, and CCL can skip gathering MPI rank of all participants and use the information that CCL rank is same as MPI rank while creating communicator\&. "
+.ti -1c
 .RI "\fBCCL_ATL_SHM\fP"
 .br
 .RI "Set this environment variable to enable the OFI shared memory provider for communication between ranks in the same node of host (CPU) buffers\&. 
 .br
 \&. "
+.ti -1c
+.RI "\fBCCL_ENABLE_AUTO_CACHE\fP"
+.br
+.RI "Set this environment variable to enable cache model automatically for synchronous collectives with direct algorithms\&. "
 .ti -1c
 .RI "\fBCCL_ALLGATHER\fP"
 .br
@@ -66,9 +82,9 @@ OneCCLvars \- OneCCL Environment Variables
 .br
 .RI "Set broadcast algorithm\&. "
 .ti -1c
-.RI "\fBCCL_BCASTEXT\fP"
+.RI "\fBCCL_BROADCAST\fP"
 .br
-.RI "Set broadcastExt algorithm (send_buf, recv_buf) "
+.RI "Set broadcast algorithm (send_buf, recv_buf) "
 .ti -1c
 .RI "\fBCCL_REDUCE\fP"
 .br
@@ -523,10 +539,10 @@ naive Send to all from root rank
 Note: BCAST algorithm does not support yet the CCL_BCAST_SCALEOUT environment variable\&. To change the algorithm for BCAST, use CCL_BCAST\&.
 .PP
 By-default: 'direct' 
-.SS "CCL_BCASTEXT"
+.SS "CCL_BROADCAST"
 
 .PP
-Set broadcastExt algorithm (send_buf, recv_buf) BCAST algorithms
+Set broadcast algorithm (send_buf, recv_buf) BCAST algorithms
 .IP "\(bu" 2
 direct Based on MPI_Ibcast
 .IP "\(bu" 2
@@ -556,6 +572,38 @@ Set the suffix for DRM render device names\&. This environment variable specifie
 Example value: '-customsuffix'
 .PP
 By-default: '-render' 
+.SS "CCL_ENABLE_AUTO_CACHE"
+
+.PP
+Set this environment variable to enable cache model automatically for synchronous collectives with direct algorithms\&. Syntax 
+.br
+CCL_ENABLE_AUTO_CACHE='<value>'
+.br
+
+.br
+Arguments
+.br
+'<value>' Description
+.br
+.IP "\(bu" 2
+0 Does not allow enabling cache model automatically\&.
+.br
+
+.IP "\(bu" 2
+1 Allows enabling cache model automatically (default)\&.
+.br
+
+.br
+
+.PP
+.PP
+By-default: '1' 
+.SS "CCL_KVS_CONNECTION_TIMEOUT"
+
+.PP
+Set the timeout for setting up connections during kvs initialization\&. '<timeout>' - Timeout in seconds to use for setting up sockets during kvs initialization
+.PP
+By-default: '120' 
 .SS "CCL_KVS_MODE"
 
 .PP
@@ -566,6 +614,26 @@ Select the mechanism to collect ranks while creating a communicator\&. '<value>'
 '1' - use mpi 
 .br
 KVS implemention with sockets is used to collect the rank information while creating communicator by default\&. 
+.br
+ By-default: '0' 
+.SS "CCL_KVS_MPI_ALLGATHER"
+
+.PP
+Set whether to use MPI_Allgather or custom implementation while creating a communicator\&. '<value>': 
+.br
+'0' - use only custom implementation of allgather 
+.br
+'1' - use MPI_Allgather whenever possible 
+.br
+ By-default: '1' 
+.SS "CCL_KVS_USE_MPI_RANKS"
+
+.PP
+Set whether to use mpi ranks directly while creating a communicator\&. In general, MPI_COMM_WORLD rank does not have to be the same as CCL communicator rank\&. Therefore, we need to gather MPI rank of all participants while creating a communicator\&. If user decide to use MPI rank and CCL rank as same, then they can set this CVAR to 1, and CCL can skip gathering MPI rank of all participants and use the information that CCL rank is same as MPI rank while creating communicator\&. '<value>': 
+.br
+'0' - collect mpi ranks from everyone 
+.br
+'1' - use mpi ranks directly without collecting 
 .br
  By-default: '0' 
 .SS "CCL_LOCAL_RANK"
@@ -627,7 +695,7 @@ Arguments
 .IP "\(bu" 2
 hydra Uses the MPI hydra job launcher (default)
 .IP "\(bu" 2
-torch Uses torch job launcher
+torchrun Uses torchrun job launcher
 .IP "\(bu" 2
 pmix It is used with the PALS job launcher which uses the pmix API, so your mpiexec command should look something like this: CCL_PROCESS_LAUNCHER=pmix CCL_ATL_TRANSPORT=mpi mpiexec -np 2 -ppn 2 --pmi=pmix \&.\&.\&.
 .IP "\(bu" 2
@@ -960,13 +1028,11 @@ By-default: '536870912'
 .SH "Author"
 .PP 
 Generated automatically by Doxygen for Intel® oneAPI Collective Communications Library from the source code\&.
-.TH "ExpOneCCLvars" 3 "Tue Jun 25 2024" "Version 2021.13.1" "Intel® oneAPI Collective Communications Library" \" -*- nroff -*-
+.TH "ExpOneCCLvars" 3 "Tue Sep 17 2024" "Version 2021.14.0" "Intel® oneAPI Collective Communications Library" \" -*- nroff -*-
 .ad l
 .nh
 .SH NAME
-ExpOneCCLvars \- Experimental OneCCL Environment Variables
-.PP
- \- Experimental OneCCL Environment Variables Functionality of these variables has not been (fully) tested and, therefore, cannot be supported nor guaranteed\&.  
+ExpOneCCLvars \- Experimental OneCCL Environment Variables Functionality of these variables has not been (fully) tested and, therefore, cannot be supported nor guaranteed\&.  
 
 .SH SYNOPSIS
 .br
@@ -1023,6 +1089,10 @@ ExpOneCCLvars \- Experimental OneCCL Environment Variables
 .br
 .RI "Specify the threshold for the medium size algorithm in allgatherv\&. "
 .ti -1c
+.RI "\fBCCL_SYCL_ALLGATHERV_SCALEOUT_THRESHOLD\fP"
+.br
+.RI "Specify the threshold for the scaleout algorithm in allgatherv \&. "
+.ti -1c
 .RI "\fBCCL_SYCL_ALLREDUCE_TMP_BUF\fP"
 .br
 .RI "Enable the use of persistent temporary buffer in allreduce\&. "
@@ -1035,6 +1105,14 @@ ExpOneCCLvars \- Experimental OneCCL Environment Variables
 .br
 .RI "Specify the threshold for the medium size algorithm in allreduce\&. "
 .ti -1c
+.RI "\fBCCL_SYCL_ALLREDUCE_SCALEOUT_THRESHOLD\fP"
+.br
+.RI "Specify the maximum threshold for the Allreduce Sycl scale-out algorithm\&. "
+.ti -1c
+.RI "\fBCCL_SYCL_ALLREDUCE_SCALEOUT_DIRECT_THRESHOLD\fP"
+.br
+.RI "Specify the maximum threshold for the Allreduce Sycl scale-out direct algorithm\&. "
+.ti -1c
 .RI "\fBCCL_SYCL_REDUCE_SCATTER_TMP_BUF\fP"
 .br
 .RI "Enable the use of persistent temporary buffer in reduce_scatter\&. "
@@ -1046,6 +1124,10 @@ ExpOneCCLvars \- Experimental OneCCL Environment Variables
 .RI "\fBCCL_SYCL_REDUCE_SCATTER_MEDIUM_THRESHOLD\fP"
 .br
 .RI "Specify the threshold for the medium size algorithm in reduce_scatter\&. "
+.ti -1c
+.RI "\fBCCL_SYCL_REDUCE_SCATTER_SCALEOUT_THRESHOLD\fP"
+.br
+.RI "Specify the threshold for the Sycl scaleout algorithm in reduce-scatter\&. "
 .in -1c
 .SH "Detailed Description"
 .PP 
@@ -1092,6 +1174,10 @@ Specify the threshold for the medium size algorithm in allgatherv\&. Set the thr
 
 .PP
 Specify the threshold for the small size algorithm in allgatherv\&. Set the threshold in bytes to specify the small size algorithm in the allgatherv collective\&. Default value is 131072\&. '<value>'' : '>=0" 
+.SS "CCL_SYCL_ALLGATHERV_SCALEOUT_THRESHOLD"
+
+.PP
+Specify the threshold for the scaleout algorithm in allgatherv\&. Default value is 1048576\&. '<value>'' : '>=0"
 .SS "CCL_SYCL_ALLGATHERV_TMP_BUF"
 
 .PP
@@ -1104,6 +1190,14 @@ By-default: '0 (disabled)'
 
 .PP
 Specify the threshold for the medium size algorithm in allreduce\&. Set the threshold in bytes to specify the medium size algorithm in the allreduce collective\&. Default value is 16777216\&. '<value>'' : '>=0" 
+.SS "CCL_SYCL_ALLREDUCE_SCALEOUT_DIRECT_THRESHOLD"
+
+.PP
+Specify the maximum threshold for the Allreduce Sycl scale-out direct algorithm\&. Set the threshold in bytes to specify the Sycl scaleout direct algorithm (call MPI_allreduce directly) in the allreduce collective\&. Default value is 1048576\&. '<value>'' : '>=0" 
+.SS "CCL_SYCL_ALLREDUCE_SCALEOUT_THRESHOLD"
+
+.PP
+Specify the maximum threshold for the Allreduce Sycl scale-out algorithm\&. Set the threshold in bytes to specify the Sycl scaleout algorithm in the allreduce collective\&. Default value is 1048576\&. '<value>'' : '>=0" 
 .SS "CCL_SYCL_ALLREDUCE_SMALL_THRESHOLD"
 
 .PP
@@ -1120,6 +1214,10 @@ By-default: '0 (disabled)'
 
 .PP
 Specify the threshold for the medium size algorithm in reduce_scatter\&. Set the threshold in bytes to specify the medium size algorithm in the reduce_scatter collective\&. Default value is 67108864\&. '<value>'' : '>=0" 
+.SS "CCL_SYCL_REDUCE_SCATTER_SCALEOUT_THRESHOLD"
+
+.PP
+Specify the threshold for the Sycl scaleout algorithm in reduce-scatter\&. Set the threshold in bytes to specify the Sycl scaleout algorithm in the reduce-scatter collective\&. Default value is 4294967296\&. '<value>'' : '>=0" 
 .SS "CCL_SYCL_REDUCE_SCATTER_SMALL_THRESHOLD"
 
 .PP
@@ -1161,7 +1259,7 @@ Set to specify the mechanism to use for Level Zero IPC exchange\&.
 .PP
 '<value>': 'drmfd', 'pidfd', 'sockets'
 .PP
-By-default: 'drmfd' 
+By-default: 'pidfd' 
 .SS "constexpr const char* CCL_ZE_PT2PT_READ = 'CCL_ZE_PT2PT_READ'\fC [constexpr]\fP"
 
 .PP

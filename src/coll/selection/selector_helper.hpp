@@ -109,8 +109,8 @@ std::map<ccl_coll_bcast_algo, std::string>
     ccl_algorithm_selector_helper<ccl_coll_bcast_algo>::algo_names;
 
 template <>
-std::map<ccl_coll_bcastExt_algo, std::string>
-    ccl_algorithm_selector_helper<ccl_coll_bcastExt_algo>::algo_names;
+std::map<ccl_coll_broadcast_algo, std::string>
+    ccl_algorithm_selector_helper<ccl_coll_broadcast_algo>::algo_names;
 
 template <>
 std::map<ccl_coll_reduce_algo, std::string>

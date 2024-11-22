@@ -52,6 +52,10 @@ class timestamp_manager {
 public:
     void add_timestamp(std::string text, uint64_t *timestamp_ptr);
     void init();
+
+    timestamp_manager() {}
+    timestamp_manager(const timestamp_manager &other) = delete;
+    timestamp_manager &operator=(const timestamp_manager &other) = delete;
     ~timestamp_manager();
 };
 

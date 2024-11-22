@@ -28,33 +28,33 @@
 
 using namespace ccl::utils;
 
-ccl::status ccl_coll_build_direct_bcastExt(ccl_sched* sched,
-                                           ccl_buffer send_buf,
-                                           ccl_buffer recv_buf,
-                                           size_t count,
-                                           const ccl_datatype& dtype,
-                                           int root,
-                                           ccl_comm* comm) {
-    LOG_DEBUG("build direct bcastExt");
+ccl::status ccl_coll_build_direct_broadcast(ccl_sched* sched,
+                                            ccl_buffer send_buf,
+                                            ccl_buffer recv_buf,
+                                            size_t count,
+                                            const ccl_datatype& dtype,
+                                            int root,
+                                            ccl_comm* comm) {
+    LOG_DEBUG("build direct broadcast");
 
     if (comm->rank() == root && send_buf != recv_buf) {
         entry_factory::create<copy_entry>(sched, send_buf, recv_buf, count, dtype);
         sched->add_barrier();
     }
 
-    entry_factory::create<bcastExt_entry>(sched, send_buf, recv_buf, count, dtype, root, comm);
+    entry_factory::create<broadcast_entry>(sched, send_buf, recv_buf, count, dtype, root, comm);
 
     return ccl::status::success;
 }
 
-ccl::status ccl_coll_build_naive_bcastExt(ccl_sched* sched,
-                                          ccl_buffer send_buf,
-                                          ccl_buffer recv_buf,
-                                          size_t count,
-                                          const ccl_datatype& dtype,
-                                          int root,
-                                          ccl_comm* comm) {
-    LOG_DEBUG("build naive bcastExt");
+ccl::status ccl_coll_build_naive_broadcast(ccl_sched* sched,
+                                           ccl_buffer send_buf,
+                                           ccl_buffer recv_buf,
+                                           size_t count,
+                                           const ccl_datatype& dtype,
+                                           int root,
+                                           ccl_comm* comm) {
+    LOG_DEBUG("build naive broadcast");
 
     ccl::status status = ccl::status::success;
 
@@ -84,18 +84,19 @@ fn_exit:
     return status;
 }
 
-ccl::status ccl_coll_build_scatter_for_bcastExt(ccl_sched* sched,
-                                                ccl_buffer send_buf,
-                                                ccl_buffer recv_buf,
-                                                int root,
-                                                size_t nbytes,
-                                                ccl_comm* comm) {
-    LOG_DEBUG("build scatter_for_bcastExt");
+ccl::status ccl_coll_build_scatter_for_broadcast(ccl_sched* sched,
+                                                 ccl_buffer send_buf,
+                                                 ccl_buffer recv_buf,
+                                                 int root,
+                                                 size_t nbytes,
+                                                 ccl_comm* comm) {
+    LOG_DEBUG("build scatter_for_broadcast");
 
     ccl::status status = ccl::status::success;
     int rank, local_root, comm_size, src, dst;
     int relative_rank, mask;
     int scatter_size, curr_size, recv_size, send_size;
+    bool is_inplace = (send_buf == recv_buf);
 
     comm_size = comm->size();
     rank = comm->rank();
@@ -160,12 +161,16 @@ ccl::status ccl_coll_build_scatter_for_bcastExt(ccl_sched* sched,
                 if (dst >= comm_size)
                     dst -= comm_size;
 
-                entry_factory::create<send_entry>(sched,
-                                                  send_buf + scatter_size * (relative_rank + mask),
-                                                  send_size,
-                                                  ccl_datatype_int8,
-                                                  dst,
-                                                  comm);
+                // Skip sending to self if in-place and root.
+                if (!(is_inplace && dst == local_root)) {
+                    entry_factory::create<send_entry>(
+                        sched,
+                        send_buf + scatter_size * (relative_rank + mask),
+                        send_size,
+                        ccl_datatype_int8,
+                        dst,
+                        comm);
+                }
                 sched->add_barrier();
                 curr_size -= send_size;
             }
@@ -176,14 +181,14 @@ ccl::status ccl_coll_build_scatter_for_bcastExt(ccl_sched* sched,
     return status;
 }
 
-ccl::status ccl_coll_build_scatter_ring_allgather_bcastExt(ccl_sched* sched,
-                                                           ccl_buffer send_buf,
-                                                           ccl_buffer recv_buf,
-                                                           size_t count,
-                                                           const ccl_datatype& dtype,
-                                                           int root,
-                                                           ccl_comm* comm) {
-    LOG_DEBUG("build scatter_ring_allgather bcastExt");
+ccl::status ccl_coll_build_scatter_ring_allgather_broadcast(ccl_sched* sched,
+                                                            ccl_buffer send_buf,
+                                                            ccl_buffer recv_buf,
+                                                            size_t count,
+                                                            const ccl_datatype& dtype,
+                                                            int root,
+                                                            ccl_comm* comm) {
+    LOG_DEBUG("build scatter_ring_allgather broadcast");
 
     ccl::status status = ccl::status::success;
 
@@ -204,8 +209,8 @@ ccl::status ccl_coll_build_scatter_ring_allgather_bcastExt(ccl_sched* sched,
 
     nbytes = dtype_size * count;
 
-    CCL_CALL(
-        ccl_coll_build_scatter_for_bcastExt(sched, send_tmp_buf, recv_tmp_buf, root, nbytes, comm));
+    CCL_CALL(ccl_coll_build_scatter_for_broadcast(
+        sched, send_tmp_buf, recv_tmp_buf, root, nbytes, comm));
 
     /* this is the block size used for the scatter operation */
     scatter_size = (nbytes + comm_size - 1) / comm_size; /* ceiling division */
@@ -258,14 +263,14 @@ fn_exit:
 
 #if defined(CCL_ENABLE_SYCL) && defined(CCL_ENABLE_ZE)
 
-ccl::status ccl_coll_build_topo_bcastExt(ccl_sched* sched,
-                                         ccl_buffer send_buf,
-                                         ccl_buffer recv_buf,
-                                         size_t count,
-                                         const ccl_datatype& dtype,
-                                         int root,
-                                         ccl_comm* comm) {
-    LOG_DEBUG("build topo bcastExt");
+ccl::status ccl_coll_build_topo_broadcast(ccl_sched* sched,
+                                          ccl_buffer send_buf,
+                                          ccl_buffer recv_buf,
+                                          size_t count,
+                                          const ccl_datatype& dtype,
+                                          int root,
+                                          ccl_comm* comm) {
+    LOG_DEBUG("build topo broadcast");
 
     if (count == 0) {
         return ccl::status::success;
@@ -277,7 +282,7 @@ ccl::status ccl_coll_build_topo_bcastExt(ccl_sched* sched,
         { send_buf.get_ptr(), ccl::ze::ipc_mem_type::memory }, // 0
         { recv_buf.get_ptr(), ccl::ze::ipc_mem_type::memory }, // 1
     };
-    LOG_DEBUG("BCASTEXT send_buf = ", send_buf.get_ptr(), " and root = ", root);
+    LOG_DEBUG("broadcast send_buf = ", send_buf.get_ptr(), " and root = ", root);
 
     std::vector<ze_event_handle_t> wait_events;
     ze_event_handle_t out_event;
@@ -287,15 +292,33 @@ ccl::status ccl_coll_build_topo_bcastExt(ccl_sched* sched,
     ccl::add_handle_exchange(sched, node_comm, wait_events, out_event, buffers);
     clear_and_push_back(wait_events, out_event);
 
-    auto entry =
-        entry_factory::create<ze_copy_entry>(sched,
-                                             comm->rank() != root ? ccl_buffer() : send_buf,
-                                             recv_buf,
-                                             count,
-                                             dtype,
-                                             copy_attr(root, 0, copy_direction::d2d),
-                                             wait_events);
-    clear_and_push_back(wait_events, entry->entry_event);
+    // inplace bcast
+    if (send_buf == recv_buf) {
+        // copy for remote ranks, don't need to copy
+        // for root because send_buf == recv_buf
+        if (comm->rank() != root) {
+            auto entry =
+                entry_factory::create<ze_copy_entry>(sched,
+                                                     ccl_buffer(),
+                                                     recv_buf,
+                                                     count,
+                                                     dtype,
+                                                     copy_attr(root, 0, copy_direction::d2d),
+                                                     wait_events);
+            clear_and_push_back(wait_events, entry->entry_event);
+        }
+    }
+    else { // out plcace bcast
+        auto entry =
+            entry_factory::create<ze_copy_entry>(sched,
+                                                 comm->rank() != root ? ccl_buffer() : send_buf,
+                                                 recv_buf,
+                                                 count,
+                                                 dtype,
+                                                 copy_attr(root, 0, copy_direction::d2d),
+                                                 wait_events);
+        clear_and_push_back(wait_events, entry->entry_event);
+    }
 
     ccl::add_comm_barrier(sched, node_comm, wait_events, out_event);
 

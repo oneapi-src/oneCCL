@@ -44,6 +44,8 @@ struct ccl_selector_param {
     ccl_stream* stream = nullptr;
     void* buf = nullptr;
 
+    ccl::reduction reduction = ccl::reduction::custom;
+
     const size_t* send_counts = nullptr;
     const size_t* recv_counts = nullptr;
     int is_vector_buf = 0;
@@ -57,6 +59,39 @@ struct ccl_selector_param {
     ccl_coll_algo hint_algo = {};
 
     bool is_scaleout = false;
+
+    static ccl_selector_param create(ccl_coll_type ctype,
+                                     size_t count,
+                                     ccl::datatype dtype,
+                                     ccl_comm* comm,
+                                     ccl_stream* stream,
+                                     void* buf,
+                                     ccl::reduction reduction,
+                                     bool is_vector_buf,
+                                     bool is_sycl_buf,
+                                     int peer_rank,
+                                     ccl_coll_algo hint_algo,
+                                     bool is_scaleout) {
+        ccl_selector_param param;
+        param.ctype = ctype;
+        param.count = count;
+        param.dtype = ccl::global_data::get().dtypes->get(dtype);
+        param.reduction = reduction;
+        param.comm = comm;
+        param.stream = stream;
+        param.buf = buf;
+        param.is_vector_buf = is_vector_buf;
+
+#ifdef CCL_ENABLE_SYCL
+        param.is_sycl_buf = is_sycl_buf;
+#endif
+
+        param.peer_rank = peer_rank;
+        param.hint_algo = hint_algo;
+        param.is_scaleout = is_scaleout;
+
+        return param;
+    }
 };
 
 template <ccl_coll_type coll_id>
@@ -97,7 +132,7 @@ CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_alltoall, ccl_coll_alltoall_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_alltoallv, ccl_coll_alltoallv_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_barrier, ccl_coll_barrier_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_bcast, ccl_coll_bcast_algo);
-CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_bcastExt, ccl_coll_bcastExt_algo);
+CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_broadcast, ccl_coll_broadcast_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_recv, ccl_coll_recv_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_reduce, ccl_coll_reduce_algo);
 CCL_SELECTION_DECLARE_ALGO_SELECTOR(ccl_coll_reduce_scatter, ccl_coll_reduce_scatter_algo);

@@ -93,20 +93,20 @@ private:
     atl_req_t req{};
 };
 
-class bcastExt_entry : public base_coll_entry {
+class broadcast_entry : public base_coll_entry {
 public:
     static constexpr const char* class_name() noexcept {
-        return "BCASTEXT";
+        return "BROADCAST";
     }
 
-    bcastExt_entry() = delete;
-    bcastExt_entry(ccl_sched* sched,
-                   ccl_buffer send_buf,
-                   ccl_buffer recv_buf,
-                   size_t cnt,
-                   const ccl_datatype& dtype,
-                   int root,
-                   ccl_comm* comm)
+    broadcast_entry() = delete;
+    broadcast_entry(ccl_sched* sched,
+                    ccl_buffer send_buf,
+                    ccl_buffer recv_buf,
+                    size_t cnt,
+                    const ccl_datatype& dtype,
+                    int root,
+                    ccl_comm* comm)
             : base_coll_entry(sched),
               send_buf(send_buf),
               recv_buf(recv_buf),
@@ -117,16 +117,16 @@ public:
 
     void start() override {
         size_t bytes = cnt * dtype.size();
-        LOG_DEBUG("BCASTEXT entry req ", req, ", bytes ", bytes);
+        LOG_DEBUG("BROADCAST entry req ", req, ", bytes ", bytes);
 
-        atl_status_t atl_status = comm->get_atl_comm()->bcastExt(sched->bin->get_atl_ep(),
-                                                                 send_buf.get_ptr(bytes),
-                                                                 recv_buf.get_ptr(bytes),
-                                                                 bytes,
-                                                                 root,
-                                                                 req);
+        atl_status_t atl_status = comm->get_atl_comm()->broadcast(sched->bin->get_atl_ep(),
+                                                                  send_buf.get_ptr(bytes),
+                                                                  recv_buf.get_ptr(bytes),
+                                                                  bytes,
+                                                                  root,
+                                                                  req);
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
-            CCL_THROW("BCASTEXT entry failed. atl_status: ", atl_status_to_str(atl_status));
+            CCL_THROW("BROADCAST entry failed. atl_status: ", atl_status_to_str(atl_status));
         }
         else
             status = ccl_sched_entry_status_started;
@@ -136,7 +136,7 @@ public:
         atl_status_t atl_status = comm->get_atl_comm()->check(sched->bin->get_atl_ep(), req);
 
         if (unlikely(atl_status != ATL_STATUS_SUCCESS)) {
-            CCL_THROW("BCASTEXT entry failed. atl_status: ", atl_status_to_str(atl_status));
+            CCL_THROW("BROADCAST entry failed. atl_status: ", atl_status_to_str(atl_status));
         }
 
         if (req.is_completed) {

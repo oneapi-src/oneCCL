@@ -74,10 +74,6 @@ enum class broadcast_attr_id : int {
     op_id_offset = 5,
 };
 
-enum class broadcastExt_attr_id : int {
-    op_id_offset = 5,
-};
-
 enum class reduce_attr_id : int {
     op_id_offset = 5,
 
@@ -107,7 +103,6 @@ using v1::alltoall_attr_id;
 using v1::alltoallv_attr_id;
 using v1::barrier_attr_id;
 using v1::broadcast_attr_id;
-using v1::broadcastExt_attr_id;
 using v1::pt2pt_attr_id;
 using v1::reduce_attr_id;
 using v1::reduce_scatter_attr_id;

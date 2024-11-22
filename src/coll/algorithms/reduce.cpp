@@ -654,10 +654,37 @@ ccl::status ccl_coll_build_topo_reduce_fill(ccl_sched* sched,
     }
 
     std::vector<ccl_buffer> tmp_bufs;
+    ccl_buffer tmp_pipeline_result_buf;
     size_t tmp_buf_idx_start = -1;
     if (use_read_write_pipeline) {
         ze_utils::alloc_tmp_bufs(
             sched, comm, tmp_bufs, in_buffers, tmp_buf_idx_start, count, dtype);
+
+        // device buffers are required to be aligned on the same alignment
+        // when using compute kernels event for D2D copy. Therefore, use kernel_mem_align as an anchor
+        // to find the device pointer alignment and apply the setting to device buffer allocation.
+        // Otherwise, bad performance or even performance bugs,
+        // for example MLSL-2628/3197: unexpectedly high execution time, may appear.
+        size_t tmp_pipeline_buf_size = block_count * dtype.size();
+        void* recv_buf_block_aligned =
+            (char*)recv_buf.get_ptr() + pair_comm_offset_bytes + even_comm_offset_bytes;
+        uintptr_t offset_bytes =
+            ccl::utils::get_aligned_offset_byte(recv_buf_block_aligned,
+                                                tmp_pipeline_buf_size,
+                                                ccl::global_data::env().kernel_mem_align);
+        if (offset_bytes && offset_bytes != tmp_pipeline_buf_size) {
+            size_t alignment_space = ccl::global_data::env().kernel_mem_align;
+            ccl::alloc_param tmp_alloc_param(tmp_pipeline_buf_size + alignment_space,
+                                             ccl::buffer_type::ze,
+                                             ccl::buffer_place::device);
+            tmp_pipeline_result_buf =
+                sched->alloc_buffer(tmp_alloc_param) + alignment_space - offset_bytes;
+        }
+        else {
+            ccl::alloc_param tmp_alloc_param(
+                tmp_pipeline_buf_size, ccl::buffer_type::ze, ccl::buffer_place::device);
+            tmp_pipeline_result_buf = sched->alloc_buffer(tmp_alloc_param);
+        }
     }
 
     size_t ipc_event_count{};
@@ -735,7 +762,12 @@ ccl::status ccl_coll_build_topo_reduce_fill(ccl_sched* sched,
             LOG_DEBUG("topo/scale_up/intra: use ze_a2a_pipeline_read_write_entry");
 
             // Read block size used to offset send buffer.
-            const size_t read_block_count = count / pair_comm->size() / even_comm->size();
+            size_t read_block_count = count / pair_comm->size();
+            if (pair_comm->rank() == pair_comm->size() - 1) {
+                read_block_count += count % pair_comm->size();
+            }
+            read_block_count = read_block_count / even_comm->size();
+
             // Offset inside a read block.
             const size_t read_block_inner_offset = 0;
 
@@ -759,10 +791,9 @@ ccl::status ccl_coll_build_topo_reduce_fill(ccl_sched* sched,
             clear_and_push_back(wait_events, out_event);
 
             LOG_DEBUG("topo/scale_up/intra: use ze_a2a_pipeline_reduce_entry");
-            // Local reduction of tmp_bufs array starts with the first index ([0] + [1]),
-            // so it is safe to use the first tmp_bufs[0] as an accumulating storage
-            // for reduction
-            even_comm_recv_buf = tmp_bufs.front();
+            // Store the reduction result in a buffers, that has the same alignment
+            // as receive buffer block
+            even_comm_recv_buf = tmp_pipeline_result_buf;
 
             auto scatter_entry = entry_factory::create<ze_a2a_pipeline_reduce_entry>(
                 sched, comm, even_comm_recv_buf, tmp_bufs, count, dtype, op, wait_events);

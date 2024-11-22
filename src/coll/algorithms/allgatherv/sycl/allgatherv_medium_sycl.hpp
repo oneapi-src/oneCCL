@@ -447,12 +447,6 @@ private:
             temp_sync_buffer[i] = sync_buffer[i];
         }
 
-        for (uint32_t i = 0; i < recv_counts.size(); i++) {
-            if (recv_counts[i] != send_count) {
-                CCL_THROW("not all recv_counts are the same as send_count\n");
-            }
-        }
-
         uint32_t myoffset = 0;
         if (send_buf == recv_buf)
             myoffset = send_count * temp_rank;
@@ -621,12 +615,6 @@ private:
         void *temp_sync_buffer[max_rank];
         for (int i = 0; i < world; i++) {
             temp_sync_buffer[i] = sync_buffer[i];
-        }
-
-        for (uint32_t i = 0; i < recv_counts.size(); i++) {
-            if (recv_counts[i] != send_count) {
-                CCL_THROW("not all recv_counts are the same as send_count\n");
-            }
         }
 
         int even_ranks[max_rank];

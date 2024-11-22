@@ -147,15 +147,15 @@ ccl::event stub_comm::broadcast_impl(void* buf,
     return process_stub_backend();
 }
 
-/* bcastExt */
-ccl::event stub_comm::broadcastExt_impl(void* send_buf,
-                                        void* recv_buf,
-                                        size_t count,
-                                        ccl::datatype dtype,
-                                        int root,
-                                        const ccl::stream::impl_value_t& stream,
-                                        const ccl::broadcastExt_attr& attr,
-                                        const ccl::vector_class<ccl::event>& deps) {
+/* broadcast */
+ccl::event stub_comm::broadcast_impl(void* send_buf,
+                                     void* recv_buf,
+                                     size_t count,
+                                     ccl::datatype dtype,
+                                     int root,
+                                     const ccl::stream::impl_value_t& stream,
+                                     const ccl::broadcast_attr& attr,
+                                     const ccl::vector_class<ccl::event>& deps) {
     return process_stub_backend();
 }
 

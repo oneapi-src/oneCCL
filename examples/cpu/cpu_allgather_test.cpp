@@ -28,9 +28,9 @@ int main() {
     int i = 0;
     size_t j = 0;
 
-    vector<int> send_buf;
-    vector<int> recv_buf;
-    vector<int> expected_buf;
+    std::vector<int> send_buf;
+    std::vector<int> recv_buf;
+    std::vector<int> expected_buf;
 
     ccl::init();
 
@@ -87,12 +87,12 @@ int main() {
     if (rank == 0) {
         for (j = 0; j < size * count; j++) {
             if (recv_buf[j] == -1) {
-                cout << "FAILED\n";
+                std::cout << "FAILED\n";
                 break;
             }
         }
         if (j == size * count) {
-            cout << "PASSED\n";
+            std::cout << "PASSED\n";
         }
     }
 

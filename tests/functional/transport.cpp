@@ -16,7 +16,7 @@
 #include <mpi.h>
 
 #ifdef CCL_ENABLE_SYCL
-#include <CL/sycl.hpp>
+#include <sycl/sycl.hpp>
 #endif // CCL_ENABLE_SYCL
 
 #include "transport.hpp"

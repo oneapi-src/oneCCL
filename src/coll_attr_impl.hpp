@@ -199,7 +199,7 @@ alltoallv_attr::get() const {
 }
 
 /**
- * bcast attributes definition
+ * broadcast attributes definition
  */
 template<broadcast_attr_id attrId,
              class Value/*,
@@ -229,41 +229,6 @@ broadcast_attr::get() const {
 template <operation_attr_id attrId>
 CCL_API const typename detail::ccl_api_type_attr_traits<operation_attr_id, attrId>::return_type&
 broadcast_attr::get() const {
-    return static_cast<const ccl_operation_attr_impl_t*>(get_impl().get())
-        ->get_attribute_value(detail::ccl_api_type_attr_traits<operation_attr_id, attrId>{});
-}
-
-/**
- * bcast attributes definition
- */
-template<broadcastExt_attr_id attrId,
-             class Value/*,
-             typename T*/>
-CCL_API typename detail::ccl_api_type_attr_traits<broadcastExt_attr_id, attrId>::return_type broadcastExt_attr::set(const Value& v)
-{
-    return get_impl()->set_attribute_value(
-        v, detail::ccl_api_type_attr_traits<broadcastExt_attr_id, attrId>{});
-}
-
-template<operation_attr_id attrId,
-             class Value/*,
-             typename T*/>
-CCL_API typename detail::ccl_api_type_attr_traits<operation_attr_id, attrId>::return_type broadcastExt_attr::set(const Value& v)
-{
-    return static_cast<ccl_operation_attr_impl_t*>(get_impl().get())
-        ->set_attribute_value(v, detail::ccl_api_type_attr_traits<operation_attr_id, attrId>{});
-}
-
-template <broadcastExt_attr_id attrId>
-CCL_API const typename detail::ccl_api_type_attr_traits<broadcastExt_attr_id, attrId>::return_type&
-broadcastExt_attr::get() const {
-    return get_impl()->get_attribute_value(
-        detail::ccl_api_type_attr_traits<broadcastExt_attr_id, attrId>{});
-}
-
-template <operation_attr_id attrId>
-CCL_API const typename detail::ccl_api_type_attr_traits<operation_attr_id, attrId>::return_type&
-broadcastExt_attr::get() const {
     return static_cast<const ccl_operation_attr_impl_t*>(get_impl().get())
         ->get_attribute_value(detail::ccl_api_type_attr_traits<operation_attr_id, attrId>{});
 }

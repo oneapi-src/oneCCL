@@ -268,67 +268,10 @@ void alloc_tmp_bufs(ccl_sched* sched,
         block_count += base_count % even_comm->size();
     }
 
-    //TODO: handle when pipe_chunk_count is added for other collectives
-    //TODO: refactor it to only go thgough this path when necessary
-    if (global_data::env().ze_device_mem_enable &&
-        ccl::global_data::env().allreduce_pipe_chunk_count <= 0 &&
-        ccl::global_data::env().reduce_pipe_chunk_count <= 0 &&
-        ccl::global_data::env().reduce_scatter_pipe_chunk_count <= 0 &&
-        ccl::global_data::env().allgatherv_pipe_chunk_count <= 0 &&
-        ccl::is_queue_in_order(sched->coll_param.stream)) {
-        tmp_bufs.resize(even_comm->size());
-        tmp_buf_idx_start = in_buffers.size();
-        in_buffers.reserve(tmp_buf_idx_start + tmp_bufs.size());
-
-        size_t sub_buffer_size_in_bytes = block_count * dtype.size();
-
-        size_t alignment_size = 128;
-        size_t sub_buffer_aligned_size =
-            alignment_size * ((sub_buffer_size_in_bytes + alignment_size - 1) / alignment_size);
-
-        size_t precalculated_size_in_bytes = even_comm->size() * sub_buffer_aligned_size;
-        size_t total_required_size_in_bytes = even_comm->size() * sub_buffer_aligned_size;
-
-        if (global_data::env().ze_device_mem_alloc_size != 0 &&
-            static_cast<long>(total_required_size_in_bytes) <=
-                global_data::env().ze_device_mem_alloc_size) {
-            LOG_DEBUG("precalculated_size: ",
-                      global_data::env().ze_device_mem_alloc_size,
-                      "(bytes), total_required_size: ",
-                      total_required_size_in_bytes,
-                      "(bytes) can be fullfilled");
-            precalculated_size_in_bytes = global_data::env().ze_device_mem_alloc_size;
-        }
-        else if (global_data::env().ze_device_mem_alloc_size != 0) {
-            LOG_WARN("precalculated_size: ",
-                     global_data::env().ze_device_mem_alloc_size,
-                     "(bytes), total_required_size: ",
-                     total_required_size_in_bytes,
-                     "(bytes) can not be fullfilled");
-        }
-
-        void* global_ptr = nullptr;
-        ccl::global_data::get().ze_data->dev_memory_manager->get_global_ptr(
-            sched->coll_param.stream->get_ze_context(),
-            sched->coll_param.stream->get_ze_device(),
-            ze::default_device_mem_alloc_desc,
-            precalculated_size_in_bytes,
-            0,
-            &global_ptr);
-        CCL_THROW_IF_NOT(global_ptr, "main ptr for temp buffers is invalid");
-
-        for (int idx = 0; idx < even_comm->size(); idx++) {
-            void* sub_buffer_ptr = (char*)global_ptr + (idx * sub_buffer_aligned_size);
-            tmp_bufs[idx] = ccl_buffer(sub_buffer_ptr, sub_buffer_aligned_size);
-            in_buffers.push_back({ tmp_bufs[idx].get_ptr(), ccl::ze::ipc_mem_type::memory });
-        }
-    }
-    else {
-        for (int idx = 0; idx < even_comm->size(); idx++) {
-            ccl::alloc_param alloc_tmp_param(
-                block_count * dtype.size(), ccl::buffer_type::ze, ccl::buffer_place::device);
-            tmp_bufs[idx] = sched->alloc_buffer(alloc_tmp_param);
-        }
+    for (int idx = 0; idx < even_comm->size(); idx++) {
+        ccl::alloc_param alloc_tmp_param(
+            block_count * dtype.size(), ccl::buffer_type::ze, ccl::buffer_place::device);
+        tmp_bufs[idx] = sched->alloc_buffer(alloc_tmp_param);
     }
     tmp_buf_idx_start = in_buffers.size();
     in_buffers.reserve(tmp_buf_idx_start + tmp_bufs.size());

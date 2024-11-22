@@ -47,8 +47,8 @@ void run_gpu_backend(user_options_t& options) {
         // oneCCL spec defines attr identifiers that may be used to fill operation
         // attribute objects. It means for every pair of op, we have to keep own unique attr
         // because we may have conflicts between 2 different pairs with one common attr.
-        auto attr = create_attr(options.cache, count, to_string(0));
-        auto attr1 = create_attr(options.cache, count, to_string(1));
+        auto attr = create_attr(options.cache, count, std::to_string(0));
+        auto attr1 = create_attr(options.cache, count, std::to_string(1));
 
         for (size_t iter_idx = 0; iter_idx < (options.warmup_iters + options.iters); iter_idx++) {
             // init the buffer
@@ -131,8 +131,8 @@ void run_gpu_backend(user_options_t& options) {
                 ccl_events.emplace_back(std::move(send_event));
             }
 
-            if (options.validate == VALIDATE_ALL_ITERS ||
-                (options.validate == VALIDATE_LAST_ITER &&
+            if (options.check == CHECK_ALL_ITERS ||
+                (options.check == CHECK_LAST_ITER &&
                  iter_idx == (options.warmup_iters + options.iters) - 1)) {
                 ccl::barrier(comms[0]);
                 check_gpu_buffers(q, options, count, iter_idx, buf_recv, ccl_events);
@@ -215,8 +215,8 @@ void run_cpu_backend(user_options_t& options) {
                     .wait();
             }
 
-            if (options.validate == VALIDATE_ALL_ITERS ||
-                (options.validate == VALIDATE_LAST_ITER &&
+            if (options.check == CHECK_ALL_ITERS ||
+                (options.check == CHECK_LAST_ITER &&
                  iter_idx == (options.warmup_iters + options.iters) - 1)) {
                 ccl::barrier(comms[0]);
                 check_cpu_buffers(count, iter_idx, buf_recv);

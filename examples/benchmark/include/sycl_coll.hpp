@@ -24,10 +24,7 @@
 #include "sycl_base.hpp" /* from examples/include */
 
 #ifdef CCL_ENABLE_SYCL
-#include <CL/sycl.hpp>
-
-using namespace sycl;
-using namespace sycl::access;
+#include <sycl/sycl.hpp>
 
 /* sycl-specific base implementation */
 template <class Dtype, class strategy>
@@ -56,9 +53,9 @@ struct sycl_base_coll : base_coll, private strategy {
                 sycl::usm::alloc usm_alloc_type;
                 auto bench_alloc_type = base_coll::get_sycl_usm_type();
                 if (bench_alloc_type == SYCL_USM_SHARED)
-                    usm_alloc_type = usm::alloc::shared;
+                    usm_alloc_type = sycl::usm::alloc::shared;
                 else if (bench_alloc_type == SYCL_USM_DEVICE)
-                    usm_alloc_type = usm::alloc::device;
+                    usm_alloc_type = sycl::usm::alloc::device;
                 else
                     ASSERT(0, "unexpected bench_alloc_type %d", bench_alloc_type);
 
@@ -98,9 +95,9 @@ struct sycl_base_coll : base_coll, private strategy {
             }
             else {
                 for (size_t idx = 0; idx < base_coll::get_buf_count(); idx++) {
-                    send_bufs[idx][rank_idx] = new cl::sycl::buffer<Dtype, 1>(
+                    send_bufs[idx][rank_idx] = new sycl::buffer<Dtype, 1>(
                         base_coll::get_max_elem_count() * send_multiplier);
-                    recv_bufs[idx][rank_idx] = new cl::sycl::buffer<Dtype, 1>(
+                    recv_bufs[idx][rank_idx] = new sycl::buffer<Dtype, 1>(
                         base_coll::get_max_elem_count() * recv_multiplier);
                 }
             }
@@ -194,21 +191,21 @@ struct sycl_base_coll : base_coll, private strategy {
             }
             else {
                 stream.get_native()
-                    .submit([&](handler& h) {
+                    .submit([&](sycl::handler& h) {
                         auto send_buf =
                             (static_cast<sycl_buffer_t<Dtype>*>(send_bufs[b_idx][rank_idx]));
                         auto send_buf_acc =
-                            send_buf->template get_access<mode::write>(h, send_count);
+                            send_buf->template get_access<sycl::access::mode::write>(h, send_count);
                         h.fill(send_buf_acc, static_cast<Dtype>(comm_rank));
                     })
                     .wait();
 
                 stream.get_native()
-                    .submit([&](handler& h) {
+                    .submit([&](sycl::handler& h) {
                         auto recv_buf =
                             (static_cast<sycl_buffer_t<Dtype>*>(recv_bufs[b_idx][rank_idx]));
                         auto recv_buf_acc =
-                            recv_buf->template get_access<mode::write>(h, recv_count);
+                            recv_buf->template get_access<sycl::access::mode::write>(h, recv_count);
                         h.fill(recv_buf_acc, static_cast<Dtype>(-1));
                     })
                     .wait();

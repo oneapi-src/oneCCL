@@ -138,6 +138,7 @@ public:
 
         this->initialized = true;
 
+        global_stream = stream;
         this->comm = comm_in;
         even_comm = comm_in->get_even_comm().get();
     }
@@ -147,24 +148,34 @@ public:
                          void *out_buffer,
                          ccl::datatype dtype,
                          size_t size,
+                         const ccl::vector_class<ccl::event> &deps,
                          bool &done) {
         sycl::event e;
         assert(this->initialized == true);
 
-        // check local alignment
-        bool is_aligned = (size_t)in_buffer % 4 == 0 && (size_t)out_buffer % 4 == 0;
-
         done = true;
+        // check local alignment
+        bool is_aligned =
+            sizeof(data_type) >= 4 || ((size_t)in_buffer % 4 == 0 && (size_t)out_buffer % 4 == 0);
+
         //if (size * sizeof(data_type) <= 4096) {
-        if (size * sizeof(data_type) <= 65536) {
-            e = allreduce_scalar<4>(queue, in_buffer, out_buffer, size, done);
+        if (size * sizeof(data_type) <= 65536 && is_aligned) {
+            if (size == 1) {
+                e = allreduce_scalar<1>(queue, in_buffer, out_buffer, size, deps, done);
+            }
+            else if (size == 2) {
+                e = allreduce_scalar<2>(queue, in_buffer, out_buffer, size, deps, done);
+            }
+            else {
+                e = allreduce_scalar<4>(queue, in_buffer, out_buffer, size, deps, done);
+            }
         }
         else {
             if (is_aligned) {
-                e = allreduce_esimd<4>(queue, in_buffer, out_buffer, size, done);
+                e = allreduce_esimd<4>(queue, in_buffer, out_buffer, size, deps, done);
             }
             else {
-                e = allreduce_esimd<2>(queue, in_buffer, out_buffer, size, done);
+                e = allreduce_esimd<2>(queue, in_buffer, out_buffer, size, deps, done);
             }
         }
         return ccl::event::create_from_native(e);
@@ -175,6 +186,7 @@ public:
                                 const void *in_buffer,
                                 void *out_buffer,
                                 size_t size,
+                                const ccl::vector_class<ccl::event> &deps,
                                 bool &done) {
         using namespace __ESIMD_NS;
         using namespace __ESIMD_ENS;
@@ -217,7 +229,10 @@ public:
         allreduce_small_buffer_index++;
         allreduce_small_buffer_index %= TRIPLE_BUFFER;
 
+        auto sycl_events = get_sycl_events(deps);
+
         e = queue.submit([&](sycl::handler &cgh) {
+            cgh.depends_on(sycl_events);
             cgh.parallel_for<class Allreduce_small_kernel<data_type, align>>(
                 sycl::nd_range<1>({ total_threads_dispatched }, wg_size), [=](sycl::nd_item<1> idx2) SYCL_ESIMD_KERNEL{
                 uint32_t idx = idx2.get_global_id();
@@ -878,7 +893,6 @@ public:
 
                 });
         });
-        //e.wait();
 
         return e;
     }
@@ -889,6 +903,7 @@ private:
                                  const void *in_buffer,
                                  void *out_buffer,
                                  size_t size,
+                                 const ccl::vector_class<ccl::event> &deps,
                                  bool &done) {
         sycl::event e;
 
@@ -908,7 +923,7 @@ private:
             size_per_buffer_kernel / (sizeof(int) / sizeof(data_type));
 
         uint32_t max_wg_size __attribute__((unused)) =
-            queue.get_device().get_info<cl::sycl::info::device::max_work_group_size>(); // 1024
+            queue.get_device().get_info<sycl::info::device::max_work_group_size>(); // 1024
         const uint32_t wg_size = 16;
         assert(wg_size <= max_wg_size);
 
@@ -932,32 +947,33 @@ private:
             return e;
         }
 
+        auto sycl_events = get_sycl_events(deps);
+
+#ifdef CCL_DEBUG_NAN
+        // check for NAN in inputabuffer
+        sycl_check_nan<data_type>(
+            queue, temp_rank, (data_type *)in_buffer, size, "allreduce_small", sycl_events);
+#endif
+
         int buffer_index_kernel = allreduce_small_buffer_index;
         allreduce_small_buffer_index++;
         allreduce_small_buffer_index %= TRIPLE_BUFFER;
 
         // pure scalar kernel
         e = queue.submit([&](sycl::handler &cgh) {
+            cgh.depends_on(sycl_events);
                 cgh.parallel_for<class Allreduce_small_kernel_scalar<data_type, kernel_inner_loop_scalar>>(
                     sycl::nd_range<1>( total_threads_dispatched, wg_size), [=](sycl::nd_item<1> idx2) [[intel::reqd_sub_group_size(wg_size)]] {
                     uint32_t idx = idx2.get_global_id();
                     uint32_t offset __attribute__((unused)) = idx * kernel_inner_loop_scalar;
 
-                    //to do:
-                    //O3 compiler optimization: not much difference after the change.
-                    //tune the fence: good perf improvements
-                    //tune the cacheability for each IO message: no noticeable improvement
-                    //tune the thread size: not much improvements
-                    //tune the polling freq
-
                     if (idx < total_threads_needed) {
                         //do copy from input buffer to temp buffer.
                         data_type *local_temp_ptr = (data_type *)temp_buffer[temp_rank];
-                        local_temp_ptr +=
-                            (buffer_index_kernel *
-                             size_per_buffer_kernel); //point to the correct buffer inside the triple buffer
+                        local_temp_ptr += (buffer_index_kernel * size_per_buffer_kernel);
+                        data_type *inbuf = (data_type *)in_buffer + offset;
                         gpu_kernel_copy((char *)(local_temp_ptr + offset),
-                                        (const char *)((data_type *)in_buffer + offset),
+                                        (const char *)inbuf,
                                         kernel_inner_loop_scalar * sizeof(data_type));
                         //since each threads are copying small chunks of data to temp buffer, all the threads needs to sync globally using atomics within this rank
                     }
@@ -989,8 +1005,7 @@ private:
                     //once the local level sync is done, atomically write its counter to other remote gpus' atomic counter
                     if (total_threads_dispatched >= temp_world) {
                         if (idx < temp_world) {
-                            int *sync_ptr = (int *)temp_sync_buffer
-                                [idx]; //the buffer might be located in remote GPU. But during the atomics, local L2 should be utilized.
+                            int *sync_ptr = (int *)temp_sync_buffer[idx];
                             sync_ptr += (buffer_index_kernel * size_per_buffer_for_sync_kernel);
                             sycl::atomic_ref<int,
                                              sycl::memory_order::relaxed,
@@ -1000,14 +1015,10 @@ private:
                             atomic_p++;
                         }
                     }
-                    else if (idx ==
-                             0) //one thread in the local gpu notifies the remote gpu of its status.
-                    {
+                    else if (idx == 0) {
+                        //one thread in the local gpu notifies the remote gpu of its status.
                         for (uint32_t i = 0; i < temp_world; i++) {
-                            int *sync_ptr;
-
-                            sync_ptr = (int *)temp_sync_buffer
-                                [i]; //the buffer might be located in remote GPU. But during the atomics, local L2 should be utilized.
+                            int *sync_ptr = (int *)temp_sync_buffer[i];
                             sync_ptr += (buffer_index_kernel * size_per_buffer_for_sync_kernel);
                             sycl::atomic_ref<int,
                                              sycl::memory_order::relaxed,
@@ -1039,80 +1050,35 @@ private:
                     }
 
                     //reset the sync counter for the next allreduce session. Each rank reset's its own buffer
-                    if (idx ==
-                        0) //one thread in the local gpu notifies the remote gpu of its status.
-                    {
+                    if (idx == 0) {
                         int buffer_index_to_reset =
                             (buffer_index_kernel + TRIPLE_BUFFER - 1) % TRIPLE_BUFFER;
-                        local_sync_ptr = (int *)temp_sync_buffer
-                            [temp_rank]; //the buffer might be located in remote GPU. But during the atomics, local L2 should be utilized.
+                        local_sync_ptr = (int *)temp_sync_buffer[temp_rank];
                         local_sync_ptr += (buffer_index_to_reset * size_per_buffer_for_sync_kernel);
                         local_sync_ptr[0] = local_sync_ptr[1] = 0;
                     }
 
                     //at this point, all the threads are done copying data from input buffer to temp buffer, do All reduce
+                    auto reduce_kernel_lambda = [&]<int N>() {
+                        reduce_kernel<data_type, N, kernel_inner_loop_scalar>(
+                            (void **)temp_buffer,
+                            buffer_index_kernel * size_per_buffer_kernel,
+                            offset,
+                            (data_type *)out_buffer + offset);
+                    };
                     switch (temp_world) {
-                        case 2:
-                            reduce_kernel<data_type, 2, kernel_inner_loop_scalar>(
-                                (void **)temp_buffer,
-                                buffer_index_kernel * size_per_buffer_kernel,
-                                offset,
-                                (data_type *)out_buffer + offset);
-                            break;
-                        case 4:
-                            reduce_kernel<data_type, 4, kernel_inner_loop_scalar>(
-                                (void **)temp_buffer,
-                                buffer_index_kernel * size_per_buffer_kernel,
-                                offset,
-                                (data_type *)out_buffer + offset);
-                            break;
-                        case 6:
-                            reduce_kernel<data_type, 6, kernel_inner_loop_scalar>(
-                                (void **)temp_buffer,
-                                buffer_index_kernel * size_per_buffer_kernel,
-                                offset,
-                                (data_type *)out_buffer + offset);
-                            break;
-                        case 8:
-                            reduce_kernel<data_type, 8, kernel_inner_loop_scalar>(
-                                (void **)temp_buffer,
-                                buffer_index_kernel * size_per_buffer_kernel,
-                                offset,
-                                (data_type *)out_buffer + offset);
-                            break;
-                        case 10:
-                            reduce_kernel<data_type, 10, kernel_inner_loop_scalar>(
-                                (void **)temp_buffer,
-                                buffer_index_kernel * size_per_buffer_kernel,
-                                offset,
-                                (data_type *)out_buffer + offset);
-                            break;
-                        case 12:
-                            reduce_kernel<data_type, 12, kernel_inner_loop_scalar>(
-                                (void **)temp_buffer,
-                                buffer_index_kernel * size_per_buffer_kernel,
-                                offset,
-                                (data_type *)out_buffer + offset);
-                            break;
-                        case 14:
-                            reduce_kernel<data_type, 14, kernel_inner_loop_scalar>(
-                                (void **)temp_buffer,
-                                buffer_index_kernel * size_per_buffer_kernel,
-                                offset,
-                                (data_type *)out_buffer + offset);
-                            break;
-                        case 16:
-                            reduce_kernel<data_type, 16, kernel_inner_loop_scalar>(
-                                (void **)temp_buffer,
-                                buffer_index_kernel * size_per_buffer_kernel,
-                                offset,
-                                (data_type *)out_buffer + offset);
-                            break;
+                        case 2: reduce_kernel_lambda.template operator()<2>(); break;
+                        case 4: reduce_kernel_lambda.template operator()<4>(); break;
+                        case 6: reduce_kernel_lambda.template operator()<6>(); break;
+                        case 8: reduce_kernel_lambda.template operator()<8>(); break;
+                        case 10: reduce_kernel_lambda.template operator()<10>(); break;
+                        case 12: reduce_kernel_lambda.template operator()<12>(); break;
+                        case 14: reduce_kernel_lambda.template operator()<14>(); break;
+                        case 16: reduce_kernel_lambda.template operator()<16>(); break;
                         default: assert(0);
                     }
                     });
         });
-        //e.wait();
         return e;
     }
 

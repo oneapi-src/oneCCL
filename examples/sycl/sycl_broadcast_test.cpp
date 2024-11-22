@@ -60,18 +60,18 @@ int main(int argc, char *argv[]) {
     auto stream = ccl::create_stream(q);
 
     /* create buffers */
-    buffer<int> buf(count);
+    sycl::buffer<int> buf(count);
 
     if (rank == root_rank) {
         /* open buf and initialize it on the host side */
-        host_accessor send_buf_acc(buf, write_only);
+        sycl::host_accessor send_buf_acc(buf, sycl::write_only);
         for (size_t i = 0; i < count; i++) {
             send_buf_acc[i] = 10;
         }
 
         /* open buf and modify it on the device side */
         q.submit([&](auto &h) {
-            accessor send_buf_acc(buf, h, write_only);
+            sycl::accessor send_buf_acc(buf, h, sycl::write_only);
             h.parallel_for(count, [=](auto id) {
                 send_buf_acc[id] += 1;
             });
@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
 
     /* open buf and check its correctness on the device side */
     q.submit([&](auto &h) {
-        accessor recv_buf_acc(buf, h, write_only);
+        sycl::accessor recv_buf_acc(buf, h, sycl::write_only);
         h.parallel_for(count, [=](auto id) {
             if (recv_buf_acc[id] != 11) {
                 recv_buf_acc[id] = -1;
@@ -98,16 +98,16 @@ int main(int argc, char *argv[]) {
         return -1;
 
     /* print out the result of the test on the host side */
-    host_accessor recv_buf_acc(buf, read_only);
+    sycl::host_accessor recv_buf_acc(buf, sycl::read_only);
     size_t i;
     for (i = 0; i < count; i++) {
         if (recv_buf_acc[i] == -1) {
-            cout << "FAILED\n";
+            std::cout << "FAILED\n";
             break;
         }
     }
     if (i == count) {
-        cout << "PASSED\n";
+        std::cout << "PASSED\n";
     }
 
     return 0;

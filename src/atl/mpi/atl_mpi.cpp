@@ -421,12 +421,12 @@ atl_status_t atl_mpi::bcast(atl_ep_t& ep, void* buf, size_t len, int root, atl_r
     return ATL_MPI_RET(ret);
 }
 
-atl_status_t atl_mpi::bcastExt(atl_ep_t& ep,
-                               void* send_buf,
-                               void* recv_buf,
-                               size_t len,
-                               int root,
-                               atl_req_t& req) {
+atl_status_t atl_mpi::broadcast(atl_ep_t& ep,
+                                void* send_buf,
+                                void* recv_buf,
+                                size_t len,
+                                int root,
+                                atl_req_t& req) {
     int ret = MPI_SUCCESS;
 
     atl_mpi_ep_t* mpi_ep = ((atl_mpi_ep_t*)ep.internal);
@@ -794,30 +794,40 @@ atl_status_t atl_mpi::finalize(int global_idx) {
     return ATL_MPI_RET(ret);
 }
 
-// find 'mpi_ranks' based on 'comm' and a known 'root_rank' within the 'comm'
-// into a new communicator whose new 'rank' and new 'size' are given.
+// find 'mpi_ranks' based on 'parent_comm' and a known 'parent_root' within the
+// 'parent_comm' into a new communicator whose new 'rank' and new 'size' are given.
 // output mpi_ranks has 'size' number of elements where mpi_ranks[i]
-// tells the 'comm' based rank of i th rank in new_communicator
+// tells the 'parent_comm' based rank of i th rank in new_communicator
 void atl_mpi::get_mpi_ranks(const int rank,
                             const int size,
-                            const int root_rank,
-                            MPI_Comm comm,
+                            const int parent_root,
+                            MPI_Comm parent_comm,
                             std::vector<int>& mpi_ranks) {
-    int my_mpi_rank, my_mpi_size;
-    MPI_Comm_rank(comm, &my_mpi_rank);
-    MPI_Comm_size(comm, &my_mpi_size);
+    int parent_rank, parent_size;
+    MPI_Comm_rank(parent_comm, &parent_rank);
+    MPI_Comm_size(parent_comm, &parent_size);
 
-    if (size == my_mpi_size) {
+    if (ccl::global_data::env().kvs_mpi_allgather && size == parent_size) {
+        LOG_DEBUG("using mpi_allgather for collecting ranks in comm_create");
+        if (ccl::global_data::env().kvs_use_mpi_ranks) {
+            CCL_THROW_IF_NOT(parent_rank == rank,
+                             "mpi rank should be same as rank with use_mpi_ranks mode");
+            for (int i = 0; i < size; i++) {
+                mpi_ranks[i] = i;
+            }
+            return;
+        }
         int* recv_ranks = new int[size];
-        MPI_Allgather(&rank, 1, MPI_INT, recv_ranks, 1, MPI_INT, comm);
+        MPI_Allgather(&rank, 1, MPI_INT, recv_ranks, 1, MPI_INT, parent_comm);
         for (int i = 0; i < size; i++) {
             mpi_ranks[recv_ranks[i]] = i;
         }
         delete[] recv_ranks;
     }
     else {
+        LOG_DEBUG("using custom_allgather for collecting ranks in comm_create");
         // simple allgather where root collects and distributes data
-        if (my_mpi_rank == root_rank) {
+        if (parent_rank == parent_root) {
             MPI_Request* reqs = new MPI_Request[size - 1];
             MPI_Status* stats = new MPI_Status[size - 1];
             int* recv_ranks = new int[size - 1];
@@ -828,13 +838,13 @@ void atl_mpi::get_mpi_ranks(const int rank,
                           MPI_INT,
                           MPI_ANY_SOURCE,
                           KVS_MPI_TAG_TO_ROOT,
-                          comm,
+                          parent_comm,
                           reqs + i);
             }
             MPI_Waitall(size - 1, reqs, stats);
 
             // put received ranks to correct position in mpi_ranks
-            mpi_ranks[rank] = my_mpi_rank;
+            mpi_ranks[rank] = parent_rank;
             for (int i = 0; i < size - 1; i++) {
                 int src_mpi_rank = stats[i].MPI_SOURCE;
                 mpi_ranks[recv_ranks[i]] = src_mpi_rank;
@@ -842,13 +852,13 @@ void atl_mpi::get_mpi_ranks(const int rank,
 
             // root sends collected data back to everyone
             for (int i = 0, req_id = 0; i < size; i++) {
-                if (mpi_ranks[i] != root_rank) {
+                if (mpi_ranks[i] != parent_root) {
                     MPI_Isend(mpi_ranks.data(),
                               size,
                               MPI_INT,
                               mpi_ranks[i],
                               KVS_MPI_TAG_FROM_ROOT,
-                              comm,
+                              parent_comm,
                               reqs + (req_id++));
                 }
             }
@@ -860,12 +870,17 @@ void atl_mpi::get_mpi_ranks(const int rank,
         else {
             MPI_Request req = 0;
             // send rank to root
-            MPI_Isend(&rank, 1, MPI_INT, root_rank, KVS_MPI_TAG_TO_ROOT, comm, &req);
+            MPI_Isend(&rank, 1, MPI_INT, parent_root, KVS_MPI_TAG_TO_ROOT, parent_comm, &req);
             MPI_Wait(&req, MPI_STATUS_IGNORE);
 
             // get global ranks of everyone in the sub_communicator
-            MPI_Irecv(
-                mpi_ranks.data(), size, MPI_INT, root_rank, KVS_MPI_TAG_FROM_ROOT, comm, &req);
+            MPI_Irecv(mpi_ranks.data(),
+                      size,
+                      MPI_INT,
+                      parent_root,
+                      KVS_MPI_TAG_FROM_ROOT,
+                      parent_comm,
+                      &req);
             MPI_Wait(&req, MPI_STATUS_IGNORE);
         }
     }
@@ -896,6 +911,7 @@ atl_status_t atl_mpi::comm_create(int comm_size,
         get_mpi_ranks(my_pmi_rank, comm_size, std::atoi(root_rank), MPI_COMM_WORLD, mpi_ranks);
     }
     else {
+        LOG_DEBUG("using kvs_allgather for collecting ranks in comm_create");
         ATL_CHECK_STATUS(pmi->pmrt_kvs_put((char*)ATL_MPI_RANK_INFO_PM_KEY,
                                            my_pmi_rank,
                                            my_mpi_rank_str.c_str(),
@@ -911,6 +927,7 @@ atl_status_t atl_mpi::comm_create(int comm_size,
             mpi_ranks[i] = std::atoi(returned_mpi_rank);
         }
     }
+    LOG_DEBUG("allgather finished collecting ranks in comm_create");
 
     MPI_Group_incl(world_group, comm_size, mpi_ranks.data(), &new_group);
     int ret = MPI_Comm_create_group(MPI_COMM_WORLD, new_group, 0, new_comm);

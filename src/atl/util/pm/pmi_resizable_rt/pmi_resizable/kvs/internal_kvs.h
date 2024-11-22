@@ -101,6 +101,14 @@ public:
         return root_rank;
     }
 
+    int get_local_id() const {
+        return local_id;
+    }
+
+    void set_local_id(int val) {
+        local_id = val;
+    }
+
 private:
     kvs_status_t init_main_server_by_string(const char* main_addr);
     kvs_status_t init_main_server_by_env();
@@ -111,6 +119,7 @@ private:
     pthread_t kvs_thread = 0;
 
     int root_rank = 0;
+    int local_id = 0;
 
     char main_host_ip[CCL_IP_LEN];
     std::list<std::string> local_host_ips;
@@ -223,3 +232,5 @@ public:
 private:
     struct sockaddr_in6 addr;
 };
+
+bool can_use_internal_kvs();

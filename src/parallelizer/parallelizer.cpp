@@ -38,6 +38,12 @@ ccl::status ccl_parallelizer::process(ccl_sched* sched, bool update_sched_id) {
         process_pre_post_copies(sched);
     }
     process_output_event(sched);
+
+    if ((sched->coll_param.ctype == ccl_coll_allgather ||
+         sched->coll_param.ctype == ccl_coll_allgatherv) &&
+        !sched->is_deps_barrier()) {
+        return ccl::status::success;
+    }
 #endif // CCL_ENABLE_SYCL
 
     /* should be the last call in the sequence of process_* calls
@@ -152,17 +158,17 @@ ccl::status ccl_parallelizer::process_output_event(ccl_sched* sched) {
         !ccl::is_queue_in_order(sched->coll_param.stream)) {
         return ccl::status::success;
     }
+    else if (sched->coll_param.comm->get_env()->get_enable_topo_algo()) {
+        auto& part_scheds = sched->get_subscheds();
+        size_t sched_count = part_scheds.size();
 
-    auto& part_scheds = sched->get_subscheds();
-    size_t sched_count = part_scheds.size();
+        for (size_t idx = 0; idx < sched_count; idx++) {
+            part_scheds[idx]->set_add_mode(ccl_sched_add_back);
+        }
+        sched->sync_subscheds();
 
-    for (size_t idx = 0; idx < sched_count; idx++) {
-        part_scheds[idx]->set_add_mode(ccl_sched_add_back);
+        entry_factory::create<ze_event_signal_entry>(part_scheds[0].get(), sched);
     }
-    sched->sync_subscheds();
-
-    entry_factory::create<ze_event_signal_entry>(part_scheds[0].get(), sched);
-
     return ccl::status::success;
 }
 #endif // CCL_ENABLE_SYCL
@@ -215,7 +221,7 @@ ccl::status ccl_parallelizer::process_base(ccl_sched* sched, bool update_sched_i
     switch (coll_type) {
         case ccl_coll_barrier: part_count = max_data_partition_count; break;
         case ccl_coll_bcast:
-        case ccl_coll_bcastExt:
+        case ccl_coll_broadcast:
             if (ccl::global_data::env().bcast_part_count != CCL_ENV_SIZET_NOT_SPECIFIED) {
                 part_count = ccl::global_data::env().bcast_part_count;
                 break;
@@ -363,7 +369,7 @@ ccl::status ccl_parallelizer::process_base(ccl_sched* sched, bool update_sched_i
     switch (coll_type) {
         case ccl_coll_barrier: break;
         case ccl_coll_bcast:
-        case ccl_coll_bcastExt:
+        case ccl_coll_broadcast:
         case ccl_coll_reduce:
         case ccl_coll_allreduce:
         case ccl_coll_reduce_scatter:
@@ -399,15 +405,13 @@ ccl::status ccl_parallelizer::process_base(ccl_sched* sched, bool update_sched_i
             if (coll_type == ccl_coll_allgather) {
                 coll_param.recv_counts.resize(comm_size, coll_param.get_send_count());
             }
-            if (algo.allgather == ccl_coll_allgather_direct ||
-                algo.allgatherv == ccl_coll_allgatherv_direct ||
-                algo.allgather == ccl_coll_allgather_naive ||
-                algo.allgatherv == ccl_coll_allgatherv_naive ||
-                algo.allgather == ccl_coll_allgather_ring ||
-                algo.allgatherv == ccl_coll_allgatherv_ring ||
-                ccl_is_device_side_algo(selector_param)) {
-            }
-            else {
+            if (!(algo.allgather == ccl_coll_allgather_direct ||
+                  algo.allgatherv == ccl_coll_allgatherv_direct ||
+                  algo.allgather == ccl_coll_allgather_naive ||
+                  algo.allgatherv == ccl_coll_allgatherv_naive ||
+                  algo.allgather == ccl_coll_allgather_ring ||
+                  algo.allgatherv == ccl_coll_allgatherv_ring ||
+                  ccl_is_device_side_algo(selector_param))) {
                 for (idx = 1; idx < comm_size; idx++) {
                     counts[idx] = coll_param.get_recv_count(idx);
                     offsets[idx] = offsets[idx - 1] + counts[idx - 1] * dtype_size;
@@ -483,10 +487,10 @@ ccl::status ccl_parallelizer::process_base(ccl_sched* sched, bool update_sched_i
                 ccl::add_coll_entry(part_scheds[idx].get(), param);
             }
             break;
-        case ccl_coll_bcastExt:
+        case ccl_coll_broadcast:
             for (idx = 0; idx < part_count; idx++) {
                 ccl_coll_param param{ false };
-                param.ctype = ccl_coll_bcastExt;
+                param.ctype = ccl_coll_broadcast;
                 param.send_buf = ccl_buffer(coll_param.get_send_buf_ptr(),
                                             coll_param.get_send_count() * dtype_size,
                                             offsets[idx],

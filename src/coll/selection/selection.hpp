@@ -33,3 +33,23 @@ bool ccl_can_use_datatype(ccl_coll_algo algo, const ccl_selector_param& param);
 void set_offload_pt2pt_mpi_env();
 #endif // CCL_ENABLE_SYCL && CCL_ENABLE_ZE
 bool use_pt2pt_offload_algo();
+
+namespace checkers {
+bool is_unknown_device_family(const ccl_selector_param& param);
+bool is_family1_card(const ccl_selector_param& param);
+bool is_coll_supported(std::initializer_list<ccl_coll_type> colls, ccl_coll_type value);
+bool is_sycl_buf(const ccl_selector_param& param);
+bool is_device_buf(const ccl_selector_param& param);
+bool is_l0_backend(const ccl_selector_param& param);
+bool is_gpu_stream(const ccl_selector_param& param);
+bool is_single_node(const ccl_selector_param& param);
+bool is_single_card(const ccl_selector_param& param);
+} // namespace checkers
+
+#define RETURN_FALSE_IF(cond, ...) \
+    do { \
+        if (cond) { \
+            LOG_DEBUG("selection checker: ", ##__VA_ARGS__); \
+            return false; \
+        } \
+    } while (0)

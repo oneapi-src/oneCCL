@@ -90,10 +90,10 @@ int main() {
     }
 
     if (is_bf16_enabled() == 0) {
-        cout << "WARNING: BF16 is disabled, skip test\n";
+        std::cout << "WARNING: BF16 is disabled, skip test\n";
     }
     else {
-        cout << "BF16 is enabled\n";
+        std::cout << "BF16 is enabled\n";
         convert_fp32_to_bf16_arrays(send_buf, send_buf_bf16, count);
         ccl::allreduce(
             send_buf_bf16, recv_buf_bf16, count, ccl::datatype::bfloat16, ccl::reduction::sum, comm)
@@ -102,7 +102,7 @@ int main() {
         CHECK_ERROR(send_buf, recv_buf, comm);
 
         if (rank == 0)
-            cout << "PASSED\n";
+            std::cout << "PASSED\n";
     }
 
     return 0;

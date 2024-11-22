@@ -63,12 +63,12 @@ struct cpu_bcast_coll : cpu_base_coll<Dtype, bcast_strategy_impl> {
 };
 
 template <class Dtype>
-struct cpu_bcastExt_coll : cpu_base_coll<Dtype, bcastExt_strategy_impl> {
-    using coll_base = cpu_base_coll<Dtype, bcastExt_strategy_impl>;
+struct cpu_broadcast_coll : cpu_base_coll<Dtype, broadcast_strategy_impl> {
+    using coll_base = cpu_base_coll<Dtype, broadcast_strategy_impl>;
     using coll_base::send_bufs;
     using coll_base::recv_bufs;
 
-    cpu_bcastExt_coll(bench_init_attr init_attr) : coll_base(init_attr) {}
+    cpu_broadcast_coll(bench_init_attr init_attr) : coll_base(init_attr) {}
 
     virtual void prepare_internal(size_t elem_count,
                                   ccl::communicator& comm,

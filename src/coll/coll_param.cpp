@@ -63,10 +63,6 @@ ccl_coll_attr::ccl_coll_attr(const ccl::broadcast_attr& attr) {
     COPY_COMMON_OP_ATTRS(attr, this);
 }
 
-ccl_coll_attr::ccl_coll_attr(const ccl::broadcastExt_attr& attr) {
-    COPY_COMMON_OP_ATTRS(attr, this);
-}
-
 ccl_coll_attr::ccl_coll_attr(const ccl::pt2pt_attr& attr) {
     COPY_COMMON_OP_ATTRS(attr, this);
     group_id = attr.get<ccl::pt2pt_attr_id::group_id>();
@@ -181,7 +177,7 @@ std::string ccl_coll_param::to_string() const {
         ss << ", rt: " << ccl_reduction_to_str(reduction);
     }
 
-    if (ctype == ccl_coll_bcast || ctype == ccl_coll_bcastExt || ctype == ccl_coll_reduce) {
+    if (ctype == ccl_coll_bcast || ctype == ccl_coll_broadcast || ctype == ccl_coll_reduce) {
         ss << ", root: " << root;
     }
 
@@ -340,7 +336,7 @@ std::vector<void*> ccl_coll_param::get_all_non_zero_bufs() const {
         case ccl_coll_alltoall:
         case ccl_coll_allgather:
         case ccl_coll_bcast:
-        case ccl_coll_bcastExt:
+        case ccl_coll_broadcast:
         case ccl_coll_reduce:
         case ccl_coll_reduce_scatter:
             if (get_send_count()) {
@@ -443,7 +439,7 @@ void ccl_coll_param::validate() const {
         case ccl_coll_alltoall:
         case ccl_coll_allgather:
         case ccl_coll_bcast:
-        case ccl_coll_bcastExt:
+        case ccl_coll_broadcast:
         case ccl_coll_reduce:
         case ccl_coll_reduce_scatter:
             CCL_THROW_IF_NOT(send_bufs.size() == send_counts.size(),
@@ -491,17 +487,26 @@ void ccl_coll_param::validate() const {
 void ccl_coll_param::copy_deps(const std::vector<ccl::event>& d) {
 #ifdef CCL_ENABLE_SYCL
     deps.clear();
-    for (size_t idx = 0; idx < d.size(); idx++) {
-        try {
-            auto sycl_event = d[idx].get_native();
-            deps.push_back(ccl::create_event(sycl_event));
-        }
-        catch (ccl::exception&) {
-        }
-    }
-#else // CCL_ENABLE_SYCL
-    CCL_THROW_IF_NOT(d.size() == 0, "host deps are not supported yet");
 #endif // CCL_ENABLE_SYCL
+    // (modify this comment for other when new operations are integrated) Group api for send/recv ops
+    // are not expected to use of vector<ccl::event>& deps, that's why we skip.
+    // E.g. one of the issue can be that since deps are const ref, its lifetime is limited,
+    // when user passes it to the group api calls, but the group api can be executed later
+    // deps can be already destroyed.
+    if (!group_impl::is_group_active) {
+#ifdef CCL_ENABLE_SYCL
+        for (size_t idx = 0; idx < d.size(); idx++) {
+            try {
+                auto sycl_event = d[idx].get_native();
+                deps.push_back(ccl::create_event(sycl_event));
+            }
+            catch (ccl::exception&) {
+            }
+        }
+#else // CCL_ENABLE_SYCL
+        CCL_THROW_IF_NOT(d.size() == 0, "host deps are not supported yet");
+#endif // CCL_ENABLE_SYCL
+    }
 }
 
 void ccl_coll_param::set_common_fields(ccl::datatype d,
@@ -677,18 +682,18 @@ ccl_coll_param ccl_coll_param::create_broadcast_param(void* buf,
     return param;
 }
 
-ccl_coll_param ccl_coll_param::create_broadcastExt_param(void* send_buf,
-                                                         void* recv_buf,
-                                                         size_t count,
-                                                         ccl::datatype dtype,
-                                                         int root,
-                                                         const ccl_coll_attr& attr,
-                                                         ccl_comm* comm,
-                                                         const ccl_stream* stream,
-                                                         const std::vector<ccl::event>& deps) {
+ccl_coll_param ccl_coll_param::create_broadcast_param(void* send_buf,
+                                                      void* recv_buf,
+                                                      size_t count,
+                                                      ccl::datatype dtype,
+                                                      int root,
+                                                      const ccl_coll_attr& attr,
+                                                      ccl_comm* comm,
+                                                      const ccl_stream* stream,
+                                                      const std::vector<ccl::event>& deps) {
     ccl_coll_param param{};
 
-    param.ctype = ccl_coll_bcastExt;
+    param.ctype = ccl_coll_broadcast;
     param.send_bufs.push_back(send_buf);
     param.send_counts.push_back(count);
     param.recv_bufs.push_back(recv_buf);

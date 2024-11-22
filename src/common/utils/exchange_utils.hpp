@@ -37,23 +37,30 @@ bool allgatherv(const std::shared_ptr<atl_base_comm>& comm,
                 bool sync = true);
 
 void check(const std::shared_ptr<atl_base_comm>& comm, atl_req_t& req);
+bool check_async(const std::shared_ptr<atl_base_comm>& comm, atl_req_t& req);
 
-void recv(const std::shared_ptr<atl_base_comm>& comm,
-          void* buf,
-          int count,
-          int peer_rank,
-          uint64_t tag,
-          bool sync = true);
+atl_req_t recv(const std::shared_ptr<atl_base_comm>& comm,
+               void* buf,
+               int count,
+               int peer_rank,
+               uint64_t tag,
+               bool sync = true);
 
-void send(const std::shared_ptr<atl_base_comm>& comm,
-          void* buf,
-          int count,
-          int peer_rank,
-          uint64_t tag,
-          bool sync = true);
+atl_req_t send(const std::shared_ptr<atl_base_comm>& comm,
+               void* buf,
+               int count,
+               int peer_rank,
+               uint64_t tag,
+               bool sync = true);
 
-void send_ack_to_peer(const std::shared_ptr<atl_base_comm>& comm, uint64_t tag, int peer_rank);
-void recv_ack_from_peer(const std::shared_ptr<atl_base_comm>& comm, uint64_t tag, int peer_rank);
+atl_req_t send_ack_to_peer(const std::shared_ptr<atl_base_comm>& comm,
+                           uint64_t tag,
+                           int peer_rank,
+                           bool sync = true);
+atl_req_t recv_ack_from_peer(const std::shared_ptr<atl_base_comm>& comm,
+                             uint64_t tag,
+                             int peer_rank,
+                             bool sync = true);
 
 int check_msg_retval(std::string operation_name,
                      ssize_t bytes,

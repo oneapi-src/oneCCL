@@ -83,13 +83,13 @@ int main(int argc, char *argv[]) {
     /* create buffers */
     auto recv_buf = allocator.allocate(count * size, usm_alloc_type);
 
-    buffer<int> expected_buf(count * size);
-    buffer<int> check_buf(count * size);
-    vector<size_t> recv_counts(size, count);
+    sycl::buffer<int> expected_buf(count * size);
+    sycl::buffer<int> check_buf(count * size);
+    std::vector<size_t> recv_counts(size, count);
 
     /* open buffers and modify them on the device side */
     auto e = q.submit([&](auto &h) {
-        accessor expected_buf_acc(expected_buf, h, write_only);
+        sycl::accessor expected_buf_acc(expected_buf, h, sycl::write_only);
         h.parallel_for(count, [=](auto id) {
             recv_buf[rank * count + id] = rank + 1;
             for (int i = 0; i < size; i++) {
@@ -117,8 +117,8 @@ int main(int argc, char *argv[]) {
 
     /* open recv_buf and check its correctness on the device side */
     q.submit([&](auto &h) {
-        accessor expected_buf_acc(expected_buf, h, read_only);
-        accessor check_buf_acc(check_buf, h, write_only);
+        sycl::accessor expected_buf_acc(expected_buf, h, sycl::read_only);
+        sycl::accessor check_buf_acc(check_buf, h, sycl::write_only);
         h.parallel_for(size * count, [=](auto id) {
             if (recv_buf[id] != expected_buf_acc[id]) {
                 check_buf_acc[id] = -1;
@@ -134,16 +134,16 @@ int main(int argc, char *argv[]) {
 
     /* print out the result of the test on the host side */
     {
-        host_accessor check_buf_acc(check_buf, read_only);
+        sycl::host_accessor check_buf_acc(check_buf, sycl::read_only);
         size_t i;
         for (i = 0; i < size * count; i++) {
             if (check_buf_acc[i] == -1) {
-                cout << "FAILED\n";
+                std::cout << "FAILED\n";
                 break;
             }
         }
         if (i == size * count) {
-            cout << "PASSED\n";
+            std::cout << "PASSED\n";
         }
     }
 

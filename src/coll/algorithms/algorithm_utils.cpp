@@ -31,7 +31,7 @@ const char* ccl_coll_type_to_str(ccl_coll_type type) {
         case ccl_coll_alltoallv: return "alltoallv";
         case ccl_coll_barrier: return "barrier";
         case ccl_coll_bcast: return "bcast";
-        case ccl_coll_bcastExt: return "bcastExt";
+        case ccl_coll_broadcast: return "broadcast";
         case ccl_coll_recv: return "recv";
         case ccl_coll_reduce: return "reduce";
         case ccl_coll_reduce_scatter: return "reduce_scatter";
@@ -396,6 +396,10 @@ sched_group_size_vec serialize_chunks(const sched_group_size_vec& chunks,
 
                 bytes_left -= new_serial_chunk_bytes;
                 new_serial_chunks.emplace_back(cur_group, new_serial_chunk_bytes);
+
+                // Create new `sched_group` with the same
+                // `memory_context`, but with ability to create
+                // different allocations across the same buffer.
                 cur_group = std::make_shared<sched_group>(*cur_group);
 
                 LOG_DEBUG("|GROUPS| New serial chunk: ", new_serial_chunk_bytes);
@@ -544,7 +548,7 @@ ccl::status ccl_build_topo_uniform_buff_size_op(
         // Fall back to topo algorithm without pipelining
         auto group = final_chunk_bytes_per_group[0].first;
 
-        sched->set_group(group);
+        sched->set_group(std::move(group));
         fill_op_lambda(sched, send_buf, recv_buf, count, 0, count);
 
         entry_factory::create<ze_execute_cmdlists_on_init_entry>(sched);
@@ -582,8 +586,8 @@ ccl::status ccl_build_topo_uniform_buff_size_op(
                   ", mode: ",
                   to_string(mode));
 
-        auto group_copy = group;
-        group_copy->set_sync_obj(groups_sync_obj);
+        auto moved_group = std::move(group);
+        moved_group->set_sync_obj(groups_sync_obj);
         size_t this_chunk_count = bytes / dtype_size;
         LOG_DEBUG("Count: ", this_chunk_count);
 
@@ -596,14 +600,14 @@ ccl::status ccl_build_topo_uniform_buff_size_op(
                  rbuf,
                  this_chunk_count,
                  sync_obj,
-                 group_copy,
+                 moved_group,
                  offset,
                  combined_recv_count,
                  fill_op_lambda](ccl_sched* s) {
                     s->inherit_ze_managers_from(sched);
                     s->set_init_ze_hook_sync_obj(sync_obj);
                     s->set_ze_commands_bypass_flag(false);
-                    s->set_group(group_copy);
+                    s->set_group(std::move(moved_group));
 
                     fill_op_lambda(s, sbuf, rbuf, this_chunk_count, offset, combined_recv_count);
                 },
@@ -624,7 +628,7 @@ ccl::status ccl_build_topo_uniform_buff_size_op(
         is_parallelizable_chunks &=
             ccl_is_ptr_aligned(reinterpret_cast<uintptr_t>(rbuf.get_ptr()), mem_align);
         if (!is_parallelizable_chunks) {
-            group->disable_parallel_execution();
+            moved_group->disable_parallel_execution();
         }
     }
 
