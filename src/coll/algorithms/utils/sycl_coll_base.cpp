@@ -416,6 +416,10 @@ void coll_init(ccl_comm *comm, ccl_stream *global_stream) {
                 auto remote_ptrs = get_ipc_ptrs<size_t, MAX_NODE_RANKS>(
                     sub_comms[i], i, ipc_ptrs[i], ipc_handle_map, q_worker, q.get_device(), 1);
                 sub_comms[i]->set_barrier_ptrs(remote_ptrs);
+                size_t *graph_state = sycl::malloc_device<size_t>(8, q);
+                q.memset(graph_state, 0, 8 * sizeof(size_t)).wait();
+                // [0..1] allreduce local barrier, [2..3] comm barrier, [4] rank generation
+                sub_comms[i]->set_graph_barrier_ptrs(graph_state, graph_state + 4);
             }
 
             // get ipc pointers for small tmp buffers and add them to node_comm
@@ -468,6 +472,10 @@ void coll_init(ccl_comm *comm, ccl_stream *global_stream) {
                                                                          1,
                                                                          false /* to_cache */);
                 sub_comms[i]->set_barrier_ptrs(remote_ptrs0);
+                size_t *graph_state = sycl::malloc_device<size_t>(8, q);
+                q.memset(graph_state, 0, 8 * sizeof(size_t)).wait();
+                // [0..1] allreduce local barrier, [2..3] comm barrier, [4] rank generation
+                sub_comms[i]->set_graph_barrier_ptrs(graph_state, graph_state + 4);
                 sub_comms[i]->set_flag_ptrs(remote_ptrs2, counter_flag + i);
             }
             // get ipc pointers for small tmp buffers and add them to node_comm
@@ -662,6 +670,10 @@ void coll_initExt(ccl_comm *comm,
                 ccl::global_data::get().shared_data->get_ipc_ptrsExt<size_t, MAX_NODE_RANKS>(
                     sub_comms[i], hash_table, i, i, ipc_ptrs[i], 0, 0, even_comm, pair_comm);
             sub_comms[i]->set_barrier_ptrs(remote_ptrs);
+            size_t *graph_state = sycl::malloc_device<size_t>(8, q);
+            q.memset(graph_state, 0, 8 * sizeof(size_t)).wait();
+            // [0..1] allreduce local barrier, [2..3] comm barrier, [4] rank generation
+            sub_comms[i]->set_graph_barrier_ptrs(graph_state, graph_state + 4);
         }
         pthread_barrier_wait(
             &ccl::global_data::get().shared_data->barrier_waits[comm->global_current_id]);

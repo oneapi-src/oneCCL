@@ -117,6 +117,8 @@ private:
     bool m_is_set = false;
     bool m_use_remote_atomics;
     std::array<size_t*, MAX_NODE_RANKS> m_remote_ptrs{};
+    size_t* m_graph_sync = nullptr;
+    size_t* m_graph_gen = nullptr;
 
 public:
     static constexpr int slots = 3;
@@ -169,6 +171,19 @@ public:
         assert(!is_set());
         m_is_set = true;
         m_remote_ptrs = ptrs;
+    }
+
+    size_t* graph_sync() const {
+        return m_graph_sync;
+    }
+
+    size_t* graph_gen() const {
+        return m_graph_gen;
+    }
+
+    void set_graph_sync(size_t* sync, size_t* gen) {
+        m_graph_sync = sync;
+        m_graph_gen = gen;
     }
 };
 
@@ -433,6 +448,10 @@ public:
 
     void set_barrier_ptrs(std::array<size_t*, MAX_NODE_RANKS> ptrs) {
         m_barrier_data.set_remote_ptrs(ptrs);
+    }
+
+    void set_graph_barrier_ptrs(size_t* sync, size_t* gen) {
+        m_barrier_data.set_graph_sync(sync, gen);
     }
 
     ccl_comm_flag_data flag_data() const {
@@ -795,6 +814,10 @@ public:
 
     void set_barrier_ptrs(std::array<size_t*, MAX_NODE_RANKS> ptrs) {
         comm_impl->set_barrier_ptrs(ptrs);
+    }
+
+    void set_graph_barrier_ptrs(size_t* sync, size_t* gen) {
+        comm_impl->set_graph_barrier_ptrs(sync, gen);
     }
 
     ccl_comm_flag_data flag_data() const {

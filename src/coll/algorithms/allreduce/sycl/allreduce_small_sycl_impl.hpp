@@ -88,7 +88,14 @@ void inline reduce_sum(const void *send,
         }
 
         // local barrier within gpu
-        kernel_barrier(kernel_barrier_data.get_sync_ptr(), it);
+        size_t *local_barrier_state = comm_barrier_data.graph_sync();
+        if (local_barrier_state != nullptr) {
+            // device resident barrier, immune to command graph replay
+            graph_local_barrier(local_barrier_state, it);
+        }
+        else {
+            kernel_barrier(kernel_barrier_data.get_sync_ptr(), it);
+        }
     }
 
     if (use_global_barrier) {
@@ -96,8 +103,8 @@ void inline reduce_sum(const void *send,
         comm_barrier(comm_barrier_data, it);
     }
 
-    // reset local barrier counter
-    if (use_local_barrier && idx == 0) {
+    // reset local barrier counter, the device resident barrier resets itself
+    if (use_local_barrier && idx == 0 && comm_barrier_data.graph_sync() == nullptr) {
         kernel_barrier_data.reset_sync_data();
     }
 

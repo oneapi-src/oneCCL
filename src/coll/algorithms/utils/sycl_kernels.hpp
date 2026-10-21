@@ -79,6 +79,8 @@ void inline copy_data(std::array<void *, MAX_GPUS> dst,
 }
 
 // local barrier within gpu similar to q.ext_oneapi_submit_barrier()
+// NOTE: this variant depends on a host-side slot counter which is not advanced
+// while a command graph is replayed. It is kept for the non-graph path only.
 inline void kernel_barrier(size_t *sync_ptr, const sycl::nd_item<1> it) {
     sycl::sub_group sg = it.get_sub_group();
     const size_t sidx = sg.get_local_id();
@@ -97,6 +99,102 @@ inline void kernel_barrier(size_t *sync_ptr, const sycl::nd_item<1> it) {
             val = atomic_p.load();
         }
     }
+}
+
+// Device resident sense-reversing barrier.
+// state[0] holds the number of arrived subgroups, state[1] the generation.
+// Both live in device memory, therefore the barrier keeps making progress when
+// the surrounding command graph is replayed: no host side counter is involved.
+inline void graph_local_barrier(size_t *state, const sycl::nd_item<1> it) {
+    sycl::sub_group sg = it.get_sub_group();
+    const size_t sidx = sg.get_local_id();
+    if (sidx != 0) {
+        return;
+    }
+
+    const size_t num_sg = it.get_global_range()[0] / sg.get_local_range()[0];
+
+    sycl::atomic_ref<size_t,
+                     sycl::memory_order::acq_rel,
+                     sycl::memory_scope::device,
+                     sycl::access::address_space::global_space>
+        arrivals(state[0]);
+    sycl::atomic_ref<size_t,
+                     sycl::memory_order::acq_rel,
+                     sycl::memory_scope::device,
+                     sycl::access::address_space::global_space>
+        generation(state[1]);
+
+    const size_t start = generation.load(sycl::memory_order::acquire);
+    const size_t ticket = arrivals.fetch_add(1, sycl::memory_order::acq_rel) + 1;
+    if (ticket == num_sg) {
+        // last arrival opens the barrier for this generation
+        arrivals.store(0, sycl::memory_order::relaxed);
+        generation.fetch_add(1, sycl::memory_order::release);
+    }
+    else {
+        while (generation.load(sycl::memory_order::acquire) == start) {
+        }
+    }
+}
+
+// Graph safe inter-rank barrier. Every rank publishes its own generation into
+// the first slot of the barrier buffer of every peer and then waits until all
+// peers advertise at least the same generation. The generation counter lives in
+// device memory, so graph replay advances it exactly like a host side counter.
+// Returns false when the communicator has no graph barrier state, in which case
+// the caller falls back to the original host-counter based implementation.
+inline bool graph_comm_barrier(const ccl_comm_barrier_data &barrier_data,
+                               const sycl::nd_item<1> it,
+                               const bool gpu_counter_increase = false) {
+    size_t *state = barrier_data.graph_sync();
+    size_t *gen_ptr = barrier_data.graph_gen();
+    if (state == nullptr || gen_ptr == nullptr || gpu_counter_increase) {
+        return false;
+    }
+
+    const size_t idx = it.get_global_linear_id();
+    const int comm_rank = barrier_data.rank();
+    const int comm_size = barrier_data.size();
+    std::array<size_t *, MAX_NODE_RANKS> sync_remote_ptrs = barrier_data.remote_ptrs();
+
+    // publish the payload written by every subgroup before touching the flag
+    sycl::atomic_fence(sycl::memory_order::release, sycl::memory_scope::system);
+#if defined(__SYCL_DEVICE_ONLY__) && defined(__SPIR__)
+    __LscFlushCache();
+#endif
+
+    graph_local_barrier(state, it);
+
+    if (idx == 0) {
+        sycl::atomic_ref<size_t,
+                         sycl::memory_order::relaxed,
+                         sycl::memory_scope::device,
+                         sycl::access::address_space::global_space>
+            gen_ref(*gen_ptr);
+        const size_t generation = gen_ref.fetch_add(1) + 1;
+
+        for (int peer = 0; peer < comm_size; ++peer) {
+            sync_remote_ptrs[peer][comm_rank] = generation;
+        }
+#if defined(__SYCL_DEVICE_ONLY__) && defined(__SPIR__)
+        __LscFlushCache();
+#endif
+
+        for (int peer = 0; peer < comm_size; ++peer) {
+            sycl::atomic_ref<size_t,
+                             sycl::memory_order::relaxed,
+                             sycl::memory_scope::device,
+                             sycl::access::address_space::global_space>
+                peer_ref(sync_remote_ptrs[comm_rank][peer]);
+            while (peer_ref.load() < generation) {
+            }
+        }
+    }
+
+    graph_local_barrier(state + 2, it);
+    sycl::atomic_fence(sycl::memory_order::acquire, sycl::memory_scope::system);
+    return true;
 }
 
 inline void p2p_barrier(ccl_comm_flag_data flag_data,
@@ -192,6 +290,10 @@ template <bool use_root_sync = false>
 inline void comm_barrier_visa(ccl_comm_barrier_data barrier_data,
                               const sycl::nd_item<1> it,
                               const bool gpu_counter_increase = false) {
+    if (graph_comm_barrier(barrier_data, it, gpu_counter_increase)) {
+        return;
+    }
+
     const size_t idx = it.get_global_linear_id();
     sycl::sub_group sg = it.get_sub_group();
     const size_t sidx = sg.get_local_id();
@@ -265,6 +367,10 @@ inline void comm_barrier(ccl_comm_barrier_data barrier_data,
                          const bool gpu_counter_increase = false) {
     if (!use_gpu)
         return;
+
+    if (graph_comm_barrier(barrier_data, it, gpu_counter_increase)) {
+        return;
+    }
 
     if (!barrier_data.use_remote_atomics()) {
         comm_barrier_visa<use_root_sync>(barrier_data, it, gpu_counter_increase);
